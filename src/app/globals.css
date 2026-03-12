@@ -24,4 +24,140 @@ html {
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  background-color: #F8F5F0;
+  color: #071A0D;
+}
+
+/* ─── Base form element styles ─────────────────────────────────────────────── */
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[type="password"],
+input[type="date"],
+input[type="search"],
+input[type="url"],
+select,
+textarea {
+  display: block;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  color: #071A0D;
+  background-color: #ffffff;
+  border: 1px solid #E8E8E8;
+  border-radius: 0.5rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  line-height: 1.5;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+select:focus,
+textarea:focus {
+  border-color: #52B788;
+  box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.15);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(7, 26, 13, 0.35);
+}
+
+select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23071A0D' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25em 1.25em;
+  padding-right: 2.5rem;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+
+label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(7, 26, 13, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.375rem;
+}
+
+/* ─── Form section cards ────────────────────────────────────────────────────── */
+
+.form-section {
+  background: #ffffff;
+  border: 1px solid #E8E8E8;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.form-section h2,
+.form-section h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #071A0D;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #E8E8E8;
+}
+
+/* ─── Table base styles ─────────────────────────────────────────────────────── */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+th {
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(7, 26, 13, 0.45);
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid #E8E8E8;
+  background: #F8F5F0;
+}
+
+td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid #F0EDE9;
+  color: #071A0D;
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background-color: rgba(82, 183, 136, 0.04);
+}
+
+/* ─── Button base ───────────────────────────────────────────────────────────── */
+
+button {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  cursor: pointer;
 }

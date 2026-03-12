@@ -163,7 +163,7 @@ export default function Sidebar({ user, isSuperAdmin = false }: SidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           const isLocked = (item as { proOnly?: boolean }).proOnly && isBasicPlan;
