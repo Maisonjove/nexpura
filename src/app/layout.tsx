@@ -15,9 +15,22 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Nexpura — Cloud OS for Jewellery Businesses",
+  title: "Nexpura — The operating system for jewellery businesses",
   description:
-    "Manage bespoke jobs, repairs, stock, invoices, and customers — all in one place. Built for jewellers who take their craft seriously.",
+    "Manage bespoke jobs, repairs, customers, inventory, and invoicing. Built for the bench.",
+  openGraph: {
+    title: "Nexpura — The operating system for jewellery businesses",
+    description:
+      "Manage bespoke jobs, repairs, customers, inventory, and invoicing. Built for the bench.",
+    type: "website",
+    siteName: "Nexpura",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nexpura — The operating system for jewellery businesses",
+    description:
+      "Manage bespoke jobs, repairs, customers, inventory, and invoicing. Built for the bench.",
+  },
 };
 
 export default function RootLayout({

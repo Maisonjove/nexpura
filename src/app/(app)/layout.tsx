@@ -18,10 +18,10 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  // Fetch user + tenant data
+  // Fetch user + tenant data (include subscriptions for feature gating in sidebar)
   const { data: userData } = await supabase
     .from("users")
-    .select("*, tenants(*)")
+    .select("*, tenants(*, subscriptions(plan, status))")
     .eq("id", user.id)
     .single();
 

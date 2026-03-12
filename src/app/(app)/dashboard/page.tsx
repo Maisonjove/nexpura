@@ -135,6 +135,72 @@ export default async function DashboardPage() {
     (i) => i.quantity <= (i.low_stock_threshold ?? 1)
   ).length;
 
+  // Recent activity — last 5 items from bespoke jobs + repairs combined
+  const { data: recentJobs } = await supabase
+    .from("bespoke_jobs")
+    .select("id, title, stage, updated_at, customers(full_name)")
+    .eq("tenant_id", tenantId ?? "")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
+  const { data: recentRepairs } = await supabase
+    .from("repairs")
+    .select("id, item_description, stage, updated_at, customers(full_name)")
+    .eq("tenant_id", tenantId ?? "")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
+  type ActivityItem = {
+    id: string;
+    title: string;
+    stage: string;
+    customerName: string | null;
+    updatedAt: string;
+    type: "job" | "repair";
+    href: string;
+  };
+
+  const recentActivity: ActivityItem[] = [
+    ...(recentJobs ?? []).map((j) => ({
+      id: j.id,
+      title: j.title || "Untitled Job",
+      stage: j.stage || "enquiry",
+      customerName: Array.isArray(j.customers)
+        ? (j.customers[0] as { full_name: string | null } | null)?.full_name ?? null
+        : (j.customers as { full_name: string | null } | null)?.full_name ?? null,
+      updatedAt: j.updated_at,
+      type: "job" as const,
+      href: `/bespoke/${j.id}`,
+    })),
+    ...(recentRepairs ?? []).map((r) => ({
+      id: r.id,
+      title: r.item_description || "Repair",
+      stage: r.stage || "intake",
+      customerName: Array.isArray(r.customers)
+        ? (r.customers[0] as { full_name: string | null } | null)?.full_name ?? null
+        : (r.customers as { full_name: string | null } | null)?.full_name ?? null,
+      updatedAt: r.updated_at,
+      type: "repair" as const,
+      href: `/repairs/${r.id}`,
+    })),
+  ]
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 5);
+
+  function timeAgo(dateStr: string) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (mins < 2) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days === 1) return "yesterday";
+    return `${days}d ago`;
+  }
+
   const STAT_CARDS = [
     {
       label: "Active Jobs",
@@ -291,6 +357,105 @@ export default async function DashboardPage() {
             </p>
           </Link>
         ))}
+      </div>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="font-fraunces text-lg font-semibold text-forest mb-3">
+          Quick Actions
+        </h2>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/customers/new"
+            className="flex items-center gap-2 px-4 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Customer
+          </Link>
+          <Link
+            href="/bespoke/new"
+            className="flex items-center gap-2 px-4 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Job
+          </Link>
+          <Link
+            href="/repairs/new"
+            className="flex items-center gap-2 px-4 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Repair
+          </Link>
+          <Link
+            href="/invoices/new"
+            className="flex items-center gap-2 px-4 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Invoice
+          </Link>
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div>
+        <h2 className="font-fraunces text-lg font-semibold text-forest mb-3">
+          Recent Activity
+        </h2>
+        {recentActivity.length === 0 ? (
+          <div className="bg-white rounded-xl border border-platinum p-8 text-center">
+            <p className="text-forest/40 text-sm">No activity yet — create your first job or repair to get started.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-platinum divide-y divide-platinum">
+            {recentActivity.map((item) => (
+              <Link
+                key={`${item.type}-${item.id}`}
+                href={item.href}
+                className="flex items-center gap-4 px-5 py-3.5 hover:bg-ivory/50 transition-colors group"
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  item.type === "job" ? "bg-sage/10 text-sage" : "bg-forest/10 text-forest"
+                }`}>
+                  {item.type === "job" ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-forest truncate group-hover:text-sage transition-colors">
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-forest/40 mt-0.5">
+                    {item.customerName ? `${item.customerName} · ` : ""}
+                    <span className="capitalize">{item.stage.replace(/_/g, " ")}</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="text-xs text-forest/30">{timeAgo(item.updatedAt)}</span>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full capitalize ${
+                    item.type === "job" ? "bg-sage/10 text-sage" : "bg-forest/10 text-forest/60"
+                  }`}>
+                    {item.type}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Getting started checklist */}
