@@ -1,28 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-forest: #071A0D;
+  --color-sage: #52B788;
+  --color-ivory: #F8F5F0;
+  --color-platinum: #E8E8E8;
+  --color-gold: #C9A96E;
 
-:root {
-  --green-950: #071A0D;
-  --green-900: #0D2818;
-  --green-800: #1A3D27;
-  --green-600: #2D6A4F;
-  --green-400: #52B788;
-  --green-100: #D8F3DC;
-  --white: #FFFFFF;
-  --off-white: #F5FAF6;
-  --text: #0A1F0F;
-  --muted: #6B8F71;
+  --font-fraunces: var(--font-fraunces);
+  --font-inter: var(--font-inter);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
 
 body {
-  font-family: 'Inter', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-
-html { scroll-behavior: smooth; }
