@@ -27,6 +27,7 @@ export default async function DashboardPage() {
   const tenantId = userData?.tenant_id;
 
   const today = new Date().toISOString().split("T")[0];
+  const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
   // Sales this month
   let salesThisMonthRevenue = 0;
