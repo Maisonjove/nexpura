@@ -38,6 +38,7 @@ export async function updateSession(request: NextRequest) {
       !pathname.startsWith("/login") &&
       !pathname.startsWith("/signup") &&
       !pathname.startsWith("/onboarding") &&
+      !pathname.startsWith("/verify") &&
       !pathname.startsWith("/_next") &&
       !pathname.startsWith("/api") &&
       !pathname.includes("."));
