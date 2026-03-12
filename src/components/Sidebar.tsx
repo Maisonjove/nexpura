@@ -108,6 +108,16 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: "Website",
+    href: "https://nexpura-website-builder.vercel.app/builder",
+    external: true,
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+      </svg>
+    ),
+  },
+  {
     label: "Passports",
     href: "/passports",
     icon: (
@@ -219,26 +229,37 @@ export default function Sidebar({ user, isSuperAdmin = false }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isExternal = (item as { external?: boolean }).external;
+          const isActive = !isExternal && (pathname === item.href || pathname.startsWith(item.href + "/"));
           const isLocked = (item as { proOnly?: boolean }).proOnly && isBasicPlan;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                isActive
-                  ? "bg-white/15 text-white font-medium"
-                  : "text-white/60 hover:bg-white/8 hover:text-white"
-              }`}
-            >
+          const className = `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+            isActive
+              ? "bg-white/15 text-white font-medium"
+              : "text-white/60 hover:bg-white/8 hover:text-white"
+          }`;
+          const content = (
+            <>
               {item.icon}
               <span className="flex-1">{item.label}</span>
+              {isExternal && (
+                <svg className="w-3 h-3 text-white/30 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              )}
               {isLocked && (
                 <svg className="w-3.5 h-3.5 text-white/30 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               )}
+            </>
+          );
+          return isExternal ? (
+            <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)} className={className}>
+              {content}
+            </a>
+          ) : (
+            <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={className}>
+              {content}
             </Link>
           );
         })}
