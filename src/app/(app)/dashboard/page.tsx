@@ -28,6 +28,51 @@ export default async function DashboardPage() {
 
   const today = new Date().toISOString().split("T")[0];
 
+  // Invoice stats
+  const { data: outstandingData } = await supabase
+    .from("invoices")
+    .select("amount_due")
+    .eq("tenant_id", tenantId ?? "")
+    .in("status", ["sent", "partially_paid", "overdue"])
+    .is("deleted_at", null);
+
+  const totalOutstanding = (outstandingData ?? []).reduce(
+    (sum, inv) => sum + (inv.amount_due || 0),
+    0
+  );
+
+  const { count: overdueInvoiceCount } = await supabase
+    .from("invoices")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId ?? "")
+    .not("status", "in", '("paid","voided","draft")')
+    .lt("due_date", today)
+    .is("deleted_at", null);
+
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  const monthStartStr = monthStart.toISOString().split("T")[0];
+
+  const { data: paidThisMonthData } = await supabase
+    .from("payments")
+    .select("amount")
+    .eq("tenant_id", tenantId ?? "")
+    .gte("payment_date", monthStartStr);
+
+  const paidThisMonth = (paidThisMonthData ?? []).reduce(
+    (sum, p) => sum + (p.amount || 0),
+    0
+  );
+
+  function fmtCurrency(amount: number) {
+    return new Intl.NumberFormat("en-AU", {
+      style: "currency",
+      currency: "AUD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
+
   // Active jobs count
   const { count: activeJobsCount } = await supabase
     .from("bespoke_jobs")
@@ -153,15 +198,29 @@ export default async function DashboardPage() {
       urgent: false,
     },
     {
-      label: "Revenue (MTD)",
-      value: "£0",
+      label: "Outstanding",
+      value: fmtCurrency(totalOutstanding),
+      href: "/invoices",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      note: (overdueInvoiceCount ?? 0) > 0
+        ? `${overdueInvoiceCount} overdue`
+        : "Unpaid invoices",
+      urgent: (overdueInvoiceCount ?? 0) > 0,
+    },
+    {
+      label: "Paid This Month",
+      value: fmtCurrency(paidThisMonth),
       href: "/invoices",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      note: "Invoicing coming soon",
+      note: "Payments received",
       urgent: false,
     },
     {
