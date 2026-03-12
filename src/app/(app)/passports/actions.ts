@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { sendPassportEmail } from "@/lib/email/send";
 
 async function getTenantAndUser() {
   const supabase = await createClient();
@@ -111,6 +112,11 @@ export async function createPassport(formData: FormData) {
     event_data: { title, jewellery_type: jewelleryType },
     created_by: userId,
   });
+
+  // Send passport email to owner if email is set
+  if (currentOwnerEmail) {
+    await sendPassportEmail(passport.id);
+  }
 
   revalidatePath("/passports");
   redirect(`/passports/${passport.id}`);
@@ -328,4 +334,30 @@ export async function savePassportImages(
   if (error) return { error: error.message };
   revalidatePath(`/passports/${passportId}`);
   return { success: true };
+}
+
+export async function resendPassportEmail(
+  passportId: string
+): Promise<{ success?: boolean; error?: string }> {
+  // Verify ownership via the regular client first
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: userData } = await supabase
+    .from("users").select("tenant_id").eq("id", user.id).single();
+  if (!userData?.tenant_id) return { error: "No tenant" };
+
+  // Check passport belongs to this tenant
+  const { data: passport } = await supabase
+    .from("passports")
+    .select("id, current_owner_email")
+    .eq("id", passportId)
+    .eq("tenant_id", userData.tenant_id)
+    .single();
+
+  if (!passport) return { error: "Passport not found" };
+  if (!passport.current_owner_email) return { error: "No owner email address set on this passport" };
+
+  return sendPassportEmail(passportId);
 }

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { sendJobReadyEmail } from "@/lib/email/send";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -182,6 +183,11 @@ export async function advanceJobStage(
     });
 
   if (stageError) return { error: stageError.message };
+
+  // Send "ready for collection" email when stage becomes 'ready'
+  if (newStage === "ready") {
+    await sendJobReadyEmail(jobId);
+  }
 
   return { success: true };
 }

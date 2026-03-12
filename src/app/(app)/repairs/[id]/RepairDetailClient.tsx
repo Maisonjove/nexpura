@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { advanceRepairStage, archiveRepair } from "../actions";
+import { advanceRepairStage, archiveRepair, sendRepairQuoteEmail } from "../actions";
 import { useRouter } from "next/navigation";
 import { ALL_REPAIR_STAGES } from "../RepairsListClient";
 
@@ -18,11 +18,13 @@ interface Props {
   dueDate: string | null;
   priority: string;
   quotedPrice: string | null;
+  quotedPriceRaw: number | null;
   finalPrice: string | null;
   depositAmount: string | null;
   depositPaid: boolean;
   customerName: string | null;
   customerId: string | null;
+  customerEmail: string | null;
   isOverdue: boolean;
 }
 
@@ -41,11 +43,13 @@ export default function RepairDetailClient({
   dueDate,
   priority,
   quotedPrice,
+  quotedPriceRaw,
   finalPrice,
   depositAmount,
   depositPaid,
   customerName,
   customerId,
+  customerEmail,
   isOverdue,
 }: Props) {
   const router = useRouter();
@@ -54,6 +58,8 @@ export default function RepairDetailClient({
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [quoteSending, setQuoteSending] = useState(false);
+  const [quoteToast, setQuoteToast] = useState<string | null>(null);
 
   const p = PRIORITY_MAP[priority] || PRIORITY_MAP.normal;
 
@@ -76,6 +82,23 @@ export default function RepairDetailClient({
     startTransition(async () => {
       await archiveRepair(repairId);
     });
+  }
+
+  async function handleSendQuote() {
+    if (!quotedPriceRaw) return;
+    setQuoteSending(true);
+    setQuoteToast(null);
+    try {
+      const result = await sendRepairQuoteEmail(repairId);
+      if (result.success) {
+        setQuoteToast(customerEmail ? `Quote sent to ${customerEmail}` : "Quote email sent");
+      } else {
+        setQuoteToast(`Failed: ${result.error}`);
+      }
+    } finally {
+      setQuoteSending(false);
+      setTimeout(() => setQuoteToast(null), 5000);
+    }
   }
 
   const isTerminal = ["collected", "cancelled"].includes(currentStage);
@@ -110,6 +133,27 @@ export default function RepairDetailClient({
               </svg>
               Advance to {nextStage.label}
             </button>
+          </div>
+        )}
+
+        {/* Send Quote button — shown when stage is 'quoted' and there's a quoted price */}
+        {currentStage === "quoted" && quotedPriceRaw && (
+          <div>
+            <button
+              onClick={handleSendQuote}
+              disabled={quoteSending}
+              className="w-full bg-gold/90 text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-gold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {quoteSending ? "Sending…" : "Send Quote to Customer"}
+            </button>
+            {quoteToast && (
+              <p className={`mt-2 text-xs font-medium ${quoteToast.startsWith("Failed") ? "text-red-500" : "text-sage"}`}>
+                {quoteToast}
+              </p>
+            )}
           </div>
         )}
 

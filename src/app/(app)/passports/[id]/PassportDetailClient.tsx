@@ -7,6 +7,7 @@ import {
   addPassportEvent,
   transferOwnership,
   togglePublicStatus,
+  resendPassportEmail,
 } from "../actions";
 
 interface Passport {
@@ -147,6 +148,8 @@ export default function PassportDetailClient({
 }) {
   const [isPending, startTransition] = useTransition();
   const [isPublic, setIsPublic] = useState(passport.is_public);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailToast, setEmailToast] = useState<string | null>(null);
 
   // Add event modal
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -173,6 +176,22 @@ export default function PassportDetailClient({
     startTransition(async () => {
       await togglePublicStatus(passport.id, newVal);
     });
+  }
+
+  async function handleSendPassportEmail() {
+    setEmailSending(true);
+    setEmailToast(null);
+    try {
+      const result = await resendPassportEmail(passport.id);
+      if (result.success) {
+        setEmailToast(`Passport email sent to ${passport.current_owner_email}`);
+      } else {
+        setEmailToast(`Failed: ${result.error}`);
+      }
+    } finally {
+      setEmailSending(false);
+      setTimeout(() => setEmailToast(null), 5000);
+    }
   }
 
   async function handleAddEvent(e: React.FormEvent) {
@@ -436,7 +455,35 @@ export default function PassportDetailClient({
               </svg>
               Transfer Ownership
             </button>
+            {passport.current_owner_email && (
+              <button
+                onClick={handleSendPassportEmail}
+                disabled={emailSending}
+                className="w-full px-4 py-2.5 border border-sage text-sage text-sm font-medium rounded-lg hover:bg-sage/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                {emailSending ? "Sending…" : "Send Passport Email"}
+              </button>
+            )}
           </div>
+
+          {/* Email toast */}
+          {emailToast && (
+            <div className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 ${
+              emailToast.startsWith("Failed")
+                ? "bg-red-50 text-red-600 border border-red-100"
+                : "bg-sage/10 text-sage border border-sage/20"
+            }`}>
+              {!emailToast.startsWith("Failed") && (
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {emailToast}
+            </div>
+          )}
         </div>
       </div>
 

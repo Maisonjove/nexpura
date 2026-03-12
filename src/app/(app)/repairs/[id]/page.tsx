@@ -416,11 +416,13 @@ export default async function RepairDetailPage({
             dueDate={repair.due_date}
             priority={repair.priority}
             quotedPrice={formatCurrency(repair.quoted_price)}
+            quotedPriceRaw={repair.quoted_price ?? null}
             finalPrice={formatCurrency(repair.final_price)}
             depositAmount={formatCurrency(repair.deposit_amount)}
             depositPaid={repair.deposit_paid}
             customerName={customer?.full_name ?? null}
             customerId={customer?.id ?? null}
+            customerEmail={customer?.email ?? null}
             isOverdue={!!isOverdue}
           />
 

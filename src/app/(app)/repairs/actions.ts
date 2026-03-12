@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { sendRepairReadyEmail, sendQuoteEmail } from "@/lib/email/send";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -170,7 +171,39 @@ export async function advanceRepairStage(
 
   if (stageError) return { error: stageError.message };
 
+  // Send "repair ready" email when stage becomes 'ready'
+  if (newStage === "ready") {
+    await sendRepairReadyEmail(repairId);
+  }
+
   return { success: true };
+}
+
+export async function sendRepairQuoteEmail(
+  repairId: string
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+
+  const { supabase, tenantId } = ctx;
+
+  // Fetch quoted price from repair
+  const { data: repair, error: repairErr } = await supabase
+    .from("repairs")
+    .select("quoted_price")
+    .eq("id", repairId)
+    .eq("tenant_id", tenantId)
+    .single();
+
+  if (repairErr || !repair) return { error: "Repair not found" };
+  if (!repair.quoted_price) return { error: "No quoted price set on this repair" };
+
+  const result = await sendQuoteEmail(repairId, repair.quoted_price as number);
+  return result;
 }
 
 export async function archiveRepair(

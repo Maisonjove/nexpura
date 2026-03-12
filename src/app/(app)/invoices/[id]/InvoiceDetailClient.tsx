@@ -151,8 +151,12 @@ export default function InvoiceDetailClient({
   function handleMarkSent() {
     startTransition(async () => {
       try {
-        await markAsSent(invoice.id);
-        showToast("Invoice marked as sent");
+        const result = await markAsSent(invoice.id);
+        if (result?.customerEmail) {
+          showToast(`Invoice sent to ${result.customerEmail}`);
+        } else {
+          showToast("Invoice marked as sent");
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error");
       }

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { sendInvoiceEmail } from "@/lib/email/send";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -280,7 +281,7 @@ export async function recordPayment(
   revalidatePath("/dashboard");
 }
 
-export async function markAsSent(invoiceId: string): Promise<void> {
+export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: string | null }> {
   const { supabase, tenantId } = await getAuthContext();
 
   const { error } = await supabase
@@ -292,8 +293,25 @@ export async function markAsSent(invoiceId: string): Promise<void> {
 
   if (error) throw new Error(`Failed to mark as sent: ${error.message}`);
 
+  // Send invoice email (fire-and-forget — don't block on error)
+  const emailResult = await sendInvoiceEmail(invoiceId);
+  
+  // Get customer email for toast feedback
+  let customerEmail: string | null = null;
+  if (emailResult.success) {
+    const { data: invoice } = await supabase
+      .from("invoices")
+      .select("customers(email)")
+      .eq("id", invoiceId)
+      .single();
+    const customer = (Array.isArray(invoice?.customers) ? invoice?.customers[0] : invoice?.customers) as { email: string | null } | null;
+    customerEmail = customer?.email ?? null;
+  }
+
   revalidatePath(`/invoices/${invoiceId}`);
   revalidatePath("/invoices");
+  
+  return { customerEmail };
 }
 
 export async function voidInvoice(invoiceId: string): Promise<void> {
