@@ -44,13 +44,13 @@ interface InventoryClientProps {
 
 // ─── Sample data ──────────────────────────────────────────────────────────────
 
-const SAMPLE_ITEMS = [
-  { id: "s1", sku: "NX-RNG-001", name: "Diamond Solitaire Ring", category: "Rings", metal: "18k White Gold", stone: "Round Diamond", carat: "1.20ct", price: "$8,500", qty: 1, status: "In Stock" },
-  { id: "s2", sku: "NX-BRC-002", name: "Yellow Gold Tennis Bracelet", category: "Bracelets", metal: "18k Yellow Gold", stone: "Natural Diamond", carat: "4.50ct", price: "$12,400", qty: 1, status: "In Stock" },
-  { id: "s3", sku: "NX-PND-003", name: "Sapphire Halo Pendant", category: "Pendants", metal: "Platinum", stone: "Blue Sapphire", carat: "2.10ct", price: "$6,200", qty: 2, status: "In Stock" },
-  { id: "s4", sku: "NX-RNG-004", name: "Oval Lab Diamond Ring", category: "Rings", metal: "18k Rose Gold", stone: "Lab Diamond", carat: "1.80ct", price: "$5,800", qty: 0, status: "Out of Stock" },
-  { id: "s5", sku: "NX-EAR-005", name: "Diamond Stud Earrings", category: "Earrings", metal: "18k White Gold", stone: "Round Diamond", carat: "0.80ct", price: "$3,200", qty: 3, status: "In Stock" },
-  { id: "s6", sku: "NX-WTC-006", name: "Ladies' Diamond Watch", category: "Watches", metal: "18k White Gold", stone: "Round Diamond", carat: "0.50ct", price: "$18,000", qty: 1, status: "Low Stock" },
+const SAMPLE_ITEMS: InventoryItem[] = [
+  { id: "s1", sku: "NX-RNG-001", name: "Diamond Solitaire Ring", item_type: "jewellery", jewellery_type: "Rings", category_id: null, metal_type: "18k White Gold", stone_type: "Round Diamond", metal_weight_grams: null, barcode_value: "NX-HQ-RNG001", retail_price: 8500, cost_price: 4200, quantity: 1, low_stock_threshold: 1, is_featured: true, status: "active", primary_image: null, stock_categories: { name: "Rings" } },
+  { id: "s2", sku: "NX-BRC-002", name: "Yellow Gold Tennis Bracelet", item_type: "jewellery", jewellery_type: "Bracelets", category_id: null, metal_type: "18k Yellow Gold", stone_type: "Natural Diamond", metal_weight_grams: null, barcode_value: "NX-HQ-BRC002", retail_price: 12400, cost_price: 6800, quantity: 1, low_stock_threshold: 1, is_featured: false, status: "active", primary_image: null, stock_categories: { name: "Bracelets" } },
+  { id: "s3", sku: "NX-PND-003", name: "Sapphire Halo Pendant", item_type: "jewellery", jewellery_type: "Pendants", category_id: null, metal_type: "Platinum", stone_type: "Blue Sapphire", metal_weight_grams: null, barcode_value: "NX-HQ-PND003", retail_price: 6200, cost_price: 3100, quantity: 2, low_stock_threshold: 1, is_featured: false, status: "active", primary_image: null, stock_categories: { name: "Pendants" } },
+  { id: "s4", sku: "NX-RNG-004", name: "Oval Lab Diamond Ring", item_type: "jewellery", jewellery_type: "Rings", category_id: null, metal_type: "18k Rose Gold", stone_type: "Lab Diamond", metal_weight_grams: null, barcode_value: "NX-HQ-RNG004", retail_price: 5800, cost_price: 2400, quantity: 0, low_stock_threshold: 1, is_featured: false, status: "active", primary_image: null, stock_categories: { name: "Rings" } },
+  { id: "s5", sku: "NX-EAR-005", name: "Diamond Stud Earrings", item_type: "jewellery", jewellery_type: "Earrings", category_id: null, metal_type: "18k White Gold", stone_type: "Round Diamond", metal_weight_grams: null, barcode_value: "NX-HQ-EAR005", retail_price: 3200, cost_price: 1500, quantity: 3, low_stock_threshold: 2, is_featured: true, status: "active", primary_image: null, stock_categories: { name: "Earrings" } },
+  { id: "s6", sku: "NX-WTC-006", name: "Ladies Diamond Watch", item_type: "jewellery", jewellery_type: "Watches", category_id: null, metal_type: "18k White Gold", stone_type: "Round Diamond", metal_weight_grams: null, barcode_value: "NX-HQ-WTC006", retail_price: 18000, cost_price: 9500, quantity: 1, low_stock_threshold: 2, is_featured: false, status: "active", primary_image: null, stock_categories: { name: "Watches" } },
 ];
 
 // ─── Diamond placeholder SVG ──────────────────────────────────────────────────
@@ -326,12 +326,12 @@ export default function InventoryClient({
                         <p className="text-sm font-medium text-[#1C1C1E]">{item.name}</p>
                         <p className="text-xs text-[#9A9A9A] font-mono">{item.sku}</p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-[#6B6B6B]">{item.category}</td>
-                      <td className="px-4 py-3 text-sm text-[#6B6B6B]">{item.metal}</td>
-                      <td className="px-4 py-3 text-sm text-[#6B6B6B]">{item.stone}</td>
-                      <td className="px-4 py-3 text-sm text-[#6B6B6B]">{item.carat}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-[#1C1C1E] text-right">{item.price}</td>
-                      <td className="px-4 py-3 text-sm text-[#6B6B6B] text-center">{item.qty}</td>
+                      <td className="px-4 py-3 text-sm text-[#6B6B6B]">{item.stock_categories?.name || item.jewellery_type || "—"}</td>
+                      <td className="px-4 py-3 text-sm text-[#6B6B6B]">{item.metal_type || "—"}</td>
+                      <td className="px-4 py-3 text-sm text-[#6B6B6B]">{item.stone_type || "—"}</td>
+                      <td className="px-4 py-3 text-sm text-[#6B6B6B]">—</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-[#1C1C1E] text-right">${item.retail_price.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-[#6B6B6B] text-center">{item.quantity}</td>
                       <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
                       <td className="px-4 py-3">
                         <button className="text-[#9A9A9A] hover:text-[#1C1C1E] transition-colors">
