@@ -1,55 +1,92 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useState, useTransition } from "react";
+import { completeOnboarding } from "./actions";
 
 type Plan = "basic" | "pro" | "ultimate";
 
 const BUSINESS_TYPES = [
   "Independent Jeweller",
-  "Jewellery Retailer",
-  "Bespoke Studio",
-  "Repair Workshop",
-  "Wholesale / Trade",
+  "Jewellery Studio",
+  "Retail Store",
+  "Workshop",
+  "Online Store",
   "Other",
 ];
 
-const PLANS: { id: Plan; name: string; price: string; features: string[]; badge?: string }[] = [
+interface PlanCard {
+  id: Plan;
+  name: string;
+  price: string;
+  features: string[];
+  highlight?: "sage" | "gold";
+  badge?: string;
+  recommended?: boolean;
+}
+
+const PLANS: PlanCard[] = [
   {
     id: "basic",
     name: "Basic",
-    price: "£29/mo",
-    features: ["Up to 2 staff", "Customers & jobs", "Invoicing", "Email support"],
+    price: "AUD $49",
+    features: [
+      "Up to 1 user",
+      "Customers & CRM",
+      "Bespoke Jobs & Repairs",
+      "Inventory Management",
+      "Invoicing & Payments",
+      "Digital Jewellery Passports",
+      "5GB storage",
+    ],
   },
   {
     id: "pro",
     name: "Pro",
-    price: "£69/mo",
-    features: ["Up to 10 staff", "Everything in Basic", "Repairs & stock", "Custom reports", "Priority support"],
+    price: "AUD $99",
+    features: [
+      "Up to 5 users",
+      "Everything in Basic",
+      "AI Business Copilot",
+      "20GB storage",
+      "Priority support",
+    ],
+    highlight: "sage",
+    recommended: true,
   },
   {
     id: "ultimate",
     name: "Ultimate",
-    price: "£149/mo",
-    features: ["Unlimited staff", "Everything in Pro", "AI assistant", "Multi-location", "Dedicated support"],
-    badge: "Best value",
+    price: "AUD $199",
+    features: [
+      "Unlimited users",
+      "Everything in Pro",
+      "AI Website Builder",
+      "Custom domain",
+      "100GB storage",
+      "White-glove onboarding",
+    ],
+    highlight: "gold",
+    badge: "Most powerful",
   },
 ];
 
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
+const CheckIcon = () => (
+  <svg
+    className="w-3.5 h-3.5 text-sage flex-shrink-0"
+    fill="currentColor"
+    viewBox="0 0 20 20"
+  >
+    <path
+      fillRule="evenodd"
+      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
 
 export default function OnboardingPage() {
-  const router = useRouter();
-  const supabase = createClient();
-
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   // Step 1
@@ -57,324 +94,405 @@ export default function OnboardingPage() {
   const [businessType, setBusinessType] = useState("");
 
   // Step 2
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [brandColor, setBrandColor] = useState("#52B788");
+  const [selectedPlan, setSelectedPlan] = useState<Plan>("pro");
 
-  // Step 3
-  const [plan, setPlan] = useState<Plan>("pro");
-
-  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLogoFile(file);
-    setLogoPreview(URL.createObjectURL(file));
+  function handleContinue() {
+    if (!businessName.trim()) return;
+    setStep(2);
   }
 
-  async function handleComplete() {
-    setLoading(true);
+  function handleSelectPlan(plan: Plan) {
+    setSelectedPlan(plan);
+    setStep(3);
+  }
+
+  function handleGoToDashboard() {
     setError(null);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    try {
-      const slug = slugify(businessName) + "-" + Math.random().toString(36).slice(2, 7);
-
-      // 1. Create tenant
-      const { data: tenant, error: tenantErr } = await supabase
-        .from("tenants")
-        .insert({
-          name: businessName,
-          slug,
-          business_type: businessType,
-          brand_color: brandColor,
-        })
-        .select()
-        .single();
-
-      if (tenantErr) throw tenantErr;
-
-      // 2. Upload logo if provided
-      let logoUrl: string | null = null;
-      if (logoFile && tenant) {
-        const ext = logoFile.name.split(".").pop();
-        const path = `${tenant.id}/logo.${ext}`;
-        const { error: uploadErr } = await supabase.storage
-          .from("tenant-logos")
-          .upload(path, logoFile, { upsert: true });
-
-        if (!uploadErr) {
-          const { data: urlData } = supabase.storage.from("tenant-logos").getPublicUrl(path);
-          logoUrl = urlData.publicUrl;
-
-          await supabase.from("tenants").update({ logo_url: logoUrl }).eq("id", tenant.id);
-        }
+    startTransition(async () => {
+      const result = await completeOnboarding(
+        businessName,
+        businessType,
+        selectedPlan
+      );
+      if (result?.error) {
+        setError(result.error);
+        setStep(2);
       }
-
-      // 3. Create user record
-      const { error: userErr } = await supabase.from("users").insert({
-        id: user.id,
-        tenant_id: tenant.id,
-        email: user.email,
-        full_name: user.user_metadata?.full_name || user.email,
-        role: "owner",
-      });
-
-      if (userErr) throw userErr;
-
-      // 4. Create subscription (14-day trial)
-      const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + 14);
-
-      const { error: subErr } = await supabase.from("subscriptions").insert({
-        tenant_id: tenant.id,
-        plan,
-        status: "trialing",
-        trial_ends_at: trialEndsAt.toISOString(),
-      });
-
-      if (subErr) throw subErr;
-
-      router.push("/dashboard");
-      router.refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-      setLoading(false);
-    }
+    });
   }
+
+  const planLabel =
+    PLANS.find((p) => p.id === selectedPlan)?.name ?? selectedPlan;
 
   return (
-    <div className="w-full max-w-lg">
-      {/* Logo */}
-      <div className="text-center mb-8">
-        <h1 className="font-fraunces text-3xl font-semibold text-forest">Nexpura</h1>
-        <p className="text-sm text-forest/60 mt-1">Let&apos;s set up your workspace</p>
+    <div className="min-h-screen bg-ivory flex flex-col">
+      {/* Top bar */}
+      <div className="border-b border-platinum bg-white px-6 py-4">
+        <span className="font-fraunces text-xl font-semibold text-forest">
+          Nexpura
+        </span>
       </div>
 
-      {/* Progress */}
-      <div className="flex items-center gap-2 mb-8">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className="flex items-center flex-1">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
-                s < step
-                  ? "bg-sage text-white"
-                  : s === step
-                  ? "bg-forest text-white"
-                  : "bg-platinum text-forest/40"
-              }`}
-            >
-              {s < step ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                s
-              )}
-            </div>
-            {s < 3 && (
-              <div className={`flex-1 h-0.5 mx-2 ${s < step ? "bg-sage" : "bg-platinum"}`} />
-            )}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+        {/* Progress indicator */}
+        <div className="w-full max-w-2xl mb-10">
+          <div className="flex items-center justify-center gap-0">
+            {[1, 2, 3].map((s) => (
+              <div key={s} className="flex items-center">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
+                      s < step
+                        ? "bg-sage text-white shadow-sm"
+                        : s === step
+                        ? "bg-forest text-white shadow-md ring-4 ring-forest/20"
+                        : "bg-white border-2 border-platinum text-forest/30"
+                    }`}
+                  >
+                    {s < step ? (
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2.5}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    ) : (
+                      s
+                    )}
+                  </div>
+                  <span
+                    className={`mt-1.5 text-xs font-medium transition-colors ${
+                      s === step ? "text-forest" : "text-forest/40"
+                    }`}
+                  >
+                    {s === 1 ? "Business" : s === 2 ? "Choose Plan" : "Done"}
+                  </span>
+                </div>
+                {s < 3 && (
+                  <div
+                    className={`w-24 h-0.5 mb-5 mx-1 transition-all duration-300 ${
+                      s < step ? "bg-sage" : "bg-platinum"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-platinum p-8">
-        {/* Step 1 */}
+        {/* Step 1 — Business Info */}
         {step === 1 && (
-          <div>
-            <h2 className="font-fraunces text-xl font-semibold text-forest mb-1">
-              Your business
-            </h2>
-            <p className="text-sm text-forest/60 mb-6">Tell us about your jewellery business.</p>
+          <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+              <h1 className="font-fraunces text-3xl font-semibold text-forest mb-2">
+                Welcome to Nexpura!
+              </h1>
+              <p className="text-forest/60 text-base">
+                Let&apos;s set up your jewellery business.
+              </p>
+            </div>
 
-            <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-platinum shadow-sm p-8 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-forest mb-1">
+                <label className="block text-sm font-medium text-forest mb-1.5">
                   Business name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleContinue()}
                   placeholder="e.g. Smith & Sons Jewellers"
-                  className="w-full px-3 py-2.5 rounded-lg border border-platinum bg-ivory text-forest placeholder-forest/40 focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage transition-colors text-sm"
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-xl border border-platinum bg-ivory text-forest placeholder-forest/30 focus:outline-none focus:ring-2 focus:ring-sage/40 focus:border-sage transition-all text-sm"
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-forest mb-1">
+                <label className="block text-sm font-medium text-forest mb-1.5">
                   Business type
                 </label>
                 <select
                   value={businessType}
                   onChange={(e) => setBusinessType(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-lg border border-platinum bg-ivory text-forest focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-platinum bg-ivory text-forest focus:outline-none focus:ring-2 focus:ring-sage/40 focus:border-sage transition-all text-sm appearance-none"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23071A0D' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                    backgroundPosition: "right 12px center",
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "16px",
+                    paddingRight: "40px",
+                  }}
                 >
                   <option value="">Select a type…</option>
                   {BUSINESS_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
                   ))}
                 </select>
               </div>
+
+              <button
+                onClick={handleContinue}
+                disabled={!businessName.trim()}
+                className="w-full bg-sage hover:bg-sage/90 disabled:bg-sage/40 text-white font-semibold py-3 rounded-xl transition-all text-sm flex items-center justify-center gap-2 shadow-sm"
+              >
+                Continue
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2 — Choose Plan */}
+        {step === 2 && (
+          <div className="w-full max-w-4xl">
+            <div className="text-center mb-8">
+              <h1 className="font-fraunces text-3xl font-semibold text-forest mb-2">
+                Choose your plan
+              </h1>
+              <p className="text-forest/60 text-base">
+                14-day free trial · No credit card required
+              </p>
             </div>
 
+            {error && (
+              <div className="max-w-md mx-auto mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+              {PLANS.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={`relative bg-white rounded-2xl border-2 transition-all hover:shadow-md ${
+                    plan.highlight === "sage"
+                      ? "border-sage shadow-sm"
+                      : plan.highlight === "gold"
+                      ? "border-[#C9A96E] shadow-sm"
+                      : "border-platinum hover:border-platinum/60"
+                  }`}
+                >
+                  {plan.recommended && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-sage text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm">
+                        Most popular
+                      </span>
+                    </div>
+                  )}
+                  {plan.badge && !plan.recommended && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-[#C9A96E] text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm">
+                        {plan.badge}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="p-6">
+                    <div className="mb-4">
+                      <h3
+                        className={`font-fraunces text-xl font-semibold mb-1 ${
+                          plan.highlight === "gold"
+                            ? "text-[#C9A96E]"
+                            : "text-forest"
+                        }`}
+                      >
+                        {plan.name}
+                      </h3>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold text-forest">
+                          {plan.price}
+                        </span>
+                        <span className="text-forest/50 text-sm">/mo</span>
+                      </div>
+                    </div>
+
+                    <ul className="space-y-2 mb-6">
+                      {plan.features.map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-center gap-2 text-sm text-forest/70"
+                        >
+                          <CheckIcon />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <button
+                      onClick={() => handleSelectPlan(plan.id)}
+                      className={`w-full py-3 rounded-xl font-semibold text-sm transition-all shadow-sm ${
+                        plan.highlight === "sage"
+                          ? "bg-sage hover:bg-sage/90 text-white"
+                          : plan.highlight === "gold"
+                          ? "bg-[#C9A96E] hover:bg-[#C9A96E]/90 text-white"
+                          : "bg-white border-2 border-forest text-forest hover:bg-forest hover:text-white"
+                      }`}
+                    >
+                      Start Free Trial
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-center text-sm text-forest/50">
+              You can upgrade or downgrade anytime.
+            </p>
+
             <button
-              onClick={() => {
-                if (!businessName.trim()) return;
-                setStep(2);
-              }}
-              disabled={!businessName.trim()}
-              className="w-full mt-6 bg-sage hover:bg-sage/90 text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 text-sm"
+              onClick={() => setStep(1)}
+              className="mt-4 mx-auto flex items-center gap-1.5 text-sm text-forest/50 hover:text-forest transition-colors"
             >
-              Continue
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              Back
             </button>
           </div>
         )}
 
-        {/* Step 2 */}
-        {step === 2 && (
-          <div>
-            <h2 className="font-fraunces text-xl font-semibold text-forest mb-1">
-              Brand identity
-            </h2>
-            <p className="text-sm text-forest/60 mb-6">Optional — you can change this anytime.</p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-forest mb-2">
-                  Business logo
-                </label>
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-platinum rounded-lg cursor-pointer hover:border-sage transition-colors bg-ivory">
-                  {logoPreview ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logoPreview} alt="Logo preview" className="h-24 object-contain" />
-                  ) : (
-                    <div className="text-center">
-                      <svg className="w-8 h-8 text-forest/30 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p className="text-sm text-forest/50">Click to upload logo</p>
-                      <p className="text-xs text-forest/30">PNG, JPG, SVG up to 2MB</p>
-                    </div>
-                  )}
-                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
-                </label>
+        {/* Step 3 — Confirmation */}
+        {step === 3 && (
+          <div className="w-full max-w-md">
+            <div className="bg-white rounded-2xl border border-platinum shadow-sm p-10 text-center">
+              {/* Success icon */}
+              <div className="w-16 h-16 rounded-full bg-sage/15 flex items-center justify-center mx-auto mb-6">
+                <svg
+                  className="w-8 h-8 text-sage"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-forest mb-2">
-                  Brand colour
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={brandColor}
-                    onChange={(e) => setBrandColor(e.target.value)}
-                    className="w-12 h-10 rounded-lg border border-platinum cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={brandColor}
-                    onChange={(e) => setBrandColor(e.target.value)}
-                    placeholder="#52B788"
-                    className="flex-1 px-3 py-2.5 rounded-lg border border-platinum bg-ivory text-forest text-sm focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage"
-                  />
+              <h2 className="font-fraunces text-2xl font-semibold text-forest mb-2">
+                You&apos;re all set!
+              </h2>
+              <p className="text-forest/60 text-sm mb-8">
+                Your 14-day free trial has started
+              </p>
+
+              <div className="bg-ivory rounded-xl p-4 mb-8 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-forest/60">Business</span>
+                  <span className="font-semibold text-forest">
+                    {businessName}
+                  </span>
+                </div>
+                <div className="h-px bg-platinum" />
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-forest/60">Plan</span>
+                  <span className="font-semibold text-forest capitalize">
+                    {planLabel} Plan
+                  </span>
+                </div>
+                <div className="h-px bg-platinum" />
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-forest/60">Trial ends</span>
+                  <span className="font-semibold text-forest">
+                    {new Date(
+                      Date.now() + 14 * 24 * 60 * 60 * 1000
+                    ).toLocaleDateString("en-AU", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
                 </div>
               </div>
-            </div>
 
-            <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setStep(1)}
-                className="flex-1 border border-platinum text-forest/70 font-medium py-2.5 rounded-lg hover:bg-ivory transition-colors text-sm"
+                onClick={handleGoToDashboard}
+                disabled={isPending}
+                className="w-full bg-sage hover:bg-sage/90 disabled:bg-sage/50 text-white font-semibold py-3 rounded-xl transition-all text-sm flex items-center justify-center gap-2 shadow-sm"
               >
-                Back
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                className="flex-1 bg-sage hover:bg-sage/90 text-white font-medium py-2.5 rounded-lg transition-colors text-sm"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3 */}
-        {step === 3 && (
-          <div>
-            <h2 className="font-fraunces text-xl font-semibold text-forest mb-1">
-              Choose your plan
-            </h2>
-            <p className="text-sm text-forest/60 mb-6">
-              Start free for 14 days — no card required.
-            </p>
-
-            <div className="space-y-3 mb-6">
-              {PLANS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setPlan(p.id)}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                    plan === p.id
-                      ? "border-sage bg-sage/5"
-                      : "border-platinum hover:border-sage/50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-forest text-sm">{p.name}</span>
-                      {p.badge && (
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gold/20 text-gold">
-                          {p.badge}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-forest">{p.price}</span>
-                      <div
-                        className={`w-4 h-4 rounded-full border-2 transition-all ${
-                          plan === p.id ? "border-sage bg-sage" : "border-platinum"
-                        }`}
+                {isPending ? (
+                  <>
+                    <svg
+                      className="w-4 h-4 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
                       />
-                    </div>
-                  </div>
-                  <ul className="space-y-1">
-                    {p.features.map((f) => (
-                      <li key={f} className="text-xs text-forest/60 flex items-center gap-1.5">
-                        <svg className="w-3 h-3 text-sage flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </button>
-              ))}
-            </div>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
+                    Setting up your workspace…
+                  </>
+                ) : (
+                  <>
+                    Go to Dashboard
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </>
+                )}
+              </button>
 
-            {error && (
-              <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg mb-4">{error}</p>
-            )}
-
-            <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="flex-1 border border-platinum text-forest/70 font-medium py-2.5 rounded-lg hover:bg-ivory transition-colors text-sm"
+                className="mt-3 text-sm text-forest/40 hover:text-forest/70 transition-colors"
               >
-                Back
-              </button>
-              <button
-                onClick={handleComplete}
-                disabled={loading}
-                className="flex-1 bg-sage hover:bg-sage/90 text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 text-sm"
-              >
-                {loading ? "Setting up…" : "Start free trial"}
+                Change plan
               </button>
             </div>
           </div>

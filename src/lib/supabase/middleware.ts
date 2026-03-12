@@ -32,21 +32,77 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Protected app routes: require auth
-  const isAppRoute = pathname.startsWith("/dashboard") ||
-    (pathname !== "/" &&
-      !pathname.startsWith("/login") &&
-      !pathname.startsWith("/signup") &&
-      !pathname.startsWith("/onboarding") &&
-      !pathname.startsWith("/verify") &&
-      !pathname.startsWith("/_next") &&
-      !pathname.startsWith("/api") &&
-      !pathname.includes("."));
+  // Public routes — no auth required
+  const isPublicRoute =
+    pathname === "/" ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/verify") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.includes(".");
 
-  if (isAppRoute && !user) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    return NextResponse.redirect(loginUrl);
+  if (isPublicRoute) {
+    return supabaseResponse;
+  }
+
+  // /onboarding — requires auth but NOT tenant
+  const isOnboarding = pathname.startsWith("/onboarding");
+
+  if (isOnboarding) {
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      return NextResponse.redirect(loginUrl);
+    }
+    return supabaseResponse;
+  }
+
+  // /admin routes — requires auth + super_admin check (handled in page)
+  const isAdminRoute = pathname.startsWith("/admin");
+
+  if (isAdminRoute) {
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      return NextResponse.redirect(loginUrl);
+    }
+    return supabaseResponse;
+  }
+
+  // Protected app routes — require auth AND tenant
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/bespoke") ||
+    pathname.startsWith("/repairs") ||
+    pathname.startsWith("/inventory") ||
+    pathname.startsWith("/customers") ||
+    pathname.startsWith("/invoices") ||
+    pathname.startsWith("/passports") ||
+    pathname.startsWith("/billing") ||
+    pathname.startsWith("/settings");
+
+  if (isProtectedRoute) {
+    // Must be authenticated
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Check if user has a tenant record
+    const { data: userRecord } = await supabase
+      .from("users")
+      .select("id, tenant_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!userRecord) {
+      // No tenant — redirect to onboarding
+      const onboardingUrl = request.nextUrl.clone();
+      onboardingUrl.pathname = "/onboarding";
+      return NextResponse.redirect(onboardingUrl);
+    }
   }
 
   return supabaseResponse;
