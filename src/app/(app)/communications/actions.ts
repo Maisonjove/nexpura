@@ -59,23 +59,23 @@ export async function sendCommunication(
 
   let status = "sent";
 
-  // If type is email, attempt to send via email helper
+  // If type is email, attempt to send via Resend directly
   if (type === "email") {
     const customerEmail = str("customer_email");
     if (customerEmail) {
       try {
-        // Dynamic import to avoid build errors if send.ts has issues
-        const { sendGenericEmail } = await import("@/lib/email/send");
-        if (sendGenericEmail) {
-          const result = await sendGenericEmail({
-            to: customerEmail,
-            subject: str("subject") || "Message from Nexpura",
-            body: body,
-          });
-          if (result?.error) status = "failed";
-        }
+        const { resend } = await import("@/lib/email/resend");
+        const subject = str("subject") || "Message from your jeweller";
+        const customerName = str("customer_name") || "Valued Customer";
+        const { error: sendError } = await resend.emails.send({
+          from: "Nexpura <onboarding@resend.dev>",
+          to: [customerEmail],
+          subject,
+          html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto"><p>Hi ${customerName},</p><div style="white-space:pre-wrap">${body.replace(/\n/g, "<br/>")}</div></div>`,
+        });
+        if (sendError) status = "failed";
       } catch {
-        // Email send not available — still log it
+        // Email send not critical — still log it
         status = "sent";
       }
     }
