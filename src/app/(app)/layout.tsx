@@ -36,7 +36,7 @@ export default async function AppLayout({
   const isSuperAdmin = !!superAdmin;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-ivory">
+    <div className="flex h-screen overflow-hidden bg-[#F8F7F5]">
       {/* Sidebar */}
       <Sidebar user={userData} isSuperAdmin={isSuperAdmin} />
 

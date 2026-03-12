@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import TagPill from "@/components/TagPill";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Customer = {
   id: string;
@@ -18,19 +21,6 @@ type Customer = {
   updated_at: string | null;
 };
 
-const TAG_OPTIONS = ["VIP", "Wholesale", "Trade", "Regular"];
-
-const TAG_COLORS: Record<string, string> = {
-  VIP: "bg-gold/10 text-gold border border-gold/30",
-  Wholesale: "bg-sage/10 text-sage border border-sage/30",
-  Trade: "bg-forest/10 text-forest border border-forest/30",
-  Regular: "bg-platinum text-forest/60 border border-platinum",
-};
-
-function getTagColor(tag: string) {
-  return TAG_COLORS[tag] || "bg-platinum text-forest/60 border border-platinum";
-}
-
 interface Props {
   customers: Customer[];
   totalCount: number;
@@ -40,6 +30,38 @@ interface Props {
   tagFilter: string;
   sort: string;
 }
+
+// ─── Sample data ──────────────────────────────────────────────────────────────
+
+const SAMPLE_CUSTOMERS = [
+  { id: "c1", name: "Sarah Khoury", initials: "SK", tags: ["VIP", "Bridal"], phone: "+61 412 555 001", email: "sarah@email.com", lastPurchase: "8 Mar 2026", totalSpend: "$48,200", jobs: 4, color: "bg-[#E8F0EB] text-[#1a4731]" },
+  { id: "c2", name: "David Moufarrej", initials: "DM", tags: ["VIP"], phone: "+61 413 555 002", email: "david@email.com", lastPurchase: "5 Mar 2026", totalSpend: "$31,500", jobs: 2, color: "bg-blue-50 text-blue-700" },
+  { id: "c3", name: "Lina Haddad", initials: "LH", tags: ["Retail"], phone: "+61 414 555 003", email: "lina@email.com", lastPurchase: "1 Mar 2026", totalSpend: "$8,400", jobs: 1, color: "bg-purple-50 text-purple-700" },
+  { id: "c4", name: "Mia Tanaka", initials: "MT", tags: ["Bridal"], phone: "+61 415 555 004", email: "mia@email.com", lastPurchase: "28 Feb 2026", totalSpend: "$22,100", jobs: 3, color: "bg-rose-50 text-rose-700" },
+  { id: "c5", name: "James Obeid", initials: "JO", tags: ["Wholesale"], phone: "+61 416 555 005", email: "james@email.com", lastPurchase: "20 Feb 2026", totalSpend: "$67,800", jobs: 8, color: "bg-amber-50 text-amber-700" },
+];
+
+const AVATAR_COLORS = [
+  "bg-[#E8F0EB] text-[#1a4731]",
+  "bg-blue-50 text-blue-700",
+  "bg-purple-50 text-purple-700",
+  "bg-rose-50 text-rose-700",
+  "bg-amber-50 text-amber-700",
+  "bg-cyan-50 text-cyan-700",
+];
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function getInitials(name: string | null) {
+  if (!name) return "?";
+  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CustomerListClient({
   customers,
@@ -52,11 +74,14 @@ export default function CustomerListClient({
 }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState(q);
+  const [activeTab, setActiveTab] = useState(tagFilter || "all");
+
+  const useSampleData = customers.length === 0;
 
   function buildUrl(params: Record<string, string | number>) {
     const url = new URLSearchParams();
     if (params.q) url.set("q", params.q as string);
-    if (params.tag) url.set("tag", params.tag as string);
+    if (params.tag && params.tag !== "all") url.set("tag", params.tag as string);
     if (params.sort && params.sort !== "created_at_desc") url.set("sort", params.sort as string);
     if (params.page && params.page !== 1) url.set("page", String(params.page));
     const qs = url.toString();
@@ -68,241 +93,191 @@ export default function CustomerListClient({
     router.push(buildUrl({ q: search, tag: tagFilter, sort, page: 1 }));
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-fraunces text-2xl font-semibold text-forest">Customers</h1>
-          <p className="text-forest/60 mt-1 text-sm">
-            {totalCount} {totalCount === 1 ? "customer" : "customers"} total
-          </p>
-        </div>
-        <Link
-          href="/customers/new"
-          className="flex items-center gap-2 px-4 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Customer
-        </Link>
-      </div>
+  function handleTabChange(tab: string) {
+    setActiveTab(tab);
+    router.push(buildUrl({ q: search, tag: tab === "all" ? "" : tab, sort, page: 1 }));
+  }
 
-      {/* Filters bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search */}
-        <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-          <div className="relative flex-1">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-forest/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+  const filterTabs = [
+    { key: "all", label: "All" },
+    { key: "VIP", label: "VIP" },
+    { key: "Bridal", label: "Bridal" },
+    { key: "Wholesale", label: "Wholesale" },
+    { key: "Retail", label: "Retail" },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-2xl font-semibold text-[#1C1C1E]">Customers</h1>
+        <div className="flex items-center gap-2">
+          <form onSubmit={handleSearch} className="relative">
             <input
+              type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, email, phone…"
-              className="w-full pl-9 pr-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+              placeholder="Search customers…"
+              className="w-52 pl-8 pr-3 py-2 text-sm bg-white border border-[#E8E6E1] rounded-lg text-[#1C1C1E] placeholder-[#C0C0C0] focus:outline-none focus:border-[#1a4731]"
             />
-          </div>
-          <button type="submit" className="px-4 py-2 text-sm font-medium bg-forest text-white rounded-lg hover:bg-forest/90 transition-colors">
-            Search
-          </button>
-          {(q || tagFilter) && (
-            <Link href="/customers" className="px-4 py-2 text-sm font-medium border border-platinum text-forest/60 rounded-lg hover:border-forest/30 transition-colors">
-              Clear
-            </Link>
-          )}
-        </form>
-
-        {/* Sort */}
-        <select
-          value={sort}
-          onChange={(e) => router.push(buildUrl({ q, tag: tagFilter, sort: e.target.value, page: 1 }))}
-          className="px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
-        >
-          <option value="created_at_desc">Newest first</option>
-          <option value="created_at_asc">Oldest first</option>
-          <option value="name_asc">Name A–Z</option>
-          <option value="name_desc">Name Z–A</option>
-          <option value="updated_desc">Recently updated</option>
-        </select>
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#C0C0C0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </form>
+          <Link
+            href="/customers/new"
+            className="inline-flex items-center gap-2 bg-[#1a4731] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1a4731]/90 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Customer
+          </Link>
+        </div>
       </div>
 
-      {/* Tag filters */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => router.push(buildUrl({ q, sort, page: 1 }))}
-          className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
-            !tagFilter ? "bg-forest text-white border-forest" : "bg-white text-forest/60 border-platinum hover:border-forest/30"
-          }`}
-        >
-          All
-        </button>
-        {TAG_OPTIONS.map((tag) => (
+      {/* Stats bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Total", value: useSampleData ? "428" : String(totalCount) },
+          { label: "VIP", value: "32" },
+          { label: "New this month", value: "14" },
+          { label: "Avg Spend", value: "$3,200" },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-lg border border-[#E8E6E1] px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A]">{s.label}</p>
+            <p className="text-xl font-semibold mt-1 text-[#1C1C1E]">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex items-center bg-white border border-[#E8E6E1] rounded-lg p-1 gap-0.5 w-fit">
+        {filterTabs.map((tab) => (
           <button
-            key={tag}
-            onClick={() => router.push(buildUrl({ q, tag: tagFilter === tag ? "" : tag, sort, page: 1 }))}
-            className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
-              tagFilter === tag
-                ? "bg-sage text-white border-sage"
-                : "bg-white text-forest/60 border-platinum hover:border-forest/30"
+            key={tab.key}
+            onClick={() => handleTabChange(tab.key)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${
+              activeTab === tab.key
+                ? "bg-[#1a4731] text-white shadow-sm"
+                : "text-[#6B6B6B] hover:text-[#1C1C1E]"
             }`}
           >
-            {tag}
+            {tab.label}
           </button>
         ))}
       </div>
 
       {/* Table */}
-      {customers.length === 0 ? (
-        <div className="bg-white rounded-xl border border-platinum p-16 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-sage/10 flex items-center justify-center">
-            <svg className="w-8 h-8 text-sage" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <h3 className="font-fraunces text-lg font-semibold text-forest">
-            {q || tagFilter ? "No customers found" : "Add your first customer"}
-          </h3>
-          <p className="text-forest/50 mt-1 text-sm">
-            {q || tagFilter
-              ? "Try adjusting your search or filters"
-              : "Start building your customer database"}
-          </p>
-          {!q && !tagFilter && (
-            <Link
-              href="/customers/new"
-              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Customer
-            </Link>
-          )}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-platinum overflow-hidden">
-          <table className="w-full text-sm">
+      <div className="bg-white border border-[#E8E6E1] rounded-xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full">
             <thead>
-              <tr className="border-b border-platinum bg-ivory">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-forest/50 uppercase tracking-wide">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-forest/50 uppercase tracking-wide hidden md:table-cell">Email</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-forest/50 uppercase tracking-wide hidden lg:table-cell">Phone</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-forest/50 uppercase tracking-wide hidden sm:table-cell">Tags</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-forest/50 uppercase tracking-wide hidden lg:table-cell">Since</th>
-                <th className="px-4 py-3" />
+              <tr className="border-b border-[#F0EDE9]">
+                {["Customer", "Tags", "Phone", "Email", "Last Purchase", "Total Spend", "Jobs", ""].map((h) => (
+                  <th key={h} className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-5 py-3 bg-[#F8F7F5]">
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-platinum">
-              {customers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-ivory/50 transition-colors group">
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-sage/15 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-semibold text-sage">
-                          {(customer.full_name || customer.email || "?")[0].toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <Link
-                          href={`/customers/${customer.id}`}
-                          className="font-medium text-forest hover:text-sage transition-colors"
-                        >
-                          {customer.full_name || "—"}
-                        </Link>
-                        {customer.is_vip && (
-                          <span className="ml-2 inline-flex items-center px-1.5 py-0.5 text-xs font-semibold rounded bg-gold/10 text-gold border border-gold/30">
-                            VIP
-                          </span>
-                        )}
-                        <p className="text-xs text-forest/40 md:hidden">{customer.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-forest/70 hidden md:table-cell">{customer.email || "—"}</td>
-                  <td className="px-4 py-4 text-forest/70 hidden lg:table-cell">
-                    {customer.mobile || customer.phone || "—"}
-                  </td>
-                  <td className="px-4 py-4 hidden sm:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {customer.tags?.slice(0, 3).map((tag) => (
-                        <span
-                          key={tag}
-                          className={`px-2 py-0.5 text-xs font-medium rounded-full ${getTagColor(tag)}`}
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                      {(customer.tags?.length || 0) > 3 && (
-                        <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-platinum text-forest/50">
-                          +{customer.tags!.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-forest/50 text-xs hidden lg:table-cell">
-                    {new Date(customer.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <div className="flex items-center gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Link
-                        href={`/customers/${customer.id}`}
-                        className="p-1.5 rounded-lg hover:bg-sage/10 text-forest/40 hover:text-sage transition-colors"
-                        title="View"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </Link>
-                      <Link
-                        href={`/customers/${customer.id}/edit`}
-                        className="p-1.5 rounded-lg hover:bg-sage/10 text-forest/40 hover:text-sage transition-colors"
-                        title="Edit"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-[#F5F3F0]">
+              {useSampleData
+                ? SAMPLE_CUSTOMERS.map((c) => (
+                    <tr key={c.id} className="hover:bg-[#F8F7F5] transition-colors">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold ${c.color}`}>
+                            {c.initials}
+                          </div>
+                          <span className="text-sm font-medium text-[#1C1C1E]">{c.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex gap-1 flex-wrap">
+                          {c.tags.map((tag) => <TagPill key={tag} tag={tag} />)}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-sm text-[#6B6B6B]">{c.phone}</td>
+                      <td className="px-5 py-3 text-sm text-[#6B6B6B]">{c.email}</td>
+                      <td className="px-5 py-3 text-sm text-[#6B6B6B]">{c.lastPurchase}</td>
+                      <td className="px-5 py-3 text-sm font-semibold text-[#1C1C1E]">{c.totalSpend}</td>
+                      <td className="px-5 py-3 text-sm text-[#6B6B6B]">{c.jobs} jobs</td>
+                      <td className="px-5 py-3">
+                        <Link href="/customers" className="text-xs text-[#1a4731] font-semibold hover:underline">→</Link>
+                      </td>
+                    </tr>
+                  ))
+                : customers.map((customer) => {
+                    const name = customer.full_name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || "Unknown";
+                    const initials = getInitials(name);
+                    const avatarColor = getAvatarColor(name);
+                    const tags: string[] = [
+                      ...(customer.is_vip ? ["VIP"] : []),
+                      ...(customer.tags || []),
+                    ];
+                    return (
+                      <tr key={customer.id} className="hover:bg-[#F8F7F5] transition-colors">
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold ${avatarColor}`}>
+                              {initials}
+                            </div>
+                            <span className="text-sm font-medium text-[#1C1C1E]">{name}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex gap-1 flex-wrap">
+                            {tags.map((tag) => <TagPill key={tag} tag={tag} />)}
+                            {tags.length === 0 && <span className="text-[#C0C0C0] text-xs">—</span>}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-sm text-[#6B6B6B]">{customer.mobile || customer.phone || "—"}</td>
+                        <td className="px-5 py-3 text-sm text-[#6B6B6B]">{customer.email || "—"}</td>
+                        <td className="px-5 py-3 text-sm text-[#6B6B6B]">
+                          {customer.updated_at
+                            ? new Date(customer.updated_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
+                            : "—"}
+                        </td>
+                        <td className="px-5 py-3 text-sm font-semibold text-[#1C1C1E]">—</td>
+                        <td className="px-5 py-3 text-sm text-[#6B6B6B]">—</td>
+                        <td className="px-5 py-3">
+                          <Link href={`/customers/${customer.id}`} className="text-xs text-[#1a4731] font-semibold hover:underline">→</Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
             </tbody>
           </table>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="px-5 py-4 border-t border-platinum flex items-center justify-between">
-              <p className="text-xs text-forest/50">
-                Showing {((page - 1) * 20) + 1}–{Math.min(page * 20, totalCount)} of {totalCount}
-              </p>
-              <div className="flex items-center gap-2">
-                {page > 1 && (
-                  <Link
-                    href={buildUrl({ q, tag: tagFilter, sort, page: page - 1 })}
-                    className="px-3 py-1.5 text-sm border border-platinum rounded-lg hover:border-sage/30 transition-colors text-forest/60 hover:text-forest"
-                  >
-                    Previous
-                  </Link>
-                )}
-                <span className="px-3 py-1.5 text-sm font-medium text-forest bg-sage/10 rounded-lg">
-                  {page}
-                </span>
-                {page < totalPages && (
-                  <Link
-                    href={buildUrl({ q, tag: tagFilter, sort, page: page + 1 })}
-                    className="px-3 py-1.5 text-sm border border-platinum rounded-lg hover:border-sage/30 transition-colors text-forest/60 hover:text-forest"
-                  >
-                    Next
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
         </div>
-      )}
+
+        {/* Pagination */}
+        {!useSampleData && totalPages > 1 && (
+          <div className="px-5 py-3 border-t border-[#F0EDE9] flex items-center justify-between">
+            <p className="text-xs text-[#9A9A9A]">
+              Page {page} of {totalPages} · {totalCount} customers
+            </p>
+            <div className="flex gap-2">
+              {page > 1 && (
+                <Link
+                  href={buildUrl({ q, tag: tagFilter, sort, page: page - 1 })}
+                  className="px-3 py-1.5 text-xs font-medium text-[#6B6B6B] bg-white border border-[#E8E6E1] rounded-lg hover:bg-[#F8F7F5] transition-colors"
+                >
+                  ← Prev
+                </Link>
+              )}
+              {page < totalPages && (
+                <Link
+                  href={buildUrl({ q, tag: tagFilter, sort, page: page + 1 })}
+                  className="px-3 py-1.5 text-xs font-medium text-[#6B6B6B] bg-white border border-[#E8E6E1] rounded-lg hover:bg-[#F8F7F5] transition-colors"
+                >
+                  Next →
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -9,7 +9,6 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
-export const runtime = "edge";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
@@ -211,7 +210,7 @@ Be concise, practical, and professional. You know jewellery.`;
 
     // Stream response
     const result = streamText({
-      model: anthropic("claude-sonnet-4-5"),
+      model: anthropic("claude-3-5-sonnet-20241022"),
       system: systemPrompt,
       messages,
       onFinish: async ({ text, usage }) => {
