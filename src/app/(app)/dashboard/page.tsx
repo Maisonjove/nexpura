@@ -28,6 +28,21 @@ export default async function DashboardPage() {
 
   const today = new Date().toISOString().split("T")[0];
 
+  // Sales this month
+  let salesThisMonthRevenue = 0;
+  let salesThisMonthCount = 0;
+  try {
+    const { data: salesData } = await supabase
+      .from("sales")
+      .select("total")
+      .eq("tenant_id", tenantId ?? "")
+      .gte("created_at", monthStartStr);
+    salesThisMonthRevenue = (salesData ?? []).reduce((s, r) => s + (r.total || 0), 0);
+    salesThisMonthCount = (salesData ?? []).length;
+  } catch {
+    // sales table may not exist yet
+  }
+
   // Invoice stats
   const { data: outstandingData } = await supabase
     .from("invoices")
@@ -202,6 +217,18 @@ export default async function DashboardPage() {
   }
 
   const STAT_CARDS = [
+    {
+      label: "Revenue This Month",
+      value: fmtCurrency(salesThisMonthRevenue),
+      href: "/sales",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+        </svg>
+      ),
+      note: salesThisMonthCount > 0 ? `${salesThisMonthCount} sales` : "No sales yet",
+      urgent: false,
+    },
     {
       label: "Active Jobs",
       value: String(activeJobsCount ?? 0),
@@ -400,6 +427,24 @@ export default async function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             New Invoice
+          </Link>
+          <Link
+            href="/sales/new"
+            className="flex items-center gap-2 px-4 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Sale
+          </Link>
+          <Link
+            href="/expenses/new"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-forest/20 text-forest text-sm font-medium rounded-lg hover:bg-ivory transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Log Expense
           </Link>
         </div>
       </div>
