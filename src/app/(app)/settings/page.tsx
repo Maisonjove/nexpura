@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   saveBusinessProfile,
@@ -8,6 +8,7 @@ import {
   saveBanking,
   saveAccount,
 } from "./actions";
+import LogoUpload from "./LogoUpload";
 
 type Tenant = {
   id: string;
@@ -61,9 +62,7 @@ export default function SettingsPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [logoUploading, setLogoUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function load() {
@@ -114,35 +113,6 @@ export default function SettingsPage() {
     setErrorMsg(msg);
     setSuccessMsg(null);
     setTimeout(() => setErrorMsg(null), 5000);
-  }
-
-  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !tenant) return;
-    setLogoUploading(true);
-    const supabase = createClient();
-
-    // Create bucket if needed (may fail silently if exists)
-    await supabase.storage.createBucket("logos", { public: true }).catch(() => {});
-
-    const { error } = await supabase.storage
-      .from("logos")
-      .upload(`${tenant.id}/logo.png`, file, { upsert: true, contentType: file.type });
-
-    if (error) {
-      showError("Logo upload failed: " + error.message);
-      setLogoUploading(false);
-      return;
-    }
-
-    const { data: urlData } = supabase.storage.from("logos").getPublicUrl(`${tenant.id}/logo.png`);
-    const publicUrl = urlData.publicUrl;
-
-    await supabase.from("tenants").update({ logo_url: publicUrl }).eq("id", tenant.id);
-    setLogoPreview(publicUrl);
-    setTenant((prev) => prev ? { ...prev, logo_url: publicUrl } : prev);
-    setLogoUploading(false);
-    showSuccess("Logo updated!");
   }
 
   async function handleBusinessSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -256,33 +226,18 @@ export default function SettingsPage() {
           <div className="bg-white rounded-xl border border-platinum p-6 space-y-4">
             <h2 className="font-fraunces text-base font-semibold text-forest">Business Logo</h2>
             <div className="flex items-center gap-5">
-              <div className="w-20 h-20 rounded-xl border-2 border-dashed border-platinum flex items-center justify-center overflow-hidden bg-ivory flex-shrink-0">
-                {logoPreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <svg className="w-8 h-8 text-forest/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                )}
-              </div>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={logoUploading}
-                  className="px-4 py-2 text-sm font-medium bg-white border border-forest/20 text-forest rounded-lg hover:border-forest/40 transition-colors disabled:opacity-50"
-                >
-                  {logoUploading ? "Uploading…" : "Upload logo"}
-                </button>
-                <p className="text-xs text-forest/40 mt-1.5">PNG, JPG up to 2MB. Recommended: 400×400px</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleLogoUpload}
+              {tenant?.id && (
+                <LogoUpload
+                  tenantId={tenant.id}
+                  currentLogoUrl={logoPreview}
+                  onLogoChange={(url) => {
+                    setLogoPreview(url);
+                    setTenant((prev) => prev ? { ...prev, logo_url: url } : prev);
+                  }}
                 />
+              )}
+              <div>
+                <p className="text-xs text-forest/40">PNG, JPG, WebP up to 10MB. Recommended: 400×400px</p>
               </div>
             </div>
           </div>

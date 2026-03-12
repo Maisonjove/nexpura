@@ -21,6 +21,7 @@ interface InventoryItem {
   cost_price: number | null;
   status: string;
   is_featured: boolean;
+  primary_image?: string | null;
   stock_categories: { name: string } | null;
 }
 
@@ -244,11 +245,16 @@ export default function InventoryClient({
                 href={`/inventory/${item.id}`}
                 className="bg-white rounded-xl border border-platinum p-4 hover:border-sage/40 hover:shadow-sm transition-all group"
               >
-                {/* Image placeholder */}
+                {/* Image */}
                 <div className="w-full aspect-square rounded-lg bg-ivory border border-platinum/50 flex items-center justify-center mb-3 overflow-hidden">
-                  <svg className="w-10 h-10 text-forest/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+                  {item.primary_image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.primary_image} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <svg className="w-10 h-10 text-forest/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">

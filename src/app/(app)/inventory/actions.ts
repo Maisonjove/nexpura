@@ -286,3 +286,26 @@ export async function createCategory(name: string, description?: string) {
   if (error) throw new Error(error.message);
   return data;
 }
+
+export async function saveInventoryItemImages(
+  itemId: string,
+  primaryImage: string | null,
+  images: string[]
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: userData } = await supabase
+    .from("users").select("tenant_id").eq("id", user.id).single();
+  if (!userData?.tenant_id) return { error: "No tenant" };
+
+  const { error } = await supabase
+    .from("inventory")
+    .update({ primary_image: primaryImage, images })
+    .eq("id", itemId)
+    .eq("tenant_id", userData.tenant_id);
+  if (error) return { error: error.message };
+  revalidatePath(`/inventory/${itemId}`);
+  return { success: true };
+}

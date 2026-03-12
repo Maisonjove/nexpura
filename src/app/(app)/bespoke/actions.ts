@@ -207,3 +207,23 @@ export async function archiveBespokeJob(
   if (error) return { error: error.message };
   redirect("/bespoke");
 }
+
+export async function saveBespokeJobImages(
+  jobId: string,
+  images: string[]
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+  const { supabase, tenantId } = ctx;
+  const { error } = await supabase
+    .from("bespoke_jobs")
+    .update({ images })
+    .eq("id", jobId)
+    .eq("tenant_id", tenantId);
+  if (error) return { error: error.message };
+  return { success: true };
+}

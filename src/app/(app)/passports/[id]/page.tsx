@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import PassportDetailClient from "./PassportDetailClient";
+import PassportPhotos from "./PassportPhotos";
 
 interface Passport {
   id: string;
@@ -51,6 +52,13 @@ export default async function PassportDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
+  // Get current user's tenant_id
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: userData } = user
+    ? await supabase.from("users").select("tenant_id").eq("id", user.id).single()
+    : { data: null };
+  const tenantId = userData?.tenant_id ?? "";
+
   const { data: passport, error } = await supabase
     .from("passports")
     .select("*")
@@ -92,6 +100,13 @@ export default async function PassportDetailPage({
       <PassportDetailClient
         passport={passport as Passport}
         events={(events ?? []) as PassportEvent[]}
+      />
+
+      <PassportPhotos
+        passportId={id}
+        tenantId={tenantId}
+        primaryImage={(passport as Passport & { primary_image?: string | null }).primary_image ?? null}
+        additionalImages={((passport as Passport & { images?: string[] | null }).images ?? []) as string[]}
       />
     </div>
   );

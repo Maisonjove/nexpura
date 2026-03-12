@@ -272,12 +272,17 @@ export default function InvoiceDetailClient({
               Record Payment
             </button>
           )}
-          <button
-            onClick={() => showToast("PDF generation coming soon")}
-            className="px-3 py-1.5 text-xs border border-platinum text-forest/60 rounded-lg hover:border-sage/40 hover:text-forest transition-colors"
+          <a
+            href={`/api/invoice/${invoice.id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 text-xs border border-platinum text-forest/60 rounded-lg hover:border-sage/40 hover:text-forest transition-colors inline-flex items-center gap-1"
           >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
             Download PDF
-          </button>
+          </a>
           {canVoid && (
             <button
               onClick={() => setShowVoidConfirm(true)}

@@ -16,7 +16,7 @@ export default async function InventoryPage() {
   const [{ data: items }, { data: categories }] = await Promise.all([
     supabase
       .from("inventory")
-      .select("id, sku, name, item_type, jewellery_type, category_id, quantity, low_stock_threshold, retail_price, cost_price, status, is_featured, stock_categories(name)")
+      .select("id, sku, name, item_type, jewellery_type, category_id, quantity, low_stock_threshold, retail_price, cost_price, status, is_featured, primary_image, stock_categories(name)")
       .eq("tenant_id", tenantId ?? "")
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
@@ -40,6 +40,7 @@ export default async function InventoryPage() {
     cost_price: number | null;
     status: string;
     is_featured: boolean;
+    primary_image: string | null;
     stock_categories: { name: string } | null;
   }>;
 

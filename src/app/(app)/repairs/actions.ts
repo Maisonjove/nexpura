@@ -194,3 +194,23 @@ export async function archiveRepair(
   if (error) return { error: error.message };
   redirect("/repairs");
 }
+
+export async function saveRepairIntakePhotos(
+  repairId: string,
+  photos: string[]
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+  const { supabase, tenantId } = ctx;
+  const { error } = await supabase
+    .from("repairs")
+    .update({ intake_photos: photos })
+    .eq("id", repairId)
+    .eq("tenant_id", tenantId);
+  if (error) return { error: error.message };
+  return { success: true };
+}

@@ -285,3 +285,47 @@ export async function togglePublicStatus(
 
   revalidatePath(`/passports/${passportId}`);
 }
+
+export async function savePassportPrimaryImage(
+  passportId: string,
+  imageUrl: string | null
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: userData } = await supabase
+    .from("users").select("tenant_id").eq("id", user.id).single();
+  if (!userData?.tenant_id) return { error: "No tenant" };
+
+  const { error } = await supabase
+    .from("passports")
+    .update({ primary_image: imageUrl })
+    .eq("id", passportId)
+    .eq("tenant_id", userData.tenant_id);
+  if (error) return { error: error.message };
+  revalidatePath(`/passports/${passportId}`);
+  return { success: true };
+}
+
+export async function savePassportImages(
+  passportId: string,
+  images: string[]
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: userData } = await supabase
+    .from("users").select("tenant_id").eq("id", user.id).single();
+  if (!userData?.tenant_id) return { error: "No tenant" };
+
+  const { error } = await supabase
+    .from("passports")
+    .update({ images })
+    .eq("id", passportId)
+    .eq("tenant_id", userData.tenant_id);
+  if (error) return { error: error.message };
+  revalidatePath(`/passports/${passportId}`);
+  return { success: true };
+}

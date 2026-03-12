@@ -28,6 +28,7 @@ interface Passport {
   current_owner_name: string | null;
   purchase_date: string | null;
   purchase_price: number | null;
+  primary_image: string | null;
   status: string;
   is_public: boolean;
   verified_at: string | null;
@@ -181,6 +182,19 @@ export default async function VerifyPage({
             </div>
           )}
         </div>
+
+        {/* Primary image hero */}
+        {p.primary_image && (
+          <div className="bg-white rounded-2xl border border-[#E8E8E8] overflow-hidden shadow-sm">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={p.primary_image}
+              alt={p.title}
+              className="w-full object-cover rounded-2xl"
+              style={{ maxHeight: "400px" }}
+            />
+          </div>
+        )}
 
         {/* Specifications */}
         {(hasMetal || hasStone || hasRing) && (

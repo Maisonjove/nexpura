@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import ItemDetailClient from "./ItemDetailClient";
+import InventoryPhotos from "./InventoryPhotos";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -9,6 +10,13 @@ interface PageProps {
 export default async function InventoryDetailPage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createClient();
+
+  // Get current user's tenant_id
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: userData } = user
+    ? await supabase.from("users").select("tenant_id").eq("id", user.id).single()
+    : { data: null };
+  const tenantId = userData?.tenant_id ?? "";
 
   const { data: item, error } = await supabase
     .from("inventory")
@@ -76,5 +84,19 @@ export default async function InventoryDetailPage({ params }: PageProps) {
     users: { full_name: string | null } | null;
   }>;
 
-  return <ItemDetailClient item={typedItem} movements={typedMovements} />;
+  const rawItem = item as unknown as { primary_image?: string | null; images?: string[] | null };
+
+  return (
+    <>
+      <ItemDetailClient item={typedItem} movements={typedMovements} />
+      <div className="mt-6">
+        <InventoryPhotos
+          itemId={id}
+          tenantId={tenantId}
+          primaryImage={rawItem.primary_image ?? null}
+          additionalImages={(rawItem.images ?? []) as string[]}
+        />
+      </div>
+    </>
+  );
 }
