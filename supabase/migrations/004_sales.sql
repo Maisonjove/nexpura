@@ -42,14 +42,14 @@ CREATE INDEX IF NOT EXISTS idx_sale_items_sale ON public.sale_items(sale_id);
 ALTER TABLE public.sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sale_items ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "sales_select" ON public.sales FOR SELECT USING (tenant_id = auth.tenant_id());
-CREATE POLICY "sales_insert" ON public.sales FOR INSERT WITH CHECK (tenant_id = auth.tenant_id());
-CREATE POLICY "sales_update" ON public.sales FOR UPDATE USING (tenant_id = auth.tenant_id());
-CREATE POLICY "sales_delete" ON public.sales FOR DELETE USING (tenant_id = auth.tenant_id());
+CREATE POLICY "sales_select" ON public.sales FOR SELECT USING (tenant_id = get_tenant_id());
+CREATE POLICY "sales_insert" ON public.sales FOR INSERT WITH CHECK (tenant_id = get_tenant_id());
+CREATE POLICY "sales_update" ON public.sales FOR UPDATE USING (tenant_id = get_tenant_id());
+CREATE POLICY "sales_delete" ON public.sales FOR DELETE USING (tenant_id = get_tenant_id());
 
-CREATE POLICY "sale_items_select" ON public.sale_items FOR SELECT USING (tenant_id = auth.tenant_id());
-CREATE POLICY "sale_items_insert" ON public.sale_items FOR INSERT WITH CHECK (tenant_id = auth.tenant_id());
-CREATE POLICY "sale_items_update" ON public.sale_items FOR UPDATE USING (tenant_id = auth.tenant_id());
-CREATE POLICY "sale_items_delete" ON public.sale_items FOR DELETE USING (tenant_id = auth.tenant_id());
+CREATE POLICY "sale_items_select" ON public.sale_items FOR SELECT USING (tenant_id = get_tenant_id());
+CREATE POLICY "sale_items_insert" ON public.sale_items FOR INSERT WITH CHECK (tenant_id = get_tenant_id());
+CREATE POLICY "sale_items_update" ON public.sale_items FOR UPDATE USING (tenant_id = get_tenant_id());
+CREATE POLICY "sale_items_delete" ON public.sale_items FOR DELETE USING (tenant_id = get_tenant_id());
 
 CREATE TRIGGER sales_updated_at BEFORE UPDATE ON public.sales FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

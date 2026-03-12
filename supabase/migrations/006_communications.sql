@@ -20,5 +20,5 @@ CREATE INDEX IF NOT EXISTS idx_comms_customer ON public.communications(customer_
 
 ALTER TABLE public.communications ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "comms_select" ON public.communications FOR SELECT USING (tenant_id = auth.tenant_id());
-CREATE POLICY "comms_insert" ON public.communications FOR INSERT WITH CHECK (tenant_id = auth.tenant_id());
+CREATE POLICY "comms_select" ON public.communications FOR SELECT USING (tenant_id = get_tenant_id());
+CREATE POLICY "comms_insert" ON public.communications FOR INSERT WITH CHECK (tenant_id = get_tenant_id());

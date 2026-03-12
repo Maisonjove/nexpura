@@ -18,9 +18,9 @@ CREATE INDEX IF NOT EXISTS idx_expenses_tenant ON public.expenses(tenant_id);
 
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "expenses_select" ON public.expenses FOR SELECT USING (tenant_id = auth.tenant_id());
-CREATE POLICY "expenses_insert" ON public.expenses FOR INSERT WITH CHECK (tenant_id = auth.tenant_id());
-CREATE POLICY "expenses_update" ON public.expenses FOR UPDATE USING (tenant_id = auth.tenant_id());
-CREATE POLICY "expenses_delete" ON public.expenses FOR DELETE USING (tenant_id = auth.tenant_id());
+CREATE POLICY "expenses_select" ON public.expenses FOR SELECT USING (tenant_id = get_tenant_id());
+CREATE POLICY "expenses_insert" ON public.expenses FOR INSERT WITH CHECK (tenant_id = get_tenant_id());
+CREATE POLICY "expenses_update" ON public.expenses FOR UPDATE USING (tenant_id = get_tenant_id());
+CREATE POLICY "expenses_delete" ON public.expenses FOR DELETE USING (tenant_id = get_tenant_id());
 
 CREATE TRIGGER expenses_updated_at BEFORE UPDATE ON public.expenses FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

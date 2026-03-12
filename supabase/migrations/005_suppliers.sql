@@ -18,9 +18,9 @@ CREATE INDEX IF NOT EXISTS idx_suppliers_tenant ON public.suppliers(tenant_id);
 
 ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "suppliers_select" ON public.suppliers FOR SELECT USING (tenant_id = auth.tenant_id());
-CREATE POLICY "suppliers_insert" ON public.suppliers FOR INSERT WITH CHECK (tenant_id = auth.tenant_id());
-CREATE POLICY "suppliers_update" ON public.suppliers FOR UPDATE USING (tenant_id = auth.tenant_id());
-CREATE POLICY "suppliers_delete" ON public.suppliers FOR DELETE USING (tenant_id = auth.tenant_id());
+CREATE POLICY "suppliers_select" ON public.suppliers FOR SELECT USING (tenant_id = get_tenant_id());
+CREATE POLICY "suppliers_insert" ON public.suppliers FOR INSERT WITH CHECK (tenant_id = get_tenant_id());
+CREATE POLICY "suppliers_update" ON public.suppliers FOR UPDATE USING (tenant_id = get_tenant_id());
+CREATE POLICY "suppliers_delete" ON public.suppliers FOR DELETE USING (tenant_id = get_tenant_id());
 
 CREATE TRIGGER suppliers_updated_at BEFORE UPDATE ON public.suppliers FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
