@@ -69,6 +69,27 @@ export default async function DashboardPage() {
     .eq("tenant_id", tenantId ?? "")
     .is("deleted_at", null);
 
+  // Inventory counts
+  const { count: totalStockCount } = await supabase
+    .from("inventory")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId ?? "")
+    .eq("status", "active")
+    .is("deleted_at", null);
+
+  // Low stock count — need to fetch rows to compare quantity vs threshold
+  const { data: lowStockItems } = await supabase
+    .from("inventory")
+    .select("quantity, low_stock_threshold, track_quantity")
+    .eq("tenant_id", tenantId ?? "")
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .eq("track_quantity", true);
+
+  const lowStockCount = (lowStockItems ?? []).filter(
+    (i) => i.quantity <= (i.low_stock_threshold ?? 1)
+  ).length;
+
   const STAT_CARDS = [
     {
       label: "Active Jobs",
@@ -143,6 +164,30 @@ export default async function DashboardPage() {
       note: "Invoicing coming soon",
       urgent: false,
     },
+    {
+      label: "Stock Items",
+      value: String(totalStockCount ?? 0),
+      href: "/inventory",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      ),
+      note: (totalStockCount ?? 0) > 0 ? "Active items" : "No stock yet",
+      urgent: false,
+    },
+    {
+      label: "Low Stock",
+      value: String(lowStockCount),
+      href: "/inventory",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+      note: lowStockCount > 0 ? "Needs restocking" : "Stock levels good",
+      urgent: lowStockCount > 0,
+    },
   ];
 
   return (
@@ -158,7 +203,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {STAT_CARDS.map((card) => (
           <Link
             key={card.label}
