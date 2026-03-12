@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { sendRepairReadyEmail, sendQuoteEmail } from "@/lib/email/send";
+import { createNotification } from "@/lib/notifications";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -174,6 +175,28 @@ export async function advanceRepairStage(
   // Send "repair ready" email when stage becomes 'ready'
   if (newStage === "ready") {
     await sendRepairReadyEmail(repairId);
+  }
+
+  // Send notification when stage becomes 'completed'
+  if (newStage === "completed") {
+    // Fetch repair details for notification
+    const { data: repairData } = await supabase
+      .from("repairs")
+      .select("repair_number, customers(full_name)")
+      .eq("id", repairId)
+      .single();
+    if (repairData) {
+      const customerName = Array.isArray(repairData.customers)
+        ? repairData.customers[0]?.full_name
+        : (repairData.customers as { full_name?: string } | null)?.full_name;
+      await createNotification({
+        tenantId,
+        type: "repair_completed",
+        title: `Repair #${repairData.repair_number} ready for collection`,
+        body: customerName ? `${customerName}'s item is ready` : undefined,
+        link: `/repairs/${repairId}`,
+      });
+    }
   }
 
   return { success: true };

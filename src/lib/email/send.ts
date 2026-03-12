@@ -6,6 +6,17 @@ import JobReadyEmail from './templates/JobReadyEmail'
 import RepairReadyEmail from './templates/RepairReadyEmail'
 import QuoteEmail from './templates/QuoteEmail'
 import PassportEmail from './templates/PassportEmail'
+import SubscriptionWelcomeEmail from './templates/SubscriptionWelcomeEmail'
+import TrialEndingSoonEmail from './templates/TrialEndingSoonEmail'
+import PaymentSuccessEmail from './templates/PaymentSuccessEmail'
+import PaymentFailedEmail from './templates/PaymentFailedEmail'
+import GracePeriodStartedEmail from './templates/GracePeriodStartedEmail'
+import GracePeriod24hEmail from './templates/GracePeriod24hEmail'
+import AccountSuspendedEmail from './templates/AccountSuspendedEmail'
+import AccountReactivatedEmail from './templates/AccountReactivatedEmail'
+import RepairReceivedEmail from './templates/RepairReceivedEmail'
+import UserInvitedEmail from './templates/UserInvitedEmail'
+import LowStockAlertEmail from './templates/LowStockAlertEmail'
 import type { InvoiceEmailProps } from './templates/InvoiceEmail'
 import type { JobReadyEmailProps } from './templates/JobReadyEmail'
 import type { RepairReadyEmailProps } from './templates/RepairReadyEmail'
@@ -442,5 +453,267 @@ export async function sendPassportEmail(passportId: string): Promise<EmailResult
     referenceId: passportId,
   })
 
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Subscription Welcome Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendSubscriptionWelcomeEmail(tenantId: string): Promise<EmailResult> {
+  const admin = createAdminClient()
+
+  const { data: tenant } = await admin
+    .from('tenants')
+    .select('name, business_name, email')
+    .eq('id', tenantId)
+    .single()
+
+  if (!tenant?.email) {
+    return { success: false, error: 'Tenant has no email' }
+  }
+
+  const { data: sub } = await admin
+    .from('subscriptions')
+    .select('trial_ends_at')
+    .eq('tenant_id', tenantId)
+    .single()
+
+  const businessName = tenant.business_name || tenant.name || 'Your Business'
+  const trialEndsAt = sub?.trial_ends_at ?? new Date(Date.now() + 14 * 86400000).toISOString()
+
+  const subject = `Welcome to Nexpura, ${businessName}!`
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [tenant.email],
+    subject,
+    react: createElement(SubscriptionWelcomeEmail, {
+      businessName,
+      trialEndsAt,
+      dashboardUrl: `${APP_URL}/dashboard`,
+    }),
+  })
+  if (error) return { success: false, error: error.message }
+  await logEmail({ tenantId, emailType: 'subscription_welcome', recipient: tenant.email, subject, resendId: data?.id })
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Trial Ending Soon Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendTrialEndingSoonEmail(email: string, name: string, trialEndsAt: string): Promise<EmailResult> {
+  const trialEnd = new Date(trialEndsAt)
+  const daysLeft = Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  const subject = `Your Nexpura trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`
+
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(TrialEndingSoonEmail, {
+      businessName: name,
+      daysLeft,
+      upgradeUrl: `${APP_URL}/billing`,
+    }),
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Payment Success Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendPaymentSuccessEmail(
+  email: string,
+  businessName: string,
+  amount: number,
+  planName: string,
+  nextBillingDate: string
+): Promise<EmailResult> {
+  const subject = `Payment confirmed — ${businessName}`
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(PaymentSuccessEmail, { businessName, amount, planName, nextBillingDate }),
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Payment Failed Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendPaymentFailedEmail(email: string, name: string, amount: number, retryUrl: string): Promise<EmailResult> {
+  const subject = `Payment failed — action required`
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(PaymentFailedEmail, { businessName: name, amount, retryUrl }),
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Grace Period Started Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendGracePeriodStartedEmail(email: string, name: string, deadline: string, paymentUrl: string): Promise<EmailResult> {
+  const subject = `Payment required — account suspension in 48 hours`
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(GracePeriodStartedEmail, { businessName: name, hoursRemaining: 48, paymentUrl, deadline }),
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Grace Period 24h Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendGracePeriod24hEmail(email: string, name: string): Promise<EmailResult> {
+  const subject = `🚨 24 hours remaining — pay now to avoid suspension`
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(GracePeriod24hEmail, { businessName: name, paymentUrl: `${APP_URL}/billing` }),
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Account Suspended Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendAccountSuspendedEmail(email: string, name: string): Promise<EmailResult> {
+  const subject = `Your Nexpura account has been suspended`
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(AccountSuspendedEmail, { businessName: name, paymentUrl: `${APP_URL}/billing` }),
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Account Reactivated Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendAccountReactivatedEmail(email: string, name: string, planName: string): Promise<EmailResult> {
+  const subject = `Your Nexpura account is back! 🎉`
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(AccountReactivatedEmail, { businessName: name, planName, dashboardUrl: `${APP_URL}/dashboard` }),
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Repair Received Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendRepairReceivedEmail(repairId: string): Promise<EmailResult> {
+  const admin = createAdminClient()
+
+  const { data: repair, error: repairErr } = await admin
+    .from('repairs')
+    .select(`
+      id, repair_number, item_type, item_description, due_date,
+      customer_id, tenant_id,
+      customers (id, full_name, email)
+    `)
+    .eq('id', repairId)
+    .single()
+
+  if (repairErr || !repair) return { success: false, error: 'Repair not found' }
+
+  const customer = first<{ id: string; full_name: string | null; email: string | null }>(repair.customers)
+  if (!customer?.email) return { success: false, error: 'Customer has no email address' }
+
+  const { data: tenant } = await admin
+    .from('tenants')
+    .select('name, business_name, email, phone')
+    .eq('id', repair.tenant_id)
+    .single()
+
+  const businessName = tenant?.business_name || tenant?.name || 'Your Jeweller'
+  const subject = `We've received your ${repair.item_type} — ${businessName}`
+
+  const { data, error } = await resend.emails.send({
+    from: `${businessName} <onboarding@resend.dev>`,
+    to: [customer.email],
+    replyTo: tenant?.email ? [tenant.email] : undefined,
+    subject,
+    react: createElement(RepairReceivedEmail, {
+      customerName: customer.full_name || 'Valued Customer',
+      repairNumber: repair.repair_number,
+      itemType: repair.item_type,
+      itemDescription: repair.item_description || repair.item_type,
+      estimatedCompletion: repair.due_date ?? null,
+      businessName,
+      businessPhone: tenant?.phone ?? null,
+    }),
+  })
+  if (error) return { success: false, error: error.message }
+  await logEmail({ tenantId: repair.tenant_id, emailType: 'repair_received', recipient: customer.email, subject, resendId: data?.id, referenceType: 'repair', referenceId: repairId })
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// User Invited Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendUserInvitedEmail(
+  email: string,
+  inviteeName: string,
+  businessName: string,
+  inviterName: string,
+  role: string,
+  acceptUrl: string
+): Promise<EmailResult> {
+  const subject = `You've been invited to join ${businessName} on Nexpura`
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(UserInvitedEmail, { inviteeName, businessName, inviterName, role, acceptUrl }),
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Low Stock Alert Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendLowStockAlertEmail(
+  email: string,
+  businessName: string,
+  items: Array<{ name: string; sku: string; quantity: number }>,
+  inventoryUrl: string
+): Promise<EmailResult> {
+  const subject = `Low stock alert — ${items.length} item${items.length === 1 ? '' : 's'} need attention`
+  const { data, error } = await resend.emails.send({
+    from: `${businessName} <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(LowStockAlertEmail, { businessName, items, inventoryUrl }),
+  })
+  if (error) return { success: false, error: error.message }
   return { success: true, emailId: data?.id }
 }

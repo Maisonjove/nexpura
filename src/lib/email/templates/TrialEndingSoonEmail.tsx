@@ -1,0 +1,73 @@
+import React from 'react'
+
+export interface TrialEndingSoonEmailProps {
+  businessName: string
+  daysLeft: number
+  upgradeUrl: string
+}
+
+export default function TrialEndingSoonEmail({ businessName, daysLeft, upgradeUrl }: TrialEndingSoonEmailProps) {
+  return (
+    <html>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Your trial ends in {daysLeft} days — Nexpura</title>
+      </head>
+      <body style={{ margin: 0, padding: 0, backgroundColor: '#F8F5F0', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+        <table width="100%" cellPadding={0} cellSpacing={0} style={{ backgroundColor: '#F8F5F0', padding: '40px 20px' }}>
+          <tbody>
+            <tr>
+              <td align="center">
+                <table width="600" cellPadding={0} cellSpacing={0} style={{ maxWidth: '600px', width: '100%' }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ backgroundColor: '#071A0D', borderRadius: '12px 12px 0 0', padding: '32px 40px' }}>
+                        <p style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#52B788', letterSpacing: '0.05em', fontFamily: 'Georgia, serif' }}>nexpura</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'rgba(248,245,240,0.6)' }}>{businessName}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ backgroundColor: '#FFFFFF', padding: '40px' }}>
+                        <div style={{ display: 'inline-block', backgroundColor: '#F59E0B', color: '#FFFFFF', fontSize: '12px', fontWeight: '700', padding: '6px 16px', borderRadius: '20px', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '24px' }}>
+                          ⏳ Trial Ending Soon
+                        </div>
+                        <p style={{ margin: '0 0 8px', fontSize: '22px', fontWeight: '700', color: '#071A0D', fontFamily: 'Georgia, serif' }}>
+                          Your trial ends in {daysLeft} day{daysLeft === 1 ? '' : 's'}
+                        </p>
+                        <p style={{ margin: '0 0 32px', fontSize: '14px', color: '#4a5568', lineHeight: '1.7' }}>
+                          Hi {businessName}, your free trial of Nexpura is coming to an end. Upgrade now to keep all your data and continue using all features without interruption.
+                        </p>
+                        <table cellPadding={0} cellSpacing={0} style={{ margin: '0 auto 32px' }}>
+                          <tbody>
+                            <tr>
+                              <td>
+                                <a href={upgradeUrl} style={{ display: 'inline-block', backgroundColor: '#52B788', color: '#FFFFFF', fontSize: '15px', fontWeight: '600', padding: '14px 32px', borderRadius: '8px', textDecoration: 'none' }}>
+                                  Choose a plan →
+                                </a>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#9CA3AF', textAlign: 'center' }}>
+                          Your data is safe. Upgrading takes less than 2 minutes.
+                        </p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ backgroundColor: '#F8F5F0', borderRadius: '0 0 12px 12px', padding: '24px 40px', borderTop: '1px solid #E8E8E8' }}>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#9CA3AF', textAlign: 'center' }}>
+                          Sent via <a href="https://nexpura.com" style={{ color: '#52B788', textDecoration: 'none', fontWeight: '600' }}>Nexpura</a>
+                        </p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </body>
+    </html>
+  )
+}

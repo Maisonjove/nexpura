@@ -1,8 +1,10 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { generateBarcodeValue } from "@/lib/barcode";
 
 async function getTenantId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -106,6 +108,20 @@ export async function createInventoryItem(formData: FormData) {
     .single();
 
   if (error) throw new Error(error.message);
+
+  // Generate and set barcode_value
+  try {
+    const { data: tenant } = await supabase
+      .from("tenants")
+      .select("slug, name")
+      .eq("id", tenantId)
+      .single();
+    const tenantSlug = tenant?.slug ?? tenant?.name ?? tenantId.slice(0, 6);
+    const barcodeValue = generateBarcodeValue(tenantSlug, sku ?? item.id.slice(0, 8));
+    await supabase.from("inventory").update({ barcode_value: barcodeValue }).eq("id", item.id);
+  } catch {
+    // barcode generation is non-critical
+  }
 
   // Create initial stock movement if quantity > 0
   if (quantity > 0) {
@@ -308,4 +324,49 @@ export async function saveInventoryItemImages(
   if (error) return { error: error.message };
   revalidatePath(`/inventory/${itemId}`);
   return { success: true };
+}
+
+export async function getStockTagTemplates() {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+  const { data } = await supabase
+    .from("stock_tag_templates")
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: true });
+  return data ?? [];
+}
+
+export async function generateBarcodeForItem(itemId: string): Promise<{ success?: boolean; error?: string; barcodeValue?: string }> {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+
+  const { data: item } = await supabase
+    .from("inventory")
+    .select("sku")
+    .eq("id", itemId)
+    .eq("tenant_id", tenantId)
+    .single();
+
+  if (!item) return { error: "Item not found" };
+
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("slug, name")
+    .eq("id", tenantId)
+    .single();
+
+  const tenantSlug = tenant?.slug ?? tenant?.name ?? tenantId.slice(0, 6);
+  const barcodeValue = generateBarcodeValue(tenantSlug, item.sku ?? itemId.slice(0, 8));
+
+  const { error } = await supabase
+    .from("inventory")
+    .update({ barcode_value: barcodeValue })
+    .eq("id", itemId)
+    .eq("tenant_id", tenantId);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/inventory/${itemId}`);
+  return { success: true, barcodeValue };
 }

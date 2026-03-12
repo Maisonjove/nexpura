@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import BatchPrintModal from "./BatchPrintModal";
 
 interface Category {
   id: string;
@@ -22,6 +23,10 @@ interface InventoryItem {
   status: string;
   is_featured: boolean;
   primary_image?: string | null;
+  metal_type?: string | null;
+  stone_type?: string | null;
+  metal_weight_grams?: number | null;
+  barcode_value?: string | null;
   stock_categories: { name: string } | null;
 }
 
@@ -31,6 +36,7 @@ interface InventoryClientProps {
   totalItems: number;
   lowStockCount: number;
   totalValue: number;
+  tenantName?: string;
 }
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
@@ -54,6 +60,7 @@ export default function InventoryClient({
   totalItems,
   lowStockCount,
   totalValue,
+  tenantName = "Nexpura",
 }: InventoryClientProps) {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
@@ -61,6 +68,8 @@ export default function InventoryClient({
   const [filterStatus, setFilterStatus] = useState("");
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBatchPrint, setShowBatchPrint] = useState(false);
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
@@ -85,20 +94,60 @@ export default function InventoryClient({
   const isLowStock = (item: InventoryItem) =>
     item.quantity <= (item.low_stock_threshold ?? 1);
 
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const selectedItems = filtered.filter((i) => selectedIds.has(i.id)).map((i) => ({
+    id: i.id,
+    name: i.name,
+    sku: i.sku,
+    retail_price: i.retail_price,
+    metal_type: i.metal_type ?? null,
+    stone_type: i.stone_type ?? null,
+    metal_weight_grams: i.metal_weight_grams ?? null,
+    barcode_value: i.barcode_value ?? null,
+  }));
+
   return (
     <div className="space-y-6">
+      {showBatchPrint && selectedItems.length > 0 && (
+        <BatchPrintModal
+          items={selectedItems}
+          tenantName={tenantName}
+          onClose={() => setShowBatchPrint(false)}
+        />
+      )}
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="font-fraunces text-2xl font-semibold text-forest">Inventory</h1>
-        <Link
-          href="/inventory/new"
-          className="flex items-center gap-2 bg-sage text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-sage/90 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Item
-        </Link>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={() => setShowBatchPrint(true)}
+              className="flex items-center gap-2 bg-forest text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-forest/90 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Print Tags ({selectedIds.size})
+            </button>
+          )}
+          <Link
+            href="/inventory/new"
+            className="flex items-center gap-2 bg-sage text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-sage/90 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Item
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
@@ -239,13 +288,29 @@ export default function InventoryClient({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((item) => {
             const lowStock = isLowStock(item);
+            const isSelected = selectedIds.has(item.id);
             return (
-              <Link
+              <div
                 key={item.id}
-                href={`/inventory/${item.id}`}
-                className="bg-white rounded-xl border border-platinum p-4 hover:border-sage/40 hover:shadow-sm transition-all group"
+                className={`bg-white rounded-xl border p-4 hover:shadow-sm transition-all group relative ${
+                  isSelected ? "border-sage ring-1 ring-sage" : "border-platinum hover:border-sage/40"
+                }`}
               >
+                {/* Checkbox */}
+                <button
+                  onClick={() => toggleSelect(item.id)}
+                  className={`absolute top-3 left-3 z-10 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    isSelected ? "bg-sage border-sage" : "bg-white border-platinum hover:border-sage"
+                  }`}
+                >
+                  {isSelected && (
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
                 {/* Image */}
+                <Link href={`/inventory/${item.id}`}>
                 <div className="w-full aspect-square rounded-lg bg-ivory border border-platinum/50 flex items-center justify-center mb-3 overflow-hidden">
                   {item.primary_image ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -286,7 +351,8 @@ export default function InventoryClient({
                     </p>
                   )}
                 </div>
-              </Link>
+                </Link>
+              </div>
             );
           })}
         </div>
@@ -297,6 +363,7 @@ export default function InventoryClient({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-platinum bg-ivory/50">
+                  <th className="px-4 py-3 w-8"></th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-forest/50 uppercase tracking-wider">SKU</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-forest/50 uppercase tracking-wider">Name</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-forest/50 uppercase tracking-wider">Category</th>
@@ -311,8 +378,23 @@ export default function InventoryClient({
               <tbody className="divide-y divide-platinum/50">
                 {filtered.map((item) => {
                   const lowStock = isLowStock(item);
+                  const isSelected = selectedIds.has(item.id);
                   return (
-                    <tr key={item.id} className="hover:bg-ivory/30 transition-colors">
+                    <tr key={item.id} className={`hover:bg-ivory/30 transition-colors ${isSelected ? "bg-sage/5" : ""}`}>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => toggleSelect(item.id)}
+                          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                            isSelected ? "bg-sage border-sage" : "bg-white border-platinum hover:border-sage"
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 font-mono text-xs text-forest/50">{item.sku || "—"}</td>
                       <td className="px-4 py-3">
                         <Link href={`/inventory/${item.id}`} className="font-medium text-forest hover:text-sage transition-colors">

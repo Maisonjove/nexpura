@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { createNotification } from "@/lib/notifications";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -141,6 +142,16 @@ export async function createSale(
     .single();
 
   if (saleError || !sale) return { error: saleError?.message ?? "Failed to create sale" };
+
+  // Notification for new sale
+  await createNotification({
+    tenantId,
+    userId,
+    type: "sale_created",
+    title: `New sale ${saleNumber}`,
+    body: `$${total.toFixed(2)}`,
+    link: `/sales/${sale.id}`,
+  });
 
   // Insert line items
   if (lineItems.length > 0) {

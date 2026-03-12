@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import StockAdjustModal from "./StockAdjustModal";
+import PrintTagModal from "./PrintTagModal";
 import { archiveInventoryItem } from "../actions";
 
 interface Movement {
@@ -20,6 +21,7 @@ interface InventoryItem {
   id: string;
   sku: string | null;
   barcode: string | null;
+  barcode_value?: string | null;
   name: string;
   item_type: string;
   jewellery_type: string | null;
@@ -51,6 +53,7 @@ interface InventoryItem {
 interface ItemDetailClientProps {
   item: InventoryItem;
   movements: Movement[];
+  tenantName?: string;
 }
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
@@ -96,9 +99,10 @@ function SpecRow({ label, value }: { label: string; value: string | number | nul
   );
 }
 
-export default function ItemDetailClient({ item, movements }: ItemDetailClientProps) {
+export default function ItemDetailClient({ item, movements, tenantName = "Nexpura" }: ItemDetailClientProps) {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showPrintTag, setShowPrintTag] = useState(false);
   const [archiving, setArchiving] = useState(false);
 
   const isLowStock = item.quantity <= (item.low_stock_threshold ?? 1);
@@ -117,6 +121,17 @@ export default function ItemDetailClient({ item, movements }: ItemDetailClientPr
     }
   }
 
+  const tagItem = {
+    id: item.id,
+    name: item.name,
+    sku: item.sku,
+    retail_price: item.retail_price,
+    metal_type: item.metal_type,
+    stone_type: item.stone_type,
+    metal_weight_grams: item.metal_weight_grams,
+    barcode_value: item.barcode_value ?? null,
+  };
+
   return (
     <>
       {showAdjustModal && (
@@ -124,6 +139,13 @@ export default function ItemDetailClient({ item, movements }: ItemDetailClientPr
           inventoryId={item.id}
           currentQty={item.quantity}
           onClose={() => setShowAdjustModal(false)}
+        />
+      )}
+      {showPrintTag && (
+        <PrintTagModal
+          item={tagItem}
+          tenantName={tenantName}
+          onClose={() => setShowPrintTag(false)}
         />
       )}
 
@@ -194,7 +216,16 @@ export default function ItemDetailClient({ item, movements }: ItemDetailClientPr
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => setShowPrintTag(true)}
+                    className="px-4 py-2 text-sm font-medium text-forest border border-platinum rounded-lg hover:bg-ivory transition-colors flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Print Tag
+                  </button>
                   <Link
                     href={`/inventory/${item.id}/edit`}
                     className="px-4 py-2 text-sm font-medium text-forest border border-forest rounded-lg hover:bg-forest hover:text-white transition-colors"
@@ -240,6 +271,7 @@ export default function ItemDetailClient({ item, movements }: ItemDetailClientPr
                     <SpecRow label="Ring Size" value={item.ring_size} />
                     <SpecRow label="Dimensions" value={item.dimensions} />
                     <SpecRow label="Barcode" value={item.barcode} />
+                    <SpecRow label="Stock Tag Barcode" value={item.barcode_value} />
                   </div>
                 )}
                 {(item.supplier_name || item.supplier_sku) && (
@@ -378,6 +410,15 @@ export default function ItemDetailClient({ item, movements }: ItemDetailClientPr
             <div className="bg-white rounded-xl border border-platinum p-6">
               <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-3">Actions</p>
               <div className="space-y-2">
+                <button
+                  onClick={() => setShowPrintTag(true)}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-forest border border-platinum rounded-lg hover:bg-ivory transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Print Stock Tag
+                </button>
                 <Link
                   href={`/inventory/${item.id}/edit`}
                   className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-forest border border-forest rounded-lg hover:bg-forest hover:text-white transition-colors font-medium"

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { sendJobReadyEmail } from "@/lib/email/send";
+import { createNotification } from "@/lib/notifications";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -187,6 +188,27 @@ export async function advanceJobStage(
   // Send "ready for collection" email when stage becomes 'ready'
   if (newStage === "ready") {
     await sendJobReadyEmail(jobId);
+  }
+
+  // Send notification when stage becomes 'completed'
+  if (newStage === "completed") {
+    const { data: jobData } = await supabase
+      .from("bespoke_jobs")
+      .select("job_number, customers(full_name)")
+      .eq("id", jobId)
+      .single();
+    if (jobData) {
+      const customerName = Array.isArray(jobData.customers)
+        ? jobData.customers[0]?.full_name
+        : (jobData.customers as { full_name?: string } | null)?.full_name;
+      await createNotification({
+        tenantId,
+        type: "job_completed",
+        title: `Bespoke job #${jobData.job_number} completed`,
+        body: customerName ? `${customerName}'s piece is ready` : undefined,
+        link: `/bespoke/${jobId}`,
+      });
+    }
   }
 
   return { success: true };

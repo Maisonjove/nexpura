@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/client";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendPaymentSuccessEmail, sendPaymentFailedEmail } from "@/lib/email/send";
 import Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -79,6 +80,26 @@ export async function POST(request: NextRequest) {
                 : null,
             })
             .eq("stripe_sub_id", stripeSubId);
+
+          // Send payment success email
+          const { data: sub } = await adminClient
+            .from("subscriptions")
+            .select("tenant_id, plan")
+            .eq("stripe_sub_id", stripeSubId)
+            .single();
+          if (sub) {
+            const { data: owner } = await adminClient
+              .from("users")
+              .select("email, full_name")
+              .eq("tenant_id", sub.tenant_id)
+              .eq("role", "owner")
+              .single();
+            if (owner?.email) {
+              const amount = (invoice.amount_paid ?? 0) / 100;
+              const nextBillingDate = periodEnd ? new Date(periodEnd * 1000).toISOString() : new Date().toISOString();
+              await sendPaymentSuccessEmail(owner.email, owner.full_name ?? "there", amount, sub.plan ?? "Pro", nextBillingDate);
+            }
+          }
         }
         break;
       }
@@ -92,6 +113,25 @@ export async function POST(request: NextRequest) {
             .from("subscriptions")
             .update({ status: "past_due" })
             .eq("stripe_sub_id", stripeSubId);
+
+          // Send payment failed email
+          const { data: sub } = await adminClient
+            .from("subscriptions")
+            .select("tenant_id")
+            .eq("stripe_sub_id", stripeSubId)
+            .single();
+          if (sub) {
+            const { data: owner } = await adminClient
+              .from("users")
+              .select("email, full_name")
+              .eq("tenant_id", sub.tenant_id)
+              .eq("role", "owner")
+              .single();
+            if (owner?.email) {
+              const amount = (invoice.amount_due ?? 0) / 100;
+              await sendPaymentFailedEmail(owner.email, owner.full_name ?? "there", amount, `${process.env.NEXT_PUBLIC_APP_URL}/billing`);
+            }
+          }
         }
         break;
       }
@@ -100,7 +140,7 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
         await adminClient
           .from("subscriptions")
-          .update({ status: "canceled" })
+          .update({ status: "cancelled" })
           .eq("stripe_sub_id", subscription.id);
         break;
       }
