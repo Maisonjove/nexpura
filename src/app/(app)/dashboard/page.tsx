@@ -67,7 +67,6 @@ export default async function DashboardPage() {
 
   const monthStart = new Date();
   monthStart.setDate(1);
-  const monthStartStr = monthStart.toISOString().split("T")[0];
 
   const { data: paidThisMonthData } = await supabase
     .from("payments")
