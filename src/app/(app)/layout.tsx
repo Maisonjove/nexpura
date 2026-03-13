@@ -1,6 +1,6 @@
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
-import { createServerClient } from '@/utils/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
 export default async function AppLayout({
@@ -8,7 +8,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createServerClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
