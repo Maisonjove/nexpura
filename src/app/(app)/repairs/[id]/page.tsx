@@ -139,275 +139,122 @@ export default async function RepairDetailPage({
     ? repair.customers[0] ?? null
     : repair.customers;
 
+  // Stage timeline for new design
+  const TIMELINE_STAGES = ["Received", "Awaiting Approval", "In Workshop", "Waiting Parts", "Completed", "Ready for Pickup", "Collected"];
+  const stageKeyMap: Record<string, number> = {
+    intake: 0, assessed: 0, quoted: 1, approved: 2,
+    in_progress: 2, quality_check: 3, ready: 4, collected: 6, cancelled: -1,
+  };
+  const currentTimelineIdx = stageKeyMap[repair.stage] ?? 0;
+
+  const depositPaid = repair.deposit_paid;
+  const quotedPriceNum = repair.quoted_price ?? 0;
+  const depositNum = repair.deposit_amount ?? 0;
+  const balanceDue = quotedPriceNum - (depositPaid ? depositNum : 0);
+
   return (
     <div className="max-w-6xl mx-auto">
       {/* Breadcrumb */}
       <div className="mb-6">
-        <Link
-          href="/repairs"
-          className="text-sm text-forest/50 hover:text-sage transition-colors"
-        >
+        <Link href="/repairs" className="text-sm text-[#9A9A9A] hover:text-[#1a4731] transition-colors">
           ← Repairs
         </Link>
       </div>
 
+      {/* Page Header */}
+      <div className="flex items-start gap-4 mb-8">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-light text-[#1C1C1E] font-mono">REP-{repair.id.slice(-4).toUpperCase()}</h1>
+            <StageBadge stage={repair.stage} />
+          </div>
+          <p className="text-lg text-[#6B6B6B] mt-1">
+            {customer?.full_name ?? "Unknown Customer"} · {repair.item_description || `${repair.item_type} — ${repair.repair_type}`}
+          </p>
+        </div>
+      </div>
+
+      {/* Two-column grid */}
+      <div className="grid grid-cols-5 gap-6 mb-6">
+        {/* LEFT: Stage Timeline */}
+        <div className="col-span-2 bg-white rounded-xl border border-[#E8E6E1] shadow-sm p-6">
+          <p className="text-xs uppercase tracking-wide text-[#9A9A9A] mb-4">Workshop Progress</p>
+          <div className="relative">
+            <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-[#E8E6E1]" />
+            <div className="space-y-5">
+              {TIMELINE_STAGES.map((stage, idx) => {
+                const isPast = idx < currentTimelineIdx;
+                const isCurrent = idx === currentTimelineIdx;
+                return (
+                  <div key={stage} className="flex items-center gap-3 relative">
+                    {isPast && (
+                      <div className="w-3 h-3 bg-[#16A34A] rounded-full flex-shrink-0 z-10" />
+                    )}
+                    {isCurrent && (
+                      <div className="w-4 h-4 bg-[#1a4731] rounded-full ring-4 ring-[#E8F0EB] flex-shrink-0 z-10 -ml-0.5" />
+                    )}
+                    {!isPast && !isCurrent && (
+                      <div className="w-3 h-3 border-2 border-[#D0CCC7] rounded-full bg-white flex-shrink-0 z-10" />
+                    )}
+                    <span className={`text-sm ${
+                      isPast ? "text-[#9A9A9A] line-through" :
+                      isCurrent ? "text-[#1C1C1E] font-semibold" :
+                      "text-[#9A9A9A]"
+                    }`}>{stage}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: Job Details */}
+        <div className="col-span-3 bg-white rounded-xl border border-[#E8E6E1] shadow-sm p-6">
+          <p className="text-xs uppercase tracking-wide text-[#9A9A9A] mb-4">Job Details</p>
+          {[
+            { label: "Customer Name", value: customer?.full_name ?? "—" },
+            { label: "Phone", value: customer?.mobile ?? "—" },
+            { label: "Item Description", value: repair.item_description || repair.item_type },
+            { label: "Issue", value: repair.repair_type },
+            { label: "Quoted Price", value: repair.quoted_price != null ? formatCurrency(repair.quoted_price) : "—" },
+            { label: "Deposit Paid", value: repair.deposit_amount != null ? `${formatCurrency(repair.deposit_amount)} ${repair.deposit_paid ? "(Paid)" : "(Pending)"}` : "—" },
+            { label: "Balance Due", value: balanceDue > 0 ? formatCurrency(balanceDue) : "—" },
+            { label: "Assigned To", value: (repair as { assigned_to?: string }).assigned_to ?? "—" },
+            { label: "Due Date", value: repair.due_date ? new Date(repair.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—" },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex justify-between py-2.5 border-b border-[#F5F3F0] last:border-0">
+              <span className="text-xs text-[#9A9A9A] uppercase tracking-wide">{label}</span>
+              <span className="text-sm text-[#1C1C1E] font-medium">{value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Notes card */}
+      <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm p-6 mb-6">
+        <p className="text-xs uppercase tracking-wide text-[#9A9A9A] mb-3">Notes &amp; Intake</p>
+        <p className="text-sm text-[#6B6B6B] leading-relaxed">
+          {repair.internal_notes || repair.condition_notes || repair.work_description || "No notes recorded"}
+        </p>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-3 mb-6">
+        <button className="px-5 py-2.5 bg-[#1a4731] text-white text-sm font-medium rounded-lg hover:bg-[#1a4731]/90 transition-colors">Mark as Ready</button>
+        <button className="px-5 py-2.5 border border-[#E8E6E1] text-sm font-medium rounded-lg hover:bg-[#F8F7F5] transition-colors">Send Update</button>
+        <button className="px-5 py-2.5 border border-[#E8E6E1] text-sm font-medium rounded-lg hover:bg-[#F8F7F5] transition-colors">Print Ticket</button>
+        <button className="px-5 py-2.5 text-sm font-medium text-[#6B6B6B] rounded-lg hover:bg-[#F8F7F5] transition-colors">Add Note</button>
+      </div>
+
+      {/* Actions panel + photos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── Left Panel (65%) ─────────────────────────────────── */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Header card */}
-          <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-1 flex-wrap">
-                  <span className="text-xs font-mono text-forest/40 bg-platinum px-2 py-0.5 rounded">
-                    {repair.repair_number}
-                  </span>
-                  <PriorityBadge priority={repair.priority} />
-                  {isOverdue && (
-                    <span className="text-xs font-medium text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-                      ⚠ Overdue
-                    </span>
-                  )}
-                </div>
-                <h1 className="font-fraunces text-2xl font-semibold text-forest leading-tight mt-2">
-                  {repair.item_type} — {repair.repair_type}
-                </h1>
-                {customer && (
-                  <Link
-                    href={`/customers/${customer.id}`}
-                    className="text-sm text-forest/60 hover:text-sage transition-colors mt-1 inline-block"
-                  >
-                    {customer.full_name}
-                  </Link>
-                )}
-              </div>
-            </div>
-
-            {/* Progress bar */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-forest/50">
-                  Repair Progress
-                </span>
-                <StageBadge stage={repair.stage} />
-              </div>
-              <div className="relative">
-                <div className="h-2 bg-platinum rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-sage rounded-full transition-all"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
-                <div className="flex justify-between mt-2">
-                  {visibleStages.map((s, i) => {
-                    const idx = REPAIR_WORKFLOW_STAGES.findIndex(
-                      (x) => x.key === s.key
-                    );
-                    const done = idx <= currentStageIndex && !isTerminal;
-                    const current = s.key === repair.stage;
-                    return (
-                      <div
-                        key={s.key}
-                        className="flex flex-col items-center"
-                        style={{ width: `${100 / visibleStages.length}%` }}
-                      >
-                        <div
-                          className={`w-2.5 h-2.5 rounded-full border-2 transition-all ${
-                            current
-                              ? "border-sage bg-sage scale-125"
-                              : done
-                              ? "border-sage bg-sage"
-                              : "border-platinum bg-white"
-                          }`}
-                        />
-                        {i % 2 === 0 && (
-                          <span className="text-[9px] text-forest/30 mt-1 text-center leading-tight hidden sm:block">
-                            {s.label}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Item Info */}
-          <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-            <h2 className="font-fraunces text-base font-semibold text-forest mb-4">
-              Item Details
-            </h2>
-            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
-              <div>
-                <dt className="text-xs font-medium text-forest/40 uppercase tracking-wider">
-                  Item Type
-                </dt>
-                <dd className="text-sm text-forest mt-0.5 font-medium">
-                  {repair.item_type}
-                </dd>
-              </div>
-              {repair.metal_type && (
-                <div>
-                  <dt className="text-xs font-medium text-forest/40 uppercase tracking-wider">
-                    Metal
-                  </dt>
-                  <dd className="text-sm text-forest mt-0.5 font-medium">
-                    {repair.metal_type}
-                  </dd>
-                </div>
-              )}
-              {repair.brand && (
-                <div>
-                  <dt className="text-xs font-medium text-forest/40 uppercase tracking-wider">
-                    Brand
-                  </dt>
-                  <dd className="text-sm text-forest mt-0.5 font-medium">
-                    {repair.brand}
-                  </dd>
-                </div>
-              )}
-              <div className="col-span-2 sm:col-span-3">
-                <dt className="text-xs font-medium text-forest/40 uppercase tracking-wider">
-                  Description
-                </dt>
-                <dd className="text-sm text-forest mt-0.5 leading-relaxed">
-                  {repair.item_description}
-                </dd>
-              </div>
-            </dl>
-          </div>
-
-          {/* Repair Specs */}
-          <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-            <h2 className="font-fraunces text-base font-semibold text-forest mb-4">
-              Repair Specifications
-            </h2>
-            <dl className="space-y-4">
-              <div>
-                <dt className="text-xs font-medium text-forest/40 uppercase tracking-wider">
-                  Repair Type
-                </dt>
-                <dd className="text-sm text-forest mt-0.5 font-medium">
-                  {repair.repair_type}
-                </dd>
-              </div>
-              {repair.condition_notes && (
-                <div className="border-t border-platinum pt-4">
-                  <dt className="text-xs font-medium text-forest/40 uppercase tracking-wider mb-1">
-                    Condition on Intake
-                  </dt>
-                  <dd className="text-sm text-forest leading-relaxed">
-                    {repair.condition_notes}
-                  </dd>
-                </div>
-              )}
-              {repair.work_description && (
-                <div className="border-t border-platinum pt-4">
-                  <dt className="text-xs font-medium text-forest/40 uppercase tracking-wider mb-1">
-                    Work Required
-                  </dt>
-                  <dd className="text-sm text-forest leading-relaxed">
-                    {repair.work_description}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </div>
-
-          {/* Notes */}
-          {(repair.internal_notes || repair.client_notes) && (
-            <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-              <h2 className="font-fraunces text-base font-semibold text-forest mb-4">
-                Notes
-              </h2>
-              <div className="space-y-4">
-                {repair.internal_notes && (
-                  <div>
-                    <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-1">
-                      ⚑ Internal Notes
-                    </p>
-                    <p className="text-sm text-forest leading-relaxed">
-                      {repair.internal_notes}
-                    </p>
-                  </div>
-                )}
-                {repair.client_notes && (
-                  <div className={repair.internal_notes ? "border-t border-platinum pt-4" : ""}>
-                    <p className="text-xs font-medium text-forest/40 uppercase tracking-wider mb-1">
-                      Client Instructions
-                    </p>
-                    <p className="text-sm text-forest leading-relaxed">
-                      {repair.client_notes}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Stage History */}
-          <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-            <h2 className="font-fraunces text-base font-semibold text-forest mb-5">
-              Stage History
-            </h2>
-            {stageHistory && stageHistory.length > 0 ? (
-              <div className="relative pl-6">
-                <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-platinum" />
-                <div className="space-y-5">
-                  {stageHistory.map((entry, i) => (
-                    <div key={entry.id} className="relative">
-                      <div
-                        className={`absolute -left-[18px] w-3 h-3 rounded-full border-2 ${
-                          i === stageHistory.length - 1
-                            ? "border-sage bg-sage"
-                            : "border-platinum bg-white"
-                        }`}
-                      />
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium text-forest">
-                            {REPAIR_WORKFLOW_STAGES.find(
-                              (s) => s.key === entry.stage
-                            )?.label || entry.stage}
-                          </span>
-                          <span className="text-xs text-forest/40">
-                            {new Date(entry.created_at).toLocaleDateString(
-                              "en-GB",
-                              {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }
-                            )}
-                          </span>
-                        </div>
-                        {entry.notes && (
-                          <p className="text-sm text-forest/60 mt-0.5">
-                            {entry.notes}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-forest/40">No stage history yet.</p>
-            )}
-          </div>
-
-          {/* Intake Photos */}
+        <div className="lg:col-span-2">
           <RepairPhotos
             repairId={id}
             tenantId={tenantId}
             existingPhotos={(repair.intake_photos ?? []) as string[]}
           />
         </div>
-
-        {/* ── Right Panel (35%) ────────────────────────────────── */}
         <div className="space-y-4">
           <RepairDetailClient
             repairId={id}
@@ -425,25 +272,10 @@ export default async function RepairDetailPage({
             customerEmail={customer?.email ?? null}
             isOverdue={!!isOverdue}
           />
-
-          {/* Edit button */}
           <Link
             href={`/repairs/${id}/edit`}
-            className="w-full flex items-center justify-center gap-2 bg-white border border-forest text-forest text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-forest hover:text-white transition-all"
+            className="w-full flex items-center justify-center gap-2 bg-white border border-[#E8E6E1] text-[#1C1C1E] text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-[#F8F7F5] transition-all"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
             Edit Repair
           </Link>
         </div>

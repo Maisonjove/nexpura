@@ -1,35 +1,24 @@
-interface StatusBadgeProps {
-  status: string;
-  className?: string;
-}
+export const StatusBadge = ({ status, type = 'default' }: { status: string, type?: 'default' | 'dot' }) => {
+    const statusClasses = {
+        'Enquiry': 'bg-blue-100 text-blue-800', 'Quote Sent': 'bg-cyan-100 text-cyan-800',
+        'Approved': 'bg-teal-100 text-teal-800', 'CAD': 'bg-indigo-100 text-indigo-800',
+        'Casting': 'bg-purple-100 text-purple-800', 'Setting': 'bg-pink-100 text-pink-800',
+        'Polishing': 'bg-orange-100 text-orange-800', 'Ready': 'bg-green-100 text-green-800',
+        'Received': 'bg-gray-100 text-gray-800', 'Awaiting Approval': 'bg-yellow-100 text-yellow-800',
+        'In Workshop': 'bg-blue-100 text-blue-800', 'Waiting Parts': 'bg-yellow-100 text-yellow-800',
+        'Completed': 'bg-teal-100 text-teal-800', 'Ready for Pickup': 'bg-green-100 text-green-800',
+        'Collected': 'bg-gray-200 text-gray-600', 'Active': 'bg-green-100 text-green-800',
+        'Transferred': 'bg-blue-100 text-blue-800', 'VIP': 'bg-amber-100 text-amber-800',
+        'Retail': 'bg-sky-100 text-sky-800', 'Bridal': 'bg-rose-100 text-rose-800',
+        'In Stock': 'bg-green-100 text-green-800', 'Sold': 'bg-gray-100 text-gray-800',
+        'Low Stock': 'bg-yellow-100 text-yellow-800',
+    };
 
-function getStatusStyle(status: string): string {
-  const s = status.toLowerCase().replace(/[_\s]+/g, " ");
+    const badgeClass = statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 text-gray-800';
 
-  if (["ready", "ready for pickup", "completed", "paid", "in stock", "collected"].some((k) => s.includes(k))) {
-    return "bg-green-50 text-green-700 border border-green-200";
-  }
-  if (["in workshop", "in progress", "confirmed", "approved", "setting", "cad", "casting", "polishing"].some((k) => s.includes(k))) {
-    return "bg-blue-50 text-blue-700 border border-blue-200";
-  }
-  if (["awaiting", "quote sent", "pending", "quoted", "low stock", "on order"].some((k) => s.includes(k))) {
-    return "bg-amber-50 text-amber-700 border border-amber-200";
-  }
-  if (["overdue", "out of stock", "cancelled", "rejected"].some((k) => s.includes(k))) {
-    return "bg-red-50 text-red-700 border border-red-200";
-  }
-  if (["enquiry", "draft", "received", "intake", "assessed"].some((k) => s.includes(k))) {
-    return "bg-gray-100 text-gray-600 border border-gray-200";
-  }
-  return "bg-gray-100 text-gray-600 border border-gray-200";
-}
-
-export default function StatusBadge({ status, className = "" }: StatusBadgeProps) {
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusStyle(status)} ${className}`}
-    >
-      {status}
-    </span>
-  );
+    return (
+        <span className={\`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium \${badgeClass}\`}>
+            {status}
+        </span>
+    )
 }

@@ -135,49 +135,51 @@ export default function DashboardClient({
       value: "$4,280",
       sublabel: "↑ 3 sales today",
       color: "default" as const,
-    },
-    {
-      label: "This Month Revenue",
-      value: showSampleRevenue ? "$31,650" : fmtCurrency(salesThisMonthRevenue),
-      sublabel: showSampleRevenue ? "↑ 12% vs last month" : `${salesThisMonthCount} sales`,
-      color: "default" as const,
+      borderColor: "#16A34A",
     },
     {
       label: "Active Repairs",
       value: activeRepairsCount > 0 ? String(activeRepairsCount) : "12",
       sublabel: overdueRepairsCount > 0 ? `${overdueRepairsCount} overdue` : "2 ready pickup",
       color: overdueRepairsCount > 0 ? ("warning" as const) : ("default" as const),
+      borderColor: "#2563EB",
     },
     {
       label: "Bespoke Jobs",
       value: activeJobsCount > 0 ? String(activeJobsCount) : "8",
       sublabel: "1 ready today",
       color: "default" as const,
+      borderColor: "#7C3AED",
     },
     {
       label: "Outstanding Invoices",
       value: totalOutstanding > 0 ? fmtCurrency(totalOutstanding) : "$8,400",
       sublabel: overdueInvoiceCount > 0 ? `${overdueInvoiceCount} overdue` : "3 overdue",
       color: "danger" as const,
+      borderColor: "#D97706",
     },
     {
       label: "Low Stock Items",
       value: lowStockCount > 0 ? String(lowStockCount) : "5",
       sublabel: "needs attention",
       color: "warning" as const,
+      borderColor: "#DC2626",
+    },
+    {
+      label: "This Month Revenue",
+      value: showSampleRevenue ? "$31,650" : fmtCurrency(salesThisMonthRevenue),
+      sublabel: showSampleRevenue ? "↑ 12% vs last month" : `${salesThisMonthCount} sales`,
+      color: "default" as const,
+      borderColor: "#16A34A",
     },
   ];
 
   return (
     <div className="space-y-6 max-w-[1400px]">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-[#1C1C1E]">
-          Good morning, {firstName} 👋
-        </h1>
-        {tenantName && (
-          <p className="text-[#9A9A9A] text-sm mt-0.5">{tenantName}</p>
-        )}
+      <div className="mb-6">
+        <h1 className="text-2xl font-light tracking-wide text-[#1C1C1E]">Good morning ✦ <span className="font-medium">Nexpura HQ</span></h1>
+        <p className="text-sm text-[#9A9A9A] mt-1">12 active repairs · 8 bespoke jobs · $4,280 revenue today</p>
       </div>
 
       {/* KPI row */}
@@ -186,6 +188,7 @@ export default function DashboardClient({
           <div
             key={card.label}
             className="bg-white rounded-xl p-4 shadow-sm border border-[#E8E6E1]"
+            style={{ borderLeft: `3px solid ${card.borderColor}` }}
           >
             <p className="text-[10px] font-semibold uppercase tracking-widest text-[#9A9A9A] mb-2">
               {card.label}
