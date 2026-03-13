@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
 type Plan = "basic" | "pro" | "ultimate";
-type SubStatus = "trialing" | "active" | "past_due" | "canceled";
+type SubStatus = "trialing" | "active" | "past_due" | "canceled" | "suspended" | "free";
 
 async function assertSuperAdmin() {
   const supabase = await createClient();
@@ -52,4 +52,67 @@ export async function changeTenantStatus(tenantId: string, newStatus: SubStatus)
   revalidatePath(`/admin/tenants/${tenantId}`);
   revalidatePath("/admin/tenants");
   revalidatePath("/admin");
+}
+
+export async function assignFreeForever(tenantId: string) {
+  const adminClient = await assertSuperAdmin();
+
+  await adminClient
+    .from("tenants")
+    .update({ is_free_forever: true, subscription_status: "free" })
+    .eq("id", tenantId);
+
+  await adminClient
+    .from("subscriptions")
+    .update({ status: "active" })
+    .eq("tenant_id", tenantId);
+
+  revalidatePath(`/admin/tenants/${tenantId}`);
+  revalidatePath("/admin/tenants");
+}
+
+export async function forcePaidGracePeriod(tenantId: string) {
+  const adminClient = await assertSuperAdmin();
+
+  // Trigger via the cron route handler logic inline
+  const graceEnd = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+
+  await adminClient
+    .from("subscriptions")
+    .update({
+      status: "payment_required",
+      grace_period_ends_at: graceEnd,
+      grace_24h_sent: false,
+    })
+    .eq("tenant_id", tenantId);
+
+  await adminClient
+    .from("tenants")
+    .update({
+      subscription_status: "grace_period",
+      grace_period_ends_at: graceEnd,
+      payment_required_notified_at: new Date().toISOString(),
+      is_free_forever: false,
+    })
+    .eq("id", tenantId);
+
+  // Send email (import inline to avoid circular)
+  const { sendFreeToPaidConversionEmail } = await import("@/lib/email/send");
+  const { data: owner } = await adminClient
+    .from("users")
+    .select("email, full_name")
+    .eq("tenant_id", tenantId)
+    .eq("role", "owner")
+    .single();
+
+  if (owner?.email) {
+    const deadline = new Date(graceEnd).toLocaleString("en-AU", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Australia/Sydney",
+    });
+    await sendFreeToPaidConversionEmail(owner.email, owner.full_name ?? "there", deadline);
+  }
+
+  revalidatePath(`/admin/tenants/${tenantId}`);
 }

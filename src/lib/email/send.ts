@@ -17,6 +17,8 @@ import AccountReactivatedEmail from './templates/AccountReactivatedEmail'
 import RepairReceivedEmail from './templates/RepairReceivedEmail'
 import UserInvitedEmail from './templates/UserInvitedEmail'
 import LowStockAlertEmail from './templates/LowStockAlertEmail'
+import FreeToPaidConversionEmail from './templates/FreeToPaidConversionEmail'
+import CancellationEmail from './templates/CancellationEmail'
 import type { InvoiceEmailProps } from './templates/InvoiceEmail'
 import type { JobReadyEmailProps } from './templates/JobReadyEmail'
 import type { RepairReadyEmailProps } from './templates/RepairReadyEmail'
@@ -700,6 +702,45 @@ export async function sendUserInvitedEmail(
 // ─────────────────────────────────────────────────────────────
 // Low Stock Alert Email
 // ─────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+// Free To Paid Conversion Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendFreeToPaidConversionEmail(email: string, name: string, deadline: string): Promise<EmailResult> {
+  const subject = `Payment required for your Nexpura account`
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(FreeToPaidConversionEmail, {
+      businessName: name,
+      paymentUrl: `${APP_URL}/billing`,
+      deadline,
+    }),
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Cancellation Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendCancellationEmail(email: string, name: string): Promise<EmailResult> {
+  const subject = `Your Nexpura subscription has been cancelled`
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [email],
+    subject,
+    react: createElement(CancellationEmail, {
+      businessName: name,
+      reactivateUrl: `${APP_URL}/billing`,
+    }),
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
 
 export async function sendLowStockAlertEmail(
   email: string,

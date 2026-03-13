@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/client";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendPaymentSuccessEmail, sendPaymentFailedEmail } from "@/lib/email/send";
+import { sendPaymentSuccessEmail, sendPaymentFailedEmail, sendCancellationEmail, sendAccountReactivatedEmail } from "@/lib/email/send";
 import Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -81,10 +81,10 @@ export async function POST(request: NextRequest) {
             })
             .eq("stripe_sub_id", stripeSubId);
 
-          // Send payment success email
+          // Send payment success email or reactivation email
           const { data: sub } = await adminClient
             .from("subscriptions")
-            .select("tenant_id, plan")
+            .select("tenant_id, plan, status")
             .eq("stripe_sub_id", stripeSubId)
             .single();
           if (sub) {
@@ -97,7 +97,17 @@ export async function POST(request: NextRequest) {
             if (owner?.email) {
               const amount = (invoice.amount_paid ?? 0) / 100;
               const nextBillingDate = periodEnd ? new Date(periodEnd * 1000).toISOString() : new Date().toISOString();
-              await sendPaymentSuccessEmail(owner.email, owner.full_name ?? "there", amount, sub.plan ?? "Pro", nextBillingDate);
+
+              // If was suspended, send reactivation email
+              if (sub.status === "suspended") {
+                await adminClient
+                  .from("subscriptions")
+                  .update({ status: "active" })
+                  .eq("stripe_sub_id", stripeSubId);
+                await sendAccountReactivatedEmail(owner.email, owner.full_name ?? "there", sub.plan ?? "Pro");
+              } else {
+                await sendPaymentSuccessEmail(owner.email, owner.full_name ?? "there", amount, sub.plan ?? "Pro", nextBillingDate);
+              }
             }
           }
         }
@@ -142,6 +152,24 @@ export async function POST(request: NextRequest) {
           .from("subscriptions")
           .update({ status: "cancelled" })
           .eq("stripe_sub_id", subscription.id);
+
+        // Send cancellation email
+        const { data: cancelledSub } = await adminClient
+          .from("subscriptions")
+          .select("tenant_id")
+          .eq("stripe_sub_id", subscription.id)
+          .single();
+        if (cancelledSub) {
+          const { data: owner } = await adminClient
+            .from("users")
+            .select("email, full_name")
+            .eq("tenant_id", cancelledSub.tenant_id)
+            .eq("role", "owner")
+            .single();
+          if (owner?.email) {
+            await sendCancellationEmail(owner.email, owner.full_name ?? "there");
+          }
+        }
         break;
       }
 
