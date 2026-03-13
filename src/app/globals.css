@@ -1,19 +1,143 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import "tailwindcss";
-@plugin "@tailwindcss/forms";
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
 
-@theme {
-  --color-bronze: #8B7355;
-  --color-bronze-hover: #7A6347;
-  --font-sans: Inter, system-ui, sans-serif;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
+  :root {
+    /* ShadCN CSS Variables — Nexpura warm stone theme */
+    --background: 60 9% 98%;           /* stone-50 */
+    --foreground: 20 14% 4%;           /* stone-950 */
+    --card: 0 0% 100%;                 /* white */
+    --card-foreground: 20 14% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 4%;
+    --primary: 30 12% 44%;             /* bronze #8B7355 */
+    --primary-foreground: 60 9% 98%;
+    --secondary: 30 8% 93%;            /* stone-100 */
+    --secondary-foreground: 20 14% 4%;
+    --muted: 30 8% 93%;
+    --muted-foreground: 25 5% 45%;     /* stone-500 */
+    --accent: 30 8% 93%;
+    --accent-foreground: 20 14% 4%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 60 9% 98%;
+    --border: 20 6% 90%;               /* stone-200 */
+    --input: 20 6% 90%;
+    --ring: 30 12% 44%;                /* bronze */
+    --radius: 0.75rem;
+    --chart-1: 30 12% 44%;
+    --chart-2: 142 71% 45%;
+    --chart-3: 45 93% 47%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 215 14% 34%;
+
+    /* Nexpura brand variables */
+    --sidebar-bg: #1A1A1A;
+    --bronze: #8B7355;
+    --bronze-hover: #7A6347;
+    --bronze-light: #C4A882;
+
+    /* Typography */
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-serif: 'Cormorant Garamond', Georgia, serif;
+  }
+
+  * {
+    @apply border-border;
+  }
+
   body {
-    background-color: #FAFAF9;
-    color: #1c1917;
-    font-family: Inter, system-ui, sans-serif;
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  /* Sidebar utility classes */
+  .nx-sidebar {
+    @apply w-64 h-screen bg-[#1A1A1A] flex flex-col fixed left-0 top-0 z-30;
+  }
+
+  .nx-nav-item {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors duration-200 cursor-pointer;
+  }
+
+  .nx-nav-item-active {
+    @apply bg-white/[0.08] text-white;
+  }
+
+  .nx-nav-item-inactive {
+    @apply text-stone-400 hover:bg-white/[0.05] hover:text-stone-200;
+  }
+
+  .nx-nav-group-label {
+    @apply text-[10px] uppercase tracking-widest text-stone-500 px-4 mb-1.5 mt-5 font-medium block;
+  }
+
+  /* Page layout */
+  .nx-page {
+    @apply p-8 bg-stone-50 min-h-full;
+  }
+
+  .nx-page-header {
+    @apply flex items-center justify-between mb-8;
+  }
+
+  .nx-page-title {
+    @apply text-2xl font-semibold tracking-tight text-stone-900;
+  }
+
+  /* Card variants */
+  .nx-card {
+    @apply bg-white rounded-xl border border-stone-200 p-6 shadow-sm;
+  }
+
+  .nx-card-title {
+    @apply text-sm font-semibold text-stone-700;
+  }
+
+  /* Table wrapper */
+  .nx-table-wrapper {
+    @apply bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm;
+  }
+
+  /* Bronze button */
+  .nx-btn-primary {
+    @apply bg-[#8B7355] hover:bg-[#7A6347] text-white font-medium px-4 py-2 rounded-md text-sm transition-colors duration-200;
+  }
+
+  /* Status badges */
+  .nx-badge-success {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border text-emerald-700 bg-emerald-50 border-emerald-200;
+  }
+
+  .nx-badge-warning {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border text-amber-700 bg-amber-50 border-amber-200;
+  }
+
+  .nx-badge-danger {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border text-red-700 bg-red-50 border-red-200;
+  }
+
+  .nx-badge-neutral {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border text-stone-600 bg-stone-100 border-stone-200;
+  }
+
+  /* Section labels */
+  .nx-label {
+    @apply text-xs font-medium text-stone-400 uppercase tracking-widest;
+  }
+
+  /* Fade-in animation utility */
+  .nx-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .nx-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
   }
 }

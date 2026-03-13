@@ -12,7 +12,7 @@ export default function Header({ user }: HeaderProps) {
     : user?.email?.slice(0, 2).toUpperCase() || 'NX';
 
   return (
-    <header className="h-14 bg-stone-50 border-b border-stone-200 flex items-center justify-between px-8 flex-shrink-0">
+    <header className="h-14 bg-background border-b border-border flex items-center justify-between px-8 flex-shrink-0">
       <div />
       <div className="flex items-center gap-4">
         <button className="p-1.5 text-stone-400 hover:text-stone-600 transition-colors rounded-md hover:bg-stone-100">
