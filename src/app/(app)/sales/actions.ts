@@ -174,7 +174,7 @@ export async function createSale(
 export async function updateSaleStatus(
   id: string,
   status: string
-): Promise<{ success?: boolean; error?: string }> {
+): Promise<{ success?: boolean; error?: string; invoiceId?: string }> {
   let ctx;
   try {
     ctx = await getAuthContext();
@@ -182,7 +182,7 @@ export async function updateSaleStatus(
     return { error: "Not authenticated" };
   }
 
-  const { supabase, tenantId } = ctx;
+  const { supabase, userId, tenantId } = ctx;
 
   const { error } = await supabase
     .from("sales")
@@ -191,7 +191,133 @@ export async function updateSaleStatus(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+
+  // Auto-create invoice when sale is marked as paid or completed
+  if (status === "paid" || status === "completed") {
+    const { data: sale } = await supabase
+      .from("sales")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    const { data: saleItems } = await supabase
+      .from("sale_items")
+      .select("*")
+      .eq("sale_id", id);
+
+    if (sale) {
+      // Check if invoice already exists for this sale
+      const { data: existingInvoice } = await supabase
+        .from("invoices")
+        .select("id")
+        .eq("sale_id", id)
+        .eq("tenant_id", tenantId)
+        .single();
+
+      if (!existingInvoice) {
+        // Generate invoice number
+        const { data: invoiceNumberData } = await supabase.rpc("next_invoice_number", {
+          p_tenant_id: tenantId,
+        });
+
+        const lineItems = (saleItems ?? []).map((item, idx) => ({
+          tenant_id: tenantId,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount_pct: item.discount_percent ?? 0,
+          line_total: item.line_total,
+          sort_order: idx,
+        }));
+
+        const { data: newInvoice, error: invErr } = await supabase
+          .from("invoices")
+          .insert({
+            tenant_id: tenantId,
+            invoice_number: invoiceNumberData ?? `INV-${Date.now()}`,
+            customer_id: sale.customer_id ?? null,
+            customer_name: sale.customer_name ?? null,
+            customer_email: sale.customer_email ?? null,
+            sale_id: id,
+            invoice_date: new Date().toISOString().split("T")[0],
+            subtotal: sale.subtotal,
+            discount_amount: sale.discount_amount ?? 0,
+            tax_name: "GST",
+            tax_rate: 0.1,
+            tax_inclusive: true,
+            tax_amount: sale.tax_amount ?? 0,
+            total: sale.total,
+            status: status === "paid" ? "paid" : "sent",
+            paid_at: status === "paid" ? new Date().toISOString() : null,
+            notes: sale.notes ?? null,
+            created_by: userId,
+          })
+          .select("id")
+          .single();
+
+        if (!invErr && newInvoice) {
+          // Insert invoice line items
+          if (lineItems.length > 0) {
+            await supabase.from("invoice_line_items").insert(
+              lineItems.map((li) => ({ ...li, invoice_id: newInvoice.id }))
+            );
+          }
+          return { success: true, invoiceId: newInvoice.id };
+        }
+      }
+    }
+  }
+
   return { success: true };
+}
+
+export async function generatePassportFromSaleItem(
+  saleId: string,
+  itemDescription: string,
+  inventoryId?: string | null
+): Promise<{ success?: boolean; error?: string; passportId?: string }> {
+  let ctx;
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+
+  const { supabase, userId, tenantId } = ctx;
+
+  const { data: sale } = await supabase
+    .from("sales")
+    .select("*")
+    .eq("id", saleId)
+    .eq("tenant_id", tenantId)
+    .single();
+
+  if (!sale) return { error: "Sale not found" };
+
+  // Generate passport number
+  const { count } = await supabase
+    .from("passports")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId);
+  const passportNumber = `NXP-${String((count ?? 0) + 1).padStart(4, "0")}`;
+
+  const { data: passport, error } = await supabase
+    .from("passports")
+    .insert({
+      tenant_id: tenantId,
+      passport_number: passportNumber,
+      customer_id: sale.customer_id ?? null,
+      inventory_id: inventoryId ?? null,
+      item_name: itemDescription,
+      purchase_date: new Date().toISOString().split("T")[0],
+      is_public: true,
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+  return { success: true, passportId: passport?.id };
 }
 
 export async function deleteSale(

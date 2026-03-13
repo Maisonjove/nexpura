@@ -20,7 +20,7 @@ export default async function AppLayout({
 
   // Get user profile for sidebar
   const { data: profile } = await supabase
-    .from('profiles')
+    .from('users')
     .select('*')
     .eq('id', user.id)
     .single();

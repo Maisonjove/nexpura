@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { updateSaleStatus, deleteSale } from "../actions";
+import { updateSaleStatus, deleteSale, generatePassportFromSaleItem } from "../actions";
 
 interface SaleItem {
   id: string;
@@ -13,6 +13,7 @@ interface SaleItem {
   unit_price: number;
   discount_percent: number;
   line_total: number;
+  inventory_id?: string | null;
 }
 
 interface Sale {
@@ -61,6 +62,8 @@ export default function SaleDetailClient({ sale, items }: Props) {
   const [isPending, startTransition] = useTransition();
   const [showDelete, setShowDelete] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [passportMsgs, setPassportMsgs] = useState<Record<string, string>>({});
 
   function handleStatusChange(newStatus: string) {
     startTransition(async () => {
@@ -68,9 +71,14 @@ export default function SaleDetailClient({ sale, items }: Props) {
       if (result?.error) {
         setStatusMsg(`Error: ${result.error}`);
       } else {
-        setStatusMsg("Status updated");
+        if (result.invoiceId) {
+          setInvoiceId(result.invoiceId);
+          setStatusMsg(`Status updated — invoice auto-created!`);
+        } else {
+          setStatusMsg("Status updated");
+        }
         router.refresh();
-        setTimeout(() => setStatusMsg(null), 3000);
+        setTimeout(() => setStatusMsg(null), 5000);
       }
     });
   }
@@ -78,6 +86,18 @@ export default function SaleDetailClient({ sale, items }: Props) {
   function handleDelete() {
     startTransition(async () => {
       await deleteSale(sale.id);
+    });
+  }
+
+  function handleGeneratePassport(item: SaleItem) {
+    startTransition(async () => {
+      const result = await generatePassportFromSaleItem(sale.id, item.description, item.inventory_id ?? null);
+      if (result.error) {
+        setPassportMsgs((prev) => ({ ...prev, [item.id]: `Error: ${result.error}` }));
+      } else if (result.passportId) {
+        setPassportMsgs((prev) => ({ ...prev, [item.id]: `Passport created!` }));
+        router.refresh();
+      }
     });
   }
 
@@ -91,7 +111,7 @@ export default function SaleDetailClient({ sale, items }: Props) {
               ← Sales
             </Link>
           </div>
-          <h1 className="font-semibold text-2xl font-semibold text-stone-900">
+          <h1 className="font-semibold text-2xl text-stone-900">
             {sale.sale_number}
           </h1>
           {sale.customer_name && (
@@ -106,6 +126,21 @@ export default function SaleDetailClient({ sale, items }: Props) {
           {sale.status}
         </span>
       </div>
+
+      {/* Invoice created banner */}
+      {invoiceId && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+          <p className="text-sm text-green-800 font-medium">
+            ✓ Invoice auto-created for this sale
+          </p>
+          <Link
+            href={`/invoices/${invoiceId}`}
+            className="text-sm text-green-700 font-semibold hover:underline"
+          >
+            View Invoice →
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content */}
@@ -136,9 +171,12 @@ export default function SaleDetailClient({ sale, items }: Props) {
                       <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
                         Total
                       </th>
+                      <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
+                        Passport
+                      </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-platinum">
+                  <tbody className="divide-y divide-stone-100">
                     {items.map((item) => (
                       <tr key={item.id}>
                         <td className="px-5 py-3 text-sm text-stone-900">{item.description}</td>
@@ -148,6 +186,20 @@ export default function SaleDetailClient({ sale, items }: Props) {
                         </td>
                         <td className="px-4 py-3 text-sm text-right font-medium text-stone-900">
                           {fmtCurrency(item.line_total)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {passportMsgs[item.id] ? (
+                            <span className="text-xs text-green-600">{passportMsgs[item.id]}</span>
+                          ) : (
+                            <button
+                              onClick={() => handleGeneratePassport(item)}
+                              disabled={isPending}
+                              title="Generate digital passport"
+                              className="text-xs text-[#52B788] hover:text-[#3d9068] font-medium transition-colors disabled:opacity-50"
+                            >
+                              + Passport
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -220,6 +272,18 @@ export default function SaleDetailClient({ sale, items }: Props) {
                 <p className="mt-2 text-xs text-[#8B7355] font-medium">{statusMsg}</p>
               )}
             </div>
+
+            {/* View Invoice link */}
+            {invoiceId && (
+              <div className="border-t border-stone-200 pt-4">
+                <Link
+                  href={`/invoices/${invoiceId}`}
+                  className="w-full inline-flex items-center justify-center gap-2 text-sm font-medium bg-[#52B788] text-white py-2 px-4 rounded-lg hover:bg-[#3d9068] transition-colors"
+                >
+                  View Invoice
+                </Link>
+              </div>
+            )}
 
             {/* Delete */}
             <div className="border-t border-stone-200 pt-4">
