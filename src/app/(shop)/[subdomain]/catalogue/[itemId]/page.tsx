@@ -1,0 +1,199 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { createAdminClient } from "@/lib/supabase/admin";
+import ItemEnquiryForm from "./ItemEnquiryForm";
+
+interface Props {
+  params: Promise<{ subdomain: string; itemId: string }>;
+}
+
+export default async function ItemDetailPage({ params }: Props) {
+  const { subdomain, itemId } = await params;
+  const supabase = createAdminClient();
+
+  const { data: config } = await supabase
+    .from("website_config")
+    .select("*")
+    .eq("subdomain", subdomain)
+    .eq("published", true)
+    .maybeSingle();
+
+  if (!config) notFound();
+
+  const { data: item } = await supabase
+    .from("inventory")
+    .select("*")
+    .eq("id", itemId)
+    .eq("tenant_id", config.tenant_id)
+    .maybeSingle();
+
+  if (!item) notFound();
+
+  const primaryColor = config.primary_color || "#8B7355";
+  const secondaryColor = config.secondary_color || "#1A1A1A";
+  const font = config.font || "Inter";
+
+  const showPrices = config.mode !== "A" && config.show_prices;
+  const showEnquiry = config.allow_enquiry !== false;
+  const showBuyButton = config.mode === "C" && config.stripe_enabled;
+
+  return (
+    <div className="min-h-screen bg-white" style={{ fontFamily: `'${font}', sans-serif` }}>
+      {/* Nav */}
+      <nav className="sticky top-0 z-50 border-b" style={{ backgroundColor: secondaryColor }}>
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {config.logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={config.logo_url} alt="Logo" className="h-8 object-contain" />
+            )}
+            <Link href={`/shop/${subdomain}`} className="text-white font-semibold text-lg hover:opacity-80">
+              {config.business_name || subdomain}
+            </Link>
+          </div>
+          <Link href={`/shop/${subdomain}/catalogue`} className="text-white/70 hover:text-white text-sm">
+            ← Back to Catalogue
+          </Link>
+        </div>
+      </nav>
+
+      <div className="max-w-5xl mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Images */}
+          <div className="space-y-3">
+            <div className="aspect-square rounded-2xl overflow-hidden bg-stone-50">
+              {item.images?.[0] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.images[0]}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-8xl">💎</div>
+              )}
+            </div>
+            {item.images?.length > 1 && (
+              <div className="flex gap-3 overflow-x-auto">
+                {item.images.slice(1).map((img: string, i: number) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={i}
+                    src={img}
+                    alt={`${item.name} ${i + 2}`}
+                    className="w-20 h-20 object-cover rounded-lg flex-shrink-0 border border-stone-200"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Details */}
+          <div className="space-y-6">
+            <div>
+              {item.category && (
+                <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: primaryColor }}>
+                  {item.category}
+                </p>
+              )}
+              <h1 className="text-3xl font-bold" style={{ color: secondaryColor }}>
+                {item.name}
+              </h1>
+              {item.sku && (
+                <p className="text-xs text-stone-400 mt-1">SKU: {item.sku}</p>
+              )}
+            </div>
+
+            {showPrices && item.retail_price && (
+              <div className="text-3xl font-bold" style={{ color: primaryColor }}>
+                ${Number(item.retail_price).toLocaleString()}
+              </div>
+            )}
+
+            {!showPrices && (
+              <p className="text-stone-500 italic">Price available on enquiry</p>
+            )}
+
+            {item.description && (
+              <p className="text-stone-600 leading-relaxed">{item.description}</p>
+            )}
+
+            {/* Specs */}
+            <div className="grid grid-cols-2 gap-3">
+              {item.metal && (
+                <div className="bg-stone-50 rounded-xl p-3">
+                  <p className="text-xs text-stone-400 uppercase tracking-wide">Metal</p>
+                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.metal}</p>
+                </div>
+              )}
+              {item.stone && (
+                <div className="bg-stone-50 rounded-xl p-3">
+                  <p className="text-xs text-stone-400 uppercase tracking-wide">Stone</p>
+                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.stone}</p>
+                </div>
+              )}
+              {item.carat && (
+                <div className="bg-stone-50 rounded-xl p-3">
+                  <p className="text-xs text-stone-400 uppercase tracking-wide">Carat</p>
+                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.carat}ct</p>
+                </div>
+              )}
+              {item.weight_grams && (
+                <div className="bg-stone-50 rounded-xl p-3">
+                  <p className="text-xs text-stone-400 uppercase tracking-wide">Weight</p>
+                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.weight_grams}g</p>
+                </div>
+              )}
+            </div>
+
+            {/* CTA buttons */}
+            <div className="flex gap-3 pt-2">
+              {showBuyButton && (
+                <button
+                  className="flex-1 py-3 rounded-xl font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  Add to Cart
+                </button>
+              )}
+              {showEnquiry && (
+                <Link
+                  href={`/shop/${subdomain}/enquiry?item=${encodeURIComponent(item.name)}`}
+                  className={`py-3 rounded-xl font-semibold transition-colors text-center ${
+                    showBuyButton
+                      ? "flex-1 border-2 text-stone-700 hover:bg-stone-50"
+                      : "flex-1 text-white hover:opacity-90"
+                  }`}
+                  style={
+                    showBuyButton
+                      ? { borderColor: primaryColor, color: primaryColor }
+                      : { backgroundColor: primaryColor }
+                  }
+                >
+                  {config.mode === "A" ? "Enquire About This Piece" : "Enquire"}
+                </Link>
+              )}
+            </div>
+
+            {/* Inline enquiry for mode A */}
+            {config.mode === "A" && showEnquiry && (
+              <div className="border-t border-stone-100 pt-6">
+                <ItemEnquiryForm
+                  subdomain={subdomain}
+                  tenantId={config.tenant_id}
+                  itemName={item.name}
+                  primaryColor={primaryColor}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <footer className="py-8 px-4 text-center mt-8" style={{ backgroundColor: secondaryColor }}>
+        <p className="text-white/60 text-sm">© {new Date().getFullYear()} {config.business_name || subdomain}</p>
+        <p className="text-white/30 text-xs mt-2">Powered by Nexpura</p>
+      </footer>
+    </div>
+  );
+}

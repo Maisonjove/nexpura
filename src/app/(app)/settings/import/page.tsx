@@ -1,5 +1,5 @@
-import CSVImportClient from "./CSVImportClient";
+import ImportHubClient from "./ImportHubClient";
 
 export default function ImportPage() {
-  return <CSVImportClient />;
+  return <ImportHubClient />;
 }

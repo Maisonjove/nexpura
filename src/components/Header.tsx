@@ -1,9 +1,13 @@
 'use client';
 
-import { Bell } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 interface HeaderProps {
-  user?: any;
+  user?: {
+    full_name?: string;
+    email?: string;
+    [key: string]: unknown;
+  };
 }
 
 export default function Header({ user }: HeaderProps) {
@@ -14,10 +18,8 @@ export default function Header({ user }: HeaderProps) {
   return (
     <header className="h-14 bg-background border-b border-border flex items-center justify-between px-8 flex-shrink-0">
       <div />
-      <div className="flex items-center gap-4">
-        <button className="p-1.5 text-stone-400 hover:text-stone-600 transition-colors rounded-md hover:bg-stone-100">
-          <Bell size={18} />
-        </button>
+      <div className="flex items-center gap-3">
+        <NotificationBell />
         <div className="w-8 h-8 rounded-full bg-stone-200 text-stone-700 flex items-center justify-center text-xs font-semibold">
           {initials}
         </div>

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Wrench, Gem, ShoppingCart, Users, Truck,
   FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
-  Settings, CreditCard
+  Settings, CreditCard, Globe
 } from 'lucide-react';
 
 const navGroups = [
@@ -40,6 +40,7 @@ const navGroups = [
       { name: 'Passports', href: '/passports', icon: ShieldCheck },
       { name: 'Communications', href: '/communications', icon: MessageSquare },
       { name: 'AI Copilot', href: '/ai', icon: Bot },
+      { name: 'Website', href: '/website', icon: Globe },
     ],
   },
   {

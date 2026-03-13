@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+
+export const metadata = { title: "Reports — Nexpura" };
 
 function fmtCurrency(amount: number) {
   return new Intl.NumberFormat("en-AU", {
@@ -15,24 +19,183 @@ export default async function ReportsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   const { data: userData } = await supabase
     .from("users")
     .select("tenant_id")
-    .eq("id", user?.id ?? "")
+    .eq("id", user.id)
     .single();
 
   const tenantId = userData?.tenant_id ?? "";
+  const admin = createAdminClient();
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
   const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
 
-  // ── Revenue this month (from sales) ─────────────────────────
+  // ── Revenue this month & last month (paid invoices) ─────────
   let revenueThisMonth = 0;
   let revenueLastMonth = 0;
-  let salesCount = 0;
+  let outstandingAmount = 0;
+  let outstandingCount = 0;
+
+  try {
+    const [thisMonth, lastMonth, outstanding] = await Promise.all([
+      admin
+        .from("invoices")
+        .select("total")
+        .eq("tenant_id", tenantId)
+        .eq("status", "paid")
+        .gte("created_at", monthStart)
+        .is("deleted_at", null),
+      admin
+        .from("invoices")
+        .select("total")
+        .eq("tenant_id", tenantId)
+        .eq("status", "paid")
+        .gte("created_at", prevMonthStart)
+        .lte("created_at", prevMonthEnd)
+        .is("deleted_at", null),
+      admin
+        .from("invoices")
+        .select("amount_due")
+        .eq("tenant_id", tenantId)
+        .in("status", ["sent", "partially_paid", "overdue", "draft"])
+        .is("deleted_at", null),
+    ]);
+    revenueThisMonth = (thisMonth.data ?? []).reduce((s, r) => s + (r.total || 0), 0);
+    revenueLastMonth = (lastMonth.data ?? []).reduce((s, r) => s + (r.total || 0), 0);
+    outstandingAmount = (outstanding.data ?? []).reduce((s, r) => s + (r.amount_due || 0), 0);
+    outstandingCount = outstanding.data?.length ?? 0;
+  } catch {
+    // fall through — tables may not have data yet
+  }
+
+  // ── Active repairs & bespoke ─────────────────────────────────
+  let activeRepairsCount = 0;
+  let activeBespokeCount = 0;
+  let newCustomersCount = 0;
+
+  try {
+    const [repairs, bespoke, customers] = await Promise.all([
+      admin
+        .from("repairs")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .not("stage", "in", '("collected","cancelled")'),
+      admin
+        .from("bespoke_jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .not("stage", "in", '("completed","cancelled")'),
+      admin
+        .from("customers")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .gte("created_at", monthStart),
+    ]);
+    activeRepairsCount = repairs.count ?? 0;
+    activeBespokeCount = bespoke.count ?? 0;
+    newCustomersCount = customers.count ?? 0;
+  } catch {
+    // ignore
+  }
+
+  // ── Inventory value ──────────────────────────────────────────
+  let inventoryValue = 0;
+  let lowStockItems: Array<{ id: string; name: string; sku: string | null; quantity: number }> = [];
+
+  try {
+    const { data: inventoryData } = await admin
+      .from("inventory")
+      .select("id, name, sku, quantity, retail_price, low_stock_threshold, track_quantity, status")
+      .eq("tenant_id", tenantId)
+      .eq("status", "active")
+      .is("deleted_at", null);
+
+    inventoryValue = (inventoryData ?? []).reduce(
+      (s, i) => s + (i.retail_price || 0) * Math.max(i.quantity || 0, 0),
+      0
+    );
+    lowStockItems = (inventoryData ?? [])
+      .filter((i) => i.track_quantity && i.quantity <= (i.low_stock_threshold ?? 1))
+      .sort((a, b) => a.quantity - b.quantity)
+      .slice(0, 20)
+      .map((i) => ({ id: i.id, name: i.name, sku: i.sku, quantity: i.quantity }));
+  } catch {
+    // ignore
+  }
+
+  // ── Top customers by invoice value ───────────────────────────
+  type TopCustomer = { id: string; full_name: string; email: string | null; total: number; count: number };
+  let topCustomers: TopCustomer[] = [];
+
+  try {
+    const { data: invoiceData } = await admin
+      .from("invoices")
+      .select("customer_id, total, customers(id, full_name, email)")
+      .eq("tenant_id", tenantId)
+      .eq("status", "paid")
+      .is("deleted_at", null)
+      .not("customer_id", "is", null);
+
+    const map = new Map<string, TopCustomer>();
+    for (const inv of invoiceData ?? []) {
+      if (!inv.customer_id) continue;
+      const cust = Array.isArray(inv.customers) ? inv.customers[0] : inv.customers;
+      if (!cust) continue;
+      const existing = map.get(inv.customer_id);
+      if (existing) {
+        existing.total += inv.total || 0;
+        existing.count += 1;
+      } else {
+        map.set(inv.customer_id, {
+          id: inv.customer_id,
+          full_name: (cust as { full_name: string }).full_name,
+          email: (cust as { email?: string | null }).email ?? null,
+          total: inv.total || 0,
+          count: 1,
+        });
+      }
+    }
+    topCustomers = Array.from(map.values())
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8);
+  } catch {
+    // ignore
+  }
+
+  // ── Monthly revenue chart (last 6 months) ───────────────────
+  type MonthData = { label: string; revenue: number };
+  const monthlyData: MonthData[] = [];
+
+  try {
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = d.toISOString();
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      const { data } = await admin
+        .from("invoices")
+        .select("total")
+        .eq("tenant_id", tenantId)
+        .eq("status", "paid")
+        .gte("created_at", start)
+        .lte("created_at", end)
+        .is("deleted_at", null);
+      monthlyData.push({
+        label: d.toLocaleString("en-AU", { month: "short" }),
+        revenue: (data ?? []).reduce((s, r) => s + (r.total || 0), 0),
+      });
+    }
+  } catch {
+    // ignore
+  }
+
+  // ── Recent sales ─────────────────────────────────────────────
   let recentSales: Array<{
     id: string;
     sale_number: string;
@@ -41,103 +204,29 @@ export default async function ReportsPage() {
     status: string;
     created_at: string;
   }> = [];
+  let salesCount = 0;
 
   try {
-    const { data: thisMonthSales } = await supabase
-      .from("sales")
-      .select("total")
-      .eq("tenant_id", tenantId)
-      .gte("created_at", monthStart);
-
-    revenueThisMonth = (thisMonthSales ?? []).reduce((s, r) => s + (r.total || 0), 0);
-    salesCount = (thisMonthSales ?? []).length;
-
-    const { data: lastMonthSales } = await supabase
-      .from("sales")
-      .select("total")
-      .eq("tenant_id", tenantId)
-      .gte("created_at", prevMonthStart)
-      .lte("created_at", prevMonthEnd);
-
-    revenueLastMonth = (lastMonthSales ?? []).reduce((s, r) => s + (r.total || 0), 0);
-
-    const { data: recentSalesData } = await supabase
+    const { data: salesData } = await admin
       .from("sales")
       .select("id, sale_number, customer_name, total, status, created_at")
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false })
       .limit(10);
+    recentSales = salesData ?? [];
 
-    recentSales = recentSalesData ?? [];
+    const { count } = await admin
+      .from("sales")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .gte("created_at", monthStart);
+    salesCount = count ?? 0;
   } catch {
     // sales table may not exist yet
   }
 
-  // ── Active repairs ───────────────────────────────────────────
-  let activeRepairsCount = 0;
-  try {
-    const { count } = await supabase
-      .from("repairs")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .not("stage", "in", '("collected","cancelled")');
-    activeRepairsCount = count ?? 0;
-  } catch {
-    // ignore
-  }
-
-  // ── Active bespoke jobs ──────────────────────────────────────
-  let activeBespokeCount = 0;
-  try {
-    const { count } = await supabase
-      .from("bespoke_jobs")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .not("stage", "in", '("completed","cancelled")');
-    activeBespokeCount = count ?? 0;
-  } catch {
-    // ignore
-  }
-
-  // ── New customers this month ─────────────────────────────────
-  let newCustomersCount = 0;
-  try {
-    const { count } = await supabase
-      .from("customers")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .gte("created_at", monthStart);
-    newCustomersCount = count ?? 0;
-  } catch {
-    // ignore
-  }
-
-  // ── Low stock items ──────────────────────────────────────────
-  let lowStockItems: Array<{
-    id: string;
-    name: string;
-    sku: string | null;
-    quantity: number;
-  }> = [];
-
-  try {
-    const { data: inventoryData } = await supabase
-      .from("inventory")
-      .select("id, name, sku, quantity")
-      .eq("tenant_id", tenantId)
-      .eq("status", "active")
-      .lt("quantity", 3)
-      .order("quantity", { ascending: true })
-      .limit(20);
-
-    lowStockItems = inventoryData ?? [];
-  } catch {
-    // ignore
-  }
-
-  // ── Bar chart ────────────────────────────────────────────────
+  // ── Chart scaling ────────────────────────────────────────────
+  const maxMonthRevenue = Math.max(...monthlyData.map((m) => m.revenue), 1);
   const maxRevenue = Math.max(revenueThisMonth, revenueLastMonth, 1);
   const thisMonthWidth = Math.round((revenueThisMonth / maxRevenue) * 100);
   const lastMonthWidth = Math.round((revenueLastMonth / maxRevenue) * 100);
@@ -146,6 +235,11 @@ export default async function ReportsPage() {
     {
       label: "Revenue This Month",
       value: fmtCurrency(revenueThisMonth),
+      sub: revenueLastMonth > 0
+        ? `${revenueThisMonth >= revenueLastMonth ? "+" : ""}${Math.round(((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100)}% vs last month`
+        : undefined,
+      href: undefined as string | undefined,
+      urgent: false,
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -153,8 +247,35 @@ export default async function ReportsPage() {
       ),
     },
     {
+      label: "Outstanding Invoices",
+      value: fmtCurrency(outstandingAmount),
+      sub: `${outstandingCount} invoice${outstandingCount !== 1 ? "s" : ""}`,
+      href: "/invoices" as string | undefined,
+      urgent: outstandingCount > 0,
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+    },
+    {
+      label: "Inventory Value",
+      value: fmtCurrency(inventoryValue),
+      sub: undefined as string | undefined,
+      href: "/inventory" as string | undefined,
+      urgent: false,
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      ),
+    },
+    {
       label: "Sales This Month",
       value: String(salesCount),
+      sub: undefined as string | undefined,
+      href: "/sales" as string | undefined,
+      urgent: false,
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -164,7 +285,9 @@ export default async function ReportsPage() {
     {
       label: "Active Repairs",
       value: String(activeRepairsCount),
-      href: "/repairs",
+      sub: undefined as string | undefined,
+      href: "/repairs" as string | undefined,
+      urgent: false,
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -175,7 +298,9 @@ export default async function ReportsPage() {
     {
       label: "Active Bespoke Jobs",
       value: String(activeBespokeCount),
-      href: "/bespoke",
+      sub: undefined as string | undefined,
+      href: "/bespoke" as string | undefined,
+      urgent: false,
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -185,7 +310,9 @@ export default async function ReportsPage() {
     {
       label: "New Customers",
       value: String(newCustomersCount),
-      href: "/customers",
+      sub: "this month" as string | undefined,
+      href: "/customers" as string | undefined,
+      urgent: false,
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -195,7 +322,8 @@ export default async function ReportsPage() {
     {
       label: "Low Stock Items",
       value: String(lowStockItems.length),
-      href: "/inventory",
+      sub: lowStockItems.length > 0 ? "need restocking" : "all healthy" as string | undefined,
+      href: "/inventory" as string | undefined,
       urgent: lowStockItems.length > 0,
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,53 +346,85 @@ export default async function ReportsPage() {
     <div className="max-w-5xl mx-auto space-y-8">
       {/* Header */}
       <div>
-        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Reports & Analytics</h1>
+        <h1 className="font-semibold text-2xl text-stone-900">Reports & Analytics</h1>
         <p className="text-stone-500 mt-1 text-sm">
           Overview for {now.toLocaleString("en-AU", { month: "long", year: "numeric" })}
         </p>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {STAT_CARDS.map((card) => {
-          const CardWrapper = card.href ? Link : "div";
-          return (
-            <CardWrapper
-              key={card.label}
-              href={(card as { href?: string }).href ?? "#"}
-              className={`bg-white rounded-xl border border-stone-200 p-5 shadow-sm ${
-                card.href ? "hover:border-[#8B7355]/40 hover:shadow-sm transition-all" : ""
-              }`}
-            >
+          const inner = (
+            <>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">
                   {card.label}
                 </span>
                 <div
                   className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    (card as { urgent?: boolean }).urgent
-                      ? "bg-red-50 text-red-500"
-                      : "bg-stone-100 text-[#8B7355]"
+                    card.urgent ? "bg-red-50 text-red-500" : "bg-stone-100 text-[#8B7355]"
                   }`}
                 >
                   {card.icon}
                 </div>
               </div>
-              <p
-                className={`font-semibold text-2xl font-semibold ${
-                  (card as { urgent?: boolean }).urgent ? "text-red-500" : "text-stone-900"
-                }`}
-              >
+              <p className={`font-semibold text-2xl ${card.urgent ? "text-red-500" : "text-stone-900"}`}>
                 {card.value}
               </p>
-            </CardWrapper>
+              {card.sub && (
+                <p className="text-xs text-stone-400 mt-1">{card.sub}</p>
+              )}
+            </>
+          );
+          const cls = `bg-white rounded-xl border border-stone-200 p-5 shadow-sm ${
+            card.href ? "hover:border-[#8B7355]/40 transition-all cursor-pointer" : ""
+          }`;
+          if (card.href) {
+            return (
+              <Link key={card.label} href={card.href} className={cls}>
+                {inner}
+              </Link>
+            );
+          }
+          return (
+            <div key={card.label} className={cls}>
+              {inner}
+            </div>
           );
         })}
       </div>
 
-      {/* Revenue bar chart */}
+      {/* Monthly revenue chart (6 months) */}
       <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
-        <h2 className="font-semibold text-lg font-semibold text-stone-900 mb-5">Revenue Comparison</h2>
+        <h2 className="font-semibold text-lg text-stone-900 mb-5">Revenue — Last 6 Months</h2>
+        <div className="space-y-3">
+          {monthlyData.map((m) => {
+            const pct = Math.round((m.revenue / maxMonthRevenue) * 100);
+            const isCurrent = m.label === now.toLocaleString("en-AU", { month: "short" });
+            return (
+              <div key={m.label} className="flex items-center gap-4">
+                <span className={`text-xs w-8 text-right flex-shrink-0 ${isCurrent ? "text-stone-900 font-semibold" : "text-stone-500"}`}>
+                  {m.label}
+                </span>
+                <div className="flex-1 bg-stone-100 rounded-full h-5 overflow-hidden">
+                  <div
+                    className={`h-5 rounded-full transition-all duration-500 ${isCurrent ? "bg-[#8B7355]" : "bg-stone-300"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className={`text-xs w-20 text-right flex-shrink-0 font-medium ${isCurrent ? "text-stone-900" : "text-stone-500"}`}>
+                  {fmtCurrency(m.revenue)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Revenue comparison (this vs last month) */}
+      <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+        <h2 className="font-semibold text-lg text-stone-900 mb-5">Month-over-Month Revenue</h2>
         <div className="space-y-4">
           <div>
             <div className="flex items-center justify-between text-sm mb-1.5">
@@ -283,11 +443,7 @@ export default async function ReportsPage() {
           <div>
             <div className="flex items-center justify-between text-sm mb-1.5">
               <span className="text-stone-500">
-                Last month (
-                {new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleString("en-AU", {
-                  month: "long",
-                })}
-                )
+                Last month ({new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleString("en-AU", { month: "long" })})
               </span>
               <span className="font-semibold text-stone-900">{fmtCurrency(revenueLastMonth)}</span>
             </div>
@@ -302,6 +458,38 @@ export default async function ReportsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top customers */}
+        <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-stone-900">Top Customers by Revenue</h2>
+            <Link href="/customers" className="text-xs text-[#8B7355] font-medium hover:underline">
+              View all →
+            </Link>
+          </div>
+          {topCustomers.length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-stone-400">No paid invoices yet</div>
+          ) : (
+            <div className="divide-y divide-stone-100">
+              {topCustomers.map((c, i) => (
+                <Link
+                  key={c.id}
+                  href={`/customers/${c.id}`}
+                  className="flex items-center justify-between px-5 py-3 hover:bg-stone-50/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-stone-400 w-4">{i + 1}</span>
+                    <div>
+                      <p className="text-sm font-medium text-stone-900">{c.full_name}</p>
+                      <p className="text-xs text-stone-400">{c.count} invoice{c.count !== 1 ? "s" : ""}</p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-stone-900">{fmtCurrency(c.total)}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Low stock */}
         <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
@@ -315,7 +503,7 @@ export default async function ReportsPage() {
               All stock levels are healthy
             </div>
           ) : (
-            <div className="divide-y divide-platinum">
+            <div className="divide-y divide-stone-100">
               {lowStockItems.map((item) => (
                 <div key={item.id} className="px-5 py-3 flex items-center justify-between">
                   <div>
@@ -338,52 +526,52 @@ export default async function ReportsPage() {
             </div>
           )}
         </div>
+      </div>
 
-        {/* Recent sales */}
-        <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
-          <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-stone-900">Recent Sales</h2>
-            <Link href="/sales" className="text-xs text-[#8B7355] font-medium hover:underline">
-              View all →
-            </Link>
-          </div>
-          {recentSales.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-stone-400">No sales yet</div>
-          ) : (
-            <div className="divide-y divide-platinum">
-              {recentSales.map((sale) => (
-                <Link
-                  key={sale.id}
-                  href={`/sales/${sale.id}`}
-                  className="flex items-center justify-between px-5 py-3 hover:bg-stone-50/50 transition-colors"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-stone-900 font-mono">{sale.sale_number}</p>
-                    <p className="text-xs text-stone-400">
-                      {sale.customer_name || "Walk-in"} ·{" "}
-                      {new Date(sale.created_at).toLocaleDateString("en-AU", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
-                        STATUS_COLOURS[sale.status] || "bg-stone-900/10 text-stone-500"
-                      }`}
-                    >
-                      {sale.status}
-                    </span>
-                    <span className="text-sm font-semibold text-stone-900">
-                      {fmtCurrency(sale.total)}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+      {/* Recent sales */}
+      <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-stone-900">Recent Sales</h2>
+          <Link href="/sales" className="text-xs text-[#8B7355] font-medium hover:underline">
+            View all →
+          </Link>
         </div>
+        {recentSales.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-stone-400">No sales yet</div>
+        ) : (
+          <div className="divide-y divide-stone-100">
+            {recentSales.map((sale) => (
+              <Link
+                key={sale.id}
+                href={`/sales/${sale.id}`}
+                className="flex items-center justify-between px-5 py-3 hover:bg-stone-50/50 transition-colors"
+              >
+                <div>
+                  <p className="text-sm font-medium text-stone-900 font-mono">{sale.sale_number}</p>
+                  <p className="text-xs text-stone-400">
+                    {sale.customer_name || "Walk-in"} ·{" "}
+                    {new Date(sale.created_at).toLocaleDateString("en-AU", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
+                      STATUS_COLOURS[sale.status] || "bg-stone-900/10 text-stone-500"
+                    }`}
+                  >
+                    {sale.status}
+                  </span>
+                  <span className="text-sm font-semibold text-stone-900">
+                    {fmtCurrency(sale.total)}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
