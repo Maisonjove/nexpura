@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,6 +19,8 @@
     --muted: 60 4.8% 95.9%;
     --muted-foreground: 25 5.3% 44.7%;
     --accent: #8B7355;
+    --accent-hover: #7A6347;
+    --sidebar-bg: #1A1A1A;
     --accent-foreground: 60 9.1% 97.8%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 60 9.1% 97.8%;
@@ -24,5 +28,10 @@
     --input: 20 5.9% 90%;
     --ring: 20 14.3% 4.1%;
     --radius: 0.75rem;
+  }
+
+  body {
+    font-family: var(--font-sans), Inter, sans-serif;
+    background-color: #FAFAF9;
   }
 }

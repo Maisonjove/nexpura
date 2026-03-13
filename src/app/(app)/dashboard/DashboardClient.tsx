@@ -1,11 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Plus, UserPlus, Wrench, Gem as GemIcon, ArrowRight } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -116,204 +111,166 @@ export default function DashboardClient({
   overdueRepairsCount,
   recentActivity,
 }: DashboardClientProps) {
-  const showSampleRevenue = salesThisMonthRevenue === 0 && salesThisMonthCount === 0;
-
-  // KPIs
-  const kpis = [
-    { label: "Sales This Month", value: showSampleRevenue ? "$31,650" : fmtCurrency(salesThisMonthRevenue), subtext: showSampleRevenue ? "12 sales" : `${salesThisMonthCount} sales` },
-    { label: "Active Repairs", value: activeRepairsCount > 0 ? String(activeRepairsCount) : "12", subtext: overdueRepairsCount > 0 ? `${overdueRepairsCount} overdue` : "2 ready" },
-    { label: "Bespoke Jobs", value: activeJobsCount > 0 ? String(activeJobsCount) : "8", subtext: "1 ready today" },
-    { label: "Outstanding Invoices", value: totalOutstanding > 0 ? fmtCurrency(totalOutstanding) : "$8,400", subtext: overdueInvoiceCount > 0 ? `${overdueInvoiceCount} overdue` : "3 overdue" },
-  ];
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "In Workshop": return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-none">In Workshop</Badge>;
-      case "Ready for Pickup": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-none">Ready</Badge>;
-      case "Awaiting Approval": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border-none">Awaiting</Badge>;
-      case "Overdue": return <Badge className="bg-red-50 text-red-700 hover:bg-red-50 border-none">Overdue</Badge>;
-      default: return <Badge variant="outline" className="text-stone-600 border-stone-200">{status}</Badge>;
-    }
-  };
-
-  const today = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
-
   return (
-    <div className="space-y-6">
-      {/* GREETING SECTION */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+    <div>
+      {/* Greeting */}
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '26px', fontWeight: 600, color: '#1C1917', letterSpacing: '-0.02em', margin: 0 }}>
           Good morning, {firstName}
         </h1>
-        <p className="text-sm text-stone-400 mt-1">
-          {tenantName || 'Your Store'} · {today}
+        <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '4px' }}>
+          {tenantName || 'Your Store'} · {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
-        
-        <div className="mt-4 border border-stone-200 rounded-lg bg-white divide-x divide-stone-200 inline-flex shadow-sm">
-          <Link href="/sales/new" className="px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 flex items-center gap-1.5 font-medium transition-colors">
-            <Plus className="w-4 h-4 text-stone-400" /> New Sale
-          </Link>
-          <Link href="/customers/new" className="px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 flex items-center gap-1.5 font-medium transition-colors">
-            <UserPlus className="w-4 h-4 text-stone-400" /> New Customer
-          </Link>
-          <Link href="/repairs/new" className="px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 flex items-center gap-1.5 font-medium transition-colors">
-            <Wrench className="w-4 h-4 text-stone-400" /> New Repair
-          </Link>
-          <Link href="/bespoke/new" className="px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 flex items-center gap-1.5 font-medium transition-colors">
-            <GemIcon className="w-4 h-4 text-stone-400" /> New Job
-          </Link>
+        {/* Quick actions */}
+        <div style={{ display: 'inline-flex', marginTop: '16px', border: '1px solid #E7E5E4', borderRadius: '10px', overflow: 'hidden', backgroundColor: 'white' }}>
+          {[
+            { label: 'New Sale', href: '/sales/new' },
+            { label: 'New Customer', href: '/customers/new' },
+            { label: 'New Repair', href: '/repairs/new' },
+            { label: 'New Job', href: '/bespoke/new' },
+          ].map((action, i) => (
+            <a key={action.label} href={action.href} style={{
+              padding: '8px 16px', fontSize: '13px', fontWeight: 500, color: '#44403C',
+              textDecoration: 'none', borderRight: i < 3 ? '1px solid #E7E5E4' : 'none',
+              display: 'flex', alignItems: 'center',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FAFAF9')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              {action.label}
+            </a>
+          ))}
         </div>
       </div>
 
-      {/* KPI STRIP */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {kpis.map((kpi, i) => (
-          <Card key={i} className="p-6 rounded-xl border-stone-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-medium uppercase tracking-widest text-stone-500">{kpi.label}</span>
-            </div>
-            <p className="text-3xl font-semibold text-stone-900 mt-2">{kpi.value}</p>
-            <p className="text-xs text-stone-400 mt-1">{kpi.subtext}</p>
-          </Card>
+      {/* KPI Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        {[
+          { label: 'Sales This Month', value: fmtCurrency(salesThisMonthRevenue), sub: `${salesThisMonthCount} sales`, color: '#059669' },
+          { label: 'Active Repairs', value: String(activeRepairsCount), sub: `${overdueRepairsCount} overdue`, color: '#2563EB' },
+          { label: 'Bespoke Jobs', value: String(activeJobsCount), sub: 'in production', color: '#7C3AED' },
+          { label: 'Outstanding', value: fmtCurrency(totalOutstanding), sub: `${overdueInvoiceCount} overdue`, color: '#DC2626' },
+        ].map((kpi) => (
+          <div key={kpi.label} style={{
+            backgroundColor: 'white', borderRadius: '14px',
+            border: '1px solid #E7E5E4', padding: '24px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}>
+            <p style={{ fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>{kpi.label}</p>
+            <p style={{ fontSize: '30px', fontWeight: 700, color: '#1C1917', margin: '10px 0 6px', letterSpacing: '-0.02em' }}>{kpi.value}</p>
+            <p style={{ fontSize: '12px', color: kpi.sub.includes('overdue') || kpi.sub.includes('Overdue') ? '#DC2626' : '#A8A29E', margin: 0 }}>{kpi.sub}</p>
+          </div>
         ))}
       </div>
 
-      {/* OPERATIONS SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT (col-span-2) - Active Repairs */}
-        <Card className="col-span-1 lg:col-span-2 p-0 border-stone-200 shadow-sm rounded-xl overflow-hidden">
-          <div className="p-6 border-b border-stone-100 flex items-center justify-between bg-white">
-            <h2 className="text-sm font-semibold text-stone-800">Active Repairs</h2>
-            <Link href="/repairs" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">View all</Link>
+      {/* Operations Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '20px' }}>
+        {/* Repairs Card */}
+        <div style={{ backgroundColor: 'white', borderRadius: '14px', border: '1px solid #E7E5E4', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F5F5F4' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#1C1917' }}>Active Repairs</span>
+            <a href="/repairs" style={{ fontSize: '12px', color: '#A8A29E', textDecoration: 'none' }}>View all →</a>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Customer</TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Item</TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Status</TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Due</TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Tech</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {SAMPLE_REPAIRS.map((r) => (
-                <TableRow key={r.id} className="hover:bg-stone-50">
-                  <TableCell className="text-sm font-medium text-stone-900">{r.customer}</TableCell>
-                  <TableCell className="text-sm text-stone-700">{r.item}</TableCell>
-                  <TableCell>{getStatusBadge(r.status)}</TableCell>
-                  <TableCell className={`text-sm ${r.status === 'Overdue' ? 'text-red-600 font-medium' : 'text-stone-700'}`}>
-                    {r.due}
-                  </TableCell>
-                  <TableCell className="text-sm text-stone-700">{r.assigned}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #F5F5F4' }}>
+                {['Customer', 'Item', 'Status', 'Due'].map(h => (
+                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '10px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {SAMPLE_REPAIRS.map((r) => {
+                const statusColors: Record<string, { bg: string; color: string }> = {
+                  'In Workshop': { bg: '#EFF6FF', color: '#1D4ED8' },
+                  'Ready for Pickup': { bg: '#F0FDF4', color: '#15803D' },
+                  'Awaiting Approval': { bg: '#FFFBEB', color: '#B45309' },
+                  'Overdue': { bg: '#FEF2F2', color: '#B91C1C' },
+                };
+                const sc = statusColors[r.status] || { bg: '#F5F5F4', color: '#57534E' };
+                return (
+                  <tr key={r.id} style={{ borderBottom: '1px solid #FAFAF9' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FAFAF9')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#1C1917', fontWeight: 500 }}>{r.customer}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#57534E' }}>{r.item}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ backgroundColor: sc.bg, color: sc.color, borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 600 }}>{r.status}</span>
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '12px', color: r.status === 'Overdue' ? '#DC2626' : '#78716C', fontWeight: r.status === 'Overdue' ? 600 : 400 }}>{r.due}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
-        {/* RIGHT (col-span-1 flex flex-col gap-4) */}
-        <div className="col-span-1 flex flex-col gap-6">
-          <Card className="p-6 border-stone-200 shadow-sm rounded-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-stone-800">Bespoke Jobs</h2>
-              <Link href="/bespoke" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">View all</Link>
+        {/* Right column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Bespoke jobs */}
+          <div style={{ backgroundColor: 'white', borderRadius: '14px', border: '1px solid #E7E5E4', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: '#1C1917' }}>Bespoke Jobs</span>
+              <a href="/bespoke" style={{ fontSize: '12px', color: '#A8A29E', textDecoration: 'none' }}>View all →</a>
             </div>
-            <div className="space-y-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {SAMPLE_BESPOKE.slice(0, 3).map((job) => (
-                <div key={job.id} className="flex items-center justify-between">
+                <div key={job.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <p className="text-sm font-medium text-stone-900">{job.item}</p>
-                    <p className="text-xs text-stone-500">{job.customer}</p>
+                    <p style={{ fontSize: '13px', fontWeight: 500, color: '#1C1917', margin: 0 }}>{job.item}</p>
+                    <p style={{ fontSize: '11px', color: '#A8A29E', margin: '2px 0 0' }}>{job.customer}</p>
                   </div>
-                  <Badge variant="outline" className="text-[10px] text-stone-600 bg-stone-50 border-stone-200">{job.stage}</Badge>
+                  <span style={{ backgroundColor: '#F5F5F4', color: '#57534E', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 500 }}>{job.stage}</span>
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
 
-          <Card className="p-6 border-stone-200 shadow-sm rounded-xl flex-1">
-            <h2 className="text-sm font-semibold text-stone-800 mb-4">Alerts</h2>
-            <div className="space-y-3">
+          {/* Alerts */}
+          <div style={{ backgroundColor: 'white', borderRadius: '14px', border: '1px solid #E7E5E4', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '20px' }}>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: '#1C1917', margin: '0 0 14px' }}>Alerts</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {ALERTS.map((alert, i) => (
-                <div key={i} className={`border-l-2 pl-3 py-1 ${alert.urgency === 'red' ? 'border-red-400' : 'border-amber-400'}`}>
-                  <Link href={alert.href} className="text-xs text-stone-700 hover:underline">
-                    {alert.text}
-                  </Link>
-                </div>
+                <a key={i} href={alert.href} style={{
+                  display: 'block', padding: '8px 10px 8px 14px',
+                  borderLeft: `3px solid ${alert.urgency === 'red' ? '#EF4444' : alert.urgency === 'orange' ? '#F97316' : '#F59E0B'}`,
+                  backgroundColor: '#FAFAF9', borderRadius: '0 8px 8px 0',
+                  fontSize: '12px', color: '#44403C', textDecoration: 'none',
+                }}>{alert.text}</a>
               ))}
             </div>
-          </Card>
+          </div>
         </div>
       </div>
 
-      {/* BOTTOM */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <Card className="p-0 border-stone-200 shadow-sm rounded-xl overflow-hidden">
-          <div className="p-6 border-b border-stone-100 bg-white">
-            <h2 className="text-sm font-semibold text-stone-800">Best Sellers</h2>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Item</TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Category</TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Sold</TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-right">Revenue</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {BEST_SELLERS.map((item, i) => (
-                <TableRow key={i} className="hover:bg-stone-50">
-                  <TableCell className="text-sm font-medium text-stone-900">{item.name}</TableCell>
-                  <TableCell className="text-sm text-stone-700">{item.category}</TableCell>
-                  <TableCell className="text-sm text-stone-700">{item.sold}</TableCell>
-                  <TableCell className="text-sm font-medium text-stone-900 text-right">{item.revenue}</TableCell>
-                </TableRow>
+      {/* Best Sellers */}
+      <div style={{ backgroundColor: 'white', borderRadius: '14px', border: '1px solid #E7E5E4', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #F5F5F4' }}>
+          <span style={{ fontSize: '14px', fontWeight: 600, color: '#1C1917' }}>Best Sellers This Month</span>
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid #F5F5F4' }}>
+              {['Item', 'Category', 'Units Sold', 'Revenue'].map(h => (
+                <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: '10px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
               ))}
-            </TableBody>
-          </Table>
-        </Card>
-
-        <Card className="p-6 border-stone-200 shadow-sm rounded-xl">
-          <h2 className="text-sm font-semibold text-stone-800 mb-4">Recent Activity</h2>
-          <div className="space-y-4">
-            {recentActivity.length > 0 ? (
-              recentActivity.map((item) => (
-                <div key={item.id} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm flex-shrink-0">
-                    {ACTIVITY_ICONS[item.type] || "📌"}
-                  </div>
-                  <div>
-                    <p className="text-sm text-stone-700">
-                      <span className="font-medium text-stone-900">{item.title}</span> {item.customerName && `— ${item.customerName}`}
-                    </p>
-                    <p className="text-xs text-stone-400 mt-0.5">{timeAgo(item.updatedAt)}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              [
-                { icon: "🔧", text: "Ring resize completed", customer: "Sarah Khoury", time: "12 mins ago" },
-                { icon: "💎", text: "New bespoke job", customer: "David M.", time: "1h ago" },
-                { icon: "💰", text: "Invoice #INV-0089 paid", customer: "", time: "2h ago" },
-                { icon: "📦", text: "5 new items received", customer: "", time: "3h ago" },
-              ].map((a, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm flex-shrink-0">
-                    {a.icon}
-                  </div>
-                  <div>
-                    <p className="text-sm text-stone-700">
-                      <span className="font-medium text-stone-900">{a.text}</span> {a.customer && `— ${a.customer}`}
-                    </p>
-                    <p className="text-xs text-stone-400 mt-0.5">{a.time}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
+            </tr>
+          </thead>
+          <tbody>
+            {BEST_SELLERS.map((item, i) => (
+              <tr key={i} style={{ borderBottom: i < BEST_SELLERS.length - 1 ? '1px solid #FAFAF9' : 'none' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FAFAF9')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <td style={{ padding: '13px 24px', fontSize: '13px', fontWeight: 500, color: '#1C1917' }}>{item.name}</td>
+                <td style={{ padding: '13px 24px', fontSize: '13px', color: '#78716C' }}>{item.category}</td>
+                <td style={{ padding: '13px 24px', fontSize: '13px', color: '#78716C' }}>{item.sold}</td>
+                <td style={{ padding: '13px 24px', fontSize: '13px', fontWeight: 600, color: '#1C1917' }}>{item.revenue}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
