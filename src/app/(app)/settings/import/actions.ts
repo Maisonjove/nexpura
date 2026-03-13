@@ -31,9 +31,8 @@ export interface CustomerRow {
 export interface InventoryRow {
   name: string;
   sku?: string;
-  category?: string;
-  metal?: string;
-  stone?: string;
+  metal_type?: string;
+  stone_type?: string;
   retail_price?: string | number;
   quantity?: string | number;
   description?: string;
@@ -97,13 +96,12 @@ export async function importInventory(
         tenant_id: tenantId,
         name: r.name.trim(),
         sku: r.sku?.trim() || null,
-        category: r.category?.trim() || null,
-        metal: r.metal?.trim() || null,
-        stone: r.stone?.trim() || null,
+        metal_type: r.metal_type?.trim() || null,
+        stone_type: r.stone_type?.trim() || null,
         description: r.description?.trim() || null,
-        retail_price: r.retail_price ? parseFloat(String(r.retail_price)) : null,
+        retail_price: r.retail_price ? parseFloat(String(r.retail_price)) : 0,
         quantity: r.quantity ? parseInt(String(r.quantity)) : 0,
-        status: "in_stock",
+        status: "active",
       }));
 
     if (records.length === 0) continue;

@@ -14,7 +14,7 @@ interface InventoryItem {
   id: string;
   name: string;
   sku: string | null;
-  selling_price: number | null;
+  retail_price: number | null;
   description: string | null;
 }
 
@@ -208,7 +208,7 @@ export default function InvoiceForm({
         id: uuid(),
         description: item.name + (item.description ? ` — ${item.description}` : ""),
         quantity: 1,
-        unit_price: item.selling_price || 0,
+        unit_price: item.retail_price || 0,
         discount_pct: 0,
         inventory_id: item.id,
       },
@@ -426,7 +426,7 @@ export default function InvoiceForm({
                   className="w-full text-left px-3 py-2 text-sm hover:bg-[#8B7355]/5 rounded-lg transition-colors flex items-center justify-between"
                 >
                   <span className="text-stone-900 font-medium">{item.name}</span>
-                  <span className="text-stone-500">{item.selling_price ? fmt(item.selling_price) : "—"}</span>
+                  <span className="text-stone-500">{item.retail_price ? fmt(item.retail_price) : "—"}</span>
                 </button>
               ))}
               {filteredInventory.length === 0 && (

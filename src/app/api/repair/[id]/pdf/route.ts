@@ -43,13 +43,13 @@ export async function GET(
   const customer = Array.isArray(repair.customers) ? repair.customers[0] : repair.customers;
 
   const ticketData = {
-    ticketNumber: repair.ticket_number ?? repair.id,
+    ticketNumber: repair.repair_number ?? repair.id,
     tenantName: tenant?.name ?? "Jewellery Studio",
     tenantPhone: tenant?.phone,
     tenantEmail: tenant?.email,
-    customerName: customer?.full_name ?? repair.customer_name,
+    customerName: customer?.full_name,
     customerPhone: customer?.phone,
-    customerEmail: customer?.email ?? repair.customer_email,
+    customerEmail: customer?.email,
     itemType: repair.item_type,
     itemDescription: repair.item_description,
     metalType: repair.metal_type,
@@ -58,11 +58,11 @@ export async function GET(
     repairType: repair.repair_type,
     workDescription: repair.work_description,
     priority: repair.priority,
-    status: repair.status,
+    status: repair.stage,
     quotedPrice: repair.quoted_price,
     finalPrice: repair.final_price,
     dueDate: repair.due_date,
-    technician: repair.technician,
+    technician: repair.assigned_to,
     clientNotes: repair.client_notes,
     createdAt: repair.created_at,
   };

@@ -43,8 +43,8 @@ export async function GET(
   const customer = Array.isArray(passport.customers) ? passport.customers[0] : passport.customers;
 
   const passportData = {
-    passportNumber: passport.passport_number ?? passport.id,
-    itemName: passport.item_name,
+    passportNumber: passport.passport_uid ?? passport.id,
+    itemName: passport.title,
     description: passport.description,
     tenantName: tenant?.name ?? "Jewellery Studio",
     tenantPhone: tenant?.phone,
@@ -52,10 +52,10 @@ export async function GET(
     customerName: customer?.full_name,
     purchaseDate: passport.purchase_date,
     purchasePrice: passport.purchase_price,
-    metal: passport.metal,
-    stone: passport.stone,
-    carat: passport.carat,
-    weightGrams: passport.weight_grams,
+    metal: passport.metal_type,
+    stone: passport.stone_type,
+    carat: passport.stone_carat,
+    weightGrams: passport.metal_weight_grams,
     isPublic: passport.is_public,
     createdAt: passport.created_at,
   };

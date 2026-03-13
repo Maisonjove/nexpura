@@ -58,7 +58,7 @@ export default async function EditInvoicePage({
       .single(),
     supabase
       .from("inventory")
-      .select("id, name, sku, selling_price, description")
+      .select("id, name, sku, retail_price, description")
       .eq("tenant_id", tenantId ?? "")
       .eq("status", "active")
       .is("deleted_at", null)

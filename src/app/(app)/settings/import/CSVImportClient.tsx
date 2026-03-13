@@ -35,7 +35,7 @@ function parseCSV(text: string): Record<string, string>[] {
 }
 
 const CUSTOMER_HEADERS = ["full_name", "email", "phone", "mobile", "address", "notes"];
-const INVENTORY_HEADERS = ["name", "sku", "category", "metal", "stone", "retail_price", "quantity", "description"];
+const INVENTORY_HEADERS = ["name", "sku", "metal_type", "stone_type", "retail_price", "quantity", "description"];
 
 export default function CSVImportClient() {
   const [type, setType] = useState<ImportType>("customers");
@@ -76,9 +76,8 @@ export default function CSVImportClient() {
         const invRows: InventoryRow[] = rows.map((r) => ({
           name: r.name || "",
           sku: r.sku,
-          category: r.category,
-          metal: r.metal,
-          stone: r.stone,
+          metal_type: r.metal_type,
+          stone_type: r.stone_type,
           retail_price: r.retail_price,
           quantity: r.quantity,
           description: r.description,

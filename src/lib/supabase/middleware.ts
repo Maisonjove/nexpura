@@ -80,7 +80,13 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/invoices") ||
     pathname.startsWith("/passports") ||
     pathname.startsWith("/billing") ||
-    pathname.startsWith("/settings");
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/sales") ||
+    pathname.startsWith("/suppliers") ||
+    pathname.startsWith("/expenses") ||
+    pathname.startsWith("/communications") ||
+    pathname.startsWith("/reports") ||
+    pathname.startsWith("/ai");
 
   if (isProtectedRoute) {
     // Must be authenticated
