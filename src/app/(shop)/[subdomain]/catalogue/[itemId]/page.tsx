@@ -47,11 +47,11 @@ export default async function ItemDetailPage({ params }: Props) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={config.logo_url} alt="Logo" className="h-8 object-contain" />
             )}
-            <Link href={`/shop/${subdomain}`} className="text-white font-semibold text-lg hover:opacity-80">
+            <Link href={`/${subdomain}`} className="text-white font-semibold text-lg hover:opacity-80">
               {config.business_name || subdomain}
             </Link>
           </div>
-          <Link href={`/shop/${subdomain}/catalogue`} className="text-white/70 hover:text-white text-sm">
+          <Link href={`/${subdomain}/catalogue`} className="text-white/70 hover:text-white text-sm">
             ← Back to Catalogue
           </Link>
         </div>
@@ -120,28 +120,28 @@ export default async function ItemDetailPage({ params }: Props) {
 
             {/* Specs */}
             <div className="grid grid-cols-2 gap-3">
-              {item.metal && (
+              {item.metal_type && (
                 <div className="bg-stone-50 rounded-xl p-3">
                   <p className="text-xs text-stone-400 uppercase tracking-wide">Metal</p>
-                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.metal}</p>
+                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.metal_type}</p>
                 </div>
               )}
-              {item.stone && (
+              {item.stone_type && (
                 <div className="bg-stone-50 rounded-xl p-3">
                   <p className="text-xs text-stone-400 uppercase tracking-wide">Stone</p>
-                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.stone}</p>
+                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.stone_type}</p>
                 </div>
               )}
-              {item.carat && (
+              {item.stone_carat && (
                 <div className="bg-stone-50 rounded-xl p-3">
                   <p className="text-xs text-stone-400 uppercase tracking-wide">Carat</p>
-                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.carat}ct</p>
+                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.stone_carat}ct</p>
                 </div>
               )}
-              {item.weight_grams && (
+              {item.metal_weight_grams && (
                 <div className="bg-stone-50 rounded-xl p-3">
                   <p className="text-xs text-stone-400 uppercase tracking-wide">Weight</p>
-                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.weight_grams}g</p>
+                  <p className="text-sm font-medium text-stone-900 mt-0.5">{item.metal_weight_grams}g</p>
                 </div>
               )}
             </div>
@@ -158,7 +158,7 @@ export default async function ItemDetailPage({ params }: Props) {
               )}
               {showEnquiry && (
                 <Link
-                  href={`/shop/${subdomain}/enquiry?item=${encodeURIComponent(item.name)}`}
+                  href={`/${subdomain}/enquiry?item=${encodeURIComponent(item.name)}`}
                   className={`py-3 rounded-xl font-semibold transition-colors text-center ${
                     showBuyButton
                       ? "flex-1 border-2 text-stone-700 hover:bg-stone-50"

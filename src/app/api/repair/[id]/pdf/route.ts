@@ -25,14 +25,14 @@ export async function GET(
 
   if (!userData?.tenant_id) return new NextResponse("Forbidden", { status: 403 });
 
-  // Select only real DB columns (from migration 013)
+  // Select only real DB columns (repair_number and stage are correct column names)
   const { data: repair, error } = await supabase
     .from("repairs")
     .select(
-      `id, ticket_number, customer_id, customer_name, customer_email,
+      `id, repair_number, customer_id, customer_name, customer_email,
        item_type, item_description, metal_type, brand, condition_notes,
        repair_type, work_description, work_required, technician,
-       priority, status, quoted_price, final_price, deposit_amount, deposit_paid,
+       priority, stage, quoted_price, final_price, deposit_amount, deposit_paid,
        due_date, completed_at, internal_notes, client_notes, notes, created_at,
        customers(full_name, email, phone, address)`
     )
@@ -51,7 +51,7 @@ export async function GET(
   const customerRaw = Array.isArray(repair.customers) ? repair.customers[0] : repair.customers;
 
   const ticketData = {
-    ticketNumber: repair.ticket_number ?? repair.id,
+    ticketNumber: repair.repair_number ?? repair.id,
     tenantName: tenant?.business_name || tenant?.name || "Jewellery Studio",
     tenantPhone: tenant?.phone,
     tenantEmail: tenant?.email,
@@ -66,7 +66,7 @@ export async function GET(
     repairType: repair.repair_type,
     workDescription: repair.work_description,
     priority: repair.priority,
-    status: repair.status,
+    status: repair.stage,
     quotedPrice: repair.quoted_price,
     finalPrice: repair.final_price,
     dueDate: repair.due_date,

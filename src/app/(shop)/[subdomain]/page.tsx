@@ -48,6 +48,7 @@ export default async function ShopHomePage({ params, searchParams }: Props) {
     .select("id, name, primary_image, metal_type, stone_type, retail_price, description")
     .eq("tenant_id", config.tenant_id)
     .eq("status", "active")
+    .eq("is_published", true)
     .gt("quantity", 0)
     .limit(8)
     .order("created_at", { ascending: false });

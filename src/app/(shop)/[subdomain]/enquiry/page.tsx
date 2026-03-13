@@ -36,11 +36,11 @@ export default async function EnquiryPage({ params, searchParams }: Props) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={config.logo_url} alt="Logo" className="h-8 object-contain" />
             )}
-            <Link href={`/shop/${subdomain}`} className="text-white font-semibold text-lg hover:opacity-80">
+            <Link href={`/${subdomain}`} className="text-white font-semibold text-lg hover:opacity-80">
               {config.business_name || subdomain}
             </Link>
           </div>
-          <Link href={`/shop/${subdomain}/catalogue`} className="text-white/70 hover:text-white text-sm">
+          <Link href={`/${subdomain}/catalogue`} className="text-white/70 hover:text-white text-sm">
             ← Catalogue
           </Link>
         </div>
