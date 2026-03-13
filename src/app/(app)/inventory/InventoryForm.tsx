@@ -37,6 +37,32 @@ interface InventoryItem {
   supplier_sku: string | null;
   is_featured: boolean;
   status: string;
+  // New advanced fields
+  certificate_number?: string | null;
+  grading_lab?: string | null;
+  grade?: string | null;
+  report_url?: string | null;
+  cert_image_url?: string | null;
+  secondary_stones?: SecondaryStone[] | null;
+  metal_form?: string | null;
+  stock_location?: string | null;
+  consignor_name?: string | null;
+  consignor_contact?: string | null;
+  consignment_start_date?: string | null;
+  consignment_end_date?: string | null;
+  consignment_commission_pct?: number | null;
+  supplier_invoice_ref?: string | null;
+}
+
+interface SecondaryStone {
+  stone_type: string;
+  shape: string;
+  carat_weight: string;
+  color: string;
+  clarity: string;
+  cut: string;
+  treatment: string;
+  count: string;
 }
 
 interface InventoryFormProps {
@@ -127,6 +153,37 @@ export default function InventoryForm({ categories: initialCategories, item, mod
     costPrice && retailPrice && parseFloat(retailPrice) > 0
       ? (((parseFloat(retailPrice) - parseFloat(costPrice)) / parseFloat(retailPrice)) * 100).toFixed(1)
       : null;
+
+  // Advanced fields
+  const [certNumber, setCertNumber] = useState(item?.certificate_number ?? "");
+  const [gradingLab, setGradingLab] = useState(item?.grading_lab ?? "");
+  const [grade, setGrade] = useState(item?.grade ?? "");
+  const [reportUrl, setReportUrl] = useState(item?.report_url ?? "");
+  const [stockLocation, setStockLocation] = useState(item?.stock_location ?? "display");
+  const [metalForm, setMetalForm] = useState(item?.metal_form ?? "");
+  const [consignorName, setConsignorName] = useState(item?.consignor_name ?? "");
+  const [consignorContact, setConsignorContact] = useState(item?.consignor_contact ?? "");
+  const [consignmentStart, setConsignmentStart] = useState(item?.consignment_start_date ?? "");
+  const [consignmentEnd, setConsignmentEnd] = useState(item?.consignment_end_date ?? "");
+  const [consignmentCommPct, setConsignmentCommPct] = useState(item?.consignment_commission_pct?.toString() ?? "");
+  const [supplierInvoiceRef, setSupplierInvoiceRef] = useState(item?.supplier_invoice_ref ?? "");
+  const [secondaryStones, setSecondaryStones] = useState<SecondaryStone[]>(item?.secondary_stones ?? []);
+  const [showCertSection, setShowCertSection] = useState(false);
+
+  function addSecondaryStone() {
+    setSecondaryStones((prev) => [
+      ...prev,
+      { stone_type: "", shape: "", carat_weight: "", color: "", clarity: "", cut: "", treatment: "", count: "1" },
+    ]);
+  }
+
+  function updateSecondaryStone(idx: number, field: keyof SecondaryStone, value: string) {
+    setSecondaryStones((prev) => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
+  }
+
+  function removeSecondaryStone(idx: number) {
+    setSecondaryStones((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   // Categories
   const [categories, setCategories] = useState(initialCategories);
@@ -505,6 +562,309 @@ export default function InventoryForm({ categories: initialCategories, item, mod
           </div>
         </div>
       </div>
+
+      {/* Stock Location */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
+        <SectionHeader title="Stock Location & Reference" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <FieldLabel htmlFor="stock_location">Stock Location</FieldLabel>
+            <Select
+              id="stock_location"
+              name="stock_location"
+              value={stockLocation}
+              onChange={(e) => setStockLocation(e.target.value)}
+            >
+              <option value="display">Display Cabinet</option>
+              <option value="safe">Safe</option>
+              <option value="workshop">Workshop</option>
+              <option value="warehouse">Warehouse</option>
+              <option value="consignment">On Consignment</option>
+            </Select>
+          </div>
+          <div>
+            <FieldLabel htmlFor="supplier_invoice_ref">Supplier Invoice Ref</FieldLabel>
+            <Input
+              id="supplier_invoice_ref"
+              name="supplier_invoice_ref"
+              value={supplierInvoiceRef}
+              onChange={(e) => setSupplierInvoiceRef(e.target.value)}
+              placeholder="e.g. INV-2024-001"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Certificate */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowCertSection(!showCertSection)}
+          className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-stone-50 transition-colors"
+        >
+          <span className="font-semibold text-stone-900">Certificate / Grading</span>
+          <span className="text-stone-400 text-sm">{showCertSection ? "▲" : "▼"}</span>
+        </button>
+        {showCertSection && (
+          <div className="px-6 pb-6 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <FieldLabel htmlFor="certificate_number">Certificate Number</FieldLabel>
+                <Input
+                  id="certificate_number"
+                  name="certificate_number"
+                  value={certNumber}
+                  onChange={(e) => setCertNumber(e.target.value)}
+                  placeholder="e.g. GIA 1234567890"
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="grading_lab">Grading Lab</FieldLabel>
+                <Select
+                  id="grading_lab"
+                  name="grading_lab"
+                  value={gradingLab}
+                  onChange={(e) => setGradingLab(e.target.value)}
+                >
+                  <option value="">Select…</option>
+                  <option value="GIA">GIA</option>
+                  <option value="IGI">IGI</option>
+                  <option value="AGS">AGS</option>
+                  <option value="HRD">HRD</option>
+                  <option value="Other">Other</option>
+                </Select>
+              </div>
+              <div>
+                <FieldLabel htmlFor="grade">Grade</FieldLabel>
+                <Input
+                  id="grade"
+                  name="grade"
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  placeholder="e.g. D/IF"
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="report_url">Report URL</FieldLabel>
+                <Input
+                  id="report_url"
+                  name="report_url"
+                  type="url"
+                  value={reportUrl}
+                  onChange={(e) => setReportUrl(e.target.value)}
+                  placeholder="https://…"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Secondary Stones */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
+        <div className="flex items-center justify-between mb-5">
+          <SectionHeader title="Secondary Stones" />
+          <button
+            type="button"
+            onClick={addSecondaryStone}
+            className="text-xs text-[#8B7355] font-medium hover:underline"
+          >
+            + Add Stone
+          </button>
+        </div>
+        {secondaryStones.length === 0 ? (
+          <p className="text-sm text-stone-400">No secondary stones added.</p>
+        ) : (
+          <div className="space-y-4">
+            {secondaryStones.map((stone, idx) => (
+              <div key={idx} className="border border-stone-200 rounded-xl p-4 relative">
+                <button
+                  type="button"
+                  onClick={() => removeSecondaryStone(idx)}
+                  className="absolute top-3 right-3 text-stone-300 hover:text-red-400 text-xs"
+                >
+                  ✕ Remove
+                </button>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <FieldLabel htmlFor={`ss_type_${idx}`}>Stone Type</FieldLabel>
+                    <Input
+                      id={`ss_type_${idx}`}
+                      value={stone.stone_type}
+                      onChange={(e) => updateSecondaryStone(idx, "stone_type", e.target.value)}
+                      placeholder="Diamond"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor={`ss_shape_${idx}`}>Shape</FieldLabel>
+                    <Input
+                      id={`ss_shape_${idx}`}
+                      value={stone.shape}
+                      onChange={(e) => updateSecondaryStone(idx, "shape", e.target.value)}
+                      placeholder="Round"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor={`ss_carat_${idx}`}>Carat Weight</FieldLabel>
+                    <Input
+                      id={`ss_carat_${idx}`}
+                      value={stone.carat_weight}
+                      onChange={(e) => updateSecondaryStone(idx, "carat_weight", e.target.value)}
+                      placeholder="0.50"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor={`ss_count_${idx}`}>Count</FieldLabel>
+                    <Input
+                      id={`ss_count_${idx}`}
+                      type="number"
+                      min="1"
+                      value={stone.count}
+                      onChange={(e) => updateSecondaryStone(idx, "count", e.target.value)}
+                      placeholder="1"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor={`ss_color_${idx}`}>Color</FieldLabel>
+                    <Input
+                      id={`ss_color_${idx}`}
+                      value={stone.color}
+                      onChange={(e) => updateSecondaryStone(idx, "color", e.target.value)}
+                      placeholder="G"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor={`ss_clarity_${idx}`}>Clarity</FieldLabel>
+                    <Input
+                      id={`ss_clarity_${idx}`}
+                      value={stone.clarity}
+                      onChange={(e) => updateSecondaryStone(idx, "clarity", e.target.value)}
+                      placeholder="VS1"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor={`ss_cut_${idx}`}>Cut</FieldLabel>
+                    <Input
+                      id={`ss_cut_${idx}`}
+                      value={stone.cut}
+                      onChange={(e) => updateSecondaryStone(idx, "cut", e.target.value)}
+                      placeholder="Excellent"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor={`ss_treatment_${idx}`}>Treatment</FieldLabel>
+                    <Input
+                      id={`ss_treatment_${idx}`}
+                      value={stone.treatment}
+                      onChange={(e) => updateSecondaryStone(idx, "treatment", e.target.value)}
+                      placeholder="None"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Hidden input for secondary_stones JSON */}
+        <input type="hidden" name="secondary_stones" value={JSON.stringify(secondaryStones)} />
+      </div>
+
+      {/* Metal Form (raw material) */}
+      {itemType === "raw_material" && (
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
+          <SectionHeader title="Metal Stock Details" />
+          <div>
+            <FieldLabel htmlFor="metal_form">Metal Form</FieldLabel>
+            <Select
+              id="metal_form"
+              name="metal_form"
+              value={metalForm}
+              onChange={(e) => setMetalForm(e.target.value)}
+            >
+              <option value="">Select…</option>
+              <option value="sheet">Sheet</option>
+              <option value="wire">Wire</option>
+              <option value="grain">Grain</option>
+              <option value="casting">Casting</option>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      {/* Consignment Details */}
+      {status === "consignment" && (
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
+          <SectionHeader title="Consignment Details" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <FieldLabel htmlFor="consignor_name">Consignor Name</FieldLabel>
+              <Input
+                id="consignor_name"
+                name="consignor_name"
+                value={consignorName}
+                onChange={(e) => setConsignorName(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="consignor_contact">Consignor Contact</FieldLabel>
+              <Input
+                id="consignor_contact"
+                name="consignor_contact"
+                value={consignorContact}
+                onChange={(e) => setConsignorContact(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="consignment_start_date">Start Date</FieldLabel>
+              <Input
+                id="consignment_start_date"
+                name="consignment_start_date"
+                type="date"
+                value={consignmentStart}
+                onChange={(e) => setConsignmentStart(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="consignment_end_date">End Date</FieldLabel>
+              <Input
+                id="consignment_end_date"
+                name="consignment_end_date"
+                type="date"
+                value={consignmentEnd}
+                onChange={(e) => setConsignmentEnd(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="consignment_commission_pct">Commission (%)</FieldLabel>
+              <Input
+                id="consignment_commission_pct"
+                name="consignment_commission_pct"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={consignmentCommPct}
+                onChange={(e) => setConsignmentCommPct(e.target.value)}
+                placeholder="15"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden inputs for cert fields */}
+      <input type="hidden" name="certificate_number" value={certNumber} />
+      <input type="hidden" name="grading_lab" value={gradingLab} />
+      <input type="hidden" name="grade" value={grade} />
+      <input type="hidden" name="report_url" value={reportUrl} />
+      <input type="hidden" name="stock_location" value={stockLocation} />
+      <input type="hidden" name="metal_form" value={metalForm} />
+      <input type="hidden" name="consignor_name" value={consignorName} />
+      <input type="hidden" name="consignor_contact" value={consignorContact} />
+      <input type="hidden" name="consignment_start_date" value={consignmentStart} />
+      <input type="hidden" name="consignment_end_date" value={consignmentEnd} />
+      <input type="hidden" name="consignment_commission_pct" value={consignmentCommPct} />
+      <input type="hidden" name="supplier_invoice_ref" value={supplierInvoiceRef} />
 
       {/* Actions */}
       <div className="flex items-center justify-between pb-8">

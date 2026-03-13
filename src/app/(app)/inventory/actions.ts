@@ -103,6 +103,18 @@ export async function createInventoryItem(formData: FormData) {
       is_featured: isFeatured,
       status,
       created_by: user?.id,
+      certificate_number: (formData.get("certificate_number") as string) || null,
+      grading_lab: (formData.get("grading_lab") as string) || null,
+      grade: (formData.get("grade") as string) || null,
+      report_url: (formData.get("report_url") as string) || null,
+      stock_location: (formData.get("stock_location") as string) || "display",
+      metal_form: (formData.get("metal_form") as string) || null,
+      consignor_name: (formData.get("consignor_name") as string) || null,
+      consignor_contact: (formData.get("consignor_contact") as string) || null,
+      consignment_start_date: (formData.get("consignment_start_date") as string) || null,
+      consignment_end_date: (formData.get("consignment_end_date") as string) || null,
+      consignment_commission_pct: formData.get("consignment_commission_pct") ? parseFloat(formData.get("consignment_commission_pct") as string) : null,
+      supplier_invoice_ref: (formData.get("supplier_invoice_ref") as string) || null,
     })
     .select("id")
     .single();
@@ -183,6 +195,13 @@ export async function updateInventoryItem(id: string, formData: FormData) {
   const isFeatured = formData.get("is_featured") === "true";
   const status = (formData.get("status") as string) || "active";
 
+  // Advanced fields
+  const secondaryStonesRaw = formData.get("secondary_stones") as string | null;
+  let secondaryStones = null;
+  try {
+    if (secondaryStonesRaw) secondaryStones = JSON.parse(secondaryStonesRaw);
+  } catch { /* ignore */ }
+
   const { error } = await supabase
     .from("inventory")
     .update({
@@ -211,6 +230,20 @@ export async function updateInventoryItem(id: string, formData: FormData) {
       supplier_sku: supplierSku || null,
       is_featured: isFeatured,
       status,
+      // Advanced fields
+      certificate_number: (formData.get("certificate_number") as string) || null,
+      grading_lab: (formData.get("grading_lab") as string) || null,
+      grade: (formData.get("grade") as string) || null,
+      report_url: (formData.get("report_url") as string) || null,
+      stock_location: (formData.get("stock_location") as string) || "display",
+      metal_form: (formData.get("metal_form") as string) || null,
+      consignor_name: (formData.get("consignor_name") as string) || null,
+      consignor_contact: (formData.get("consignor_contact") as string) || null,
+      consignment_start_date: (formData.get("consignment_start_date") as string) || null,
+      consignment_end_date: (formData.get("consignment_end_date") as string) || null,
+      consignment_commission_pct: formData.get("consignment_commission_pct") ? parseFloat(formData.get("consignment_commission_pct") as string) : null,
+      supplier_invoice_ref: (formData.get("supplier_invoice_ref") as string) || null,
+      secondary_stones: secondaryStones,
     })
     .eq("id", id)
     .eq("tenant_id", tenantId);
