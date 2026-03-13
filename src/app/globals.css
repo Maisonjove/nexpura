@@ -3,5 +3,8 @@
 @tailwind utilities;
 
 body {
-  @apply bg-soft-gray-light text-charcoal antialiased;
+  background-color: #F1F3F5;
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

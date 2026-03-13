@@ -17,8 +17,10 @@ export const StatusBadge = ({ status, type = 'default' }: { status: string, type
     const badgeClass = statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 text-gray-800';
 
     return (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+        <span className={\`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium \${badgeClass}\`}>
             {status}
         </span>
     )
 }
+
+export default StatusBadge;
