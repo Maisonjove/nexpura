@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import TagPill from "@/components/TagPill";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Search, Plus, ArrowRight } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,27 +41,10 @@ interface Props {
 // ─── Sample data ──────────────────────────────────────────────────────────────
 
 const SAMPLE_CUSTOMERS = [
-  { id: "c1", name: "Sarah Khoury", initials: "SK", tags: ["VIP", "Bridal"], phone: "+61 412 555 001", email: "sarah@email.com", lastPurchase: "8 Mar 2026", totalSpend: "$48,200", jobs: 4, color: "bg-[#E8F0EB] text-[#1a4731]" },
-  { id: "c2", name: "David Moufarrej", initials: "DM", tags: ["VIP"], phone: "+61 413 555 002", email: "david@email.com", lastPurchase: "5 Mar 2026", totalSpend: "$31,500", jobs: 2, color: "bg-blue-50 text-blue-700" },
-  { id: "c3", name: "Lina Haddad", initials: "LH", tags: ["Retail"], phone: "+61 414 555 003", email: "lina@email.com", lastPurchase: "1 Mar 2026", totalSpend: "$8,400", jobs: 1, color: "bg-purple-50 text-purple-700" },
-  { id: "c4", name: "Mia Tanaka", initials: "MT", tags: ["Bridal"], phone: "+61 415 555 004", email: "mia@email.com", lastPurchase: "28 Feb 2026", totalSpend: "$22,100", jobs: 3, color: "bg-rose-50 text-rose-700" },
-  { id: "c5", name: "James Obeid", initials: "JO", tags: ["Wholesale"], phone: "+61 416 555 005", email: "james@email.com", lastPurchase: "20 Feb 2026", totalSpend: "$67,800", jobs: 8, color: "bg-amber-50 text-amber-700" },
+  { id: "c1", name: "Sarah Khoury", initials: "SK", tags: ["VIP", "Bridal"], phone: "+61 412 345 678", email: "sarah@email.com", lastPurchase: "8 Mar 2026", totalSpend: "$24,500" },
+  { id: "c2", name: "David Moufarrej", initials: "DM", tags: ["Retail"], phone: "+61 423 456 789", email: "david@email.com", lastPurchase: "5 Mar 2026", totalSpend: "$8,200" },
+  { id: "c3", name: "Lina Haddad", initials: "LH", tags: ["Bridal"], phone: "+61 434 567 890", email: "lina@email.com", lastPurchase: "1 Mar 2026", totalSpend: "$15,800" },
 ];
-
-const AVATAR_COLORS = [
-  "bg-[#E8F0EB] text-[#1a4731]",
-  "bg-blue-50 text-blue-700",
-  "bg-purple-50 text-purple-700",
-  "bg-rose-50 text-rose-700",
-  "bg-amber-50 text-amber-700",
-  "bg-cyan-50 text-cyan-700",
-];
-
-function getAvatarColor(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
 function getInitials(name: string | null) {
   if (!name) return "?";
@@ -88,9 +78,9 @@ export default function CustomerListClient({
     return qs ? `/customers?${qs}` : "/customers";
   }
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    router.push(buildUrl({ q: search, tag: tagFilter, sort, page: 1 }));
+  function handleSearch(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    router.push(buildUrl({ q: search, tag: activeTab, sort, page: 1 }));
   }
 
   function handleTabChange(tab: string) {
@@ -98,186 +88,153 @@ export default function CustomerListClient({
     router.push(buildUrl({ q: search, tag: tab === "all" ? "" : tab, sort, page: 1 }));
   }
 
-  const filterTabs = [
-    { key: "all", label: "All" },
-    { key: "VIP", label: "VIP" },
-    { key: "Bridal", label: "Bridal" },
-    { key: "Wholesale", label: "Wholesale" },
-    { key: "Retail", label: "Retail" },
-  ];
+  const getTagBadge = (tag: string) => {
+    if (tag.toLowerCase() === "vip") return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border-amber-200" variant="outline">{tag}</Badge>;
+    if (tag.toLowerCase() === "bridal") return <Badge className="bg-pink-50 text-pink-700 hover:bg-pink-50 border-pink-200" variant="outline">{tag}</Badge>;
+    return <Badge variant="outline" className="text-stone-600 border-stone-200">{tag}</Badge>;
+  };
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-semibold text-[#1C1C1E]">Customers</h1>
-        <div className="flex items-center gap-2">
-          <form onSubmit={handleSearch} className="relative">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search customers…"
-              className="w-52 pl-8 pr-3 py-2 text-sm bg-white border border-[#E8E6E1] rounded-lg text-[#1C1C1E] placeholder-[#C0C0C0] focus:outline-none focus:border-[#1a4731]"
-            />
-            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#C0C0C0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </form>
-          <Link
-            href="/customers/new"
-            className="inline-flex items-center gap-2 bg-[#1a4731] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1a4731]/90 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Customer
-          </Link>
+    <div className="space-y-6 max-w-[1400px]">
+      {/* HEADER */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Customers</h1>
+          <Badge variant="outline" className="text-stone-500 font-medium px-2.5 py-0.5 rounded-full border-stone-200">
+            {useSampleData ? "428" : totalCount}
+          </Badge>
         </div>
+        <Link href="/customers/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-10 px-4 py-2">
+          <Plus className="w-4 h-4 mr-2" /> Add Customer
+        </Link>
       </div>
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: "Total", value: useSampleData ? "428" : String(totalCount) },
-          { label: "VIP", value: "32" },
-          { label: "New this month", value: "14" },
-          { label: "Avg Spend", value: "$3,200" },
-        ].map((s) => (
-          <div key={s.label} className="bg-white rounded-lg border border-[#E8E6E1] px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A]">{s.label}</p>
-            <p className="text-xl font-semibold mt-1 text-[#1C1C1E]">{s.value}</p>
-          </div>
-        ))}
+      {/* FILTER BAR */}
+      <div className="flex items-center gap-3">
+        <form onSubmit={handleSearch} className="relative max-w-sm flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
+          <Input 
+            placeholder="Search customers..." 
+            className="pl-9 h-10 border-stone-200 focus-visible:ring-[#8B7355] text-sm"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </form>
+        <Select value={activeTab} onValueChange={(val) => handleTabChange(val || "all")}>
+          <SelectTrigger className="w-[180px] h-10 text-sm border-stone-200 focus:ring-[#8B7355]">
+            <SelectValue placeholder="All Tags" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Tags</SelectItem>
+            <SelectItem value="VIP">VIP</SelectItem>
+            <SelectItem value="Bridal">Bridal</SelectItem>
+            <SelectItem value="Retail">Retail</SelectItem>
+            <SelectItem value="Wholesale">Wholesale</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex items-center bg-white border border-[#E8E6E1] rounded-lg p-1 gap-0.5 w-fit">
-        {filterTabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => handleTabChange(tab.key)}
-            className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${
-              activeTab === tab.key
-                ? "bg-[#1a4731] text-white shadow-sm"
-                : "text-[#6B6B6B] hover:text-[#1C1C1E]"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Table */}
-      <div className="bg-white border border-[#E8E6E1] rounded-xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#F0EDE9]">
-                {["Customer", "Tags", "Phone", "Email", "Last Purchase", "Total Spend", "Jobs", ""].map((h) => (
-                  <th key={h} className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-5 py-3 bg-[#F8F7F5]">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F5F3F0]">
-              {useSampleData
-                ? SAMPLE_CUSTOMERS.map((c) => (
-                    <tr key={c.id} className="hover:bg-[#F8F7F5] transition-colors">
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold ${c.color}`}>
+      {/* TABLE */}
+      <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent border-stone-100">
+              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Customer</TableHead>
+              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Phone</TableHead>
+              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Email</TableHead>
+              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Tags</TableHead>
+              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Last Purchase</TableHead>
+              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-right">Total Spend</TableHead>
+              <TableHead className="w-10"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {useSampleData
+              ? SAMPLE_CUSTOMERS.map((c) => (
+                  <TableRow key={c.id} className="hover:bg-stone-50/60 border-stone-100 cursor-pointer transition-colors" onClick={() => router.push(`/customers/${c.id}`)}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="bg-stone-100 text-stone-600 text-xs font-semibold">
                             {c.initials}
-                          </div>
-                          <span className="text-sm font-medium text-[#1C1C1E]">{c.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex gap-1 flex-wrap">
-                          {c.tags.map((tag) => <TagPill key={tag} tag={tag} />)}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 text-sm text-[#6B6B6B]">{c.phone}</td>
-                      <td className="px-5 py-3 text-sm text-[#6B6B6B]">{c.email}</td>
-                      <td className="px-5 py-3 text-sm text-[#6B6B6B]">{c.lastPurchase}</td>
-                      <td className="px-5 py-3 text-sm font-semibold text-[#1C1C1E]">{c.totalSpend}</td>
-                      <td className="px-5 py-3 text-sm text-[#6B6B6B]">{c.jobs} jobs</td>
-                      <td className="px-5 py-3">
-                        <Link href="/customers" className="text-xs text-[#1a4731] font-semibold hover:underline">→</Link>
-                      </td>
-                    </tr>
-                  ))
-                : customers.map((customer) => {
-                    const name = customer.full_name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || "Unknown";
-                    const initials = getInitials(name);
-                    const avatarColor = getAvatarColor(name);
-                    const tags: string[] = [
-                      ...(customer.is_vip ? ["VIP"] : []),
-                      ...(customer.tags || []),
-                    ];
-                    return (
-                      <tr key={customer.id} className="hover:bg-[#F8F7F5] transition-colors">
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold ${avatarColor}`}>
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium text-stone-900">{c.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-stone-700">{c.phone}</TableCell>
+                    <TableCell className="text-sm text-stone-700">{c.email}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {c.tags.map((tag) => <span key={tag}>{getTagBadge(tag)}</span>)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-stone-700">{c.lastPurchase}</TableCell>
+                    <TableCell className="text-sm font-medium text-stone-900 text-right">{c.totalSpend}</TableCell>
+                    <TableCell>
+                      <ArrowRight className="w-4 h-4 text-stone-300 group-hover:text-[#8B7355]" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              : customers.map((customer) => {
+                  const name = customer.full_name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || "Unknown";
+                  const initials = getInitials(name);
+                  const tags: string[] = [
+                    ...(customer.is_vip ? ["VIP"] : []),
+                    ...(customer.tags || []),
+                  ];
+                  return (
+                    <TableRow key={customer.id} className="hover:bg-stone-50/60 border-stone-100 cursor-pointer transition-colors" onClick={() => router.push(`/customers/${customer.id}`)}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-8 h-8">
+                            <AvatarFallback className="bg-stone-100 text-stone-600 text-xs font-semibold">
                               {initials}
-                            </div>
-                            <span className="text-sm font-medium text-[#1C1C1E]">{name}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3">
-                          <div className="flex gap-1 flex-wrap">
-                            {tags.map((tag) => <TagPill key={tag} tag={tag} />)}
-                            {tags.length === 0 && <span className="text-[#C0C0C0] text-xs">—</span>}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 text-sm text-[#6B6B6B]">{customer.mobile || customer.phone || "—"}</td>
-                        <td className="px-5 py-3 text-sm text-[#6B6B6B]">{customer.email || "—"}</td>
-                        <td className="px-5 py-3 text-sm text-[#6B6B6B]">
-                          {customer.updated_at
-                            ? new Date(customer.updated_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
-                            : "—"}
-                        </td>
-                        <td className="px-5 py-3 text-sm font-semibold text-[#1C1C1E]">—</td>
-                        <td className="px-5 py-3 text-sm text-[#6B6B6B]">—</td>
-                        <td className="px-5 py-3">
-                          <Link href={`/customers/${customer.id}`} className="text-xs text-[#1a4731] font-semibold hover:underline">→</Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-            </tbody>
-          </table>
-        </div>
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm font-medium text-stone-900">{name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-stone-700">{customer.mobile || customer.phone || "—"}</TableCell>
+                      <TableCell className="text-sm text-stone-700">{customer.email || "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {tags.map((tag) => <span key={tag}>{getTagBadge(tag)}</span>)}
+                          {tags.length === 0 && <span className="text-stone-300 text-xs">—</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-stone-700">
+                        {customer.updated_at
+                          ? new Date(customer.updated_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium text-stone-900 text-right">—</TableCell>
+                      <TableCell>
+                        <ArrowRight className="w-4 h-4 text-stone-300 hover:text-[#8B7355]" />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+          </TableBody>
+        </Table>
+      </Card>
 
-        {/* Pagination */}
-        {!useSampleData && totalPages > 1 && (
-          <div className="px-5 py-3 border-t border-[#F0EDE9] flex items-center justify-between">
-            <p className="text-xs text-[#9A9A9A]">
-              Page {page} of {totalPages} · {totalCount} customers
-            </p>
-            <div className="flex gap-2">
-              {page > 1 && (
-                <Link
-                  href={buildUrl({ q, tag: tagFilter, sort, page: page - 1 })}
-                  className="px-3 py-1.5 text-xs font-medium text-[#6B6B6B] bg-white border border-[#E8E6E1] rounded-lg hover:bg-[#F8F7F5] transition-colors"
-                >
-                  ← Prev
-                </Link>
-              )}
-              {page < totalPages && (
-                <Link
-                  href={buildUrl({ q, tag: tagFilter, sort, page: page + 1 })}
-                  className="px-3 py-1.5 text-xs font-medium text-[#6B6B6B] bg-white border border-[#E8E6E1] rounded-lg hover:bg-[#F8F7F5] transition-colors"
-                >
-                  Next →
-                </Link>
-              )}
-            </div>
+      {/* Pagination */}
+      {!useSampleData && totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-xs text-stone-500">
+            Page {page} of {totalPages}
+          </p>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link href={buildUrl({ q, tag: tagFilter, sort, page: page - 1 })} className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors border border-stone-200 bg-transparent hover:bg-stone-100 hover:text-stone-900 text-stone-600 h-8 px-3 text-xs">Previous</Link>
+            )}
+            {page < totalPages && (
+              <Link href={buildUrl({ q, tag: tagFilter, sort, page: page + 1 })} className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors border border-stone-200 bg-transparent hover:bg-stone-100 hover:text-stone-900 text-stone-600 h-8 px-3 text-xs">Next</Link>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

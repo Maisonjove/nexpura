@@ -2,6 +2,7 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 export default async function AppLayout({
   children,
@@ -33,16 +34,16 @@ export default async function AppLayout({
   const isSuperAdmin = profile?.role === 'super_admin';
 
   return (
-    <div className="min-h-screen bg-soft-gray-light">
-      <div className="flex">
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-stone-50">
         <Sidebar user={userData} isSuperAdmin={isSuperAdmin} />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="p-8">
+        <div className="flex-1 flex flex-col min-w-0">
+          <Header user={userData} />
+          <main className="p-8 flex-1">
             {children}
           </main>
         </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

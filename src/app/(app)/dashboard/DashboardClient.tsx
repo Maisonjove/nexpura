@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import StatusBadge from "@/components/StatusBadge";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Plus, UserPlus, Wrench, Gem as GemIcon, ArrowRight } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -98,17 +101,6 @@ function timeAgo(dateStr: string) {
   return `${days}d ago`;
 }
 
-const urgencyBorder: Record<string, string> = {
-  red: "border-l-red-500",
-  orange: "border-l-orange-500",
-  yellow: "border-l-amber-400",
-};
-const urgencyBg: Record<string, string> = {
-  red: "bg-red-50",
-  orange: "bg-orange-50",
-  yellow: "bg-amber-50",
-};
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function DashboardClient({
@@ -124,285 +116,204 @@ export default function DashboardClient({
   overdueRepairsCount,
   recentActivity,
 }: DashboardClientProps) {
-  const [jobTab, setJobTab] = useState<"repairs" | "bespoke">("repairs");
-
-  // Use live data where available, fall back to sample data enriched
   const showSampleRevenue = salesThisMonthRevenue === 0 && salesThisMonthCount === 0;
 
-  const kpiCards = [
-    {
-      label: "Today's Revenue",
-      value: "$4,280",
-      sublabel: "↑ 3 sales today",
-      color: "default" as const,
-      borderColor: "#16A34A",
-    },
-    {
-      label: "Active Repairs",
-      value: activeRepairsCount > 0 ? String(activeRepairsCount) : "12",
-      sublabel: overdueRepairsCount > 0 ? `${overdueRepairsCount} overdue` : "2 ready pickup",
-      color: overdueRepairsCount > 0 ? ("warning" as const) : ("default" as const),
-      borderColor: "#2563EB",
-    },
-    {
-      label: "Bespoke Jobs",
-      value: activeJobsCount > 0 ? String(activeJobsCount) : "8",
-      sublabel: "1 ready today",
-      color: "default" as const,
-      borderColor: "#7C3AED",
-    },
-    {
-      label: "Outstanding Invoices",
-      value: totalOutstanding > 0 ? fmtCurrency(totalOutstanding) : "$8,400",
-      sublabel: overdueInvoiceCount > 0 ? `${overdueInvoiceCount} overdue` : "3 overdue",
-      color: "danger" as const,
-      borderColor: "#D97706",
-    },
-    {
-      label: "Low Stock Items",
-      value: lowStockCount > 0 ? String(lowStockCount) : "5",
-      sublabel: "needs attention",
-      color: "warning" as const,
-      borderColor: "#DC2626",
-    },
-    {
-      label: "This Month Revenue",
-      value: showSampleRevenue ? "$31,650" : fmtCurrency(salesThisMonthRevenue),
-      sublabel: showSampleRevenue ? "↑ 12% vs last month" : `${salesThisMonthCount} sales`,
-      color: "default" as const,
-      borderColor: "#16A34A",
-    },
+  // KPIs
+  const kpis = [
+    { label: "Sales This Month", value: showSampleRevenue ? "$31,650" : fmtCurrency(salesThisMonthRevenue), subtext: showSampleRevenue ? "12 sales" : `${salesThisMonthCount} sales` },
+    { label: "Active Repairs", value: activeRepairsCount > 0 ? String(activeRepairsCount) : "12", subtext: overdueRepairsCount > 0 ? `${overdueRepairsCount} overdue` : "2 ready" },
+    { label: "Bespoke Jobs", value: activeJobsCount > 0 ? String(activeJobsCount) : "8", subtext: "1 ready today" },
+    { label: "Outstanding Invoices", value: totalOutstanding > 0 ? fmtCurrency(totalOutstanding) : "$8,400", subtext: overdueInvoiceCount > 0 ? `${overdueInvoiceCount} overdue` : "3 overdue" },
   ];
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "In Workshop": return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-none">In Workshop</Badge>;
+      case "Ready for Pickup": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-none">Ready</Badge>;
+      case "Awaiting Approval": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border-none">Awaiting</Badge>;
+      case "Overdue": return <Badge className="bg-red-50 text-red-700 hover:bg-red-50 border-none">Overdue</Badge>;
+      default: return <Badge variant="outline" className="text-stone-600 border-stone-200">{status}</Badge>;
+    }
+  };
+
+  const today = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+
   return (
-    <div className="space-y-6 max-w-[1400px]">
-      {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-light tracking-wide text-[#1C1C1E]">Good morning ✦ <span className="font-medium">Nexpura HQ</span></h1>
-        <p className="text-sm text-[#9A9A9A] mt-1">12 active repairs · 8 bespoke jobs · $4,280 revenue today</p>
+    <div className="space-y-6">
+      {/* GREETING SECTION */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+          Good morning, {firstName}
+        </h1>
+        <p className="text-sm text-stone-400 mt-1">
+          {tenantName || 'Your Store'} · {today}
+        </p>
+        
+        <div className="mt-4 border border-stone-200 rounded-lg bg-white divide-x divide-stone-200 inline-flex shadow-sm">
+          <Link href="/sales/new" className="px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 flex items-center gap-1.5 font-medium transition-colors">
+            <Plus className="w-4 h-4 text-stone-400" /> New Sale
+          </Link>
+          <Link href="/customers/new" className="px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 flex items-center gap-1.5 font-medium transition-colors">
+            <UserPlus className="w-4 h-4 text-stone-400" /> New Customer
+          </Link>
+          <Link href="/repairs/new" className="px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 flex items-center gap-1.5 font-medium transition-colors">
+            <Wrench className="w-4 h-4 text-stone-400" /> New Repair
+          </Link>
+          <Link href="/bespoke/new" className="px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 flex items-center gap-1.5 font-medium transition-colors">
+            <GemIcon className="w-4 h-4 text-stone-400" /> New Job
+          </Link>
+        </div>
       </div>
 
-      {/* KPI row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {kpiCards.map((card) => (
-          <div
-            key={card.label}
-            className="bg-white rounded-xl p-4 shadow-sm border border-[#E8E6E1]"
-            style={{ borderLeft: `3px solid ${card.borderColor}` }}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#9A9A9A] mb-2">
-              {card.label}
-            </p>
-            <p className="text-xl font-semibold text-[#1C1C1E]">{card.value}</p>
-            <p
-              className={`text-xs mt-1 ${
-                card.color === "danger"
-                  ? "text-red-500"
-                  : card.color === "warning"
-                  ? "text-amber-600"
-                  : "text-[#9A9A9A]"
-              }`}
-            >
-              {card.sublabel}
-            </p>
-          </div>
+      {/* KPI STRIP */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {kpis.map((kpi, i) => (
+          <Card key={i} className="p-6 rounded-xl border-stone-200 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-medium uppercase tracking-widest text-stone-500">{kpi.label}</span>
+            </div>
+            <p className="text-3xl font-semibold text-stone-900 mt-2">{kpi.value}</p>
+            <p className="text-xs text-stone-400 mt-1">{kpi.subtext}</p>
+          </Card>
         ))}
       </div>
 
-      {/* Second row: Activity + Quick Actions + Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1.2fr_1.2fr] gap-4">
-        {/* Activity feed */}
-        <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F0EDE9]">
-            <h2 className="text-sm font-semibold text-[#1C1C1E]">Recent Activity</h2>
+      {/* OPERATIONS SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* LEFT (col-span-2) - Active Repairs */}
+        <Card className="col-span-1 lg:col-span-2 p-0 border-stone-200 shadow-sm rounded-xl overflow-hidden">
+          <div className="p-6 border-b border-stone-100 flex items-center justify-between bg-white">
+            <h2 className="text-sm font-semibold text-stone-800">Active Repairs</h2>
+            <Link href="/repairs" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">View all</Link>
           </div>
-          <div className="divide-y divide-[#F5F3F0]">
-            {recentActivity.length > 0
-              ? recentActivity.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    className="flex items-start gap-3 px-5 py-3 hover:bg-[#F8F7F5] transition-colors group"
-                  >
-                    <span className="text-base mt-0.5 flex-shrink-0">
-                      {ACTIVITY_ICONS[item.type] || "📌"}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#1C1C1E] group-hover:text-[#1a4731] truncate">
-                        {item.title}
-                        {item.customerName && (
-                          <span className="text-[#9A9A9A]"> — {item.customerName}</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-[#9A9A9A] mt-0.5 capitalize">
-                        {item.stage.replace(/_/g, " ")}
-                      </p>
-                    </div>
-                    <span className="text-xs text-[#C0C0C0] flex-shrink-0 mt-0.5">
-                      {timeAgo(item.updatedAt)}
-                    </span>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Customer</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Item</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Status</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Due</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Tech</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {SAMPLE_REPAIRS.map((r) => (
+                <TableRow key={r.id} className="hover:bg-stone-50">
+                  <TableCell className="text-sm font-medium text-stone-900">{r.customer}</TableCell>
+                  <TableCell className="text-sm text-stone-700">{r.item}</TableCell>
+                  <TableCell>{getStatusBadge(r.status)}</TableCell>
+                  <TableCell className={`text-sm ${r.status === 'Overdue' ? 'text-red-600 font-medium' : 'text-stone-700'}`}>
+                    {r.due}
+                  </TableCell>
+                  <TableCell className="text-sm text-stone-700">{r.assigned}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+
+        {/* RIGHT (col-span-1 flex flex-col gap-4) */}
+        <div className="col-span-1 flex flex-col gap-6">
+          <Card className="p-6 border-stone-200 shadow-sm rounded-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-stone-800">Bespoke Jobs</h2>
+              <Link href="/bespoke" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">View all</Link>
+            </div>
+            <div className="space-y-4">
+              {SAMPLE_BESPOKE.slice(0, 3).map((job) => (
+                <div key={job.id} className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-stone-900">{job.item}</p>
+                    <p className="text-xs text-stone-500">{job.customer}</p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] text-stone-600 bg-stone-50 border-stone-200">{job.stage}</Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-6 border-stone-200 shadow-sm rounded-xl flex-1">
+            <h2 className="text-sm font-semibold text-stone-800 mb-4">Alerts</h2>
+            <div className="space-y-3">
+              {ALERTS.map((alert, i) => (
+                <div key={i} className={`border-l-2 pl-3 py-1 ${alert.urgency === 'red' ? 'border-red-400' : 'border-amber-400'}`}>
+                  <Link href={alert.href} className="text-xs text-stone-700 hover:underline">
+                    {alert.text}
                   </Link>
-                ))
-              : (
-                  <>
-                    {[
-                      { icon: "🔧", text: "Ring resize completed — Sarah Khoury", sub: "Repair updated", time: "12 mins ago" },
-                      { icon: "💎", text: "New bespoke job — Emerald bracelet, David M.", sub: "Bespoke created", time: "1h ago" },
-                      { icon: "💰", text: "Invoice #INV-0089 paid — $3,200", sub: "Invoice paid", time: "2h ago" },
-                      { icon: "📦", text: "5 new items received from Pallion", sub: "Inventory updated", time: "3h ago" },
-                      { icon: "🏷", text: "Stock tags printed — 12 items", sub: "Tags printed", time: "Yesterday" },
-                    ].map((a, i) => (
-                      <div key={i} className="flex items-start gap-3 px-5 py-3">
-                        <span className="text-base mt-0.5 flex-shrink-0">{a.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[#1C1C1E] truncate">{a.text}</p>
-                          <p className="text-xs text-[#9A9A9A] mt-0.5">{a.sub}</p>
-                        </div>
-                        <span className="text-xs text-[#C0C0C0] flex-shrink-0 mt-0.5">{a.time}</span>
-                      </div>
-                    ))}
-                  </>
-                )}
-          </div>
-        </div>
-
-        {/* Quick actions */}
-        <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F0EDE9]">
-            <h2 className="text-sm font-semibold text-[#1C1C1E]">Quick Actions</h2>
-          </div>
-          <div className="p-3 grid grid-cols-2 gap-2">
-            {QUICK_ACTIONS.map((action) => (
-              <Link
-                key={action.label}
-                href={action.href}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-[#F0EDE9] hover:border-[#1a4731]/20 hover:bg-[#E8F0EB] transition-all group text-center"
-              >
-                <span className="text-xl">{action.icon}</span>
-                <span className="text-[11px] font-medium text-[#6B6B6B] group-hover:text-[#1a4731] leading-tight">
-                  {action.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Alerts */}
-        <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F0EDE9]">
-            <h2 className="text-sm font-semibold text-[#1C1C1E]">Needs Attention</h2>
-          </div>
-          <div className="p-3 space-y-2">
-            {ALERTS.map((alert, i) => (
-              <div
-                key={i}
-                className={`flex items-center justify-between gap-2 border-l-2 ${urgencyBorder[alert.urgency]} ${urgencyBg[alert.urgency]} rounded-r-lg px-3 py-2.5`}
-              >
-                <p className="text-xs text-[#1C1C1E] font-medium flex-1">{alert.text}</p>
-                <Link
-                  href={alert.href}
-                  className="text-xs text-[#1a4731] font-semibold hover:underline flex-shrink-0"
-                >
-                  View
-                </Link>
-              </div>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
       </div>
 
-      {/* Third row: Jobs table + Best sellers */}
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4">
-        {/* Recent jobs */}
-        <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F0EDE9] flex items-center gap-4">
-            <h2 className="text-sm font-semibold text-[#1C1C1E]">Recent Jobs</h2>
-            <div className="flex gap-1 ml-auto">
-              <button
-                onClick={() => setJobTab("repairs")}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                  jobTab === "repairs"
-                    ? "bg-[#E8F0EB] text-[#1a4731]"
-                    : "text-[#9A9A9A] hover:text-[#1C1C1E]"
-                }`}
-              >
-                Repairs
-              </button>
-              <button
-                onClick={() => setJobTab("bespoke")}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                  jobTab === "bespoke"
-                    ? "bg-[#E8F0EB] text-[#1a4731]"
-                    : "text-[#9A9A9A] hover:text-[#1C1C1E]"
-                }`}
-              >
-                Bespoke
-              </button>
-            </div>
+      {/* BOTTOM */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <Card className="p-0 border-stone-200 shadow-sm rounded-xl overflow-hidden">
+          <div className="p-6 border-b border-stone-100 bg-white">
+            <h2 className="text-sm font-semibold text-stone-800">Best Sellers</h2>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-5 py-3 bg-[#F8F7F5]">Customer</th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-4 py-3 bg-[#F8F7F5]">Item</th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-4 py-3 bg-[#F8F7F5]">Status</th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-4 py-3 bg-[#F8F7F5]">Due</th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-4 py-3 bg-[#F8F7F5]">Assigned</th>
-                  <th className="px-4 py-3 bg-[#F8F7F5]" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F5F3F0]">
-                {jobTab === "repairs"
-                  ? SAMPLE_REPAIRS.map((r) => (
-                      <tr key={r.id} className={`hover:bg-[#F8F7F5] transition-colors ${r.status === "Overdue" ? "border-l-2 border-l-red-500" : ""}`}>
-                        <td className="px-5 py-3 text-sm font-medium text-[#1C1C1E]">{r.customer}</td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{r.item}</td>
-                        <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{r.due}</td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{r.assigned}</td>
-                        <td className="px-4 py-3">
-                          <Link href="/repairs" className="text-xs text-[#1a4731] font-semibold hover:underline">→</Link>
-                        </td>
-                      </tr>
-                    ))
-                  : SAMPLE_BESPOKE.map((b) => (
-                      <tr key={b.id} className="hover:bg-[#F8F7F5] transition-colors">
-                        <td className="px-5 py-3 text-sm font-medium text-[#1C1C1E]">{b.customer}</td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{b.item}</td>
-                        <td className="px-4 py-3"><StatusBadge status={b.stage} /></td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{b.due}</td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{b.assigned}</td>
-                        <td className="px-4 py-3">
-                          <Link href="/bespoke" className="text-xs text-[#1a4731] font-semibold hover:underline">→</Link>
-                        </td>
-                      </tr>
-                    ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Item</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Category</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Sold</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-right">Revenue</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {BEST_SELLERS.map((item, i) => (
+                <TableRow key={i} className="hover:bg-stone-50">
+                  <TableCell className="text-sm font-medium text-stone-900">{item.name}</TableCell>
+                  <TableCell className="text-sm text-stone-700">{item.category}</TableCell>
+                  <TableCell className="text-sm text-stone-700">{item.sold}</TableCell>
+                  <TableCell className="text-sm font-medium text-stone-900 text-right">{item.revenue}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
 
-        {/* Best sellers */}
-        <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F0EDE9]">
-            <h2 className="text-sm font-semibold text-[#1C1C1E]">Best Sellers This Month</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            {BEST_SELLERS.map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#F8F7F5] flex items-center justify-center text-xs font-bold text-[#9A9A9A]">
-                  {i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1C1C1E] truncate">{item.name}</p>
-                  <p className="text-xs text-[#9A9A9A]">{item.category} · {item.sold} sold</p>
+        <Card className="p-6 border-stone-200 shadow-sm rounded-xl">
+          <h2 className="text-sm font-semibold text-stone-800 mb-4">Recent Activity</h2>
+          <div className="space-y-4">
+            {recentActivity.length > 0 ? (
+              recentActivity.map((item) => (
+                <div key={item.id} className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm flex-shrink-0">
+                    {ACTIVITY_ICONS[item.type] || "📌"}
+                  </div>
+                  <div>
+                    <p className="text-sm text-stone-700">
+                      <span className="font-medium text-stone-900">{item.title}</span> {item.customerName && `— ${item.customerName}`}
+                    </p>
+                    <p className="text-xs text-stone-400 mt-0.5">{timeAgo(item.updatedAt)}</p>
+                  </div>
                 </div>
-                <span className="text-sm font-semibold text-[#1a4731] flex-shrink-0">{item.revenue}</span>
-              </div>
-            ))}
+              ))
+            ) : (
+              [
+                { icon: "🔧", text: "Ring resize completed", customer: "Sarah Khoury", time: "12 mins ago" },
+                { icon: "💎", text: "New bespoke job", customer: "David M.", time: "1h ago" },
+                { icon: "💰", text: "Invoice #INV-0089 paid", customer: "", time: "2h ago" },
+                { icon: "📦", text: "5 new items received", customer: "", time: "3h ago" },
+              ].map((a, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm flex-shrink-0">
+                    {a.icon}
+                  </div>
+                  <div>
+                    <p className="text-sm text-stone-700">
+                      <span className="font-medium text-stone-900">{a.text}</span> {a.customer && `— ${a.customer}`}
+                    </p>
+                    <p className="text-xs text-stone-400 mt-0.5">{a.time}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
