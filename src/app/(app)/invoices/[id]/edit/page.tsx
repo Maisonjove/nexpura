@@ -36,7 +36,6 @@ export default async function EditInvoicePage({
       )
       .eq("id", id)
       .eq("tenant_id", tenantId ?? "")
-      .is("deleted_at", null)
       .single(),
     supabase
       .from("invoice_line_items")
@@ -47,21 +46,16 @@ export default async function EditInvoicePage({
       .from("customers")
       .select("id, full_name, email")
       .eq("tenant_id", tenantId ?? "")
-      .is("deleted_at", null)
       .order("full_name"),
     supabase
       .from("tenants")
-      .select(
-        "name, business_name, tax_name, tax_rate, tax_inclusive, bank_name, bank_bsb, bank_account"
-      )
+      .select("name, slug, logo_url")
       .eq("id", tenantId ?? "")
       .single(),
     supabase
       .from("inventory")
       .select("id, name, sku, retail_price, description")
       .eq("tenant_id", tenantId ?? "")
-      .eq("status", "active")
-      .is("deleted_at", null)
       .order("name"),
   ]);
 
@@ -69,13 +63,13 @@ export default async function EditInvoicePage({
 
   const tenantSettings = {
     name: tenant?.name || null,
-    business_name: tenant?.business_name || null,
-    tax_name: tenant?.tax_name || "GST",
-    tax_rate: tenant?.tax_rate ?? 0.1,
-    tax_inclusive: tenant?.tax_inclusive ?? false,
-    bank_name: tenant?.bank_name || null,
-    bank_bsb: tenant?.bank_bsb || null,
-    bank_account: tenant?.bank_account || null,
+    business_name: tenant?.name || null,
+    tax_name: invoice.tax_name || "GST",
+    tax_rate: invoice.tax_rate ?? 0.1,
+    tax_inclusive: invoice.tax_inclusive ?? true,
+    bank_name: null,
+    bank_bsb: null,
+    bank_account: null,
   };
 
   const existingData = {
@@ -85,9 +79,9 @@ export default async function EditInvoicePage({
     due_date: invoice.due_date,
     reference_type: invoice.reference_type,
     reference_id: invoice.reference_id,
-    tax_name: invoice.tax_name || tenantSettings.tax_name,
-    tax_rate: invoice.tax_rate ?? tenantSettings.tax_rate,
-    tax_inclusive: invoice.tax_inclusive ?? tenantSettings.tax_inclusive,
+    tax_name: invoice.tax_name || "GST",
+    tax_rate: invoice.tax_rate ?? 0.1,
+    tax_inclusive: invoice.tax_inclusive ?? true,
     discount_amount: invoice.discount_amount || 0,
     notes: invoice.notes,
     footer_text: invoice.footer_text,

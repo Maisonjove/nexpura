@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import Link from "next/link";
 import InvoiceListClient from "./InvoiceListClient";
 
 export default async function InvoicesPage({
@@ -28,57 +27,55 @@ export default async function InvoicesPage({
   const tenantId = userData?.tenant_id;
   const today = new Date().toISOString().split("T")[0];
 
-  // Stats queries
+  // Stats: outstanding (use `total` as proxy since amount_due doesn't exist)
   const { data: outstandingData } = await supabase
     .from("invoices")
-    .select("amount_due")
+    .select("total")
     .eq("tenant_id", tenantId ?? "")
-    .in("status", ["sent", "partially_paid", "overdue"])
-    .is("deleted_at", null);
+    .in("status", ["sent", "partially_paid", "overdue"]);
 
   const totalOutstanding = (outstandingData ?? []).reduce(
-    (sum, inv) => sum + (inv.amount_due || 0),
+    (sum, inv) => sum + (inv.total || 0),
     0
   );
 
   const { data: overdueData } = await supabase
     .from("invoices")
-    .select("amount_due")
+    .select("total")
     .eq("tenant_id", tenantId ?? "")
     .not("status", "in", '("paid","voided","draft")')
-    .lt("due_date", today)
-    .is("deleted_at", null);
+    .lt("due_date", today);
 
   const totalOverdue = (overdueData ?? []).reduce(
-    (sum, inv) => sum + (inv.amount_due || 0),
+    (sum, inv) => sum + (inv.total || 0),
     0
   );
 
-  // Paid this month
+  // Paid this month from invoices with status=paid
   const monthStart = new Date();
   monthStart.setDate(1);
   const monthStartStr = monthStart.toISOString().split("T")[0];
 
   const { data: paidThisMonthData } = await supabase
-    .from("payments")
-    .select("amount")
+    .from("invoices")
+    .select("total")
     .eq("tenant_id", tenantId ?? "")
-    .gte("payment_date", monthStartStr);
+    .eq("status", "paid")
+    .gte("paid_at", monthStartStr);
 
   const paidThisMonth = (paidThisMonthData ?? []).reduce(
-    (sum, p) => sum + (p.amount || 0),
+    (sum, p) => sum + (p.total || 0),
     0
   );
 
-  // Main invoice query
+  // Main invoice query — only real columns
   let query = supabase
     .from("invoices")
     .select(
-      "id, invoice_number, status, invoice_date, due_date, total, amount_due, amount_paid, customers(full_name)",
+      "id, invoice_number, status, invoice_date, due_date, total, customers(full_name)",
       { count: "exact" }
     )
-    .eq("tenant_id", tenantId ?? "")
-    .is("deleted_at", null);
+    .eq("tenant_id", tenantId ?? "");
 
   if (statusFilter !== "all") {
     if (statusFilter === "overdue") {
@@ -109,8 +106,8 @@ export default async function InvoicesPage({
     invoice_date: inv.invoice_date,
     due_date: inv.due_date,
     total: inv.total,
-    amount_due: inv.amount_due,
-    amount_paid: inv.amount_paid,
+    amount_due: inv.status === "paid" ? 0 : (inv.total || 0),
+    amount_paid: inv.status === "paid" ? (inv.total || 0) : 0,
     customers: Array.isArray(inv.customers)
       ? (inv.customers[0] ?? null)
       : inv.customers,
