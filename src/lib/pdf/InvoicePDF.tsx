@@ -5,127 +5,156 @@ import {
   Text,
   View,
   StyleSheet,
-  Font,
+  Image,
 } from "@react-pdf/renderer";
 
-// Register fonts (using built-in Helvetica as fallback — Fraunces not available in react-pdf)
-Font.register({
-  family: "Helvetica",
-  fonts: [{ src: "Helvetica" }, { src: "Helvetica-Bold", fontWeight: 700 }],
-});
-
-const FOREST = "#071A0D";
-const SAGE = "#52B788";
-const IVORY = "#F8F5F0";
-const PLATINUM = "#E8E8E8";
+const BRONZE = "#8B7355";
+const DARK = "#1A1A1A";
+const LIGHT_BG = "#FAFAF9";
+const PLATINUM = "#E5E2DE";
+const MUTED = "#888";
+const GREEN = "#2D7A4A";
 
 const styles = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     backgroundColor: "#FFFFFF",
-    paddingTop: 48,
-    paddingBottom: 48,
-    paddingHorizontal: 48,
+    paddingTop: 44,
+    paddingBottom: 60,
+    paddingHorizontal: 44,
     fontSize: 9,
-    color: FOREST,
+    color: DARK,
   },
   // Header
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 32,
+    marginBottom: 24,
   },
   businessBlock: {
     flex: 1,
+    paddingRight: 24,
+  },
+  logo: {
+    width: 56,
+    height: 56,
+    objectFit: "contain",
+    marginBottom: 6,
   },
   businessName: {
     fontSize: 14,
     fontFamily: "Helvetica-Bold",
-    color: FOREST,
-    marginBottom: 3,
+    color: DARK,
+    marginBottom: 2,
   },
   businessMeta: {
     fontSize: 8,
-    color: "#666",
+    color: MUTED,
     marginBottom: 1.5,
   },
   invoiceBlock: {
     alignItems: "flex-end",
+    justifyContent: "flex-start",
   },
   invoiceTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: "Helvetica-Bold",
-    color: FOREST,
-    letterSpacing: 2,
-    marginBottom: 3,
+    color: BRONZE,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   invoiceNumber: {
-    fontSize: 11,
-    color: "#555",
-    marginBottom: 6,
+    fontSize: 12,
+    color: DARK,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 8,
   },
   invoiceMeta: {
     fontSize: 8,
-    color: "#666",
-    marginBottom: 1.5,
+    color: MUTED,
+    marginBottom: 2,
     textAlign: "right",
   },
   invoiceMetaLabel: {
+    fontFamily: "Helvetica-Bold",
+    color: DARK,
+  },
+  paidBadge: {
+    backgroundColor: GREEN,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 4,
+  },
+  paidBadgeText: {
     fontSize: 8,
     fontFamily: "Helvetica-Bold",
-    color: FOREST,
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
   },
   // Divider
   divider: {
     height: 1,
     backgroundColor: PLATINUM,
     marginBottom: 16,
+    marginTop: 4,
+  },
+  dividerBronze: {
+    height: 1.5,
+    backgroundColor: BRONZE,
+    marginBottom: 16,
     marginTop: 0,
   },
   // Bill To
+  billToSection: {
+    marginBottom: 20,
+  },
   billToLabel: {
     fontSize: 7,
     fontFamily: "Helvetica-Bold",
-    color: "#999",
+    color: MUTED,
     letterSpacing: 1.5,
     textTransform: "uppercase",
     marginBottom: 6,
   },
   billToBox: {
-    backgroundColor: IVORY,
-    borderRadius: 6,
+    backgroundColor: LIGHT_BG,
+    borderRadius: 5,
     padding: 10,
     borderWidth: 0.5,
     borderColor: PLATINUM,
-    marginBottom: 20,
   },
   billToName: {
     fontSize: 11,
     fontFamily: "Helvetica-Bold",
-    color: FOREST,
+    color: DARK,
     marginBottom: 2,
   },
   billToDetail: {
     fontSize: 8,
-    color: "#666",
-    marginBottom: 1,
+    color: MUTED,
+    marginBottom: 1.5,
   },
   // Table
   tableHeader: {
     flexDirection: "row",
     borderBottomWidth: 1.5,
-    borderBottomColor: FOREST,
+    borderBottomColor: DARK,
     paddingBottom: 5,
     marginBottom: 0,
+    backgroundColor: LIGHT_BG,
+    paddingHorizontal: 4,
+    paddingTop: 4,
   },
   tableRow: {
     flexDirection: "row",
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderBottomWidth: 0.5,
     borderBottomColor: PLATINUM,
+    paddingHorizontal: 4,
   },
   tableRowAlt: {
-    backgroundColor: "#FAFAF8",
+    backgroundColor: LIGHT_BG,
   },
   colDesc: {
     flex: 1,
@@ -137,43 +166,38 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   colPrice: {
-    width: 64,
-    textAlign: "right",
-    paddingRight: 8,
-  },
-  colDisc: {
-    width: 40,
+    width: 68,
     textAlign: "right",
     paddingRight: 8,
   },
   colTotal: {
-    width: 64,
+    width: 68,
     textAlign: "right",
   },
   colHeaderText: {
     fontSize: 7,
     fontFamily: "Helvetica-Bold",
-    color: FOREST,
+    color: DARK,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   colBodyText: {
     fontSize: 9,
-    color: FOREST,
+    color: DARK,
   },
   colBodyMuted: {
     fontSize: 9,
-    color: "#666",
+    color: MUTED,
   },
   // Totals
   totalsSection: {
     flexDirection: "row",
     justifyContent: "flex-end",
     marginTop: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   totalsBox: {
-    width: 200,
+    width: 210,
   },
   totalsRow: {
     flexDirection: "row",
@@ -182,61 +206,85 @@ const styles = StyleSheet.create({
   },
   totalsLabel: {
     fontSize: 8.5,
-    color: "#666",
+    color: MUTED,
   },
   totalsValue: {
     fontSize: 8.5,
-    color: FOREST,
+    color: DARK,
   },
   totalsDivider: {
-    height: 1,
+    height: 0.5,
     backgroundColor: PLATINUM,
     marginVertical: 4,
   },
   totalsDividerDark: {
     height: 1.5,
-    backgroundColor: FOREST,
+    backgroundColor: DARK,
     marginVertical: 4,
   },
   grandTotalLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Helvetica-Bold",
-    color: FOREST,
+    color: DARK,
   },
   grandTotalValue: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Helvetica-Bold",
-    color: FOREST,
+    color: BRONZE,
   },
-  amountDueLabel: {
-    fontSize: 11,
+  // Paid stamp
+  paidStamp: {
+    backgroundColor: "#E8F5EC",
+    borderWidth: 1.5,
+    borderColor: GREEN,
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  paidStampText: {
+    fontSize: 10,
     fontFamily: "Helvetica-Bold",
-    color: FOREST,
+    color: GREEN,
   },
-  amountDueValue: {
-    fontSize: 11,
-    fontFamily: "Helvetica-Bold",
-    color: SAGE,
+  // Bank details
+  bankSection: {
+    backgroundColor: LIGHT_BG,
+    borderRadius: 5,
+    padding: 10,
+    borderWidth: 0.5,
+    borderColor: PLATINUM,
+    marginBottom: 12,
   },
-  amountPaidLabel: {
-    fontSize: 8.5,
-    color: SAGE,
-  },
-  amountPaidValue: {
-    fontSize: 8.5,
-    color: SAGE,
-  },
-  // Notes / bank
   sectionLabel: {
     fontSize: 7,
     fontFamily: "Helvetica-Bold",
-    color: "#999",
+    color: MUTED,
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    marginBottom: 4,
-    marginTop: 12,
+    marginBottom: 5,
   },
-  sectionText: {
+  bankRow: {
+    flexDirection: "row",
+    marginBottom: 2,
+  },
+  bankLabel: {
+    fontSize: 8,
+    color: MUTED,
+    width: 60,
+  },
+  bankValue: {
+    fontSize: 8,
+    color: DARK,
+    fontFamily: "Helvetica-Bold",
+  },
+  // Notes
+  notesBox: {
+    marginBottom: 12,
+  },
+  noteText: {
     fontSize: 8.5,
     color: "#555",
     lineHeight: 1.5,
@@ -245,22 +293,26 @@ const styles = StyleSheet.create({
   footer: {
     position: "absolute",
     bottom: 24,
-    left: 48,
-    right: 48,
+    left: 44,
+    right: 44,
     textAlign: "center",
+    borderTopWidth: 0.5,
+    borderTopColor: PLATINUM,
+    paddingTop: 8,
   },
   footerText: {
     fontSize: 7,
     color: "#bbb",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+    textAlign: "center",
   },
 });
 
-function fmt(amount: number, currency = "AUD"): string {
+function fmt(amount: number): string {
   try {
     return new Intl.NumberFormat("en-AU", {
       style: "currency",
-      currency,
+      currency: "AUD",
       minimumFractionDigits: 2,
     }).format(amount);
   } catch {
@@ -288,6 +340,7 @@ export interface InvoicePDFProps {
     status: string;
     invoice_date: string;
     due_date: string | null;
+    paid_at: string | null;
     subtotal: number;
     tax_amount: number;
     discount_amount: number;
@@ -303,41 +356,37 @@ export interface InvoicePDFProps {
       full_name: string | null;
       email: string | null;
       phone: string | null;
-      mobile: string | null;
-      address_line1: string | null;
-      suburb: string | null;
-      state: string | null;
-      postcode: string | null;
+      address: string | null;
     } | null;
   };
   lineItems: Array<{
-    id: string;
     description: string;
     quantity: number;
     unit_price: number;
-    discount_pct: number;
+    discount_pct?: number;
     total: number;
   }>;
   tenant: {
-    name: string | null;
+    name: string;
     business_name: string | null;
     abn: string | null;
     logo_url: string | null;
-    bank_name: string | null;
-    bank_bsb: string | null;
-    bank_account: string | null;
+    phone: string | null;
+    email: string | null;
     address_line1: string | null;
     suburb: string | null;
     state: string | null;
     postcode: string | null;
-    phone: string | null;
-    email: string | null;
+    bank_name: string | null;
+    bank_bsb: string | null;
+    bank_account: string | null;
+    invoice_footer: string | null;
   } | null;
 }
 
 export function InvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProps) {
   const businessName = tenant?.business_name || tenant?.name || "Your Business";
-  const currency = "AUD";
+  const isPaid = invoice.status === "paid";
 
   const businessAddress = [
     tenant?.address_line1,
@@ -348,14 +397,7 @@ export function InvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProps) {
     .filter(Boolean)
     .join(", ");
 
-  const customerAddress = [
-    invoice.customers?.address_line1,
-    invoice.customers?.suburb,
-    invoice.customers?.state,
-    invoice.customers?.postcode,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  const footerText = invoice.footer_text || tenant?.invoice_footer || null;
 
   return (
     <Document>
@@ -364,13 +406,16 @@ export function InvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProps) {
         <View style={styles.header}>
           {/* Business info */}
           <View style={styles.businessBlock}>
+            {tenant?.logo_url ? (
+              <Image src={tenant.logo_url} style={styles.logo} />
+            ) : null}
             <Text style={styles.businessName}>{businessName}</Text>
             {tenant?.abn && (
               <Text style={styles.businessMeta}>ABN: {tenant.abn}</Text>
             )}
-            {businessAddress && (
+            {businessAddress ? (
               <Text style={styles.businessMeta}>{businessAddress}</Text>
-            )}
+            ) : null}
             {tenant?.phone && (
               <Text style={styles.businessMeta}>{tenant.phone}</Text>
             )}
@@ -393,26 +438,33 @@ export function InvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProps) {
                 {fmtDate(invoice.due_date)}
               </Text>
             )}
+            {isPaid && (
+              <View style={styles.paidBadge}>
+                <Text style={styles.paidBadgeText}>✓ PAID</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        <View style={styles.divider} />
+        <View style={styles.dividerBronze} />
 
         {/* ── Bill To ─────────────────────────────────────────── */}
-        <Text style={styles.billToLabel}>Bill To</Text>
-        <View style={styles.billToBox}>
-          <Text style={styles.billToName}>{invoice.customers?.full_name || "—"}</Text>
-          {invoice.customers?.email && (
-            <Text style={styles.billToDetail}>{invoice.customers.email}</Text>
-          )}
-          {(invoice.customers?.phone || invoice.customers?.mobile) && (
-            <Text style={styles.billToDetail}>
-              {invoice.customers.phone || invoice.customers.mobile}
+        <View style={styles.billToSection}>
+          <Text style={styles.billToLabel}>Bill To</Text>
+          <View style={styles.billToBox}>
+            <Text style={styles.billToName}>
+              {invoice.customers?.full_name || "—"}
             </Text>
-          )}
-          {customerAddress && (
-            <Text style={styles.billToDetail}>{customerAddress}</Text>
-          )}
+            {invoice.customers?.email ? (
+              <Text style={styles.billToDetail}>{invoice.customers.email}</Text>
+            ) : null}
+            {invoice.customers?.phone ? (
+              <Text style={styles.billToDetail}>{invoice.customers.phone}</Text>
+            ) : null}
+            {invoice.customers?.address ? (
+              <Text style={styles.billToDetail}>{invoice.customers.address}</Text>
+            ) : null}
+          </View>
         </View>
 
         {/* ── Line Items Table ─────────────────────────────────── */}
@@ -420,29 +472,28 @@ export function InvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProps) {
           <Text style={[styles.colDesc, styles.colHeaderText]}>Description</Text>
           <Text style={[styles.colQty, styles.colHeaderText]}>Qty</Text>
           <Text style={[styles.colPrice, styles.colHeaderText]}>Unit Price</Text>
-          <Text style={[styles.colDisc, styles.colHeaderText]}>Disc</Text>
-          <Text style={[styles.colTotal, styles.colHeaderText]}>Total</Text>
+          <Text style={[styles.colTotal, styles.colHeaderText]}>Amount</Text>
         </View>
 
         {lineItems.map((item, idx) => (
           <View
-            key={item.id}
+            key={idx}
             style={[styles.tableRow, idx % 2 !== 0 ? styles.tableRowAlt : {}]}
           >
             <Text style={[styles.colDesc, styles.colBodyText]}>
               {item.description}
+              {(item.discount_pct ?? 0) > 0
+                ? ` (${item.discount_pct}% off)`
+                : ""}
             </Text>
             <Text style={[styles.colQty, styles.colBodyMuted]}>
               {item.quantity}
             </Text>
             <Text style={[styles.colPrice, styles.colBodyMuted]}>
-              {fmt(item.unit_price, currency)}
-            </Text>
-            <Text style={[styles.colDisc, styles.colBodyMuted]}>
-              {item.discount_pct > 0 ? `${item.discount_pct}%` : "—"}
+              {fmt(item.unit_price)}
             </Text>
             <Text style={[styles.colTotal, styles.colBodyText]}>
-              {fmt(item.total, currency)}
+              {fmt(item.total)}
             </Text>
           </View>
         ))}
@@ -452,77 +503,87 @@ export function InvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProps) {
           <View style={styles.totalsBox}>
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Subtotal</Text>
-              <Text style={styles.totalsValue}>{fmt(invoice.subtotal, currency)}</Text>
-            </View>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>
-                {invoice.tax_name} ({(invoice.tax_rate * 100).toFixed(0)}%
-                {invoice.tax_inclusive ? " incl." : ""})
-              </Text>
-              <Text style={styles.totalsValue}>{fmt(invoice.tax_amount, currency)}</Text>
+              <Text style={styles.totalsValue}>{fmt(invoice.subtotal)}</Text>
             </View>
             {invoice.discount_amount > 0 && (
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>Discount</Text>
-                <Text style={styles.totalsValue}>−{fmt(invoice.discount_amount, currency)}</Text>
+                <Text style={styles.totalsValue}>
+                  −{fmt(invoice.discount_amount)}
+                </Text>
               </View>
             )}
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>
+                {invoice.tax_name || "GST"} (
+                {(invoice.tax_rate * 100).toFixed(0)}%
+                {invoice.tax_inclusive ? " incl." : ""})
+              </Text>
+              <Text style={styles.totalsValue}>{fmt(invoice.tax_amount)}</Text>
+            </View>
             <View style={styles.totalsDividerDark} />
             <View style={styles.totalsRow}>
-              <Text style={styles.grandTotalLabel}>Total</Text>
-              <Text style={styles.grandTotalValue}>{fmt(invoice.total, currency)}</Text>
+              <Text style={styles.grandTotalLabel}>TOTAL</Text>
+              <Text style={styles.grandTotalValue}>{fmt(invoice.total)}</Text>
             </View>
-            {invoice.amount_paid > 0 && (
-              <>
-                <View style={styles.totalsDivider} />
-                <View style={styles.totalsRow}>
-                  <Text style={styles.amountPaidLabel}>Amount Paid</Text>
-                  <Text style={styles.amountPaidValue}>{fmt(invoice.amount_paid, currency)}</Text>
-                </View>
-                <View style={styles.totalsDivider} />
-                <View style={styles.totalsRow}>
-                  <Text style={styles.amountDueLabel}>Amount Due</Text>
-                  <Text style={styles.amountDueValue}>{fmt(invoice.amount_due, currency)}</Text>
-                </View>
-              </>
-            )}
           </View>
         </View>
 
+        {/* ── Paid stamp ──────────────────────────────────────── */}
+        {isPaid && invoice.paid_at ? (
+          <View style={styles.paidStamp}>
+            <Text style={styles.paidStampText}>
+              ✓ PAID on {fmtDate(invoice.paid_at)}
+            </Text>
+          </View>
+        ) : null}
+
         {/* ── Bank Details ─────────────────────────────────────── */}
-        {(tenant?.bank_name || tenant?.bank_bsb || tenant?.bank_account) && (
+        {(tenant?.bank_name || tenant?.bank_bsb || tenant?.bank_account) && !isPaid ? (
           <>
-            <View style={styles.divider} />
             <Text style={styles.sectionLabel}>Payment Details</Text>
-            {tenant.bank_name && (
-              <Text style={styles.sectionText}>Bank: {tenant.bank_name}</Text>
-            )}
-            {tenant.bank_bsb && (
-              <Text style={styles.sectionText}>BSB: {tenant.bank_bsb}</Text>
-            )}
-            {tenant.bank_account && (
-              <Text style={styles.sectionText}>Account: {tenant.bank_account}</Text>
-            )}
+            <View style={styles.bankSection}>
+              {tenant?.bank_name ? (
+                <View style={styles.bankRow}>
+                  <Text style={styles.bankLabel}>Bank</Text>
+                  <Text style={styles.bankValue}>{tenant.bank_name}</Text>
+                </View>
+              ) : null}
+              {tenant?.bank_bsb ? (
+                <View style={styles.bankRow}>
+                  <Text style={styles.bankLabel}>BSB</Text>
+                  <Text style={styles.bankValue}>{tenant.bank_bsb}</Text>
+                </View>
+              ) : null}
+              {tenant?.bank_account ? (
+                <View style={styles.bankRow}>
+                  <Text style={styles.bankLabel}>Account</Text>
+                  <Text style={styles.bankValue}>{tenant.bank_account}</Text>
+                </View>
+              ) : null}
+              <View style={styles.bankRow}>
+                <Text style={styles.bankLabel}>Reference</Text>
+                <Text style={styles.bankValue}>{invoice.invoice_number}</Text>
+              </View>
+            </View>
           </>
-        )}
+        ) : null}
 
         {/* ── Notes ────────────────────────────────────────────── */}
-        {invoice.footer_text && (
-          <>
-            <Text style={styles.sectionLabel}>Payment Instructions</Text>
-            <Text style={styles.sectionText}>{invoice.footer_text}</Text>
-          </>
-        )}
-        {invoice.notes && (
-          <>
+        {invoice.notes ? (
+          <View style={styles.notesBox}>
             <Text style={styles.sectionLabel}>Notes</Text>
-            <Text style={styles.sectionText}>{invoice.notes}</Text>
-          </>
-        )}
+            <Text style={styles.noteText}>{invoice.notes}</Text>
+          </View>
+        ) : null}
 
         {/* ── Footer ───────────────────────────────────────────── */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Generated by Nexpura · nexpura.com</Text>
+          <Text style={styles.footerText}>
+            {footerText
+              ? footerText
+              : "Thank you for your business · Generated by Nexpura"}
+          </Text>
         </View>
       </Page>
     </Document>

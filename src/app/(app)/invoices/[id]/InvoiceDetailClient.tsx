@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { recordPayment, markAsSent, voidInvoice } from "../actions";
+import { emailInvoice } from "./emailInvoice";
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-gray-100 text-gray-600" },
@@ -280,13 +281,25 @@ export default function InvoiceDetailClient({
             href={`/api/invoice/${invoice.id}/pdf`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1.5 text-xs border border-stone-200 text-stone-500 rounded-lg hover:border-[#8B7355]/40 hover:text-stone-900 transition-colors inline-flex items-center gap-1"
+            className="px-3 py-1.5 text-xs bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors inline-flex items-center gap-1"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Download PDF
           </a>
+          <a
+            href={`/api/invoice/${invoice.id}/pdf?format=thermal`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 text-xs border border-stone-200 text-stone-500 rounded-lg hover:border-[#8B7355]/40 hover:text-stone-900 transition-colors inline-flex items-center gap-1"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Thermal
+          </a>
+          <EmailInvoiceButton invoiceId={invoice.id} customerEmail={invoice.customers?.email ?? null} onToast={showToast} />
           {canVoid && (
             <button
               onClick={() => setShowVoidConfirm(true)}
@@ -438,6 +451,50 @@ export default function InvoiceDetailClient({
         </div>
       )}
     </div>
+  );
+}
+
+function EmailInvoiceButton({
+  invoiceId,
+  customerEmail,
+  onToast,
+}: {
+  invoiceId: string;
+  customerEmail: string | null;
+  onToast: (msg: string) => void;
+}) {
+  const [sending, setSending] = useState(false);
+
+  async function handleSend() {
+    if (!customerEmail) {
+      onToast("No customer email on file");
+      return;
+    }
+    setSending(true);
+    try {
+      const result = await emailInvoice(invoiceId);
+      if (result.success) {
+        onToast(`Invoice emailed to ${customerEmail}`);
+      } else {
+        onToast(`Failed: ${result.error ?? "Unknown error"}`);
+      }
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleSend}
+      disabled={sending || !customerEmail}
+      title={!customerEmail ? "No customer email on file" : "Email invoice to customer"}
+      className="px-3 py-1.5 text-xs border border-stone-200 text-stone-500 rounded-lg hover:border-[#8B7355]/40 hover:text-stone-900 transition-colors inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      {sending ? "Sending…" : "Email"}
+    </button>
   );
 }
 

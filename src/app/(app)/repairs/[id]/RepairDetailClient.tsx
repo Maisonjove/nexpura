@@ -119,10 +119,21 @@ export default function RepairDetailClient({
           className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-white border border-stone-200 text-stone-900 rounded-lg hover:bg-stone-50 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
           </svg>
-          Download Repair Ticket
+          Print Ticket
         </a>
+
+        {/* Create Invoice */}
+        <Link
+          href={`/invoices/new?repair_id=${repairId}${customerId ? `&customer_id=${customerId}` : ""}`}
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-[#8B7355]/10 border border-[#8B7355]/30 text-[#8B7355] rounded-lg hover:bg-[#8B7355]/20 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Create Invoice
+        </Link>
 
         {/* Advance Stage */}
         {nextStage && !isTerminal && (

@@ -25,9 +25,17 @@ export async function GET(
 
   if (!userData?.tenant_id) return new NextResponse("Forbidden", { status: 403 });
 
+  // Select only real DB columns (from migration 013)
   const { data: repair, error } = await supabase
     .from("repairs")
-    .select("*, customers(full_name, email, phone)")
+    .select(
+      `id, ticket_number, customer_id, customer_name, customer_email,
+       item_type, item_description, metal_type, brand, condition_notes,
+       repair_type, work_description, work_required, technician,
+       priority, status, quoted_price, final_price, deposit_amount, deposit_paid,
+       due_date, completed_at, internal_notes, client_notes, notes, created_at,
+       customers(full_name, email, phone, address)`
+    )
     .eq("id", id)
     .eq("tenant_id", userData.tenant_id)
     .single();
@@ -36,20 +44,20 @@ export async function GET(
 
   const { data: tenant } = await supabase
     .from("tenants")
-    .select("name, phone, email")
+    .select("name, business_name, abn, phone, email, address_line1, suburb, state, postcode")
     .eq("id", userData.tenant_id)
     .single();
 
-  const customer = Array.isArray(repair.customers) ? repair.customers[0] : repair.customers;
+  const customerRaw = Array.isArray(repair.customers) ? repair.customers[0] : repair.customers;
 
   const ticketData = {
-    ticketNumber: repair.repair_number ?? repair.id,
-    tenantName: tenant?.name ?? "Jewellery Studio",
+    ticketNumber: repair.ticket_number ?? repair.id,
+    tenantName: tenant?.business_name || tenant?.name || "Jewellery Studio",
     tenantPhone: tenant?.phone,
     tenantEmail: tenant?.email,
-    customerName: customer?.full_name,
-    customerPhone: customer?.phone,
-    customerEmail: customer?.email,
+    customerName: customerRaw?.full_name ?? repair.customer_name,
+    customerPhone: customerRaw?.phone,
+    customerEmail: customerRaw?.email ?? repair.customer_email,
     itemType: repair.item_type,
     itemDescription: repair.item_description,
     metalType: repair.metal_type,
@@ -58,11 +66,11 @@ export async function GET(
     repairType: repair.repair_type,
     workDescription: repair.work_description,
     priority: repair.priority,
-    status: repair.stage,
+    status: repair.status,
     quotedPrice: repair.quoted_price,
     finalPrice: repair.final_price,
     dueDate: repair.due_date,
-    technician: repair.assigned_to,
+    technician: repair.technician,
     clientNotes: repair.client_notes,
     createdAt: repair.created_at,
   };
@@ -78,7 +86,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `inline; filename="${filename}"`,
       "Content-Length": String(buffer.byteLength),
     },
   });

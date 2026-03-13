@@ -1,0 +1,18 @@
+ALTER TABLE public.tenants
+  ADD COLUMN IF NOT EXISTS business_name text,
+  ADD COLUMN IF NOT EXISTS abn text,
+  ADD COLUMN IF NOT EXISTS phone text,
+  ADD COLUMN IF NOT EXISTS email text,
+  ADD COLUMN IF NOT EXISTS website text,
+  ADD COLUMN IF NOT EXISTS address_line1 text,
+  ADD COLUMN IF NOT EXISTS suburb text,
+  ADD COLUMN IF NOT EXISTS state text,
+  ADD COLUMN IF NOT EXISTS postcode text,
+  ADD COLUMN IF NOT EXISTS country text DEFAULT 'Australia',
+  ADD COLUMN IF NOT EXISTS bank_name text,
+  ADD COLUMN IF NOT EXISTS bank_bsb text,
+  ADD COLUMN IF NOT EXISTS bank_account text,
+  ADD COLUMN IF NOT EXISTS invoice_footer text DEFAULT 'Thank you for your business.',
+  ADD COLUMN IF NOT EXISTS tax_name text DEFAULT 'GST',
+  ADD COLUMN IF NOT EXISTS tax_rate numeric(5,4) DEFAULT 0.1,
+  ADD COLUMN IF NOT EXISTS tax_inclusive boolean DEFAULT true;

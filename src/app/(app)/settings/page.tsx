@@ -33,6 +33,7 @@ type Tenant = {
   bank_name: string | null;
   bank_bsb: string | null;
   bank_account: string | null;
+  invoice_footer: string | null;
 };
 
 type User = {
@@ -538,6 +539,22 @@ export default function SettingsPage() {
                   placeholder="1234 5678"
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-stone-900">Invoice Footer</h2>
+              <p className="text-xs text-stone-500 mt-0.5">This message appears at the bottom of every invoice PDF</p>
+            </div>
+            <div className="space-y-1.5">
+              <textarea
+                name="invoice_footer"
+                defaultValue={tenant?.invoice_footer || ""}
+                rows={3}
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white resize-none"
+                placeholder="Thank you for your business. Payment due within 7 days."
+              />
             </div>
           </div>
 

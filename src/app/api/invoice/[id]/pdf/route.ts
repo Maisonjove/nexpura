@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/lib/pdf/InvoicePDF";
+import { ThermalInvoicePDF } from "@/lib/pdf/ThermalInvoicePDF";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const format = request.nextUrl.searchParams.get("format"); // 'thermal' or null
 
   // Auth check
   const supabase = await createClient();
@@ -36,9 +38,9 @@ export async function GET(
     .from("invoices")
     .select(
       `id, invoice_number, status, invoice_date, due_date,
-       subtotal, tax_amount, discount_amount, total, amount_paid, amount_due,
+       subtotal, tax_amount, discount_amount, total, paid_at,
        tax_name, tax_rate, tax_inclusive, notes, footer_text,
-       customers(full_name, email, phone, mobile, address_line1, suburb, state, postcode)`
+       customers(full_name, email, phone, address)`
     )
     .eq("id", id)
     .eq("tenant_id", userData.tenant_id)
@@ -48,10 +50,15 @@ export async function GET(
     return new NextResponse("Invoice not found", { status: 404 });
   }
 
+  // Compute amount_paid / amount_due
+  const isPaid = invoice.status === "paid";
+  const amount_paid = isPaid ? (invoice.total ?? 0) : 0;
+  const amount_due = isPaid ? 0 : (invoice.total ?? 0);
+
   // Fetch line items
-  const { data: lineItems } = await supabase
+  const { data: lineItemsRaw } = await supabase
     .from("invoice_line_items")
-    .select("id, description, quantity, unit_price, discount_pct, total, sort_order")
+    .select("description, quantity, unit_price, discount_pct, line_total")
     .eq("invoice_id", id)
     .order("sort_order", { ascending: true });
 
@@ -59,60 +66,91 @@ export async function GET(
   const { data: tenant } = await supabase
     .from("tenants")
     .select(
-      "name, business_name, abn, logo_url, bank_name, bank_bsb, bank_account, address_line1, suburb, state, postcode, phone, email"
+      "name, business_name, abn, logo_url, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer, tax_name, tax_rate, tax_inclusive"
     )
     .eq("id", userData.tenant_id)
     .single();
 
-  // Build typed data
+  // Build typed invoice data
+  const customerRaw = Array.isArray(invoice.customers)
+    ? (invoice.customers[0] ?? null)
+    : invoice.customers;
+
   const invoiceData = {
     id: invoice.id,
     invoice_number: invoice.invoice_number,
     status: invoice.status,
     invoice_date: invoice.invoice_date,
-    due_date: invoice.due_date,
-    subtotal: invoice.subtotal,
-    tax_amount: invoice.tax_amount,
-    discount_amount: invoice.discount_amount,
-    total: invoice.total,
-    amount_paid: invoice.amount_paid,
-    amount_due: invoice.amount_due,
-    tax_name: invoice.tax_name,
-    tax_rate: invoice.tax_rate,
-    tax_inclusive: invoice.tax_inclusive,
-    notes: invoice.notes,
-    footer_text: invoice.footer_text,
-    customers: Array.isArray(invoice.customers)
-      ? (invoice.customers[0] ?? null)
-      : invoice.customers,
+    due_date: invoice.due_date ?? null,
+    paid_at: invoice.paid_at ?? null,
+    subtotal: invoice.subtotal ?? 0,
+    tax_amount: invoice.tax_amount ?? 0,
+    discount_amount: invoice.discount_amount ?? 0,
+    total: invoice.total ?? 0,
+    amount_paid,
+    amount_due,
+    tax_name: invoice.tax_name ?? "GST",
+    tax_rate: invoice.tax_rate ?? 0.1,
+    tax_inclusive: invoice.tax_inclusive ?? true,
+    notes: invoice.notes ?? null,
+    footer_text: invoice.footer_text ?? null,
+    customers: customerRaw
+      ? {
+          full_name: customerRaw.full_name ?? null,
+          email: customerRaw.email ?? null,
+          phone: customerRaw.phone ?? null,
+          address: customerRaw.address ?? null,
+        }
+      : null,
   };
 
-  const lineItemsData = (lineItems ?? []).map((item) => ({
-    id: item.id,
+  const lineItems = (lineItemsRaw ?? []).map((item) => ({
     description: item.description,
-    quantity: item.quantity,
-    unit_price: item.unit_price,
-    discount_pct: item.discount_pct ?? 0,
-    total: item.total,
+    quantity: Number(item.quantity),
+    unit_price: Number(item.unit_price),
+    discount_pct: Number(item.discount_pct ?? 0),
+    // line_total is the DB column; alias to total for the PDF component
+    total: Number((item as Record<string, unknown>).line_total ?? (item as Record<string, unknown>).total ?? 0),
   }));
 
+  const tenantData = tenant
+    ? {
+        name: tenant.name ?? "",
+        business_name: tenant.business_name ?? null,
+        abn: tenant.abn ?? null,
+        logo_url: tenant.logo_url ?? null,
+        phone: tenant.phone ?? null,
+        email: tenant.email ?? null,
+        address_line1: tenant.address_line1 ?? null,
+        suburb: tenant.suburb ?? null,
+        state: tenant.state ?? null,
+        postcode: tenant.postcode ?? null,
+        bank_name: tenant.bank_name ?? null,
+        bank_bsb: tenant.bank_bsb ?? null,
+        bank_account: tenant.bank_account ?? null,
+        invoice_footer: tenant.invoice_footer ?? null,
+      }
+    : null;
+
   // Render PDF
-  const element = React.createElement(InvoicePDF, {
+  const Component = format === "thermal" ? ThermalInvoicePDF : InvoicePDF;
+  const element = React.createElement(Component, {
     invoice: invoiceData,
-    lineItems: lineItemsData,
-    tenant: tenant ?? null,
+    lineItems,
+    tenant: tenantData,
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buffer = await renderToBuffer(element as unknown as ReactElement<DocumentProps, JSXElementConstructor<DocumentProps>>);
 
-  const filename = `${invoice.invoice_number.replace(/\//g, "-")}.pdf`;
+  const suffix = format === "thermal" ? "-thermal" : "";
+  const filename = `${invoice.invoice_number.replace(/\//g, "-")}${suffix}.pdf`;
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `inline; filename="${filename}"`,
       "Content-Length": String(buffer.byteLength),
     },
   });

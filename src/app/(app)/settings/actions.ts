@@ -53,6 +53,7 @@ export async function saveBanking(tenantId: string, formData: FormData) {
       bank_name: formData.get("bank_name") as string || null,
       bank_bsb: formData.get("bank_bsb") as string || null,
       bank_account: formData.get("bank_account") as string || null,
+      invoice_footer: formData.get("invoice_footer") as string || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", tenantId);

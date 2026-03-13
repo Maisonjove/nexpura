@@ -25,9 +25,19 @@ export async function GET(
 
   if (!userData?.tenant_id) return new NextResponse("Forbidden", { status: 403 });
 
+  // Select only real DB columns (from migration 013)
   const { data: job, error } = await supabase
     .from("bespoke_jobs")
-    .select("*, customers(full_name, email, phone)")
+    .select(
+      `id, job_number, customer_id, customer_name, customer_email,
+       title, description, order_type, jewellery_type, stage, priority,
+       metal_type, metal_colour, metal_purity, metal_weight_grams,
+       stone_type, stone_colour, stone_carat,
+       design_notes, client_notes, internal_notes,
+       estimated_cost, final_cost, deposit_amount, deposit_received,
+       due_date, completed_at, notes, created_at,
+       customers(full_name, email, phone, address)`
+    )
     .eq("id", id)
     .eq("tenant_id", userData.tenant_id)
     .single();
@@ -36,7 +46,7 @@ export async function GET(
 
   const { data: tenant } = await supabase
     .from("tenants")
-    .select("name, phone, email")
+    .select("name, business_name, abn, phone, email, address_line1, suburb, state, postcode")
     .eq("id", userData.tenant_id)
     .single();
 
@@ -46,7 +56,7 @@ export async function GET(
     jobNumber: job.job_number ?? job.id,
     title: job.title,
     description: job.description,
-    tenantName: tenant?.name ?? "Jewellery Studio",
+    tenantName: tenant?.business_name || tenant?.name || "Jewellery Studio",
     tenantPhone: tenant?.phone,
     tenantEmail: tenant?.email,
     customerName: customer?.full_name ?? job.customer_name,
@@ -82,7 +92,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `inline; filename="${filename}"`,
       "Content-Length": String(buffer.byteLength),
     },
   });

@@ -255,14 +255,25 @@ export default function InvoiceListClient({
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/invoices/${inv.id}`}
-                          className="text-stone-400 hover:text-[#8B7355] transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </Link>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => window.open(`/api/invoice/${inv.id}/pdf`, "_blank")}
+                            title="Download PDF"
+                            className="inline-flex items-center justify-center rounded-md h-7 w-7 text-stone-400 hover:text-[#8B7355] hover:bg-amber-50 transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          </button>
+                          <Link
+                            href={`/invoices/${inv.id}`}
+                            className="inline-flex items-center justify-center rounded-md h-7 w-7 text-stone-400 hover:text-[#8B7355] transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );
