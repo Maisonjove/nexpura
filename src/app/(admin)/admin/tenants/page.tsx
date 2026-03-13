@@ -5,7 +5,7 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-sage/15 text-sage"
+      ? "bg-stone-100 text-[#8B7355]"
       : s === "trialing"
       ? "bg-blue-500/10 text-blue-600"
       : s === "past_due"
@@ -22,10 +22,10 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
     p === "pro"
-      ? "bg-sage/15 text-sage"
+      ? "bg-stone-100 text-[#8B7355]"
       : p === "ultimate"
-      ? "bg-gold/15 text-gold"
-      : "bg-platinum text-forest/60";
+      ? "bg-[#8B7355]/15 text-[#8B7355]"
+      : "bg-stone-200 text-stone-500";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {p || "—"}
@@ -112,8 +112,8 @@ export default async function TenantsPage({
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-fraunces font-semibold text-forest">Tenants</h1>
-        <p className="text-sm text-forest/50 mt-1">
+        <h1 className="text-2xl font-semibold font-semibold text-stone-900">Tenants</h1>
+        <p className="text-sm text-stone-500 mt-1">
           {filtered.length} tenant{filtered.length !== 1 ? "s" : ""} found
         </p>
       </div>
@@ -125,12 +125,12 @@ export default async function TenantsPage({
           name="q"
           defaultValue={query}
           placeholder="Search by business name or email…"
-          className="flex-1 min-w-[200px] px-4 py-2 border border-platinum rounded-lg text-sm text-forest bg-white focus:outline-none focus:ring-2 focus:ring-sage/30"
+          className="flex-1 min-w-[200px] px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
         />
         <select
           name="plan"
           defaultValue={planFilter}
-          className="px-3 py-2 border border-platinum rounded-lg text-sm text-forest bg-white focus:outline-none focus:ring-2 focus:ring-sage/30"
+          className="px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
         >
           <option value="">All Plans</option>
           <option value="basic">Basic</option>
@@ -140,7 +140,7 @@ export default async function TenantsPage({
         <select
           name="status"
           defaultValue={statusFilter}
-          className="px-3 py-2 border border-platinum rounded-lg text-sm text-forest bg-white focus:outline-none focus:ring-2 focus:ring-sage/30"
+          className="px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
         >
           <option value="">All Statuses</option>
           <option value="trialing">Trialing</option>
@@ -150,14 +150,14 @@ export default async function TenantsPage({
         </select>
         <button
           type="submit"
-          className="px-4 py-2 bg-sage text-white rounded-lg text-sm font-medium hover:bg-sage/90 transition-colors"
+          className="px-4 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] transition-colors"
         >
           Filter
         </button>
         {(query || planFilter || statusFilter) && (
           <Link
             href="/admin/tenants"
-            className="px-4 py-2 border border-platinum text-forest/60 rounded-lg text-sm hover:bg-ivory transition-colors"
+            className="px-4 py-2 border border-stone-200 text-stone-500 rounded-lg text-sm hover:bg-stone-50 transition-colors"
           >
             Clear
           </Link>
@@ -165,46 +165,46 @@ export default async function TenantsPage({
       </form>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-platinum overflow-hidden">
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-platinum bg-ivory/50">
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Business</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Owner Email</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Plan</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Status</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Trial / Billing</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Signed Up</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide"></th>
+              <tr className="border-b border-stone-200 bg-stone-50/50">
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Business</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Owner Email</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Plan</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Status</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Trial / Billing</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Signed Up</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-platinum">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-forest/40">
+                  <td colSpan={7} className="px-6 py-12 text-center text-stone-400">
                     No tenants found
                   </td>
                 </tr>
               ) : (
                 filtered.map((tenant) => (
-                  <tr key={tenant.id} className="hover:bg-ivory/40 transition-colors">
-                    <td className="px-6 py-4 font-medium text-forest">{tenant.name}</td>
-                    <td className="px-6 py-4 text-forest/60">{tenant.ownerEmail}</td>
+                  <tr key={tenant.id} className="hover:bg-stone-50/40 transition-colors">
+                    <td className="px-6 py-4 font-medium text-stone-900">{tenant.name}</td>
+                    <td className="px-6 py-4 text-stone-500">{tenant.ownerEmail}</td>
                     <td className="px-6 py-4">
                       <PlanBadge plan={tenant.sub?.plan} />
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={tenant.sub?.status} />
                     </td>
-                    <td className="px-6 py-4 text-forest/60">
+                    <td className="px-6 py-4 text-stone-500">
                       {formatDate(tenant.sub?.trial_ends_at || tenant.sub?.current_period_end)}
                     </td>
-                    <td className="px-6 py-4 text-forest/60">{formatDate(tenant.created_at)}</td>
+                    <td className="px-6 py-4 text-stone-500">{formatDate(tenant.created_at)}</td>
                     <td className="px-6 py-4">
                       <Link
                         href={`/admin/tenants/${tenant.id}`}
-                        className="px-3 py-1.5 text-xs bg-forest text-white rounded-lg hover:bg-forest/80 transition-colors"
+                        className="px-3 py-1.5 text-xs bg-stone-900 text-white rounded-lg hover:bg-stone-900/80 transition-colors"
                       >
                         View
                       </Link>

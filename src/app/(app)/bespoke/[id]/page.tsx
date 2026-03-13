@@ -105,7 +105,7 @@ export default async function BespokeJobDetailPage({
     <div className="max-w-6xl mx-auto">
       {/* Breadcrumb */}
       <div className="mb-6">
-        <Link href="/bespoke" className="text-sm text-forest/50 hover:text-sage transition-colors">
+        <Link href="/bespoke" className="text-sm text-stone-500 hover:text-[#8B7355] transition-colors">
           ← Bespoke Jobs
         </Link>
       </div>
@@ -115,22 +115,22 @@ export default async function BespokeJobDetailPage({
         <div className="lg:col-span-2 space-y-6">
 
           {/* Header card */}
-          <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
+          <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1">
-                  <span className="text-xs font-mono text-forest/40 bg-platinum px-2 py-0.5 rounded">
+                  <span className="text-xs font-mono text-stone-400 bg-stone-200 px-2 py-0.5 rounded">
                     {job.job_number}
                   </span>
                   <PriorityBadge priority={job.priority} />
                 </div>
-                <h1 className="font-fraunces text-2xl font-semibold text-forest leading-tight">
+                <h1 className="font-semibold text-2xl font-semibold text-stone-900 leading-tight">
                   {job.title}
                 </h1>
                 {job.customers && (
                   <Link
                     href={`/customers/${job.customers.id}`}
-                    className="text-sm text-forest/60 hover:text-sage transition-colors mt-1 inline-block"
+                    className="text-sm text-stone-500 hover:text-[#8B7355] transition-colors mt-1 inline-block"
                   >
                     {job.customers.full_name}
                   </Link>
@@ -141,14 +141,14 @@ export default async function BespokeJobDetailPage({
             {/* Progress bar */}
             <div className="mt-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-forest/50">Workflow Progress</span>
+                <span className="text-xs font-medium text-stone-500">Workflow Progress</span>
                 <StageBadge stage={job.stage} />
               </div>
               <div className="relative">
                 {/* Track */}
-                <div className="h-2 bg-platinum rounded-full overflow-hidden">
+                <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-sage rounded-full transition-all"
+                    className="h-full bg-[#8B7355] rounded-full transition-all"
                     style={{
                       width: `${((currentStageIndex + 1) / (WORKFLOW_STAGES.length - 1)) * 100}%`,
                     }}
@@ -165,14 +165,14 @@ export default async function BespokeJobDetailPage({
                         <div
                           className={`w-2.5 h-2.5 rounded-full border-2 transition-all ${
                             current
-                              ? "border-sage bg-sage scale-125"
+                              ? "border-[#8B7355] bg-[#8B7355] scale-125"
                               : done
-                              ? "border-sage bg-sage"
-                              : "border-platinum bg-white"
+                              ? "border-[#8B7355] bg-[#8B7355]"
+                              : "border-stone-200 bg-white"
                           }`}
                         />
                         {i % 3 === 0 && (
-                          <span className="text-[9px] text-forest/30 mt-1 text-center leading-tight hidden sm:block">
+                          <span className="text-[9px] text-stone-400 mt-1 text-center leading-tight hidden sm:block">
                             {s.label}
                           </span>
                         )}
@@ -186,13 +186,13 @@ export default async function BespokeJobDetailPage({
 
           {/* Specifications */}
           {specs.length > 0 && (
-            <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-              <h2 className="font-fraunces text-base font-semibold text-forest mb-4">Specifications</h2>
+            <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+              <h2 className="text-base font-semibold text-stone-900 mb-4">Specifications</h2>
               <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
                 {specs.map((s) => (
                   <div key={s.label}>
-                    <dt className="text-xs font-medium text-forest/40 uppercase tracking-wider">{s.label}</dt>
-                    <dd className="text-sm text-forest mt-0.5 font-medium">{s.value}</dd>
+                    <dt className="text-xs font-medium text-stone-400 uppercase tracking-wider">{s.label}</dt>
+                    <dd className="text-sm text-stone-900 mt-0.5 font-medium">{s.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -201,25 +201,25 @@ export default async function BespokeJobDetailPage({
 
           {/* Notes */}
           {(job.description || job.internal_notes || job.client_notes) && (
-            <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-              <h2 className="font-fraunces text-base font-semibold text-forest mb-4">Notes</h2>
+            <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+              <h2 className="text-base font-semibold text-stone-900 mb-4">Notes</h2>
               <div className="space-y-4">
                 {job.description && (
                   <div>
-                    <p className="text-xs font-medium text-forest/40 uppercase tracking-wider mb-1">Description</p>
-                    <p className="text-sm text-forest leading-relaxed">{job.description}</p>
+                    <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">Description</p>
+                    <p className="text-sm text-stone-900 leading-relaxed">{job.description}</p>
                   </div>
                 )}
                 {job.internal_notes && (
-                  <div className="border-t border-platinum pt-4">
+                  <div className="border-t border-stone-200 pt-4">
                     <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-1">⚑ Internal Notes</p>
-                    <p className="text-sm text-forest leading-relaxed">{job.internal_notes}</p>
+                    <p className="text-sm text-stone-900 leading-relaxed">{job.internal_notes}</p>
                   </div>
                 )}
                 {job.client_notes && (
-                  <div className="border-t border-platinum pt-4">
-                    <p className="text-xs font-medium text-forest/40 uppercase tracking-wider mb-1">Client Requests</p>
-                    <p className="text-sm text-forest leading-relaxed">{job.client_notes}</p>
+                  <div className="border-t border-stone-200 pt-4">
+                    <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">Client Requests</p>
+                    <p className="text-sm text-stone-900 leading-relaxed">{job.client_notes}</p>
                   </div>
                 )}
               </div>
@@ -227,25 +227,25 @@ export default async function BespokeJobDetailPage({
           )}
 
           {/* Stage History */}
-          <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-            <h2 className="font-fraunces text-base font-semibold text-forest mb-5">Stage History</h2>
+          <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-stone-900 mb-5">Stage History</h2>
             {stageHistory && stageHistory.length > 0 ? (
               <div className="relative pl-6">
-                <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-platinum" />
+                <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-stone-200" />
                 <div className="space-y-5">
                   {stageHistory.map((entry, i) => (
                     <div key={entry.id} className="relative">
                       <div className={`absolute -left-[18px] w-3 h-3 rounded-full border-2 ${
                         i === stageHistory.length - 1
-                          ? "border-sage bg-sage"
-                          : "border-platinum bg-white"
+                          ? "border-[#8B7355] bg-[#8B7355]"
+                          : "border-stone-200 bg-white"
                       }`} />
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-forest">
+                          <span className="text-sm font-medium text-stone-900">
                             {WORKFLOW_STAGES.find((s) => s.key === entry.stage)?.label || entry.stage}
                           </span>
-                          <span className="text-xs text-forest/40">
+                          <span className="text-xs text-stone-400">
                             {new Date(entry.created_at).toLocaleDateString("en-GB", {
                               day: "numeric",
                               month: "short",
@@ -256,7 +256,7 @@ export default async function BespokeJobDetailPage({
                           </span>
                         </div>
                         {entry.notes && (
-                          <p className="text-sm text-forest/60 mt-0.5">{entry.notes}</p>
+                          <p className="text-sm text-stone-500 mt-0.5">{entry.notes}</p>
                         )}
                       </div>
                     </div>
@@ -264,7 +264,7 @@ export default async function BespokeJobDetailPage({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-forest/40">No stage history yet.</p>
+              <p className="text-sm text-stone-400">No stage history yet.</p>
             )}
           </div>
 
@@ -295,7 +295,7 @@ export default async function BespokeJobDetailPage({
           {/* Edit button */}
           <Link
             href={`/bespoke/${id}/edit`}
-            className="w-full flex items-center justify-center gap-2 bg-white border border-forest text-forest text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-forest hover:text-white transition-all"
+            className="w-full flex items-center justify-center gap-2 bg-white border border-stone-900 text-stone-900 text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-stone-900 hover:text-white transition-all"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -313,8 +313,8 @@ export default async function BespokeJobDetailPage({
 // ────────────────────────────────────────────────────────────────
 
 const PRIORITY_MAP: Record<string, { dot: string; text: string }> = {
-  low: { dot: "bg-forest/30", text: "text-forest/50" },
-  normal: { dot: "bg-sage", text: "text-sage" },
+  low: { dot: "bg-stone-900/30", text: "text-stone-500" },
+  normal: { dot: "bg-[#8B7355]", text: "text-[#8B7355]" },
   high: { dot: "bg-amber-400", text: "text-amber-600" },
   urgent: { dot: "bg-red-500", text: "text-red-600" },
 };
@@ -331,18 +331,18 @@ function PriorityBadge({ priority }: { priority: string }) {
 
 const STAGE_MAP: Record<string, { dot: string; text: string }> = {
   enquiry: { dot: "bg-blue-400", text: "text-blue-600" },
-  quote_sent: { dot: "bg-purple-400", text: "text-purple-600" },
+  quote_sent: { dot: "bg-stone-400", text: "text-stone-600" },
   approved: { dot: "bg-green-400", text: "text-green-600" },
-  deposit_paid: { dot: "bg-teal-400", text: "text-teal-600" },
+  deposit_paid: { dot: "bg-emerald-400", text: "text-emerald-600" },
   stone_sourcing: { dot: "bg-yellow-400", text: "text-yellow-600" },
   cad: { dot: "bg-orange-400", text: "text-orange-600" },
   cad_approved: { dot: "bg-orange-500", text: "text-orange-700" },
   casting: { dot: "bg-red-400", text: "text-red-600" },
   setting: { dot: "bg-pink-400", text: "text-pink-600" },
-  polishing: { dot: "bg-indigo-400", text: "text-indigo-600" },
-  ready: { dot: "bg-sage", text: "text-sage" },
-  completed: { dot: "bg-forest", text: "text-forest" },
-  cancelled: { dot: "bg-forest/30", text: "text-forest/40" },
+  polishing: { dot: "bg-stone-400", text: "text-stone-600" },
+  ready: { dot: "bg-[#8B7355]", text: "text-[#8B7355]" },
+  completed: { dot: "bg-stone-900", text: "text-stone-900" },
+  cancelled: { dot: "bg-stone-900/30", text: "text-stone-400" },
 };
 
 const ALL_STAGES_LABELS: Record<string, string> = {
@@ -353,7 +353,7 @@ const ALL_STAGES_LABELS: Record<string, string> = {
 };
 
 function StageBadge({ stage }: { stage: string }) {
-  const s = STAGE_MAP[stage] || { dot: "bg-forest/30", text: "text-forest/40" };
+  const s = STAGE_MAP[stage] || { dot: "bg-stone-900/30", text: "text-stone-400" };
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${s.text}`}>
       <span className={`w-2 h-2 rounded-full ${s.dot}`} />

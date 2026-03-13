@@ -18,6 +18,7 @@
     --secondary-foreground: 24 9.8% 10%;
     --muted: 60 4.8% 95.9%;
     --muted-foreground: 25 5.3% 44.7%;
+    --color-bronze: #8B7355;
     --accent: #8B7355;
     --accent-hover: #7A6347;
     --sidebar-bg: #1A1A1A;
@@ -32,6 +33,6 @@
 
   body {
     font-family: var(--font-sans), Inter, sans-serif;
-    background-color: #FAFAF9;
+    background-color: #FAFAF9; /* stone-50 */
   }
 }

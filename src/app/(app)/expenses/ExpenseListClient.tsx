@@ -20,14 +20,14 @@ interface Props {
 }
 
 const CATEGORY_COLOURS: Record<string, string> = {
-  stock: "bg-blue-50 text-blue-700",
-  rent: "bg-purple-50 text-purple-700",
+  stock: "bg-stone-100 text-stone-700",
+  rent: "bg-stone-100 text-stone-700",
   utilities: "bg-amber-50 text-amber-700",
   marketing: "bg-pink-50 text-pink-700",
-  staffing: "bg-indigo-50 text-indigo-700",
-  equipment: "bg-orange-50 text-orange-700",
+  staffing: "bg-stone-100 text-stone-700",
+  equipment: "bg-amber-50 text-amber-700",
   repairs: "bg-red-50 text-red-700",
-  other: "bg-forest/10 text-forest/70",
+  other: "bg-stone-900/10 text-stone-900/70",
 };
 
 function fmtCurrency(amount: number) {
@@ -45,10 +45,10 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="font-fraunces text-2xl font-semibold text-forest">Expenses</h1>
+        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Expenses</h1>
         <Link
           href="/expenses/new"
-          className="inline-flex items-center gap-2 bg-sage text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-sage/90 transition-colors"
+          className="inline-flex items-center gap-2 bg-[#8B7355] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#7A6347] transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -59,12 +59,12 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
 
       {/* Monthly summary */}
       {monthTotal > 0 && (
-        <div className="bg-white border border-platinum rounded-xl p-5 shadow-sm">
+        <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-fraunces text-base font-semibold text-forest">
+            <h2 className="text-base font-semibold text-stone-900">
               {month} — Totals by Category
             </h2>
-            <span className="font-fraunces text-lg font-semibold text-forest">
+            <span className="font-semibold text-lg font-semibold text-stone-900">
               {fmtCurrency(monthTotal)}
             </span>
           </div>
@@ -73,12 +73,12 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
               <div key={cat} className="text-center">
                 <span
                   className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full capitalize mb-1 ${
-                    CATEGORY_COLOURS[cat] || "bg-forest/10 text-forest/70"
+                    CATEGORY_COLOURS[cat] || "bg-stone-900/10 text-stone-900/70"
                   }`}
                 >
                   {cat}
                 </span>
-                <p className="text-sm font-semibold text-forest">{fmtCurrency(amount)}</p>
+                <p className="text-sm font-semibold text-stone-900">{fmtCurrency(amount)}</p>
               </div>
             ))}
           </div>
@@ -87,40 +87,40 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
 
       {/* List */}
       {expenses.length === 0 ? (
-        <div className="bg-white border border-platinum rounded-xl p-16 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-sage/10 flex items-center justify-center">
-            <svg className="w-8 h-8 text-sage" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-white border border-stone-200 rounded-xl p-16 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
           </div>
-          <h3 className="font-fraunces text-lg font-semibold text-forest">No expenses yet</h3>
-          <p className="text-forest/50 mt-1 text-sm">Track your business expenses here.</p>
+          <h3 className="font-semibold text-lg font-semibold text-stone-900">No expenses yet</h3>
+          <p className="text-stone-500 mt-1 text-sm">Track your business expenses here.</p>
           <Link
             href="/expenses/new"
-            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors"
+            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
           >
             Add first expense
           </Link>
         </div>
       ) : (
-        <div className="bg-white border border-platinum rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-platinum">
-                  <th className="text-left text-xs font-semibold text-forest/50 uppercase tracking-wider px-5 py-3">
+                <tr className="border-b border-stone-200">
+                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-5 py-3">
                     Description
                   </th>
-                  <th className="text-left text-xs font-semibold text-forest/50 uppercase tracking-wider px-4 py-3">
+                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
                     Category
                   </th>
-                  <th className="text-left text-xs font-semibold text-forest/50 uppercase tracking-wider px-4 py-3">
+                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
                     Date
                   </th>
-                  <th className="text-left text-xs font-semibold text-forest/50 uppercase tracking-wider px-4 py-3">
+                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
                     Invoice Ref
                   </th>
-                  <th className="text-right text-xs font-semibold text-forest/50 uppercase tracking-wider px-4 py-3">
+                  <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
                     Amount
                   </th>
                   <th className="px-4 py-3" />
@@ -128,34 +128,34 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
               </thead>
               <tbody className="divide-y divide-platinum">
                 {expenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-ivory/60 transition-colors">
-                    <td className="px-5 py-3 text-sm font-medium text-forest">{expense.description}</td>
+                  <tr key={expense.id} className="hover:bg-stone-50/60 transition-colors">
+                    <td className="px-5 py-3 text-sm font-medium text-stone-900">{expense.description}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
-                          CATEGORY_COLOURS[expense.category] || "bg-forest/10 text-forest/70"
+                          CATEGORY_COLOURS[expense.category] || "bg-stone-900/10 text-stone-900/70"
                         }`}
                       >
                         {expense.category}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-forest/60">
+                    <td className="px-4 py-3 text-sm text-stone-500">
                       {new Date(expense.expense_date).toLocaleDateString("en-AU", {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
                       })}
                     </td>
-                    <td className="px-4 py-3 text-sm text-forest/60">
-                      {expense.invoice_ref || <span className="text-forest/30">—</span>}
+                    <td className="px-4 py-3 text-sm text-stone-500">
+                      {expense.invoice_ref || <span className="text-stone-400">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold text-forest">
+                    <td className="px-4 py-3 text-right text-sm font-semibold text-stone-900">
                       {fmtCurrency(expense.amount)}
                     </td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/expenses/${expense.id}`}
-                        className="text-xs text-sage font-medium hover:underline"
+                        className="text-xs text-[#8B7355] font-medium hover:underline"
                       >
                         View →
                       </Link>

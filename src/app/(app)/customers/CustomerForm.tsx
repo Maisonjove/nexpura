@@ -42,10 +42,10 @@ const METALS = ["Yellow Gold", "White Gold", "Rose Gold", "Platinum", "Silver"];
 const STANDARD_TAGS = ["VIP", "Wholesale", "Trade", "Regular"];
 
 const TAG_COLORS: Record<string, string> = {
-  VIP: "bg-gold/10 text-gold border-gold/30",
-  Wholesale: "bg-sage/10 text-sage border-sage/30",
-  Trade: "bg-forest/10 text-forest border-forest/30",
-  Regular: "bg-platinum text-forest/60 border-platinum",
+  VIP: "bg-[#8B7355]/10 text-[#8B7355] border-[#8B7355]/30",
+  Wholesale: "bg-stone-100 text-[#8B7355] border-[#8B7355]/30",
+  Trade: "bg-stone-900/10 text-stone-900 border-stone-900/30",
+  Regular: "bg-stone-200 text-stone-500 border-stone-200",
 };
 
 export default function CustomerForm({ mode, customer }: Props) {
@@ -94,17 +94,17 @@ export default function CustomerForm({ mode, customer }: Props) {
   }
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-    <h2 className="font-fraunces text-base font-semibold text-forest mb-4">{children}</h2>
+    <h2 className="text-base font-semibold text-stone-900 mb-4">{children}</h2>
   );
 
   const Label = ({ children }: { children: React.ReactNode }) => (
-    <label className="block text-xs font-medium text-forest/60 uppercase tracking-wide mb-1.5">
+    <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5">
       {children}
     </label>
   );
 
-  const inputClass = "w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white";
-  const selectClass = "w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white";
+  const inputClass = "w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white";
+  const selectClass = "w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -118,7 +118,7 @@ export default function CustomerForm({ mode, customer }: Props) {
       )}
 
       {/* Personal Details */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionTitle>Personal Details</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -145,7 +145,7 @@ export default function CustomerForm({ mode, customer }: Props) {
       </div>
 
       {/* Address */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionTitle>Address</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
@@ -188,7 +188,7 @@ export default function CustomerForm({ mode, customer }: Props) {
       </div>
 
       {/* Jewellery Preferences */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionTitle>Jewellery Preferences</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -213,7 +213,7 @@ export default function CustomerForm({ mode, customer }: Props) {
       </div>
 
       {/* Important Dates */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionTitle>Important Dates</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -238,7 +238,7 @@ export default function CustomerForm({ mode, customer }: Props) {
       </div>
 
       {/* Tags */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionTitle>Tags</SectionTitle>
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -249,8 +249,8 @@ export default function CustomerForm({ mode, customer }: Props) {
                 onClick={() => toggleTag(tag)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all ${
                   selectedTags.includes(tag)
-                    ? `${TAG_COLORS[tag] || "bg-sage/10 text-sage border-sage/30"} shadow-sm`
-                    : "bg-white text-forest/50 border-platinum hover:border-forest/30"
+                    ? `${TAG_COLORS[tag] || "bg-stone-100 text-[#8B7355] border-[#8B7355]/30"} shadow-sm`
+                    : "bg-white text-stone-500 border-stone-200 hover:border-stone-900/30"
                 }`}
               >
                 {tag}
@@ -270,13 +270,13 @@ export default function CustomerForm({ mode, customer }: Props) {
       </div>
 
       {/* Notes */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionTitle>Notes</SectionTitle>
         <textarea
           name="notes"
           defaultValue={customer?.notes || ""}
           rows={4}
-          className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white resize-none"
+          className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white resize-none"
           placeholder="Any special notes about this customer…"
         />
       </div>
@@ -286,14 +286,14 @@ export default function CustomerForm({ mode, customer }: Props) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="px-5 py-2.5 text-sm font-medium border border-forest/20 text-forest rounded-lg hover:border-forest/40 transition-colors"
+          className="px-5 py-2.5 text-sm font-medium border border-stone-900/20 text-stone-900 rounded-lg hover:border-stone-900/40 transition-colors"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
         >
           {isPending
             ? mode === "create" ? "Creating…" : "Saving…"

@@ -14,9 +14,9 @@ function formatDate(dateStr: string | null | undefined) {
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex justify-between items-start py-3 border-b border-platinum last:border-b-0">
-      <span className="text-sm text-forest/50 font-medium">{label}</span>
-      <span className="text-sm text-forest text-right max-w-[60%] break-all">{value ?? "—"}</span>
+    <div className="flex justify-between items-start py-3 border-b border-stone-200 last:border-b-0">
+      <span className="text-sm text-stone-500 font-medium">{label}</span>
+      <span className="text-sm text-stone-900 text-right max-w-[60%] break-all">{value ?? "—"}</span>
     </div>
   );
 }
@@ -25,7 +25,7 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-sage/15 text-sage"
+      ? "bg-stone-100 text-[#8B7355]"
       : s === "trialing"
       ? "bg-blue-500/10 text-blue-600"
       : s === "past_due"
@@ -42,10 +42,10 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
     p === "pro"
-      ? "bg-sage/15 text-sage"
+      ? "bg-stone-100 text-[#8B7355]"
       : p === "ultimate"
-      ? "bg-gold/15 text-gold"
-      : "bg-platinum text-forest/60";
+      ? "bg-[#8B7355]/15 text-[#8B7355]"
+      : "bg-stone-200 text-stone-500";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {p || "—"}
@@ -102,7 +102,7 @@ export default async function TenantDetailPage({
       {/* Back */}
       <Link
         href="/admin/tenants"
-        className="inline-flex items-center gap-1.5 text-sm text-forest/50 hover:text-forest transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -113,8 +113,8 @@ export default async function TenantDetailPage({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-fraunces font-semibold text-forest">{tenant.name}</h1>
-          <p className="text-sm text-forest/50 mt-1">/{tenant.slug} · {tenant.business_type ?? "—"}</p>
+          <h1 className="text-2xl font-semibold font-semibold text-stone-900">{tenant.name}</h1>
+          <p className="text-sm text-stone-500 mt-1">/{tenant.slug} · {tenant.business_type ?? "—"}</p>
         </div>
         <div className="flex gap-2 items-center">
           <PlanBadge plan={sub?.plan} />
@@ -126,8 +126,8 @@ export default async function TenantDetailPage({
         {/* Left col: Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Business Info */}
-          <div className="bg-white rounded-xl border border-platinum p-6">
-            <h2 className="text-base font-semibold text-forest font-fraunces mb-4">Business</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6">
+            <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Business</h2>
             <InfoRow label="Name" value={tenant.name} />
             <InfoRow label="Slug" value={tenant.slug} />
             <InfoRow label="Business Type" value={tenant.business_type} />
@@ -135,15 +135,15 @@ export default async function TenantDetailPage({
           </div>
 
           {/* Owner */}
-          <div className="bg-white rounded-xl border border-platinum p-6">
-            <h2 className="text-base font-semibold text-forest font-fraunces mb-4">Owner</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6">
+            <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Owner</h2>
             <InfoRow label="Name" value={owner?.full_name} />
             <InfoRow label="Email" value={owner?.email} />
           </div>
 
           {/* Subscription */}
-          <div className="bg-white rounded-xl border border-platinum p-6">
-            <h2 className="text-base font-semibold text-forest font-fraunces mb-4">Subscription</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6">
+            <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Subscription</h2>
             <InfoRow label="Plan" value={<PlanBadge plan={sub?.plan} />} />
             <InfoRow label="Status" value={<StatusBadge status={sub?.status} />} />
             <InfoRow label="Trial Ends" value={formatDate(sub?.trial_ends_at)} />
@@ -153,8 +153,8 @@ export default async function TenantDetailPage({
           </div>
 
           {/* Usage */}
-          <div className="bg-white rounded-xl border border-platinum p-6">
-            <h2 className="text-base font-semibold text-forest font-fraunces mb-4">Usage</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6">
+            <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Usage</h2>
             <InfoRow label="Team Members" value={userCount ?? 0} />
             <InfoRow label="Customers" value={customerCount ?? 0} />
           </div>

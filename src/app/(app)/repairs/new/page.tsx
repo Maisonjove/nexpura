@@ -27,11 +27,11 @@ export default async function NewRepairPage() {
       <div className="mb-6">
         <a
           href="/repairs"
-          className="text-sm text-forest/50 hover:text-sage transition-colors"
+          className="text-sm text-stone-500 hover:text-[#8B7355] transition-colors"
         >
           ← Repairs
         </a>
-        <h1 className="font-fraunces text-2xl font-semibold text-forest mt-2">
+        <h1 className="font-semibold text-2xl font-semibold text-stone-900 mt-2">
           New Repair
         </h1>
       </div>

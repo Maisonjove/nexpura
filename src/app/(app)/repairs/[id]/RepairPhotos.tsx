@@ -23,8 +23,8 @@ export default function RepairPhotos({ repairId, tenantId, existingPhotos }: Pro
   }
 
   return (
-    <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-      <h2 className="font-fraunces text-base font-semibold text-forest mb-4">Intake Photos</h2>
+    <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-stone-900 mb-4">Intake Photos</h2>
       <ImageUpload
         bucket="repair-photos"
         path={`${tenantId}/${repairId}`}

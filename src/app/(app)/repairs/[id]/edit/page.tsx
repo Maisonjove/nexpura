@@ -44,14 +44,14 @@ export default async function EditRepairPage({
       <div className="mb-6">
         <Link
           href={`/repairs/${id}`}
-          className="text-sm text-forest/50 hover:text-sage transition-colors"
+          className="text-sm text-stone-500 hover:text-[#8B7355] transition-colors"
         >
           ← Back to Repair
         </Link>
-        <h1 className="font-fraunces text-2xl font-semibold text-forest mt-2">
+        <h1 className="font-semibold text-2xl font-semibold text-stone-900 mt-2">
           Edit Repair
         </h1>
-        <p className="text-sm text-forest/50 mt-0.5">
+        <p className="text-sm text-stone-500 mt-0.5">
           {repair.repair_number} — {repair.item_type}
         </p>
       </div>

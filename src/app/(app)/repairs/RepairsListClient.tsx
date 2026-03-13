@@ -89,7 +89,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "In Workshop": 
-      case "in_progress": return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-none">In Workshop</Badge>;
+      case "in_progress": return <Badge className="bg-stone-100 text-stone-700 hover:bg-blue-50 border-none">In Workshop</Badge>;
       case "Ready for Pickup":
       case "ready": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-none">Ready</Badge>;
       case "Awaiting Approval":
@@ -98,7 +98,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
       case "Received":
       case "intake": return <Badge className="bg-stone-100 text-stone-700 hover:bg-stone-100 border-none">Received</Badge>;
       case "Waiting Parts":
-      case "waiting_parts": return <Badge className="bg-orange-50 text-orange-700 hover:bg-orange-50 border-none">Waiting Parts</Badge>;
+      case "waiting_parts": return <Badge className="bg-amber-50 text-amber-700 hover:bg-orange-50 border-none">Waiting Parts</Badge>;
       default: return <Badge variant="outline" className="text-stone-600 border-stone-200 capitalize">{status.replace('_', ' ')}</Badge>;
     }
   };

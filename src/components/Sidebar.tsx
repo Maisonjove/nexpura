@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, ShoppingCart, Users, Package, Gem, Wrench, Truck,
+  LayoutDashboard, Package, Wrench, Gem, ShoppingCart, Users, Truck,
   FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
-  Settings
+  Settings, CreditCard
 } from 'lucide-react';
 
 const navGroups = [
@@ -13,16 +13,16 @@ const navGroups = [
     label: 'MAIN',
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { name: 'POS / Sales', href: '/sales', icon: ShoppingCart },
-      { name: 'Customers', href: '/customers', icon: Users },
     ],
   },
   {
     label: 'OPERATIONS',
     items: [
       { name: 'Inventory', href: '/inventory', icon: Package },
-      { name: 'Bespoke Jobs', href: '/bespoke', icon: Gem },
       { name: 'Repairs', href: '/repairs', icon: Wrench },
+      { name: 'Bespoke', href: '/bespoke', icon: Gem },
+      { name: 'Sales', href: '/sales', icon: ShoppingCart },
+      { name: 'Customers', href: '/customers', icon: Users },
       { name: 'Suppliers', href: '/suppliers', icon: Truck },
     ],
   },
@@ -46,6 +46,7 @@ const navGroups = [
     label: 'ADMIN',
     items: [
       { name: 'Settings', href: '/settings', icon: Settings },
+      { name: 'Billing', href: '/billing', icon: CreditCard },
     ],
   },
 ];
@@ -58,49 +59,43 @@ interface SidebarProps {
 export default function Sidebar({ user, isSuperAdmin }: SidebarProps) {
   const pathname = usePathname();
 
+  const initials = user?.full_name
+    ? user.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : user?.email?.slice(0, 2).toUpperCase() || 'NX';
+
   return (
-    <aside
-      style={{ backgroundColor: '#1A1A1A', minHeight: '100vh', width: '224px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}
-    >
+    <aside className="w-64 h-screen bg-[#1A1A1A] flex flex-col fixed left-0 top-0 z-30">
       {/* Logo */}
-      <div style={{ padding: '0 20px', height: '64px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ width: '30px', height: '30px', backgroundColor: '#8B7355', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Gem size={15} color="white" />
+      <div className="px-5 py-5 flex items-center gap-2.5 border-b border-white/[0.06]">
+        <div className="w-7 h-7 rounded bg-[#8B7355] flex items-center justify-center flex-shrink-0">
+          <Gem size={14} color="white" />
         </div>
-        <span style={{ color: 'white', fontWeight: 600, fontSize: '16px', letterSpacing: '-0.01em' }}>Nexpura</span>
+        <span className="text-white font-semibold text-sm">Nexpura</span>
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <nav className="flex-1 overflow-y-auto py-2">
         {navGroups.map((group) => (
           <div key={group.label}>
-            <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', padding: '0 8px', marginBottom: '6px' }}>
+            <p className="text-[10px] uppercase tracking-widest text-stone-500 px-4 mb-1.5 mt-5 font-medium">
               {group.label}
             </p>
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <ul className="space-y-0.5 px-2">
               {group.items.map((item) => {
-                const isActive = pathname.startsWith(item.href);
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                 return (
                   <li key={item.name}>
                     <Link
                       href={item.href}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '7px 10px',
-                        borderRadius: '8px',
-                        fontSize: '13.5px',
-                        fontWeight: 500,
-                        textDecoration: 'none',
-                        transition: 'background 0.15s',
-                        backgroundColor: isActive ? 'rgba(255,255,255,0.09)' : 'transparent',
-                        color: isActive ? 'white' : 'rgba(255,255,255,0.55)',
-                      }}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm cursor-pointer transition-colors ${
+                        isActive
+                          ? 'bg-white/[0.08] text-white'
+                          : 'text-stone-400 hover:bg-white/[0.05] hover:text-stone-200'
+                      }`}
                     >
                       <item.icon
                         size={15}
-                        style={{ color: isActive ? '#8B7355' : 'rgba(255,255,255,0.35)', flexShrink: 0 }}
+                        className={`flex-shrink-0 ${isActive ? 'text-[#8B7355]' : 'text-stone-500'}`}
                       />
                       {item.name}
                     </Link>
@@ -113,10 +108,11 @@ export default function Sidebar({ user, isSuperAdmin }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {user?.email || 'user@nexpura.com'}
-        </p>
+      <div className="mt-auto border-t border-white/[0.06] px-4 py-4 flex items-center gap-3">
+        <div className="w-7 h-7 rounded-full bg-stone-600 flex items-center justify-center flex-shrink-0">
+          <span className="text-[10px] font-semibold text-white">{initials}</span>
+        </div>
+        <p className="text-xs text-stone-400 truncate">{user?.email || 'user@nexpura.com'}</p>
       </div>
     </aside>
   );

@@ -87,12 +87,12 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
     switch (stage.toLowerCase()) {
       case "enquiry": return <Badge variant="outline" className="bg-stone-50 text-stone-600 border-stone-200">Enquiry</Badge>;
       case "quote sent":
-      case "quote_sent": return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Quote Sent</Badge>;
+      case "quote_sent": return <Badge variant="outline" className="bg-stone-100 text-stone-700 border-blue-200">Quote Sent</Badge>;
       case "approved": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Approved</Badge>;
       case "cad": return <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200">CAD</Badge>;
-      case "casting": return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Casting</Badge>;
+      case "casting": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-orange-200">Casting</Badge>;
       case "setting": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Setting</Badge>;
-      case "polishing": return <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">Polishing</Badge>;
+      case "polishing": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Polishing</Badge>;
       case "ready": return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Ready</Badge>;
       default: return <Badge variant="outline" className="text-stone-600 border-stone-200 capitalize">{stage.replace('_', ' ')}</Badge>;
     }

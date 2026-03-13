@@ -87,8 +87,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm space-y-4">
-      <h2 className="font-fraunces text-base font-semibold text-forest">
+    <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm space-y-4">
+      <h2 className="text-base font-semibold text-stone-900">
         {title}
       </h2>
       {children}
@@ -112,7 +112,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="block text-sm font-medium text-forest mb-1"
+      className="block text-sm font-medium text-stone-900 mb-1"
     >
       {children}
       {required && <span className="text-red-400 ml-0.5">*</span>}
@@ -121,10 +121,10 @@ function FieldLabel({
 }
 
 const inputCls =
-  "w-full px-3 py-2 text-sm bg-white border border-platinum rounded-lg text-forest placeholder-forest/30 focus:outline-none focus:border-sage focus:ring-1 focus:ring-sage";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
 
 const selectCls =
-  "w-full px-3 py-2 text-sm bg-white border border-platinum rounded-lg text-forest focus:outline-none focus:border-sage focus:ring-1 focus:ring-sage";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
 
 // ────────────────────────────────────────────────────────────────
 // Customer Search
@@ -153,14 +153,14 @@ function CustomerSearch({
     <div className="relative">
       <input type="hidden" name="customer_id" value={selected?.id || ""} />
       {selected ? (
-        <div className="flex items-center justify-between px-3 py-2 bg-white border border-sage/40 rounded-lg">
-          <span className="text-sm font-medium text-forest">
+        <div className="flex items-center justify-between px-3 py-2 bg-white border border-[#8B7355]/40 rounded-lg">
+          <span className="text-sm font-medium text-stone-900">
             {selected.full_name}
           </span>
           <button
             type="button"
             onClick={() => setSelected(null)}
-            className="text-forest/30 hover:text-forest transition-colors"
+            className="text-stone-400 hover:text-stone-900 transition-colors"
           >
             <svg
               className="w-4 h-4"
@@ -191,9 +191,9 @@ function CustomerSearch({
             className={inputCls}
           />
           {open && (
-            <div className="absolute z-10 mt-1 w-full bg-white border border-platinum rounded-xl shadow-lg overflow-hidden">
+            <div className="absolute z-10 mt-1 w-full bg-white border border-stone-200 rounded-xl shadow-lg overflow-hidden">
               {filtered.length === 0 ? (
-                <p className="px-4 py-3 text-sm text-forest/40">
+                <p className="px-4 py-3 text-sm text-stone-400">
                   No customers found
                 </p>
               ) : (
@@ -207,7 +207,7 @@ function CustomerSearch({
                           setSearch("");
                           setOpen(false);
                         }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-forest hover:bg-ivory transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm text-stone-900 hover:bg-stone-50 transition-colors"
                       >
                         {c.full_name}
                       </button>
@@ -257,7 +257,7 @@ export default function RepairForm({ customers, mode, repair }: Props) {
             customers={customers}
             defaultCustomerId={repair?.customer_id || null}
           />
-          <p className="text-xs text-forest/40 mt-1">
+          <p className="text-xs text-stone-400 mt-1">
             Optional — leave blank for walk-in
           </p>
         </div>
@@ -340,9 +340,9 @@ export default function RepairForm({ customers, mode, repair }: Props) {
           />
         </div>
 
-        <div className="border-2 border-dashed border-platinum rounded-lg p-5 text-center">
+        <div className="border-2 border-dashed border-stone-200 rounded-lg p-5 text-center">
           <svg
-            className="w-8 h-8 text-forest/20 mx-auto mb-2"
+            className="w-8 h-8 text-stone-300 mx-auto mb-2"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -354,7 +354,7 @@ export default function RepairForm({ customers, mode, repair }: Props) {
               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <p className="text-xs text-forest/30">Photo upload coming soon</p>
+          <p className="text-xs text-stone-400">Photo upload coming soon</p>
         </div>
       </Section>
 
@@ -479,11 +479,11 @@ export default function RepairForm({ customers, mode, repair }: Props) {
                 type="checkbox"
                 value="true"
                 defaultChecked={repair?.deposit_paid}
-                className="w-4 h-4 rounded border-platinum text-sage focus:ring-sage"
+                className="w-4 h-4 rounded border-stone-200 text-[#8B7355] focus:ring-[#8B7355]"
               />
               <label
                 htmlFor="deposit_paid"
-                className="text-sm font-medium text-forest"
+                className="text-sm font-medium text-stone-900"
               >
                 Deposit paid
               </label>
@@ -497,7 +497,7 @@ export default function RepairForm({ customers, mode, repair }: Props) {
         <div>
           <FieldLabel htmlFor="internal_notes">
             Internal Notes{" "}
-            <span className="text-xs text-forest/40 font-normal">
+            <span className="text-xs text-stone-400 font-normal">
               (staff only)
             </span>
           </FieldLabel>
@@ -528,14 +528,14 @@ export default function RepairForm({ customers, mode, repair }: Props) {
 
       {/* ── Read-only repair number (edit mode) ─────────── */}
       {mode === "edit" && repair && (
-        <div className="bg-white border border-platinum rounded-xl p-4 shadow-sm flex items-center gap-3">
-          <span className="text-xs font-medium text-forest/40 uppercase tracking-wider">
+        <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm flex items-center gap-3">
+          <span className="text-xs font-medium text-stone-400 uppercase tracking-wider">
             Repair Number
           </span>
-          <span className="text-sm font-mono font-medium text-forest bg-platinum px-2 py-0.5 rounded">
+          <span className="text-sm font-mono font-medium text-stone-900 bg-stone-200 px-2 py-0.5 rounded">
             {repair.repair_number}
           </span>
-          <span className="text-xs text-forest/30">(read-only)</span>
+          <span className="text-xs text-stone-400">(read-only)</span>
         </div>
       )}
 
@@ -550,14 +550,14 @@ export default function RepairForm({ customers, mode, repair }: Props) {
       <div className="flex items-center justify-end gap-3 pb-6">
         <a
           href="/repairs"
-          className="px-5 py-2.5 text-sm font-medium text-forest bg-white border border-forest rounded-lg hover:bg-forest hover:text-white transition-all"
+          className="px-5 py-2.5 text-sm font-medium text-stone-900 bg-white border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-all"
         >
           Cancel
         </a>
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 text-sm font-medium bg-sage text-white rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
         >
           {isPending
             ? mode === "create"

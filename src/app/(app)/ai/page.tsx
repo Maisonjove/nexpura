@@ -54,24 +54,24 @@ export default async function AICopilotPage() {
   if (!canUseAI) {
     return (
       <div className="max-w-2xl mx-auto py-20">
-        <div className="bg-white rounded-2xl border border-platinum p-10 text-center">
-          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gold/10 flex items-center justify-center">
-            <svg className="w-8 h-8 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-white rounded-2xl border border-stone-200 p-10 text-center">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-[#8B7355]/10 flex items-center justify-center">
+            <svg className="w-8 h-8 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
           </div>
-          <h1 className="font-fraunces text-2xl font-semibold text-forest mb-3">
+          <h1 className="font-semibold text-2xl font-semibold text-stone-900 mb-3">
             AI Business Copilot
           </h1>
-          <p className="text-forest/60 mb-2">
+          <p className="text-stone-500 mb-2">
             AI Business Copilot is available on Pro and Ultimate plans.
           </p>
-          <p className="text-forest/40 text-sm mb-7">
+          <p className="text-stone-400 text-sm mb-7">
             Get intelligent business insights, pricing advice, customer analytics, and more — powered by your actual data.
           </p>
           <Link
             href="/billing"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-sage text-white font-medium rounded-lg hover:bg-sage/90 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#8B7355] text-white font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
           >
             Upgrade to Pro →
           </Link>

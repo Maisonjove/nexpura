@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Gem } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -43,21 +44,24 @@ export default function SignupPage() {
     <div className="w-full max-w-md">
       {/* Logo */}
       <div className="text-center mb-8">
-        <h1 className="font-fraunces text-3xl font-semibold text-forest">
-          Nexpura
-        </h1>
-        <p className="text-sm text-forest/60 mt-1">Cloud OS for Jewellery Businesses</p>
+        <div className="flex items-center justify-center gap-2.5 mb-3">
+          <div className="w-9 h-9 rounded-lg bg-[#8B7355] flex items-center justify-center">
+            <Gem size={18} color="white" />
+          </div>
+          <span className="text-xl font-semibold text-stone-900">Nexpura</span>
+        </div>
+        <p className="text-sm text-stone-400">Cloud OS for Jewellery Businesses</p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-platinum p-8">
-        <h2 className="font-fraunces text-xl font-semibold text-forest mb-2">
+      <div className="bg-white rounded-xl border border-stone-200 p-10 w-full shadow-sm">
+        <h2 className="text-xl font-semibold text-stone-900 mb-1">
           Start your free trial
         </h2>
-        <p className="text-sm text-forest/60 mb-6">14 days free, no credit card required.</p>
+        <p className="text-sm text-stone-400 mb-6">14 days free, no credit card required.</p>
 
         <form onSubmit={handleSignup} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-forest mb-1">
+            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
               Your name
             </label>
             <input
@@ -66,11 +70,11 @@ export default function SignupPage() {
               onChange={(e) => setFullName(e.target.value)}
               required
               placeholder="Jane Smith"
-              className="w-full px-3 py-2.5 rounded-lg border border-platinum bg-ivory text-forest placeholder-forest/40 focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage transition-colors text-sm"
+              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-forest mb-1">
+            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
               Work email
             </label>
             <input
@@ -79,11 +83,11 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="you@yourshop.com"
-              className="w-full px-3 py-2.5 rounded-lg border border-platinum bg-ivory text-forest placeholder-forest/40 focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage transition-colors text-sm"
+              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-forest mb-1">
+            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
               Password
             </label>
             <input
@@ -93,32 +97,32 @@ export default function SignupPage() {
               required
               minLength={8}
               placeholder="At least 8 characters"
-              className="w-full px-3 py-2.5 rounded-lg border border-platinum bg-ivory text-forest placeholder-forest/40 focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage transition-colors text-sm"
+              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
             />
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+            <p className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-sage hover:bg-sage/90 text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 text-sm"
+            className="w-full bg-[#8B7355] hover:bg-[#7A6347] text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
           >
             {loading ? "Creating account…" : "Create account"}
           </button>
         </form>
 
-        <p className="text-center text-xs text-forest/40 mt-4">
+        <p className="text-center text-xs text-stone-400 mt-4">
           By signing up you agree to our{" "}
           <a href="#" className="underline">Terms</a> and{" "}
           <a href="#" className="underline">Privacy Policy</a>.
         </p>
 
-        <p className="text-center text-sm text-forest/60 mt-4">
+        <p className="text-center text-sm text-stone-500 mt-4">
           Already have an account?{" "}
-          <Link href="/login" className="text-sage hover:underline font-medium">
+          <Link href="/login" className="text-[#8B7355] hover:underline font-medium">
             Sign in
           </Link>
         </p>

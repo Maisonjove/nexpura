@@ -42,17 +42,17 @@ export default async function EditBespokeJobPage({
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <Link href={`/bespoke/${id}`} className="text-sm text-forest/50 hover:text-sage transition-colors">
+        <Link href={`/bespoke/${id}`} className="text-sm text-stone-500 hover:text-[#8B7355] transition-colors">
           ← {job.job_number}
         </Link>
-        <h1 className="font-fraunces text-2xl font-semibold text-forest mt-2">Edit Job</h1>
+        <h1 className="font-semibold text-2xl font-semibold text-stone-900 mt-2">Edit Job</h1>
 
         {/* Read-only header */}
-        <div className="mt-3 flex items-center gap-3 bg-white border border-platinum rounded-lg px-4 py-3">
-          <span className="text-xs font-mono text-forest/40">Job Number</span>
-          <span className="text-sm font-mono font-medium text-forest">{job.job_number}</span>
-          <span className="mx-2 text-forest/20">·</span>
-          <span className="text-xs text-forest/40">Customer cannot be changed after creation</span>
+        <div className="mt-3 flex items-center gap-3 bg-white border border-stone-200 rounded-lg px-4 py-3">
+          <span className="text-xs font-mono text-stone-400">Job Number</span>
+          <span className="text-sm font-mono font-medium text-stone-900">{job.job_number}</span>
+          <span className="mx-2 text-stone-300">·</span>
+          <span className="text-xs text-stone-400">Customer cannot be changed after creation</span>
         </div>
       </div>
 

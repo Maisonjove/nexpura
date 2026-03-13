@@ -41,12 +41,12 @@ export default function InventoryPhotos({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-platinum p-6 space-y-6">
-      <h2 className="font-fraunces text-lg font-semibold text-forest">Photos</h2>
+    <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-6">
+      <h2 className="font-semibold text-lg font-semibold text-stone-900">Photos</h2>
 
       {/* Primary image */}
       <div>
-        <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-3">Primary Photo</p>
+        <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Primary Photo</p>
         <ImageUpload
           bucket="inventory-photos"
           path={`${tenantId}/${itemId}/primary`}
@@ -59,8 +59,8 @@ export default function InventoryPhotos({
       </div>
 
       {/* Additional images */}
-      <div className="border-t border-platinum pt-5">
-        <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-3">Additional Photos</p>
+      <div className="border-t border-stone-200 pt-5">
+        <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Additional Photos</p>
         <ImageUpload
           bucket="inventory-photos"
           path={`${tenantId}/${itemId}/gallery`}

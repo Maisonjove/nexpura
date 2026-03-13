@@ -34,7 +34,7 @@ export default async function PassportsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-fraunces text-3xl font-semibold text-forest">
+          <h1 className="font-semibold text-3xl font-semibold text-stone-900">
             Digital Passports
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -43,7 +43,7 @@ export default async function PassportsPage() {
         </div>
         <Link
           href="/passports/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
         >
           <svg
             className="w-4 h-4"
@@ -64,39 +64,39 @@ export default async function PassportsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white border border-platinum rounded-xl p-5 shadow-sm">
+        <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
           <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
             Total Passports
           </p>
-          <p className="text-3xl font-fraunces font-semibold text-forest mt-1">
+          <p className="text-3xl font-semibold font-semibold text-stone-900 mt-1">
             {total}
           </p>
         </div>
-        <div className="bg-white border border-platinum rounded-xl p-5 shadow-sm">
+        <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
           <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
             Active
           </p>
-          <p className="text-3xl font-fraunces font-semibold text-sage mt-1">
+          <p className="text-3xl font-semibold font-semibold text-[#8B7355] mt-1">
             {active}
           </p>
         </div>
-        <div className="bg-white border border-platinum rounded-xl p-5 shadow-sm">
+        <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
           <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
             Verified
           </p>
-          <p className="text-3xl font-fraunces font-semibold text-forest mt-1">
+          <p className="text-3xl font-semibold font-semibold text-stone-900 mt-1">
             {verified}
           </p>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-platinum rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden">
         {safePassports.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-14 h-14 rounded-full bg-sage/10 flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-full bg-stone-100 flex items-center justify-center mb-4">
               <svg
-                className="w-7 h-7 text-sage"
+                className="w-7 h-7 text-[#8B7355]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -109,7 +109,7 @@ export default async function PassportsPage() {
                 />
               </svg>
             </div>
-            <h3 className="font-fraunces text-lg font-semibold text-forest">
+            <h3 className="font-semibold text-lg font-semibold text-stone-900">
               No passports yet
             </h3>
             <p className="text-sm text-gray-500 mt-1 mb-4">
@@ -117,7 +117,7 @@ export default async function PassportsPage() {
             </p>
             <Link
               href="/passports/new"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
             >
               <svg
                 className="w-4 h-4"
@@ -139,7 +139,7 @@ export default async function PassportsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-platinum bg-gray-50/50">
+                <tr className="border-b border-stone-200 bg-gray-50/50">
                   <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
                     Passport UID
                   </th>
@@ -170,11 +170,11 @@ export default async function PassportsPage() {
                     className="hover:bg-gray-50/50 transition-colors"
                   >
                     <td className="px-5 py-4">
-                      <span className="font-mono text-xs font-semibold bg-sage/10 text-sage px-2 py-1 rounded">
+                      <span className="font-mono text-xs font-semibold bg-stone-100 text-[#8B7355] px-2 py-1 rounded">
                         {passport.passport_uid}
                       </span>
                     </td>
-                    <td className="px-5 py-4 font-medium text-forest">
+                    <td className="px-5 py-4 font-medium text-stone-900">
                       {passport.title}
                     </td>
                     <td className="px-5 py-4 text-gray-500 capitalize">
@@ -220,7 +220,7 @@ export default async function PassportsPage() {
                       <div className="flex items-center gap-3">
                         <Link
                           href={`/passports/${passport.id}`}
-                          className="text-sage hover:text-sage/80 text-xs font-medium transition-colors"
+                          className="text-[#8B7355] hover:text-[#8B7355]/80 text-xs font-medium transition-colors"
                         >
                           View
                         </Link>

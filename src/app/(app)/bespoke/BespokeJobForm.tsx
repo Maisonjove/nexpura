@@ -68,7 +68,7 @@ const RING_SIZES = [
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <label className="block text-sm font-medium text-forest mb-1">
+    <label className="block text-sm font-medium text-stone-900 mb-1">
       {children}
       {required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
@@ -76,7 +76,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 }
 
 const inputCls =
-  "w-full px-3 py-2 text-sm bg-white border border-platinum rounded-lg text-forest placeholder-forest/30 focus:outline-none focus:border-sage focus:ring-1 focus:ring-sage transition-colors";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355] transition-colors";
 
 function SectionCard({
   title,
@@ -88,9 +88,9 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-      <h2 className="font-fraunces text-base font-semibold text-forest">{title}</h2>
-      {hint && <p className="text-xs text-forest/40 mt-0.5 mb-4">{hint}</p>}
+    <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-stone-900">{title}</h2>
+      {hint && <p className="text-xs text-stone-400 mt-0.5 mb-4">{hint}</p>}
       <div className={hint ? "" : "mt-4"}>{children}</div>
     </div>
   );
@@ -161,7 +161,7 @@ export default function BespokeJobForm({ customers, mode, job }: Props) {
             autoComplete="off"
           />
           {showCustomerList && filteredCustomers.length > 0 && (
-            <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-platinum rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-stone-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
               {filteredCustomers.map((c) => (
                 <button
                   key={c.id}
@@ -171,16 +171,16 @@ export default function BespokeJobForm({ customers, mode, job }: Props) {
                     setCustomerSearch(c.full_name ?? "");
                     setShowCustomerList(false);
                   }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-forest hover:bg-ivory transition-colors"
+                  className="w-full text-left px-4 py-2.5 text-sm text-stone-900 hover:bg-stone-50 transition-colors"
                 >
                   {c.full_name}
                 </button>
               ))}
             </div>
           )}
-          <p className="mt-2 text-xs text-forest/40">
+          <p className="mt-2 text-xs text-stone-400">
             Customer not listed?{" "}
-            <a href="/customers/new" target="_blank" rel="noreferrer" className="text-sage hover:underline">
+            <a href="/customers/new" target="_blank" rel="noreferrer" className="text-[#8B7355] hover:underline">
               Add a new customer ↗
             </a>
           </p>
@@ -282,25 +282,25 @@ export default function BespokeJobForm({ customers, mode, job }: Props) {
       </SectionCard>
 
       {/* ── 4. Stone Details (collapsible) ─────────────────────── */}
-      <div className="bg-white border border-platinum rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
         <button
           type="button"
           onClick={() => setShowStone(!showStone)}
-          className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-ivory/50 transition-colors"
+          className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-stone-50/50 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <span className="font-fraunces text-base font-semibold text-forest">Stone Details</span>
-            <span className="text-xs text-forest/40 bg-platinum px-2 py-0.5 rounded-full">optional</span>
+            <span className="text-base font-semibold text-stone-900">Stone Details</span>
+            <span className="text-xs text-stone-400 bg-stone-200 px-2 py-0.5 rounded-full">optional</span>
           </div>
           <svg
-            className={`w-5 h-5 text-forest/40 transition-transform ${showStone ? "rotate-180" : ""}`}
+            className={`w-5 h-5 text-stone-400 transition-transform ${showStone ? "rotate-180" : ""}`}
             fill="none" stroke="currentColor" viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
         {showStone && (
-          <div className="px-6 pb-6 border-t border-platinum">
+          <div className="px-6 pb-6 border-t border-stone-200">
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
                 <FieldLabel>Stone Type</FieldLabel>
@@ -456,9 +456,9 @@ export default function BespokeJobForm({ customers, mode, job }: Props) {
               id="deposit_paid"
               value="true"
               defaultChecked={job?.deposit_paid ?? false}
-              className="w-4 h-4 rounded border-platinum accent-sage cursor-pointer"
+              className="w-4 h-4 rounded border-stone-200 accent-sage cursor-pointer"
             />
-            <label htmlFor="deposit_paid" className="text-sm text-forest cursor-pointer">
+            <label htmlFor="deposit_paid" className="text-sm text-stone-900 cursor-pointer">
               Deposit received
             </label>
           </div>
@@ -470,7 +470,7 @@ export default function BespokeJobForm({ customers, mode, job }: Props) {
         <div className="space-y-4">
           <div>
             <FieldLabel>Description</FieldLabel>
-            <p className="text-xs text-forest/40 mb-1.5">Shown to the client</p>
+            <p className="text-xs text-stone-400 mb-1.5">Shown to the client</p>
             <textarea
               name="description"
               defaultValue={job?.description ?? ""}
@@ -481,7 +481,7 @@ export default function BespokeJobForm({ customers, mode, job }: Props) {
           </div>
           <div>
             <FieldLabel>Internal Notes</FieldLabel>
-            <p className="text-xs text-forest/40 mb-1.5">Staff only — never shared with client</p>
+            <p className="text-xs text-stone-400 mb-1.5">Staff only — never shared with client</p>
             <textarea
               name="internal_notes"
               defaultValue={job?.internal_notes ?? ""}
@@ -512,13 +512,13 @@ export default function BespokeJobForm({ customers, mode, job }: Props) {
 
       {/* Actions */}
       <div className="flex items-center justify-between pb-8">
-        <a href="/bespoke" className="text-sm text-forest/50 hover:text-forest transition-colors">
+        <a href="/bespoke" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">
           Cancel
         </a>
         <button
           type="submit"
           disabled={isPending}
-          className="bg-sage text-white text-sm font-medium px-6 py-2.5 rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-[#8B7355] text-white text-sm font-medium px-6 py-2.5 rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPending ? "Saving…" : mode === "create" ? "Create Job" : "Save Changes"}
         </button>

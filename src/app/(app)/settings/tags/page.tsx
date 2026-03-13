@@ -9,8 +9,8 @@ export default async function StockTagsSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-fraunces text-2xl font-semibold text-forest">Stock Tag Templates</h1>
-        <p className="text-sm text-forest/50 mt-1">Design and manage your stock tag templates for printing price labels.</p>
+        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Stock Tag Templates</h1>
+        <p className="text-sm text-stone-500 mt-1">Design and manage your stock tag templates for printing price labels.</p>
       </div>
       <TagTemplateManager templates={templates} />
     </div>

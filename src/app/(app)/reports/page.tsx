@@ -206,10 +206,10 @@ export default async function ReportsPage() {
   ];
 
   const STATUS_COLOURS: Record<string, string> = {
-    quote: "bg-blue-50 text-blue-600",
-    confirmed: "bg-purple-50 text-purple-600",
+    quote: "bg-stone-100 text-stone-700",
+    confirmed: "bg-stone-100 text-stone-700",
     paid: "bg-green-50 text-green-700",
-    completed: "bg-sage/10 text-sage",
+    completed: "bg-stone-100 text-[#8B7355]",
     refunded: "bg-red-50 text-red-600",
     layby: "bg-amber-50 text-amber-700",
   };
@@ -218,8 +218,8 @@ export default async function ReportsPage() {
     <div className="max-w-5xl mx-auto space-y-8">
       {/* Header */}
       <div>
-        <h1 className="font-fraunces text-2xl font-semibold text-forest">Reports & Analytics</h1>
-        <p className="text-forest/50 mt-1 text-sm">
+        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Reports & Analytics</h1>
+        <p className="text-stone-500 mt-1 text-sm">
           Overview for {now.toLocaleString("en-AU", { month: "long", year: "numeric" })}
         </p>
       </div>
@@ -232,27 +232,27 @@ export default async function ReportsPage() {
             <CardWrapper
               key={card.label}
               href={(card as { href?: string }).href ?? "#"}
-              className={`bg-white rounded-xl border border-platinum p-5 shadow-sm ${
-                card.href ? "hover:border-sage/40 hover:shadow-sm transition-all" : ""
+              className={`bg-white rounded-xl border border-stone-200 p-5 shadow-sm ${
+                card.href ? "hover:border-[#8B7355]/40 hover:shadow-sm transition-all" : ""
               }`}
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-forest/50 uppercase tracking-wider">
+                <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">
                   {card.label}
                 </span>
                 <div
                   className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                     (card as { urgent?: boolean }).urgent
                       ? "bg-red-50 text-red-500"
-                      : "bg-sage/10 text-sage"
+                      : "bg-stone-100 text-[#8B7355]"
                   }`}
                 >
                   {card.icon}
                 </div>
               </div>
               <p
-                className={`font-fraunces text-2xl font-semibold ${
-                  (card as { urgent?: boolean }).urgent ? "text-red-500" : "text-forest"
+                className={`font-semibold text-2xl font-semibold ${
+                  (card as { urgent?: boolean }).urgent ? "text-red-500" : "text-stone-900"
                 }`}
               >
                 {card.value}
@@ -263,37 +263,37 @@ export default async function ReportsPage() {
       </div>
 
       {/* Revenue bar chart */}
-      <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-        <h2 className="font-fraunces text-lg font-semibold text-forest mb-5">Revenue Comparison</h2>
+      <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+        <h2 className="font-semibold text-lg font-semibold text-stone-900 mb-5">Revenue Comparison</h2>
         <div className="space-y-4">
           <div>
             <div className="flex items-center justify-between text-sm mb-1.5">
-              <span className="text-forest/60">
+              <span className="text-stone-500">
                 This month ({now.toLocaleString("en-AU", { month: "long" })})
               </span>
-              <span className="font-semibold text-forest">{fmtCurrency(revenueThisMonth)}</span>
+              <span className="font-semibold text-stone-900">{fmtCurrency(revenueThisMonth)}</span>
             </div>
-            <div className="w-full bg-platinum rounded-full h-4 overflow-hidden">
+            <div className="w-full bg-stone-200 rounded-full h-4 overflow-hidden">
               <div
-                className="h-4 bg-sage rounded-full transition-all duration-500"
+                className="h-4 bg-[#8B7355] rounded-full transition-all duration-500"
                 style={{ width: `${thisMonthWidth}%` }}
               />
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between text-sm mb-1.5">
-              <span className="text-forest/60">
+              <span className="text-stone-500">
                 Last month (
                 {new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleString("en-AU", {
                   month: "long",
                 })}
                 )
               </span>
-              <span className="font-semibold text-forest">{fmtCurrency(revenueLastMonth)}</span>
+              <span className="font-semibold text-stone-900">{fmtCurrency(revenueLastMonth)}</span>
             </div>
-            <div className="w-full bg-platinum rounded-full h-4 overflow-hidden">
+            <div className="w-full bg-stone-200 rounded-full h-4 overflow-hidden">
               <div
-                className="h-4 bg-forest/30 rounded-full transition-all duration-500"
+                className="h-4 bg-stone-900/30 rounded-full transition-all duration-500"
                 style={{ width: `${lastMonthWidth}%` }}
               />
             </div>
@@ -303,15 +303,15 @@ export default async function ReportsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Low stock */}
-        <div className="bg-white border border-platinum rounded-xl overflow-hidden shadow-sm">
-          <div className="px-5 py-4 border-b border-platinum flex items-center justify-between">
-            <h2 className="font-fraunces text-base font-semibold text-forest">Low Stock Items</h2>
-            <Link href="/inventory" className="text-xs text-sage font-medium hover:underline">
+        <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-stone-900">Low Stock Items</h2>
+            <Link href="/inventory" className="text-xs text-[#8B7355] font-medium hover:underline">
               View all →
             </Link>
           </div>
           {lowStockItems.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-forest/40">
+            <div className="px-5 py-8 text-center text-sm text-stone-400">
               All stock levels are healthy
             </div>
           ) : (
@@ -319,9 +319,9 @@ export default async function ReportsPage() {
               {lowStockItems.map((item) => (
                 <div key={item.id} className="px-5 py-3 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-forest">{item.name}</p>
+                    <p className="text-sm font-medium text-stone-900">{item.name}</p>
                     {item.sku && (
-                      <p className="text-xs text-forest/40 font-mono">{item.sku}</p>
+                      <p className="text-xs text-stone-400 font-mono">{item.sku}</p>
                     )}
                   </div>
                   <span
@@ -340,26 +340,26 @@ export default async function ReportsPage() {
         </div>
 
         {/* Recent sales */}
-        <div className="bg-white border border-platinum rounded-xl overflow-hidden shadow-sm">
-          <div className="px-5 py-4 border-b border-platinum flex items-center justify-between">
-            <h2 className="font-fraunces text-base font-semibold text-forest">Recent Sales</h2>
-            <Link href="/sales" className="text-xs text-sage font-medium hover:underline">
+        <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-stone-900">Recent Sales</h2>
+            <Link href="/sales" className="text-xs text-[#8B7355] font-medium hover:underline">
               View all →
             </Link>
           </div>
           {recentSales.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-forest/40">No sales yet</div>
+            <div className="px-5 py-8 text-center text-sm text-stone-400">No sales yet</div>
           ) : (
             <div className="divide-y divide-platinum">
               {recentSales.map((sale) => (
                 <Link
                   key={sale.id}
                   href={`/sales/${sale.id}`}
-                  className="flex items-center justify-between px-5 py-3 hover:bg-ivory/50 transition-colors"
+                  className="flex items-center justify-between px-5 py-3 hover:bg-stone-50/50 transition-colors"
                 >
                   <div>
-                    <p className="text-sm font-medium text-forest font-mono">{sale.sale_number}</p>
-                    <p className="text-xs text-forest/40">
+                    <p className="text-sm font-medium text-stone-900 font-mono">{sale.sale_number}</p>
+                    <p className="text-xs text-stone-400">
                       {sale.customer_name || "Walk-in"} ·{" "}
                       {new Date(sale.created_at).toLocaleDateString("en-AU", {
                         day: "numeric",
@@ -370,12 +370,12 @@ export default async function ReportsPage() {
                   <div className="flex items-center gap-3">
                     <span
                       className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
-                        STATUS_COLOURS[sale.status] || "bg-forest/10 text-forest/60"
+                        STATUS_COLOURS[sale.status] || "bg-stone-900/10 text-stone-500"
                       }`}
                     >
                       {sale.status}
                     </span>
-                    <span className="text-sm font-semibold text-forest">
+                    <span className="text-sm font-semibold text-stone-900">
                       {fmtCurrency(sale.total)}
                     </span>
                   </div>

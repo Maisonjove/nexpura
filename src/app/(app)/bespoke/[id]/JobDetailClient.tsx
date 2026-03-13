@@ -25,8 +25,8 @@ interface Props {
 }
 
 const PRIORITY_MAP: Record<string, { dot: string; text: string; bg: string }> = {
-  low: { dot: "bg-forest/30", text: "text-forest/50", bg: "bg-forest/5" },
-  normal: { dot: "bg-sage", text: "text-sage", bg: "bg-sage/10" },
+  low: { dot: "bg-stone-900/30", text: "text-stone-500", bg: "bg-stone-50" },
+  normal: { dot: "bg-[#8B7355]", text: "text-[#8B7355]", bg: "bg-stone-100" },
   high: { dot: "bg-amber-400", text: "text-amber-600", bg: "bg-amber-50" },
   urgent: { dot: "bg-red-500", text: "text-red-600", bg: "bg-red-50" },
 };
@@ -77,15 +77,15 @@ export default function JobDetailClient({
   return (
     <>
       {/* Actions Panel */}
-      <div className="bg-white border border-platinum rounded-xl p-5 shadow-sm space-y-5">
-        <h3 className="font-fraunces text-base font-semibold text-forest">Actions</h3>
+      <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm space-y-5">
+        <h3 className="text-base font-semibold text-stone-900">Actions</h3>
 
         {/* Advance Stage */}
         {nextStage && (
           <div>
             <button
               onClick={() => setShowModal(true)}
-              className="w-full bg-sage text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-sage/90 transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-[#8B7355] text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-[#7A6347] transition-colors flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -96,8 +96,8 @@ export default function JobDetailClient({
         )}
 
         {currentStage === "completed" && (
-          <div className="flex items-center gap-2 text-sm text-forest/60 bg-sage/5 border border-sage/20 rounded-lg px-4 py-3">
-            <svg className="w-4 h-4 text-sage flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center gap-2 text-sm text-stone-500 bg-[#8B7355]/5 border border-[#8B7355]/20 rounded-lg px-4 py-3">
+            <svg className="w-4 h-4 text-[#8B7355] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             Job completed
@@ -105,12 +105,12 @@ export default function JobDetailClient({
         )}
 
         {/* Quick info */}
-        <div className="border-t border-platinum pt-4 space-y-3">
+        <div className="border-t border-stone-200 pt-4 space-y-3">
           {/* Due date */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-forest/40 uppercase tracking-wider">Due Date</span>
+            <span className="text-xs font-medium text-stone-400 uppercase tracking-wider">Due Date</span>
             {dueDate ? (
-              <span className={`text-sm font-medium ${isOverdue ? "text-red-500" : "text-forest"}`}>
+              <span className={`text-sm font-medium ${isOverdue ? "text-red-500" : "text-stone-900"}`}>
                 {isOverdue && "⚠ "}
                 {new Date(dueDate).toLocaleDateString("en-GB", {
                   day: "numeric",
@@ -119,13 +119,13 @@ export default function JobDetailClient({
                 })}
               </span>
             ) : (
-              <span className="text-sm text-forest/30">Not set</span>
+              <span className="text-sm text-stone-400">Not set</span>
             )}
           </div>
 
           {/* Priority */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-forest/40 uppercase tracking-wider">Priority</span>
+            <span className="text-xs font-medium text-stone-400 uppercase tracking-wider">Priority</span>
             <span className={`inline-flex items-center gap-1.5 text-xs font-semibold capitalize ${p.text} ${p.bg} px-2 py-0.5 rounded-full`}>
               <span className={`w-1.5 h-1.5 rounded-full ${p.dot}`} />
               {priority}
@@ -135,20 +135,20 @@ export default function JobDetailClient({
           {/* Quoted price */}
           {quotedPrice && (
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-forest/40 uppercase tracking-wider">Quoted</span>
-              <span className="text-sm font-medium text-forest">{quotedPrice}</span>
+              <span className="text-xs font-medium text-stone-400 uppercase tracking-wider">Quoted</span>
+              <span className="text-sm font-medium text-stone-900">{quotedPrice}</span>
             </div>
           )}
 
           {/* Deposit */}
           {depositAmount && (
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-forest/40 uppercase tracking-wider">Deposit</span>
+              <span className="text-xs font-medium text-stone-400 uppercase tracking-wider">Deposit</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-forest">{depositAmount}</span>
+                <span className="text-sm font-medium text-stone-900">{depositAmount}</span>
                 {depositPaid ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-sage font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-sage" />
+                  <span className="inline-flex items-center gap-1 text-xs text-[#8B7355] font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#8B7355]" />
                     Paid
                   </span>
                 ) : (
@@ -164,14 +164,14 @@ export default function JobDetailClient({
 
         {/* Customer */}
         {customerId && customerName && (
-          <div className="border-t border-platinum pt-4">
-            <p className="text-xs font-medium text-forest/40 uppercase tracking-wider mb-1.5">Customer</p>
+          <div className="border-t border-stone-200 pt-4">
+            <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-1.5">Customer</p>
             <Link
               href={`/customers/${customerId}`}
-              className="text-sm font-medium text-forest hover:text-sage transition-colors flex items-center gap-1"
+              className="text-sm font-medium text-stone-900 hover:text-[#8B7355] transition-colors flex items-center gap-1"
             >
               {customerName}
-              <svg className="w-3.5 h-3.5 text-forest/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </Link>
@@ -179,10 +179,10 @@ export default function JobDetailClient({
         )}
 
         {/* Archive */}
-        <div className="border-t border-platinum pt-4">
+        <div className="border-t border-stone-200 pt-4">
           {showArchiveConfirm ? (
             <div className="space-y-2">
-              <p className="text-xs text-forest/60">Archive this job? This cannot be undone easily.</p>
+              <p className="text-xs text-stone-500">Archive this job? This cannot be undone easily.</p>
               <div className="flex gap-2">
                 <button
                   onClick={handleArchive}
@@ -193,7 +193,7 @@ export default function JobDetailClient({
                 </button>
                 <button
                   onClick={() => setShowArchiveConfirm(false)}
-                  className="flex-1 bg-white border border-platinum text-forest text-xs font-medium py-2 rounded-lg hover:bg-ivory transition-colors"
+                  className="flex-1 bg-white border border-stone-200 text-stone-900 text-xs font-medium py-2 rounded-lg hover:bg-stone-50 transition-colors"
                 >
                   Cancel
                 </button>
@@ -202,7 +202,7 @@ export default function JobDetailClient({
           ) : (
             <button
               onClick={() => setShowArchiveConfirm(true)}
-              className="w-full text-xs text-forest/40 hover:text-red-500 transition-colors text-left"
+              className="w-full text-xs text-stone-400 hover:text-red-500 transition-colors text-left"
             >
               Archive job…
             </button>
@@ -218,24 +218,24 @@ export default function JobDetailClient({
             onClick={() => setShowModal(false)}
           />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="font-fraunces text-lg font-semibold text-forest mb-1">
+            <h3 className="font-semibold text-lg font-semibold text-stone-900 mb-1">
               Advance Stage
             </h3>
-            <p className="text-sm text-forest/60 mb-5">
+            <p className="text-sm text-stone-500 mb-5">
               Moving job to{" "}
-              <span className="font-semibold text-forest">{nextStage.label}</span>
+              <span className="font-semibold text-stone-900">{nextStage.label}</span>
             </p>
 
             <div>
-              <label className="block text-sm font-medium text-forest mb-1.5">
-                Notes <span className="text-forest/30 font-normal">(optional)</span>
+              <label className="block text-sm font-medium text-stone-900 mb-1.5">
+                Notes <span className="text-stone-400 font-normal">(optional)</span>
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Any notes about this stage transition…"
                 rows={3}
-                className="w-full px-3 py-2 text-sm bg-white border border-platinum rounded-lg text-forest placeholder-forest/30 focus:outline-none focus:border-sage focus:ring-1 focus:ring-sage resize-none"
+                className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355] resize-none"
               />
             </div>
 
@@ -246,14 +246,14 @@ export default function JobDetailClient({
             <div className="flex items-center gap-3 mt-5">
               <button
                 onClick={() => setShowModal(false)}
-                className="flex-1 bg-white border border-platinum text-forest text-sm font-medium py-2.5 rounded-lg hover:bg-ivory transition-colors"
+                className="flex-1 bg-white border border-stone-200 text-stone-900 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAdvance}
                 disabled={isPending}
-                className="flex-1 bg-sage text-white text-sm font-medium py-2.5 rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50"
+                className="flex-1 bg-[#8B7355] text-white text-sm font-medium py-2.5 rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
               >
                 {isPending ? "Advancing…" : `Confirm → ${nextStage.label}`}
               </button>

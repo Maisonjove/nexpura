@@ -51,29 +51,29 @@ export default function NewPassportPage() {
       <div>
         <button
           onClick={() => router.back()}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-forest transition-colors mb-4"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-stone-900 transition-colors mb-4"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
           </svg>
           Back to Passports
         </button>
-        <h1 className="font-fraunces text-3xl font-semibold text-forest">Create Passport</h1>
+        <h1 className="font-semibold text-3xl font-semibold text-stone-900">Create Passport</h1>
         <p className="text-sm text-gray-500 mt-1">Issue a digital certificate of authenticity</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
 
         {/* Section: Piece Details */}
-        <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm space-y-4">
-          <h2 className="font-fraunces text-lg font-semibold text-forest">Piece Details</h2>
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm space-y-4">
+          <h2 className="font-semibold text-lg font-semibold text-stone-900">Piece Details</h2>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">Title <span className="text-red-400">*</span></label>
             <input
               name="title"
               required
               placeholder="e.g. Oval Diamond Solitaire Ring"
-              className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors"
+              className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors"
             />
           </div>
           <div>
@@ -85,7 +85,7 @@ export default function NewPassportPage() {
                 setJewelleryType(e.target.value);
                 if (e.target.value === "ring") setRingOpen(true);
               }}
-              className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest bg-white focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors"
+              className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors"
             >
               <option value="">Select type…</option>
               {JEWELLERY_TYPES.map((t) => (
@@ -99,18 +99,18 @@ export default function NewPassportPage() {
               name="description"
               rows={3}
               placeholder="Describe the piece…"
-              className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors resize-none"
+              className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors resize-none"
             />
           </div>
         </div>
 
         {/* Section: Metal */}
-        <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm space-y-4">
-          <h2 className="font-fraunces text-lg font-semibold text-forest">Metal</h2>
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm space-y-4">
+          <h2 className="font-semibold text-lg font-semibold text-stone-900">Metal</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Metal Type</label>
-              <select name="metal_type" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest bg-white focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors">
+              <select name="metal_type" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors">
                 <option value="">Select…</option>
                 {METAL_TYPES.map((t) => (
                   <option key={t} value={t}>{t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
@@ -119,7 +119,7 @@ export default function NewPassportPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Metal Colour</label>
-              <select name="metal_colour" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest bg-white focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors">
+              <select name="metal_colour" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors">
                 <option value="">Select…</option>
                 {METAL_COLOURS.map((c) => (
                   <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, " ")}</option>
@@ -128,7 +128,7 @@ export default function NewPassportPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Purity</label>
-              <select name="metal_purity" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest bg-white focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors">
+              <select name="metal_purity" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors">
                 <option value="">Select…</option>
                 {METAL_PURITIES.map((p) => (
                   <option key={p} value={p}>{p}</option>
@@ -143,28 +143,28 @@ export default function NewPassportPage() {
                 step="0.01"
                 min="0"
                 placeholder="e.g. 3.45"
-                className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors"
+                className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors"
               />
             </div>
           </div>
         </div>
 
         {/* Section: Stone (collapsible) */}
-        <div className="bg-white border border-platinum rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden">
           <button
             type="button"
             onClick={() => setStoneOpen(!stoneOpen)}
             className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/50 transition-colors"
           >
-            <h2 className="font-fraunces text-lg font-semibold text-forest">Stone Details</h2>
+            <h2 className="font-semibold text-lg font-semibold text-stone-900">Stone Details</h2>
             <span className="text-xs text-gray-400">{stoneOpen ? "Hide" : "Optional — click to expand"}</span>
           </button>
           {stoneOpen && (
-            <div className="px-6 pb-6 space-y-4 border-t border-platinum">
+            <div className="px-6 pb-6 space-y-4 border-t border-stone-200">
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Stone Type</label>
-                  <select name="stone_type" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest bg-white focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors">
+                  <select name="stone_type" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors">
                     <option value="">Select…</option>
                     {STONE_TYPES.map((t) => (
                       <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
@@ -173,7 +173,7 @@ export default function NewPassportPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Shape</label>
-                  <select name="stone_shape" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest bg-white focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors">
+                  <select name="stone_shape" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors">
                     <option value="">Select…</option>
                     {STONE_SHAPES.map((s) => (
                       <option key={s} value={s}>{s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
@@ -182,23 +182,23 @@ export default function NewPassportPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Carat</label>
-                  <input name="stone_carat" type="number" step="0.01" min="0" placeholder="e.g. 1.02" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+                  <input name="stone_carat" type="number" step="0.01" min="0" placeholder="e.g. 1.02" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Colour</label>
-                  <input name="stone_colour" placeholder="e.g. D, E, F" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+                  <input name="stone_colour" placeholder="e.g. D, E, F" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Clarity</label>
-                  <input name="stone_clarity" placeholder="e.g. VS1, VVS2" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+                  <input name="stone_clarity" placeholder="e.g. VS1, VVS2" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Origin</label>
-                  <input name="stone_origin" placeholder="e.g. Australia, South Africa" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+                  <input name="stone_origin" placeholder="e.g. Australia, South Africa" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Certificate Number</label>
-                  <input name="stone_cert_number" placeholder="e.g. GIA 1234567890" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+                  <input name="stone_cert_number" placeholder="e.g. GIA 1234567890" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
                 </div>
               </div>
             </div>
@@ -207,25 +207,25 @@ export default function NewPassportPage() {
 
         {/* Section: Ring (collapsible, shown if type = ring) */}
         {(jewelleryType === "ring" || ringOpen) && (
-          <div className="bg-white border border-platinum rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden">
             <button
               type="button"
               onClick={() => setRingOpen(!ringOpen)}
               className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/50 transition-colors"
             >
-              <h2 className="font-fraunces text-lg font-semibold text-forest">Ring Details</h2>
+              <h2 className="font-semibold text-lg font-semibold text-stone-900">Ring Details</h2>
               <span className="text-xs text-gray-400">{ringOpen ? "Hide" : "Click to expand"}</span>
             </button>
             {ringOpen && (
-              <div className="px-6 pb-6 border-t border-platinum">
+              <div className="px-6 pb-6 border-t border-stone-200">
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">Ring Size</label>
-                    <input name="ring_size" placeholder="e.g. N, 7, 54" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+                    <input name="ring_size" placeholder="e.g. N, 7, 54" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">Setting Style</label>
-                    <input name="setting_style" placeholder="e.g. Prong, Bezel, Channel" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+                    <input name="setting_style" placeholder="e.g. Prong, Bezel, Channel" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
                   </div>
                 </div>
               </div>
@@ -234,52 +234,52 @@ export default function NewPassportPage() {
         )}
 
         {/* Section: Provenance */}
-        <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm space-y-4">
-          <h2 className="font-fraunces text-lg font-semibold text-forest">Provenance</h2>
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm space-y-4">
+          <h2 className="font-semibold text-lg font-semibold text-stone-900">Provenance</h2>
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Maker / Designer</label>
-              <input name="maker_name" placeholder="e.g. Tiffany & Co." className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+              <input name="maker_name" placeholder="e.g. Tiffany & Co." className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Made In</label>
-              <input name="made_in" defaultValue="Australia" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+              <input name="made_in" defaultValue="Australia" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Year Made</label>
-              <input name="year_made" type="number" min="1800" max="2100" placeholder={String(new Date().getFullYear())} className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+              <input name="year_made" type="number" min="1800" max="2100" placeholder={String(new Date().getFullYear())} className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
             </div>
           </div>
         </div>
 
         {/* Section: Ownership */}
-        <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm space-y-4">
-          <h2 className="font-fraunces text-lg font-semibold text-forest">Ownership</h2>
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm space-y-4">
+          <h2 className="font-semibold text-lg font-semibold text-stone-900">Ownership</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Owner Name</label>
-              <input name="current_owner_name" placeholder="Full name" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+              <input name="current_owner_name" placeholder="Full name" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Owner Email</label>
-              <input name="current_owner_email" type="email" placeholder="email@example.com" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+              <input name="current_owner_email" type="email" placeholder="email@example.com" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Purchase Date</label>
-              <input name="purchase_date" type="date" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+              <input name="purchase_date" type="date" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Purchase Price (AUD)</label>
-              <input name="purchase_price" type="number" step="0.01" min="0" placeholder="0.00" className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors" />
+              <input name="purchase_price" type="number" step="0.01" min="0" placeholder="0.00" className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors" />
             </div>
           </div>
         </div>
 
         {/* Section: Visibility */}
-        <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-fraunces text-lg font-semibold text-forest">Visibility</h2>
+              <h2 className="font-semibold text-lg font-semibold text-stone-900">Visibility</h2>
               <p className="text-sm text-gray-500 mt-0.5">
                 {isPublic
                   ? "Anyone with the QR code can view this passport"
@@ -290,7 +290,7 @@ export default function NewPassportPage() {
               type="button"
               onClick={() => setIsPublic(!isPublic)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                isPublic ? "bg-sage" : "bg-gray-200"
+                isPublic ? "bg-[#8B7355]" : "bg-gray-200"
               }`}
             >
               <span
@@ -307,14 +307,14 @@ export default function NewPassportPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-5 py-2.5 border border-forest text-forest text-sm font-medium rounded-lg hover:bg-forest/5 transition-colors"
+            className="px-5 py-2.5 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-5 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? "Creating…" : "Create Passport"}
           </button>

@@ -37,12 +37,12 @@ export default function PassportPhotos({
   }
 
   return (
-    <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm space-y-6">
-      <h2 className="font-fraunces text-base font-semibold text-forest">Photos</h2>
+    <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm space-y-6">
+      <h2 className="text-base font-semibold text-stone-900">Photos</h2>
 
       {/* Primary image */}
       <div>
-        <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-3">Primary Photo</p>
+        <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Primary Photo</p>
         <ImageUpload
           bucket="passport-photos"
           path={`${tenantId}/${passportId}/primary`}
@@ -55,8 +55,8 @@ export default function PassportPhotos({
       </div>
 
       {/* Additional images */}
-      <div className="border-t border-platinum pt-5">
-        <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-3">Additional Photos</p>
+      <div className="border-t border-stone-200 pt-5">
+        <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Additional Photos</p>
         <ImageUpload
           bucket="passport-photos"
           path={`${tenantId}/${passportId}/gallery`}

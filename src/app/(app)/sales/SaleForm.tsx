@@ -39,15 +39,15 @@ interface LineItem {
 // ────────────────────────────────────────────────────────────────
 
 const inputCls =
-  "w-full px-3 py-2 text-sm bg-white border border-platinum rounded-lg text-forest placeholder-forest/30 focus:outline-none focus:border-sage focus:ring-1 focus:ring-sage";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
 
 const selectCls =
-  "w-full px-3 py-2 text-sm bg-white border border-platinum rounded-lg text-forest focus:outline-none focus:border-sage focus:ring-1 focus:ring-sage";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm space-y-4">
-      <h2 className="font-fraunces text-base font-semibold text-forest">{title}</h2>
+    <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm space-y-4">
+      <h2 className="text-base font-semibold text-stone-900">{title}</h2>
       {children}
     </div>
   );
@@ -63,7 +63,7 @@ function FieldLabel({
   children: React.ReactNode;
 }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm font-medium text-forest mb-1">
+    <label htmlFor={htmlFor} className="block text-sm font-medium text-stone-900 mb-1">
       {children}
       {required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
@@ -200,7 +200,7 @@ export default function SaleForm() {
       <Section title="Line Items">
         <div className="space-y-3">
           {/* Header row */}
-          <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-semibold text-forest/40 uppercase tracking-wider px-1">
+          <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-semibold text-stone-400 uppercase tracking-wider px-1">
             <div className="col-span-5">Description</div>
             <div className="col-span-2 text-center">Qty</div>
             <div className="col-span-2 text-right">Unit Price</div>
@@ -242,7 +242,7 @@ export default function SaleForm() {
                   className={inputCls}
                 />
               </div>
-              <div className="col-span-3 sm:col-span-2 text-right text-sm font-medium text-forest">
+              <div className="col-span-3 sm:col-span-2 text-right text-sm font-medium text-stone-900">
                 {fmtCurrency(item.line_total)}
               </div>
               <div className="col-span-1 flex justify-end">
@@ -250,7 +250,7 @@ export default function SaleForm() {
                   type="button"
                   onClick={() => removeLineItem(item.id)}
                   disabled={lineItems.length === 1}
-                  className="text-forest/30 hover:text-red-400 transition-colors disabled:opacity-20"
+                  className="text-stone-400 hover:text-red-400 transition-colors disabled:opacity-20"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -263,7 +263,7 @@ export default function SaleForm() {
           <button
             type="button"
             onClick={addLineItem}
-            className="flex items-center gap-2 text-sm text-sage font-medium hover:text-sage/80 transition-colors"
+            className="flex items-center gap-2 text-sm text-[#8B7355] font-medium hover:text-[#8B7355]/80 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -273,13 +273,13 @@ export default function SaleForm() {
         </div>
 
         {/* Totals */}
-        <div className="border-t border-platinum pt-4 space-y-2">
+        <div className="border-t border-stone-200 pt-4 space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-forest/60">Subtotal</span>
-            <span className="font-medium text-forest">{fmtCurrency(subtotal)}</span>
+            <span className="text-stone-500">Subtotal</span>
+            <span className="font-medium text-stone-900">{fmtCurrency(subtotal)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <label htmlFor="discount_amount" className="text-forest/60">
+            <label htmlFor="discount_amount" className="text-stone-500">
               Discount
             </label>
             <input
@@ -291,16 +291,16 @@ export default function SaleForm() {
               value={discountAmount}
               onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
               placeholder="0.00"
-              className="w-32 px-3 py-1.5 text-sm text-right bg-white border border-platinum rounded-lg text-forest focus:outline-none focus:border-sage focus:ring-1 focus:ring-sage"
+              className="w-32 px-3 py-1.5 text-sm text-right bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
             />
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-forest/60">GST (10%)</span>
-            <span className="font-medium text-forest">{fmtCurrency(taxAmount)}</span>
+            <span className="text-stone-500">GST (10%)</span>
+            <span className="font-medium text-stone-900">{fmtCurrency(taxAmount)}</span>
           </div>
-          <div className="flex items-center justify-between border-t border-platinum pt-2">
-            <span className="font-semibold text-forest">Total</span>
-            <span className="font-fraunces text-lg font-semibold text-forest">
+          <div className="flex items-center justify-between border-t border-stone-200 pt-2">
+            <span className="font-semibold text-stone-900">Total</span>
+            <span className="font-semibold text-lg font-semibold text-stone-900">
               {fmtCurrency(total)}
             </span>
           </div>
@@ -330,14 +330,14 @@ export default function SaleForm() {
       <div className="flex items-center justify-end gap-3 pb-6">
         <a
           href="/sales"
-          className="px-5 py-2.5 text-sm font-medium text-forest bg-white border border-forest rounded-lg hover:bg-forest hover:text-white transition-all"
+          className="px-5 py-2.5 text-sm font-medium text-stone-900 bg-white border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-all"
         >
           Cancel
         </a>
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 text-sm font-medium bg-sage text-white rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
         >
           {isPending ? "Creating…" : "Create Sale"}
         </button>

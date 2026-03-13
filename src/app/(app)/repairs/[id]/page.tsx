@@ -36,25 +36,25 @@ function formatCurrency(n: number | null) {
 
 const STAGE_MAP: Record<string, { dot: string; text: string }> = {
   intake: { dot: "bg-blue-400", text: "text-blue-600" },
-  assessed: { dot: "bg-purple-400", text: "text-purple-600" },
-  quoted: { dot: "bg-indigo-400", text: "text-indigo-600" },
+  assessed: { dot: "bg-stone-400", text: "text-stone-600" },
+  quoted: { dot: "bg-stone-400", text: "text-stone-600" },
   approved: { dot: "bg-green-400", text: "text-green-600" },
   in_progress: { dot: "bg-amber-400", text: "text-amber-600" },
   quality_check: { dot: "bg-orange-400", text: "text-orange-600" },
-  ready: { dot: "bg-sage", text: "text-sage" },
-  collected: { dot: "bg-forest", text: "text-forest" },
-  cancelled: { dot: "bg-forest/30", text: "text-forest/40" },
+  ready: { dot: "bg-[#8B7355]", text: "text-[#8B7355]" },
+  collected: { dot: "bg-stone-900", text: "text-stone-900" },
+  cancelled: { dot: "bg-stone-900/30", text: "text-stone-400" },
 };
 
 const PRIORITY_MAP: Record<string, { dot: string; text: string }> = {
-  low: { dot: "bg-forest/30", text: "text-forest/50" },
-  normal: { dot: "bg-sage", text: "text-sage" },
+  low: { dot: "bg-stone-900/30", text: "text-stone-500" },
+  normal: { dot: "bg-[#8B7355]", text: "text-[#8B7355]" },
   high: { dot: "bg-amber-400", text: "text-amber-600" },
   urgent: { dot: "bg-red-500", text: "text-red-600" },
 };
 
 function StageBadge({ stage }: { stage: string }) {
-  const s = STAGE_MAP[stage] || { dot: "bg-forest/30", text: "text-forest/40" };
+  const s = STAGE_MAP[stage] || { dot: "bg-stone-900/30", text: "text-stone-400" };
   const label =
     REPAIR_WORKFLOW_STAGES.find((x) => x.key === stage)?.label || stage;
   return (

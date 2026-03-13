@@ -17,9 +17,9 @@ const STATUS_TABS = [
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-gray-100 text-gray-600" },
-  sent: { label: "Sent", className: "bg-blue-50 text-blue-600" },
+  sent: { label: "Sent", className: "bg-stone-100 text-stone-700" },
   partially_paid: { label: "Partial", className: "bg-amber-50 text-amber-600" },
-  paid: { label: "Paid", className: "bg-sage/10 text-sage" },
+  paid: { label: "Paid", className: "bg-stone-100 text-[#8B7355]" },
   overdue: { label: "Overdue", className: "bg-red-50 text-red-600" },
   voided: { label: "Voided", className: "bg-gray-100 text-gray-400" },
 };
@@ -86,10 +86,10 @@ export default function InvoiceListClient({
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="font-fraunces text-2xl font-semibold text-forest">Invoices</h1>
+        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Invoices</h1>
         <Link
           href="/invoices/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-sage text-white rounded-lg text-sm font-medium hover:bg-sage/90 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -100,38 +100,38 @@ export default function InvoiceListClient({
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-platinum p-5 shadow-sm">
-          <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-2">
+        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">
             Total Outstanding
           </p>
-          <p className="font-fraunces text-2xl font-semibold text-forest">
+          <p className="font-semibold text-2xl font-semibold text-stone-900">
             {fmt(stats.totalOutstanding)}
           </p>
-          <p className="text-xs text-forest/40 mt-1">Sent + partial + overdue</p>
+          <p className="text-xs text-stone-400 mt-1">Sent + partial + overdue</p>
         </div>
-        <div className="bg-white rounded-xl border border-platinum p-5 shadow-sm">
-          <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-2">
+        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">
             Overdue
           </p>
-          <p className={`font-fraunces text-2xl font-semibold ${stats.totalOverdue > 0 ? "text-red-500" : "text-forest"}`}>
+          <p className={`font-semibold text-2xl font-semibold ${stats.totalOverdue > 0 ? "text-red-500" : "text-stone-900"}`}>
             {fmt(stats.totalOverdue)}
           </p>
-          <p className="text-xs text-forest/40 mt-1">Past due date</p>
+          <p className="text-xs text-stone-400 mt-1">Past due date</p>
         </div>
-        <div className="bg-white rounded-xl border border-platinum p-5 shadow-sm">
-          <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-2">
+        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">
             Paid This Month
           </p>
-          <p className="font-fraunces text-2xl font-semibold text-sage">
+          <p className="font-semibold text-2xl font-semibold text-[#8B7355]">
             {fmt(stats.paidThisMonth)}
           </p>
-          <p className="text-xs text-forest/40 mt-1">Payments received</p>
+          <p className="text-xs text-stone-400 mt-1">Payments received</p>
         </div>
       </div>
 
       {/* Search + Tabs */}
-      <div className="bg-white rounded-xl border border-platinum shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-platinum">
+      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-stone-200">
           <input
             type="text"
             placeholder="Search invoice number or customer…"
@@ -143,20 +143,20 @@ export default function InvoiceListClient({
               if (statusFilter && statusFilter !== "all") sp.set("status", statusFilter);
               router.push(`${pathname}?${sp.toString()}`);
             }}
-            className="w-full max-w-md px-3 py-2 border border-platinum rounded-lg text-sm text-forest placeholder-forest/40 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage"
+            className="w-full max-w-md px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
           />
         </div>
 
         {/* Status tabs */}
-        <div className="flex gap-1 px-4 py-3 border-b border-platinum overflow-x-auto">
+        <div className="flex gap-1 px-4 py-3 border-b border-stone-200 overflow-x-auto">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => navigate({ status: tab.key === "all" ? "" : tab.key })}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                 statusFilter === tab.key || (tab.key === "all" && statusFilter === "all")
-                  ? "bg-sage text-white"
-                  : "text-forest/60 hover:text-forest hover:bg-forest/5"
+                  ? "bg-[#8B7355] text-white"
+                  : "text-stone-500 hover:text-stone-900 hover:bg-stone-900/5"
               }`}
             >
               {tab.label}
@@ -167,19 +167,19 @@ export default function InvoiceListClient({
         {/* Table */}
         {invoices.length === 0 ? (
           <div className="py-16 text-center">
-            <div className="w-12 h-12 bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6 text-sage" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="font-fraunces text-lg text-forest">No invoices found</p>
-            <p className="text-sm text-forest/50 mt-1">
+            <p className="font-semibold text-lg text-stone-900">No invoices found</p>
+            <p className="text-sm text-stone-500 mt-1">
               {q ? "Try adjusting your search" : "Create your first invoice to get started"}
             </p>
             {!q && (
               <Link
                 href="/invoices/new"
-                className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-sage text-white rounded-lg text-sm font-medium hover:bg-sage/90 transition-colors"
+                className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -192,26 +192,26 @@ export default function InvoiceListClient({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-platinum">
-                  <th className="text-left px-4 py-3 font-medium text-forest/50 text-xs uppercase tracking-wider">
+                <tr className="border-b border-stone-200">
+                  <th className="text-left px-4 py-3 font-medium text-stone-500 text-xs uppercase tracking-wider">
                     Invoice #
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-forest/50 text-xs uppercase tracking-wider">
+                  <th className="text-left px-4 py-3 font-medium text-stone-500 text-xs uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-forest/50 text-xs uppercase tracking-wider">
+                  <th className="text-left px-4 py-3 font-medium text-stone-500 text-xs uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-forest/50 text-xs uppercase tracking-wider">
+                  <th className="text-left px-4 py-3 font-medium text-stone-500 text-xs uppercase tracking-wider">
                     Due Date
                   </th>
-                  <th className="text-right px-4 py-3 font-medium text-forest/50 text-xs uppercase tracking-wider">
+                  <th className="text-right px-4 py-3 font-medium text-stone-500 text-xs uppercase tracking-wider">
                     Total
                   </th>
-                  <th className="text-right px-4 py-3 font-medium text-forest/50 text-xs uppercase tracking-wider">
+                  <th className="text-right px-4 py-3 font-medium text-stone-500 text-xs uppercase tracking-wider">
                     Amount Due
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-forest/50 text-xs uppercase tracking-wider">
+                  <th className="text-left px-4 py-3 font-medium text-stone-500 text-xs uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-4 py-3" />
@@ -225,28 +225,28 @@ export default function InvoiceListClient({
                     new Date(inv.due_date) < new Date() &&
                     !["paid", "voided"].includes(inv.status);
                   return (
-                    <tr key={inv.id} className="hover:bg-forest/2 transition-colors group">
-                      <td className="px-4 py-3 font-medium text-forest">
+                    <tr key={inv.id} className="hover:bg-stone-900/2 transition-colors group">
+                      <td className="px-4 py-3 font-medium text-stone-900">
                         <Link
                           href={`/invoices/${inv.id}`}
-                          className="hover:text-sage transition-colors"
+                          className="hover:text-[#8B7355] transition-colors"
                         >
                           {inv.invoice_number}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-forest/70">
+                      <td className="px-4 py-3 text-stone-900/70">
                         {inv.customers?.full_name || "—"}
                       </td>
-                      <td className="px-4 py-3 text-forest/70">
+                      <td className="px-4 py-3 text-stone-900/70">
                         {fmtDate(inv.invoice_date)}
                       </td>
-                      <td className={`px-4 py-3 ${isOverdue ? "text-red-500 font-medium" : "text-forest/70"}`}>
+                      <td className={`px-4 py-3 ${isOverdue ? "text-red-500 font-medium" : "text-stone-900/70"}`}>
                         {fmtDate(inv.due_date)}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-forest">
+                      <td className="px-4 py-3 text-right font-medium text-stone-900">
                         {fmt(inv.total)}
                       </td>
-                      <td className={`px-4 py-3 text-right font-medium ${inv.amount_due > 0 ? "text-forest" : "text-forest/40"}`}>
+                      <td className={`px-4 py-3 text-right font-medium ${inv.amount_due > 0 ? "text-stone-900" : "text-stone-400"}`}>
                         {fmt(inv.amount_due)}
                       </td>
                       <td className="px-4 py-3">
@@ -257,7 +257,7 @@ export default function InvoiceListClient({
                       <td className="px-4 py-3">
                         <Link
                           href={`/invoices/${inv.id}`}
-                          className="text-forest/40 hover:text-sage transition-colors opacity-0 group-hover:opacity-100"
+                          className="text-stone-400 hover:text-[#8B7355] transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -274,22 +274,22 @@ export default function InvoiceListClient({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-platinum">
-            <p className="text-sm text-forest/50">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-stone-200">
+            <p className="text-sm text-stone-500">
               Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, totalCount)} of {totalCount}
             </p>
             <div className="flex gap-2">
               <button
                 disabled={page <= 1}
                 onClick={() => navigate({ page: String(page - 1) })}
-                className="px-3 py-1.5 text-sm border border-platinum rounded-lg text-forest disabled:opacity-30 hover:border-sage/40 transition-colors"
+                className="px-3 py-1.5 text-sm border border-stone-200 rounded-lg text-stone-900 disabled:opacity-30 hover:border-[#8B7355]/40 transition-colors"
               >
                 Previous
               </button>
               <button
                 disabled={page >= totalPages}
                 onClick={() => navigate({ page: String(page + 1) })}
-                className="px-3 py-1.5 text-sm border border-platinum rounded-lg text-forest disabled:opacity-30 hover:border-sage/40 transition-colors"
+                className="px-3 py-1.5 text-sm border border-stone-200 rounded-lg text-stone-900 disabled:opacity-30 hover:border-[#8B7355]/40 transition-colors"
               >
                 Next
               </button>

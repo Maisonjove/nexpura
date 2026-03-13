@@ -64,7 +64,7 @@ const FEATURES_TABLE = [
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    trialing: "bg-blue-50 text-blue-700 border border-blue-200",
+    trialing: "bg-stone-100 text-stone-700 border border-blue-200",
     active: "bg-green-50 text-green-700 border border-green-200",
     past_due: "bg-red-50 text-red-700 border border-red-200",
     canceled: "bg-gray-100 text-gray-600 border border-gray-200",
@@ -99,12 +99,12 @@ function StatusBadge({ status }: { status: string }) {
 
 function CheckCell({ value }: { value: boolean | string }) {
   if (typeof value === "string") {
-    return <span className="text-sm font-medium text-forest">{value}</span>;
+    return <span className="text-sm font-medium text-stone-900">{value}</span>;
   }
   if (value) {
     return (
       <svg
-        className="w-5 h-5 text-sage mx-auto"
+        className="w-5 h-5 text-[#8B7355] mx-auto"
         fill="currentColor"
         viewBox="0 0 20 20"
       >
@@ -116,7 +116,7 @@ function CheckCell({ value }: { value: boolean | string }) {
       </svg>
     );
   }
-  return <span className="text-forest/25 text-lg font-light">—</span>;
+  return <span className="text-stone-900/25 text-lg font-light">—</span>;
 }
 
 export default function BillingClient({
@@ -183,27 +183,27 @@ export default function BillingClient({
     <div className="max-w-5xl mx-auto space-y-8">
       {/* Page header */}
       <div>
-        <h1 className="font-fraunces text-2xl font-semibold text-forest">
+        <h1 className="font-semibold text-2xl font-semibold text-stone-900">
           Billing & Subscription
         </h1>
-        <p className="text-forest/60 text-sm mt-1">
+        <p className="text-stone-500 text-sm mt-1">
           Manage your plan and billing details
         </p>
       </div>
 
       {/* Current plan card */}
-      <div className="bg-white rounded-2xl border border-platinum shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold text-forest/50 uppercase tracking-wide mb-1">
+            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1">
               Current Plan
             </p>
             <div className="flex items-center gap-3 mb-2">
               <h2
-                className={`font-fraunces text-2xl font-semibold ${
+                className={`font-semibold text-2xl font-semibold ${
                   currentPlan === "ultimate"
                     ? "text-[#C9A96E]"
-                    : "text-forest"
+                    : "text-stone-900"
                 }`}
               >
                 {currentPlanDetails.name}
@@ -211,17 +211,17 @@ export default function BillingClient({
               <StatusBadge status={subscription?.status ?? "trialing"} />
             </div>
             {subscription?.status === "trialing" && subscription.trial_ends_at && (
-              <p className="text-sm text-forest/60">
+              <p className="text-sm text-stone-500">
                 Free trial ends{" "}
-                <strong className="text-forest">
+                <strong className="text-stone-900">
                   {formatDate(subscription.trial_ends_at)}
                 </strong>
               </p>
             )}
             {subscription?.status === "active" && subscription.current_period_end && (
-              <p className="text-sm text-forest/60">
+              <p className="text-sm text-stone-500">
                 Next billing date:{" "}
-                <strong className="text-forest">
+                <strong className="text-stone-900">
                   {formatDate(subscription.current_period_end)}
                 </strong>
               </p>
@@ -232,7 +232,7 @@ export default function BillingClient({
             <button
               onClick={handleManageBilling}
               disabled={loadingPortal}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-forest text-forest text-sm font-semibold hover:bg-forest hover:text-white transition-all disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-stone-900 text-stone-900 text-sm font-semibold hover:bg-stone-900 hover:text-white transition-all disabled:opacity-60"
             >
               {loadingPortal ? (
                 <>
@@ -255,29 +255,29 @@ export default function BillingClient({
         </div>
 
         {/* Usage stats */}
-        <div className="mt-5 pt-5 border-t border-platinum grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div className="bg-ivory rounded-xl p-4">
-            <p className="text-xs text-forest/50 font-medium mb-1">Users</p>
-            <p className="text-lg font-bold text-forest">
+        <div className="mt-5 pt-5 border-t border-stone-200 grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="bg-stone-50 rounded-xl p-4">
+            <p className="text-xs text-stone-500 font-medium mb-1">Users</p>
+            <p className="text-lg font-bold text-stone-900">
               {userCount}
-              <span className="text-forest/40 font-normal text-sm">
+              <span className="text-stone-400 font-normal text-sm">
                 {" "}
                 / {maxUsers === null ? "∞" : maxUsers}
               </span>
             </p>
           </div>
-          <div className="bg-ivory rounded-xl p-4">
-            <p className="text-xs text-forest/50 font-medium mb-1">Storage</p>
-            <p className="text-lg font-bold text-forest">
+          <div className="bg-stone-50 rounded-xl p-4">
+            <p className="text-xs text-stone-500 font-medium mb-1">Storage</p>
+            <p className="text-lg font-bold text-stone-900">
               0 GB
-              <span className="text-forest/40 font-normal text-sm">
+              <span className="text-stone-400 font-normal text-sm">
                 {" "}/ {PLAN_FEATURES[currentPlan]?.storageGB}GB
               </span>
             </p>
           </div>
-          <div className="bg-ivory rounded-xl p-4">
-            <p className="text-xs text-forest/50 font-medium mb-1">Plan</p>
-            <p className="text-lg font-bold text-forest capitalize">
+          <div className="bg-stone-50 rounded-xl p-4">
+            <p className="text-xs text-stone-500 font-medium mb-1">Plan</p>
+            <p className="text-lg font-bold text-stone-900 capitalize">
               {currentPlanDetails.name}
             </p>
           </div>
@@ -288,22 +288,22 @@ export default function BillingClient({
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
           <div>
-            <h2 className="font-fraunces text-xl font-semibold text-forest">
+            <h2 className="font-semibold text-xl font-semibold text-stone-900">
               Plans
             </h2>
-            <p className="text-sm text-forest/60 mt-0.5">
+            <p className="text-sm text-stone-500 mt-0.5">
               Upgrade or downgrade anytime
             </p>
           </div>
 
           {/* Interval toggle */}
-          <div className="flex items-center bg-ivory rounded-xl p-1 border border-platinum w-fit">
+          <div className="flex items-center bg-stone-50 rounded-xl p-1 border border-stone-200 w-fit">
             <button
               onClick={() => setSelectedInterval("monthly")}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                 selectedInterval === "monthly"
-                  ? "bg-white shadow-sm text-forest"
-                  : "text-forest/50 hover:text-forest"
+                  ? "bg-white shadow-sm text-stone-900"
+                  : "text-stone-500 hover:text-stone-900"
               }`}
             >
               Monthly
@@ -312,12 +312,12 @@ export default function BillingClient({
               onClick={() => setSelectedInterval("annual")}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${
                 selectedInterval === "annual"
-                  ? "bg-white shadow-sm text-forest"
-                  : "text-forest/50 hover:text-forest"
+                  ? "bg-white shadow-sm text-stone-900"
+                  : "text-stone-500 hover:text-stone-900"
               }`}
             >
               Annual
-              <span className="text-xs bg-sage/15 text-sage px-1.5 py-0.5 rounded-md font-semibold">
+              <span className="text-xs bg-stone-100 text-[#8B7355] px-1.5 py-0.5 rounded-md font-semibold">
                 Save 20%
               </span>
             </button>
@@ -338,15 +338,15 @@ export default function BillingClient({
                   isCurrent
                     ? isGold
                       ? "border-[#C9A96E] shadow-md"
-                      : "border-sage shadow-md"
-                    : "border-platinum hover:border-platinum/60 hover:shadow-sm"
+                      : "border-[#8B7355] shadow-md"
+                    : "border-stone-200 hover:border-stone-200 hover:shadow-sm"
                 }`}
               >
                 {isCurrent && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span
                       className={`text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm ${
-                        isGold ? "bg-[#C9A96E]" : "bg-sage"
+                        isGold ? "bg-[#C9A96E]" : "bg-[#8B7355]"
                       }`}
                     >
                       Current plan
@@ -355,19 +355,19 @@ export default function BillingClient({
                 )}
 
                 <h3
-                  className={`font-fraunces text-xl font-semibold mb-1 ${
-                    isGold ? "text-[#C9A96E]" : "text-forest"
+                  className={`font-semibold text-xl font-semibold mb-1 ${
+                    isGold ? "text-[#C9A96E]" : "text-stone-900"
                   }`}
                 >
                   {details.name}
                 </h3>
                 <div className="flex items-baseline gap-1 mb-4">
-                  <span className="text-2xl font-bold text-forest">
+                  <span className="text-2xl font-bold text-stone-900">
                     {selectedInterval === "monthly"
                       ? details.monthlyPrice
                       : details.annualPrice}
                   </span>
-                  <span className="text-forest/50 text-sm">
+                  <span className="text-stone-500 text-sm">
                     /{selectedInterval === "monthly" ? "mo" : "yr"}
                   </span>
                 </div>
@@ -377,12 +377,12 @@ export default function BillingClient({
                   disabled={isCurrent || loadingPlan !== null}
                   className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all ${
                     isCurrent
-                      ? "bg-ivory text-forest/40 cursor-default border border-platinum"
+                      ? "bg-stone-50 text-stone-400 cursor-default border border-stone-200"
                       : isGold
                       ? "bg-[#C9A96E] hover:bg-[#C9A96E]/90 text-white shadow-sm"
                       : isSage
-                      ? "bg-sage hover:bg-sage/90 text-white shadow-sm"
-                      : "bg-white border-2 border-forest text-forest hover:bg-forest hover:text-white"
+                      ? "bg-[#8B7355] hover:bg-[#7A6347] text-white shadow-sm"
+                      : "bg-white border-2 border-stone-900 text-stone-900 hover:bg-stone-900 hover:text-white"
                   } disabled:opacity-60`}
                 >
                   {loadingPlan === plan ? (
@@ -408,33 +408,33 @@ export default function BillingClient({
       </div>
 
       {/* Feature comparison table */}
-      <div className="bg-white rounded-2xl border border-platinum shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-platinum">
-          <h3 className="font-fraunces text-lg font-semibold text-forest">
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-stone-200">
+          <h3 className="font-semibold text-lg font-semibold text-stone-900">
             Feature Comparison
           </h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-ivory border-b border-platinum">
-                <th className="text-left px-6 py-3 text-xs font-semibold text-forest/60 uppercase tracking-wide w-1/2">
+              <tr className="bg-stone-50 border-b border-stone-200">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide w-1/2">
                   Feature
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-forest/60 uppercase tracking-wide">
+                <th className="px-4 py-3 text-center text-xs font-semibold text-stone-500 uppercase tracking-wide">
                   Basic
                   <br />
-                  <span className="text-forest font-bold normal-case text-sm">$49</span>
+                  <span className="text-stone-900 font-bold normal-case text-sm">$49</span>
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-sage uppercase tracking-wide">
+                <th className="px-4 py-3 text-center text-xs font-semibold text-[#8B7355] uppercase tracking-wide">
                   Pro
                   <br />
-                  <span className="text-forest font-bold normal-case text-sm">$99</span>
+                  <span className="text-stone-900 font-bold normal-case text-sm">$99</span>
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-[#C9A96E] uppercase tracking-wide">
                   Ultimate
                   <br />
-                  <span className="text-forest font-bold normal-case text-sm">$199</span>
+                  <span className="text-stone-900 font-bold normal-case text-sm">$199</span>
                 </th>
               </tr>
             </thead>
@@ -442,11 +442,11 @@ export default function BillingClient({
               {FEATURES_TABLE.map((row, i) => (
                 <tr
                   key={row.label}
-                  className={`border-b border-platinum last:border-0 ${
-                    i % 2 === 0 ? "bg-white" : "bg-ivory/50"
+                  className={`border-b border-stone-200 last:border-0 ${
+                    i % 2 === 0 ? "bg-white" : "bg-stone-50/50"
                   }`}
                 >
-                  <td className="px-6 py-3.5 text-sm text-forest font-medium">
+                  <td className="px-6 py-3.5 text-sm text-stone-900 font-medium">
                     {row.label}
                   </td>
                   <td className="px-4 py-3.5 text-center">
@@ -466,9 +466,9 @@ export default function BillingClient({
       </div>
 
       {/* Contact note */}
-      <p className="text-center text-sm text-forest/40">
+      <p className="text-center text-sm text-stone-400">
         Need a custom plan for your business?{" "}
-        <a href="mailto:hello@nexpura.com" className="text-sage hover:underline">
+        <a href="mailto:hello@nexpura.com" className="text-[#8B7355] hover:underline">
           Contact us
         </a>
       </p>

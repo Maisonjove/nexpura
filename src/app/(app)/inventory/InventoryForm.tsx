@@ -66,15 +66,15 @@ const STONE_CLARITIES = ["FL", "IF", "VVS1", "VVS2", "VS1", "VS2", "SI1", "SI2",
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="border-b border-platinum pb-3 mb-5">
-      <h2 className="font-fraunces text-lg font-semibold text-forest">{title}</h2>
+    <div className="border-b border-stone-200 pb-3 mb-5">
+      <h2 className="font-semibold text-lg font-semibold text-stone-900">{title}</h2>
     </div>
   );
 }
 
 function FieldLabel({ htmlFor, children, required }: { htmlFor: string; children: React.ReactNode; required?: boolean }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm font-medium text-forest mb-1">
+    <label htmlFor={htmlFor} className="block text-sm font-medium text-stone-900 mb-1">
       {children}{required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
   );
@@ -84,7 +84,7 @@ function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInput
   return (
     <input
       {...props}
-      className={`w-full px-3 py-2.5 text-sm border border-platinum rounded-lg bg-white text-forest placeholder:text-forest/30 focus:outline-none focus:border-sage transition-colors ${className}`}
+      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8B7355] transition-colors ${className}`}
     />
   );
 }
@@ -93,7 +93,7 @@ function Select({ className = "", children, ...props }: React.SelectHTMLAttribut
   return (
     <select
       {...props}
-      className={`w-full px-3 py-2.5 text-sm border border-platinum rounded-lg bg-white text-forest focus:outline-none focus:border-sage transition-colors ${className}`}
+      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 focus:outline-none focus:border-[#8B7355] transition-colors ${className}`}
     >
       {children}
     </select>
@@ -104,7 +104,7 @@ function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTM
   return (
     <textarea
       {...props}
-      className={`w-full px-3 py-2.5 text-sm border border-platinum rounded-lg bg-white text-forest placeholder:text-forest/30 focus:outline-none focus:border-sage transition-colors resize-none ${className}`}
+      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8B7355] transition-colors resize-none ${className}`}
     />
   );
 }
@@ -184,7 +184,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
       )}
 
       {/* Basic Info */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionHeader title="Basic Information" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="sm:col-span-2">
@@ -241,7 +241,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
               <button
                 type="button"
                 onClick={() => setShowNewCategory(!showNewCategory)}
-                className="flex-shrink-0 px-3 py-2.5 border border-forest text-forest text-sm rounded-lg hover:bg-forest hover:text-white transition-colors"
+                className="flex-shrink-0 px-3 py-2.5 border border-stone-900 text-stone-900 text-sm rounded-lg hover:bg-stone-900 hover:text-white transition-colors"
                 title="New category"
               >
                 +
@@ -255,13 +255,13 @@ export default function InventoryForm({ categories: initialCategories, item, mod
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCategory())}
-                  className="flex-1 px-3 py-2 text-sm border border-sage rounded-lg focus:outline-none text-forest"
+                  className="flex-1 px-3 py-2 text-sm border border-[#8B7355] rounded-lg focus:outline-none text-stone-900"
                 />
                 <button
                   type="button"
                   onClick={handleAddCategory}
                   disabled={addingCat || !newCatName.trim()}
-                  className="px-3 py-2 bg-sage text-white text-sm rounded-lg hover:bg-sage/90 disabled:opacity-50 transition-colors"
+                  className="px-3 py-2 bg-[#8B7355] text-white text-sm rounded-lg hover:bg-[#7A6347] disabled:opacity-50 transition-colors"
                 >
                   {addingCat ? "..." : "Add"}
                 </button>
@@ -283,7 +283,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
       </div>
 
       {/* Specifications */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionHeader title="Specifications" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <div>
@@ -356,7 +356,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
       </div>
 
       {/* Pricing */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionHeader title="Pricing" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <div>
@@ -395,7 +395,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
             <div className={`w-full px-3 py-2.5 text-sm border rounded-lg font-medium ${
               margin !== null && parseFloat(margin) > 0
                 ? "border-green-200 bg-green-50 text-green-700"
-                : "border-platinum bg-ivory text-forest/40"
+                : "border-stone-200 bg-stone-50 text-stone-400"
             }`}>
               {margin !== null ? `${margin}%` : "—"}
             </div>
@@ -404,7 +404,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
       </div>
 
       {/* Stock */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionHeader title="Stock" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {mode === "create" && (
@@ -421,24 +421,24 @@ export default function InventoryForm({ categories: initialCategories, item, mod
             <button
               type="button"
               onClick={() => setTrackQuantity(!trackQuantity)}
-              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${trackQuantity ? "bg-sage" : "bg-platinum"}`}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${trackQuantity ? "bg-[#8B7355]" : "bg-stone-200"}`}
             >
               <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${trackQuantity ? "translate-x-4" : "translate-x-0.5"}`} />
             </button>
-            <span className="text-sm text-forest">Track quantity</span>
+            <span className="text-sm text-stone-900">Track quantity</span>
           </div>
 
           <div>
             <FieldLabel htmlFor="sku">SKU</FieldLabel>
             {mode === "edit" ? (
-              <div className="w-full px-3 py-2.5 text-sm border border-platinum rounded-lg bg-ivory text-forest/50 font-mono">
+              <div className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-stone-50 text-stone-500 font-mono">
                 {item?.sku || "—"}
               </div>
             ) : (
               <Input id="sku" name="sku" placeholder="Auto-generated" defaultValue={item?.sku ?? ""} className="font-mono" />
             )}
             {mode === "create" && (
-              <p className="text-xs text-forest/40 mt-1">Leave blank to auto-generate (SKU00001)</p>
+              <p className="text-xs text-stone-400 mt-1">Leave blank to auto-generate (SKU00001)</p>
             )}
           </div>
           <div>
@@ -457,11 +457,11 @@ export default function InventoryForm({ categories: initialCategories, item, mod
       </div>
 
       {/* Display */}
-      <div className="bg-white rounded-xl border border-platinum p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <SectionHeader title="Display" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
-            <p className="text-sm font-medium text-forest mb-3">Status</p>
+            <p className="text-sm font-medium text-stone-900 mb-3">Status</p>
             <div className="flex gap-3">
               {(["active", "inactive", "consignment"] as const).map((s) => (
                 <button
@@ -470,8 +470,8 @@ export default function InventoryForm({ categories: initialCategories, item, mod
                   onClick={() => setStatus(s)}
                   className={`px-4 py-2 text-sm rounded-lg border font-medium capitalize transition-colors ${
                     status === s
-                      ? "bg-sage text-white border-sage"
-                      : "bg-white text-forest border-platinum hover:border-sage/50"
+                      ? "bg-[#8B7355] text-white border-[#8B7355]"
+                      : "bg-white text-stone-900 border-stone-200 hover:border-[#8B7355]/50"
                   }`}
                 >
                   {s}
@@ -483,24 +483,24 @@ export default function InventoryForm({ categories: initialCategories, item, mod
             <button
               type="button"
               onClick={() => setIsFeatured(!isFeatured)}
-              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${isFeatured ? "bg-sage" : "bg-platinum"}`}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${isFeatured ? "bg-[#8B7355]" : "bg-stone-200"}`}
             >
               <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isFeatured ? "translate-x-4" : "translate-x-0.5"}`} />
             </button>
             <div>
-              <p className="text-sm font-medium text-forest">Featured item</p>
-              <p className="text-xs text-forest/40">Highlight this item in your catalogue</p>
+              <p className="text-sm font-medium text-stone-900">Featured item</p>
+              <p className="text-xs text-stone-400">Highlight this item in your catalogue</p>
             </div>
           </div>
 
           {/* Image upload placeholder */}
           <div className="sm:col-span-2">
-            <p className="text-sm font-medium text-forest mb-2">Images</p>
-            <div className="border-2 border-dashed border-platinum rounded-xl p-8 text-center bg-ivory/50">
-              <svg className="w-10 h-10 text-forest/20 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <p className="text-sm font-medium text-stone-900 mb-2">Images</p>
+            <div className="border-2 border-dashed border-stone-200 rounded-xl p-8 text-center bg-stone-50/50">
+              <svg className="w-10 h-10 text-stone-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p className="text-sm text-forest/40">Image upload available in Sprint 9</p>
+              <p className="text-sm text-stone-400">Image upload available in Sprint 9</p>
             </div>
           </div>
         </div>
@@ -508,13 +508,13 @@ export default function InventoryForm({ categories: initialCategories, item, mod
 
       {/* Actions */}
       <div className="flex items-center justify-between pb-8">
-        <a href={mode === "edit" && item ? `/inventory/${item.id}` : "/inventory"} className="px-5 py-2.5 text-sm font-medium text-forest border border-forest rounded-lg hover:bg-forest hover:text-white transition-colors">
+        <a href={mode === "edit" && item ? `/inventory/${item.id}` : "/inventory"} className="px-5 py-2.5 text-sm font-medium text-stone-900 border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-colors">
           Cancel
         </a>
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 disabled:opacity-60 transition-colors flex items-center gap-2"
+          className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] disabled:opacity-60 transition-colors flex items-center gap-2"
         >
           {isPending ? (
             <>

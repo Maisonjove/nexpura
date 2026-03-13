@@ -68,24 +68,24 @@ export default async function EditInventoryPage({ params }: PageProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-forest/50">
-        <Link href="/inventory" className="hover:text-sage transition-colors">Inventory</Link>
+      <div className="flex items-center gap-2 text-sm text-stone-500">
+        <Link href="/inventory" className="hover:text-[#8B7355] transition-colors">Inventory</Link>
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
         </svg>
-        <Link href={`/inventory/${id}`} className="hover:text-sage transition-colors truncate max-w-[200px]">
+        <Link href={`/inventory/${id}`} className="hover:text-[#8B7355] transition-colors truncate max-w-[200px]">
           {typedItem.name}
         </Link>
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
         </svg>
-        <span className="text-forest">Edit</span>
+        <span className="text-stone-900">Edit</span>
       </div>
 
       <div className="flex items-center justify-between">
-        <h1 className="font-fraunces text-2xl font-semibold text-forest">Edit Item</h1>
+        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Edit Item</h1>
         {typedItem.sku && (
-          <span className="text-sm font-mono text-forest/40 bg-ivory border border-platinum px-3 py-1 rounded">
+          <span className="text-sm font-mono text-stone-400 bg-stone-50 border border-stone-200 px-3 py-1 rounded">
             {typedItem.sku}
           </span>
         )}

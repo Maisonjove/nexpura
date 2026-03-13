@@ -57,10 +57,10 @@ export default function PrintTagModal({ item, tenantName, onClose }: PrintTagMod
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl border border-platinum shadow-xl w-full max-w-md p-6">
+      <div className="relative bg-white rounded-2xl border border-stone-200 shadow-xl w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-fraunces text-lg font-semibold text-forest">Print Stock Tag</h3>
-          <button onClick={onClose} className="text-forest/40 hover:text-forest transition-colors">
+          <h3 className="font-semibold text-lg font-semibold text-stone-900">Print Stock Tag</h3>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-900 transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -68,17 +68,17 @@ export default function PrintTagModal({ item, tenantName, onClose }: PrintTagMod
         </div>
 
         {loading ? (
-          <div className="text-sm text-forest/40 text-center py-8">Loading templates…</div>
+          <div className="text-sm text-stone-400 text-center py-8">Loading templates…</div>
         ) : (
           <>
             {/* Template selector */}
             {templates.length > 1 && (
               <div className="mb-4">
-                <label className="block text-xs font-medium text-forest/60 uppercase tracking-wider mb-1.5">Tag Template</label>
+                <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">Tag Template</label>
                 <select
                   value={selectedTemplateId ?? ""}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  className="w-full text-sm border border-platinum rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sage/30 text-forest bg-white"
+                  className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 text-stone-900 bg-white"
                 >
                   {templates.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
@@ -90,13 +90,13 @@ export default function PrintTagModal({ item, tenantName, onClose }: PrintTagMod
             {/* Preview */}
             {selectedTemplate && (
               <div className="mb-5">
-                <p className="text-xs font-medium text-forest/60 uppercase tracking-wider mb-3">Preview</p>
-                <div className="bg-gray-50 rounded-lg p-6 flex items-center justify-center border border-platinum">
+                <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Preview</p>
+                <div className="bg-gray-50 rounded-lg p-6 flex items-center justify-center border border-stone-200">
                   <div ref={printRef}>
                     <StockTag item={item} template={selectedTemplate} tenantName={tenantName} />
                   </div>
                 </div>
-                <p className="text-xs text-forest/40 text-center mt-2">
+                <p className="text-xs text-stone-400 text-center mt-2">
                   {selectedTemplate.width_mm}mm × {selectedTemplate.height_mm}mm
                 </p>
               </div>
@@ -106,14 +106,14 @@ export default function PrintTagModal({ item, tenantName, onClose }: PrintTagMod
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 py-2.5 text-sm font-medium text-forest border border-platinum rounded-lg hover:bg-ivory transition-colors"
+                className="flex-1 py-2.5 text-sm font-medium text-stone-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handlePrint}
                 disabled={!selectedTemplate}
-                className="flex-1 py-2.5 text-sm font-medium bg-forest text-white rounded-lg hover:bg-forest/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 text-sm font-medium bg-stone-900 text-white rounded-lg hover:bg-stone-900/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -121,7 +121,7 @@ export default function PrintTagModal({ item, tenantName, onClose }: PrintTagMod
                 Print
               </button>
             </div>
-            <p className="text-xs text-forest/30 text-center mt-3">Download PDF — coming soon</p>
+            <p className="text-xs text-stone-400 text-center mt-3">Download PDF — coming soon</p>
           </>
         )}
       </div>

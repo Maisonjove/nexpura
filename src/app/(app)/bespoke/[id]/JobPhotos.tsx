@@ -23,8 +23,8 @@ export default function JobPhotos({ jobId, tenantId, existingImages }: Props) {
   }
 
   return (
-    <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-      <h2 className="font-fraunces text-base font-semibold text-forest mb-4">Photos</h2>
+    <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-stone-900 mb-4">Photos</h2>
       <ImageUpload
         bucket="job-photos"
         path={`${tenantId}/${jobId}`}

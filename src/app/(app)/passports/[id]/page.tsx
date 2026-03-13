@@ -79,7 +79,7 @@ export default async function PassportDetailPage({
       {/* Back link */}
       <Link
         href="/passports"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-forest transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-stone-900 transition-colors"
       >
         <svg
           className="w-4 h-4"

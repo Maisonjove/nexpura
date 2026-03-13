@@ -28,8 +28,8 @@ function relativeTime(dateStr: string): string {
 function NotificationIcon({ type }: { type: string }) {
   if (type === "repair_completed" || type === "repair_ready") {
     return (
-      <div className="w-8 h-8 rounded-full bg-sage/10 flex items-center justify-center flex-shrink-0">
-        <svg className="w-4 h-4 text-sage" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center flex-shrink-0">
+        <svg className="w-4 h-4 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -65,8 +65,8 @@ function NotificationIcon({ type }: { type: string }) {
   }
   // default
   return (
-    <div className="w-8 h-8 rounded-full bg-forest/10 flex items-center justify-center flex-shrink-0">
-      <svg className="w-4 h-4 text-forest/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="w-8 h-8 rounded-full bg-stone-900/10 flex items-center justify-center flex-shrink-0">
+      <svg className="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
       </svg>
     </div>
@@ -125,10 +125,10 @@ export default function NotificationBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative w-9 h-9 rounded-lg hover:bg-ivory border border-platinum flex items-center justify-center transition-colors"
+        className="relative w-9 h-9 rounded-lg hover:bg-stone-50 border border-stone-200 flex items-center justify-center transition-colors"
         aria-label="Notifications"
       >
-        <svg className="w-4 h-4 text-forest/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-stone-900/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
         {unreadCount > 0 && (
@@ -139,15 +139,15 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-80 bg-white rounded-xl border border-platinum shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-11 w-80 bg-white rounded-xl border border-stone-200 shadow-xl z-50 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-platinum">
-            <h3 className="font-semibold text-sm text-forest">Notifications</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200">
+            <h3 className="font-semibold text-sm text-stone-900">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
                 disabled={loading}
-                className="text-xs text-sage hover:text-sage/80 transition-colors disabled:opacity-50"
+                className="text-xs text-[#8B7355] hover:text-[#8B7355]/80 transition-colors disabled:opacity-50"
               >
                 Mark all read
               </button>
@@ -157,30 +157,30 @@ export default function NotificationBell() {
           {/* List */}
           <div className="overflow-y-auto max-h-[400px]">
             {displayed.length === 0 ? (
-              <div className="py-10 text-center text-sm text-forest/40">
+              <div className="py-10 text-center text-sm text-stone-400">
                 No notifications yet
               </div>
             ) : (
               displayed.map((n) => {
                 const content = (
                   <div
-                    className={`flex items-start gap-3 px-4 py-3 border-b border-platinum/50 last:border-0 transition-colors ${
-                      !n.is_read ? "bg-sage/5" : "hover:bg-ivory/50"
+                    className={`flex items-start gap-3 px-4 py-3 border-b border-stone-100 last:border-0 transition-colors ${
+                      !n.is_read ? "bg-[#8B7355]/5" : "hover:bg-stone-50/50"
                     }`}
                     onClick={() => !n.is_read && handleMarkRead(n.id)}
                   >
                     <NotificationIcon type={n.type} />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm leading-snug truncate ${!n.is_read ? "font-semibold text-forest" : "text-forest/80"}`}>
+                      <p className={`text-sm leading-snug truncate ${!n.is_read ? "font-semibold text-stone-900" : "text-stone-900/80"}`}>
                         {n.title}
                       </p>
                       {n.body && (
-                        <p className="text-xs text-forest/50 truncate mt-0.5">{n.body}</p>
+                        <p className="text-xs text-stone-500 truncate mt-0.5">{n.body}</p>
                       )}
-                      <p className="text-xs text-forest/30 mt-1">{relativeTime(n.created_at)}</p>
+                      <p className="text-xs text-stone-400 mt-1">{relativeTime(n.created_at)}</p>
                     </div>
                     {!n.is_read && (
-                      <div className="w-2 h-2 rounded-full bg-sage flex-shrink-0 mt-1.5" />
+                      <div className="w-2 h-2 rounded-full bg-[#8B7355] flex-shrink-0 mt-1.5" />
                     )}
                   </div>
                 )
@@ -207,11 +207,11 @@ export default function NotificationBell() {
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-2.5 border-t border-platinum bg-ivory/50">
+          <div className="px-4 py-2.5 border-t border-stone-200 bg-stone-50/50">
             <Link
               href="/notifications"
               onClick={() => setOpen(false)}
-              className="text-xs text-sage hover:text-sage/80 transition-colors font-medium"
+              className="text-xs text-[#8B7355] hover:text-[#8B7355]/80 transition-colors font-medium"
             >
               View all notifications →
             </Link>

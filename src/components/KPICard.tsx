@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { Card } from "@/components/ui/card";
 
 interface KPICardProps {
   label: string;
@@ -9,21 +10,8 @@ interface KPICardProps {
   trendText?: string;
   color?: "default" | "success" | "warning" | "danger";
   href?: string;
+  icon?: React.ReactNode;
 }
-
-const colorDot: Record<string, string> = {
-  default: "bg-[#E8F0EB]",
-  success: "bg-green-100",
-  warning: "bg-amber-100",
-  danger: "bg-red-100",
-};
-
-const colorText: Record<string, string> = {
-  default: "text-[#1a4731]",
-  success: "text-green-600",
-  warning: "text-amber-600",
-  danger: "text-red-500",
-};
 
 export default function KPICard({
   label,
@@ -33,23 +21,26 @@ export default function KPICard({
   trendText,
   color = "default",
   href,
+  icon,
 }: KPICardProps) {
   const card = (
-    <div className="bg-white rounded-xl p-5 shadow-sm border border-[#E8E6E1] hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-1">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-[#9A9A9A]">
+    <Card className="p-6 bg-white border-stone-200 shadow-none hover:shadow-sm transition-shadow">
+      <div className="flex items-start justify-between">
+        <p className="text-xs font-medium text-stone-400 uppercase tracking-widest">
           {label}
-        </span>
-        <span className={`w-2 h-2 rounded-full mt-1 ${colorDot[color]}`} />
+        </p>
+        {icon && (
+          <span className="text-stone-300">{icon}</span>
+        )}
       </div>
-      <p className="text-2xl font-semibold text-[#1C1C1E] mt-1">{value}</p>
+      <p className="text-2xl font-semibold text-stone-900 mt-1">{value}</p>
       {sublabel && (
-        <p className={`text-xs mt-1 ${colorText[color]}`}>{sublabel}</p>
+        <p className="text-xs text-stone-400 mt-0.5">{sublabel}</p>
       )}
       {trendText && (
-        <p className="text-xs mt-1 text-[#6B6B6B] flex items-center gap-1">
+        <p className="text-xs text-stone-400 mt-0.5 flex items-center gap-1">
           {trend === "up" && (
-            <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
             </svg>
           )}
@@ -61,7 +52,7 @@ export default function KPICard({
           {trendText}
         </p>
       )}
-    </div>
+    </Card>
   );
 
   if (href) {

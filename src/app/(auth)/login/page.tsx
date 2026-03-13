@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Gem } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,26 +57,29 @@ export default function LoginPage() {
     <div className="w-full max-w-md">
       {/* Logo */}
       <div className="text-center mb-8">
-        <h1 className="font-fraunces text-3xl font-semibold text-forest">
-          Nexpura
-        </h1>
-        <p className="text-sm text-forest/60 mt-1">Cloud OS for Jewellery Businesses</p>
+        <div className="flex items-center justify-center gap-2.5 mb-3">
+          <div className="w-9 h-9 rounded-lg bg-[#8B7355] flex items-center justify-center">
+            <Gem size={18} color="white" />
+          </div>
+          <span className="text-xl font-semibold text-stone-900">Nexpura</span>
+        </div>
+        <p className="text-sm text-stone-400">Cloud OS for Jewellery Businesses</p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-platinum p-8">
-        <h2 className="font-fraunces text-xl font-semibold text-forest mb-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-10 w-full shadow-sm">
+        <h2 className="text-xl font-semibold text-stone-900 mb-6">
           Welcome back
         </h2>
 
         {/* Mode toggle */}
-        <div className="flex rounded-lg border border-platinum p-1 mb-6">
+        <div className="flex rounded-lg border border-stone-200 p-1 mb-6">
           <button
             type="button"
             onClick={() => { setMode("password"); setError(null); }}
             className={`flex-1 text-sm py-1.5 rounded-md transition-all ${
               mode === "password"
-                ? "bg-forest text-white font-medium"
-                : "text-forest/60 hover:text-forest"
+                ? "bg-[#8B7355] text-white font-medium"
+                : "text-stone-500 hover:text-stone-700"
             }`}
           >
             Password
@@ -85,8 +89,8 @@ export default function LoginPage() {
             onClick={() => { setMode("magic"); setError(null); }}
             className={`flex-1 text-sm py-1.5 rounded-md transition-all ${
               mode === "magic"
-                ? "bg-forest text-white font-medium"
-                : "text-forest/60 hover:text-forest"
+                ? "bg-[#8B7355] text-white font-medium"
+                : "text-stone-500 hover:text-stone-700"
             }`}
           >
             Magic link
@@ -96,7 +100,7 @@ export default function LoginPage() {
         {mode === "password" ? (
           <form onSubmit={handlePasswordLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-forest mb-1">
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
                 Email
               </label>
               <input
@@ -105,11 +109,11 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@yourshop.com"
-                className="w-full px-3 py-2.5 rounded-lg border border-platinum bg-ivory text-forest placeholder-forest/40 focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage transition-colors text-sm"
+                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-forest mb-1">
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
                 Password
               </label>
               <input
@@ -118,18 +122,18 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full px-3 py-2.5 rounded-lg border border-platinum bg-ivory text-forest placeholder-forest/40 focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage transition-colors text-sm"
+                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
               />
             </div>
 
             {error && (
-              <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+              <p className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-sage hover:bg-sage/90 text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 text-sm"
+              className="w-full bg-[#8B7355] hover:bg-[#7A6347] text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>
@@ -137,7 +141,7 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleMagicLink} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-forest mb-1">
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
                 Email
               </label>
               <input
@@ -146,30 +150,30 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@yourshop.com"
-                className="w-full px-3 py-2.5 rounded-lg border border-platinum bg-ivory text-forest placeholder-forest/40 focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage transition-colors text-sm"
+                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
               />
             </div>
 
             {error && (
-              <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+              <p className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md">{error}</p>
             )}
             {success && (
-              <p className="text-sage text-sm bg-sage/10 px-3 py-2 rounded-lg">{success}</p>
+              <p className="text-emerald-700 text-sm bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-md">{success}</p>
             )}
 
             <button
               type="submit"
               disabled={loading || !!success}
-              className="w-full bg-sage hover:bg-sage/90 text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 text-sm"
+              className="w-full bg-[#8B7355] hover:bg-[#7A6347] text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
             >
               {loading ? "Sending…" : "Send magic link"}
             </button>
           </form>
         )}
 
-        <p className="text-center text-sm text-forest/60 mt-6">
+        <p className="text-center text-sm text-stone-500 mt-6">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-sage hover:underline font-medium">
+          <Link href="/signup" className="text-[#8B7355] hover:underline font-medium">
             Sign up free
           </Link>
         </p>

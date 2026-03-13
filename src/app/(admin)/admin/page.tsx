@@ -20,7 +20,7 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-sage/15 text-sage"
+      ? "bg-stone-100 text-[#8B7355]"
       : s === "trialing"
       ? "bg-blue-500/10 text-blue-600"
       : s === "past_due"
@@ -37,10 +37,10 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
     p === "pro"
-      ? "bg-sage/15 text-sage"
+      ? "bg-stone-100 text-[#8B7355]"
       : p === "ultimate"
-      ? "bg-gold/15 text-gold"
-      : "bg-platinum text-forest/60";
+      ? "bg-[#8B7355]/15 text-[#8B7355]"
+      : "bg-stone-200 text-stone-500";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {p || "—"}
@@ -104,8 +104,8 @@ export default async function AdminDashboardPage() {
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-fraunces font-semibold text-forest">Admin Dashboard</h1>
-        <p className="text-sm text-forest/50 mt-1">Platform overview and key metrics</p>
+        <h1 className="text-2xl font-semibold font-semibold text-stone-900">Admin Dashboard</h1>
+        <p className="text-sm text-stone-500 mt-1">Platform overview and key metrics</p>
       </div>
 
       {/* Stats Grid */}
@@ -113,12 +113,12 @@ export default async function AdminDashboardPage() {
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className={`bg-white rounded-xl border border-platinum p-4 ${
+            className={`bg-white rounded-xl border border-stone-200 p-4 ${
               stat.accent ? "ring-1 ring-sage/30" : ""
             }`}
           >
-            <p className="text-xs text-forest/50 font-medium uppercase tracking-wide">{stat.label}</p>
-            <p className={`text-2xl font-fraunces font-semibold mt-1 ${stat.accent ? "text-sage" : "text-forest"}`}>
+            <p className="text-xs text-stone-500 font-medium uppercase tracking-wide">{stat.label}</p>
+            <p className={`text-2xl font-semibold font-semibold mt-1 ${stat.accent ? "text-[#8B7355]" : "text-stone-900"}`}>
               {stat.value}
             </p>
           </div>
@@ -126,28 +126,28 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Recent Signups */}
-      <div className="bg-white rounded-xl border border-platinum overflow-hidden">
-        <div className="px-6 py-4 border-b border-platinum flex items-center justify-between">
-          <h2 className="text-base font-semibold text-forest font-fraunces">Recent Signups</h2>
-          <Link href="/admin/tenants" className="text-sm text-sage hover:underline">
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-stone-900 font-semibold">Recent Signups</h2>
+          <Link href="/admin/tenants" className="text-sm text-[#8B7355] hover:underline">
             View all →
           </Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-platinum bg-ivory/50">
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Business</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Plan</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Status</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Trial / Period End</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wide">Signed Up</th>
+              <tr className="border-b border-stone-200 bg-stone-50/50">
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Business</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Plan</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Status</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Trial / Period End</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Signed Up</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-platinum">
               {recentTenants.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-forest/40">
+                  <td colSpan={5} className="px-6 py-8 text-center text-stone-400">
                     No tenants yet
                   </td>
                 </tr>
@@ -155,9 +155,9 @@ export default async function AdminDashboardPage() {
                 recentTenants.map((tenant) => {
                   const sub = subMap.get(tenant.id);
                   return (
-                    <tr key={tenant.id} className="hover:bg-ivory/40 transition-colors">
-                      <td className="px-6 py-4 font-medium text-forest">
-                        <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-sage">
+                    <tr key={tenant.id} className="hover:bg-stone-50/40 transition-colors">
+                      <td className="px-6 py-4 font-medium text-stone-900">
+                        <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-[#8B7355]">
                           {tenant.name}
                         </Link>
                       </td>
@@ -167,10 +167,10 @@ export default async function AdminDashboardPage() {
                       <td className="px-6 py-4">
                         <StatusBadge status={sub?.status} />
                       </td>
-                      <td className="px-6 py-4 text-forest/60">
+                      <td className="px-6 py-4 text-stone-500">
                         {formatDate(sub?.trial_ends_at || sub?.current_period_end)}
                       </td>
-                      <td className="px-6 py-4 text-forest/60">{formatDate(tenant.created_at)}</td>
+                      <td className="px-6 py-4 text-stone-500">{formatDate(tenant.created_at)}</td>
                     </tr>
                   );
                 })

@@ -59,7 +59,7 @@ function eventLabel(type: string) {
 
 const EVENT_COLOURS: Record<string, string> = {
   created: "bg-[#52B788]/15 text-[#52B788]",
-  ownership_transferred: "bg-blue-50 text-blue-600",
+  ownership_transferred: "bg-stone-100 text-stone-700",
   reported_lost: "bg-red-50 text-red-500",
   reported_stolen: "bg-red-50 text-red-600",
   recovered: "bg-emerald-50 text-emerald-600",
@@ -89,7 +89,7 @@ export default async function VerifyPage({
       <div className="min-h-screen bg-[#F8F5F0] flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-md text-center">
           {/* Logo */}
-          <h1 className="font-fraunces text-3xl font-bold text-[#071A0D] mb-1">nexpura</h1>
+          <h1 className="font-semibold text-3xl font-bold text-[#071A0D] mb-1">nexpura</h1>
           <p className="text-xs text-gray-400 uppercase tracking-widest mb-12">Digital Jewellery Passport</p>
 
           <div className="bg-white rounded-2xl border border-[#E8E8E8] p-8 shadow-sm">
@@ -98,7 +98,7 @@ export default async function VerifyPage({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h2 className="font-fraunces text-xl font-semibold text-[#071A0D] mb-2">Passport Not Found</h2>
+            <h2 className="font-semibold text-xl font-semibold text-[#071A0D] mb-2">Passport Not Found</h2>
             <p className="text-sm text-gray-500 leading-relaxed">
               This passport does not exist or is private. If you believe this is an error, please contact your jeweller.
             </p>
@@ -138,7 +138,7 @@ export default async function VerifyPage({
     <div className="min-h-screen bg-[#F8F5F0]">
       {/* Hero strip */}
       <div className="bg-[#071A0D] text-white px-4 py-8 text-center">
-        <h1 className="font-fraunces text-2xl sm:text-3xl font-bold tracking-tight">nexpura</h1>
+        <h1 className="font-semibold text-2xl sm:text-3xl font-bold tracking-tight">nexpura</h1>
         <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">Digital Jewellery Passport</p>
       </div>
 
@@ -162,7 +162,7 @@ export default async function VerifyPage({
           </div>
 
           {/* Title */}
-          <h2 className="font-fraunces text-2xl sm:text-3xl font-semibold text-[#071A0D] mt-1">
+          <h2 className="font-semibold text-2xl sm:text-3xl font-semibold text-[#071A0D] mt-1">
             {p.title}
           </h2>
 
@@ -199,7 +199,7 @@ export default async function VerifyPage({
         {/* Specifications */}
         {(hasMetal || hasStone || hasRing) && (
           <div className="bg-white rounded-2xl border border-[#E8E8E8] p-6 shadow-sm">
-            <h3 className="font-fraunces text-lg font-semibold text-[#071A0D] mb-4">Specifications</h3>
+            <h3 className="font-semibold text-lg font-semibold text-[#071A0D] mb-4">Specifications</h3>
             <div className="space-y-4">
               {hasMetal && (
                 <div>
@@ -246,7 +246,7 @@ export default async function VerifyPage({
         {/* Provenance */}
         {hasProvenance && (
           <div className="bg-white rounded-2xl border border-[#E8E8E8] p-6 shadow-sm">
-            <h3 className="font-fraunces text-lg font-semibold text-[#071A0D] mb-4">Provenance</h3>
+            <h3 className="font-semibold text-lg font-semibold text-[#071A0D] mb-4">Provenance</h3>
             <dl className="grid grid-cols-2 gap-2">
               <SpecItem label="Maker" value={p.maker_name} />
               <SpecItem label="Made In" value={p.made_in} />
@@ -258,7 +258,7 @@ export default async function VerifyPage({
         {/* Ownership */}
         {hasOwnership && (
           <div className="bg-white rounded-2xl border border-[#E8E8E8] p-6 shadow-sm">
-            <h3 className="font-fraunces text-lg font-semibold text-[#071A0D] mb-4">Ownership</h3>
+            <h3 className="font-semibold text-lg font-semibold text-[#071A0D] mb-4">Ownership</h3>
             <dl className="grid grid-cols-2 gap-2">
               {p.current_owner_name && (
                 <div className="col-span-2">
@@ -276,7 +276,7 @@ export default async function VerifyPage({
         {/* Event Timeline */}
         {safeEvents.length > 0 && (
           <div className="bg-white rounded-2xl border border-[#E8E8E8] p-6 shadow-sm">
-            <h3 className="font-fraunces text-lg font-semibold text-[#071A0D] mb-5">History</h3>
+            <h3 className="font-semibold text-lg font-semibold text-[#071A0D] mb-5">History</h3>
             <div className="space-y-0">
               {safeEvents.map((event, idx) => (
                 <div key={event.id} className="flex gap-4">
@@ -335,7 +335,7 @@ export default async function VerifyPage({
             <svg className="w-4 h-4 text-[#52B788]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            <span>Verified by <span className="font-fraunces font-semibold text-[#071A0D]">Nexpura</span> · nexpura.com</span>
+            <span>Verified by <span className="font-semibold font-semibold text-[#071A0D]">Nexpura</span> · nexpura.com</span>
           </div>
         </div>
       </div>

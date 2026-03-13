@@ -138,17 +138,17 @@ export default function ImageUpload({
     return (
       <div className="space-y-2">
         {label && (
-          <p className="text-xs font-medium text-forest/60 uppercase tracking-wide">{label}</p>
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">{label}</p>
         )}
         {singleUrl ? (
-          <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-platinum group">
+          <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-stone-200 group">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={singleUrl} alt="Uploaded" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-white text-forest text-xs font-medium px-2.5 py-1 rounded-lg shadow"
+                className="bg-white text-stone-900 text-xs font-medium px-2.5 py-1 rounded-lg shadow"
               >
                 Replace
               </button>
@@ -167,20 +167,20 @@ export default function ImageUpload({
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading.length > 0}
             className={`w-32 h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors ${
-              isDragging ? "border-sage bg-sage/5" : "border-platinum hover:border-sage/60 hover:bg-sage/5"
+              isDragging ? "border-[#8B7355] bg-[#8B7355]/5" : "border-stone-200 hover:border-[#8B7355]/60 hover:bg-[#8B7355]/5"
             } disabled:opacity-50`}
             onDrop={onDrop}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
           >
             {uploading.length > 0 ? (
-              <div className="w-6 h-6 rounded-full border-2 border-sage border-t-transparent animate-spin" />
+              <div className="w-6 h-6 rounded-full border-2 border-[#8B7355] border-t-transparent animate-spin" />
             ) : (
               <>
-                <svg className="w-7 h-7 text-forest/25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-7 h-7 text-stone-900/25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <span className="text-[10px] text-forest/40 text-center leading-tight px-2">Click or drag to upload</span>
+                <span className="text-[10px] text-stone-400 text-center leading-tight px-2">Click or drag to upload</span>
               </>
             )}
           </button>
@@ -201,14 +201,14 @@ export default function ImageUpload({
   return (
     <div className="space-y-3">
       {label && (
-        <p className="text-sm font-medium text-forest">{label}</p>
+        <p className="text-sm font-medium text-stone-900">{label}</p>
       )}
 
       {/* Thumbnail grid */}
       {currentImages.length > 0 && (
         <div className="flex flex-wrap gap-3">
           {currentImages.map((url) => (
-            <div key={url} className="relative w-[120px] h-[120px] rounded-xl overflow-hidden border border-platinum group flex-shrink-0">
+            <div key={url} className="relative w-[120px] h-[120px] rounded-xl overflow-hidden border border-stone-200 group flex-shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={url} alt="Uploaded" className="w-full h-full object-cover" />
               <button
@@ -226,11 +226,11 @@ export default function ImageUpload({
           {uploading.map((u) => (
             <div
               key={u.name}
-              className="w-[120px] h-[120px] rounded-xl border border-platinum flex items-center justify-center bg-ivory flex-shrink-0"
+              className="w-[120px] h-[120px] rounded-xl border border-stone-200 flex items-center justify-center bg-stone-50 flex-shrink-0"
             >
               <div className="flex flex-col items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2 border-sage border-t-transparent animate-spin" />
-                <span className="text-[10px] text-forest/40 text-center px-1 truncate max-w-full">{u.name}</span>
+                <div className="w-6 h-6 rounded-full border-2 border-[#8B7355] border-t-transparent animate-spin" />
+                <span className="text-[10px] text-stone-400 text-center px-1 truncate max-w-full">{u.name}</span>
               </div>
             </div>
           ))}
@@ -245,23 +245,23 @@ export default function ImageUpload({
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-            isDragging ? "border-sage bg-sage/5" : "border-platinum hover:border-sage/60 hover:bg-sage/5"
+            isDragging ? "border-[#8B7355] bg-[#8B7355]/5" : "border-stone-200 hover:border-[#8B7355]/60 hover:bg-[#8B7355]/5"
           }`}
         >
           {uploading.length > 0 ? (
             <div className="flex items-center justify-center gap-3">
-              <div className="w-5 h-5 rounded-full border-2 border-sage border-t-transparent animate-spin" />
-              <span className="text-sm text-forest/50">Uploading {uploading.length} file{uploading.length > 1 ? "s" : ""}…</span>
+              <div className="w-5 h-5 rounded-full border-2 border-[#8B7355] border-t-transparent animate-spin" />
+              <span className="text-sm text-stone-500">Uploading {uploading.length} file{uploading.length > 1 ? "s" : ""}…</span>
             </div>
           ) : (
             <>
-              <svg className="w-9 h-9 text-forest/20 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-9 h-9 text-stone-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p className="text-sm text-forest/40">
-                Drag & drop or <span className="text-sage font-medium">click to upload</span>
+              <p className="text-sm text-stone-400">
+                Drag & drop or <span className="text-[#8B7355] font-medium">click to upload</span>
               </p>
-              <p className="text-xs text-forest/30 mt-1">JPG, PNG, WebP · up to 10MB each · max {maxImages} images</p>
+              <p className="text-xs text-stone-400 mt-1">JPG, PNG, WebP · up to 10MB each · max {maxImages} images</p>
             </>
           )}
         </div>

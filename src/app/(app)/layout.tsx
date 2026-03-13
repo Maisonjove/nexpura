@@ -33,11 +33,11 @@ export default async function AppLayout({
   const isSuperAdmin = profile?.role === 'super_admin';
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#FAFAF9' }}>
+    <div className="flex min-h-screen bg-stone-50">
       <Sidebar user={userData} isSuperAdmin={isSuperAdmin} />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', overflow: 'auto' }}>
+      <div className="flex-1 ml-64 flex flex-col min-h-screen">
         <Header user={userData} />
-        <main style={{ flex: 1, padding: '32px' }}>
+        <main className="flex-1 overflow-auto p-8">
           {children}
         </main>
       </div>

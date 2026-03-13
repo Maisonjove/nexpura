@@ -6,9 +6,9 @@ import { recordPayment, markAsSent, voidInvoice } from "../actions";
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-gray-100 text-gray-600" },
-  sent: { label: "Sent", className: "bg-blue-50 text-blue-600" },
+  sent: { label: "Sent", className: "bg-stone-100 text-stone-700" },
   partially_paid: { label: "Partially Paid", className: "bg-amber-50 text-amber-600" },
-  paid: { label: "Paid", className: "bg-sage/10 text-sage" },
+  paid: { label: "Paid", className: "bg-stone-100 text-[#8B7355]" },
   overdue: { label: "Overdue", className: "bg-red-50 text-red-600" },
   voided: { label: "Voided", className: "bg-gray-100 text-gray-400" },
 };
@@ -198,7 +198,7 @@ export default function InvoiceDetailClient({
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Toast */}
       {toastMsg && (
-        <div className="fixed top-4 right-4 z-50 bg-forest text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-in slide-in-from-right">
+        <div className="fixed top-4 right-4 z-50 bg-stone-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-in slide-in-from-right">
           {toastMsg}
         </div>
       )}
@@ -206,18 +206,18 @@ export default function InvoiceDetailClient({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <Link href="/invoices" className="text-sm text-forest/50 hover:text-forest transition-colors">
+          <Link href="/invoices" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">
             ← Invoices
           </Link>
           <div className="flex items-center gap-3 mt-1">
-            <h1 className="font-fraunces text-2xl font-semibold text-forest">
+            <h1 className="font-semibold text-2xl font-semibold text-stone-900">
               {invoice.invoice_number}
             </h1>
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.className}`}>
               {badge.label}
             </span>
           </div>
-          <p className="text-sm text-forest/50 mt-0.5">
+          <p className="text-sm text-stone-500 mt-0.5">
             {invoice.customers?.full_name || "No customer"} · Issued {fmtDate(invoice.invoice_date)}
           </p>
         </div>
@@ -225,13 +225,13 @@ export default function InvoiceDetailClient({
         {/* Actions */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
           {/* View toggle */}
-          <div className="flex items-center bg-platinum/50 rounded-lg p-0.5">
+          <div className="flex items-center bg-stone-100 rounded-lg p-0.5">
             <button
               onClick={() => setView("manage")}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                 view === "manage"
-                  ? "bg-white text-forest shadow-sm"
-                  : "text-forest/50 hover:text-forest"
+                  ? "bg-white text-stone-900 shadow-sm"
+                  : "text-stone-500 hover:text-stone-900"
               }`}
             >
               Manage
@@ -240,8 +240,8 @@ export default function InvoiceDetailClient({
               onClick={() => setView("preview")}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                 view === "preview"
-                  ? "bg-white text-forest shadow-sm"
-                  : "text-forest/50 hover:text-forest"
+                  ? "bg-white text-stone-900 shadow-sm"
+                  : "text-stone-500 hover:text-stone-900"
               }`}
             >
               Preview
@@ -251,7 +251,7 @@ export default function InvoiceDetailClient({
           {canEdit && (
             <Link
               href={`/invoices/${invoice.id}/edit`}
-              className="px-3 py-1.5 text-xs border border-forest text-forest rounded-lg hover:bg-forest/5 transition-colors"
+              className="px-3 py-1.5 text-xs border border-stone-900 text-stone-900 rounded-lg hover:bg-stone-900/5 transition-colors"
             >
               Edit
             </Link>
@@ -260,7 +260,7 @@ export default function InvoiceDetailClient({
             <button
               disabled={isPending}
               onClick={handleMarkSent}
-              className="px-3 py-1.5 text-xs border border-forest text-forest rounded-lg hover:bg-forest/5 transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 text-xs border border-stone-900 text-stone-900 rounded-lg hover:bg-stone-900/5 transition-colors disabled:opacity-50"
             >
               Mark as Sent
             </button>
@@ -271,7 +271,7 @@ export default function InvoiceDetailClient({
                 setPayAmount(String(invoice.amount_due));
                 setShowPaymentModal(true);
               }}
-              className="px-3 py-1.5 text-xs bg-sage text-white rounded-lg hover:bg-sage/90 transition-colors"
+              className="px-3 py-1.5 text-xs bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors"
             >
               Record Payment
             </button>
@@ -280,7 +280,7 @@ export default function InvoiceDetailClient({
             href={`/api/invoice/${invoice.id}/pdf`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1.5 text-xs border border-platinum text-forest/60 rounded-lg hover:border-sage/40 hover:text-forest transition-colors inline-flex items-center gap-1"
+            className="px-3 py-1.5 text-xs border border-stone-200 text-stone-500 rounded-lg hover:border-[#8B7355]/40 hover:text-stone-900 transition-colors inline-flex items-center gap-1"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -323,9 +323,9 @@ export default function InvoiceDetailClient({
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-platinum">
-              <h2 className="font-fraunces text-lg font-semibold text-forest">Record Payment</h2>
-              <p className="text-sm text-forest/50 mt-0.5">Amount due: {fmt(invoice.amount_due)}</p>
+            <div className="p-6 border-b border-stone-200">
+              <h2 className="font-semibold text-lg font-semibold text-stone-900">Record Payment</h2>
+              <p className="text-sm text-stone-500 mt-0.5">Amount due: {fmt(invoice.amount_due)}</p>
             </div>
             <div className="p-6 space-y-4">
               {error && (
@@ -334,25 +334,25 @@ export default function InvoiceDetailClient({
                 </div>
               )}
               <div>
-                <label className="block text-xs font-medium text-forest/60 mb-1.5">Amount</label>
+                <label className="block text-xs font-medium text-stone-500 mb-1.5">Amount</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-forest/50 text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 text-sm">$</span>
                   <input
                     type="number"
                     min="0.01"
                     step="0.01"
                     value={payAmount}
                     onChange={(e) => setPayAmount(e.target.value)}
-                    className="w-full pl-6 pr-3 py-2 border border-platinum rounded-lg text-sm text-forest focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage"
+                    className="w-full pl-6 pr-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-forest/60 mb-1.5">Payment Method</label>
+                <label className="block text-xs font-medium text-stone-500 mb-1.5">Payment Method</label>
                 <select
                   value={payMethod}
                   onChange={(e) => setPayMethod(e.target.value)}
-                  className="w-full px-3 py-2 border border-platinum rounded-lg text-sm text-forest focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
                 >
                   {PAYMENT_METHODS.map((m) => (
                     <option key={m} value={m}>{m}</option>
@@ -360,49 +360,49 @@ export default function InvoiceDetailClient({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-forest/60 mb-1.5">Payment Date</label>
+                <label className="block text-xs font-medium text-stone-500 mb-1.5">Payment Date</label>
                 <input
                   type="date"
                   value={payDate}
                   onChange={(e) => setPayDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-platinum rounded-lg text-sm text-forest focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-forest/60 mb-1.5">Reference</label>
+                <label className="block text-xs font-medium text-stone-500 mb-1.5">Reference</label>
                 <input
                   type="text"
                   value={payRef}
                   onChange={(e) => setPayRef(e.target.value)}
                   placeholder="Transaction ID, receipt number…"
-                  className="w-full px-3 py-2 border border-platinum rounded-lg text-sm text-forest placeholder-forest/40 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-forest/60 mb-1.5">Notes</label>
+                <label className="block text-xs font-medium text-stone-500 mb-1.5">Notes</label>
                 <textarea
                   value={payNotes}
                   onChange={(e) => setPayNotes(e.target.value)}
                   rows={2}
                   placeholder="Optional notes…"
-                  className="w-full px-3 py-2 border border-platinum rounded-lg text-sm text-forest placeholder-forest/40 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage resize-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] resize-none"
                 />
               </div>
             </div>
-            <div className="p-6 border-t border-platinum flex justify-end gap-3">
+            <div className="p-6 border-t border-stone-200 flex justify-end gap-3">
               <button
                 onClick={() => {
                   setShowPaymentModal(false);
                   setError(null);
                 }}
-                className="px-4 py-2 text-sm border border-forest text-forest rounded-lg hover:bg-forest/5 transition-colors"
+                className="px-4 py-2 text-sm border border-stone-900 text-stone-900 rounded-lg hover:bg-stone-900/5 transition-colors"
               >
                 Cancel
               </button>
               <button
                 disabled={isPending}
                 onClick={handleRecordPayment}
-                className="px-4 py-2 text-sm bg-sage text-white rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
               >
                 {isPending ? "Recording…" : "Record Payment"}
               </button>
@@ -415,14 +415,14 @@ export default function InvoiceDetailClient({
       {showVoidConfirm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h2 className="font-fraunces text-lg font-semibold text-forest mb-2">Void Invoice?</h2>
-            <p className="text-sm text-forest/60 mb-6">
+            <h2 className="font-semibold text-lg font-semibold text-stone-900 mb-2">Void Invoice?</h2>
+            <p className="text-sm text-stone-500 mb-6">
               This will mark the invoice as voided. This action cannot be undone. The invoice record will be preserved.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowVoidConfirm(false)}
-                className="px-4 py-2 text-sm border border-forest text-forest rounded-lg hover:bg-forest/5 transition-colors"
+                className="px-4 py-2 text-sm border border-stone-900 text-stone-900 rounded-lg hover:bg-stone-900/5 transition-colors"
               >
                 Cancel
               </button>
@@ -453,68 +453,68 @@ function ManagementView({
   return (
     <div className="space-y-5">
       {/* Invoice summary card */}
-      <div className="bg-white rounded-xl border border-platinum shadow-sm p-6">
+      <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div>
-            <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-1">Customer</p>
-            <p className="font-medium text-forest">{invoice.customers?.full_name || "—"}</p>
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Customer</p>
+            <p className="font-medium text-stone-900">{invoice.customers?.full_name || "—"}</p>
             {invoice.customers?.email && (
-              <p className="text-sm text-forest/50">{invoice.customers.email}</p>
+              <p className="text-sm text-stone-500">{invoice.customers.email}</p>
             )}
             {(invoice.customers?.phone || invoice.customers?.mobile) && (
-              <p className="text-sm text-forest/50">{invoice.customers.phone || invoice.customers.mobile}</p>
+              <p className="text-sm text-stone-500">{invoice.customers.phone || invoice.customers.mobile}</p>
             )}
           </div>
           <div>
-            <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-1">Dates</p>
-            <p className="text-sm text-forest">
-              <span className="text-forest/50">Issued:</span> {fmtDate(invoice.invoice_date)}
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Dates</p>
+            <p className="text-sm text-stone-900">
+              <span className="text-stone-500">Issued:</span> {fmtDate(invoice.invoice_date)}
             </p>
-            <p className="text-sm text-forest mt-0.5">
-              <span className="text-forest/50">Due:</span>{" "}
+            <p className="text-sm text-stone-900 mt-0.5">
+              <span className="text-stone-500">Due:</span>{" "}
               <span className={invoice.due_date && new Date(invoice.due_date) < new Date() && !["paid", "voided"].includes(invoice.status) ? "text-red-500 font-medium" : ""}>
                 {fmtDate(invoice.due_date)}
               </span>
             </p>
             {invoice.paid_at && (
-              <p className="text-sm text-sage mt-0.5">
-                <span className="text-forest/50">Paid:</span> {fmtDate(invoice.paid_at)}
+              <p className="text-sm text-[#8B7355] mt-0.5">
+                <span className="text-stone-500">Paid:</span> {fmtDate(invoice.paid_at)}
               </p>
             )}
           </div>
           <div className="text-right">
-            <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-1">Amount Due</p>
-            <p className="font-fraunces text-2xl font-semibold text-forest">{fmt(invoice.amount_due)}</p>
-            <p className="text-xs text-forest/40 mt-0.5">Total: {fmt(invoice.total)}</p>
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Amount Due</p>
+            <p className="font-semibold text-2xl font-semibold text-stone-900">{fmt(invoice.amount_due)}</p>
+            <p className="text-xs text-stone-400 mt-0.5">Total: {fmt(invoice.total)}</p>
             {invoice.amount_paid > 0 && (
-              <p className="text-xs text-sage mt-0.5">Paid: {fmt(invoice.amount_paid)}</p>
+              <p className="text-xs text-[#8B7355] mt-0.5">Paid: {fmt(invoice.amount_paid)}</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Line items */}
-      <div className="bg-white rounded-xl border border-platinum shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-platinum">
-          <h2 className="font-fraunces text-base font-semibold text-forest">Line Items</h2>
+      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-stone-200">
+          <h2 className="text-base font-semibold text-stone-900">Line Items</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-platinum bg-forest/2">
-                <th className="text-left px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wider">
+              <tr className="border-b border-stone-200 bg-stone-900/2">
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">
                   Description
                 </th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-forest/50 uppercase tracking-wider">
+                <th className="text-right px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">
                   Qty
                 </th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-forest/50 uppercase tracking-wider">
+                <th className="text-right px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">
                   Unit Price
                 </th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-forest/50 uppercase tracking-wider">
+                <th className="text-right px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">
                   Disc
                 </th>
-                <th className="text-right px-6 py-3 text-xs font-medium text-forest/50 uppercase tracking-wider">
+                <th className="text-right px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">
                   Total
                 </th>
               </tr>
@@ -522,47 +522,47 @@ function ManagementView({
             <tbody className="divide-y divide-platinum">
               {lineItems.map((item) => (
                 <tr key={item.id}>
-                  <td className="px-6 py-3 text-forest">{item.description}</td>
-                  <td className="px-4 py-3 text-right text-forest/70">{item.quantity}</td>
-                  <td className="px-4 py-3 text-right text-forest/70">{fmt(item.unit_price)}</td>
-                  <td className="px-4 py-3 text-right text-forest/50 text-xs">
+                  <td className="px-6 py-3 text-stone-900">{item.description}</td>
+                  <td className="px-4 py-3 text-right text-stone-900/70">{item.quantity}</td>
+                  <td className="px-4 py-3 text-right text-stone-900/70">{fmt(item.unit_price)}</td>
+                  <td className="px-4 py-3 text-right text-stone-500 text-xs">
                     {item.discount_pct ? `${item.discount_pct}%` : "—"}
                   </td>
-                  <td className="px-6 py-3 text-right font-medium text-forest">{fmt(item.total)}</td>
+                  <td className="px-6 py-3 text-right font-medium text-stone-900">{fmt(item.total)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         {/* Totals */}
-        <div className="px-6 py-4 border-t border-platinum">
+        <div className="px-6 py-4 border-t border-stone-200">
           <div className="ml-auto max-w-xs space-y-1.5">
-            <div className="flex justify-between text-sm text-forest/70">
+            <div className="flex justify-between text-sm text-stone-900/70">
               <span>Subtotal</span>
               <span>{fmt(invoice.subtotal)}</span>
             </div>
-            <div className="flex justify-between text-sm text-forest/70">
+            <div className="flex justify-between text-sm text-stone-900/70">
               <span>{invoice.tax_name} ({(invoice.tax_rate * 100).toFixed(0)}%{invoice.tax_inclusive ? " incl." : ""})</span>
               <span>{fmt(invoice.tax_amount)}</span>
             </div>
             {invoice.discount_amount > 0 && (
-              <div className="flex justify-between text-sm text-forest/70">
+              <div className="flex justify-between text-sm text-stone-900/70">
                 <span>Discount</span>
                 <span>−{fmt(invoice.discount_amount)}</span>
               </div>
             )}
-            <div className="flex justify-between font-semibold text-forest border-t border-platinum pt-2">
-              <span className="font-fraunces">Total</span>
-              <span className="font-fraunces">{fmt(invoice.total)}</span>
+            <div className="flex justify-between font-semibold text-stone-900 border-t border-stone-200 pt-2">
+              <span className="font-semibold">Total</span>
+              <span className="font-semibold">{fmt(invoice.total)}</span>
             </div>
             {invoice.amount_paid > 0 && (
-              <div className="flex justify-between text-sm text-sage">
+              <div className="flex justify-between text-sm text-[#8B7355]">
                 <span>Amount Paid</span>
                 <span>{fmt(invoice.amount_paid)}</span>
               </div>
             )}
             {invoice.amount_due > 0 && (
-              <div className="flex justify-between font-bold text-forest border-t border-platinum pt-2">
+              <div className="flex justify-between font-bold text-stone-900 border-t border-stone-200 pt-2">
                 <span>Amount Due</span>
                 <span>{fmt(invoice.amount_due)}</span>
               </div>
@@ -572,27 +572,27 @@ function ManagementView({
       </div>
 
       {/* Payment History */}
-      <div className="bg-white rounded-xl border border-platinum shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-platinum">
-          <h2 className="font-fraunces text-base font-semibold text-forest">Payment History</h2>
+      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-stone-200">
+          <h2 className="text-base font-semibold text-stone-900">Payment History</h2>
         </div>
         {payments.length === 0 ? (
           <div className="py-10 text-center">
-            <p className="text-sm text-forest/40">No payments recorded yet</p>
+            <p className="text-sm text-stone-400">No payments recorded yet</p>
           </div>
         ) : (
           <div className="divide-y divide-platinum">
             {payments.map((p) => (
               <div key={p.id} className="px-6 py-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-forest">{p.payment_method}</p>
-                  <p className="text-xs text-forest/50 mt-0.5">
+                  <p className="text-sm font-medium text-stone-900">{p.payment_method}</p>
+                  <p className="text-xs text-stone-500 mt-0.5">
                     {fmtDate(p.payment_date)}
                     {p.reference && <span className="ml-2">· Ref: {p.reference}</span>}
                   </p>
-                  {p.notes && <p className="text-xs text-forest/40 mt-0.5">{p.notes}</p>}
+                  {p.notes && <p className="text-xs text-stone-400 mt-0.5">{p.notes}</p>}
                 </div>
-                <p className="font-fraunces text-base font-semibold text-sage">{fmt(p.amount)}</p>
+                <p className="text-base font-semibold text-[#8B7355]">{fmt(p.amount)}</p>
               </div>
             ))}
           </div>
@@ -601,17 +601,17 @@ function ManagementView({
 
       {/* Notes */}
       {(invoice.notes || invoice.footer_text) && (
-        <div className="bg-white rounded-xl border border-platinum shadow-sm p-6">
+        <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
           {invoice.notes && (
             <div className="mb-4">
-              <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-2">Notes</p>
-              <p className="text-sm text-forest/70 whitespace-pre-wrap">{invoice.notes}</p>
+              <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">Notes</p>
+              <p className="text-sm text-stone-900/70 whitespace-pre-wrap">{invoice.notes}</p>
             </div>
           )}
           {invoice.footer_text && (
             <div>
-              <p className="text-xs font-medium text-forest/50 uppercase tracking-wider mb-2">Footer</p>
-              <p className="text-sm text-forest/70 whitespace-pre-wrap">{invoice.footer_text}</p>
+              <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">Footer</p>
+              <p className="text-sm text-stone-900/70 whitespace-pre-wrap">{invoice.footer_text}</p>
             </div>
           )}
         </div>
@@ -635,7 +635,7 @@ function PreviewView({
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
 
   return (
-    <div className="bg-white rounded-2xl border border-platinum shadow-sm">
+    <div className="bg-white rounded-2xl border border-stone-200 shadow-sm">
       {/* Invoice paper */}
       <div className="p-10 max-w-3xl mx-auto font-inter">
         {/* Top header */}
@@ -645,34 +645,34 @@ function PreviewView({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={tenant.logo_url} alt="Logo" className="h-14 object-contain mb-3" />
             ) : (
-              <div className="w-14 h-14 rounded-xl bg-forest flex items-center justify-center mb-3">
-                <span className="text-white font-fraunces text-xl font-bold">
+              <div className="w-14 h-14 rounded-xl bg-stone-900 flex items-center justify-center mb-3">
+                <span className="text-white font-semibold text-xl font-bold">
                   {businessName[0].toUpperCase()}
                 </span>
               </div>
             )}
-            <p className="font-semibold text-forest text-lg">{businessName}</p>
+            <p className="font-semibold text-stone-900 text-lg">{businessName}</p>
             {tenant?.abn && (
-              <p className="text-sm text-forest/50 mt-0.5">ABN: {tenant.abn}</p>
+              <p className="text-sm text-stone-500 mt-0.5">ABN: {tenant.abn}</p>
             )}
             {(tenant?.address_line1 || tenant?.suburb) && (
-              <p className="text-sm text-forest/50 mt-0.5">
+              <p className="text-sm text-stone-500 mt-0.5">
                 {[tenant.address_line1, tenant.suburb, tenant.state, tenant.postcode]
                   .filter(Boolean)
                   .join(", ")}
               </p>
             )}
-            {tenant?.phone && <p className="text-sm text-forest/50">{tenant.phone}</p>}
-            {tenant?.email && <p className="text-sm text-forest/50">{tenant.email}</p>}
+            {tenant?.phone && <p className="text-sm text-stone-500">{tenant.phone}</p>}
+            {tenant?.email && <p className="text-sm text-stone-500">{tenant.email}</p>}
           </div>
 
           <div className="text-right">
-            <p className="font-fraunces text-4xl font-bold text-forest tracking-tight">INVOICE</p>
-            <p className="text-lg font-semibold text-forest/70 mt-1">{invoice.invoice_number}</p>
-            <div className="mt-3 space-y-1 text-sm text-forest/60">
-              <p><span className="font-medium text-forest/80">Issued:</span> {fmtDate(invoice.invoice_date)}</p>
+            <p className="font-semibold text-4xl font-bold text-stone-900 tracking-tight">INVOICE</p>
+            <p className="text-lg font-semibold text-stone-900/70 mt-1">{invoice.invoice_number}</p>
+            <div className="mt-3 space-y-1 text-sm text-stone-500">
+              <p><span className="font-medium text-stone-900/80">Issued:</span> {fmtDate(invoice.invoice_date)}</p>
               {invoice.due_date && (
-                <p><span className="font-medium text-forest/80">Due:</span> {fmtDate(invoice.due_date)}</p>
+                <p><span className="font-medium text-stone-900/80">Due:</span> {fmtDate(invoice.due_date)}</p>
               )}
             </div>
           </div>
@@ -680,17 +680,17 @@ function PreviewView({
 
         {/* Bill To */}
         <div className="mb-8">
-          <p className="text-xs font-semibold text-forest/40 uppercase tracking-widest mb-2">Bill To</p>
-          <div className="bg-forest/3 rounded-xl p-4 border border-platinum/60">
-            <p className="font-semibold text-forest text-base">{invoice.customers?.full_name || "—"}</p>
+          <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest mb-2">Bill To</p>
+          <div className="bg-stone-900/3 rounded-xl p-4 border border-stone-200">
+            <p className="font-semibold text-stone-900 text-base">{invoice.customers?.full_name || "—"}</p>
             {invoice.customers?.email && (
-              <p className="text-sm text-forest/60 mt-0.5">{invoice.customers.email}</p>
+              <p className="text-sm text-stone-500 mt-0.5">{invoice.customers.email}</p>
             )}
             {(invoice.customers?.phone || invoice.customers?.mobile) && (
-              <p className="text-sm text-forest/60">{invoice.customers.phone || invoice.customers.mobile}</p>
+              <p className="text-sm text-stone-500">{invoice.customers.phone || invoice.customers.mobile}</p>
             )}
             {invoice.customers?.address_line1 && (
-              <p className="text-sm text-forest/60 mt-0.5">
+              <p className="text-sm text-stone-500 mt-0.5">
                 {[
                   invoice.customers.address_line1,
                   invoice.customers.suburb,
@@ -708,33 +708,33 @@ function PreviewView({
         <div className="mb-6">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b-2 border-forest">
-                <th className="text-left pb-3 font-semibold text-forest text-xs uppercase tracking-wider">
+              <tr className="border-b-2 border-stone-900">
+                <th className="text-left pb-3 font-semibold text-stone-900 text-xs uppercase tracking-wider">
                   Description
                 </th>
-                <th className="text-right pb-3 pr-4 font-semibold text-forest text-xs uppercase tracking-wider w-16">
+                <th className="text-right pb-3 pr-4 font-semibold text-stone-900 text-xs uppercase tracking-wider w-16">
                   Qty
                 </th>
-                <th className="text-right pb-3 pr-4 font-semibold text-forest text-xs uppercase tracking-wider w-28">
+                <th className="text-right pb-3 pr-4 font-semibold text-stone-900 text-xs uppercase tracking-wider w-28">
                   Unit Price
                 </th>
-                <th className="text-right pb-3 font-semibold text-forest text-xs uppercase tracking-wider w-28">
+                <th className="text-right pb-3 font-semibold text-stone-900 text-xs uppercase tracking-wider w-28">
                   Amount
                 </th>
               </tr>
             </thead>
             <tbody>
               {lineItems.map((item, idx) => (
-                <tr key={item.id} className={idx % 2 === 0 ? "" : "bg-forest/2"}>
-                  <td className="py-3 pr-4 text-forest/80">
+                <tr key={item.id} className={idx % 2 === 0 ? "" : "bg-stone-900/2"}>
+                  <td className="py-3 pr-4 text-stone-900/80">
                     {item.description}
                     {item.discount_pct > 0 && (
-                      <span className="ml-2 text-xs text-forest/40">({item.discount_pct}% off)</span>
+                      <span className="ml-2 text-xs text-stone-400">({item.discount_pct}% off)</span>
                     )}
                   </td>
-                  <td className="py-3 pr-4 text-right text-forest/60">{item.quantity}</td>
-                  <td className="py-3 pr-4 text-right text-forest/60">{fmt(item.unit_price)}</td>
-                  <td className="py-3 text-right font-medium text-forest">{fmt(item.total)}</td>
+                  <td className="py-3 pr-4 text-right text-stone-500">{item.quantity}</td>
+                  <td className="py-3 pr-4 text-right text-stone-500">{fmt(item.unit_price)}</td>
+                  <td className="py-3 text-right font-medium text-stone-900">{fmt(item.total)}</td>
                 </tr>
               ))}
             </tbody>
@@ -744,31 +744,31 @@ function PreviewView({
         {/* Totals */}
         <div className="flex justify-end mb-8">
           <div className="w-64 space-y-2">
-            <div className="flex justify-between text-sm text-forest/60">
+            <div className="flex justify-between text-sm text-stone-500">
               <span>Subtotal</span>
               <span>{fmt(invoice.subtotal)}</span>
             </div>
-            <div className="flex justify-between text-sm text-forest/60">
+            <div className="flex justify-between text-sm text-stone-500">
               <span>{invoice.tax_name} ({(invoice.tax_rate * 100).toFixed(0)}%{invoice.tax_inclusive ? " incl." : ""})</span>
               <span>{fmt(invoice.tax_amount)}</span>
             </div>
             {invoice.discount_amount > 0 && (
-              <div className="flex justify-between text-sm text-forest/60">
+              <div className="flex justify-between text-sm text-stone-500">
                 <span>Discount</span>
                 <span>−{fmt(invoice.discount_amount)}</span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-forest border-t-2 border-forest pt-2">
+            <div className="flex justify-between font-bold text-stone-900 border-t-2 border-stone-900 pt-2">
               <span>Total</span>
               <span>{fmt(invoice.total)}</span>
             </div>
             {totalPaid > 0 && (
               <>
-                <div className="flex justify-between text-sm text-sage">
+                <div className="flex justify-between text-sm text-[#8B7355]">
                   <span>Amount Paid</span>
                   <span>{fmt(totalPaid)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-forest border-t border-platinum pt-2 text-lg">
+                <div className="flex justify-between font-bold text-stone-900 border-t border-stone-200 pt-2 text-lg">
                   <span>Amount Due</span>
                   <span>{fmt(invoice.amount_due)}</span>
                 </div>
@@ -779,25 +779,25 @@ function PreviewView({
 
         {/* Footer */}
         {(invoice.footer_text || invoice.notes) && (
-          <div className="border-t border-platinum pt-6 space-y-4">
+          <div className="border-t border-stone-200 pt-6 space-y-4">
             {invoice.notes && (
               <div>
-                <p className="text-xs font-semibold text-forest/40 uppercase tracking-widest mb-1">Notes</p>
-                <p className="text-sm text-forest/60 whitespace-pre-wrap">{invoice.notes}</p>
+                <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest mb-1">Notes</p>
+                <p className="text-sm text-stone-500 whitespace-pre-wrap">{invoice.notes}</p>
               </div>
             )}
             {invoice.footer_text && (
               <div>
-                <p className="text-xs font-semibold text-forest/40 uppercase tracking-widest mb-1">Payment Instructions</p>
-                <p className="text-sm text-forest/60 whitespace-pre-wrap">{invoice.footer_text}</p>
+                <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest mb-1">Payment Instructions</p>
+                <p className="text-sm text-stone-500 whitespace-pre-wrap">{invoice.footer_text}</p>
               </div>
             )}
           </div>
         )}
 
         {/* Thank you */}
-        <div className="mt-8 pt-6 border-t border-platinum text-center">
-          <p className="font-fraunces text-sm text-forest/40 italic">Thank you for your business</p>
+        <div className="mt-8 pt-6 border-t border-stone-200 text-center">
+          <p className="font-semibold text-sm text-stone-400 italic">Thank you for your business</p>
         </div>
       </div>
     </div>

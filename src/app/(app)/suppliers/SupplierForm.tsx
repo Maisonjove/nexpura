@@ -20,12 +20,12 @@ interface Props {
 }
 
 const inputCls =
-  "w-full px-3 py-2 text-sm bg-white border border-platinum rounded-lg text-forest placeholder-forest/30 focus:outline-none focus:border-sage focus:ring-1 focus:ring-sage";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm space-y-4">
-      <h2 className="font-fraunces text-base font-semibold text-forest">{title}</h2>
+    <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm space-y-4">
+      <h2 className="text-base font-semibold text-stone-900">{title}</h2>
       {children}
     </div>
   );
@@ -41,7 +41,7 @@ function FieldLabel({
   children: React.ReactNode;
 }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm font-medium text-forest mb-1">
+    <label htmlFor={htmlFor} className="block text-sm font-medium text-stone-900 mb-1">
       {children}
       {required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
@@ -169,14 +169,14 @@ export default function SupplierForm({ mode, supplier }: Props) {
       <div className="flex items-center justify-end gap-3 pb-6">
         <a
           href="/suppliers"
-          className="px-5 py-2.5 text-sm font-medium text-forest bg-white border border-forest rounded-lg hover:bg-forest hover:text-white transition-all"
+          className="px-5 py-2.5 text-sm font-medium text-stone-900 bg-white border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-all"
         >
           Cancel
         </a>
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 text-sm font-medium bg-sage text-white rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
         >
           {isPending
             ? mode === "create"

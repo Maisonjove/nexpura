@@ -134,7 +134,7 @@ function SpecRow({ label, value }: { label: string; value: string | number | nul
   return (
     <div>
       <dt className="text-xs text-gray-400 uppercase tracking-wide font-medium">{label}</dt>
-      <dd className="text-sm text-forest font-medium mt-0.5">{value}</dd>
+      <dd className="text-sm text-stone-900 font-medium mt-0.5">{value}</dd>
     </div>
   );
 }
@@ -229,7 +229,7 @@ export default function PassportDetailClient({
     <>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-sm font-bold bg-sage/10 text-sage px-3 py-1 rounded-lg">
+          <span className="font-mono text-sm font-bold bg-stone-100 text-[#8B7355] px-3 py-1 rounded-lg">
             {passport.passport_uid}
           </span>
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -241,7 +241,7 @@ export default function PassportDetailClient({
         </div>
         <Link
           href={`/passports/${passport.id}/edit`}
-          className="px-4 py-2 border border-forest text-forest text-sm font-medium rounded-lg hover:bg-forest/5 transition-colors"
+          className="px-4 py-2 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors"
         >
           Edit Passport
         </Link>
@@ -251,8 +251,8 @@ export default function PassportDetailClient({
         {/* Left — 65% */}
         <div className="lg:col-span-2 space-y-5">
           {/* Title card */}
-          <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-            <h1 className="font-fraunces text-2xl font-semibold text-forest">{passport.title}</h1>
+          <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+            <h1 className="font-semibold text-2xl font-semibold text-stone-900">{passport.title}</h1>
             {passport.jewellery_type && (
               <p className="text-sm text-gray-500 mt-1 capitalize">{passport.jewellery_type.replace(/_/g, " ")}</p>
             )}
@@ -262,8 +262,8 @@ export default function PassportDetailClient({
           </div>
 
           {/* Specifications */}
-          <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-            <h2 className="font-fraunces text-lg font-semibold text-forest mb-4">Specifications</h2>
+          <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+            <h2 className="font-semibold text-lg font-semibold text-stone-900 mb-4">Specifications</h2>
             <div className="space-y-5">
               {hasMetal && (
                 <div>
@@ -328,8 +328,8 @@ export default function PassportDetailClient({
           </div>
 
           {/* Event Timeline */}
-          <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm">
-            <h2 className="font-fraunces text-lg font-semibold text-forest mb-4">Event Timeline</h2>
+          <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+            <h2 className="font-semibold text-lg font-semibold text-stone-900 mb-4">Event Timeline</h2>
             {events.length === 0 ? (
               <p className="text-sm text-gray-400">No events recorded yet.</p>
             ) : (
@@ -338,8 +338,8 @@ export default function PassportDetailClient({
                   <div key={event.id} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        event.event_type === "created" ? "bg-sage/15 text-sage" :
-                        event.event_type === "ownership_transferred" ? "bg-blue-50 text-blue-600" :
+                        event.event_type === "created" ? "bg-stone-100 text-[#8B7355]" :
+                        event.event_type === "ownership_transferred" ? "bg-stone-100 text-stone-700" :
                         event.event_type === "reported_lost" || event.event_type === "reported_stolen" ? "bg-red-50 text-red-500" :
                         event.event_type === "recovered" || event.event_type === "authenticated" ? "bg-green-50 text-green-600" :
                         "bg-gray-100 text-gray-500"
@@ -347,12 +347,12 @@ export default function PassportDetailClient({
                         {EVENT_ICONS[event.event_type] || EVENT_ICONS["updated"]}
                       </div>
                       {idx < events.length - 1 && (
-                        <div className="w-px flex-1 bg-platinum my-1" />
+                        <div className="w-px flex-1 bg-stone-200 my-1" />
                       )}
                     </div>
                     <div className={`pb-5 flex-1 min-w-0 ${idx < events.length - 1 ? "" : ""}`}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-forest">{eventLabel(event.event_type)}</span>
+                        <span className="text-sm font-medium text-stone-900">{eventLabel(event.event_type)}</span>
                         <span className="text-xs text-gray-400 flex-shrink-0">
                           {new Date(event.created_at).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}
                         </span>
@@ -371,7 +371,7 @@ export default function PassportDetailClient({
         {/* Right — 35% */}
         <div className="space-y-5">
           {/* QR Code card */}
-          <div className="bg-white border border-platinum rounded-xl p-6 shadow-sm text-center">
+          <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm text-center">
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">QR Code</p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -379,7 +379,7 @@ export default function PassportDetailClient({
               alt={`QR Code for ${passport.passport_uid}`}
               width={180}
               height={180}
-              className="mx-auto rounded-lg border border-platinum"
+              className="mx-auto rounded-lg border border-stone-200"
             />
             <p className="text-xs text-gray-400 mt-3 break-all">
               nexpura-delta.vercel.app/verify/{passport.passport_uid}
@@ -388,7 +388,7 @@ export default function PassportDetailClient({
               <a
                 href={qrDownloadUrl}
                 download={`passport-${passport.passport_uid}.png`}
-                className="w-full px-4 py-2 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -399,7 +399,7 @@ export default function PassportDetailClient({
                 href={verifyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full px-4 py-2 border border-forest text-forest text-sm font-medium rounded-lg hover:bg-forest/5 transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-2 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -410,10 +410,10 @@ export default function PassportDetailClient({
           </div>
 
           {/* Visibility card */}
-          <div className="bg-white border border-platinum rounded-xl p-5 shadow-sm">
+          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-forest">Public Visibility</p>
+                <p className="text-sm font-medium text-stone-900">Public Visibility</p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {isPublic ? "Verifiable by anyone" : "Private — not publicly accessible"}
                 </p>
@@ -422,7 +422,7 @@ export default function PassportDetailClient({
                 onClick={handleTogglePublic}
                 disabled={isPending}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  isPublic ? "bg-sage" : "bg-gray-200"
+                  isPublic ? "bg-[#8B7355]" : "bg-gray-200"
                 }`}
               >
                 <span
@@ -435,11 +435,11 @@ export default function PassportDetailClient({
           </div>
 
           {/* Actions card */}
-          <div className="bg-white border border-platinum rounded-xl p-5 shadow-sm space-y-3">
+          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm space-y-3">
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Actions</p>
             <button
               onClick={() => setEventModalOpen(true)}
-              className="w-full px-4 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
@@ -448,7 +448,7 @@ export default function PassportDetailClient({
             </button>
             <button
               onClick={() => setTransferModalOpen(true)}
-              className="w-full px-4 py-2.5 border border-forest text-forest text-sm font-medium rounded-lg hover:bg-forest/5 transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 py-2.5 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -459,7 +459,7 @@ export default function PassportDetailClient({
               <button
                 onClick={handleSendPassportEmail}
                 disabled={emailSending}
-                className="w-full px-4 py-2.5 border border-sage text-sage text-sm font-medium rounded-lg hover:bg-sage/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full px-4 py-2.5 border border-[#8B7355] text-[#8B7355] text-sm font-medium rounded-lg hover:bg-[#8B7355]/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -474,7 +474,7 @@ export default function PassportDetailClient({
             <div className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 ${
               emailToast.startsWith("Failed")
                 ? "bg-red-50 text-red-600 border border-red-100"
-                : "bg-sage/10 text-sage border border-sage/20"
+                : "bg-stone-100 text-[#8B7355] border border-[#8B7355]/20"
             }`}>
               {!emailToast.startsWith("Failed") && (
                 <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -492,14 +492,14 @@ export default function PassportDetailClient({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setEventModalOpen(false)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 z-10">
-            <h3 className="font-fraunces text-xl font-semibold text-forest mb-5">Add Event</h3>
+            <h3 className="font-semibold text-xl font-semibold text-stone-900 mb-5">Add Event</h3>
             <form onSubmit={handleAddEvent} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Event Type</label>
                 <select
                   value={eventType}
                   onChange={(e) => setEventType(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest bg-white focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors"
                 >
                   {EVENT_TYPES.map((et) => (
                     <option key={et.value} value={et.value}>{et.label}</option>
@@ -513,21 +513,21 @@ export default function PassportDetailClient({
                   onChange={(e) => setEventNotes(e.target.value)}
                   rows={3}
                   placeholder="Add any relevant notes…"
-                  className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors resize-none"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors resize-none"
                 />
               </div>
               <div className="flex gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setEventModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 border border-forest text-forest text-sm font-medium rounded-lg hover:bg-forest/5 transition-colors"
+                  className="flex-1 px-4 py-2.5 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={eventLoading}
-                  className="flex-1 px-4 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-60"
+                  className="flex-1 px-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-60"
                 >
                   {eventLoading ? "Adding…" : "Add Event"}
                 </button>
@@ -542,7 +542,7 @@ export default function PassportDetailClient({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setTransferModalOpen(false)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 z-10">
-            <h3 className="font-fraunces text-xl font-semibold text-forest mb-1">Transfer Ownership</h3>
+            <h3 className="font-semibold text-xl font-semibold text-stone-900 mb-1">Transfer Ownership</h3>
             <p className="text-sm text-gray-500 mb-5">Update the current owner of this passport</p>
             <form onSubmit={handleTransfer} className="space-y-4">
               <div>
@@ -551,7 +551,7 @@ export default function PassportDetailClient({
                   value={newOwnerName}
                   onChange={(e) => setNewOwnerName(e.target.value)}
                   placeholder="Full name"
-                  className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors"
                 />
               </div>
               <div>
@@ -561,7 +561,7 @@ export default function PassportDetailClient({
                   onChange={(e) => setNewOwnerEmail(e.target.value)}
                   type="email"
                   placeholder="email@example.com"
-                  className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors"
                 />
               </div>
               <div>
@@ -571,21 +571,21 @@ export default function PassportDetailClient({
                   onChange={(e) => setTransferNotes(e.target.value)}
                   rows={2}
                   placeholder="e.g. Sold at auction, gifted for birthday…"
-                  className="w-full px-3 py-2.5 border border-platinum rounded-lg text-sm text-forest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-sage/30 focus:border-sage transition-colors resize-none"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors resize-none"
                 />
               </div>
               <div className="flex gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setTransferModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 border border-forest text-forest text-sm font-medium rounded-lg hover:bg-forest/5 transition-colors"
+                  className="flex-1 px-4 py-2.5 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={transferLoading}
-                  className="flex-1 px-4 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-60"
+                  className="flex-1 px-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-60"
                 >
                   {transferLoading ? "Transferring…" : "Transfer"}
                 </button>

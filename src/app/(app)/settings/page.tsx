@@ -166,9 +166,9 @@ export default function SettingsPage() {
     return (
       <div className="max-w-3xl mx-auto">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-platinum rounded w-48" />
-          <div className="h-12 bg-platinum rounded" />
-          <div className="h-64 bg-platinum rounded" />
+          <div className="h-8 bg-stone-200 rounded w-48" />
+          <div className="h-12 bg-stone-200 rounded" />
+          <div className="h-64 bg-stone-200 rounded" />
         </div>
       </div>
     );
@@ -178,13 +178,13 @@ export default function SettingsPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="font-fraunces text-2xl font-semibold text-forest">Settings</h1>
-        <p className="text-forest/60 mt-1 text-sm">Manage your business profile and preferences</p>
+        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Settings</h1>
+        <p className="text-stone-500 mt-1 text-sm">Manage your business profile and preferences</p>
       </div>
 
       {/* Toast */}
       {successMsg && (
-        <div className="flex items-center gap-3 bg-sage/10 border border-sage/30 text-sage rounded-xl px-4 py-3 text-sm">
+        <div className="flex items-center gap-3 bg-stone-100 border border-[#8B7355]/30 text-[#8B7355] rounded-xl px-4 py-3 text-sm">
           <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
           </svg>
@@ -201,7 +201,7 @@ export default function SettingsPage() {
       )}
 
       {/* Tabs */}
-      <div className="border-b border-platinum">
+      <div className="border-b border-stone-200">
         <nav className="flex gap-1 -mb-px">
           {TABS.map((tab) => (
             <button
@@ -209,8 +209,8 @@ export default function SettingsPage() {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab
-                  ? "border-sage text-sage"
-                  : "border-transparent text-forest/50 hover:text-forest hover:border-platinum"
+                  ? "border-[#8B7355] text-[#8B7355]"
+                  : "border-transparent text-stone-500 hover:text-stone-900 hover:border-stone-200"
               }`}
             >
               {tab}
@@ -223,8 +223,8 @@ export default function SettingsPage() {
       {activeTab === "Business Profile" && (
         <form onSubmit={handleBusinessSubmit} className="space-y-6">
           {/* Logo */}
-          <div className="bg-white rounded-xl border border-platinum p-6 space-y-4">
-            <h2 className="font-fraunces text-base font-semibold text-forest">Business Logo</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-stone-900">Business Logo</h2>
             <div className="flex items-center gap-5">
               {tenant?.id && (
                 <LogoUpload
@@ -237,30 +237,30 @@ export default function SettingsPage() {
                 />
               )}
               <div>
-                <p className="text-xs text-forest/40">PNG, JPG, WebP up to 10MB. Recommended: 400×400px</p>
+                <p className="text-xs text-stone-400">PNG, JPG, WebP up to 10MB. Recommended: 400×400px</p>
               </div>
             </div>
           </div>
 
           {/* Business info */}
-          <div className="bg-white rounded-xl border border-platinum p-6 space-y-4">
-            <h2 className="font-fraunces text-base font-semibold text-forest">Business Information</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-stone-900">Business Information</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Business Name</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Business Name</label>
                 <input
                   name="business_name"
                   defaultValue={tenant?.business_name || tenant?.name || ""}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   placeholder="My Jewellery Studio"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Business Type</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Business Type</label>
                 <select
                   name="business_type"
                   defaultValue={tenant?.business_type || ""}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                 >
                   <option value="">Select type…</option>
                   <option value="jeweller">Jeweller</option>
@@ -273,41 +273,41 @@ export default function SettingsPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Phone</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Phone</label>
                 <input
                   name="phone"
                   type="tel"
                   defaultValue={tenant?.phone || ""}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   placeholder="+61 2 9000 0000"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Email</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Email</label>
                 <input
                   name="email"
                   type="email"
                   defaultValue={tenant?.email || ""}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   placeholder="hello@mybusiness.com"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Website</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Website</label>
                 <input
                   name="website"
                   type="url"
                   defaultValue={tenant?.website || ""}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   placeholder="https://mybusiness.com"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">ABN</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">ABN</label>
                 <input
                   name="abn"
                   defaultValue={tenant?.abn || ""}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   placeholder="12 345 678 901"
                 />
               </div>
@@ -315,34 +315,34 @@ export default function SettingsPage() {
           </div>
 
           {/* Address */}
-          <div className="bg-white rounded-xl border border-platinum p-6 space-y-4">
-            <h2 className="font-fraunces text-base font-semibold text-forest">Business Address</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-stone-900">Business Address</h2>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Street Address</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Street Address</label>
                 <input
                   name="address_line1"
                   defaultValue={tenant?.address_line1 || ""}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   placeholder="123 Main Street"
                 />
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="col-span-2 sm:col-span-1 space-y-1.5">
-                  <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Suburb</label>
+                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Suburb</label>
                   <input
                     name="suburb"
                     defaultValue={tenant?.suburb || ""}
-                    className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                     placeholder="Sydney"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">State</label>
+                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">State</label>
                   <select
                     name="state"
                     defaultValue={tenant?.state || ""}
-                    className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   >
                     <option value="">State</option>
                     <option value="NSW">NSW</option>
@@ -356,20 +356,20 @@ export default function SettingsPage() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Postcode</label>
+                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Postcode</label>
                   <input
                     name="postcode"
                     defaultValue={tenant?.postcode || ""}
-                    className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                     placeholder="2000"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Country</label>
+                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Country</label>
                   <select
                     name="country"
                     defaultValue={tenant?.country || "Australia"}
-                    className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   >
                     <option value="Australia">Australia</option>
                     <option value="New Zealand">New Zealand</option>
@@ -386,7 +386,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="px-6 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save changes"}
             </button>
@@ -397,15 +397,15 @@ export default function SettingsPage() {
       {/* Tax & Currency Tab */}
       {activeTab === "Tax & Currency" && (
         <form onSubmit={handleTaxSubmit} className="space-y-6">
-          <div className="bg-white rounded-xl border border-platinum p-6 space-y-4">
-            <h2 className="font-fraunces text-base font-semibold text-forest">Currency & Timezone</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-stone-900">Currency & Timezone</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Currency</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Currency</label>
                 <select
                   name="currency"
                   defaultValue={tenant?.currency || "AUD"}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                 >
                   <option value="AUD">AUD — Australian Dollar</option>
                   <option value="NZD">NZD — New Zealand Dollar</option>
@@ -415,11 +415,11 @@ export default function SettingsPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Timezone</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Timezone</label>
                 <select
                   name="timezone"
                   defaultValue={tenant?.timezone || "Australia/Sydney"}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                 >
                   <option value="Australia/Sydney">Australia/Sydney (AEDT)</option>
                   <option value="Australia/Melbourne">Australia/Melbourne (AEDT)</option>
@@ -436,15 +436,15 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-platinum p-6 space-y-4">
-            <h2 className="font-fraunces text-base font-semibold text-forest">Tax Settings</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-stone-900">Tax Settings</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Tax Name</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Tax Name</label>
                 <select
                   name="tax_name"
                   defaultValue={tenant?.tax_name || "GST"}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                 >
                   <option value="GST">GST</option>
                   <option value="VAT">VAT</option>
@@ -453,7 +453,7 @@ export default function SettingsPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Tax Rate (%)</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Tax Rate (%)</label>
                 <input
                   name="tax_rate"
                   type="number"
@@ -461,12 +461,12 @@ export default function SettingsPage() {
                   max="100"
                   step="0.01"
                   defaultValue={tenant?.tax_rate != null ? (tenant.tax_rate * 100).toFixed(0) : "10"}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   placeholder="10"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Tax Inclusive</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Tax Inclusive</label>
                 <div className="flex items-center h-[38px]">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -476,7 +476,7 @@ export default function SettingsPage() {
                       value="true"
                       className="w-4 h-4 accent-sage rounded"
                     />
-                    <span className="text-sm text-forest">Prices include tax</span>
+                    <span className="text-sm text-stone-900">Prices include tax</span>
                   </label>
                 </div>
               </div>
@@ -487,7 +487,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="px-6 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save changes"}
             </button>
@@ -498,43 +498,43 @@ export default function SettingsPage() {
       {/* Banking Tab */}
       {activeTab === "Banking" && (
         <form onSubmit={handleBankingSubmit} className="space-y-6">
-          <div className="bg-white rounded-xl border border-platinum p-6 space-y-4">
+          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
             <div className="flex items-start gap-3 mb-2">
-              <div className="w-9 h-9 rounded-lg bg-sage/10 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-sage" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
               </div>
               <div>
-                <h2 className="font-fraunces text-base font-semibold text-forest">Banking Details</h2>
-                <p className="text-xs text-forest/50 mt-0.5">These appear on your invoices for direct deposit payments</p>
+                <h2 className="text-base font-semibold text-stone-900">Banking Details</h2>
+                <p className="text-xs text-stone-500 mt-0.5">These appear on your invoices for direct deposit payments</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Bank Name</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Bank Name</label>
                 <input
                   name="bank_name"
                   defaultValue={tenant?.bank_name || ""}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   placeholder="Commonwealth Bank"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">BSB</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">BSB</label>
                 <input
                   name="bank_bsb"
                   defaultValue={tenant?.bank_bsb || ""}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   placeholder="062-000"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Account Number</label>
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Account Number</label>
                 <input
                   name="bank_account"
                   defaultValue={tenant?.bank_account || ""}
-                  className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   placeholder="1234 5678"
                 />
               </div>
@@ -545,7 +545,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="px-6 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save changes"}
             </button>
@@ -557,20 +557,20 @@ export default function SettingsPage() {
       {activeTab === "Account" && (
         <div className="space-y-6">
           {/* Plan */}
-          <div className="bg-white rounded-xl border border-platinum p-6">
-            <h2 className="font-fraunces text-base font-semibold text-forest mb-4">Current Plan</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6">
+            <h2 className="text-base font-semibold text-stone-900 mb-4">Current Plan</h2>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
                   subscription?.plan === "ultimate"
-                    ? "bg-gold/10 text-gold border border-gold/30"
+                    ? "bg-[#8B7355]/10 text-[#8B7355] border border-[#8B7355]/30"
                     : subscription?.plan === "pro"
-                    ? "bg-sage/10 text-sage border border-sage/30"
-                    : "bg-platinum text-forest/60 border border-platinum"
+                    ? "bg-stone-100 text-[#8B7355] border border-[#8B7355]/30"
+                    : "bg-stone-200 text-stone-500 border border-stone-200"
                 }`}>
                   {subscription?.plan || "Free"}
                 </div>
-                <span className="text-sm text-forest/60">
+                <span className="text-sm text-stone-500">
                   {subscription?.status === "trialing"
                     ? `Trial ends ${new Date(subscription.trial_ends_at!).toLocaleDateString("en-AU")}`
                     : subscription?.status === "active"
@@ -579,7 +579,7 @@ export default function SettingsPage() {
                 </span>
               </div>
               {subscription?.plan !== "ultimate" && (
-                <button className="px-4 py-2 text-sm font-medium bg-sage text-white rounded-lg hover:bg-sage/90 transition-colors">
+                <button className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors">
                   Upgrade plan
                 </button>
               )}
@@ -588,25 +588,25 @@ export default function SettingsPage() {
 
           {/* Account details */}
           <form onSubmit={handleAccountSubmit} className="space-y-6">
-            <div className="bg-white rounded-xl border border-platinum p-6 space-y-4">
-              <h2 className="font-fraunces text-base font-semibold text-forest">Account Details</h2>
+            <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+              <h2 className="text-base font-semibold text-stone-900">Account Details</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2 space-y-1.5">
-                  <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Full Name</label>
+                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Full Name</label>
                   <input
                     name="full_name"
                     defaultValue={user?.full_name || ""}
-                    className="w-full px-3 py-2 text-sm border border-platinum rounded-lg focus:outline-none focus:border-sage bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
                   />
                 </div>
                 <div className="sm:col-span-2 space-y-1.5">
-                  <label className="text-xs font-medium text-forest/60 uppercase tracking-wide">Email</label>
+                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Email</label>
                   <input
                     value={user?.email || ""}
                     readOnly
-                    className="w-full px-3 py-2 text-sm border border-platinum rounded-lg bg-ivory text-forest/50 cursor-not-allowed"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg bg-stone-50 text-stone-500 cursor-not-allowed"
                   />
-                  <p className="text-xs text-forest/40">Email cannot be changed here</p>
+                  <p className="text-xs text-stone-400">Email cannot be changed here</p>
                 </div>
               </div>
             </div>
@@ -614,7 +614,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <button
                 type="button"
-                className="text-sm text-forest/50 hover:text-forest underline transition-colors"
+                className="text-sm text-stone-500 hover:text-stone-900 underline transition-colors"
                 onClick={() => {
                   const supabase = createClient();
                   supabase.auth.resetPasswordForEmail(user?.email || "", {
@@ -627,7 +627,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-6 py-2.5 bg-sage text-white text-sm font-medium rounded-lg hover:bg-sage/90 transition-colors disabled:opacity-50"
+                className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
               >
                 {isPending ? "Saving…" : "Save changes"}
               </button>

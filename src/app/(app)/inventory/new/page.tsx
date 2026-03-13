@@ -21,15 +21,15 @@ export default async function NewInventoryPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-forest/50">
-        <Link href="/inventory" className="hover:text-sage transition-colors">Inventory</Link>
+      <div className="flex items-center gap-2 text-sm text-stone-500">
+        <Link href="/inventory" className="hover:text-[#8B7355] transition-colors">Inventory</Link>
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
         </svg>
-        <span className="text-forest">New Item</span>
+        <span className="text-stone-900">New Item</span>
       </div>
 
-      <h1 className="font-fraunces text-2xl font-semibold text-forest">Add New Item</h1>
+      <h1 className="font-semibold text-2xl font-semibold text-stone-900">Add New Item</h1>
 
       <InventoryForm
         categories={categories ?? []}
