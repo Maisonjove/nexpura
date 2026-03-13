@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Wrench, Gem, ShoppingCart, Users, Truck,
   FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
-  Settings, CreditCard, Globe, ExternalLink
+  Settings, CreditCard, Globe, ExternalLink, Monitor, ListTodo
 } from 'lucide-react';
 
 const navGroups = [
@@ -19,6 +19,7 @@ const navGroups = [
     label: 'OPERATIONS',
     items: [
       { name: 'Inventory', href: '/inventory', icon: Package },
+      { name: 'POS', href: '/pos', icon: Monitor },
       { name: 'Repairs', href: '/repairs', icon: Wrench },
       { name: 'Bespoke', href: '/bespoke', icon: Gem },
       { name: 'Sales', href: '/sales', icon: ShoppingCart },
@@ -38,6 +39,8 @@ const navGroups = [
     label: 'TOOLS',
     items: [
       { name: 'Passports', href: '/passports', icon: ShieldCheck },
+      { name: 'Tasks', href: '/tasks', icon: ListTodo },
+      { name: 'Enquiries', href: '/enquiries', icon: MessageSquare },
       { name: 'Communications', href: '/communications', icon: MessageSquare },
       { name: 'AI Copilot', href: '/ai', icon: Bot },
       { name: 'Website', href: '/website', icon: Globe },
@@ -47,6 +50,9 @@ const navGroups = [
     label: 'ADMIN',
     items: [
       { name: 'Settings', href: '/settings', icon: Settings },
+      { name: 'Printing', href: '/settings/printing', icon: Settings },
+      { name: 'Documents', href: '/settings/documents', icon: FileText },
+      { name: 'Team', href: '/settings/team', icon: Users },
       { name: 'Billing', href: '/billing', icon: CreditCard },
     ],
   },

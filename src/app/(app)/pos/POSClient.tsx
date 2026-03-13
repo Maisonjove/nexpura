@@ -1,0 +1,666 @@
+"use client";
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { createPOSSale } from "./actions";
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  sku: string | null;
+  retail_price: number;
+  quantity: number;
+  primary_image: string | null;
+  jewellery_type: string | null;
+  item_type: string | null;
+  status: string;
+}
+
+interface Customer {
+  id: string;
+  full_name: string;
+  email: string | null;
+}
+
+interface CartItem {
+  inventoryId: string;
+  name: string;
+  sku: string | null;
+  unitPrice: number;
+  quantity: number;
+  itemType: string | null;
+}
+
+interface Props {
+  tenantId: string;
+  userId: string;
+  inventoryItems: InventoryItem[];
+  customers: Customer[];
+  taxRate: number;
+}
+
+const CATEGORIES = ["All", "ring", "necklace", "earring", "bracelet", "loose_stone"];
+const CATEGORY_LABELS: Record<string, string> = {
+  All: "All",
+  ring: "Rings",
+  necklace: "Necklaces",
+  earring: "Earrings",
+  bracelet: "Bracelets",
+  loose_stone: "Loose Stones",
+};
+
+type PaymentTab = "card" | "cash" | "split";
+type SaleResult = { id: string; saleNumber: string; invoiceId?: string };
+
+export default function POSClient({ tenantId, userId, inventoryItems, customers, taxRate }: Props) {
+  const router = useRouter();
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [discountType, setDiscountType] = useState<"$" | "%">("$");
+  const [discountValue, setDiscountValue] = useState("");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentTab, setPaymentTab] = useState<PaymentTab>("card");
+  const [cashTendered, setCashTendered] = useState("");
+  const [splitCard, setSplitCard] = useState("");
+  const [splitCash, setSplitCash] = useState("");
+  const [isPending, setIsPending] = useState(false);
+  const [saleResult, setSaleResult] = useState<SaleResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Barcode scanner state
+  const barcodeBuffer = useRef("");
+  const barcodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Barcode scanner detection
+  const handleBarcodeInput = useCallback((barcode: string) => {
+    // Find item by SKU or barcode
+    const item = inventoryItems.find(
+      (i) => i.sku === barcode || i.sku?.toLowerCase() === barcode.toLowerCase()
+    );
+    if (item) addToCart(item);
+  }, [inventoryItems]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // If user is typing in an input, skip (unless it's the search bar)
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" && target.id !== "barcode-input") return;
+      if (target.tagName === "TEXTAREA") return;
+
+      if (e.key === "Enter") {
+        if (barcodeBuffer.current.length >= 6) {
+          handleBarcodeInput(barcodeBuffer.current);
+        }
+        barcodeBuffer.current = "";
+        if (barcodeTimer.current) clearTimeout(barcodeTimer.current);
+        return;
+      }
+
+      if (e.key.length === 1) {
+        barcodeBuffer.current += e.key;
+        if (barcodeTimer.current) clearTimeout(barcodeTimer.current);
+        barcodeTimer.current = setTimeout(() => {
+          barcodeBuffer.current = "";
+        }, 300);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleBarcodeInput]);
+
+  // Filtered items
+  const filteredItems = inventoryItems.filter((item) => {
+    const matchesSearch =
+      !search ||
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      (item.sku && item.sku.toLowerCase().includes(search.toLowerCase()));
+    const matchesCategory =
+      categoryFilter === "All" || item.jewellery_type === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Filtered customers for dropdown
+  const filteredCustomers = customers.filter((c) =>
+    !customerSearch ||
+    c.full_name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    (c.email && c.email.toLowerCase().includes(customerSearch.toLowerCase()))
+  );
+
+  function addToCart(item: InventoryItem) {
+    setCart((prev) => {
+      const existing = prev.find((c) => c.inventoryId === item.id);
+      if (existing) {
+        return prev.map((c) =>
+          c.inventoryId === item.id
+            ? { ...c, quantity: Math.min(c.quantity + 1, item.quantity) }
+            : c
+        );
+      }
+      return [
+        ...prev,
+        {
+          inventoryId: item.id,
+          name: item.name,
+          sku: item.sku,
+          unitPrice: item.retail_price,
+          quantity: 1,
+          itemType: item.item_type,
+        },
+      ];
+    });
+  }
+
+  function updateQty(inventoryId: string, delta: number) {
+    setCart((prev) =>
+      prev
+        .map((c) =>
+          c.inventoryId === inventoryId
+            ? { ...c, quantity: c.quantity + delta }
+            : c
+        )
+        .filter((c) => c.quantity > 0)
+    );
+  }
+
+  function removeFromCart(inventoryId: string) {
+    setCart((prev) => prev.filter((c) => c.inventoryId !== inventoryId));
+  }
+
+  // Totals
+  const subtotal = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
+  const discountAmount =
+    discountType === "$"
+      ? Math.min(parseFloat(discountValue) || 0, subtotal)
+      : (subtotal * (parseFloat(discountValue) || 0)) / 100;
+  const taxableAmount = subtotal - discountAmount;
+  const taxAmount = Math.round(taxableAmount * taxRate * 100) / 100;
+  const total = taxableAmount + taxAmount;
+  const change = paymentTab === "cash" ? (parseFloat(cashTendered) || 0) - total : 0;
+
+  async function handleCharge(paymentMethod: string) {
+    setIsPending(true);
+    setError(null);
+    try {
+      const result = await createPOSSale({
+        tenantId,
+        userId,
+        cart,
+        customerId: selectedCustomer?.id ?? null,
+        customerName: selectedCustomer?.full_name ?? null,
+        customerEmail: selectedCustomer?.email ?? null,
+        subtotal,
+        discountAmount,
+        taxAmount,
+        total,
+        paymentMethod,
+      });
+
+      if (result.error) {
+        setError(result.error);
+      } else if (result.id) {
+        setSaleResult({ id: result.id, saleNumber: result.saleNumber!, invoiceId: result.invoiceId });
+        setShowPaymentModal(false);
+        setCart([]);
+        setDiscountValue("");
+        setSelectedCustomer(null);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  function handleSplitCharge() {
+    const cardAmt = parseFloat(splitCard) || 0;
+    const cashAmt = parseFloat(splitCash) || 0;
+    if (Math.abs(cardAmt + cashAmt - total) > 0.01) {
+      setError("Card + cash amounts must equal the total");
+      return;
+    }
+    handleCharge("split");
+  }
+
+  function resetSale() {
+    setSaleResult(null);
+    setError(null);
+    setCashTendered("");
+    setSplitCard("");
+    setSplitCash("");
+  }
+
+  // Print receipt
+  function printReceipt() {
+    const receiptHTML = `
+      <html><head><title>Receipt</title>
+      <style>body{font-family:monospace;max-width:300px;margin:0 auto;padding:20px;font-size:12px}
+      h2{text-align:center}hr{border:1px dashed #ccc}
+      .row{display:flex;justify-content:space-between;margin:4px 0}
+      .total{font-weight:bold;font-size:14px;border-top:2px solid #000;margin-top:8px;padding-top:8px}
+      </style></head><body>
+      <h2>NEXPURA</h2>
+      <p style="text-align:center">${new Date().toLocaleString("en-AU")}</p>
+      ${selectedCustomer ? `<p>Customer: ${selectedCustomer.full_name}</p>` : ""}
+      <hr/>
+      ${cart.map((c) => `<div class="row"><span>${c.name} x${c.quantity}</span><span>$${(c.unitPrice * c.quantity).toFixed(2)}</span></div>`).join("")}
+      <hr/>
+      <div class="row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
+      ${discountAmount > 0 ? `<div class="row"><span>Discount</span><span>-$${discountAmount.toFixed(2)}</span></div>` : ""}
+      <div class="row"><span>Tax (${(taxRate * 100).toFixed(0)}%)</span><span>$${taxAmount.toFixed(2)}</span></div>
+      <div class="row total"><span>TOTAL</span><span>$${total.toFixed(2)}</span></div>
+      <p style="text-align:center;margin-top:20px">Thank you!</p>
+      </body></html>
+    `;
+    const w = window.open("", "_blank");
+    if (w) {
+      w.document.write(receiptHTML);
+      w.document.close();
+      w.print();
+    }
+  }
+
+  if (saleResult) {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh]">
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-lg p-10 text-center max-w-md w-full">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-semibold text-stone-900 mb-1">Sale Complete!</h2>
+          <p className="text-stone-500 mb-1">{saleResult.saleNumber}</p>
+          <p className="text-3xl font-bold text-stone-900 mb-6">${total.toFixed(2)}</p>
+
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={printReceipt}
+              className="w-full py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-colors"
+            >
+              🖨️ Print Receipt
+            </button>
+            {saleResult.invoiceId && (
+              <button
+                onClick={() => router.push(`/invoices/${saleResult.invoiceId}`)}
+                className="w-full py-3 bg-stone-100 text-stone-900 rounded-xl font-medium hover:bg-stone-200 transition-colors"
+              >
+                📄 View Invoice
+              </button>
+            )}
+            {cart.some((c) => c.itemType === "finished_piece") && (
+              <button
+                onClick={() => {
+                  const finishedItem = cart.find((c) => c.itemType === "finished_piece");
+                  if (finishedItem) router.push(`/passports/new?inventory_item_id=${finishedItem.inventoryId}`);
+                }}
+                className="w-full py-3 bg-[#8B7355]/10 text-[#8B7355] rounded-xl font-medium hover:bg-[#8B7355]/20 transition-colors"
+              >
+                🛡️ Issue Passport
+              </button>
+            )}
+            <button
+              onClick={resetSale}
+              className="w-full py-3 text-stone-500 hover:text-stone-900 transition-colors"
+            >
+              New Sale →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-[calc(100vh-120px)] gap-0 -m-8 mt-0">
+      {/* LEFT PANEL */}
+      <div className="flex-1 flex flex-col bg-stone-50 min-w-0">
+        {/* Search */}
+        <div className="p-4 bg-white border-b border-stone-200 space-y-3">
+          <input
+            type="text"
+            placeholder="Search inventory by name or SKU…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+          />
+          {/* Category pills */}
+          <div className="flex gap-2 flex-wrap">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  categoryFilter === cat
+                    ? "bg-[#8B7355] text-white"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+              >
+                {CATEGORY_LABELS[cat] || cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Product grid */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {filteredItems.length === 0 ? (
+            <div className="text-center py-12 text-stone-400 text-sm">No items found</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {filteredItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => addToCart(item)}
+                  className="bg-white border border-stone-200 rounded-xl p-3 text-left hover:border-[#8B7355] hover:shadow-sm transition-all group"
+                >
+                  <div className="aspect-square w-full mb-2 rounded-lg overflow-hidden bg-stone-100 flex items-center justify-center">
+                    {item.primary_image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.primary_image}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-2xl">💎</span>
+                    )}
+                  </div>
+                  <p className="text-xs font-semibold text-stone-900 truncate">{item.name}</p>
+                  {item.sku && <p className="text-[10px] text-stone-400 font-mono">{item.sku}</p>}
+                  <p className="text-sm font-bold text-[#8B7355] mt-1">${item.retail_price.toFixed(2)}</p>
+                  <p className="text-[10px] text-stone-400">Qty: {item.quantity}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* RIGHT PANEL */}
+      <div className="w-80 xl:w-96 bg-white border-l border-stone-200 flex flex-col">
+        {/* Cart header */}
+        <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
+          <h2 className="font-semibold text-stone-900">
+            Cart
+            {cart.length > 0 && (
+              <span className="ml-2 bg-[#8B7355] text-white text-xs rounded-full px-2 py-0.5">
+                {cart.reduce((s, c) => s + c.quantity, 0)}
+              </span>
+            )}
+          </h2>
+          {cart.length > 0 && (
+            <button
+              onClick={() => setCart([])}
+              className="text-xs text-stone-400 hover:text-red-500 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {/* Cart items */}
+        <div className="flex-1 overflow-y-auto">
+          {cart.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-sm text-stone-400">
+              Click items to add to cart
+            </div>
+          ) : (
+            <div className="divide-y divide-stone-100">
+              {cart.map((item) => (
+                <div key={item.inventoryId} className="px-4 py-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-stone-900 truncate flex-1 mr-2">{item.name}</span>
+                    <button
+                      onClick={() => removeFromCart(item.inventoryId)}
+                      className="text-stone-300 hover:text-red-400 text-xs ml-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateQty(item.inventoryId, -1)}
+                        className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-sm hover:bg-stone-200"
+                      >
+                        −
+                      </button>
+                      <span className="text-sm font-medium text-stone-900 w-6 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQty(item.inventoryId, 1)}
+                        className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-sm hover:bg-stone-200"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <span className="text-sm font-semibold text-stone-900">
+                      ${(item.unitPrice * item.quantity).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Cart footer */}
+        <div className="border-t border-stone-200 p-4 space-y-3">
+          {/* Customer selector */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search customer (optional)…"
+              value={selectedCustomer ? selectedCustomer.full_name : customerSearch}
+              onChange={(e) => {
+                setCustomerSearch(e.target.value);
+                setSelectedCustomer(null);
+                setShowCustomerDropdown(true);
+              }}
+              onFocus={() => setShowCustomerDropdown(true)}
+              onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
+              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#8B7355]"
+            />
+            {showCustomerDropdown && filteredCustomers.length > 0 && !selectedCustomer && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-32 overflow-y-auto z-10">
+                {filteredCustomers.slice(0, 8).map((c) => (
+                  <button
+                    key={c.id}
+                    onMouseDown={() => {
+                      setSelectedCustomer(c);
+                      setCustomerSearch("");
+                      setShowCustomerDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-stone-50 flex items-center justify-between"
+                  >
+                    <span className="font-medium">{c.full_name}</span>
+                    <span className="text-stone-400">{c.email}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Discount */}
+          <div className="flex gap-2">
+            <select
+              value={discountType}
+              onChange={(e) => setDiscountType(e.target.value as "$" | "%")}
+              className="border border-stone-200 rounded-lg px-2 py-2 text-xs"
+            >
+              <option value="$">$ off</option>
+              <option value="%">% off</option>
+            </select>
+            <input
+              type="number"
+              min="0"
+              placeholder="Discount"
+              value={discountValue}
+              onChange={(e) => setDiscountValue(e.target.value)}
+              className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#8B7355]"
+            />
+          </div>
+
+          {/* Totals */}
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between text-stone-500">
+              <span>Subtotal</span>
+              <span>${subtotal.toFixed(2)}</span>
+            </div>
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Discount</span>
+                <span>−${discountAmount.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-stone-500">
+              <span>Tax ({(taxRate * 100).toFixed(0)}%)</span>
+              <span>${taxAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-stone-900 text-base border-t border-stone-200 pt-2 mt-1">
+              <span>Total</span>
+              <span>${total.toFixed(2)}</span>
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+          )}
+
+          <button
+            onClick={() => { setError(null); setShowPaymentModal(true); }}
+            disabled={cart.length === 0}
+            className="w-full py-3 bg-[#8B7355] text-white rounded-xl font-semibold text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Charge ${total.toFixed(2)}
+          </button>
+        </div>
+      </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="px-6 py-5 border-b border-stone-200 flex items-center justify-between">
+              <h3 className="font-semibold text-stone-900 text-lg">Payment</h3>
+              <button onClick={() => setShowPaymentModal(false)} className="text-stone-400 hover:text-stone-900">✕</button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-stone-200">
+              {(["card", "cash", "split"] as PaymentTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setPaymentTab(tab)}
+                  className={`flex-1 py-3 text-sm font-medium capitalize transition-colors ${
+                    paymentTab === tab
+                      ? "border-b-2 border-[#8B7355] text-[#8B7355]"
+                      : "text-stone-500 hover:text-stone-900"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="text-center mb-4">
+                <p className="text-sm text-stone-500">Amount due</p>
+                <p className="text-4xl font-bold text-stone-900">${total.toFixed(2)}</p>
+              </div>
+
+              {paymentTab === "card" && (
+                <button
+                  onClick={() => handleCharge("card")}
+                  disabled={isPending}
+                  className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                >
+                  {isPending ? "Processing…" : "Record Card Payment"}
+                </button>
+              )}
+
+              {paymentTab === "cash" && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1.5">Amount tendered</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={cashTendered}
+                      onChange={(e) => setCashTendered(e.target.value)}
+                      className="w-full border border-stone-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    />
+                  </div>
+                  {parseFloat(cashTendered) >= total && (
+                    <div className="bg-green-50 rounded-xl p-4 text-center">
+                      <p className="text-sm text-green-600">Change</p>
+                      <p className="text-2xl font-bold text-green-700">${change.toFixed(2)}</p>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => handleCharge("cash")}
+                    disabled={isPending || (parseFloat(cashTendered) || 0) < total}
+                    className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                  >
+                    {isPending ? "Processing…" : "Complete Cash Sale"}
+                  </button>
+                </div>
+              )}
+
+              {paymentTab === "split" && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1">Card amount</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={splitCard}
+                      onChange={(e) => setSplitCard(e.target.value)}
+                      className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1">Cash amount</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={splitCash}
+                      onChange={(e) => setSplitCash(e.target.value)}
+                      className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    />
+                  </div>
+                  {(parseFloat(splitCard) || 0) + (parseFloat(splitCash) || 0) !== total && (
+                    <p className="text-xs text-amber-600">
+                      Must equal ${total.toFixed(2)} (currently ${((parseFloat(splitCard) || 0) + (parseFloat(splitCash) || 0)).toFixed(2)})
+                    </p>
+                  )}
+                  <button
+                    onClick={handleSplitCharge}
+                    disabled={isPending}
+                    className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                  >
+                    {isPending ? "Processing…" : "Complete Split Payment"}
+                  </button>
+                </div>
+              )}
+
+              {error && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
