@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/permissions";
+import ReportsDateClient from "./ReportsDateClient";
 
 export const metadata = { title: "Reports — Nexpura" };
 
@@ -366,6 +367,9 @@ export default async function ReportsPage() {
           Overview for {now.toLocaleString("en-AU", { month: "long", year: "numeric" })}
         </p>
       </div>
+
+      {/* Date Range Reports */}
+      <ReportsDateClient tenantId={tenantId} />
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
