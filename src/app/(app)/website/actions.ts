@@ -42,6 +42,12 @@ export interface WebsiteConfigData {
   allow_enquiry?: boolean;
   meta_title?: string;
   meta_description?: string;
+  // Multi-mode fields
+  website_type?: string;
+  external_url?: string;
+  external_platform?: string;
+  custom_domain?: string;
+  domain_verified?: boolean;
 }
 
 export async function getWebsiteConfig() {

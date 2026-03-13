@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Wrench, Gem, ShoppingCart, Users, Truck,
   FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
-  Settings, CreditCard, Globe
+  Settings, CreditCard, Globe, ExternalLink
 } from 'lucide-react';
 
 const navGroups = [
@@ -55,9 +55,15 @@ const navGroups = [
 interface SidebarProps {
   user?: any;
   isSuperAdmin?: boolean;
+  websiteConfig?: {
+    website_type?: string;
+    external_url?: string;
+    subdomain?: string;
+    published?: boolean;
+  } | null;
 }
 
-export default function Sidebar({ user, isSuperAdmin }: SidebarProps) {
+export default function Sidebar({ user, isSuperAdmin, websiteConfig }: SidebarProps) {
   const pathname = usePathname();
 
   const initials = user?.full_name
@@ -103,6 +109,23 @@ export default function Sidebar({ user, isSuperAdmin }: SidebarProps) {
                   </li>
                 );
               })}
+              {/* External website link — shown under TOOLS group */}
+              {group.label === 'TOOLS' && websiteConfig?.website_type === 'connect' && websiteConfig.external_url && (
+                <li>
+                  <a
+                    href={websiteConfig.external_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm cursor-pointer transition-colors text-stone-400 hover:bg-white/[0.05] hover:text-stone-200"
+                  >
+                    <ExternalLink
+                      size={15}
+                      className="flex-shrink-0 text-stone-500"
+                    />
+                    Your Website ↗
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
         ))}
