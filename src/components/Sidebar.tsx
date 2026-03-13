@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, ShoppingCart, Users, Package, Scissors, Wrench, Truck,
   FileText, CreditCard, BarChart, Tag, ShieldCheck, Bot, MessageSquare,
-  UserCog, Settings, Printer, Globe, Diamond
+  Settings, Diamond
 } from 'lucide-react';
 
 const navigation = [
@@ -55,7 +55,12 @@ function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  user?: any;
+  isSuperAdmin?: boolean;
+}
+
+export default function Sidebar({ user, isSuperAdmin }: SidebarProps) {
   const pathname = usePathname();
 
   return (
