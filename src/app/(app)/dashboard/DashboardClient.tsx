@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import StatusBadge from "@/components/StatusBadge";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -98,17 +96,6 @@ function timeAgo(dateStr: string) {
   return `${days}d ago`;
 }
 
-const urgencyBorder: Record<string, string> = {
-  red: "border-l-red-500",
-  orange: "border-l-orange-500",
-  yellow: "border-l-amber-400",
-};
-const urgencyBg: Record<string, string> = {
-  red: "bg-red-50",
-  orange: "bg-orange-50",
-  yellow: "bg-amber-50",
-};
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function DashboardClient({
@@ -124,282 +111,166 @@ export default function DashboardClient({
   overdueRepairsCount,
   recentActivity,
 }: DashboardClientProps) {
-  const [jobTab, setJobTab] = useState<"repairs" | "bespoke">("repairs");
-
-  // Use live data where available, fall back to sample data enriched
-  const showSampleRevenue = salesThisMonthRevenue === 0 && salesThisMonthCount === 0;
-
-  const kpiCards = [
-    {
-      label: "Today's Revenue",
-      value: "$4,280",
-      sublabel: "↑ 3 sales today",
-      color: "default" as const,
-    },
-    {
-      label: "This Month Revenue",
-      value: showSampleRevenue ? "$31,650" : fmtCurrency(salesThisMonthRevenue),
-      sublabel: showSampleRevenue ? "↑ 12% vs last month" : `${salesThisMonthCount} sales`,
-      color: "default" as const,
-    },
-    {
-      label: "Active Repairs",
-      value: activeRepairsCount > 0 ? String(activeRepairsCount) : "12",
-      sublabel: overdueRepairsCount > 0 ? `${overdueRepairsCount} overdue` : "2 ready pickup",
-      color: overdueRepairsCount > 0 ? ("warning" as const) : ("default" as const),
-    },
-    {
-      label: "Bespoke Jobs",
-      value: activeJobsCount > 0 ? String(activeJobsCount) : "8",
-      sublabel: "1 ready today",
-      color: "default" as const,
-    },
-    {
-      label: "Outstanding Invoices",
-      value: totalOutstanding > 0 ? fmtCurrency(totalOutstanding) : "$8,400",
-      sublabel: overdueInvoiceCount > 0 ? `${overdueInvoiceCount} overdue` : "3 overdue",
-      color: "danger" as const,
-    },
-    {
-      label: "Low Stock Items",
-      value: lowStockCount > 0 ? String(lowStockCount) : "5",
-      sublabel: "needs attention",
-      color: "warning" as const,
-    },
-  ];
-
   return (
-    <div className="space-y-6 max-w-[1400px]">
-      {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-[#1C1C1E]">
-          Good morning, {firstName} 👋
+    <div>
+      {/* Greeting */}
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '26px', fontWeight: 600, color: '#1C1917', letterSpacing: '-0.02em', margin: 0 }}>
+          Good morning, {firstName}
         </h1>
-        {tenantName && (
-          <p className="text-[#9A9A9A] text-sm mt-0.5">{tenantName}</p>
-        )}
+        <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '4px' }}>
+          {tenantName || 'Your Store'} · {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </p>
+        {/* Quick actions */}
+        <div style={{ display: 'inline-flex', marginTop: '16px', border: '1px solid #E7E5E4', borderRadius: '10px', overflow: 'hidden', backgroundColor: 'white' }}>
+          {[
+            { label: 'New Sale', href: '/sales/new' },
+            { label: 'New Customer', href: '/customers/new' },
+            { label: 'New Repair', href: '/repairs/new' },
+            { label: 'New Job', href: '/bespoke/new' },
+          ].map((action, i) => (
+            <a key={action.label} href={action.href} style={{
+              padding: '8px 16px', fontSize: '13px', fontWeight: 500, color: '#44403C',
+              textDecoration: 'none', borderRight: i < 3 ? '1px solid #E7E5E4' : 'none',
+              display: 'flex', alignItems: 'center',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FAFAF9')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              {action.label}
+            </a>
+          ))}
+        </div>
       </div>
 
-      {/* KPI row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {kpiCards.map((card) => (
-          <div
-            key={card.label}
-            className="bg-white rounded-xl p-4 shadow-sm border border-[#E8E6E1]"
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#9A9A9A] mb-2">
-              {card.label}
-            </p>
-            <p className="text-xl font-semibold text-[#1C1C1E]">{card.value}</p>
-            <p
-              className={`text-xs mt-1 ${
-                card.color === "danger"
-                  ? "text-red-500"
-                  : card.color === "warning"
-                  ? "text-amber-600"
-                  : "text-[#9A9A9A]"
-              }`}
-            >
-              {card.sublabel}
-            </p>
+      {/* KPI Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        {[
+          { label: 'Sales This Month', value: fmtCurrency(salesThisMonthRevenue), sub: `${salesThisMonthCount} sales`, color: '#059669' },
+          { label: 'Active Repairs', value: String(activeRepairsCount), sub: `${overdueRepairsCount} overdue`, color: '#2563EB' },
+          { label: 'Bespoke Jobs', value: String(activeJobsCount), sub: 'in production', color: '#7C3AED' },
+          { label: 'Outstanding', value: fmtCurrency(totalOutstanding), sub: `${overdueInvoiceCount} overdue`, color: '#DC2626' },
+        ].map((kpi) => (
+          <div key={kpi.label} style={{
+            backgroundColor: 'white', borderRadius: '14px',
+            border: '1px solid #E7E5E4', padding: '24px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}>
+            <p style={{ fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>{kpi.label}</p>
+            <p style={{ fontSize: '30px', fontWeight: 700, color: '#1C1917', margin: '10px 0 6px', letterSpacing: '-0.02em' }}>{kpi.value}</p>
+            <p style={{ fontSize: '12px', color: kpi.sub.includes('overdue') || kpi.sub.includes('Overdue') ? '#DC2626' : '#A8A29E', margin: 0 }}>{kpi.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Second row: Activity + Quick Actions + Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1.2fr_1.2fr] gap-4">
-        {/* Activity feed */}
-        <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F0EDE9]">
-            <h2 className="text-sm font-semibold text-[#1C1C1E]">Recent Activity</h2>
+      {/* Operations Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '20px' }}>
+        {/* Repairs Card */}
+        <div style={{ backgroundColor: 'white', borderRadius: '14px', border: '1px solid #E7E5E4', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F5F5F4' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#1C1917' }}>Active Repairs</span>
+            <a href="/repairs" style={{ fontSize: '12px', color: '#A8A29E', textDecoration: 'none' }}>View all →</a>
           </div>
-          <div className="divide-y divide-[#F5F3F0]">
-            {recentActivity.length > 0
-              ? recentActivity.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    className="flex items-start gap-3 px-5 py-3 hover:bg-[#F8F7F5] transition-colors group"
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #F5F5F4' }}>
+                {['Customer', 'Item', 'Status', 'Due'].map(h => (
+                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '10px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {SAMPLE_REPAIRS.map((r) => {
+                const statusColors: Record<string, { bg: string; color: string }> = {
+                  'In Workshop': { bg: '#EFF6FF', color: '#1D4ED8' },
+                  'Ready for Pickup': { bg: '#F0FDF4', color: '#15803D' },
+                  'Awaiting Approval': { bg: '#FFFBEB', color: '#B45309' },
+                  'Overdue': { bg: '#FEF2F2', color: '#B91C1C' },
+                };
+                const sc = statusColors[r.status] || { bg: '#F5F5F4', color: '#57534E' };
+                return (
+                  <tr key={r.id} style={{ borderBottom: '1px solid #FAFAF9' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FAFAF9')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
-                    <span className="text-base mt-0.5 flex-shrink-0">
-                      {ACTIVITY_ICONS[item.type] || "📌"}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#1C1C1E] group-hover:text-[#1a4731] truncate">
-                        {item.title}
-                        {item.customerName && (
-                          <span className="text-[#9A9A9A]"> — {item.customerName}</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-[#9A9A9A] mt-0.5 capitalize">
-                        {item.stage.replace(/_/g, " ")}
-                      </p>
-                    </div>
-                    <span className="text-xs text-[#C0C0C0] flex-shrink-0 mt-0.5">
-                      {timeAgo(item.updatedAt)}
-                    </span>
-                  </Link>
-                ))
-              : (
-                  <>
-                    {[
-                      { icon: "🔧", text: "Ring resize completed — Sarah Khoury", sub: "Repair updated", time: "12 mins ago" },
-                      { icon: "💎", text: "New bespoke job — Emerald bracelet, David M.", sub: "Bespoke created", time: "1h ago" },
-                      { icon: "💰", text: "Invoice #INV-0089 paid — $3,200", sub: "Invoice paid", time: "2h ago" },
-                      { icon: "📦", text: "5 new items received from Pallion", sub: "Inventory updated", time: "3h ago" },
-                      { icon: "🏷", text: "Stock tags printed — 12 items", sub: "Tags printed", time: "Yesterday" },
-                    ].map((a, i) => (
-                      <div key={i} className="flex items-start gap-3 px-5 py-3">
-                        <span className="text-base mt-0.5 flex-shrink-0">{a.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[#1C1C1E] truncate">{a.text}</p>
-                          <p className="text-xs text-[#9A9A9A] mt-0.5">{a.sub}</p>
-                        </div>
-                        <span className="text-xs text-[#C0C0C0] flex-shrink-0 mt-0.5">{a.time}</span>
-                      </div>
-                    ))}
-                  </>
-                )}
-          </div>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#1C1917', fontWeight: 500 }}>{r.customer}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#57534E' }}>{r.item}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ backgroundColor: sc.bg, color: sc.color, borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 600 }}>{r.status}</span>
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '12px', color: r.status === 'Overdue' ? '#DC2626' : '#78716C', fontWeight: r.status === 'Overdue' ? 600 : 400 }}>{r.due}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
 
-        {/* Quick actions */}
-        <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F0EDE9]">
-            <h2 className="text-sm font-semibold text-[#1C1C1E]">Quick Actions</h2>
+        {/* Right column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Bespoke jobs */}
+          <div style={{ backgroundColor: 'white', borderRadius: '14px', border: '1px solid #E7E5E4', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: '#1C1917' }}>Bespoke Jobs</span>
+              <a href="/bespoke" style={{ fontSize: '12px', color: '#A8A29E', textDecoration: 'none' }}>View all →</a>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {SAMPLE_BESPOKE.slice(0, 3).map((job) => (
+                <div key={job.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '13px', fontWeight: 500, color: '#1C1917', margin: 0 }}>{job.item}</p>
+                    <p style={{ fontSize: '11px', color: '#A8A29E', margin: '2px 0 0' }}>{job.customer}</p>
+                  </div>
+                  <span style={{ backgroundColor: '#F5F5F4', color: '#57534E', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 500 }}>{job.stage}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="p-3 grid grid-cols-2 gap-2">
-            {QUICK_ACTIONS.map((action) => (
-              <Link
-                key={action.label}
-                href={action.href}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-[#F0EDE9] hover:border-[#1a4731]/20 hover:bg-[#E8F0EB] transition-all group text-center"
-              >
-                <span className="text-xl">{action.icon}</span>
-                <span className="text-[11px] font-medium text-[#6B6B6B] group-hover:text-[#1a4731] leading-tight">
-                  {action.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
 
-        {/* Alerts */}
-        <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F0EDE9]">
-            <h2 className="text-sm font-semibold text-[#1C1C1E]">Needs Attention</h2>
-          </div>
-          <div className="p-3 space-y-2">
-            {ALERTS.map((alert, i) => (
-              <div
-                key={i}
-                className={`flex items-center justify-between gap-2 border-l-2 ${urgencyBorder[alert.urgency]} ${urgencyBg[alert.urgency]} rounded-r-lg px-3 py-2.5`}
-              >
-                <p className="text-xs text-[#1C1C1E] font-medium flex-1">{alert.text}</p>
-                <Link
-                  href={alert.href}
-                  className="text-xs text-[#1a4731] font-semibold hover:underline flex-shrink-0"
-                >
-                  View
-                </Link>
-              </div>
-            ))}
+          {/* Alerts */}
+          <div style={{ backgroundColor: 'white', borderRadius: '14px', border: '1px solid #E7E5E4', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '20px' }}>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: '#1C1917', margin: '0 0 14px' }}>Alerts</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {ALERTS.map((alert, i) => (
+                <a key={i} href={alert.href} style={{
+                  display: 'block', padding: '8px 10px 8px 14px',
+                  borderLeft: `3px solid ${alert.urgency === 'red' ? '#EF4444' : alert.urgency === 'orange' ? '#F97316' : '#F59E0B'}`,
+                  backgroundColor: '#FAFAF9', borderRadius: '0 8px 8px 0',
+                  fontSize: '12px', color: '#44403C', textDecoration: 'none',
+                }}>{alert.text}</a>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Third row: Jobs table + Best sellers */}
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4">
-        {/* Recent jobs */}
-        <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F0EDE9] flex items-center gap-4">
-            <h2 className="text-sm font-semibold text-[#1C1C1E]">Recent Jobs</h2>
-            <div className="flex gap-1 ml-auto">
-              <button
-                onClick={() => setJobTab("repairs")}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                  jobTab === "repairs"
-                    ? "bg-[#E8F0EB] text-[#1a4731]"
-                    : "text-[#9A9A9A] hover:text-[#1C1C1E]"
-                }`}
-              >
-                Repairs
-              </button>
-              <button
-                onClick={() => setJobTab("bespoke")}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                  jobTab === "bespoke"
-                    ? "bg-[#E8F0EB] text-[#1a4731]"
-                    : "text-[#9A9A9A] hover:text-[#1C1C1E]"
-                }`}
-              >
-                Bespoke
-              </button>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-5 py-3 bg-[#F8F7F5]">Customer</th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-4 py-3 bg-[#F8F7F5]">Item</th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-4 py-3 bg-[#F8F7F5]">Status</th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-4 py-3 bg-[#F8F7F5]">Due</th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-[#9A9A9A] px-4 py-3 bg-[#F8F7F5]">Assigned</th>
-                  <th className="px-4 py-3 bg-[#F8F7F5]" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F5F3F0]">
-                {jobTab === "repairs"
-                  ? SAMPLE_REPAIRS.map((r) => (
-                      <tr key={r.id} className={`hover:bg-[#F8F7F5] transition-colors ${r.status === "Overdue" ? "border-l-2 border-l-red-500" : ""}`}>
-                        <td className="px-5 py-3 text-sm font-medium text-[#1C1C1E]">{r.customer}</td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{r.item}</td>
-                        <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{r.due}</td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{r.assigned}</td>
-                        <td className="px-4 py-3">
-                          <Link href="/repairs" className="text-xs text-[#1a4731] font-semibold hover:underline">→</Link>
-                        </td>
-                      </tr>
-                    ))
-                  : SAMPLE_BESPOKE.map((b) => (
-                      <tr key={b.id} className="hover:bg-[#F8F7F5] transition-colors">
-                        <td className="px-5 py-3 text-sm font-medium text-[#1C1C1E]">{b.customer}</td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{b.item}</td>
-                        <td className="px-4 py-3"><StatusBadge status={b.stage} /></td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{b.due}</td>
-                        <td className="px-4 py-3 text-sm text-[#6B6B6B]">{b.assigned}</td>
-                        <td className="px-4 py-3">
-                          <Link href="/bespoke" className="text-xs text-[#1a4731] font-semibold hover:underline">→</Link>
-                        </td>
-                      </tr>
-                    ))}
-              </tbody>
-            </table>
-          </div>
+      {/* Best Sellers */}
+      <div style={{ backgroundColor: 'white', borderRadius: '14px', border: '1px solid #E7E5E4', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #F5F5F4' }}>
+          <span style={{ fontSize: '14px', fontWeight: 600, color: '#1C1917' }}>Best Sellers This Month</span>
         </div>
-
-        {/* Best sellers */}
-        <div className="bg-white rounded-xl border border-[#E8E6E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F0EDE9]">
-            <h2 className="text-sm font-semibold text-[#1C1C1E]">Best Sellers This Month</h2>
-          </div>
-          <div className="p-4 space-y-3">
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid #F5F5F4' }}>
+              {['Item', 'Category', 'Units Sold', 'Revenue'].map(h => (
+                <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: '10px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
             {BEST_SELLERS.map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#F8F7F5] flex items-center justify-center text-xs font-bold text-[#9A9A9A]">
-                  {i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1C1C1E] truncate">{item.name}</p>
-                  <p className="text-xs text-[#9A9A9A]">{item.category} · {item.sold} sold</p>
-                </div>
-                <span className="text-sm font-semibold text-[#1a4731] flex-shrink-0">{item.revenue}</span>
-              </div>
+              <tr key={i} style={{ borderBottom: i < BEST_SELLERS.length - 1 ? '1px solid #FAFAF9' : 'none' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FAFAF9')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <td style={{ padding: '13px 24px', fontSize: '13px', fontWeight: 500, color: '#1C1917' }}>{item.name}</td>
+                <td style={{ padding: '13px 24px', fontSize: '13px', color: '#78716C' }}>{item.category}</td>
+                <td style={{ padding: '13px 24px', fontSize: '13px', color: '#78716C' }}>{item.sold}</td>
+                <td style={{ padding: '13px 24px', fontSize: '13px', fontWeight: 600, color: '#1C1917' }}>{item.revenue}</td>
+              </tr>
             ))}
-          </div>
-        </div>
+          </tbody>
+        </table>
       </div>
     </div>
   );

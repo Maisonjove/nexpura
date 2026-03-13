@@ -1,188 +1,37 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-@theme {
-  --color-forest: #1a4731;
-  --color-sage: #52B788;
-  --color-ivory: #F8F7F5;
-  --color-platinum: #E8E6E1;
-  --color-gold: #B8860B;
-  --color-gold-light: #FBF5E6;
-  --color-charcoal: #1C1C1E;
-  --color-muted: #6B6B6B;
-  --color-accent-light: #E8F0EB;
-  --color-base: #F8F7F5;
-  --color-card: #FFFFFF;
-  --color-border: #E8E6E1;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  --font-fraunces: var(--font-fraunces);
-  --font-inter: var(--font-inter);
-}
+@layer base {
+  :root {
+    --background: 60 9.1% 97.8%; /* stone-50 */
+    --foreground: 20 14.3% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    --primary: 24 9.8% 10%;
+    --primary-foreground: 60 9.1% 97.8%;
+    --secondary: 60 4.8% 95.9%;
+    --secondary-foreground: 24 9.8% 10%;
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 5.3% 44.7%;
+    --accent: #8B7355;
+    --accent-hover: #7A6347;
+    --sidebar-bg: #1A1A1A;
+    --accent-foreground: 60 9.1% 97.8%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    --ring: 20 14.3% 4.1%;
+    --radius: 0.75rem;
+  }
 
-:root {
-  --bg-base: #F8F7F5;
-  --bg-card: #FFFFFF;
-  --bg-sidebar: #FFFFFF;
-  --border: #E8E6E1;
-  --text-primary: #1C1C1E;
-  --text-secondary: #6B6B6B;
-  --text-muted: #9A9A9A;
-  --accent: #1a4731;
-  --accent-light: #E8F0EB;
-  --accent-gold: #B8860B;
-  --accent-gold-light: #FBF5E6;
-  --success: #16A34A;
-  --warning: #D97706;
-  --danger: #DC2626;
-  --info: #2563EB;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', var(--font-inter), sans-serif;
-  background-color: #F8F7F5;
-  color: #1C1C1E;
-}
-
-/* ─── Base form element styles ─────────────────────────────────────────────── */
-
-input[type="text"],
-input[type="email"],
-input[type="tel"],
-input[type="number"],
-input[type="password"],
-input[type="date"],
-input[type="search"],
-input[type="url"],
-select,
-textarea {
-  display: block;
-  width: 100%;
-  padding: 0.625rem 0.75rem;
-  font-size: 0.875rem;
-  font-family: inherit;
-  color: #1C1C1E;
-  background-color: #ffffff;
-  border: 1px solid #E8E6E1;
-  border-radius: 0.5rem;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  line-height: 1.5;
-}
-
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="tel"]:focus,
-input[type="number"]:focus,
-input[type="password"]:focus,
-input[type="date"]:focus,
-input[type="search"]:focus,
-input[type="url"]:focus,
-select:focus,
-textarea:focus {
-  border-color: #1a4731;
-  box-shadow: 0 0 0 3px rgba(26, 71, 49, 0.1);
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: #9A9A9A;
-}
-
-select {
-  cursor: pointer;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%231C1C1E' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 0.5rem center;
-  background-repeat: no-repeat;
-  background-size: 1.25em 1.25em;
-  padding-right: 2.5rem;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-textarea {
-  resize: vertical;
-  min-height: 6rem;
-}
-
-label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #6B6B6B;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.375rem;
-}
-
-/* ─── Form section cards ────────────────────────────────────────────────────── */
-
-.form-section {
-  background: #ffffff;
-  border: 1px solid #E8E6E1;
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-
-.form-section h2,
-.form-section h3 {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: #1C1C1E;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #E8E6E1;
-}
-
-/* ─── Table base styles ─────────────────────────────────────────────────────── */
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-th {
-  text-align: left;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #9A9A9A;
-  padding: 0.625rem 1rem;
-  border-bottom: 1px solid #E8E6E1;
-  background: #F8F7F5;
-}
-
-td {
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid #F0EDE9;
-  color: #1C1C1E;
-  vertical-align: middle;
-}
-
-tr:last-child td {
-  border-bottom: none;
-}
-
-tr:hover td {
-  background-color: #F8F7F5;
-}
-
-/* ─── Button base ───────────────────────────────────────────────────────────── */
-
-button {
-  font-family: inherit;
-  cursor: pointer;
+  body {
+    font-family: var(--font-sans), Inter, sans-serif;
+    background-color: #FAFAF9;
+  }
 }
