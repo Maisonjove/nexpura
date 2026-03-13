@@ -338,6 +338,25 @@ export async function getStockTagTemplates() {
   return data ?? [];
 }
 
+export async function getInventoryItemByBarcode(
+  barcode: string
+): Promise<{ id?: string; name?: string; error?: string }> {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+
+  const { data, error } = await supabase
+    .from("inventory")
+    .select("id, name")
+    .eq("tenant_id", tenantId)
+    .or(`barcode_value.eq.${barcode},sku.eq.${barcode}`)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) return { error: error.message };
+  if (!data) return { error: "Item not found" };
+  return { id: data.id, name: data.name };
+}
+
 export async function generateBarcodeForItem(itemId: string): Promise<{ success?: boolean; error?: string; barcodeValue?: string }> {
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
