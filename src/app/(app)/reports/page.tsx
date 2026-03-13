@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata = { title: "Reports — Nexpura" };
 
@@ -28,6 +29,20 @@ export default async function ReportsPage() {
     .single();
 
   const tenantId = userData?.tenant_id ?? "";
+
+  // Permission check
+  if (tenantId) {
+    const allowed = await hasPermission(user.id, tenantId, "access_reports");
+    if (!allowed) {
+      return (
+        <div className="max-w-2xl mx-auto py-16 text-center">
+          <h1 className="text-2xl font-semibold text-stone-900 mb-3">Access Denied</h1>
+          <p className="text-stone-500">You don&apos;t have permission to access Reports.</p>
+        </div>
+      );
+    }
+  }
+
   const admin = createAdminClient();
 
   const now = new Date();

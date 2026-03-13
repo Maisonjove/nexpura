@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   inviteTeamMember,
   removeTeamMember,
@@ -15,6 +16,8 @@ interface TeamMember {
   name: string;
   email: string;
   role: string;
+  department: string | null;
+  last_login_at: string | null;
   invite_accepted: boolean;
   created_at: string;
 }
@@ -33,13 +36,31 @@ interface Task {
 interface Props {
   members: TeamMember[];
   tasks: Task[];
+  currentUserRole: string;
 }
 
 const ROLE_COLOURS: Record<string, string> = {
   owner: "bg-purple-50 text-purple-700",
   manager: "bg-blue-50 text-blue-700",
+  salesperson: "bg-green-50 text-green-700",
+  workshop_jeweller: "bg-amber-50 text-amber-700",
+  repair_technician: "bg-orange-50 text-orange-700",
+  inventory_manager: "bg-teal-50 text-teal-700",
+  accountant: "bg-indigo-50 text-indigo-700",
   staff: "bg-stone-100 text-stone-700",
   technician: "bg-amber-50 text-amber-700",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  owner: "Owner",
+  manager: "Manager",
+  salesperson: "Salesperson",
+  workshop_jeweller: "Workshop Jeweller",
+  repair_technician: "Repair Technician",
+  inventory_manager: "Inventory Manager",
+  accountant: "Accountant",
+  staff: "Staff",
+  technician: "Technician",
 };
 
 const PRIORITY_COLOURS: Record<string, string> = {
@@ -56,7 +77,18 @@ const STATUS_COLOURS: Record<string, string> = {
   cancelled: "bg-red-50 text-red-400",
 };
 
-export default function TeamClient({ members, tasks }: Props) {
+const SELECTABLE_ROLES = [
+  { value: "manager", label: "Manager" },
+  { value: "salesperson", label: "Salesperson" },
+  { value: "workshop_jeweller", label: "Workshop Jeweller" },
+  { value: "repair_technician", label: "Repair Technician" },
+  { value: "inventory_manager", label: "Inventory Manager" },
+  { value: "accountant", label: "Accountant" },
+  { value: "staff", label: "Staff" },
+  { value: "technician", label: "Technician" },
+];
+
+export default function TeamClient({ members, tasks, currentUserRole }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showInvite, setShowInvite] = useState(false);
@@ -70,6 +102,8 @@ export default function TeamClient({ members, tasks }: Props) {
   const [taskDue, setTaskDue] = useState("");
   const [taskAssignee, setTaskAssignee] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+
+  const isOwner = currentUserRole === "owner";
 
   function showMsg(text: string) {
     setMsg(text);
@@ -143,9 +177,19 @@ export default function TeamClient({ members, tasks }: Props) {
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-900">Team</h1>
-        <p className="text-stone-500 mt-1">Manage your team and track tasks.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-stone-900">Team</h1>
+          <p className="text-stone-500 mt-1">Manage your team and track tasks.</p>
+        </div>
+        {isOwner && (
+          <Link
+            href="/settings/team/permissions"
+            className="px-3 py-1.5 bg-stone-100 text-stone-700 text-xs font-medium rounded-lg hover:bg-stone-200 transition-colors"
+          >
+            Permission Matrix →
+          </Link>
+        )}
       </div>
 
       {msg && (
@@ -158,12 +202,14 @@ export default function TeamClient({ members, tasks }: Props) {
       <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
           <h2 className="text-base font-semibold text-stone-900">Team Members</h2>
-          <button
-            onClick={() => setShowInvite(!showInvite)}
-            className="px-3 py-1.5 bg-[#071A0D] text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-colors"
-          >
-            + Invite
-          </button>
+          {isOwner && (
+            <button
+              onClick={() => setShowInvite(!showInvite)}
+              className="px-3 py-1.5 bg-[#071A0D] text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-colors"
+            >
+              + Invite
+            </button>
+          )}
         </div>
 
         {showInvite && (
@@ -196,9 +242,9 @@ export default function TeamClient({ members, tasks }: Props) {
                   onChange={(e) => setInviteRole(e.target.value)}
                   className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52B788]"
                 >
-                  <option value="staff">Staff</option>
-                  <option value="technician">Technician</option>
-                  <option value="manager">Manager</option>
+                  {SELECTABLE_ROLES.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="flex gap-2">
@@ -224,52 +270,70 @@ export default function TeamClient({ members, tasks }: Props) {
         {members.length === 0 ? (
           <div className="px-5 py-8 text-center text-sm text-stone-400">No team members yet</div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-stone-200">
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-5 py-3">Name</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Email</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Role</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Status</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {members.map((m) => (
-                <tr key={m.id}>
-                  <td className="px-5 py-3 text-sm font-medium text-stone-900">{m.name}</td>
-                  <td className="px-4 py-3 text-sm text-stone-500">{m.email}</td>
-                  <td className="px-4 py-3">
-                    <select
-                      value={m.role}
-                      onChange={(e) => handleRoleChange(m.id, e.target.value)}
-                      disabled={isPending}
-                      className={`text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer ${ROLE_COLOURS[m.role] || "bg-stone-100 text-stone-600"}`}
-                    >
-                      <option value="staff">Staff</option>
-                      <option value="technician">Technician</option>
-                      <option value="manager">Manager</option>
-                      <option value="owner">Owner</option>
-                    </select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs ${m.invite_accepted ? "text-green-600" : "text-amber-600"}`}>
-                      {m.invite_accepted ? "Active" : "Invited"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleRemove(m.id)}
-                      disabled={isPending}
-                      className="text-xs text-stone-400 hover:text-red-500 transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-stone-200">
+                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-5 py-3">Name</th>
+                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Email</th>
+                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Role</th>
+                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Department</th>
+                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Last Login</th>
+                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Status</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {members.map((m) => (
+                  <tr key={m.id}>
+                    <td className="px-5 py-3 text-sm font-medium text-stone-900">{m.name}</td>
+                    <td className="px-4 py-3 text-sm text-stone-500">{m.email}</td>
+                    <td className="px-4 py-3">
+                      {isOwner ? (
+                        <select
+                          value={m.role}
+                          onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                          disabled={isPending}
+                          className={`text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer ${ROLE_COLOURS[m.role] || "bg-stone-100 text-stone-600"}`}
+                        >
+                          {SELECTABLE_ROLES.map((r) => (
+                            <option key={r.value} value={r.value}>{r.label}</option>
+                          ))}
+                          <option value="owner">Owner</option>
+                        </select>
+                      ) : (
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${ROLE_COLOURS[m.role] || "bg-stone-100 text-stone-600"}`}>
+                          {ROLE_LABELS[m.role] || m.role}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-stone-500">{m.department || "—"}</td>
+                    <td className="px-4 py-3 text-xs text-stone-400">
+                      {m.last_login_at
+                        ? new Date(m.last_login_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
+                        : "Never"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs ${m.invite_accepted ? "text-green-600" : "text-amber-600"}`}>
+                        {m.invite_accepted ? "Active" : "Invited"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {isOwner && (
+                        <button
+                          onClick={() => handleRemove(m.id)}
+                          disabled={isPending}
+                          className="text-xs text-stone-400 hover:text-red-500 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -320,6 +384,19 @@ export default function TeamClient({ members, tasks }: Props) {
                     onChange={(e) => setTaskDue(e.target.value)}
                     className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52B788]"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs text-stone-500 mb-1">Assign To</label>
+                  <select
+                    value={taskAssignee}
+                    onChange={(e) => setTaskAssignee(e.target.value)}
+                    className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52B788]"
+                  >
+                    <option value="">Unassigned</option>
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div>

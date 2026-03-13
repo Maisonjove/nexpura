@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import TeamClient from "./TeamClient";
+
+export const metadata = { title: "Team — Nexpura" };
 
 export default async function TeamPage() {
   const supabase = await createClient();
@@ -7,18 +10,21 @@ export default async function TeamPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) redirect("/login");
+
   const { data: userData } = await supabase
     .from("users")
-    .select("tenant_id")
-    .eq("id", user?.id ?? "")
+    .select("tenant_id, role")
+    .eq("id", user.id)
     .single();
 
   const tenantId = userData?.tenant_id;
+  const currentUserRole = userData?.role ?? "staff";
 
   const [{ data: members }, { data: tasks }] = await Promise.all([
     supabase
       .from("team_members")
-      .select("*")
+      .select("id, name, email, role, department, last_login_at, invite_accepted, created_at")
       .eq("tenant_id", tenantId ?? "")
       .order("created_at", { ascending: true }),
     supabase
@@ -28,5 +34,11 @@ export default async function TeamPage() {
       .order("created_at", { ascending: false }),
   ]);
 
-  return <TeamClient members={members ?? []} tasks={tasks ?? []} />;
+  return (
+    <TeamClient
+      members={members ?? []}
+      tasks={tasks ?? []}
+      currentUserRole={currentUserRole}
+    />
+  );
 }

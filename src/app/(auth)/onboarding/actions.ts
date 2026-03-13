@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { initDefaultPermissions } from "@/lib/permissions";
 
 function slugify(text: string): string {
   return text
@@ -96,6 +97,13 @@ export async function completeOnboarding(
   if (subErr) {
     console.error("Subscription creation error:", subErr);
     return { error: subErr.message };
+  }
+
+  // Seed default permissions for all roles
+  try {
+    await initDefaultPermissions(tenant.id);
+  } catch {
+    // Non-critical — continue
   }
 
   redirect("/dashboard");
