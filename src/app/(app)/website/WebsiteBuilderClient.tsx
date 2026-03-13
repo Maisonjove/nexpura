@@ -85,7 +85,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
   const [isPending, startTransition] = useTransition();
 
   const previewUrl = config.subdomain
-    ? `${window.location.origin}/shop/${config.subdomain}`
+    ? `${window.location.origin}/${config.subdomain}?preview=true`
     : null;
 
   function update(field: keyof WebsiteConfig, value: unknown) {
@@ -260,7 +260,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
               <p className="text-sm text-stone-500">
                 Current:{" "}
                 <a
-                  href={`/shop/${config.subdomain}`}
+                  href={`/${config.subdomain}`}
                   target="_blank"
                   rel="noreferrer"
                   className="text-[#8B7355] hover:underline"
@@ -570,7 +570,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
               <div className="flex items-center gap-3">
                 {config.subdomain && (
                   <a
-                    href={`/shop/${config.subdomain}`}
+                    href={`/${config.subdomain}`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-sm font-medium rounded-lg hover:bg-stone-700 transition-colors"
@@ -609,7 +609,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                   </div>
                 </div>
                 <iframe
-                  src={`/shop/${config.subdomain}`}
+                  src={previewUrl || ""}
                   className="w-full h-[600px] border-0"
                   title="Website preview"
                 />
