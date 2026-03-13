@@ -184,3 +184,66 @@ export async function deleteTask(
     return { error: e instanceof Error ? e.message : "Error" };
   }
 }
+
+// ── Task Comments ─────────────────────────────────────────────
+
+export interface TaskComment {
+  id: string;
+  task_id: string;
+  tenant_id: string;
+  user_id: string | null;
+  content: string;
+  created_at: string;
+  user_name?: string | null;
+}
+
+export async function getTaskComments(taskId: string): Promise<{ data: TaskComment[]; error?: string }> {
+  try {
+    const { tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("task_comments")
+      .select("*")
+      .eq("task_id", taskId)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: true });
+    if (error) return { data: [], error: error.message };
+    return { data: data ?? [] };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+export async function addTaskComment(taskId: string, content: string): Promise<{ data: TaskComment | null; error?: string }> {
+  try {
+    const { userId, tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("task_comments")
+      .insert({ task_id: taskId, tenant_id: tenantId, user_id: userId, content })
+      .select("*")
+      .single();
+    if (error) return { data: null, error: error.message };
+    return { data: data as TaskComment };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+export async function getTasksForEntity(linkedType: string, linkedId: string): Promise<{ data: StaffTask[]; error?: string }> {
+  try {
+    const { tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("staff_tasks")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .eq("linked_type", linkedType)
+      .eq("linked_id", linkedId)
+      .order("created_at", { ascending: false });
+    if (error) return { data: [], error: error.message };
+    return { data: data ?? [] };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : "Error" };
+  }
+}

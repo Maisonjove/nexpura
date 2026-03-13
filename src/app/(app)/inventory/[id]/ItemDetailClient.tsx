@@ -217,6 +217,15 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
+                  <Link
+                    href={`/pos?item_id=${item.id}`}
+                    className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7a6349] transition-colors flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Quick Sell
+                  </Link>
                   <button
                     onClick={() => setShowPrintTag(true)}
                     className="px-4 py-2 text-sm font-medium text-stone-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors flex items-center gap-1.5"

@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createTask, updateTask, deleteTask } from "./actions";
-import type { StaffTask } from "./actions";
+import { createTask, updateTask, deleteTask, getTaskComments, addTaskComment } from "./actions";
+import type { StaffTask, TaskComment } from "./actions";
 
 const PRIORITY_COLOURS: Record<string, string> = {
   low: "bg-stone-100 text-stone-500",
@@ -61,6 +61,10 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
   const [activeTab, setActiveTab] = useState<"my" | "all">("my");
   const [showNewTask, setShowNewTask] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<StaffTask | null>(null);
+  const [taskComments, setTaskComments] = useState<TaskComment[]>([]);
+  const [commentText, setCommentText] = useState("");
+  const [addingComment, setAddingComment] = useState(false);
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState("");
@@ -128,10 +132,123 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
     });
   }
 
+  async function openTaskDetail(task: StaffTask) {
+    setSelectedTask(task);
+    const result = await getTaskComments(task.id);
+    setTaskComments(result.data);
+  }
+
+  async function handleAddComment() {
+    if (!selectedTask || !commentText.trim()) return;
+    setAddingComment(true);
+    const result = await addTaskComment(selectedTask.id, commentText.trim());
+    if (result.data) {
+      setTaskComments((prev) => [...prev, result.data!]);
+      setCommentText("");
+    }
+    setAddingComment(false);
+  }
+
   const displayTasks = filterTasks(activeTab === "my" ? myTasks : allTasks);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      {/* Task detail slide-out */}
+      {selectedTask && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="flex-1 bg-black/40" onClick={() => setSelectedTask(null)} />
+          <div className="w-full max-w-md bg-white border-l border-stone-200 flex flex-col overflow-hidden shadow-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
+              <h3 className="text-base font-semibold text-stone-900 truncate pr-2">{selectedTask.title}</h3>
+              <button onClick={() => setSelectedTask(null)} className="text-stone-400 hover:text-stone-600 text-lg flex-shrink-0">✕</button>
+            </div>
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {/* Status + Priority */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={selectedTask.status}
+                  onChange={(e) => {
+                    const newStatus = e.target.value;
+                    setSelectedTask((prev) => prev ? { ...prev, status: newStatus } : null);
+                    startTransition(async () => { await updateTask(selectedTask.id, { status: newStatus }); router.refresh(); });
+                  }}
+                  className="text-xs border border-stone-200 rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PRIORITY_COLOURS[selectedTask.priority] || "bg-stone-100 text-stone-600"}`}>
+                  {selectedTask.priority}
+                </span>
+                {selectedTask.due_date && (
+                  <span className="text-xs text-stone-500">Due: {selectedTask.due_date}</span>
+                )}
+              </div>
+              {/* Description */}
+              {selectedTask.description && (
+                <p className="text-sm text-stone-600 leading-relaxed">{selectedTask.description}</p>
+              )}
+              {/* Linked entity */}
+              {selectedTask.linked_type && selectedTask.linked_id && (
+                <div>
+                  <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-1">Linked To</p>
+                  <Link
+                    href={`${LINKED_TYPE_HREFS[selectedTask.linked_type] || "/"}${selectedTask.linked_id}`}
+                    className="text-sm text-[#8B7355] hover:underline"
+                  >
+                    {LINKED_TYPE_LABELS[selectedTask.linked_type] || selectedTask.linked_type} ↗
+                  </Link>
+                </div>
+              )}
+              {/* Assignee */}
+              {selectedTask.assigned_to && (
+                <div>
+                  <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-1">Assigned To</p>
+                  <p className="text-sm text-stone-700">{teamMembers.find((m) => m.id === selectedTask.assigned_to)?.full_name ?? "Unknown"}</p>
+                </div>
+              )}
+              {/* Notes */}
+              {selectedTask.notes && (
+                <div>
+                  <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-1">Notes</p>
+                  <p className="text-sm text-stone-600">{selectedTask.notes}</p>
+                </div>
+              )}
+              {/* Comments */}
+              <div>
+                <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Comments ({taskComments.length})</p>
+                <div className="space-y-2 mb-3">
+                  {taskComments.map((c) => (
+                    <div key={c.id} className="bg-stone-50 rounded-lg px-3 py-2">
+                      <p className="text-xs text-stone-400 mb-0.5">{new Date(c.created_at).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                      <p className="text-sm text-stone-700">{c.content}</p>
+                    </div>
+                  ))}
+                  {taskComments.length === 0 && <p className="text-xs text-stone-400 italic">No comments yet</p>}
+                </div>
+                <textarea
+                  rows={2}
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Add a comment…"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 resize-none mb-2"
+                />
+                <button
+                  onClick={handleAddComment}
+                  disabled={addingComment || !commentText.trim()}
+                  className="w-full py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
+                >
+                  {addingComment ? "Adding…" : "Add Comment"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -374,7 +491,11 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
               const overdue = isOverdue(task);
               const assignee = teamMembers.find((m) => m.id === task.assigned_to);
               return (
-                <div key={task.id} className={`px-5 py-4 flex items-start gap-4 ${overdue ? "bg-red-50/40" : ""}`}>
+                <div
+                  key={task.id}
+                  className={`px-5 py-4 flex items-start gap-4 cursor-pointer hover:bg-stone-50/50 transition-colors ${overdue ? "bg-red-50/40" : ""}`}
+                  onClick={() => openTaskDetail(task)}
+                >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLOURS[task.status] || "bg-stone-100 text-stone-600"}`}>
@@ -414,7 +535,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-1 flex-shrink-0">
+                  <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     {task.status === "pending" && (
                       <button
                         onClick={() => handleStatusChange(task.id, "in_progress")}

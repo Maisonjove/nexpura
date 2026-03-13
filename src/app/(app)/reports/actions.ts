@@ -236,3 +236,103 @@ export async function exportReportCSV(
     return { error: e instanceof Error ? e.message : "Error" };
   }
 }
+
+// ── Supplier Performance ──────────────────────────────────────
+
+export async function getSupplierPerformance(
+  tenantId: string,
+  dateFrom: string,
+  dateTo: string
+): Promise<{ data: { supplier: string; total: number; orderCount: number }[]; error?: string }> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("purchase_orders")
+      .select("supplier_name, total_amount")
+      .eq("tenant_id", tenantId)
+      .gte("order_date", dateFrom)
+      .lte("order_date", dateTo);
+
+    if (!data) return { data: [] };
+
+    const map: Record<string, { total: number; count: number }> = {};
+    for (const po of data) {
+      const name = po.supplier_name || "Unknown";
+      if (!map[name]) map[name] = { total: 0, count: 0 };
+      map[name].total += po.total_amount ?? 0;
+      map[name].count += 1;
+    }
+
+    const result = Object.entries(map)
+      .map(([supplier, { total, count }]) => ({ supplier, total, orderCount: count }))
+      .sort((a, b) => b.total - a.total);
+
+    return { data: result };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+// ── Payment Status Overview ───────────────────────────────────
+
+export async function getPaymentStatusOverview(
+  tenantId: string,
+  dateFrom: string,
+  dateTo: string
+): Promise<{
+  data: {
+    totalInvoices: number;
+    totalAmount: number;
+    paid: number;
+    paidAmount: number;
+    unpaid: number;
+    unpaidAmount: number;
+    overdue: number;
+    overdueAmount: number;
+    overdueList: Array<{ id: string; invoice_number: string; customer_name: string | null; total: number; due_date: string | null; }>;
+  };
+  error?: string;
+}> {
+  try {
+    const admin = createAdminClient();
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data } = await admin
+      .from("invoices")
+      .select("id, invoice_number, customer_name, total, status, due_date")
+      .eq("tenant_id", tenantId)
+      .gte("invoice_date", dateFrom)
+      .lte("invoice_date", dateTo);
+
+    if (!data) return { data: { totalInvoices: 0, totalAmount: 0, paid: 0, paidAmount: 0, unpaid: 0, unpaidAmount: 0, overdue: 0, overdueAmount: 0, overdueList: [] } };
+
+    const paid = data.filter((i) => i.status === "paid");
+    const unpaid = data.filter((i) => i.status !== "paid" && i.status !== "voided");
+    const overdue = data.filter((i) => i.status !== "paid" && i.status !== "voided" && i.due_date && i.due_date < today);
+
+    return {
+      data: {
+        totalInvoices: data.length,
+        totalAmount: data.reduce((s, i) => s + (i.total ?? 0), 0),
+        paid: paid.length,
+        paidAmount: paid.reduce((s, i) => s + (i.total ?? 0), 0),
+        unpaid: unpaid.length,
+        unpaidAmount: unpaid.reduce((s, i) => s + (i.total ?? 0), 0),
+        overdue: overdue.length,
+        overdueAmount: overdue.reduce((s, i) => s + (i.total ?? 0), 0),
+        overdueList: overdue.map((i) => ({
+          id: i.id,
+          invoice_number: i.invoice_number,
+          customer_name: i.customer_name,
+          total: i.total ?? 0,
+          due_date: i.due_date,
+        })),
+      },
+    };
+  } catch (e) {
+    return {
+      data: { totalInvoices: 0, totalAmount: 0, paid: 0, paidAmount: 0, unpaid: 0, unpaidAmount: 0, overdue: 0, overdueAmount: 0, overdueList: [] },
+      error: e instanceof Error ? e.message : "Error",
+    };
+  }
+}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createPOSSale } from "./actions";
+import CameraScannerModal from "@/components/CameraScannerModal";
 
 interface InventoryItem {
   id: string;
@@ -70,6 +71,9 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
   const [isPending, setIsPending] = useState(false);
   const [saleResult, setSaleResult] = useState<SaleResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Camera scanner state
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
 
   // Barcode scanner state
   const barcodeBuffer = useRef("");
@@ -319,15 +323,36 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
     <div className="flex h-[calc(100vh-120px)] gap-0 -m-8 mt-0">
       {/* LEFT PANEL */}
       <div className="flex-1 flex flex-col bg-stone-50 min-w-0">
+        {/* Camera Scanner Modal */}
+        {showCameraScanner && (
+          <CameraScannerModal
+            title="Scan Product"
+            onScan={(barcode) => {
+              handleBarcodeInput(barcode);
+              setShowCameraScanner(false);
+            }}
+            onClose={() => setShowCameraScanner(false)}
+          />
+        )}
+
         {/* Search */}
         <div className="p-4 bg-white border-b border-stone-200 space-y-3">
-          <input
-            type="text"
-            placeholder="Search inventory by name or SKU…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Search inventory by name or SKU…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+            />
+            <button
+              onClick={() => setShowCameraScanner(true)}
+              className="px-3 py-2 border border-stone-200 rounded-xl text-stone-500 hover:border-[#8B7355] hover:text-[#8B7355] transition-colors text-lg"
+              title="Scan barcode with camera"
+            >
+              📷
+            </button>
+          </div>
           {/* Category pills */}
           <div className="flex gap-2 flex-wrap">
             {CATEGORIES.map((cat) => (

@@ -277,6 +277,15 @@ export default function InvoiceDetailClient({
               Record Payment
             </button>
           )}
+          {invoice.customers?.id && (
+            <Link
+              href={`/passports/new?invoice_id=${invoice.id}&customer_id=${invoice.customers.id}`}
+              className="px-3 py-1.5 text-xs border border-[#8B7355] text-[#8B7355] rounded-lg hover:bg-[#8B7355]/5 transition-colors inline-flex items-center gap-1"
+              title="Issue a Digital Passport for an item on this invoice"
+            >
+              🛡️ Issue Passport
+            </Link>
+          )}
           <a
             href={`/api/invoice/${invoice.id}/pdf`}
             target="_blank"

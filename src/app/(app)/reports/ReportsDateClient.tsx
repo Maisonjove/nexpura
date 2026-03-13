@@ -7,7 +7,10 @@ import {
   getBespokeStats,
   getExpenseSummary,
   exportReportCSV,
+  getSupplierPerformance,
+  getPaymentStatusOverview,
 } from "./actions";
+import Link from "next/link";
 
 type Preset = "7d" | "30d" | "3m" | "12m" | "custom";
 
@@ -33,6 +36,24 @@ interface BespokeData {
 interface ExpenseRow {
   category: string;
   total: number;
+}
+
+interface SupplierRow {
+  supplier: string;
+  total: number;
+  orderCount: number;
+}
+
+interface PaymentOverview {
+  totalInvoices: number;
+  totalAmount: number;
+  paid: number;
+  paidAmount: number;
+  unpaid: number;
+  unpaidAmount: number;
+  overdue: number;
+  overdueAmount: number;
+  overdueList: Array<{ id: string; invoice_number: string; customer_name: string | null; total: number; due_date: string | null }>;
 }
 
 interface Props {
@@ -88,6 +109,8 @@ export default function ReportsDateClient({ tenantId }: Props) {
   const [repairs, setRepairs] = useState<RepairData | null>(null);
   const [bespoke, setBespoke] = useState<BespokeData | null>(null);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
+  const [paymentOverview, setPaymentOverview] = useState<PaymentOverview | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,16 +127,20 @@ export default function ReportsDateClient({ tenantId }: Props) {
 
     startTransition(async () => {
       setError(null);
-      const [revResult, repResult, besResult, expResult] = await Promise.all([
+      const [revResult, repResult, besResult, expResult, suppResult, payResult] = await Promise.all([
         getRevenueByDateRange(tenantId, from, to),
         getRepairStats(tenantId, from, to),
         getBespokeStats(tenantId, from, to),
         getExpenseSummary(tenantId, from, to),
+        getSupplierPerformance(tenantId, from, to),
+        getPaymentStatusOverview(tenantId, from, to),
       ]);
       setRevenue(revResult.data);
       setRepairs(repResult.data);
       setBespoke(besResult.data);
       setExpenses(expResult.data);
+      setSuppliers(suppResult.data);
+      setPaymentOverview(payResult.data);
       setLoaded(true);
     });
   }
@@ -289,6 +316,85 @@ export default function ReportsDateClient({ tenantId }: Props) {
               </div>
             )}
           </div>
+
+          {/* Supplier Performance */}
+          <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+            <h2 className="font-semibold text-stone-900 mb-4">Supplier Performance</h2>
+            {suppliers.length === 0 ? (
+              <p className="text-sm text-stone-400">No purchase orders in this period</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-stone-200">
+                      <th className="text-left py-2 text-xs font-medium text-stone-500 uppercase tracking-wide">Supplier</th>
+                      <th className="text-right py-2 text-xs font-medium text-stone-500 uppercase tracking-wide">Orders</th>
+                      <th className="text-right py-2 text-xs font-medium text-stone-500 uppercase tracking-wide">Total Spent</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {suppliers.map((s) => (
+                      <tr key={s.supplier}>
+                        <td className="py-2.5 font-medium text-stone-900">{s.supplier}</td>
+                        <td className="py-2.5 text-right text-stone-600">{s.orderCount}</td>
+                        <td className="py-2.5 text-right font-semibold text-stone-900">{fmtCurrency(s.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Status Overview */}
+          {paymentOverview && (
+            <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+              <h2 className="font-semibold text-stone-900 mb-4">Payment Status Overview</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div className="bg-stone-50 rounded-xl p-4">
+                  <p className="text-xs text-stone-500 mb-1">Total Invoices</p>
+                  <p className="text-2xl font-bold text-stone-900">{paymentOverview.totalInvoices}</p>
+                  <p className="text-xs text-stone-500 mt-1">{fmtCurrency(paymentOverview.totalAmount)}</p>
+                </div>
+                <div className="bg-green-50 rounded-xl p-4">
+                  <p className="text-xs text-green-600 mb-1">Paid</p>
+                  <p className="text-2xl font-bold text-green-700">{paymentOverview.paid}</p>
+                  <p className="text-xs text-green-600 mt-1">{fmtCurrency(paymentOverview.paidAmount)}</p>
+                </div>
+                <div className="bg-amber-50 rounded-xl p-4">
+                  <p className="text-xs text-amber-600 mb-1">Unpaid</p>
+                  <p className="text-2xl font-bold text-amber-700">{paymentOverview.unpaid}</p>
+                  <p className="text-xs text-amber-600 mt-1">{fmtCurrency(paymentOverview.unpaidAmount)}</p>
+                </div>
+                <div className="bg-red-50 rounded-xl p-4">
+                  <p className="text-xs text-red-600 mb-1">Overdue</p>
+                  <p className="text-2xl font-bold text-red-700">{paymentOverview.overdue}</p>
+                  <p className="text-xs text-red-600 mt-1">{fmtCurrency(paymentOverview.overdueAmount)}</p>
+                </div>
+              </div>
+              {paymentOverview.overdueList.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-3">Overdue Invoices</p>
+                  <div className="space-y-2">
+                    {paymentOverview.overdueList.map((inv) => (
+                      <div key={inv.id} className="flex items-center justify-between py-2 border-b border-stone-100 last:border-0">
+                        <div>
+                          <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-[#8B7355] hover:underline">
+                            {inv.invoice_number}
+                          </Link>
+                          <span className="text-xs text-stone-500 ml-2">{inv.customer_name || "—"}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-stone-900">{fmtCurrency(inv.total)}</p>
+                          <p className="text-xs text-red-500">Due {inv.due_date}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
