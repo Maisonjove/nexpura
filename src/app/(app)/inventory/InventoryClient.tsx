@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Tag, Edit, Diamond } from "lucide-react";
+import { Plus, Search, Tag, Edit, Diamond, Printer } from "lucide-react";
+import QuickPrintTagModal from "@/components/QuickPrintTagModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,7 @@ export default function InventoryClient({
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBatchPrint, setShowBatchPrint] = useState(false);
+  const [printItem, setPrintItem] = useState<(typeof items)[0] | null>(null);
 
   const useSampleData = items.length === 0;
 
@@ -280,16 +282,43 @@ export default function InventoryClient({
                 <TableCell>
                   {getStatusBadge(item.quantity, item.low_stock_threshold)}
                 </TableCell>
-                <TableCell className="text-right space-x-2">
-                  <Link href={`/inventory/${item.id}`} className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors hover:bg-stone-100 h-8 text-stone-500 hover:text-stone-900 px-2 text-sm">
-                    <Edit className="w-4 h-4 mr-1" /> Edit
-                  </Link>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => setPrintItem(item)}
+                      title="Print Stock Tag"
+                      className="inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-amber-50 h-8 text-stone-400 hover:text-[#8B7355] px-2 text-sm"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
+                    <Link href={`/inventory/${item.id}`} className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors hover:bg-stone-100 h-8 text-stone-500 hover:text-stone-900 px-2 text-sm">
+                      <Edit className="w-4 h-4 mr-1" /> Edit
+                    </Link>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Card>
+
+      {/* Quick Print Tag Modal */}
+      {printItem && (
+        <QuickPrintTagModal
+          item={{
+            id: printItem.id,
+            name: printItem.name,
+            sku: printItem.sku,
+            retail_price: printItem.retail_price,
+            metal_type: printItem.metal_type ?? null,
+            stone_type: printItem.stone_type ?? null,
+            metal_weight_grams: printItem.metal_weight_grams ?? null,
+            barcode_value: printItem.sku || printItem.id.substring(0, 12).toUpperCase(),
+          }}
+          tenantName={tenantName}
+          onClose={() => setPrintItem(null)}
+        />
+      )}
     </div>
   );
 }
