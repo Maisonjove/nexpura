@@ -35,7 +35,7 @@ function formatCurrency(n: number | null) {
 }
 
 const STAGE_MAP: Record<string, { dot: string; text: string }> = {
-  intake: { dot: "bg-blue-400", text: "text-blue-600" },
+  intake: { dot: "bg-stone-400", text: "text-stone-600" },
   assessed: { dot: "bg-stone-400", text: "text-stone-600" },
   quoted: { dot: "bg-stone-400", text: "text-stone-600" },
   approved: { dot: "bg-green-400", text: "text-green-600" },

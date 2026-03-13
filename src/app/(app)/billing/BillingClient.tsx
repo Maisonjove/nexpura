@@ -64,10 +64,10 @@ const FEATURES_TABLE = [
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    trialing: "bg-stone-100 text-stone-700 border border-blue-200",
+    trialing: "bg-stone-100 text-stone-700 border border-stone-200",
     active: "bg-green-50 text-green-700 border border-green-200",
     past_due: "bg-red-50 text-red-700 border border-red-200",
-    canceled: "bg-gray-100 text-gray-600 border border-gray-200",
+    canceled: "bg-stone-100 text-stone-600 border border-stone-200",
     paused: "bg-yellow-50 text-yellow-700 border border-yellow-200",
   };
   const labels: Record<string, string> = {
@@ -79,17 +79,17 @@ function StatusBadge({ status }: { status: string }) {
   };
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${styles[status] ?? "bg-gray-100 text-gray-600"}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${styles[status] ?? "bg-stone-100 text-stone-600"}`}
     >
       <span
         className={`w-1.5 h-1.5 rounded-full ${
           status === "active"
             ? "bg-green-500"
             : status === "trialing"
-            ? "bg-blue-500"
+            ? "bg-[#8B7355]"
             : status === "past_due"
             ? "bg-red-500"
-            : "bg-gray-400"
+            : "bg-stone-400"
         }`}
       />
       {labels[status] ?? status}

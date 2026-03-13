@@ -202,8 +202,8 @@ export default function TagTemplateManager({ templates: initialTemplates }: TagT
             </div>
 
             {/* Preview */}
-            <div className="bg-gray-50 rounded-lg p-3 flex items-center justify-center border border-stone-200">
-              <div style={{ transform: "scale(0.7)", transformOrigin: "center" }}>
+            <div className="bg-stone-50 rounded-lg p-3 flex items-center justify-center border border-stone-200">
+              <div className="scale-[0.7] origin-center">
                 <StockTag item={DEMO_ITEM} template={template} tenantName="My Store" />
               </div>
             </div>

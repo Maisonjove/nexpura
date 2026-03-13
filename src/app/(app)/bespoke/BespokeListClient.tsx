@@ -87,9 +87,9 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
     switch (stage.toLowerCase()) {
       case "enquiry": return <Badge variant="outline" className="bg-stone-50 text-stone-600 border-stone-200">Enquiry</Badge>;
       case "quote sent":
-      case "quote_sent": return <Badge variant="outline" className="bg-stone-100 text-stone-700 border-blue-200">Quote Sent</Badge>;
+      case "quote_sent": return <Badge variant="outline" className="bg-stone-100 text-stone-700 border-stone-200">Quote Sent</Badge>;
       case "approved": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Approved</Badge>;
-      case "cad": return <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200">CAD</Badge>;
+      case "cad": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">CAD</Badge>;
       case "casting": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-orange-200">Casting</Badge>;
       case "setting": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Setting</Badge>;
       case "polishing": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Polishing</Badge>;

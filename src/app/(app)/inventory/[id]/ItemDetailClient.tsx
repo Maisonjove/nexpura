@@ -75,7 +75,7 @@ const MOVEMENT_TYPE_LABELS: Record<string, string> = {
 
 const MOVEMENT_COLORS: Record<string, string> = {
   purchase: "text-green-600 bg-green-50",
-  sale: "text-blue-600 bg-blue-50",
+  sale: "text-[#8B7355] bg-stone-50",
   adjustment: "text-amber-600 bg-amber-50",
   return: "text-stone-700 bg-stone-100",
   damage: "text-red-600 bg-red-50",
@@ -85,7 +85,7 @@ const MOVEMENT_COLORS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-50 text-green-700 border border-green-200",
   inactive: "bg-gray-50 text-gray-600 border border-gray-200",
-  sold: "bg-stone-100 text-stone-700 border border-blue-200",
+  sold: "bg-stone-100 text-stone-700 border border-stone-200",
   consignment: "bg-amber-50 text-amber-700 border border-amber-200",
 };
 

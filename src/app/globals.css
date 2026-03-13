@@ -1,38 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-bronze: #8B7355;
+  --color-bronze-hover: #7A6347;
+  --font-sans: Inter, system-ui, sans-serif;
+}
 
 @layer base {
-  :root {
-    --background: 60 9.1% 97.8%; /* stone-50 */
-    --foreground: 20 14.3% 4.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 20 14.3% 4.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 20 14.3% 4.1%;
-    --primary: 24 9.8% 10%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --secondary: 60 4.8% 95.9%;
-    --secondary-foreground: 24 9.8% 10%;
-    --muted: 60 4.8% 95.9%;
-    --muted-foreground: 25 5.3% 44.7%;
-    --color-bronze: #8B7355;
-    --accent: #8B7355;
-    --accent-hover: #7A6347;
-    --sidebar-bg: #1A1A1A;
-    --accent-foreground: 60 9.1% 97.8%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --border: 20 5.9% 90%;
-    --input: 20 5.9% 90%;
-    --ring: 20 14.3% 4.1%;
-    --radius: 0.75rem;
-  }
-
   body {
-    font-family: var(--font-sans), Inter, sans-serif;
-    background-color: #FAFAF9; /* stone-50 */
+    background-color: #FAFAF9;
+    color: #1c1917;
+    font-family: Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }

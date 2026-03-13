@@ -47,8 +47,8 @@ function NotificationIcon({ type }: { type: string }) {
   }
   if (type === "sale_created") {
     return (
-      <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center flex-shrink-0">
+        <svg className="w-4 h-4 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
         </svg>
       </div>

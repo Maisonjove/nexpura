@@ -330,7 +330,7 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 const STAGE_MAP: Record<string, { dot: string; text: string }> = {
-  enquiry: { dot: "bg-blue-400", text: "text-blue-600" },
+  enquiry: { dot: "bg-stone-400", text: "text-stone-600" },
   quote_sent: { dot: "bg-stone-400", text: "text-stone-600" },
   approved: { dot: "bg-green-400", text: "text-green-600" },
   deposit_paid: { dot: "bg-emerald-400", text: "text-emerald-600" },
@@ -338,7 +338,7 @@ const STAGE_MAP: Record<string, { dot: string; text: string }> = {
   cad: { dot: "bg-orange-400", text: "text-orange-600" },
   cad_approved: { dot: "bg-orange-500", text: "text-orange-700" },
   casting: { dot: "bg-red-400", text: "text-red-600" },
-  setting: { dot: "bg-pink-400", text: "text-pink-600" },
+  setting: { dot: "bg-amber-400", text: "text-amber-600" },
   polishing: { dot: "bg-stone-400", text: "text-stone-600" },
   ready: { dot: "bg-[#8B7355]", text: "text-[#8B7355]" },
   completed: { dot: "bg-stone-900", text: "text-stone-900" },

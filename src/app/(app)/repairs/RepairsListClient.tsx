@@ -89,7 +89,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "In Workshop": 
-      case "in_progress": return <Badge className="bg-stone-100 text-stone-700 hover:bg-blue-50 border-none">In Workshop</Badge>;
+      case "in_progress": return <Badge className="bg-stone-100 text-stone-700 hover:bg-stone-50 border-none">In Workshop</Badge>;
       case "Ready for Pickup":
       case "ready": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-none">Ready</Badge>;
       case "Awaiting Approval":

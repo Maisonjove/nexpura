@@ -90,7 +90,7 @@ export default function CustomerListClient({
 
   const getTagBadge = (tag: string) => {
     if (tag.toLowerCase() === "vip") return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border-amber-200" variant="outline">{tag}</Badge>;
-    if (tag.toLowerCase() === "bridal") return <Badge className="bg-pink-50 text-pink-700 hover:bg-pink-50 border-pink-200" variant="outline">{tag}</Badge>;
+    if (tag.toLowerCase() === "bridal") return <Badge className="bg-stone-50 text-stone-600 hover:bg-stone-50 border-stone-200" variant="outline">{tag}</Badge>;
     return <Badge variant="outline" className="text-stone-600 border-stone-200">{tag}</Badge>;
   };
 

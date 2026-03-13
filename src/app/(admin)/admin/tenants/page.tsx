@@ -7,7 +7,7 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
     s === "active"
       ? "bg-stone-100 text-[#8B7355]"
       : s === "trialing"
-      ? "bg-blue-500/10 text-blue-600"
+      ? "bg-[#8B7355]/10 text-[#8B7355]"
       : s === "past_due"
       ? "bg-yellow-500/10 text-yellow-700"
       : "bg-red-500/10 text-red-600";

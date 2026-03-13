@@ -190,8 +190,7 @@ export default async function VerifyPage({
             <img
               src={p.primary_image}
               alt={p.title}
-              className="w-full object-cover rounded-2xl"
-              style={{ maxHeight: "400px" }}
+              className="w-full object-cover rounded-2xl max-h-[400px]"
             />
           </div>
         )}
