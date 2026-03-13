@@ -19,6 +19,10 @@ import UserInvitedEmail from './templates/UserInvitedEmail'
 import LowStockAlertEmail from './templates/LowStockAlertEmail'
 import FreeToPaidConversionEmail from './templates/FreeToPaidConversionEmail'
 import CancellationEmail from './templates/CancellationEmail'
+import PassportVerificationEmail from './templates/PassportVerificationEmail'
+import AppointmentConfirmationEmail from './templates/AppointmentConfirmationEmail'
+import RepairEnquiryConfirmationEmail from './templates/RepairEnquiryConfirmationEmail'
+import NewEnquiryNotificationEmail from './templates/NewEnquiryNotificationEmail'
 import type { InvoiceEmailProps } from './templates/InvoiceEmail'
 import type { JobReadyEmailProps } from './templates/JobReadyEmail'
 import type { RepairReadyEmailProps } from './templates/RepairReadyEmail'
@@ -756,5 +760,178 @@ export async function sendLowStockAlertEmail(
     react: createElement(LowStockAlertEmail, { businessName, items, inventoryUrl }),
   })
   if (error) return { success: false, error: error.message }
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Passport Verification Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendPassportVerificationEmail(passportId: string): Promise<EmailResult> {
+  const admin = createAdminClient()
+  const { data: passport, error: passportErr } = await admin
+    .from('passports')
+    .select('id, passport_uid, title, current_owner_name, current_owner_email, tenant_id')
+    .eq('id', passportId)
+    .single()
+
+  if (passportErr || !passport) return { success: false, error: 'Passport not found' }
+  if (!passport.current_owner_email) return { success: false, error: 'No owner email' }
+
+  const { data: tenant } = await admin
+    .from('tenants')
+    .select('name, business_name, email')
+    .eq('id', passport.tenant_id)
+    .single()
+
+  const businessName = tenant?.business_name || tenant?.name || 'Your Jeweller'
+  const verificationUrl = `${APP_URL}/verify/${passport.passport_uid}`
+  const subject = `Your Jewellery Passport — ${passport.title}`
+
+  const { data, error } = await resend.emails.send({
+    from: `${businessName} <onboarding@resend.dev>`,
+    to: [passport.current_owner_email],
+    replyTo: tenant?.email ? [tenant.email] : undefined,
+    subject,
+    react: createElement(PassportVerificationEmail, {
+      ownerName: passport.current_owner_name || 'Valued Customer',
+      itemName: passport.title,
+      passportUid: passport.passport_uid,
+      verificationUrl,
+      issuedBy: businessName,
+      businessEmail: tenant?.email ?? null,
+    }),
+  })
+  if (error) return { success: false, error: error.message }
+  await logEmail({ tenantId: passport.tenant_id, emailType: 'passport_verification', recipient: passport.current_owner_email, subject, resendId: data?.id, referenceType: 'passport', referenceId: passportId })
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Appointment Confirmation Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendAppointmentConfirmationEmail(params: {
+  tenantId: string
+  customerName: string
+  customerEmail: string
+  appointmentType: string
+  preferredDate: string
+  preferredTime?: string | null
+  notes?: string | null
+}): Promise<EmailResult> {
+  const admin = createAdminClient()
+  const { data: tenant } = await admin
+    .from('tenants')
+    .select('name, business_name, email, phone, address_line1, suburb, state, postcode')
+    .eq('id', params.tenantId)
+    .single()
+
+  const businessName = tenant?.business_name || tenant?.name || 'Your Jeweller'
+  const businessAddress = tenant
+    ? [tenant.address_line1, tenant.suburb, tenant.state, tenant.postcode].filter(Boolean).join(', ')
+    : null
+
+  const subject = `Appointment Request Confirmed — ${businessName}`
+  const { data, error } = await resend.emails.send({
+    from: `${businessName} <onboarding@resend.dev>`,
+    to: [params.customerEmail],
+    replyTo: tenant?.email ? [tenant.email] : undefined,
+    subject,
+    react: createElement(AppointmentConfirmationEmail, {
+      customerName: params.customerName,
+      appointmentType: params.appointmentType,
+      preferredDate: params.preferredDate,
+      preferredTime: params.preferredTime ?? null,
+      businessName,
+      businessEmail: tenant?.email ?? null,
+      businessPhone: tenant?.phone ?? null,
+      businessAddress: businessAddress || null,
+      notes: params.notes ?? null,
+    }),
+  })
+  if (error) return { success: false, error: error.message }
+  await logEmail({ tenantId: params.tenantId, emailType: 'appointment_confirmation', recipient: params.customerEmail, subject, resendId: data?.id })
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Repair Enquiry Confirmation Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendRepairEnquiryConfirmationEmail(params: {
+  tenantId: string
+  customerName: string
+  customerEmail: string
+  itemDescription: string
+  repairDescription: string
+}): Promise<EmailResult> {
+  const admin = createAdminClient()
+  const { data: tenant } = await admin
+    .from('tenants')
+    .select('name, business_name, email, phone')
+    .eq('id', params.tenantId)
+    .single()
+
+  const businessName = tenant?.business_name || tenant?.name || 'Your Jeweller'
+  const subject = `Repair Enquiry Received — ${businessName}`
+  const { data, error } = await resend.emails.send({
+    from: `${businessName} <onboarding@resend.dev>`,
+    to: [params.customerEmail],
+    replyTo: tenant?.email ? [tenant.email] : undefined,
+    subject,
+    react: createElement(RepairEnquiryConfirmationEmail, {
+      customerName: params.customerName,
+      itemDescription: params.itemDescription,
+      repairDescription: params.repairDescription,
+      businessName,
+      businessEmail: tenant?.email ?? null,
+      businessPhone: tenant?.phone ?? null,
+    }),
+  })
+  if (error) return { success: false, error: error.message }
+  await logEmail({ tenantId: params.tenantId, emailType: 'repair_enquiry_confirmation', recipient: params.customerEmail, subject, resendId: data?.id })
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// New Enquiry Notification (internal — to store owner)
+// ─────────────────────────────────────────────────────────────
+
+export async function sendNewEnquiryNotificationEmail(params: {
+  tenantId: string
+  enquiryType: string
+  customerName: string
+  customerEmail: string
+  customerPhone?: string | null
+  message: string
+}): Promise<EmailResult> {
+  const admin = createAdminClient()
+  const { data: tenant } = await admin
+    .from('tenants')
+    .select('name, business_name, email')
+    .eq('id', params.tenantId)
+    .single()
+
+  if (!tenant?.email) return { success: false, error: 'Tenant has no notification email' }
+  const businessName = tenant.business_name || tenant.name || 'Your Business'
+  const subject = `New ${params.enquiryType} enquiry from ${params.customerName}`
+
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [tenant.email],
+    subject,
+    react: createElement(NewEnquiryNotificationEmail, {
+      businessName,
+      enquiryType: params.enquiryType,
+      customerName: params.customerName,
+      customerEmail: params.customerEmail,
+      customerPhone: params.customerPhone ?? null,
+      message: params.message,
+      dashboardUrl: `${APP_URL}/enquiries`,
+    }),
+  })
+  if (error) return { success: false, error: error.message }
+  await logEmail({ tenantId: params.tenantId, emailType: 'new_enquiry_notification', recipient: tenant.email, subject, resendId: data?.id })
   return { success: true, emailId: data?.id }
 }
