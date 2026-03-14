@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import RepairDetailClient from "./RepairDetailClient";
@@ -94,25 +95,29 @@ export default async function RepairDetailPage({
     : { data: null };
   const tenantId = userData?.tenant_id ?? "";
 
-  const { data: repair } = await supabase
+  const adminClient = createAdminClient();
+
+  const { data: repair } = await adminClient
     .from("repairs")
     .select(`*, customers(id, full_name, email, mobile)`)
     .eq("id", id)
+    .eq("tenant_id", tenantId)
     .is("deleted_at", null)
     .single();
 
   if (!repair) notFound();
 
-  const { data: invoiceRow } = await supabase
+  const { data: invoiceRow } = await adminClient
     .from("invoices")
     .select("id")
     .eq("repair_id", id)
+    .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   const invoiceId = invoiceRow?.id ?? null;
 
-  const { data: stageHistory } = await supabase
+  const { data: stageHistory } = await adminClient
     .from("repair_stages")
     .select("*")
     .eq("repair_id", id)

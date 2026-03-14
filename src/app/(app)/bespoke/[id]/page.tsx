@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import JobDetailClient from "./JobDetailClient";
@@ -55,27 +56,31 @@ export default async function BespokeJobDetailPage({
     : { data: null };
   const tenantId = userData?.tenant_id ?? "";
 
-  const { data: job } = await supabase
+  const adminClient = createAdminClient();
+
+  const { data: job } = await adminClient
     .from("bespoke_jobs")
     .select(
       `*, customers(id, full_name, email, mobile)`
     )
     .eq("id", id)
+    .eq("tenant_id", tenantId)
     .is("deleted_at", null)
     .single();
 
   if (!job) notFound();
 
-  const { data: invoiceRow } = await supabase
+  const { data: invoiceRow } = await adminClient
     .from("invoices")
     .select("id")
     .eq("bespoke_job_id", id)
+    .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   const invoiceId = invoiceRow?.id ?? null;
 
-  const { data: stageHistory } = await supabase
+  const { data: stageHistory } = await adminClient
     .from("bespoke_job_stages")
     .select("*")
     .eq("job_id", id)
