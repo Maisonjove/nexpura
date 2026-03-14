@@ -21,10 +21,11 @@ interface Props {
 
 const SUGGESTED_PROMPTS = [
   "How is my business performing this month?",
-  "Which customers haven't visited in 3+ months?",
-  "What's my average job turnaround time?",
-  "Give me tips to improve my bespoke pricing",
   "Summarise my outstanding invoices",
+  "Which repairs are overdue or need attention?",
+  "Email me all invoices of March 2025",
+  "Give me tips to improve my bespoke pricing",
+  "What inventory items are running low?",
 ];
 
 function timeAgo(dateStr: string) {
@@ -132,41 +133,55 @@ export default function AICopilotClient({ conversations: initialConversations, p
         return;
       }
 
-      // Get conversation ID from header
-      const newConvoId = res.headers.get("X-Conversation-Id");
-      if (newConvoId && !activeConvoId) {
-        setActiveConvoId(newConvoId);
-        // Add to conversation list
-        setConversations((prev) => [
-          { id: newConvoId, title: text.slice(0, 80), updated_at: new Date().toISOString() },
-          ...prev,
-        ]);
-      }
-
-      // Stream the response (plain text stream)
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = "";
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          fullContent += chunk;
-          setStreamingContent(fullContent);
+      // Check content type — email exports return JSON, chat returns a stream
+      const contentType = res.headers.get("Content-Type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        const convoId = data.conversationId;
+        if (convoId && !activeConvoId) {
+          setActiveConvoId(convoId);
+          setConversations((prev) => [
+            { id: convoId, title: text.slice(0, 80), updated_at: new Date().toISOString() },
+            ...prev,
+          ]);
         }
-      }
+        setMessages((prev) => [
+          ...prev,
+          { id: `ai-${Date.now()}`, role: "assistant", content: data.text || "Done." },
+        ]);
+        setStreamingContent("");
+      } else {
+        // Get conversation ID from header
+        const newConvoId = res.headers.get("X-Conversation-Id");
+        if (newConvoId && !activeConvoId) {
+          setActiveConvoId(newConvoId);
+          setConversations((prev) => [
+            { id: newConvoId, title: text.slice(0, 80), updated_at: new Date().toISOString() },
+            ...prev,
+          ]);
+        }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-${Date.now()}`,
-          role: "assistant",
-          content: fullContent,
-        },
-      ]);
-      setStreamingContent("");
+        // Stream the response
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = "";
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            fullContent += chunk;
+            setStreamingContent(fullContent);
+          }
+        }
+
+        setMessages((prev) => [
+          ...prev,
+          { id: `ai-${Date.now()}`, role: "assistant", content: fullContent },
+        ]);
+        setStreamingContent("");
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -253,7 +268,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
             </div>
             <div>
               <p className="text-sm font-semibold text-stone-900 font-semibold">AI Business Copilot</p>
-              <p className="text-xs text-stone-400 capitalize">{plan} plan · Powered by Claude</p>
+              <p className="text-xs text-stone-400 capitalize">{plan} plan · Powered by GPT-4o</p>
             </div>
           </div>
         </div>
