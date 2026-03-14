@@ -4,10 +4,18 @@ import { streamText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { Redis } from "@upstash/redis";
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+// Redis is optional — if credentials are missing/invalid, rate limiting is skipped
+let redis: Redis | null = null;
+try {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+} catch {
+  console.warn("Redis init failed — rate limiting disabled");
+}
 
 export const maxDuration = 60;
 
@@ -54,17 +62,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // Rate limiting — 20 requests per minute per tenant
-    const rateKey = `rate:ai:${tenantId}`;
-    const count = await redis.incr(rateKey);
-    if (count === 1) {
-      await redis.expire(rateKey, 60);
-    }
-    if (count > 20) {
-      return Response.json(
-        { error: "Rate limit exceeded. Please wait a moment before trying again." },
-        { status: 429 }
-      );
+    // Rate limiting — 20 requests per minute per tenant (skipped if Redis unavailable)
+    if (redis) {
+      try {
+        const rateKey = `rate:ai:${tenantId}`;
+        const count = await redis.incr(rateKey);
+        if (count === 1) {
+          await redis.expire(rateKey, 60);
+        }
+        if (count > 20) {
+          return Response.json(
+            { error: "Rate limit exceeded. Please wait a moment before trying again." },
+            { status: 429 }
+          );
+        }
+      } catch {
+        console.warn("Redis rate limit check failed — skipping");
+      }
     }
 
     const body = await req.json();
