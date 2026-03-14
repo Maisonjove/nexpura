@@ -55,6 +55,8 @@ const navGroups = [
       { name: 'Printing', href: '/settings/printing', icon: Settings },
       { name: 'Documents', href: '/settings/documents', icon: FileText },
       { name: 'Team', href: '/settings/team', icon: Users },
+      { name: 'Numbering', href: '/settings/numbering', icon: FileText },
+      { name: 'Import & Export', href: '/settings/import', icon: FileText },
       { name: 'Billing', href: '/billing', icon: CreditCard },
     ],
   },

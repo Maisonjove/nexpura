@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // ──────────────────────────────────────────────────────────
 // Auth helper
@@ -509,4 +510,248 @@ export async function importSales(rows: SaleRow[]): Promise<ImportResult> {
   }
 
   return { imported, errors };
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORT HELPERS
+// ──────────────────────────────────────────────────────────
+
+async function getExportContext() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: userData } = await supabase
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!userData?.tenant_id) return null;
+  return { tenantId: userData.tenant_id };
+}
+
+function buildCSVString(headers: string[], rows: Record<string, unknown>[]): string {
+  const escape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const dataRows = rows.map((r) => headers.map((h) => escape(r[h])).join(","));
+  return [headers.join(","), ...dataRows].join("\n");
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORT CUSTOMERS
+// ──────────────────────────────────────────────────────────
+
+export async function exportCustomers(): Promise<{ csv: string; error?: string }> {
+  const ctx = await getExportContext();
+  if (!ctx) return { csv: "", error: "Unauthorized" };
+
+  const adminClient = createAdminClient();
+  const { data } = await adminClient
+    .from("customers")
+    .select("id,full_name,email,mobile,phone,address,birthday,ring_size,is_vip,notes,created_at")
+    .eq("tenant_id", ctx.tenantId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+
+  if (!data) return { csv: "", error: "No data" };
+
+  const headers = ["id","full_name","email","mobile","phone","address","birthday","ring_size","is_vip","notes","created_at"];
+  return { csv: buildCSVString(headers, data) };
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORT INVOICES
+// ──────────────────────────────────────────────────────────
+
+export async function exportInvoices(): Promise<{ csv: string; error?: string }> {
+  const ctx = await getExportContext();
+  if (!ctx) return { csv: "", error: "Unauthorized" };
+
+  const adminClient = createAdminClient();
+  const { data } = await adminClient
+    .from("invoices")
+    .select("id,invoice_number,status,invoice_date,due_date,subtotal,tax_amount,discount_amount,total,amount_paid,notes,created_at,customers(full_name,email)")
+    .eq("tenant_id", ctx.tenantId)
+    .order("created_at", { ascending: true });
+
+  if (!data) return { csv: "", error: "No data" };
+
+  const headers = ["id","invoice_number","customer_name","customer_email","status","invoice_date","due_date","subtotal","tax_amount","discount_amount","total","amount_paid","notes","created_at"];
+  const rows = data.map((r) => ({
+    id: r.id,
+    invoice_number: r.invoice_number,
+    customer_name: (r.customers as { full_name?: string } | null)?.full_name ?? "",
+    customer_email: (r.customers as { email?: string } | null)?.email ?? "",
+    status: r.status,
+    invoice_date: r.invoice_date,
+    due_date: r.due_date,
+    subtotal: r.subtotal,
+    tax_amount: r.tax_amount,
+    discount_amount: r.discount_amount,
+    total: r.total,
+    amount_paid: r.amount_paid,
+    notes: r.notes,
+    created_at: r.created_at,
+  }));
+
+  return { csv: buildCSVString(headers, rows) };
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORT REPAIRS
+// ──────────────────────────────────────────────────────────
+
+export async function exportRepairs(): Promise<{ csv: string; error?: string }> {
+  const ctx = await getExportContext();
+  if (!ctx) return { csv: "", error: "Unauthorized" };
+
+  const adminClient = createAdminClient();
+  const { data } = await adminClient
+    .from("repairs")
+    .select("id,repair_number,item_type,item_description,repair_type,stage,quoted_price,final_price,due_date,created_at,customers(full_name,email)")
+    .eq("tenant_id", ctx.tenantId)
+    .order("created_at", { ascending: true });
+
+  if (!data) return { csv: "", error: "No data" };
+
+  const headers = ["id","repair_number","customer_name","customer_email","item_type","item_description","repair_type","stage","quoted_price","final_price","due_date","created_at"];
+  const rows = data.map((r) => ({
+    id: r.id,
+    repair_number: r.repair_number,
+    customer_name: (r.customers as { full_name?: string } | null)?.full_name ?? "",
+    customer_email: (r.customers as { email?: string } | null)?.email ?? "",
+    item_type: r.item_type,
+    item_description: r.item_description,
+    repair_type: r.repair_type,
+    stage: r.stage,
+    quoted_price: r.quoted_price,
+    final_price: r.final_price,
+    due_date: r.due_date,
+    created_at: r.created_at,
+  }));
+
+  return { csv: buildCSVString(headers, rows) };
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORT BESPOKE JOBS
+// ──────────────────────────────────────────────────────────
+
+export async function exportBespokeJobs(): Promise<{ csv: string; error?: string }> {
+  const ctx = await getExportContext();
+  if (!ctx) return { csv: "", error: "Unauthorized" };
+
+  const adminClient = createAdminClient();
+  const { data } = await adminClient
+    .from("bespoke_jobs")
+    .select("id,job_number,title,stage,metal_type,stone_type,quoted_price,deposit_amount,deposit_paid,due_date,created_at,customers(full_name,email)")
+    .eq("tenant_id", ctx.tenantId)
+    .order("created_at", { ascending: true });
+
+  if (!data) return { csv: "", error: "No data" };
+
+  const headers = ["id","job_number","customer_name","customer_email","title","stage","metal_type","stone_type","quoted_price","deposit_amount","deposit_paid","due_date","created_at"];
+  const rows = data.map((r) => ({
+    id: r.id,
+    job_number: r.job_number,
+    customer_name: (r.customers as { full_name?: string } | null)?.full_name ?? "",
+    customer_email: (r.customers as { email?: string } | null)?.email ?? "",
+    title: r.title,
+    stage: r.stage,
+    metal_type: r.metal_type,
+    stone_type: r.stone_type,
+    quoted_price: r.quoted_price,
+    deposit_amount: r.deposit_amount,
+    deposit_paid: r.deposit_paid,
+    due_date: r.due_date,
+    created_at: r.created_at,
+  }));
+
+  return { csv: buildCSVString(headers, rows) };
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORT SALES
+// ──────────────────────────────────────────────────────────
+
+export async function exportSales(): Promise<{ csv: string; error?: string }> {
+  const ctx = await getExportContext();
+  if (!ctx) return { csv: "", error: "Unauthorized" };
+
+  const adminClient = createAdminClient();
+  const { data } = await adminClient
+    .from("sales")
+    .select("id,sale_number,customer_name,customer_email,status,payment_method,subtotal,tax_amount,discount_amount,total,amount_paid,sale_date,created_at")
+    .eq("tenant_id", ctx.tenantId)
+    .order("created_at", { ascending: true });
+
+  if (!data) return { csv: "", error: "No data" };
+
+  const headers = ["id","sale_number","customer_name","customer_email","status","payment_method","subtotal","tax_amount","discount_amount","total","amount_paid","sale_date","created_at"];
+  return { csv: buildCSVString(headers, data) };
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORT INVENTORY
+// ──────────────────────────────────────────────────────────
+
+export async function exportInventory(): Promise<{ csv: string; error?: string }> {
+  const ctx = await getExportContext();
+  if (!ctx) return { csv: "", error: "Unauthorized" };
+
+  const adminClient = createAdminClient();
+  const { data } = await adminClient
+    .from("inventory")
+    .select("id,name,sku,description,category,metal,stone,carat,weight_grams,cost_price,retail_price,quantity,status,location,created_at")
+    .eq("tenant_id", ctx.tenantId)
+    .order("created_at", { ascending: true });
+
+  if (!data) return { csv: "", error: "No data" };
+
+  const headers = ["id","name","sku","description","category","metal","stone","carat","weight_grams","cost_price","retail_price","quantity","status","location","created_at"];
+  return { csv: buildCSVString(headers, data) };
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORT EXPENSES
+// ──────────────────────────────────────────────────────────
+
+export async function exportExpenses(): Promise<{ csv: string; error?: string }> {
+  const ctx = await getExportContext();
+  if (!ctx) return { csv: "", error: "Unauthorized" };
+
+  const adminClient = createAdminClient();
+  const { data } = await adminClient
+    .from("expenses")
+    .select("id,description,category,amount,invoice_ref,expense_date,notes,created_at")
+    .eq("tenant_id", ctx.tenantId)
+    .order("created_at", { ascending: true });
+
+  if (!data) return { csv: "", error: "No data" };
+
+  const headers = ["id","description","category","amount","invoice_ref","expense_date","notes","created_at"];
+  return { csv: buildCSVString(headers, data) };
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORT SUPPLIERS
+// ──────────────────────────────────────────────────────────
+
+export async function exportSuppliers(): Promise<{ csv: string; error?: string }> {
+  const ctx = await getExportContext();
+  if (!ctx) return { csv: "", error: "Unauthorized" };
+
+  const adminClient = createAdminClient();
+  const { data } = await adminClient
+    .from("suppliers")
+    .select("id,name,contact_name,email,phone,address,notes,created_at")
+    .eq("tenant_id", ctx.tenantId)
+    .order("created_at", { ascending: true });
+
+  if (!data) return { csv: "", error: "No data" };
+
+  const headers = ["id","name","contact_name","email","phone","address","notes","created_at"];
+  return { csv: buildCSVString(headers, data) };
 }

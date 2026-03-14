@@ -89,13 +89,22 @@ export async function createSale(
 
   const { supabase, userId, tenantId } = ctx;
 
-  // Auto-generate sale number based on count
-  const { count } = await supabase
-    .from("sales")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId);
-
-  const saleNumber = `S-${String((count ?? 0) + 1).padStart(4, "0")}`;
+  // Auto-generate sale number via RPC (respects configured sequence)
+  const { data: saleNumberData, error: saleNumErr } = await supabase.rpc(
+    "next_sale_number",
+    { p_tenant_id: tenantId }
+  );
+  // Fall back to count-based if RPC not yet deployed
+  let saleNumber: string;
+  if (saleNumErr || !saleNumberData) {
+    const { count } = await supabase
+      .from("sales")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId);
+    saleNumber = `SALE-${String((count ?? 0) + 1).padStart(4, "0")}`;
+  } else {
+    saleNumber = saleNumberData as string;
+  }
 
   const str = (key: string) => (formData.get(key) as string) || null;
   const num = (key: string) => {
