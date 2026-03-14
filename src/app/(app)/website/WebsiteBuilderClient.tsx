@@ -1066,16 +1066,16 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
             </div>
           </div>
 
-          {/* Additional Widgets */}
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm space-y-4">
             <h2 className="text-base font-semibold text-stone-900">Widget Library</h2>
             <p className="text-sm text-stone-500">Add any of these widgets to your existing website.</p>
             <div className="grid sm:grid-cols-2 gap-3">
-    { id: "passport", icon: "🛡️", label: "Passport Verification", desc: "Let customers verify their jewellery authenticity", path: "passport" },
-    { id: "enquiry", icon: "💬", label: "Enquiry Widget", desc: "Floating enquiry form for quick contact", path: "enquiry" },
-    { id: "appointment", icon: "📅", label: "Appointment Booking", desc: "Let customers book appointments online", path: "appointment" },
-  ].map((widget) => {
-    const widgetEmbed = `<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${tenantId}/${widget.path}" width="100%" height="500" frameborder="0" style="border-radius:12px;"></iframe>`;
+              {[
+                { id: "passport", icon: "🛡️", label: "Passport Verification", desc: "Let customers verify their jewellery authenticity", path: "passport" },
+                { id: "enquiry", icon: "💬", label: "Enquiry Widget", desc: "Floating enquiry form for quick contact", path: "enquiry" },
+                { id: "appointment", icon: "📅", label: "Appointment Booking", desc: "Let customers book appointments online", path: "appointment" },
+              ].map((widget) => {
+                const widgetEmbed = `<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${tenantId}/${widget.path}" width="100%" height="500" frameborder="0" style="border-radius:12px;"></iframe>`;
     return (
       <div key={widget.id} className="border border-stone-200 rounded-xl p-4">
         <div className="flex items-start justify-between mb-2">

@@ -25,7 +25,7 @@ export async function getRevenueByDateRange(
   tenantId: string,
   dateFrom: string,
   dateTo: string
-): Promise<{ data: { total: number; count: number; byMonth: { month: string; total: number }[] }; error?: string }> {
+): Promise<{ data: { total: number; totalCost: number; count: number; byMonth: { month: string; total: number }[] }; error?: string }> {
   try {
     const admin = createAdminClient();
     const { data } = await admin
@@ -49,9 +49,9 @@ export async function getRevenueByDateRange(
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, total]) => ({ month, total }));
 
-    return { data: { total, count, byMonth } };
+    const totalCost = 0; return { data: { total, totalCost, count, byMonth } };
   } catch (e) {
-    return { data: { total: 0, count: 0, byMonth: [] }, error: e instanceof Error ? e.message : "Error" };
+    return { data: { total: 0, totalCost: 0, count: 0, byMonth: [] }, error: e instanceof Error ? e.message : "Error" };
   }
 }
 

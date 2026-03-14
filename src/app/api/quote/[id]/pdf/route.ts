@@ -37,7 +37,7 @@ export async function GET(
 
     // Render PDF
     const stream = await renderToStream(
-      React.createElement(QuotePDF, pdfProps)
+      React.createElement(QuotePDF, pdfProps as any) as any
     );
 
     return new NextResponse(stream as any, {

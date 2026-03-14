@@ -19,6 +19,7 @@ const navGroups = [
     label: 'OPERATIONS',
     items: [
       { name: 'Inventory', href: '/inventory', icon: Package },
+      { name: 'Consignments', href: '/inventory?status=consignment', icon: Truck },
       { name: 'POS', href: '/pos', icon: Monitor },
       { name: 'Repairs', href: '/repairs', icon: Wrench },
       { name: 'Bespoke', href: '/bespoke', icon: Gem },
