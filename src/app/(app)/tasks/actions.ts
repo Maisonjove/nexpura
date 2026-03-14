@@ -247,3 +247,68 @@ export async function getTasksForEntity(linkedType: string, linkedId: string): P
     return { data: [], error: e instanceof Error ? e.message : "Error" };
   }
 }
+
+// ── Task Attachments ──────────────────────────────────────────
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  tenant_id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string;
+  file_size: number;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+export async function getTaskAttachments(taskId: string): Promise<{ data: TaskAttachment[]; error?: string }> {
+  try {
+    const { tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("task_attachments")
+      .select("*")
+      .eq("task_id", taskId)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false });
+    if (error) return { data: [], error: error.message };
+    return { data: data ?? [] };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+export async function addTaskAttachment(
+  taskId: string,
+  fileName: string,
+  fileUrl: string,
+  fileType: string,
+  fileSize: number
+): Promise<{ data: TaskAttachment | null; error?: string }> {
+  try {
+    const { userId, tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("task_attachments")
+      .insert({ task_id: taskId, tenant_id: tenantId, file_name: fileName, file_url: fileUrl, file_type: fileType, file_size: fileSize, uploaded_by: userId })
+      .select("*")
+      .single();
+    if (error) return { data: null, error: error.message };
+    return { data: data as TaskAttachment };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+export async function deleteTaskAttachment(attachmentId: string): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const { tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+    const { error } = await admin.from("task_attachments").delete().eq("id", attachmentId).eq("tenant_id", tenantId);
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Error" };
+  }
+}

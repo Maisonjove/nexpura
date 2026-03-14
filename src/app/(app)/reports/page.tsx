@@ -594,6 +594,28 @@ export default async function ReportsPage() {
           </div>
         )}
       </div>
+
+      {/* Additional Reports */}
+      <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b border-stone-200">
+          <h2 className="text-base font-semibold text-stone-900">More Reports</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-stone-100">
+          {[
+            { href: "/reports/suppliers", icon: "🏭", title: "Supplier Performance", desc: "Order count, spend, delivery metrics" },
+            { href: "/reports/expenses", icon: "💰", title: "Expense Report", desc: "Filter, export expenses by category" },
+            { href: "/reports/stock", icon: "📦", title: "Stock Movement", desc: "Stock in, out, and adjustments" },
+          ].map((r) => (
+            <Link key={r.href} href={r.href} className="flex items-center gap-4 px-5 py-4 hover:bg-stone-50 transition-colors group">
+              <span className="text-2xl">{r.icon}</span>
+              <div>
+                <p className="font-medium text-stone-900 group-hover:text-[#8B7355] transition-colors text-sm">{r.title}</p>
+                <p className="text-xs text-stone-400">{r.desc}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

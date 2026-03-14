@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { createTask, updateTask, deleteTask, getTaskComments, addTaskComment } from "./actions";
-import type { StaffTask, TaskComment } from "./actions";
+import { createTask, updateTask, deleteTask, getTaskComments, addTaskComment, getTaskAttachments, deleteTaskAttachment } from "./actions";
+import type { StaffTask, TaskComment, TaskAttachment } from "./actions";
 import TaskKanbanView from "./TaskKanbanView";
 
 const PRIORITY_COLOURS: Record<string, string> = {
@@ -58,13 +58,33 @@ function isOverdue(task: StaffTask): boolean {
 
 export default function TasksClient({ userId, userRole, myTasks, allTasks, teamMembers, tenantId }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<"my" | "all">("my");
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [showNewTask, setShowNewTask] = useState(false);
+
+  // Pre-fill from repair/bespoke "Create Task" links
+  useEffect(() => {
+    const isNew = searchParams.get("new");
+    const linkedType = searchParams.get("linked_type");
+    const linkedId = searchParams.get("linked_id");
+    const stage = searchParams.get("stage");
+    if (isNew && linkedType && linkedId) {
+      setForm((f) => ({
+        ...f,
+        linked_type: linkedType,
+        linked_id: linkedId,
+        title: stage ? `${linkedType === "repair" ? "Repair" : "Bespoke"} — ${stage.replace(/_/g, " ")} stage task` : f.title,
+      }));
+      setShowNewTask(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [msg, setMsg] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<StaffTask | null>(null);
   const [taskComments, setTaskComments] = useState<TaskComment[]>([]);
+  const [taskAttachments, setTaskAttachments] = useState<TaskAttachment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [addingComment, setAddingComment] = useState(false);
 
@@ -136,8 +156,12 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
 
   async function openTaskDetail(task: StaffTask) {
     setSelectedTask(task);
-    const result = await getTaskComments(task.id);
-    setTaskComments(result.data);
+    const [commentsResult, attachmentsResult] = await Promise.all([
+      getTaskComments(task.id),
+      getTaskAttachments(task.id),
+    ]);
+    setTaskComments(commentsResult.data);
+    setTaskAttachments(attachmentsResult.data);
   }
 
   async function handleAddComment() {
@@ -220,13 +244,72 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                   <p className="text-sm text-stone-600">{selectedTask.notes}</p>
                 </div>
               )}
+              {/* Attachments */}
+              <div>
+                <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Attachments ({taskAttachments.length})</p>
+                {taskAttachments.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {taskAttachments.map((a) => {
+                      const isImage = a.file_type?.startsWith("image/");
+                      return (
+                        <div key={a.id} className="relative border border-stone-200 rounded-lg overflow-hidden group">
+                          {isImage ? (
+                            <img src={a.file_url} alt={a.file_name} className="w-full h-20 object-cover" />
+                          ) : (
+                            <div className="w-full h-20 bg-stone-50 flex items-center justify-center">
+                              <span className="text-2xl">📎</span>
+                            </div>
+                          )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-white text-xs truncate">{a.file_name}</span>
+                            <button
+                              onClick={async () => {
+                                await deleteTaskAttachment(a.id);
+                                setTaskAttachments((prev) => prev.filter((x) => x.id !== a.id));
+                              }}
+                              className="text-white/60 hover:text-red-400 ml-1 text-xs"
+                            >✕</button>
+                          </div>
+                          <a href={a.file_url} target="_blank" rel="noopener noreferrer" className="absolute inset-0" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <label className="flex items-center gap-2 text-xs text-stone-500 cursor-pointer hover:text-[#8B7355] border border-dashed border-stone-200 rounded-lg px-3 py-2 hover:border-[#8B7355] transition-colors mb-3">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                  Attach file or image
+                  <input type="file" accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !selectedTask) return;
+                    // Upload to Supabase storage
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    formData.append("task_id", selectedTask.id);
+                    try {
+                      const res = await fetch("/api/tasks/upload-attachment", { method: "POST", body: formData });
+                      const data = await res.json() as { attachment?: TaskAttachment; error?: string };
+                      if (data.attachment) {
+                        setTaskAttachments((prev) => [data.attachment!, ...prev]);
+                      }
+                    } catch {
+                      // silently fail
+                    }
+                  }} />
+                </label>
+              </div>
+
               {/* Comments */}
               <div>
                 <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Comments ({taskComments.length})</p>
                 <div className="space-y-2 mb-3">
                   {taskComments.map((c) => (
                     <div key={c.id} className="bg-stone-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-stone-400 mb-0.5">{new Date(c.created_at).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs text-stone-400">{new Date(c.created_at).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
                       <p className="text-sm text-stone-700">{c.content}</p>
                     </div>
                   ))}

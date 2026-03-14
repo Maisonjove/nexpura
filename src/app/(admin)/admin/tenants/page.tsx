@@ -108,14 +108,39 @@ export default async function TenantsPage({
     filtered = filtered.filter((t) => t.sub?.status === statusFilter);
   }
 
+  const PLAN_MRR: Record<string, number> = { basic: 49, pro: 99, ultimate: 199 };
+  const totalMRR = (tenants ?? []).reduce((sum, t) => {
+    const sub = subMap.get(t.id);
+    if (sub?.status === "active" && sub?.plan) return sum + (PLAN_MRR[sub.plan] ?? 0);
+    return sum;
+  }, 0);
+  const activeTenants = (tenants ?? []).filter((t) => subMap.get(t.id)?.status === "active").length;
+  const trialTenants = (tenants ?? []).filter((t) => subMap.get(t.id)?.status === "trialing").length;
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold font-semibold text-stone-900">Tenants</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          {filtered.length} tenant{filtered.length !== 1 ? "s" : ""} found
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold font-semibold text-stone-900">Tenants</h1>
+          <p className="text-sm text-stone-500 mt-1">
+            {filtered.length} tenant{filtered.length !== 1 ? "s" : ""} found
+          </p>
+        </div>
+        <div className="flex items-center gap-6 text-right">
+          <div>
+            <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">MRR</p>
+            <p className="text-xl font-bold text-green-700">${totalMRR}/mo</p>
+          </div>
+          <div>
+            <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">Active</p>
+            <p className="text-xl font-bold text-stone-900">{activeTenants}</p>
+          </div>
+          <div>
+            <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">Trialing</p>
+            <p className="text-xl font-bold text-stone-600">{trialTenants}</p>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -175,6 +200,7 @@ export default async function TenantsPage({
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Plan</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Status</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Trial / Billing</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">MRR</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Signed Up</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide"></th>
               </tr>
@@ -196,6 +222,12 @@ export default async function TenantsPage({
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={tenant.sub?.status} />
+                    </td>
+                    <td className="px-6 py-4 text-stone-600 font-medium">
+                      {tenant.sub?.status === "active" || tenant.sub?.status === "free"
+                        ? <span className="text-green-700">${({ basic: 49, pro: 99, ultimate: 199 } as Record<string, number>)[tenant.sub?.plan ?? "basic"] ?? 49}</span>
+                        : <span className="text-stone-400">—</span>
+                      }
                     </td>
                     <td className="px-6 py-4 text-stone-500">
                       {formatDate(tenant.sub?.trial_ends_at || tenant.sub?.current_period_end)}

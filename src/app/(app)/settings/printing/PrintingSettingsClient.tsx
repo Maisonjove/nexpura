@@ -5,18 +5,30 @@ import { savePrinterConfig } from "./actions";
 
 type PrinterType = "receipt" | "label" | "office";
 
+const LABEL_SIZES = [
+  { label: "25×10mm", width: 25, height: 10 },
+  { label: "38×19mm", width: 38, height: 19 },
+  { label: "50×25mm", width: 50, height: 25 },
+  { label: "57×32mm", width: 57, height: 32 },
+  { label: "62×29mm", width: 62, height: 29 },
+  { label: "100×50mm", width: 100, height: 50 },
+  { label: "Custom", width: 0, height: 0 },
+];
+
 interface PrinterConfig {
   printer_type?: string;
-  printer_name?: string;
   brand?: string;
   connection_type?: string;
-  ip_address?: string;
-  port?: number;
+  ip_address?: string | null;
+  port?: number | null;
   paper_width?: string;
   label_width_mm?: number;
   label_height_mm?: number;
   cut_enabled?: boolean;
   paper_size?: string;
+  barcode_position_h?: string;
+  barcode_position_v?: string;
+  label_alignment?: string;
   [key: string]: unknown;
 }
 
@@ -29,235 +41,517 @@ export default function PrintingSettingsClient({ tenantId, configs }: Props) {
   const [activeTab, setActiveTab] = useState<PrinterType>("receipt");
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const [msgType, setMsgType] = useState<"success" | "error">("success");
 
-  // Receipt state
-  const receiptCfg = configs["receipt"] ?? {};
-  const [receiptBrand, setReceiptBrand] = useState((receiptCfg.brand as string) ?? "Epson");
-  const [receiptConn, setReceiptConn] = useState((receiptCfg.connection_type as string) ?? "browser");
-  const [receiptIp, setReceiptIp] = useState((receiptCfg.ip_address as string) ?? "");
-  const [receiptPort, setReceiptPort] = useState((receiptCfg.port as number)?.toString() ?? "9100");
-  const [receiptPaperWidth, setReceiptPaperWidth] = useState((receiptCfg.paper_width as string) ?? "80mm");
-  const [receiptCut, setReceiptCut] = useState((receiptCfg.cut_enabled as boolean) ?? true);
+  // ── Receipt state ─────────────────────────────────────────────
+  const rCfg = configs["receipt"] ?? {};
+  const [rBrand, setRBrand] = useState((rCfg.brand as string) ?? "Epson");
+  const [rConn, setRConn] = useState((rCfg.connection_type as string) ?? "browser");
+  const [rIp, setRIp] = useState((rCfg.ip_address as string) ?? "");
+  const [rPort, setRPort] = useState((rCfg.port as number)?.toString() ?? "9100");
+  const [rPaperWidth, setRPaperWidth] = useState((rCfg.paper_width as string) ?? "80mm");
+  const [rCut, setRCut] = useState((rCfg.cut_enabled as boolean) ?? true);
 
-  // Label state
-  const labelCfg = configs["label"] ?? {};
-  const [labelBrand, setLabelBrand] = useState((labelCfg.brand as string) ?? "Zebra");
-  const [labelConn, setLabelConn] = useState((labelCfg.connection_type as string) ?? "browser");
-  const [labelIp, setLabelIp] = useState((labelCfg.ip_address as string) ?? "");
-  const [labelPort, setLabelPort] = useState((labelCfg.port as number)?.toString() ?? "9100");
-  const [labelWidth, setLabelWidth] = useState((labelCfg.label_width_mm as number)?.toString() ?? "57");
-  const [labelHeight, setLabelHeight] = useState((labelCfg.label_height_mm as number)?.toString() ?? "32");
+  // ── Label state ────────────────────────────────────────────────
+  const lCfg = configs["label"] ?? {};
+  const [lBrand, setLBrand] = useState((lCfg.brand as string) ?? "Zebra");
+  const [lConn, setLConn] = useState((lCfg.connection_type as string) ?? "browser");
+  const [lIp, setLIp] = useState((lCfg.ip_address as string) ?? "");
+  const [lPort, setLPort] = useState((lCfg.port as number)?.toString() ?? "9100");
+  const [lWidth, setLWidth] = useState((lCfg.label_width_mm as number)?.toString() ?? "57");
+  const [lHeight, setLHeight] = useState((lCfg.label_height_mm as number)?.toString() ?? "32");
+  const [lSizePreset, setLSizePreset] = useState("57×32mm");
+  const [lAlignment, setLAlignment] = useState((lCfg.label_alignment as string) ?? "center");
+  const [lBarcodeH, setLBarcodeH] = useState((lCfg.barcode_position_h as string) ?? "left");
+  const [lBarcodeV, setLBarcodeV] = useState((lCfg.barcode_position_v as string) ?? "bottom");
 
-  // Office state
-  const officeCfg = configs["office"] ?? {};
-  const [officePaperSize, setOfficePaperSize] = useState((officeCfg.paper_size as string) ?? "A4");
+  // ── Office state ───────────────────────────────────────────────
+  const oCfg = configs["office"] ?? {};
+  const [oPaperSize, setOPaperSize] = useState((oCfg.paper_size as string) ?? "A4");
 
-  function showMsg(text: string) {
+  function showMsg(text: string, type: "success" | "error" = "success") {
     setMsg(text);
+    setMsgType(type);
     setTimeout(() => setMsg(null), 3000);
+  }
+
+  function applyLabelPreset(label: string) {
+    setLSizePreset(label);
+    const preset = LABEL_SIZES.find((s) => s.label === label);
+    if (preset && preset.width > 0) {
+      setLWidth(String(preset.width));
+      setLHeight(String(preset.height));
+    }
   }
 
   function handleSaveReceipt() {
     startTransition(async () => {
-      const result = await savePrinterConfig(tenantId, {
+      const r = await savePrinterConfig(tenantId, {
         printer_type: "receipt",
-        brand: receiptBrand,
-        connection_type: receiptConn,
-        ip_address: receiptIp || null,
-        port: receiptPort ? parseInt(receiptPort) : null,
-        paper_width: receiptPaperWidth,
-        cut_enabled: receiptCut,
+        brand: rBrand,
+        connection_type: rConn,
+        ip_address: rIp || null,
+        port: rPort ? parseInt(rPort) : null,
+        paper_width: rPaperWidth,
+        cut_enabled: rCut,
       });
-      if (result.error) showMsg(`Error: ${result.error}`);
+      if (r.error) showMsg(`Error: ${r.error}`, "error");
       else showMsg("Receipt printer saved!");
     });
   }
 
   function handleSaveLabel() {
     startTransition(async () => {
-      const result = await savePrinterConfig(tenantId, {
+      const r = await savePrinterConfig(tenantId, {
         printer_type: "label",
-        brand: labelBrand,
-        connection_type: labelConn,
-        ip_address: labelIp || null,
-        port: labelPort ? parseInt(labelPort) : null,
-        label_width_mm: labelWidth ? parseInt(labelWidth) : null,
-        label_height_mm: labelHeight ? parseInt(labelHeight) : null,
+        brand: lBrand,
+        connection_type: lConn,
+        ip_address: lIp || null,
+        port: lPort ? parseInt(lPort) : null,
+        label_width_mm: parseInt(lWidth) || 57,
+        label_height_mm: parseInt(lHeight) || 32,
+        label_alignment: lAlignment,
+        barcode_position_h: lBarcodeH,
+        barcode_position_v: lBarcodeV,
       });
-      if (result.error) showMsg(`Error: ${result.error}`);
+      if (r.error) showMsg(`Error: ${r.error}`, "error");
       else showMsg("Label printer saved!");
     });
   }
 
   function handleSaveOffice() {
     startTransition(async () => {
-      const result = await savePrinterConfig(tenantId, {
+      const r = await savePrinterConfig(tenantId, {
         printer_type: "office",
         connection_type: "browser",
-        paper_size: officePaperSize,
+        paper_size: oPaperSize,
       });
-      if (result.error) showMsg(`Error: ${result.error}`);
+      if (r.error) showMsg(`Error: ${r.error}`, "error");
       else showMsg("Office printer saved!");
     });
   }
 
-  function handleTestPrint(type: PrinterType) {
-    const content = type === "receipt"
-      ? `<html><head><title>Test</title><style>body{font-family:monospace;max-width:300px;margin:0 auto;padding:20px;font-size:12px}h2{text-align:center}</style></head><body><h2>TEST RECEIPT</h2><p style="text-align:center">Nexpura — ${new Date().toLocaleString("en-AU")}</p><hr/><p>This is a test print</p></body></html>`
-      : type === "label"
-      ? `<html><head><title>Test Label</title><style>body{margin:0;display:flex;align-items:center;justify-content:center;height:100vh}div{border:2px solid #000;padding:10px;width:${labelWidth}mm;height:${labelHeight}mm;font-family:monospace;font-size:10px;display:flex;align-items:center;justify-content:center;text-align:center}</style></head><body><div>Test Label<br/>Nexpura</div></body></html>`
-      : `<html><head><title>Test Page</title></head><body><h1>Nexpura — Test Print</h1><p>${new Date().toLocaleString("en-AU")}</p></body></html>`;
-
-    const w = window.open("", "_blank");
-    if (w) { w.document.write(content); w.document.close(); w.print(); }
+  function testPrint(type: PrinterType) {
+    const w = window.open("", "_blank", "width=600,height=800");
+    if (!w) return;
+    if (type === "receipt") {
+      w.document.write(`<!DOCTYPE html><html><head><title>Test Receipt</title>
+<style>
+  @page { margin: 0 }
+  body { font-family: 'Courier New', monospace; font-size: 12px; width: ${rPaperWidth}; margin: 0 auto; padding: 16px 8px; }
+  h2 { text-align: center; font-size: 14px; margin: 0 0 4px; }
+  p { margin: 2px 0; }
+  .center { text-align: center; }
+  .divider { border-top: 1px dashed #000; margin: 8px 0; }
+  .row { display: flex; justify-content: space-between; }
+</style></head><body>
+<h2>NEXPURA</h2>
+<p class="center">123 Jewellery Lane</p>
+<p class="center">Sydney NSW 2000</p>
+<div class="divider"></div>
+<p class="center">TEST RECEIPT</p>
+<p class="center">${new Date().toLocaleString("en-AU")}</p>
+<div class="divider"></div>
+<div class="row"><span>Diamond Ring</span><span>$8,500.00</span></div>
+<div class="row"><span>GST (10%)</span><span>$850.00</span></div>
+<div class="divider"></div>
+<div class="row"><span><strong>TOTAL</strong></span><span><strong>$8,500.00</strong></span></div>
+<div class="divider"></div>
+<p class="center">Thank you for your purchase!</p>
+</body></html>`);
+    } else if (type === "label") {
+      const w_mm = parseInt(lWidth) || 57;
+      const h_mm = parseInt(lHeight) || 32;
+      const barcodeLeft = lBarcodeH === "left" ? "0" : lBarcodeH === "right" ? "auto" : "50%";
+      const barcodeRight = lBarcodeH === "right" ? "0" : "auto";
+      const barcodeTransform = lBarcodeH === "center" ? "translateX(-50%)" : "none";
+      w.document.write(`<!DOCTYPE html><html><head><title>Test Label</title>
+<style>
+  @page { margin: 0; size: ${w_mm}mm ${h_mm}mm; }
+  body { margin: 0; width: ${w_mm}mm; height: ${h_mm}mm; overflow: hidden; font-family: 'Courier New', monospace; font-size: 9px; text-align: ${lAlignment}; position: relative; box-sizing: border-box; padding: 2mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .name { font-size: 11px; font-weight: bold; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .price { font-size: 13px; font-weight: bold; }
+  .barcode-area { position: ${lBarcodeV === "top" ? "absolute; top: 0" : "relative"}; left: ${barcodeLeft}; right: ${barcodeRight}; transform: ${barcodeTransform}; font-size: 7px; letter-spacing: 4px; background: #000; color: #000; padding: 2px; }
+  .sku { font-size: 7px; color: #444; }
+</style></head><body>
+<div class="name">Diamond Solitaire Ring</div>
+<div class="sku">SKU: NX-RNG-001</div>
+<div class="price">$8,500.00</div>
+<div class="barcode-area">
+  <div style="font-size:24px;letter-spacing:2px;color:#000">| || | || ||</div>
+  <div style="font-size:7px;text-align:center;color:#000">NX-RNG-001</div>
+</div>
+</body></html>`);
+    } else {
+      w.document.write(`<!DOCTYPE html><html><head><title>Test Page</title>
+<style>body { font-family: Arial, sans-serif; padding: 40px; }</style></head><body>
+<h1 style="color:#8B7355">Nexpura</h1>
+<h2>Test Print — ${oPaperSize}</h2>
+<p>This is a test print for your office printer.</p>
+<p>${new Date().toLocaleString("en-AU")}</p>
+<hr />
+<p>If you can read this clearly, your office printer is configured correctly.</p>
+</body></html>`);
+    }
+    w.document.close();
+    setTimeout(() => w.print(), 300);
   }
 
-  const tabClass = (tab: PrinterType) =>
-    `px-5 py-3 text-sm font-medium transition-colors ${
-      activeTab === tab
-        ? "border-b-2 border-[#8B7355] text-[#8B7355]"
-        : "text-stone-500 hover:text-stone-900"
+  const tabClass = (t: PrinterType) =>
+    `flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
+      activeTab === t ? "border-[#8B7355] text-[#8B7355]" : "border-transparent text-stone-500 hover:text-stone-800"
     }`;
 
+  const input = "w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]";
+  const label = "block text-xs font-medium text-stone-500 mb-1";
+
+  // Label preview dimensions (scaled to pixels, max 300px wide)
+  const previewScale = Math.min(300 / (parseInt(lWidth) || 57), 6);
+  const previewW = (parseInt(lWidth) || 57) * previewScale;
+  const previewH = (parseInt(lHeight) || 32) * previewScale;
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-stone-900">Printing Settings</h1>
-        <p className="text-stone-500 mt-1 text-sm">Configure your printers for receipts, labels, and office documents.</p>
+        <p className="text-stone-500 mt-1 text-sm">Configure receipt, label, and office printers for your workspace.</p>
       </div>
 
       {msg && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800">{msg}</div>
+        <div className={`rounded-xl px-4 py-3 text-sm border ${msgType === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-700"}`}>
+          {msg}
+        </div>
       )}
 
       <div className="bg-white border border-stone-200 rounded-2xl shadow-sm overflow-hidden">
+        {/* Tabs */}
         <div className="flex border-b border-stone-200">
-          <button className={tabClass("receipt")} onClick={() => setActiveTab("receipt")}>Receipt Printer</button>
-          <button className={tabClass("label")} onClick={() => setActiveTab("label")}>Label Printer</button>
-          <button className={tabClass("office")} onClick={() => setActiveTab("office")}>Office Printer</button>
+          <button className={tabClass("receipt")} onClick={() => setActiveTab("receipt")}>
+            🧾 Receipt Printer
+          </button>
+          <button className={tabClass("label")} onClick={() => setActiveTab("label")}>
+            🏷️ Label Printer
+          </button>
+          <button className={tabClass("office")} onClick={() => setActiveTab("office")}>
+            🖨️ Office Printer
+          </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6">
+          {/* ── RECEIPT TAB ─────────────────────────────── */}
           {activeTab === "receipt" && (
-            <>
+            <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-stone-500 mb-1">Brand</label>
-                  <select value={receiptBrand} onChange={(e) => setReceiptBrand(e.target.value)} className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm">
-                    <option value="Epson">Epson</option>
-                    <option value="Star">Star</option>
-                    <option value="Bixolon">Bixolon</option>
+                  <label className={label}>Printer Brand</label>
+                  <select value={rBrand} onChange={(e) => setRBrand(e.target.value)} className={input}>
+                    <option value="Epson">Epson TM Series</option>
+                    <option value="Star">Star TSP Series</option>
+                    <option value="Bixolon">Bixolon SRP Series</option>
                     <option value="Other">Other</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-stone-500 mb-1">Paper Width</label>
-                  <select value={receiptPaperWidth} onChange={(e) => setReceiptPaperWidth(e.target.value)} className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm">
+                  <label className={label}>Paper Width</label>
+                  <select value={rPaperWidth} onChange={(e) => setRPaperWidth(e.target.value)} className={input}>
                     <option value="58mm">58mm</option>
                     <option value="80mm">80mm</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-stone-500 mb-1">Connection</label>
-                  <select value={receiptConn} onChange={(e) => setReceiptConn(e.target.value)} className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm">
-                    <option value="browser">Browser Print</option>
-                    <option value="network">Network (IP)</option>
+                  <label className={label}>Connection Type</label>
+                  <select value={rConn} onChange={(e) => setRConn(e.target.value)} className={input}>
+                    <option value="browser">Browser Print (USB)</option>
+                    <option value="network">Network (IP/TCP)</option>
+                    <option value="bluetooth">Bluetooth</option>
                   </select>
                 </div>
-                <div className="flex items-center gap-2 pt-5">
+                <div className="flex items-center pt-5 gap-3">
                   <button
                     type="button"
-                    onClick={() => setReceiptCut(!receiptCut)}
-                    className={`w-9 h-5 rounded-full transition-colors flex-shrink-0 relative ${receiptCut ? "bg-[#8B7355]" : "bg-stone-200"}`}
+                    onClick={() => setRCut(!rCut)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${rCut ? "bg-[#8B7355]" : "bg-stone-200"}`}
                   >
-                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${receiptCut ? "translate-x-4" : "translate-x-0.5"}`} />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${rCut ? "translate-x-4" : "translate-x-0.5"}`} />
                   </button>
-                  <span className="text-sm">Auto-cut</span>
+                  <span className="text-sm text-stone-700">Auto-cut after print</span>
                 </div>
               </div>
-              {receiptConn === "network" && (
-                <div className="grid grid-cols-2 gap-4">
+
+              {rConn === "network" && (
+                <div className="grid grid-cols-2 gap-4 bg-stone-50 rounded-xl p-4 border border-stone-200">
                   <div>
-                    <label className="block text-xs text-stone-500 mb-1">IP Address</label>
-                    <input value={receiptIp} onChange={(e) => setReceiptIp(e.target.value)} placeholder="192.168.1.100" className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm font-mono" />
+                    <label className={label}>IP Address</label>
+                    <input value={rIp} onChange={(e) => setRIp(e.target.value)} placeholder="192.168.1.100" className={`${input} font-mono`} />
                   </div>
                   <div>
-                    <label className="block text-xs text-stone-500 mb-1">Port</label>
-                    <input value={receiptPort} onChange={(e) => setReceiptPort(e.target.value)} placeholder="9100" className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm font-mono" />
+                    <label className={label}>Port</label>
+                    <input value={rPort} onChange={(e) => setRPort(e.target.value)} placeholder="9100" className={`${input} font-mono`} />
                   </div>
                 </div>
               )}
-              <div className="flex gap-3">
-                <button onClick={handleSaveReceipt} disabled={isPending} className="flex-1 py-2.5 bg-[#8B7355] text-white rounded-xl text-sm font-medium hover:bg-[#7a6447] disabled:opacity-50">Save</button>
-                <button onClick={() => handleTestPrint("receipt")} className="px-4 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50">Test Print</button>
+
+              {/* Receipt Preview */}
+              <div>
+                <p className="text-xs font-medium text-stone-500 mb-3 uppercase tracking-wider">Receipt Preview</p>
+                <div className="flex justify-center">
+                  <div style={{ width: rPaperWidth === "58mm" ? 220 : 280 }} className="border border-stone-300 rounded p-4 font-mono text-xs bg-white shadow-sm">
+                    <p className="text-center font-bold text-sm mb-1">NEXPURA</p>
+                    <p className="text-center text-xs text-stone-500">123 Jewellery Lane, Sydney NSW</p>
+                    <div className="border-t border-dashed border-stone-300 my-2" />
+                    <div className="flex justify-between"><span>Diamond Ring</span><span>$8,500</span></div>
+                    <div className="border-t border-dashed border-stone-300 my-2" />
+                    <div className="flex justify-between font-bold"><span>TOTAL</span><span>$8,500</span></div>
+                    <p className="text-center text-xs text-stone-400 mt-3">Thank you!</p>
+                  </div>
+                </div>
               </div>
-            </>
+
+              <div className="flex gap-3">
+                <button onClick={handleSaveReceipt} disabled={isPending} className="flex-1 py-2.5 bg-[#8B7355] hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
+                  {isPending ? "Saving…" : "Save Receipt Printer"}
+                </button>
+                <button onClick={() => testPrint("receipt")} className="px-5 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50 transition-colors">
+                  🖨️ Test Print
+                </button>
+              </div>
+            </div>
           )}
 
+          {/* ── LABEL TAB ───────────────────────────────── */}
           {activeTab === "label" && (
-            <>
+            <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-stone-500 mb-1">Brand</label>
-                  <select value={labelBrand} onChange={(e) => setLabelBrand(e.target.value)} className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm">
+                  <label className={label}>Printer Brand</label>
+                  <select value={lBrand} onChange={(e) => setLBrand(e.target.value)} className={input}>
                     <option value="Zebra">Zebra</option>
-                    <option value="TSC">TSC</option>
                     <option value="Brother">Brother</option>
-                    <option value="DYMO">DYMO</option>
+                    <option value="Dymo">Dymo</option>
+                    <option value="Niimbot">Niimbot</option>
                     <option value="Other">Other</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-stone-500 mb-1">Connection</label>
-                  <select value={labelConn} onChange={(e) => setLabelConn(e.target.value)} className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm">
-                    <option value="browser">Browser Print</option>
-                    <option value="network">Network (ZPL)</option>
+                  <label className={label}>Connection Type</label>
+                  <select value={lConn} onChange={(e) => setLConn(e.target.value)} className={input}>
+                    <option value="browser">Browser Print (USB)</option>
+                    <option value="network">Network (IP/TCP)</option>
+                    <option value="bluetooth">Bluetooth</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs text-stone-500 mb-1">Label Width (mm)</label>
-                  <input type="number" value={labelWidth} onChange={(e) => setLabelWidth(e.target.value)} placeholder="57" className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm" />
+              </div>
+
+              {/* Label Size Presets */}
+              <div>
+                <label className={label}>Label Size</label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {LABEL_SIZES.map((s) => (
+                    <button
+                      key={s.label}
+                      type="button"
+                      onClick={() => applyLabelPreset(s.label)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                        lSizePreset === s.label
+                          ? "bg-[#8B7355] text-white border-[#8B7355]"
+                          : "bg-white text-stone-600 border-stone-200 hover:border-[#8B7355]"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-xs text-stone-500 mb-1">Label Height (mm)</label>
-                  <input type="number" value={labelHeight} onChange={(e) => setLabelHeight(e.target.value)} placeholder="32" className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm" />
+                {lSizePreset === "Custom" && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={label}>Width (mm)</label>
+                      <input value={lWidth} onChange={(e) => setLWidth(e.target.value)} type="number" min="10" max="200" className={`${input} font-mono`} />
+                    </div>
+                    <div>
+                      <label className={label}>Height (mm)</label>
+                      <input value={lHeight} onChange={(e) => setLHeight(e.target.value)} type="number" min="5" max="200" className={`${input} font-mono`} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Label Alignment */}
+              <div>
+                <label className={label}>Label Content Alignment</label>
+                <div className="flex gap-2">
+                  {["left", "center", "right"].map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => setLAlignment(a)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
+                        lAlignment === a
+                          ? "bg-[#8B7355] text-white border-[#8B7355]"
+                          : "bg-white text-stone-600 border-stone-200 hover:border-[#8B7355]"
+                      }`}
+                    >
+                      {a === "left" ? "⬅️" : a === "center" ? "⬆️" : "➡️"} {a.charAt(0).toUpperCase() + a.slice(1)}
+                    </button>
+                  ))}
                 </div>
               </div>
-              {labelConn === "network" && (
+
+              {/* Barcode Position */}
+              <div>
+                <label className={label}>Barcode / QR Position</label>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-stone-500 mb-1">IP Address</label>
-                    <input value={labelIp} onChange={(e) => setLabelIp(e.target.value)} placeholder="192.168.1.101" className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm font-mono" />
+                    <p className="text-xs text-stone-400 mb-2">Horizontal</p>
+                    <div className="flex gap-1.5">
+                      {["left", "center", "right"].map((h) => (
+                        <button key={h} type="button" onClick={() => setLBarcodeH(h)}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors capitalize ${lBarcodeH === h ? "bg-[#8B7355] text-white border-[#8B7355]" : "bg-white text-stone-600 border-stone-200 hover:border-[#8B7355]"}`}>
+                          {h}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-xs text-stone-500 mb-1">Port</label>
-                    <input value={labelPort} onChange={(e) => setLabelPort(e.target.value)} placeholder="9100" className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm font-mono" />
+                    <p className="text-xs text-stone-400 mb-2">Vertical</p>
+                    <div className="flex gap-1.5">
+                      {["top", "bottom"].map((v) => (
+                        <button key={v} type="button" onClick={() => setLBarcodeV(v)}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors capitalize ${lBarcodeV === v ? "bg-[#8B7355] text-white border-[#8B7355]" : "bg-white text-stone-600 border-stone-200 hover:border-[#8B7355]"}`}>
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {lConn === "network" && (
+                <div className="grid grid-cols-2 gap-4 bg-stone-50 rounded-xl p-4 border border-stone-200">
+                  <div>
+                    <label className={label}>IP Address</label>
+                    <input value={lIp} onChange={(e) => setLIp(e.target.value)} placeholder="192.168.1.101" className={`${input} font-mono`} />
+                  </div>
+                  <div>
+                    <label className={label}>Port</label>
+                    <input value={lPort} onChange={(e) => setLPort(e.target.value)} placeholder="9100" className={`${input} font-mono`} />
                   </div>
                 </div>
               )}
-              <div className="flex gap-3">
-                <button onClick={handleSaveLabel} disabled={isPending} className="flex-1 py-2.5 bg-[#8B7355] text-white rounded-xl text-sm font-medium hover:bg-[#7a6447] disabled:opacity-50">Save</button>
-                <button onClick={() => handleTestPrint("label")} className="px-4 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50">Test Print</button>
+
+              {/* Label Preview */}
+              <div>
+                <p className="text-xs font-medium text-stone-500 mb-3 uppercase tracking-wider">Label Preview ({lWidth}×{lHeight}mm)</p>
+                <div className="flex justify-center bg-stone-50 rounded-xl p-6 border border-stone-200">
+                  <div
+                    style={{ width: previewW, height: previewH, textAlign: lAlignment as "left" | "center" | "right" }}
+                    className="bg-white border-2 border-stone-400 rounded relative overflow-hidden flex flex-col justify-between p-1 shadow-md"
+                  >
+                    <div style={{ fontSize: Math.max(7, previewScale * 2) }} className="font-bold truncate">Diamond Ring</div>
+                    <div style={{ fontSize: Math.max(5, previewScale * 1.5) }} className="text-stone-400">NX-RNG-001</div>
+                    <div
+                      style={{
+                        fontSize: Math.max(8, previewScale * 2.5),
+                        textAlign: lBarcodeH as "left" | "center" | "right",
+                        alignSelf: lBarcodeH === "left" ? "flex-start" : lBarcodeH === "right" ? "flex-end" : "center",
+                        marginTop: lBarcodeV === "top" ? 0 : "auto",
+                      }}
+                      className="font-bold"
+                    >
+                      $8,500
+                    </div>
+                    <div
+                      style={{
+                        fontSize: Math.max(4, previewScale * 0.8),
+                        letterSpacing: "2px",
+                        textAlign: lBarcodeH as "left" | "center" | "right",
+                        color: "#000",
+                        order: lBarcodeV === "top" ? -1 : 1,
+                      }}
+                    >
+                      ║║║ ║║ ║║║
+                    </div>
+                  </div>
+                </div>
               </div>
-            </>
+
+              <div className="flex gap-3">
+                <button onClick={handleSaveLabel} disabled={isPending} className="flex-1 py-2.5 bg-[#8B7355] hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
+                  {isPending ? "Saving…" : "Save Label Printer"}
+                </button>
+                <button onClick={() => testPrint("label")} className="px-5 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50 transition-colors">
+                  🖨️ Test Label
+                </button>
+              </div>
+            </div>
           )}
 
+          {/* ── OFFICE TAB ──────────────────────────────── */}
           {activeTab === "office" && (
-            <>
+            <div className="space-y-6">
               <div>
-                <label className="block text-xs text-stone-500 mb-1">Paper Size</label>
-                <select value={officePaperSize} onChange={(e) => setOfficePaperSize(e.target.value)} className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm">
-                  <option value="A4">A4</option>
-                  <option value="A5">A5</option>
-                  <option value="Letter">Letter</option>
-                </select>
+                <label className={label}>Paper Size</label>
+                <div className="flex gap-2 flex-wrap">
+                  {["A4", "A5", "Letter", "Legal"].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setOPaperSize(s)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        oPaperSize === s ? "bg-[#8B7355] text-white border-[#8B7355]" : "bg-white text-stone-600 border-stone-200 hover:border-[#8B7355]"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <p className="text-xs text-stone-400">Office printer uses browser print — no network connection required.</p>
+
+              <div className="bg-stone-50 border border-stone-200 rounded-xl p-4">
+                <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">Note</p>
+                <p className="text-sm text-stone-600">Office documents (invoices, appraisals, repair tickets) print via your browser&apos;s built-in print dialog. Make sure your office printer is set as the default in your OS settings.</p>
+              </div>
+
+              {/* A4 Document Preview */}
+              <div>
+                <p className="text-xs font-medium text-stone-500 mb-3 uppercase tracking-wider">Document Preview</p>
+                <div className="flex justify-center">
+                  <div className="w-48 h-64 border border-stone-300 rounded bg-white shadow-sm p-3 flex flex-col gap-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="w-16 h-3 bg-[#8B7355] rounded" />
+                        <div className="w-10 h-1.5 bg-stone-200 rounded mt-1" />
+                      </div>
+                      <div className="text-right">
+                        <div className="w-12 h-1.5 bg-stone-100 rounded" />
+                        <div className="w-16 h-1.5 bg-stone-100 rounded mt-1" />
+                      </div>
+                    </div>
+                    <div className="border-t border-stone-200 pt-2 space-y-1">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className="flex justify-between">
+                          <div className="w-20 h-1.5 bg-stone-100 rounded" />
+                          <div className="w-8 h-1.5 bg-stone-100 rounded" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t-2 border-stone-300 mt-auto pt-1 flex justify-between">
+                      <div className="w-10 h-2 bg-stone-200 rounded" />
+                      <div className="w-12 h-2 bg-stone-600 rounded" />
+                    </div>
+                    <div className="text-center text-[6px] text-stone-300">{oPaperSize} Document</div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex gap-3">
-                <button onClick={handleSaveOffice} disabled={isPending} className="flex-1 py-2.5 bg-[#8B7355] text-white rounded-xl text-sm font-medium hover:bg-[#7a6447] disabled:opacity-50">Save</button>
-                <button onClick={() => handleTestPrint("office")} className="px-4 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50">Test Print</button>
+                <button onClick={handleSaveOffice} disabled={isPending} className="flex-1 py-2.5 bg-[#8B7355] hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
+                  {isPending ? "Saving…" : "Save Office Printer"}
+                </button>
+                <button onClick={() => testPrint("office")} className="px-5 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50 transition-colors">
+                  🖨️ Test Print
+                </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>

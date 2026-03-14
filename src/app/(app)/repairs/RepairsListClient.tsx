@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, ArrowRight } from "lucide-react";
+import { Plus, ArrowRight, Camera } from "lucide-react";
+import CameraScannerModal from "@/components/CameraScannerModal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
   const pathname = usePathname();
   const [, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState(stageFilter || "all");
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
 
   const useSampleData = repairs.length === 0;
 
@@ -118,9 +120,19 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
             </Badge>
           </div>
         </div>
-        <Link href="/repairs/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-10 px-4 py-2">
-          <Plus className="w-4 h-4 mr-2" /> New Repair
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowCameraScanner(true)}
+            className="inline-flex items-center gap-1.5 h-9 px-3 border border-stone-200 rounded-md text-sm text-stone-600 hover:bg-stone-50 transition-colors"
+            title="Scan repair ticket barcode"
+          >
+            <Camera className="w-4 h-4" />
+            Scan
+          </button>
+          <Link href="/repairs/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-10 px-4 py-2">
+            <Plus className="w-4 h-4 mr-2" /> New Repair
+          </Link>
+        </div>
       </div>
 
       {/* STAGE TABS */}
@@ -223,6 +235,26 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
           </TableBody>
         </Table>
       </Card>
+
+      {/* Camera Scanner Modal */}
+      {showCameraScanner && (
+        <CameraScannerModal
+          title="Scan Repair Ticket"
+          onScan={(barcode) => {
+            // Try to find repair by repair_number
+            const found = repairs.find(
+              (r) => r.repair_number === barcode || r.repair_number === barcode.replace(/^REP-?/i, "REP-")
+            );
+            if (found) {
+              router.push(`/repairs/${found.id}`);
+            } else {
+              updateParams({ q: barcode });
+            }
+            setShowCameraScanner(false);
+          }}
+          onClose={() => setShowCameraScanner(false)}
+        />
+      )}
     </div>
   );
 }

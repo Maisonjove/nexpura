@@ -122,11 +122,27 @@ export default function TenantActions({
           ✓ Free Forever Account
         </div>
       )}
-      {gracePeriodEndsAt && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
-          Grace period ends: {new Date(gracePeriodEndsAt).toLocaleString("en-AU")}
-        </div>
-      )}
+      {gracePeriodEndsAt && (() => {
+        const end = new Date(gracePeriodEndsAt);
+        const diffMs = end.getTime() - Date.now();
+        const diffHrs = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60)));
+        const diffDays = Math.floor(diffHrs / 24);
+        const remHrs = diffHrs % 24;
+        const expired = diffMs <= 0;
+        return (
+          <div className={`rounded-lg px-3 py-2.5 text-sm border ${expired ? "bg-red-50 border-red-200 text-red-800" : "bg-amber-50 border-amber-200 text-amber-800"}`}>
+            <p className="font-semibold">{expired ? "⛔ Grace period expired" : "⏳ Grace period active"}</p>
+            {!expired && (
+              <p className="text-xs mt-0.5">
+                {diffDays > 0 ? `${diffDays}d ${remHrs}h` : `${diffHrs}h`} remaining (ends {end.toLocaleString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })})
+              </p>
+            )}
+            {expired && (
+              <p className="text-xs mt-0.5">Ended {end.toLocaleString("en-AU")}</p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Change Plan */}
       <div className="space-y-2">

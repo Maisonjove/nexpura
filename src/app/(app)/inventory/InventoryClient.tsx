@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Tag, Edit, Diamond, Printer } from "lucide-react";
+import { Plus, Search, Tag, Edit, Diamond, Printer, Camera } from "lucide-react";
 import QuickPrintTagModal from "@/components/QuickPrintTagModal";
+import CameraScannerModal from "@/components/CameraScannerModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ export default function InventoryClient({
   const [showBatchPrint, setShowBatchPrint] = useState(false);
   const [printItem, setPrintItem] = useState<(typeof items)[0] | null>(null);
   const [bulkAction, setBulkAction] = useState("");
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
 
   const useSampleData = items.length === 0;
 
@@ -258,6 +260,14 @@ export default function InventoryClient({
             </svg>
             Receive Stock
           </Link>
+          <button
+            onClick={() => setShowCameraScanner(true)}
+            className="inline-flex items-center gap-1.5 h-9 px-3 border border-stone-200 rounded-md text-sm text-stone-600 hover:bg-stone-50 transition-colors"
+            title="Scan barcode to find item"
+          >
+            <Camera className="w-4 h-4" />
+            Scan
+          </button>
           <Link href="/inventory/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-9 px-4">
             <Plus className="w-4 h-4 mr-2" /> Add Item
           </Link>
@@ -424,6 +434,31 @@ export default function InventoryClient({
           </TableBody>
         </Table>
       </Card>
+
+      {/* Camera Scanner Modal */}
+      {showCameraScanner && (
+        <CameraScannerModal
+          title="Scan Item Barcode"
+          onScan={(barcode) => {
+            // Find matching item by barcode_value or SKU
+            const allItems = useSampleData ? SAMPLE_ITEMS : items;
+            const found = allItems.find(
+              (i) => i.barcode_value === barcode || i.sku === barcode
+            );
+            if (found) {
+              if (useSampleData) {
+                setSearch(found.name);
+              } else {
+                window.location.href = `/inventory/${found.id}`;
+              }
+            } else {
+              setSearch(barcode);
+            }
+            setShowCameraScanner(false);
+          }}
+          onClose={() => setShowCameraScanner(false)}
+        />
+      )}
 
       {/* Quick Print Tag Modal */}
       {printItem && (

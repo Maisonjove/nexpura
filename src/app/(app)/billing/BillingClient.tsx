@@ -154,6 +154,16 @@ export default function BillingClient({
   const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+
+  // Calculate grace period days remaining
+  const graceDaysRemaining = (() => {
+    if (!subscription?.grace_period_ends_at) return null;
+    const end = new Date(subscription.grace_period_ends_at);
+    const diff = end.getTime() - Date.now();
+    if (diff <= 0) return 0;
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  })();
 
   useEffect(() => {
     if (subscription?.stripe_customer_id) {
@@ -220,34 +230,41 @@ export default function BillingClient({
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       {/* Status banners */}
-      {subscription?.status === "grace_period" && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+      {(subscription?.status === "grace_period" || subscription?.status === "past_due") && (
+        <div className="bg-yellow-50 border border-yellow-300 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-red-700">⚠️ Payment Required</p>
-            <p className="text-sm text-red-600 mt-0.5">
-              Payment required{subscription.grace_period_ends_at ? ` by ${formatDate(subscription.grace_period_ends_at)}` : ""}. Update your payment method to avoid suspension.
+            <p className="text-sm font-semibold text-yellow-800">⚠️ Payment Required</p>
+            <p className="text-sm text-yellow-700 mt-0.5">
+              {graceDaysRemaining !== null
+                ? graceDaysRemaining <= 0
+                  ? "Your grace period has ended. Update your payment method immediately."
+                  : `${graceDaysRemaining} day${graceDaysRemaining !== 1 ? "s" : ""} remaining to update your payment method before account suspension.`
+                : `Payment required${subscription?.grace_period_ends_at ? ` by ${formatDate(subscription.grace_period_ends_at)}` : ""}. Update your payment method to avoid suspension.`}
             </p>
           </div>
-          <button onClick={handleManageBilling} disabled={loadingPortal} className="flex-shrink-0 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
+          <button onClick={handleManageBilling} disabled={loadingPortal} className="flex-shrink-0 px-4 py-2 bg-yellow-600 text-white text-sm font-semibold rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50">
             Update Payment →
           </button>
         </div>
       )}
       {subscription?.status === "suspended" && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+        <div className="bg-red-50 border border-red-300 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-red-700">🔴 Account Suspended</p>
-            <p className="text-sm text-red-600 mt-0.5">Your account is suspended due to non-payment. Update your payment method to reactivate.</p>
+            <p className="text-sm text-red-600 mt-0.5">Your account is suspended due to non-payment. Reactivate now to restore access to all features.</p>
           </div>
           <button onClick={handleManageBilling} disabled={loadingPortal} className="flex-shrink-0 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
-            Reactivate →
+            {loadingPortal ? "Opening…" : "Reactivate Now →"}
           </button>
         </div>
       )}
       {subscription?.is_free_forever && (
-        <div className="bg-[#8B7355]/10 border border-[#8B7355]/20 rounded-xl px-5 py-4">
-          <p className="text-sm font-semibold text-[#8B7355]">🎁 Free Account</p>
-          <p className="text-sm text-stone-600 mt-0.5">You have lifetime free access to Nexpura. No billing required.</p>
+        <div className="bg-[#8B7355]/10 border border-[#8B7355]/20 rounded-xl px-5 py-4 flex items-center gap-3">
+          <span className="text-2xl">🎁</span>
+          <div>
+            <p className="text-sm font-semibold text-[#8B7355]">Free Membership</p>
+            <p className="text-sm text-stone-600 mt-0.5">You have lifetime free access to Nexpura. No billing required.</p>
+          </div>
         </div>
       )}
 
@@ -613,12 +630,32 @@ export default function BillingClient({
       {subscription?.stripe_sub_id && subscription.status === "active" && !subscription.is_free_forever && (
         <div className="text-center">
           {showCancelConfirm ? (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-5 inline-block">
-              <p className="text-sm font-semibold text-red-700 mb-2">Cancel your subscription?</p>
-              <p className="text-sm text-red-600 mb-4">You&apos;ll lose access at the end of the billing period.</p>
-              <div className="flex gap-3 justify-center">
-                <button onClick={() => setShowCancelConfirm(false)} className="px-4 py-2 border border-stone-200 text-stone-700 text-sm rounded-lg hover:bg-stone-50">Keep Subscription</button>
-                <button onClick={handleManageBilling} className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">Cancel via Portal</button>
+            <div className="bg-stone-50 border border-stone-200 rounded-xl p-6 max-w-md mx-auto text-left">
+              <p className="text-sm font-semibold text-stone-900 mb-1">Cancel your subscription?</p>
+              <p className="text-sm text-stone-500 mb-4">You&apos;ll keep access until the end of your current billing period. All your data will be preserved.</p>
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-stone-500 mb-1">Why are you cancelling? <span className="text-stone-400">(optional)</span></label>
+                <select
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#8B7355]"
+                >
+                  <option value="">Choose a reason…</option>
+                  <option value="too_expensive">Too expensive</option>
+                  <option value="missing_features">Missing features I need</option>
+                  <option value="not_using">Not using it enough</option>
+                  <option value="switching_competitor">Switching to a competitor</option>
+                  <option value="closing_business">Closing my business</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowCancelConfirm(false)} className="flex-1 px-4 py-2.5 border border-stone-200 text-stone-700 text-sm rounded-lg hover:bg-stone-50 font-medium">
+                  Keep Subscription
+                </button>
+                <button onClick={handleManageBilling} className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">
+                  Cancel via Portal
+                </button>
               </div>
             </div>
           ) : (
