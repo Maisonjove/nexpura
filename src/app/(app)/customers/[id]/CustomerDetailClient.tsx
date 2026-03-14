@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { archiveCustomer, addCustomerNote } from "../actions";
-import { User, Phone, Mail, MapPin, Calendar, Heart, Gem, List, History, Settings, MessageSquare, Tag } from "lucide-react";
+import { User, Phone, Mail, MapPin, Calendar, Heart, Gem, List, History, Settings, MessageSquare, Tag, Wallet, Plus, Receipt } from "lucide-react";
 import { format } from "date-fns";
 
 type Customer = {
@@ -35,14 +35,31 @@ type Customer = {
   is_vip: boolean | null;
   notes: string | null;
   customer_since: string | null;
+  store_credit: number | null;
   created_at: string;
   updated_at: string | null;
 };
 
-const TABS = ["Overview", "Wish List", "Jewellery Owned", "Notes", "Activity"] as const;
+type CreditHistory = {
+  id: string;
+  amount: number;
+  balance_after: number;
+  reason: string;
+  reference_type: string | null;
+  reference_id: string | null;
+  created_at: string;
+};
+
+const TABS = ["Overview", "Wish List", "Jewellery Owned", "Store Credit", "Notes", "Activity"] as const;
 type Tab = (typeof TABS)[number];
 
-export default function CustomerDetailClient({ customer }: { customer: Customer }) {
+export default function CustomerDetailClient({ 
+  customer, 
+  creditHistory 
+}: { 
+  customer: Customer,
+  creditHistory: CreditHistory[]
+}) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [showArchiveModal, setShowArchiveModal] = useState(false);
@@ -189,6 +206,62 @@ export default function CustomerDetailClient({ customer }: { customer: Customer 
              </div>
            )}
 
+           {activeTab === "Store Credit" && (
+             <div className="space-y-6">
+                <div className="bg-white rounded-3xl border border-stone-200 p-8 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-stone-400 mb-1">Available Balance</h3>
+                    <p className="text-4xl font-bold text-stone-900">${(customer.store_credit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <button className="flex items-center gap-2 px-6 py-3 bg-[#8B7355] text-white rounded-2xl font-bold hover:bg-[#7A6347] transition-colors shadow-sm">
+                    <Plus size={20} />
+                    Issue Credit
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
+                  <div className="p-6 border-b border-stone-100">
+                    <h3 className="font-bold text-stone-900">Transaction History</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-stone-50 border-b border-stone-100">
+                          <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-stone-400">Date</th>
+                          <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-stone-400">Reason</th>
+                          <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-stone-400 text-right">Amount</th>
+                          <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-stone-400 text-right">Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-50">
+                        {creditHistory.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="px-6 py-12 text-center text-sm text-stone-400 italic">No transactions found.</td>
+                          </tr>
+                        ) : (
+                          creditHistory.map((tx) => (
+                            <tr key={tx.id} className="hover:bg-stone-50 transition-colors">
+                              <td className="px-6 py-4 text-sm text-stone-600">{format(new Date(tx.created_at), "dd MMM yyyy HH:mm")}</td>
+                              <td className="px-6 py-4">
+                                <p className="text-sm font-medium text-stone-900 capitalize">{tx.reason.replace(/_/g, " ")}</p>
+                                {tx.reference_type && <p className="text-[10px] text-stone-400 uppercase font-bold tracking-tight">{tx.reference_type} #{tx.reference_id?.slice(0, 8)}</p>}
+                              </td>
+                              <td className={`px-6 py-4 text-sm font-bold text-right ${tx.amount > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                                {tx.amount > 0 ? "+" : ""}{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </td>
+                              <td className="px-6 py-4 text-sm font-medium text-stone-900 text-right">
+                                ${tx.balance_after.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+             </div>
+           )}
+
            {activeTab === "Notes" && (
              <div className="space-y-4">
                 <div className="bg-white rounded-3xl border border-stone-200 p-8">
@@ -228,7 +301,17 @@ export default function CustomerDetailClient({ customer }: { customer: Customer 
 
         <div className="space-y-8">
            <div className="bg-white rounded-3xl border border-stone-200 p-8 space-y-6">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400">Contact Details</h2>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400">Account Balance</h2>
+              <div className="flex items-center gap-4">
+                 <div className="p-3 rounded-2xl bg-[#8B7355]/5 text-[#8B7355]"><Wallet size={24} /></div>
+                 <div>
+                    <p className="text-2xl font-bold text-stone-900">${(customer.store_credit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                    <p className="text-xs text-stone-400 font-medium">Available Store Credit</p>
+                 </div>
+              </div>
+           </div>
+
+           <div className="bg-white rounded-3xl border border-stone-200 p-8 space-y-6">
               <div className="space-y-4">
                  <div className="flex items-start gap-3">
                    <div className="mt-1"><MapPin size={18} className="text-[#8B7355]" /></div>

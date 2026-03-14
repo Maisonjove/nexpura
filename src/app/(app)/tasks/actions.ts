@@ -15,7 +15,7 @@ async function getAuthContext() {
     .eq("id", user.id)
     .single();
   if (!userData?.tenant_id) throw new Error("No tenant");
-  return { supabase, userId: user.id, tenantId: userData.tenant_id as string, role: userData.role as string };
+  return { supabase, userId: user.id, tenantId: userData.tenant_id as string, role: userData.role as string, userEmail: user.email };
 }
 
 export interface StaffTask {
@@ -40,7 +40,7 @@ export interface StaffTask {
 
 export async function getMyTasks(): Promise<{ data: StaffTask[]; error?: string }> {
   try {
-    const { supabase, userId, tenantId } = await getAuthContext();
+    const { tenantId, userId } = await getAuthContext();
     const admin = createAdminClient();
 
     const { data, error } = await admin
@@ -98,7 +98,7 @@ export async function createTask(
   formData: FormData
 ): Promise<{ id?: string; error?: string }> {
   try {
-    const { supabase: _supabase, userId, tenantId } = await getAuthContext();
+    const { userId, tenantId, userEmail } = await getAuthContext();
     const admin = createAdminClient();
 
     const title = (formData.get("title") as string)?.trim();
@@ -125,6 +125,16 @@ export async function createTask(
     if (error) return { error: error.message };
 
     await logActivity(tenantId, userId, "created_task", "staff_task", task?.id, title);
+    
+    // Log in task activity timeline
+    await admin.from("task_activities").insert({
+      tenant_id: tenantId,
+      task_id: task?.id,
+      user_id: userId,
+      activity_type: "created",
+      description: `Task created by ${userEmail}`,
+    });
+
     revalidatePath("/tasks");
     return { id: task?.id };
   } catch (e) {
@@ -147,8 +157,15 @@ export async function updateTask(
   }>
 ): Promise<{ success?: boolean; error?: string }> {
   try {
-    const { tenantId } = await getAuthContext();
+    const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
+
+    // Get old state for logging
+    const { data: oldTask } = await admin
+      .from("staff_tasks")
+      .select("*")
+      .eq("id", taskId)
+      .single();
 
     const { error } = await admin
       .from("staff_tasks")
@@ -157,7 +174,30 @@ export async function updateTask(
       .eq("tenant_id", tenantId);
 
     if (error) return { error: error.message };
+
+    // Log activities for specific changes
+    if (updates.status && updates.status !== oldTask?.status) {
+      await admin.from("task_activities").insert({
+        tenant_id: tenantId,
+        task_id: taskId,
+        user_id: userId,
+        activity_type: "status_change",
+        description: `Status changed from ${oldTask?.status} to ${updates.status}`,
+      });
+    }
+
+    if (updates.assigned_to && updates.assigned_to !== oldTask?.assigned_to) {
+      await admin.from("task_activities").insert({
+        tenant_id: tenantId,
+        task_id: taskId,
+        user_id: userId,
+        activity_type: "assigned",
+        description: `Task assigned to a new user`,
+      });
+    }
+
     revalidatePath("/tasks");
+    revalidatePath(`/tasks/${taskId}`);
     return { success: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error" };
@@ -223,7 +263,18 @@ export async function addTaskComment(taskId: string, content: string): Promise<{
       .insert({ task_id: taskId, tenant_id: tenantId, user_id: userId, content })
       .select("*")
       .single();
+    
     if (error) return { data: null, error: error.message };
+
+    // Log activity
+    await admin.from("task_activities").insert({
+      tenant_id: tenantId,
+      task_id: taskId,
+      user_id: userId,
+      activity_type: "comment_added",
+      description: "Added a comment",
+    });
+
     return { data: data as TaskComment };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : "Error" };
@@ -241,6 +292,26 @@ export async function getTasksForEntity(linkedType: string, linkedId: string): P
       .eq("linked_type", linkedType)
       .eq("linked_id", linkedId)
       .order("created_at", { ascending: false });
+    if (error) return { data: [], error: error.message };
+    return { data: data ?? [] };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+// ── Task Activities ──────────────────────────────────────────
+
+export async function getTaskActivities(taskId: string) {
+  try {
+    const { tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("task_activities")
+      .select("*, users(full_name, avatar_url)")
+      .eq("task_id", taskId)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false });
+    
     if (error) return { data: [], error: error.message };
     return { data: data ?? [] };
   } catch (e) {
@@ -294,7 +365,18 @@ export async function addTaskAttachment(
       .insert({ task_id: taskId, tenant_id: tenantId, file_name: fileName, file_url: fileUrl, file_type: fileType, file_size: fileSize, uploaded_by: userId })
       .select("*")
       .single();
+    
     if (error) return { data: null, error: error.message };
+
+    // Log activity
+    await admin.from("task_activities").insert({
+      tenant_id: tenantId,
+      task_id: taskId,
+      user_id: userId,
+      activity_type: "attachment_added",
+      description: `Attached file: ${fileName}`,
+    });
+
     return { data: data as TaskAttachment };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : "Error" };

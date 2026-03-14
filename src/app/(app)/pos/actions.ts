@@ -24,6 +24,7 @@ interface CreatePOSSaleParams {
   taxAmount: number;
   total: number;
   paymentMethod: string;
+  storeCreditAmount?: number;
 }
 
 export async function createPOSSale(
@@ -34,6 +35,41 @@ export async function createPOSSale(
   if (!user) return { error: "Not authenticated" };
 
   const admin = createAdminClient();
+
+  // If using store credit, verify and deduct
+  if (params.storeCreditAmount && params.storeCreditAmount > 0) {
+    if (!params.customerId) return { error: "Customer required for store credit" };
+    
+    const { data: customer } = await admin
+      .from("customers")
+      .select("store_credit")
+      .eq("id", params.customerId)
+      .eq("tenant_id", params.tenantId)
+      .single();
+    
+    if (!customer || (customer.store_credit || 0) < params.storeCreditAmount) {
+      return { error: "Insufficient store credit balance" };
+    }
+
+    // Deduct credit
+    const newBalance = (customer.store_credit || 0) - params.storeCreditAmount;
+    await admin
+      .from("customers")
+      .update({ store_credit: newBalance })
+      .eq("id", params.customerId)
+      .eq("tenant_id", params.tenantId);
+
+    // Record history
+    await admin.from("customer_store_credit_history").insert({
+      tenant_id: params.tenantId,
+      customer_id: params.customerId,
+      amount: -params.storeCreditAmount,
+      balance_after: newBalance,
+      reason: "POS Purchase",
+      reference_type: "sale",
+      created_by: params.userId,
+    });
+  }
 
   // Generate sale number
   const { count } = await admin
@@ -57,6 +93,7 @@ export async function createPOSSale(
       tax_amount: params.taxAmount,
       total: params.total,
       payment_method: params.paymentMethod,
+      store_credit_amount: params.storeCreditAmount || 0,
       status: "paid",
       sold_by: params.userId,
       sale_date: new Date().toISOString().split("T")[0],

@@ -7,7 +7,7 @@ import {
   FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
   Settings, CreditCard, Globe, ExternalLink, Monitor, ListTodo,
   RotateCcw, Gift, Sun, ClipboardList, ArrowLeftRight, Star,
-  Calendar, Bell, MapPin, Link as LinkIcon, Send
+  Calendar, Bell, MapPin, Link as LinkIcon, Send, Zap
 } from 'lucide-react';
 
 const navGroups = [
@@ -23,6 +23,7 @@ const navGroups = [
       { name: 'Inventory', href: '/inventory', icon: Package },
       { name: 'Stock Transfers', href: '/inventory/transfers', icon: ArrowLeftRight },
       { name: 'POS', href: '/pos', icon: Monitor },
+      { name: 'Workshop', href: '/workshop', icon: Wrench },
       { name: 'Repairs', href: '/repairs', icon: Wrench },
       { name: 'Bespoke', href: '/bespoke', icon: Gem },
       { name: 'Workshop Calendar', href: '/workshop/calendar', icon: Calendar },
@@ -41,12 +42,14 @@ const navGroups = [
       { name: 'Refunds', href: '/refunds', icon: RotateCcw },
       { name: 'End of Day', href: '/eod', icon: Sun },
       { name: 'Reports', href: '/reports', icon: BarChart2 },
+      { name: 'Customer Insights', href: '/reports/customers', icon: Users },
     ],
   },
   {
     label: 'MARKETING',
     items: [
       { name: 'Campaigns', href: '/customers/campaigns', icon: Send },
+      { name: 'Automation', href: '/customers/automation', icon: Zap },
       { name: 'Service Reminders', href: '/settings/reminders', icon: Bell },
     ],
   },
@@ -76,6 +79,7 @@ const navGroups = [
       { name: 'Print Queue', href: '/print-queue', icon: FileText },
       { name: 'Documents', href: '/documents', icon: FileText },
       { name: 'Team', href: '/settings/team', icon: Users },
+      { name: 'System Audit', href: '/admin/audit', icon: ClipboardList },
       { name: 'Numbering', href: '/settings/numbering', icon: FileText },
       { name: 'Import & Export', href: '/settings/import', icon: FileText },
       { name: 'Billing', href: '/billing', icon: CreditCard },
@@ -92,10 +96,31 @@ interface SidebarProps {
     subdomain?: string;
     published?: boolean;
   } | null;
+  businessMode?: string;
 }
 
-export default function Sidebar({ user, isSuperAdmin, websiteConfig }: SidebarProps) {
+export default function Sidebar({ user, isSuperAdmin, websiteConfig, businessMode = 'full' }: SidebarProps) {
   const pathname = usePathname();
+
+  const filteredNavGroups = navGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      // Logic to hide/show based on business mode
+      if (businessMode === 'retail') {
+        const hide = ['Workshop Calendar', 'Bespoke', 'Workshop'];
+        if (hide.includes(item.name)) return false;
+      }
+      if (businessMode === 'workshop') {
+        const hide = ['POS', 'Sales', 'Bespoke'];
+        if (hide.includes(item.name)) return false;
+      }
+      if (businessMode === 'bespoke') {
+        const hide = ['POS', 'Repairs', 'Workshop Calendar'];
+        if (hide.includes(item.name)) return false;
+      }
+      return true;
+    })
+  })).filter(group => group.items.length > 0);
 
   const initials = user?.full_name
     ? user.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -113,7 +138,7 @@ export default function Sidebar({ user, isSuperAdmin, websiteConfig }: SidebarPr
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-2">
-        {navGroups.map((group) => (
+        {filteredNavGroups.map((group) => (
           <div key={group.label}>
             <p className="text-[10px] uppercase tracking-widest text-stone-500 px-4 mb-1.5 mt-5 font-medium">
               {group.label}

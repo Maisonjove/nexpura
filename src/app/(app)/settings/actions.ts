@@ -9,6 +9,7 @@ export async function saveBusinessProfile(tenantId: string, formData: FormData) 
     .update({
       business_name: formData.get("business_name") as string || null,
       business_type: formData.get("business_type") as string || null,
+      business_mode: formData.get("business_mode") as string || 'full',
       phone: formData.get("phone") as string || null,
       email: formData.get("email") as string || null,
       website: formData.get("website") as string || null,

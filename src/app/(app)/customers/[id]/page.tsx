@@ -28,5 +28,11 @@ export default async function CustomerDetailPage({
 
   if (!customer) notFound();
 
-  return <CustomerDetailClient customer={customer} />;
+  const { data: creditHistory } = await supabase
+    .from("customer_store_credit_history")
+    .select("*")
+    .eq("customer_id", id)
+    .order("created_at", { ascending: false });
+
+  return <CustomerDetailClient customer={customer} creditHistory={creditHistory || []} />;
 }

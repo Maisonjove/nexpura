@@ -75,6 +75,8 @@ const PLAN_DETAILS: Record<
 
 const FEATURES_TABLE = [
   { label: "Users", basic: "1", pro: "5", ultimate: "Unlimited" },
+  { label: "Business Modes (Workshop/Retail)", basic: true, pro: true, ultimate: true },
+  { label: "Bespoke Production Manager", basic: true, pro: true, ultimate: true },
   { label: "Storage", basic: "5GB", pro: "20GB", ultimate: "100GB" },
   { label: "Jewellery Passports", basic: true, pro: true, ultimate: true },
   { label: "AI Business Copilot", basic: false, pro: true, ultimate: true },

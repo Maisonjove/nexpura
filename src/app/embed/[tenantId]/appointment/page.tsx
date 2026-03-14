@@ -18,54 +18,80 @@ export default async function EmbedAppointmentPage({ params }: Props) {
         <title>Book Appointment — {businessName}</title>
         <style>{`
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: -apple-system, sans-serif; background: white; padding: 24px; }
-          h2 { font-size: 18px; font-weight: 600; color: #1c1917; margin-bottom: 6px; }
-          p.sub { color: #78716c; font-size: 14px; margin-bottom: 24px; }
-          label { display: block; font-size: 11px; font-weight: 600; color: #78716c; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-          input, select, textarea { width: 100%; padding: 10px 14px; border: 1px solid #d6d3d1; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 16px; }
-          input:focus, select:focus, textarea:focus { outline: none; border-color: #8B7355; }
-          button { width: 100%; padding: 12px; background: #1c1917; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-          button:hover { background: #292524; }
-          .success { padding: 20px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; text-align: center; color: #166534; }
+          body { font-family: -apple-system, sans-serif; background: transparent; padding: 24px; color: #1c1917; }
+          .container { max-width: 500px; margin: 0 auto; background: white; border: 1px solid #e7e5e4; border-radius: 16px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+          h2 { font-size: 20px; font-weight: 700; color: #1c1917; margin-bottom: 8px; font-family: Georgia, serif; }
+          p.sub { color: #78716c; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+          label { display: block; font-size: 10px; font-weight: 700; color: #a8a29e; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+          input, select, textarea { width: 100%; padding: 12px 16px; border: 1px solid #e7e5e4; border-radius: 10px; font-size: 14px; font-family: inherit; margin-bottom: 20px; transition: all 0.2s; background: #fafaf9; }
+          input:focus, select:focus, textarea:focus { outline: none; border-color: #8B7355; background: white; box-shadow: 0 0 0 3px rgba(139, 115, 85, 0.1); }
+          button { width: 100%; padding: 14px; background: #1c1917; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; letter-spacing: 0.02em; }
+          button:hover { background: #8B7355; transform: translateY(-1px); }
+          button:active { transform: translateY(0); }
+          .success { padding: 40px 20px; text-align: center; color: #1c1917; }
+          .success-icon { width: 64px; height: 64px; background: #f5f5f4; color: #8B7355; border-radius: 50%; display: flex; items-center; justify-center; margin: 0 auto 24px; font-size: 32px; }
         `}</style>
       </head>
       <body>
-        <h2>📅 Book an Appointment</h2>
-        <p className="sub">Choose a time that works for you and we&apos;ll confirm shortly.</p>
-        <form id="appt-form">
-          <label>Your Name *</label>
-          <input type="text" name="name" required />
-          <label>Email Address *</label>
-          <input type="email" name="email" required />
-          <label>Phone</label>
-          <input type="tel" name="phone" />
-          <label>Appointment Type *</label>
-          <select name="appointment_type" required>
-            <option value="">Select type…</option>
-            <option value="Consultation">Consultation</option>
-            <option value="Custom Design">Custom Design Discussion</option>
-            <option value="Repair Drop-off">Repair Drop-off</option>
-            <option value="Valuation">Valuation</option>
-            <option value="Ring Sizing">Ring Sizing</option>
-          </select>
-          <label>Preferred Date *</label>
-          <input type="date" name="preferred_date" required min={new Date().toISOString().split("T")[0]} />
-          <label>Preferred Time</label>
-          <select name="preferred_time">
-            <option value="">Any time</option>
-            <option value="Morning (9am–12pm)">Morning (9am–12pm)</option>
-            <option value="Afternoon (12pm–3pm)">Afternoon (12pm–3pm)</option>
-            <option value="Late Afternoon (3pm–6pm)">Late Afternoon (3pm–6pm)</option>
-          </select>
-          <label>Notes</label>
-          <textarea name="notes" rows={3} placeholder="Any additional information..." />
-          <button type="submit">Request Appointment →</button>
-        </form>
-        <div id="success-msg" style={{ display: 'none' }}>
-          <div className="success">
-            <p style={{ fontSize: '24px', marginBottom: '8px' }}>✓</p>
-            <p style={{ fontWeight: 600, marginBottom: '4px' }}>Appointment Request Sent!</p>
-            <p style={{ fontSize: '14px' }}>We&apos;ll confirm your appointment shortly.</p>
+        <div className="container">
+          <h2>Request an Appointment</h2>
+          <p className="sub">Experience our bespoke service. Choose a preferred time and we&apos;ll be in touch to confirm.</p>
+          <form id="appt-form">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label>Your Name *</label>
+                <input type="text" name="name" required placeholder="John Doe" />
+              </div>
+              <div>
+                <label>Email Address *</label>
+                <input type="email" name="email" required placeholder="john@example.com" />
+              </div>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label>Phone</label>
+                <input type="tel" name="phone" placeholder="+61 400 000 000" />
+              </div>
+              <div>
+                <label>Service *</label>
+                <select name="appointment_type" required>
+                  <option value="">Select service…</option>
+                  <option value="Consultation">Private Consultation</option>
+                  <option value="Custom Design">Custom Design Discussion</option>
+                  <option value="Repair Drop-off">Repair & Cleaning</option>
+                  <option value="Valuation">Professional Valuation</option>
+                  <option value="Ring Sizing">Ring Sizing Service</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label>Preferred Date *</label>
+                <input type="date" name="preferred_date" required min={new Date().toISOString().split("T")[0]} />
+              </div>
+              <div>
+                <label>Preferred Time</label>
+                <select name="preferred_time">
+                  <option value="">Any time</option>
+                  <option value="Morning (9am–12pm)">Morning</option>
+                  <option value="Afternoon (12pm–3pm)">Afternoon</option>
+                  <option value="Late Afternoon (3pm–6pm)">Late Afternoon</option>
+                </select>
+              </div>
+            </div>
+
+            <label>Notes & Requests</label>
+            <textarea name="notes" rows={3} placeholder="Please share any specific details about your enquiry..." />
+            <button type="submit">Submit Request</button>
+          </form>
+          <div id="success-msg" style={{ display: 'none' }}>
+            <div className="success">
+              <div className="success-icon">✓</div>
+              <p style={{ fontWeight: 700, fontSize: '18px', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>Request Received</p>
+              <p style={{ fontSize: '14px', color: '#78716c' }}>Thank you. A member of our team will contact you shortly to confirm your appointment.</p>
+            </div>
           </div>
         </div>
         <script dangerouslySetInnerHTML={{ __html: `

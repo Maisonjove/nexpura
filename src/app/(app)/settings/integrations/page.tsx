@@ -34,6 +34,15 @@ export default function IntegrationsPage() {
       color: "bg-green-600",
       status: "beta",
       actions: ["Connect Store", "Webhook Settings"]
+    },
+    {
+      id: "whatsapp",
+      title: "WhatsApp Business",
+      description: "Send automated messages for repairs, invoices, and marketing campaigns directly via WhatsApp.",
+      icon: MessageSquare,
+      color: "bg-[#25D366]",
+      status: "new",
+      actions: ["Connect Account", "Message Templates"]
     }
   ];
 

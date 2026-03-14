@@ -15,6 +15,7 @@ type Tenant = {
   name: string | null;
   business_name: string | null;
   business_type: string | null;
+  business_mode: string | null;
   logo_url: string | null;
   phone: string | null;
   email: string | null;
@@ -272,6 +273,20 @@ export default function SettingsPage() {
                   <option value="retailer">Retailer</option>
                   <option value="wholesaler">Wholesaler</option>
                 </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Workspace Mode</label>
+                <select
+                  name="business_mode"
+                  defaultValue={tenant?.business_mode || "full"}
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white font-medium text-[#8B7355]"
+                >
+                  <option value="full">Full (All Features)</option>
+                  <option value="retail">Retail Focus (POS + Inventory)</option>
+                  <option value="workshop">Workshop Focus (Repairs + Calendar)</option>
+                  <option value="bespoke">Bespoke Focus (Custom Jobs)</option>
+                </select>
+                <p className="text-[10px] text-stone-400">Tailors the dashboard and navigation to your workflow</p>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Phone</label>

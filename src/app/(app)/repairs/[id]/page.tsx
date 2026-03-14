@@ -284,6 +284,7 @@ export default async function RepairDetailPage({
             customerName={customer?.full_name ?? null}
             customerId={customer?.id ?? null}
             customerEmail={customer?.email ?? null}
+            customerMobile={customer?.mobile ?? null}
             isOverdue={!!isOverdue}
             invoiceId={invoiceId}
           />

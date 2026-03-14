@@ -1,69 +1,124 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
-const PRESET_TEMPLATES = [
-  {
-    name: "Ring Resize",
-    tasks: ["Measure ring size", "Resize band", "Polish & clean", "Quality check", "Notify customer"],
-  },
-  {
-    name: "Chain Repair",
-    tasks: ["Assess damage", "Solder link", "Polish & clean", "Clasp check", "Quality check", "Notify customer"],
-  },
-  {
-    name: "Stone Reset",
-    tasks: ["Remove old setting", "Source/check stone", "Set stone", "Polish mount", "Quality check", "Notify customer"],
-  },
-  {
-    name: "Custom Bespoke",
-    tasks: ["Initial consultation", "Design sketch", "CAD/wax model", "Client approval", "Cast metal", "Set stones", "Polish & finish", "Quality check", "Photo & document", "Notify customer"],
-  },
-];
-
-type Template = { id: string; name: string; tasks: string[] };
+type Template = { 
+  id: string; 
+  title: string; 
+  description: string | null; 
+  department: string | null;
+  priority: string;
+};
 
 export default function TaskTemplatesPage() {
-  const [templates, setTemplates] = useState<Template[]>(
-    PRESET_TEMPLATES.map((t, i) => ({ id: String(i + 1), ...t }))
-  );
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newTasks, setNewTasks] = useState("");
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [newDepartment, setNewDepartment] = useState("");
+  const [newPriority, setNewPriority] = useState("medium");
   const [editId, setEditId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editTasks, setEditTasks] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editDepartment, setEditDepartment] = useState("");
+  const [editPriority, setEditPriority] = useState("medium");
   const [msg, setMsg] = useState<string | null>(null);
 
-  function createTemplate() {
-    if (!newName.trim()) return;
-    const tasks = newTasks.split("\n").map((t) => t.trim()).filter(Boolean);
-    const tmpl: Template = { id: Date.now().toString(), name: newName.trim(), tasks };
-    setTemplates((prev) => [...prev, tmpl]);
-    setNewName("");
-    setNewTasks("");
+  const supabase = createClient();
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  async function fetchTemplates() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("task_templates")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (data) setTemplates(data);
+    setLoading(false);
+  }
+
+  async function createTemplate() {
+    if (!newTitle.trim()) return;
+    
+    const { data, error } = await supabase
+      .from("task_templates")
+      .insert({
+        title: newTitle.trim(),
+        description: newDescription.trim(),
+        department: newDepartment.trim() || null,
+        priority: newPriority,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setTemplates((prev) => [data, ...prev]);
+    setNewTitle("");
+    setNewDescription("");
+    setNewDepartment("");
     setShowNew(false);
     setMsg("Template created.");
     setTimeout(() => setMsg(null), 2000);
   }
 
-  function startEdit(t: Template) {
+  async function startEdit(t: Template) {
     setEditId(t.id);
-    setEditName(t.name);
-    setEditTasks(t.tasks.join("\n"));
+    setEditTitle(t.title);
+    setEditDescription(t.description || "");
+    setEditDepartment(t.department || "");
+    setEditPriority(t.priority);
   }
 
-  function saveEdit() {
-    const tasks = editTasks.split("\n").map((t) => t.trim()).filter(Boolean);
-    setTemplates((prev) => prev.map((t) => t.id === editId ? { ...t, name: editName, tasks } : t));
+  async function saveEdit() {
+    if (!editTitle.trim()) return;
+
+    const { error } = await supabase
+      .from("task_templates")
+      .update({
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        department: editDepartment.trim() || null,
+        priority: editPriority,
+      })
+      .eq("id", editId);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setTemplates((prev) => prev.map((t) => t.id === editId ? { 
+      ...t, 
+      title: editTitle, 
+      description: editDescription,
+      department: editDepartment || null,
+      priority: editPriority 
+    } : t));
     setEditId(null);
     setMsg("Template saved.");
     setTimeout(() => setMsg(null), 2000);
   }
 
-  function deleteTemplate(id: string) {
+  async function deleteTemplate(id: string) {
     if (!confirm("Delete this template?")) return;
+    
+    const { error } = await supabase.from("task_templates").delete().eq("id", id);
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
     setTemplates((prev) => prev.filter((t) => t.id !== id));
   }
 
@@ -72,12 +127,9 @@ export default function TaskTemplatesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">Task Templates</h1>
-          <p className="text-sm text-stone-500 mt-0.5">Preset task lists for common workshop jobs</p>
+          <p className="text-sm text-stone-500 mt-0.5">Reusable task templates for fast assignment</p>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/workshop/calendar" className="text-sm text-stone-500 hover:text-stone-900 border border-stone-200 px-3 py-1.5 rounded-lg">
-            Workshop Calendar
-          </Link>
           <button
             onClick={() => setShowNew(true)}
             className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347]"
@@ -87,35 +139,65 @@ export default function TaskTemplatesPage() {
         </div>
       </div>
 
-      {msg && <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">{msg}</div>}
+      {msg && <div className="bg-[#8B7355]/10 border border-[#8B7355]/20 text-[#8B7355] text-sm rounded-lg px-4 py-3">{msg}</div>}
 
       {/* New template form */}
       {showNew && (
-        <div className="bg-white rounded-xl border border-[#8B7355]/30 p-5 space-y-4">
+        <div className="bg-white rounded-xl border border-[#8B7355]/30 p-5 space-y-4 shadow-sm">
           <h3 className="font-semibold text-stone-900">New Template</h3>
-          <div>
-            <label className="block text-xs font-medium text-stone-600 mb-1">Template Name</label>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g. Ring Resize"
-              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355]"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-stone-600 mb-1 uppercase tracking-wider">Title</label>
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="e.g. Ring Polishing"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-stone-600 mb-1 uppercase tracking-wider">Department</label>
+              <select
+                value={newDepartment}
+                onChange={(e) => setNewDepartment(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+              >
+                <option value="">None</option>
+                <option value="Workshop">Workshop</option>
+                <option value="Retail">Retail</option>
+                <option value="Sales">Sales</option>
+                <option value="Admin">Admin</option>
+                <option value="Design">Design</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-stone-600 mb-1 uppercase tracking-wider">Priority</label>
+              <select
+                value={newPriority}
+                onChange={(e) => setNewPriority(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-stone-600 mb-1">Tasks (one per line)</label>
+            <label className="block text-xs font-medium text-stone-600 mb-1 uppercase tracking-wider">Description</label>
             <textarea
-              value={newTasks}
-              onChange={(e) => setNewTasks(e.target.value)}
-              rows={5}
-              placeholder={"Measure\nResize\nPolish\nQuality check\nNotify customer"}
-              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] resize-none font-mono"
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              rows={3}
+              placeholder={"Detailed instructions..."}
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] resize-none"
             />
           </div>
           <div className="flex gap-2">
             <button onClick={createTemplate} className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347]">
-              Create
+              Create Template
             </button>
             <button onClick={() => setShowNew(false)} className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">
               Cancel
@@ -126,49 +208,93 @@ export default function TaskTemplatesPage() {
 
       {/* Templates list */}
       <div className="space-y-3">
-        {templates.map((t) => (
-          <div key={t.id} className="bg-white rounded-xl border border-stone-200 p-5">
-            {editId === t.id ? (
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-semibold border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355]"
-                />
-                <textarea
-                  value={editTasks}
-                  onChange={(e) => setEditTasks(e.target.value)}
-                  rows={6}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] resize-none font-mono"
-                />
-                <div className="flex gap-2">
-                  <button onClick={saveEdit} className="px-3 py-1.5 bg-[#8B7355] text-white text-sm rounded-lg hover:bg-[#7A6347]">Save</button>
-                  <button onClick={() => setEditId(null)} className="px-3 py-1.5 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">Cancel</button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-semibold text-stone-900 mb-2">{t.name}</h3>
-                  <ol className="space-y-1">
-                    {t.tasks.map((task, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-stone-600">
-                        <span className="w-5 h-5 rounded-full bg-stone-100 text-stone-500 text-xs flex items-center justify-center font-medium flex-shrink-0">{i + 1}</span>
-                        {task}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <button onClick={() => startEdit(t)} className="text-xs text-stone-500 hover:text-stone-900 px-2 py-1 rounded border border-stone-200 hover:bg-stone-50">Edit</button>
-                  <button onClick={() => deleteTemplate(t.id)} className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded border border-red-100 hover:bg-red-50">Delete</button>
-                </div>
-              </div>
-            )}
+        {loading ? (
+          <div className="text-center py-10 text-stone-400">Loading templates...</div>
+        ) : templates.length === 0 ? (
+          <div className="text-center py-10 bg-white rounded-xl border border-dashed border-stone-200 text-stone-400">
+            No templates yet. Create your first one to speed up task assignment.
           </div>
-        ))}
+        ) : (
+          templates.map((t) => (
+            <div key={t.id} className="bg-white rounded-xl border border-stone-200 p-5 hover:border-[#8B7355]/30 transition-colors">
+              {editId === t.id ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="w-full px-3 py-2 text-sm font-semibold border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355]"
+                      />
+                    </div>
+                    <div>
+                      <select
+                        value={editDepartment}
+                        onChange={(e) => setEditDepartment(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                      >
+                        <option value="">No Department</option>
+                        <option value="Workshop">Workshop</option>
+                        <option value="Retail">Retail</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Design">Design</option>
+                      </select>
+                    </div>
+                    <div>
+                      <select
+                        value={editPriority}
+                        onChange={(e) => setEditPriority(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                      </select>
+                    </div>
+                  </div>
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={saveEdit} className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347]">Save Changes</button>
+                    <button onClick={() => setEditId(null)} className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-stone-900">{t.title}</h3>
+                      {t.department && (
+                        <span className="text-[10px] bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded font-medium">{t.department}</span>
+                      )}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium uppercase ${
+                        t.priority === 'urgent' ? 'bg-red-50 text-red-600' :
+                        t.priority === 'high' ? 'bg-amber-50 text-amber-600' :
+                        'bg-stone-50 text-stone-500'
+                      }`}>
+                        {t.priority}
+                      </span>
+                    </div>
+                    {t.description && <p className="text-sm text-stone-500 line-clamp-2">{t.description}</p>}
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => startEdit(t)} className="text-xs text-stone-400 hover:text-stone-900 px-2 py-1 rounded border border-stone-100 hover:bg-stone-50">Edit</button>
+                    <button onClick={() => deleteTemplate(id)} className="text-xs text-stone-300 hover:text-red-500 px-2 py-1">Delete</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
 }
+

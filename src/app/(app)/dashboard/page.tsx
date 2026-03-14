@@ -148,6 +148,16 @@ export default async function DashboardPage() {
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 5);
 
+  // My Tasks for today
+  const { data: myTasks } = await supabase
+    .from("staff_tasks")
+    .select("id, title, priority, status, due_date")
+    .eq("tenant_id", tenantId ?? "")
+    .eq("assigned_to", user?.id ?? "")
+    .neq("status", "completed")
+    .order("due_date", { ascending: true })
+    .limit(5);
+
   return (
     <DashboardClient
       firstName={firstName}
@@ -161,6 +171,7 @@ export default async function DashboardPage() {
       lowStockCount={lowStockCount}
       overdueRepairsCount={overdueRepairsCount ?? 0}
       recentActivity={recentActivity}
+      myTasks={myTasks ?? []}
     />
   );
 }

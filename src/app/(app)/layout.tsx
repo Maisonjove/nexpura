@@ -21,7 +21,7 @@ export default async function AppLayout({
   // Get user profile for sidebar
   const { data: profile } = await supabase
     .from('users')
-    .select('*')
+    .select('*, tenants(*)')
     .eq('id', user.id)
     .single();
 
@@ -29,6 +29,9 @@ export default async function AppLayout({
     ...user,
     ...profile,
   };
+
+  const tenant = profile?.tenants;
+  const businessMode = tenant?.business_mode || 'full';
 
   const isSuperAdmin = profile?.role === 'super_admin';
 
@@ -45,7 +48,12 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen bg-stone-50">
-      <Sidebar user={userData} isSuperAdmin={isSuperAdmin} websiteConfig={websiteConfig} />
+      <Sidebar 
+        user={userData} 
+        isSuperAdmin={isSuperAdmin} 
+        websiteConfig={websiteConfig} 
+        businessMode={businessMode}
+      />
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
         <Header user={userData} />
         <main className="flex-1 overflow-auto p-8">

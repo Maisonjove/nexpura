@@ -85,6 +85,41 @@ export async function processRefund(params: {
 
   if (refundErr || !refund) return { error: refundErr?.message ?? "Failed to create refund" };
 
+  // If refunding to store credit, update customer balance
+  if (params.refundMethod === "store_credit") {
+    if (!sale.customer_id) {
+      // Rollback or handle error? For now, we'll return error if no customer
+      return { error: "Customer required for store credit refund" };
+    }
+
+    const { data: customer } = await admin
+      .from("customers")
+      .select("store_credit")
+      .eq("id", sale.customer_id)
+      .eq("tenant_id", tenantId)
+      .single();
+
+    const newBalance = (customer?.store_credit || 0) + total;
+
+    await admin
+      .from("customers")
+      .update({ store_credit: newBalance })
+      .eq("id", sale.customer_id)
+      .eq("tenant_id", tenantId);
+
+    // Record credit history
+    await admin.from("customer_store_credit_history").insert({
+      tenant_id: tenantId,
+      customer_id: sale.customer_id,
+      amount: total,
+      balance_after: newBalance,
+      reason: "Refund",
+      reference_type: "refund",
+      reference_id: refund.id,
+      created_by: userId,
+    });
+  }
+
   // Insert refund items
   const refundItemsData = params.items.map((item) => ({
     tenant_id: tenantId,

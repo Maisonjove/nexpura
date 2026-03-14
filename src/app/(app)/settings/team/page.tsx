@@ -14,12 +14,13 @@ export default async function TeamPage() {
 
   const { data: userData } = await supabase
     .from("users")
-    .select("tenant_id, role")
+    .select("tenant_id, role, tenants(business_mode)")
     .eq("id", user.id)
     .single();
 
   const tenantId = userData?.tenant_id;
   const currentUserRole = userData?.role ?? "staff";
+  const businessMode = (userData?.tenants as any)?.business_mode || 'full';
 
   const [{ data: members }, { data: tasks }] = await Promise.all([
     supabase
@@ -39,6 +40,7 @@ export default async function TeamPage() {
       members={members ?? []}
       tasks={tasks ?? []}
       currentUserRole={currentUserRole}
+      businessMode={businessMode}
     />
   );
 }

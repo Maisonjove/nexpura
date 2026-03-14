@@ -304,6 +304,7 @@ export default async function BespokeJobDetailPage({
             customerName={job.customers?.full_name ?? null}
             customerId={job.customers?.id ?? null}
             customerEmail={job.customers?.email ?? null}
+            customerMobile={job.customers?.mobile ?? null}
             isOverdue={!!isOverdue}
             invoiceId={invoiceId}
           />

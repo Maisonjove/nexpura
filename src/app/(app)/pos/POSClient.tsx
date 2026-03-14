@@ -22,6 +22,7 @@ interface Customer {
   id: string;
   full_name: string;
   email: string | null;
+  store_credit: number | null;
 }
 
 interface CartItem {
@@ -51,7 +52,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   loose_stone: "Loose Stones",
 };
 
-type PaymentTab = "card" | "cash" | "split" | "voucher";
+type PaymentTab = "card" | "cash" | "split" | "voucher" | "store_credit";
 type SaleResult = { id: string; saleNumber: string; invoiceId?: string };
 
 export default function POSClient({ tenantId, userId, inventoryItems, customers, taxRate }: Props) {
@@ -209,6 +210,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
         taxAmount,
         total,
         paymentMethod,
+        storeCreditAmount: paymentMethod === "store_credit" ? total : 0,
       });
 
       if (result.error) {
@@ -273,7 +275,19 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
   }
 
   // Print receipt
-  function printReceipt() {
+  async function printReceipt() {
+    if (!saleResult) return;
+    
+    if (saleResult.invoiceId) {
+      const url = `/api/invoice/${saleResult.invoiceId}/pdf?format=thermal`;
+      const w = window.open(url, "_blank");
+      if (w) w.focus();
+    } else {
+      legacyPrint();
+    }
+  }
+
+  function legacyPrint() {
     const receiptHTML = `
       <html><head><title>Receipt</title>
       <style>body{font-family:monospace;max-width:300px;margin:0 auto;padding:20px;font-size:12px}
@@ -610,27 +624,63 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-stone-200">
-              {(["card", "cash", "split", "voucher"] as PaymentTab[]).map((tab) => (
+            <div className="flex border-b border-stone-200 overflow-x-auto">
+              {(["card", "cash", "store_credit", "split", "voucher"] as PaymentTab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setPaymentTab(tab)}
-                  className={`flex-1 py-3 text-sm font-medium capitalize transition-colors ${
+                  className={`flex-1 min-w-[80px] py-3 text-[10px] font-bold uppercase tracking-widest transition-colors ${
                     paymentTab === tab
                       ? "border-b-2 border-[#8B7355] text-[#8B7355]"
-                      : "text-stone-500 hover:text-stone-900"
+                      : "text-stone-400 hover:text-stone-900"
                   }`}
                 >
-                  {tab}
+                  {tab.replace("_", " ")}
                 </button>
               ))}
             </div>
 
             <div className="p-6 space-y-4">
               <div className="text-center mb-4">
-                <p className="text-sm text-stone-500">Amount due</p>
-                <p className="text-4xl font-bold text-stone-900">${total.toFixed(2)}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-stone-400">Amount due</p>
+                <p className="text-4xl font-bold text-stone-900">${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
               </div>
+
+              {paymentTab === "store_credit" && (
+                <div className="space-y-4">
+                  {!selectedCustomer ? (
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">
+                      <p className="text-sm text-amber-700 font-medium">Please select a customer to use store credit.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="bg-stone-50 border border-stone-100 rounded-2xl p-4 flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Available Balance</p>
+                          <p className="text-xl font-bold text-stone-900">${(selectedCustomer.store_credit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        { (selectedCustomer.store_credit || 0) >= total ? (
+                          <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">✓</div>
+                        ) : (
+                          <div className="w-8 h-8 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-xs font-bold">!</div>
+                        )}
+                      </div>
+
+                      {(selectedCustomer.store_credit || 0) < total && (
+                        <p className="text-xs text-amber-600 text-center">Insufficient balance. Use split payment instead.</p>
+                      )}
+
+                      <button
+                        onClick={() => handleCharge("store_credit")}
+                        disabled={isPending || (selectedCustomer.store_credit || 0) < total}
+                        className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-bold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50 shadow-sm"
+                      >
+                        {isPending ? "Processing…" : "Pay with Store Credit"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
 
               {paymentTab === "card" && (
                 <button

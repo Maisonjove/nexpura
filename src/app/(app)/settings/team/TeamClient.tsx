@@ -37,6 +37,7 @@ interface Props {
   members: TeamMember[];
   tasks: Task[];
   currentUserRole: string;
+  businessMode: string;
 }
 
 const ROLE_COLOURS: Record<string, string> = {
@@ -88,7 +89,7 @@ const SELECTABLE_ROLES = [
   { value: "technician", label: "Technician" },
 ];
 
-export default function TeamClient({ members, tasks, currentUserRole }: Props) {
+export default function TeamClient({ members, tasks, currentUserRole, businessMode }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showInvite, setShowInvite] = useState(false);
@@ -104,6 +105,17 @@ export default function TeamClient({ members, tasks, currentUserRole }: Props) {
   const [msg, setMsg] = useState<string | null>(null);
 
   const isOwner = currentUserRole === "owner";
+
+  // Filter selectable roles based on business mode
+  const filteredRoles = SELECTABLE_ROLES.filter((r) => {
+    if (businessMode === "retail") {
+      return ["manager", "salesperson", "inventory_manager", "staff"].includes(r.value);
+    }
+    if (businessMode === "workshop") {
+      return ["manager", "workshop_jeweller", "repair_technician", "staff", "technician"].includes(r.value);
+    }
+    return true; // full mode
+  });
 
   function showMsg(text: string) {
     setMsg(text);
@@ -242,7 +254,7 @@ export default function TeamClient({ members, tasks, currentUserRole }: Props) {
                   onChange={(e) => setInviteRole(e.target.value)}
                   className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52B788]"
                 >
-                  {SELECTABLE_ROLES.map((r) => (
+                  {filteredRoles.map((r) => (
                     <option key={r.value} value={r.value}>{r.label}</option>
                   ))}
                 </select>
@@ -296,7 +308,7 @@ export default function TeamClient({ members, tasks, currentUserRole }: Props) {
                           disabled={isPending}
                           className={`text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer ${ROLE_COLOURS[m.role] || "bg-stone-100 text-stone-600"}`}
                         >
-                          {SELECTABLE_ROLES.map((r) => (
+                          {filteredRoles.map((r) => (
                             <option key={r.value} value={r.value}>{r.label}</option>
                           ))}
                           <option value="owner">Owner</option>

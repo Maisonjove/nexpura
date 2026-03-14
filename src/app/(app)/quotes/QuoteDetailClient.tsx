@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Send, CheckCircle, Download, Gem } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Send, CheckCircle, Download, Gem, Hammer } from "lucide-react";
 import { format } from "date-fns";
-import { convertQuoteToInvoice, type Quote } from "./actions";
+import { type Quote } from "./actions";
+import { convertQuoteToInvoice, convertQuoteToBespoke, convertQuoteToRepair } from "./actions-server";
 import StatusBadge from "@/components/StatusBadge";
 
 interface Props {
@@ -12,14 +14,15 @@ interface Props {
 }
 
 export default function QuoteDetailClient({ quote }: Props) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleConvert() {
     if (!confirm("Convert this quote to an invoice?")) return;
     setLoading(true);
     try {
-      await convertQuoteToInvoice(quote.id);
-      window.location.reload();
+      const invoiceId = await convertQuoteToInvoice(quote.id);
+      router.push(`/invoices/${invoiceId}`);
     } catch (err) {
       console.error(err);
       alert("Failed to convert quote");
@@ -31,12 +34,31 @@ export default function QuoteDetailClient({ quote }: Props) {
   async function handleConvertToBespoke() {
     if (!confirm("Convert this quote to a new Bespoke Job?")) return;
     setLoading(true);
-    // Logic for bespoke conversion
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const jobId = await convertQuoteToBespoke(quote.id);
       alert("Converted to Bespoke Job successfully!");
-      router.push("/bespoke");
-    }, 1000);
+      router.push(`/bespoke/${jobId}`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to convert quote to bespoke job");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleConvertToRepair() {
+    if (!confirm("Convert this quote to a new Repair Job?")) return;
+    setLoading(true);
+    try {
+      const repairId = await convertQuoteToRepair(quote.id);
+      alert("Converted to Repair Job successfully!");
+      router.push(`/repairs/${repairId}`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to convert quote to repair job");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -70,12 +92,20 @@ export default function QuoteDetailClient({ quote }: Props) {
           {quote.status !== "converted" && (
             <div className="flex gap-2">
               <button
+                onClick={handleConvertToRepair}
+                disabled={loading}
+                className="flex items-center gap-2 border border-stone-300 text-stone-700 px-4 py-2 rounded-lg hover:bg-stone-50 transition-all font-medium disabled:opacity-50"
+              >
+                <Hammer size={18} />
+                {loading ? "..." : "Convert to Repair"}
+              </button>
+              <button
                 onClick={handleConvertToBespoke}
                 disabled={loading}
                 className="flex items-center gap-2 border-2 border-stone-900 text-stone-900 px-4 py-2 rounded-lg hover:bg-stone-900 hover:text-white transition-all font-medium disabled:opacity-50"
               >
                 <Gem size={18} />
-                {loading ? "Converting..." : "Convert to Bespoke"}
+                {loading ? "..." : "Convert to Bespoke"}
               </button>
               <button
                 onClick={handleConvert}
@@ -83,7 +113,7 @@ export default function QuoteDetailClient({ quote }: Props) {
                 className="flex items-center gap-2 bg-[#8B7355] text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium shadow-sm disabled:opacity-50"
               >
                 <CheckCircle size={18} />
-                {loading ? "Converting..." : "Convert to Invoice"}
+                {loading ? "..." : "Convert to Invoice"}
               </button>
             </div>
           )}
