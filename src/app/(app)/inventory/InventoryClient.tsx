@@ -48,6 +48,7 @@ interface InventoryClientProps {
   lowStockCount: number;
   totalValue: number;
   tenantName?: string;
+  canViewCost: boolean;
 }
 
 // ─── Sample data ──────────────────────────────────────────────────────────────
@@ -76,6 +77,7 @@ export default function InventoryClient({
   lowStockCount,
   totalValue,
   tenantName = "Nexpura",
+  canViewCost,
 }: InventoryClientProps) {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -241,6 +243,7 @@ export default function InventoryClient({
               <TableHead className="w-16"></TableHead>
               <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Name & SKU</TableHead>
               <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Metal & Stone</TableHead>
+              {canViewCost && <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-right">Cost</TableHead>}
               <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-right">Price</TableHead>
               <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-center">Stock</TableHead>
               <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Status</TableHead>
@@ -273,6 +276,11 @@ export default function InventoryClient({
                   <p className="text-sm text-stone-700">{item.metal_type || "—"}</p>
                   <p className="text-xs text-stone-400 mt-0.5">{item.stone_type || "—"}</p>
                 </TableCell>
+                {canViewCost && (
+                  <TableCell className="text-right text-sm text-stone-500">
+                    ${item.cost_price?.toLocaleString() || "—"}
+                  </TableCell>
+                )}
                 <TableCell className="text-right text-sm font-medium text-stone-900">
                   ${item.retail_price.toLocaleString()}
                 </TableCell>

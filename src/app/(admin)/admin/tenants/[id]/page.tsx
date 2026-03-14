@@ -97,6 +97,21 @@ export default async function TenantDetailPage({
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", id);
 
+  // Count inventory, repairs, invoices
+  const [{ count: inventoryCount }, { count: repairCount }, { count: invoiceCount }] = await Promise.all([
+    adminClient.from("inventory_items").select("id", { count: "exact", head: true }).eq("tenant_id", id),
+    adminClient.from("repairs").select("id", { count: "exact", head: true }).eq("tenant_id", id),
+    adminClient.from("invoices").select("id", { count: "exact", head: true }).eq("tenant_id", id),
+  ]);
+
+  // Fetch last 20 activity logs
+  const { data: activityLogs } = await adminClient
+    .from("staff_activity_logs")
+    .select("id, action, entity_type, entity_id, created_at, users(full_name)")
+    .eq("tenant_id", id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Back */}
@@ -155,9 +170,41 @@ export default async function TenantDetailPage({
           {/* Usage */}
           <div className="bg-white rounded-xl border border-stone-200 p-6">
             <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Usage</h2>
-            <InfoRow label="Team Members" value={userCount ?? 0} />
-            <InfoRow label="Customers" value={customerCount ?? 0} />
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Team Members", count: userCount ?? 0 },
+                { label: "Customers", count: customerCount ?? 0 },
+                { label: "Inventory Items", count: inventoryCount ?? 0 },
+                { label: "Repairs", count: repairCount ?? 0 },
+                { label: "Invoices", count: invoiceCount ?? 0 },
+              ].map((item) => (
+                <div key={item.label} className="bg-stone-50 rounded-lg p-3">
+                  <p className="text-xs text-stone-500 mb-1">{item.label}</p>
+                  <p className="text-xl font-bold text-stone-900">{item.count}</p>
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* Activity Log */}
+          {activityLogs && activityLogs.length > 0 && (
+            <div className="bg-white rounded-xl border border-stone-200 p-6">
+              <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Recent Activity</h2>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {activityLogs.map((log) => (
+                  <div key={log.id} className="flex items-start gap-2 py-1.5 border-b border-stone-100 last:border-0">
+                    <span className="text-xs text-stone-400 whitespace-nowrap mt-0.5 w-24 flex-shrink-0">
+                      {new Date(log.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                    </span>
+                    <span className="text-xs text-stone-700 flex-1">
+                      <span className="font-medium capitalize">{log.action?.replace(/_/g, " ")}</span>
+                      {log.entity_type && <span className="text-stone-400"> · {log.entity_type}</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right col: Actions */}

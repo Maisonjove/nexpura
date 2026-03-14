@@ -11,7 +11,7 @@ import {
 import { Globe, Link2, ShoppingCart, Copy, Check, ExternalLink } from "lucide-react";
 
 type WebsiteType = "hosted" | "connect" | "domain-guide";
-type Tab = "setup" | "branding" | "content" | "domain" | "preview";
+type Tab = "setup" | "branding" | "content" | "ai" | "domain" | "preview";
 
 interface WebsiteConfig {
   id?: string;
@@ -183,6 +183,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
   const [externalUrlInput, setExternalUrlInput] = useState(initial?.external_url || "");
   const [selectedPlatform, setSelectedPlatform] = useState(initial?.external_platform || "");
   const [copiedLink, setCopiedLink] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const previewUrl = config.subdomain
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/${config.subdomain}?preview=true`
@@ -262,6 +263,26 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
       await publishWebsite(newPublished);
       update("published", newPublished);
     });
+  }
+
+  async function handleAIAction(action: string) {
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai/website/site-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, currentConfig: config }),
+      });
+      const data = await res.json() as { suggestedConfig?: Partial<WebsiteConfig>; error?: string };
+      if (data.suggestedConfig) {
+        setConfig((prev) => ({ ...prev, ...data.suggestedConfig }));
+        setSaved(false);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   const TABS: { id: Tab; label: string }[] = [
@@ -1042,6 +1063,37 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
               <pre className="bg-stone-900 text-stone-100 text-xs rounded-xl p-4 overflow-x-auto leading-relaxed whitespace-pre-wrap">
                 {embedCode}
               </pre>
+            </div>
+          </div>
+
+          {/* Additional Widgets */}
+          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm space-y-4">
+            <h2 className="text-base font-semibold text-stone-900">Widget Library</h2>
+            <p className="text-sm text-stone-500">Add any of these widgets to your existing website.</p>
+            <div className="grid sm:grid-cols-2 gap-3">
+    { id: "passport", icon: "🛡️", label: "Passport Verification", desc: "Let customers verify their jewellery authenticity", path: "passport" },
+    { id: "enquiry", icon: "💬", label: "Enquiry Widget", desc: "Floating enquiry form for quick contact", path: "enquiry" },
+    { id: "appointment", icon: "📅", label: "Appointment Booking", desc: "Let customers book appointments online", path: "appointment" },
+  ].map((widget) => {
+    const widgetEmbed = `<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${tenantId}/${widget.path}" width="100%" height="500" frameborder="0" style="border-radius:12px;"></iframe>`;
+    return (
+      <div key={widget.id} className="border border-stone-200 rounded-xl p-4">
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <p className="font-medium text-stone-900 text-sm">{widget.icon} {widget.label}</p>
+            <p className="text-xs text-stone-500 mt-0.5">{widget.desc}</p>
+          </div>
+        </div>
+        <pre className="bg-stone-900 text-stone-300 text-xs rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap text-[10px] mb-2">{widgetEmbed}</pre>
+        <button
+          onClick={async () => { await navigator.clipboard.writeText(widgetEmbed); }}
+          className="w-full py-1.5 border border-stone-200 text-stone-600 text-xs rounded-lg hover:bg-stone-50 transition-colors"
+        >
+          Copy Embed Code
+        </button>
+      </div>
+    );
+  })}
             </div>
           </div>
 

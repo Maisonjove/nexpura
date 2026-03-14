@@ -16,6 +16,7 @@ type Preset = "7d" | "30d" | "3m" | "12m" | "custom";
 
 interface RevenueData {
   total: number;
+  totalCost: number;
   count: number;
   byMonth: { month: string; total: number }[];
 }
@@ -58,6 +59,7 @@ interface PaymentOverview {
 
 interface Props {
   tenantId: string;
+  canViewMargins: boolean;
 }
 
 function getPresetRange(preset: Preset): { from: string; to: string } {
@@ -100,7 +102,7 @@ function downloadCSV(csv: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export default function ReportsDateClient({ tenantId }: Props) {
+export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
   const [preset, setPreset] = useState<Preset>("30d");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -221,6 +223,20 @@ export default function ReportsDateClient({ tenantId }: Props) {
                   <p className="text-xs text-stone-500 mb-1">Invoices Paid</p>
                   <p className="text-2xl font-bold text-stone-900">{revenue.count}</p>
                 </div>
+                {canViewMargins && (
+                  <>
+                    <div className="bg-stone-50 rounded-xl p-4">
+                      <p className="text-xs text-stone-500 mb-1">Gross Profit</p>
+                      <p className="text-2xl font-bold text-[#8B7355]">{fmtCurrency(revenue.total - revenue.totalCost)}</p>
+                    </div>
+                    <div className="bg-stone-50 rounded-xl p-4">
+                      <p className="text-xs text-stone-500 mb-1">Margin %</p>
+                      <p className="text-2xl font-bold text-[#8B7355]">
+                        {(((revenue.total - revenue.totalCost) / (revenue.total || 1)) * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
               {revenue.byMonth.length > 0 && (
                 <div className="mt-4">

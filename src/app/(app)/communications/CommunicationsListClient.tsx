@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { resendEmailLog } from "./actions";
+import { RefreshCw } from "lucide-react";
 
 export interface Communication {
   id: string;
@@ -115,6 +117,7 @@ export default function CommunicationsListClient({ comms, emailLogs }: Props) {
                       <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Status</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Linked</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Sent</th>
+                      <th className="px-4 py-3" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -148,6 +151,20 @@ export default function CommunicationsListClient({ comms, emailLogs }: Props) {
                           )}
                         </td>
                         <td className="px-4 py-3 text-xs text-stone-400">{formatDate(log.sent_at || log.created_at)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={async () => {
+                              if (!confirm("Resend this email?")) return;
+                              const res = await resendEmailLog(log.id);
+                              if (res.error) alert(res.error);
+                              else alert("Email resent successfully");
+                            }}
+                            className="p-1.5 text-stone-400 hover:text-[#8B7355] transition-colors"
+                            title="Resend Email"
+                          >
+                            <RefreshCw size={14} />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

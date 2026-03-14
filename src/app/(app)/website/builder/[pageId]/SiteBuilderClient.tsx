@@ -19,6 +19,7 @@ const SECTION_TYPES = [
   { type: "enquiry_form", label: "Enquiry Form", icon: "💬" },
   { type: "repair_form", label: "Repair Form", icon: "🔧" },
   { type: "appointment_form", label: "Appointment Form", icon: "📅" },
+  { type: "policies", label: "Policies/Legal", icon: "⚖️" },
   { type: "faq", label: "FAQ", icon: "❓" },
   { type: "divider", label: "Divider", icon: "➖" },
 ];
@@ -35,6 +36,7 @@ const DEFAULT_CONTENT: Record<string, Record<string, unknown>> = {
   enquiry_form: { heading: "Send an Enquiry", enquiry_type: "general" },
   repair_form: { heading: "Repair Enquiry" },
   appointment_form: { heading: "Book an Appointment", appointment_types: ["Consultation", "Repair Drop-off", "Custom Design"] },
+  policies: { heading: "Our Policies", sections: [{ title: "Shipping", content: "Details about shipping..." }, { title: "Returns", content: "Details about returns..." }] },
   faq: { heading: "Frequently Asked Questions", items: [] },
   divider: { style: "line" },
 };

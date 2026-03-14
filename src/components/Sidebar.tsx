@@ -31,6 +31,7 @@ const navGroups = [
     label: 'FINANCIAL',
     items: [
       { name: 'Invoices', href: '/invoices', icon: FileText },
+      { name: 'Quotes', href: '/quotes', icon: FileText },
       { name: 'Expenses', href: '/expenses', icon: DollarSign },
       { name: 'Reports', href: '/reports', icon: BarChart2 },
     ],

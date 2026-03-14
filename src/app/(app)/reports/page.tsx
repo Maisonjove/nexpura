@@ -32,6 +32,7 @@ export default async function ReportsPage() {
   const tenantId = userData?.tenant_id ?? "";
 
   // Permission check
+  let canViewMargins = false;
   if (tenantId) {
     const allowed = await hasPermission(user.id, tenantId, "access_reports");
     if (!allowed) {
@@ -42,6 +43,7 @@ export default async function ReportsPage() {
         </div>
       );
     }
+    canViewMargins = await hasPermission(user.id, tenantId, "view_margins");
   }
 
   const admin = createAdminClient();
@@ -369,7 +371,7 @@ export default async function ReportsPage() {
       </div>
 
       {/* Date Range Reports */}
-      <ReportsDateClient tenantId={tenantId} />
+      <ReportsDateClient tenantId={tenantId} canViewMargins={canViewMargins} />
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

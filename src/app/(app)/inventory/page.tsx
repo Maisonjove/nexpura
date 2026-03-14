@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import InventoryClient from "./InventoryClient";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function InventoryPage() {
   const supabase = await createClient();
@@ -12,6 +13,7 @@ export default async function InventoryPage() {
     .single();
 
   const tenantId = userData?.tenant_id;
+  const canViewCost = tenantId && user ? await hasPermission(user.id, tenantId, "view_cost_price") : false;
 
   const [{ data: items }, { data: categories }] = await Promise.all([
     supabase
@@ -60,6 +62,7 @@ export default async function InventoryPage() {
       totalItems={totalItems}
       lowStockCount={lowStockCount}
       totalValue={totalValue}
+      canViewCost={canViewCost}
     />
   );
 }

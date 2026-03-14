@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PLAN_FEATURES } from "@/lib/features";
 
@@ -12,8 +12,24 @@ interface Subscription {
   status: string;
   trial_ends_at?: string | null;
   current_period_end?: string | null;
+  grace_period_ends_at?: string | null;
   stripe_customer_id?: string | null;
   stripe_sub_id?: string | null;
+  is_free_forever?: boolean;
+}
+
+interface BillingInvoice {
+  id: string;
+  amount_paid: number;
+  amount_due: number;
+  currency: string;
+  status: string | null;
+  invoice_pdf: string | null;
+  hosted_invoice_url: string | null;
+  created: number;
+  period_start: number;
+  period_end: number;
+  number: string | null;
 }
 
 interface BillingClientProps {
@@ -127,6 +143,20 @@ export default function BillingClient({
   const [selectedInterval, setSelectedInterval] = useState<Interval>("monthly");
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
   const [loadingPortal, setLoadingPortal] = useState(false);
+  const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  useEffect(() => {
+    if (subscription?.stripe_customer_id) {
+      setInvoicesLoading(true);
+      fetch("/api/billing/invoices")
+        .then((r) => r.json())
+        .then((d: { invoices?: BillingInvoice[] }) => { setInvoices(d.invoices ?? []); })
+        .catch(() => {})
+        .finally(() => setInvoicesLoading(false));
+    }
+  }, [subscription?.stripe_customer_id]);
 
   const currentPlan = (subscription?.plan ?? "basic") as Plan;
   const currentPlanDetails = PLAN_DETAILS[currentPlan];
@@ -181,6 +211,38 @@ export default function BillingClient({
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
+      {/* Status banners */}
+      {subscription?.status === "grace_period" && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-red-700">⚠️ Payment Required</p>
+            <p className="text-sm text-red-600 mt-0.5">
+              Payment required{subscription.grace_period_ends_at ? ` by ${formatDate(subscription.grace_period_ends_at)}` : ""}. Update your payment method to avoid suspension.
+            </p>
+          </div>
+          <button onClick={handleManageBilling} disabled={loadingPortal} className="flex-shrink-0 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
+            Update Payment →
+          </button>
+        </div>
+      )}
+      {subscription?.status === "suspended" && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-red-700">🔴 Account Suspended</p>
+            <p className="text-sm text-red-600 mt-0.5">Your account is suspended due to non-payment. Update your payment method to reactivate.</p>
+          </div>
+          <button onClick={handleManageBilling} disabled={loadingPortal} className="flex-shrink-0 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
+            Reactivate →
+          </button>
+        </div>
+      )}
+      {subscription?.is_free_forever && (
+        <div className="bg-[#8B7355]/10 border border-[#8B7355]/20 rounded-xl px-5 py-4">
+          <p className="text-sm font-semibold text-[#8B7355]">🎁 Free Account</p>
+          <p className="text-sm text-stone-600 mt-0.5">You have lifetime free access to Nexpura. No billing required.</p>
+        </div>
+      )}
+
       {/* Page header */}
       <div>
         <h1 className="font-semibold text-2xl font-semibold text-stone-900">
@@ -464,6 +526,90 @@ export default function BillingClient({
           </table>
         </div>
       </div>
+
+      {/* Billing History */}
+      {subscription?.stripe_customer_id && (
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-xl font-semibold text-stone-900">Billing History</h2>
+            <button
+              onClick={handleManageBilling}
+              disabled={loadingPortal}
+              className="text-xs text-[#8B7355] hover:underline"
+            >
+              Manage payment method →
+            </button>
+          </div>
+          {invoicesLoading ? (
+            <p className="text-sm text-stone-400">Loading invoices…</p>
+          ) : invoices.length === 0 ? (
+            <p className="text-sm text-stone-400">No invoices yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-stone-200">
+                    <th className="text-left pb-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Invoice</th>
+                    <th className="text-left pb-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Date</th>
+                    <th className="text-left pb-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Amount</th>
+                    <th className="text-left pb-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Status</th>
+                    <th className="text-right pb-3 text-xs font-medium text-stone-500 uppercase tracking-wide">PDF</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {invoices.map((inv) => (
+                    <tr key={inv.id}>
+                      <td className="py-3 font-mono text-xs text-stone-500">{inv.number || inv.id.slice(-8)}</td>
+                      <td className="py-3 text-stone-600">
+                        {new Date(inv.created * 1000).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                      </td>
+                      <td className="py-3 font-semibold text-stone-900">
+                        {new Intl.NumberFormat("en-AU", { style: "currency", currency: inv.currency || "AUD" }).format(inv.amount_paid || inv.amount_due)}
+                      </td>
+                      <td className="py-3">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
+                          inv.status === "paid" ? "bg-green-50 text-green-700" :
+                          inv.status === "open" ? "bg-amber-50 text-amber-700" :
+                          "bg-stone-100 text-stone-500"
+                        }`}>
+                          {inv.status || "—"}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right">
+                        {inv.invoice_pdf && (
+                          <a href={inv.invoice_pdf} target="_blank" rel="noopener noreferrer" className="text-xs text-[#8B7355] hover:underline">
+                            Download
+                          </a>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cancel subscription */}
+      {subscription?.stripe_sub_id && subscription.status === "active" && !subscription.is_free_forever && (
+        <div className="text-center">
+          {showCancelConfirm ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-5 inline-block">
+              <p className="text-sm font-semibold text-red-700 mb-2">Cancel your subscription?</p>
+              <p className="text-sm text-red-600 mb-4">You&apos;ll lose access at the end of the billing period.</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={() => setShowCancelConfirm(false)} className="px-4 py-2 border border-stone-200 text-stone-700 text-sm rounded-lg hover:bg-stone-50">Keep Subscription</button>
+                <button onClick={handleManageBilling} className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">Cancel via Portal</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setShowCancelConfirm(true)} className="text-sm text-stone-400 hover:text-stone-600 underline">
+              Cancel subscription
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Contact note */}
       <p className="text-center text-sm text-stone-400">

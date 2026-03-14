@@ -100,3 +100,41 @@ export async function sendCommunication(
 
   return { id: data.id };
 }
+
+export async function resendEmailLog(logId: string) {
+  let ctx;
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+
+  const { supabase, tenantId } = ctx;
+
+  const { data: log, error: logError } = await supabase
+    .from("email_logs")
+    .select("*")
+    .eq("id", logId)
+    .eq("tenant_id", tenantId)
+    .single();
+
+  if (logError || !log) return { error: "Log not found" };
+
+  try {
+    const { resend } = await import("@/lib/email/resend");
+    const { error: sendError } = await resend.emails.send({
+      from: "Nexpura <onboarding@resend.dev>",
+      to: [log.recipient_email],
+      subject: log.subject || "Re-sent message",
+      html: `<div><p>Re-sending previous message:</p><hr/><p>${log.subject}</p></div>`,
+    });
+    if (sendError) return { error: sendError.message };
+    
+    // Log re-send
+    await supabase.from("email_logs").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", logId);
+    
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
