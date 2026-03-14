@@ -26,6 +26,7 @@ interface Props {
   customerId: string | null;
   customerEmail: string | null;
   isOverdue: boolean;
+  invoiceId: string | null;
 }
 
 const PRIORITY_MAP: Record<string, { dot: string; text: string; bg: string }> =
@@ -51,6 +52,7 @@ export default function RepairDetailClient({
   customerId,
   customerEmail,
   isOverdue,
+  invoiceId,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -123,6 +125,21 @@ export default function RepairDetailClient({
           </svg>
           Print Ticket
         </a>
+
+        {/* Print Invoice */}
+        {invoiceId && (
+          <a
+            href={`/api/invoice/${invoiceId}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-white border border-stone-200 text-stone-900 rounded-lg hover:bg-stone-50 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print Invoice
+          </a>
+        )}
 
         {/* Create Invoice */}
         <Link

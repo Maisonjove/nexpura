@@ -36,6 +36,7 @@ interface Sale {
 interface Props {
   sale: Sale;
   items: SaleItem[];
+  initialInvoiceId?: string | null;
 }
 
 const STATUSES = ["quote", "confirmed", "paid", "completed", "refunded", "layby"];
@@ -57,12 +58,12 @@ function fmtCurrency(amount: number) {
   }).format(amount);
 }
 
-export default function SaleDetailClient({ sale, items }: Props) {
+export default function SaleDetailClient({ sale, items, initialInvoiceId }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showDelete, setShowDelete] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
-  const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(initialInvoiceId ?? null);
   const [passportMsgs, setPassportMsgs] = useState<Record<string, string>>({});
 
   function handleStatusChange(newStatus: string) {
@@ -273,15 +274,26 @@ export default function SaleDetailClient({ sale, items }: Props) {
               )}
             </div>
 
-            {/* View Invoice link */}
+            {/* View Invoice + Print Invoice */}
             {invoiceId && (
-              <div className="border-t border-stone-200 pt-4">
+              <div className="border-t border-stone-200 pt-4 space-y-2">
                 <Link
                   href={`/invoices/${invoiceId}`}
                   className="w-full inline-flex items-center justify-center gap-2 text-sm font-medium bg-[#52B788] text-white py-2 px-4 rounded-lg hover:bg-[#3d9068] transition-colors"
                 >
                   View Invoice
                 </Link>
+                <a
+                  href={`/api/invoice/${invoiceId}/pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 text-sm font-medium px-4 py-2.5 rounded-lg hover:border-stone-900 hover:text-stone-900 transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Print Invoice
+                </a>
               </div>
             )}
 

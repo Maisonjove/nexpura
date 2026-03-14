@@ -103,6 +103,15 @@ export default async function RepairDetailPage({
 
   if (!repair) notFound();
 
+  const { data: invoiceRow } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("repair_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const invoiceId = invoiceRow?.id ?? null;
+
   const { data: stageHistory } = await supabase
     .from("repair_stages")
     .select("*")
@@ -271,6 +280,7 @@ export default async function RepairDetailPage({
             customerId={customer?.id ?? null}
             customerEmail={customer?.email ?? null}
             isOverdue={!!isOverdue}
+            invoiceId={invoiceId}
           />
           <Link
             href={`/repairs/${id}/edit`}

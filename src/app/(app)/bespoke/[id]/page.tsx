@@ -66,6 +66,15 @@ export default async function BespokeJobDetailPage({
 
   if (!job) notFound();
 
+  const { data: invoiceRow } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("bespoke_job_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const invoiceId = invoiceRow?.id ?? null;
+
   const { data: stageHistory } = await supabase
     .from("bespoke_job_stages")
     .select("*")
@@ -290,6 +299,7 @@ export default async function BespokeJobDetailPage({
             customerName={job.customers?.full_name ?? null}
             customerId={job.customers?.id ?? null}
             isOverdue={!!isOverdue}
+            invoiceId={invoiceId}
           />
 
           {/* Edit button */}

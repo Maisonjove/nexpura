@@ -36,5 +36,14 @@ export default async function SaleDetailPage({
     .eq("sale_id", id)
     .order("created_at", { ascending: true });
 
-  return <SaleDetailClient sale={sale} items={items ?? []} />;
+  const { data: invoiceRow } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("sale_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const invoiceId = invoiceRow?.id ?? null;
+
+  return <SaleDetailClient sale={sale} items={items ?? []} initialInvoiceId={invoiceId} />;
 }
