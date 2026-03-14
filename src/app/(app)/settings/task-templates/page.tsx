@@ -286,7 +286,7 @@ export default function TaskTemplatesPage() {
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <button onClick={() => startEdit(t)} className="text-xs text-stone-400 hover:text-stone-900 px-2 py-1 rounded border border-stone-100 hover:bg-stone-50">Edit</button>
-                    <button onClick={() => deleteTemplate(id)} className="text-xs text-stone-300 hover:text-red-500 px-2 py-1">Delete</button>
+                    <button onClick={() => deleteTemplate(t.id)} className="text-xs text-stone-300 hover:text-red-500 px-2 py-1">Delete</button>
                   </div>
                 </div>
               )}

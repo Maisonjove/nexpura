@@ -17,14 +17,19 @@ export async function convertQuoteToInvoice(quoteId: string) {
 
   if (quoteError || !quote) throw new Error("Quote not found");
 
+  // Generate invoice number
+  const { data: numData } = await supabase.rpc("next_invoice_number", { p_tenant_id: quote.tenant_id });
+
   // Create invoice
   const invoiceData = {
     tenant_id: quote.tenant_id,
     customer_id: quote.customer_id,
-    items: quote.items,
-    total_amount: quote.total_amount,
+    invoice_number: numData,
+    total: quote.total_amount,
+    subtotal: quote.total_amount, // Assuming total is subtotal for now
     status: "draft",
     quote_id: quote.id,
+    created_by: user.id
   };
 
   const { data: invoice, error: invoiceError } = await supabase
@@ -35,11 +40,28 @@ export async function convertQuoteToInvoice(quoteId: string) {
 
   if (invoiceError) throw invoiceError;
 
+  // Add line items
+  const lineItems = quote.items.map((item: any) => ({
+    tenant_id: quote.tenant_id,
+    invoice_id: invoice.id,
+    description: item.description,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    line_total: item.quantity * item.unit_price
+  }));
+
+  const { error: itemsError } = await supabase
+    .from("invoice_line_items")
+    .insert(lineItems);
+
+  if (itemsError) throw itemsError;
+
   // Update quote status
   await supabase.from("quotes").update({ status: "converted" }).eq("id", quoteId);
 
   revalidatePath("/quotes");
   revalidatePath(`/quotes/${quoteId}`);
+  revalidatePath("/invoices");
   return invoice.id;
 }
 

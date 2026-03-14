@@ -34,7 +34,7 @@ export default async function POSPage() {
   // Fetch customers
   const { data: customers } = await admin
     .from("customers")
-    .select("id, full_name, email")
+    .select("id, full_name, email, store_credit")
     .eq("tenant_id", tenantId)
     .order("full_name");
 

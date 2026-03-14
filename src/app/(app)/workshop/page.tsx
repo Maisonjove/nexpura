@@ -112,7 +112,7 @@ export default async function WorkshopPage() {
                       {repair.item_description}
                     </Link>
                     <p className="text-xs text-stone-400 mt-0.5">
-                      {Array.isArray(repair.customers) ? repair.customers[0]?.full_name : repair.customers?.full_name}
+                      {Array.isArray(repair.customers) ? (repair.customers[0] as any)?.full_name : (repair.customers as any)?.full_name}
                     </p>
                   </div>
                   <div className="text-right">
@@ -151,7 +151,7 @@ export default async function WorkshopPage() {
                       {job.title}
                     </Link>
                     <p className="text-xs text-stone-400 mt-0.5">
-                      {Array.isArray(job.customers) ? job.customers[0]?.full_name : job.customers?.full_name}
+                      {Array.isArray(job.customers) ? (job.customers[0] as any)?.full_name : (job.customers as any)?.full_name}
                     </p>
                   </div>
                   <div className="text-right">

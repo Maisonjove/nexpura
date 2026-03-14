@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { Resend } from 'resend';
 import DailyTaskDigestEmail from '@/lib/email/templates/DailyTaskDigestEmail';
 
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // 1. Get all tenants with their timezone
   const { data: tenants, error: tenantError } = await supabase

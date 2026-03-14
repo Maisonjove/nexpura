@@ -44,11 +44,11 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
 
   const totalActiveValue = items
     .filter(i => i.status === 'active')
-    .reduce((sum, i) => sum + (Number(i.item_value) || 0), 0);
+    .reduce((sum, i) => sum + (Number(i.retail_value) || 0), 0);
   
   const soldCommission = items
     .filter(i => i.status === 'sold')
-    .reduce((sum, i) => sum + ((Number(i.item_value) || 0) * (Number(i.commission_rate) || 0) / 100), 0);
+    .reduce((sum, i) => sum + ((Number(i.retail_value) || 0) * (Number(i.commission_rate) || 0) / 100), 0);
 
   const activeMemos = items.filter((i) => i.memo_type === "memo" && i.status === "active").length;
   const activeCons = items.filter((i) => i.memo_type === "consignment" && i.status === "active").length;
@@ -218,7 +218,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
                       </div>
                     </td>
                     <td className="px-6 py-4 font-mono text-sm text-[#8B7355] font-medium">
-                      ${Number(i.item_value).toLocaleString()}
+                      ${Number(i.retail_value).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${STATUS_STYLES[i.status]}`}>
@@ -263,7 +263,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-stone-50 rounded-xl p-4 border border-stone-100">
                   <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Value</p>
-                  <p className="text-lg font-bold text-[#8B7355]">${Number(selectedItem.item_value).toLocaleString()}</p>
+                  <p className="text-lg font-bold text-[#8B7355]">${Number(selectedItem.retail_value).toLocaleString()}</p>
                 </div>
                 <div className="bg-stone-50 rounded-xl p-4 border border-stone-100">
                   <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Commission</p>
@@ -341,7 +341,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Value ($)</label>
-                    <input name="item_value" type="number" required className="w-full px-4 py-2 border rounded-xl" />
+                    <input name="retail_value" type="number" required className="w-full px-4 py-2 border rounded-xl" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Commission %</label>

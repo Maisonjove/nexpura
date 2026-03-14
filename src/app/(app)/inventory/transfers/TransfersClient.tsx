@@ -63,8 +63,11 @@ export default function TransfersClient({ tenantId, initialTransfers, locations,
     <div className="max-w-5xl mx-auto py-10 px-4 space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-stone-900">Stock Transfers</h1>
-          <p className="text-sm text-stone-500 mt-0.5">Move items between locations and track history</p>
+          <h1 className="text-2xl font-semibold text-stone-900 flex items-center gap-2">
+            Stock Transfers
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 mt-1">BETA</span>
+          </h1>
+          <p className="text-sm text-stone-500 mt-0.5">Move items between locations and track history. <span className="italic">Note: Advanced multi-store allocation is in Beta.</span></p>
         </div>
         <button
           onClick={() => setShowNew(true)}

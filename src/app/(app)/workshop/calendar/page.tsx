@@ -23,8 +23,8 @@ export default async function WorkshopCalendarPage() {
 
   // Fetch repairs and bespoke jobs
   const [{ data: repairs }, { data: bespoke }, { data: staff }] = await Promise.all([
-    admin.from("repairs").select("id, ticket_number, description, status, due_date, assigned_to, customers(full_name)").eq("tenant_id", tenantId).not("due_date", "is", null),
-    admin.from("bespoke_jobs").select("id, job_number, title, status, due_date, assigned_to, customers(full_name)").eq("tenant_id", tenantId).not("due_date", "is", null),
+    admin.from("repairs").select("id, ticket_number, description, status, due_date, assigned_to, customers(full_name)").eq("tenant_id", tenantId).not("due_date", "is", null) as any,
+    admin.from("bespoke_jobs").select("id, job_number, title, status, due_date, assigned_to, customers(full_name)").eq("tenant_id", tenantId).not("due_date", "is", null) as any,
     admin.from("users").select("id, full_name").eq("tenant_id", tenantId),
   ]);
 

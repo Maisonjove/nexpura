@@ -88,10 +88,10 @@ export default function CustomerDetailClient({
     setNoteSubmitting(false);
   }
 
-  const infoItem = (label: string, value: string | null | undefined, icon?: any) => (
+  const infoItem = (label: string, value: string | null | undefined, Icon?: any) => (
     <div key={label} className="flex flex-col gap-0.5">
       <dt className="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center gap-1.5">
-        {icon && <icon size={12} className="text-[#8B7355]" />}
+        {Icon && <Icon size={12} className="text-[#8B7355]" />}
         {label}
       </dt>
       <dd className="text-sm text-stone-900 font-medium">{value || "—"}</dd>

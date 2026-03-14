@@ -195,10 +195,10 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
 
   function saveUrl() {
     startTransition(async () => {
-      const fd = new FormData();
-      fd.set("external_url", urlInput);
-      fd.set("website_type", (config?.website_type as string) ?? "external");
-      await saveWebsiteConfig(fd);
+      await saveWebsiteConfig({
+        external_url: urlInput,
+        website_type: (config?.website_type as string) ?? "external"
+      });
       setSiteUrl(urlInput);
       setEditingUrl(false);
       setMsg("Site URL saved.");

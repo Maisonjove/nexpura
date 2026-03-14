@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, ExternalLink, RefreshCw, Key, Shield, ShoppingBag, Landmark } from "lucide-react";
+import { X, ExternalLink, RefreshCw, Key, Shield, ShoppingBag, Landmark, MessageSquare } from "lucide-react";
 
 export default function IntegrationsPage() {
   const [apiKey, setApiKey] = useState("np_live_51Msz7I9p2...xK8q");
@@ -11,37 +11,37 @@ export default function IntegrationsPage() {
     {
       id: "xero",
       title: "Xero",
-      description: "Sync your invoices, payments, and inventory adjustments with Xero accounting software.",
+      description: "Sync your invoices, payments, and inventory adjustments with Xero accounting software. (Currently in Beta with mock sync endpoints).",
       icon: Landmark,
       color: "bg-blue-500",
-      status: "disconnected",
-      actions: ["Connect Xero", "Export CSV for Xero"]
+      status: "Beta / Coming Soon",
+      actions: ["Connect Xero (Beta)", "Export CSV for Xero"]
     },
     {
       id: "insurance",
       title: "Jewelsure / Insurance",
-      description: "Direct integration for insurance claims and appraisals. Push valuations directly to policy providers.",
+      description: "Direct integration for insurance claims and appraisals. Push valuations directly to policy providers. (Setup Required)",
       icon: Shield,
       color: "bg-stone-800",
-      status: "connected",
+      status: "Setup Required",
       actions: ["Manage Settings", "Export Appraisal Data"]
     },
     {
       id: "ecommerce",
       title: "Ecommerce Sync",
-      description: "Connect Shopify, WooCommerce, or Squarespace to sync stock levels and orders automatically.",
+      description: "Connect Shopify, WooCommerce, or Squarespace to sync stock levels and orders automatically. (Beta Phase)",
       icon: ShoppingBag,
       color: "bg-green-600",
-      status: "beta",
+      status: "Beta",
       actions: ["Connect Store", "Webhook Settings"]
     },
     {
       id: "whatsapp",
       title: "WhatsApp Business",
-      description: "Send automated messages for repairs, invoices, and marketing campaigns directly via WhatsApp.",
+      description: "Send automated messages for repairs, invoices, and marketing campaigns directly via WhatsApp. (Provider setup required).",
       icon: MessageSquare,
       color: "bg-[#25D366]",
-      status: "new",
+      status: "Setup Required",
       actions: ["Connect Account", "Message Templates"]
     }
   ];
@@ -63,8 +63,8 @@ export default function IntegrationsPage() {
                 </div>
                 <div className="flex flex-col items-end">
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                    card.status === "connected" ? "bg-green-100 text-green-700" : 
-                    card.status === "beta" ? "bg-purple-100 text-purple-700" : "bg-stone-100 text-stone-600"
+                    card.status === "Setup Required" ? "bg-stone-100 text-stone-700" : 
+                    card.status.includes("Beta") ? "bg-purple-100 text-purple-700" : "bg-stone-100 text-stone-600"
                   }`}>
                     {card.status}
                   </span>
