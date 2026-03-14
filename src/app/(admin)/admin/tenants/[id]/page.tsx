@@ -213,6 +213,10 @@ export default async function TenantDetailPage({
             tenantId={id}
             currentPlan={sub?.plan ?? "basic"}
             currentStatus={sub?.status ?? "trialing"}
+            isFreeForever={!!tenant.is_free_forever}
+            gracePeriodEndsAt={sub?.grace_period_ends_at ?? null}
+            adminNotes={(tenant as Record<string, unknown>).admin_notes as string | null}
+            ownerEmail={owner?.email ?? null}
           />
         </div>
       </div>

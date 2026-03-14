@@ -30,9 +30,21 @@ export interface EmailLog {
   created_at: string;
 }
 
+export interface NotificationLog {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  read: boolean;
+  created_at: string;
+  users?: { full_name: string; email: string } | null;
+}
+
 interface Props {
   comms: Communication[];
   emailLogs: EmailLog[];
+  notifications: NotificationLog[];
 }
 
 const STATUS_COLOURS: Record<string, string> = {
@@ -62,7 +74,19 @@ function formatDate(dt: string) {
 
 type TabId = "emails" | "manual" | "notifications";
 
-export default function CommunicationsListClient({ comms, emailLogs }: Props) {
+const NOTIF_TYPE_ICONS: Record<string, string> = {
+  low_stock: "📦",
+  repair_status: "🔧",
+  bespoke_status: "💎",
+  invoice_paid: "✅",
+  new_enquiry: "💬",
+  passport_viewed: "🛡️",
+  trial_ending: "⏰",
+  payment_failed: "❌",
+  system: "🔔",
+};
+
+export default function CommunicationsListClient({ comms, emailLogs, notifications }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("emails");
 
   return (
@@ -95,6 +119,11 @@ export default function CommunicationsListClient({ comms, emailLogs }: Props) {
               {tab === "emails" && emailLogs.length > 0 && (
                 <span className="ml-2 bg-stone-100 text-stone-600 text-xs rounded-full px-2 py-0.5">
                   {emailLogs.length}
+                </span>
+              )}
+              {tab === "notifications" && notifications.length > 0 && (
+                <span className="ml-2 bg-stone-100 text-stone-600 text-xs rounded-full px-2 py-0.5">
+                  {notifications.length}
                 </span>
               )}
             </button>
@@ -225,10 +254,62 @@ export default function CommunicationsListClient({ comms, emailLogs }: Props) {
 
         {/* Notifications Tab */}
         {activeTab === "notifications" && (
-          <div className="px-5 py-12 text-center text-sm text-stone-400">
-            <p>In-app notifications appear in the notification bell.</p>
-            <p className="mt-2">Notification history coming soon.</p>
-          </div>
+          <>
+            {notifications.length === 0 ? (
+              <div className="px-5 py-12 text-center text-sm text-stone-400">
+                <p>🔔 No notifications yet</p>
+                <p className="mt-2 text-xs">Notifications appear here when triggered by platform events</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-stone-200 bg-stone-50">
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Type</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Title</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Message</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Recipient</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Read</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {notifications.map((notif) => (
+                      <tr key={notif.id} className={`hover:bg-stone-50 ${!notif.read ? "bg-[#8B7355]/5" : ""}`}>
+                        <td className="px-5 py-3">
+                          <span className="text-base">{NOTIF_TYPE_ICONS[notif.type] ?? "🔔"}</span>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-stone-900 max-w-48">
+                          <p className="truncate">{notif.title}</p>
+                          <span className="text-xs text-stone-400 font-mono">{notif.type}</span>
+                        </td>
+                        <td className="px-4 py-3 text-stone-500 max-w-56">
+                          <p className="truncate text-xs">{notif.body || "—"}</p>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-stone-500">
+                          {notif.users?.full_name || "All users"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${notif.read ? "bg-stone-100 text-stone-400" : "bg-[#8B7355]/10 text-[#8B7355]"}`}>
+                            {notif.read ? "Read" : "Unread"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-stone-400">{formatDate(notif.created_at)}</td>
+                        <td className="px-4 py-3">
+                          {notif.link && (
+                            <a href={notif.link} className="text-xs text-[#8B7355] hover:underline">
+                              View →
+                            </a>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

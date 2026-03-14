@@ -57,7 +57,7 @@ const navGroups = [
     items: [
       { name: 'Settings', href: '/settings', icon: Settings },
       { name: 'Printing', href: '/settings/printing', icon: Settings },
-      { name: 'Documents', href: '/settings/documents', icon: FileText },
+      { name: 'Documents', href: '/documents', icon: FileText },
       { name: 'Team', href: '/settings/team', icon: Users },
       { name: 'Numbering', href: '/settings/numbering', icon: FileText },
       { name: 'Import & Export', href: '/settings/import', icon: FileText },

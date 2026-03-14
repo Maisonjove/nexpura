@@ -71,6 +71,39 @@ export async function assignFreeForever(tenantId: string) {
   revalidatePath("/admin/tenants");
 }
 
+export async function saveTenantAdminNotes(tenantId: string, notes: string) {
+  const adminClient = await assertSuperAdmin();
+
+  const { error } = await adminClient
+    .from("tenants")
+    .update({ admin_notes: notes })
+    .eq("id", tenantId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/tenants/${tenantId}`);
+}
+
+export async function deleteTenant(tenantId: string) {
+  const adminClient = await assertSuperAdmin();
+
+  // Soft delete — mark tenant as deleted
+  const { error } = await adminClient
+    .from("tenants")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", tenantId);
+
+  if (error) throw new Error(error.message);
+
+  // Also cancel subscription
+  await adminClient
+    .from("subscriptions")
+    .update({ status: "canceled" })
+    .eq("tenant_id", tenantId);
+
+  revalidatePath("/admin/tenants");
+  revalidatePath("/admin");
+}
+
 export async function forcePaidGracePeriod(tenantId: string) {
   const adminClient = await assertSuperAdmin();
 

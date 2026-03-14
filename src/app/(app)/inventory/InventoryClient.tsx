@@ -88,6 +88,7 @@ export default function InventoryClient({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBatchPrint, setShowBatchPrint] = useState(false);
   const [printItem, setPrintItem] = useState<(typeof items)[0] | null>(null);
+  const [bulkAction, setBulkAction] = useState("");
 
   const useSampleData = items.length === 0;
 
@@ -139,6 +140,59 @@ export default function InventoryClient({
       barcode_value: i.barcode_value ?? null,
     }));
 
+  function exportLowStockCSV() {
+    const lowStock = (useSampleData ? SAMPLE_ITEMS : items).filter((item) => {
+      const t = item.low_stock_threshold ?? 1;
+      return item.quantity <= t;
+    });
+    const rows = [
+      ["SKU", "Name", "Quantity", "Threshold", "Retail Price", "Metal", "Stone"],
+      ...lowStock.map((i) => [
+        i.sku || "",
+        i.name,
+        i.quantity,
+        i.low_stock_threshold ?? 1,
+        i.retail_price,
+        i.metal_type || "",
+        i.stone_type || "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `low-stock-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportAllCSV() {
+    const allItems = useSampleData ? SAMPLE_ITEMS : filtered;
+    const rows = [
+      ["SKU", "Name", "Type", "Metal", "Stone", "Quantity", "Cost Price", "Retail Price", "Status"],
+      ...allItems.map((i) => [
+        i.sku || "",
+        i.name,
+        i.jewellery_type || i.item_type,
+        i.metal_type || "",
+        i.stone_type || "",
+        i.quantity,
+        i.cost_price ?? "",
+        i.retail_price,
+        i.status,
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `inventory-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const getStatusBadge = (quantity: number, threshold: number | null) => {
     if (quantity === 0) return <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">Out of Stock</Badge>;
     if (quantity <= (threshold ?? 1)) return <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">Low Stock</Badge>;
@@ -164,12 +218,72 @@ export default function InventoryClient({
       )}
 
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Inventory</h1>
-        <Link href="/inventory/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-10 px-4 py-2">
-          <Plus className="w-4 h-4 mr-2" /> Add Item
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button
+              className="inline-flex items-center gap-1.5 h-9 px-3 border border-stone-200 rounded-md text-sm text-stone-600 hover:bg-stone-50 transition-colors"
+              onClick={() => {
+                const menu = document.getElementById("export-menu");
+                if (menu) menu.classList.toggle("hidden");
+              }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export
+            </button>
+            <div id="export-menu" className="hidden absolute right-0 top-10 z-20 bg-white border border-stone-200 rounded-xl shadow-lg py-1 min-w-40">
+              <button
+                onClick={() => { exportAllCSV(); document.getElementById("export-menu")?.classList.add("hidden"); }}
+                className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
+              >
+                Export All (CSV)
+              </button>
+              <button
+                onClick={() => { exportLowStockCSV(); document.getElementById("export-menu")?.classList.add("hidden"); }}
+                className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
+              >
+                Export Low Stock (CSV)
+              </button>
+            </div>
+          </div>
+          <Link
+            href="/inventory/receive"
+            className="inline-flex items-center gap-1.5 h-9 px-3 border border-stone-200 rounded-md text-sm text-stone-600 hover:bg-stone-50 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
+            </svg>
+            Receive Stock
+          </Link>
+          <Link href="/inventory/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-9 px-4">
+            <Plus className="w-4 h-4 mr-2" /> Add Item
+          </Link>
+        </div>
       </div>
+
+      {/* BULK ACTIONS BAR */}
+      {selectedIds.size > 0 && !useSampleData && (
+        <div className="bg-[#8B7355]/10 border border-[#8B7355]/20 rounded-xl px-4 py-3 flex items-center gap-4">
+          <span className="text-sm font-medium text-[#8B7355]">{selectedIds.size} item{selectedIds.size > 1 ? "s" : ""} selected</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={() => setShowBatchPrint(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg hover:bg-stone-50 transition-colors"
+            >
+              <Printer className="w-3.5 h-3.5" /> Print Tags
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-stone-400 hover:text-stone-600"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* FILTER SECTION */}
       <div className="bg-white border border-stone-200 rounded-xl p-3 flex flex-wrap items-center gap-3 shadow-sm">

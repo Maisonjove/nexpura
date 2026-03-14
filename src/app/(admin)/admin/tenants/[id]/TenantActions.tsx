@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { changeTenantPlan, changeTenantStatus, assignFreeForever, forcePaidGracePeriod } from "@/app/(admin)/actions";
+import { changeTenantPlan, changeTenantStatus, assignFreeForever, forcePaidGracePeriod, saveTenantAdminNotes, deleteTenant } from "@/app/(admin)/actions";
+import { useRouter } from "next/navigation";
 
 interface TenantActionsProps {
   tenantId: string;
@@ -9,6 +10,8 @@ interface TenantActionsProps {
   currentStatus: string;
   isFreeForever?: boolean;
   gracePeriodEndsAt?: string | null;
+  adminNotes?: string | null;
+  ownerEmail?: string | null;
 }
 
 export default function TenantActions({
@@ -17,16 +20,23 @@ export default function TenantActions({
   currentStatus,
   isFreeForever = false,
   gracePeriodEndsAt,
+  adminNotes,
+  ownerEmail,
 }: TenantActionsProps) {
+  const router = useRouter();
   const [plan, setPlan] = useState(currentPlan);
   const [status, setStatus] = useState(currentStatus);
+  const [notes, setNotes] = useState(adminNotes ?? "");
   const [planPending, startPlanTransition] = useTransition();
   const [statusPending, startStatusTransition] = useTransition();
   const [freePending, startFreeTransition] = useTransition();
   const [forcePaidPending, startForcePaidTransition] = useTransition();
+  const [notesPending, startNotesPending] = useTransition();
+  const [deletePending, startDeleteTransition] = useTransition();
   const [planMsg, setPlanMsg] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [freeMsg, setFreeMsg] = useState("");
+  const [notesMsg, setNotesMsg] = useState("");
 
   function handlePlanSave() {
     startPlanTransition(async () => {
@@ -75,6 +85,30 @@ export default function TenantActions({
         setFreeMsg("Failed to start grace period");
       }
       setTimeout(() => setFreeMsg(""), 3000);
+    });
+  }
+
+  function handleSaveNotes() {
+    startNotesPending(async () => {
+      try {
+        await saveTenantAdminNotes(tenantId, notes);
+        setNotesMsg("Notes saved");
+      } catch {
+        setNotesMsg("Failed to save notes");
+      }
+      setTimeout(() => setNotesMsg(""), 3000);
+    });
+  }
+
+  function handleDelete() {
+    if (!confirm("Are you sure? This will soft-delete the tenant and cancel their subscription.")) return;
+    startDeleteTransition(async () => {
+      try {
+        await deleteTenant(tenantId);
+        router.push("/admin/tenants");
+      } catch {
+        setFreeMsg("Failed to delete tenant");
+      }
     });
   }
 
@@ -175,6 +209,51 @@ export default function TenantActions({
           {freeMsg}
         </p>
       )}
+
+      {/* Admin Notes */}
+      <div className="space-y-2 pt-2 border-t border-stone-200">
+        <label className="text-sm font-medium text-stone-900/70">Admin Notes</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={3}
+          placeholder="Internal notes about this tenant…"
+          className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 resize-none"
+        />
+        <div className="flex gap-2">
+          <button
+            onClick={handleSaveNotes}
+            disabled={notesPending}
+            className="flex-1 px-3 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] disabled:opacity-60"
+          >
+            {notesPending ? "Saving…" : "Save Notes"}
+          </button>
+          {ownerEmail && (
+            <a
+              href={`mailto:${ownerEmail}`}
+              className="px-3 py-2 border border-stone-200 text-stone-600 rounded-lg text-sm font-medium hover:bg-stone-50 text-center"
+            >
+              Email →
+            </a>
+          )}
+        </div>
+        {notesMsg && (
+          <p className={`text-xs ${notesMsg.includes("Failed") ? "text-red-500" : "text-[#8B7355]"}`}>
+            {notesMsg}
+          </p>
+        )}
+      </div>
+
+      {/* Danger zone */}
+      <div className="pt-2 border-t border-red-100">
+        <button
+          onClick={handleDelete}
+          disabled={deletePending}
+          className="w-full px-3 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+        >
+          {deletePending ? "Deleting…" : "🗑 Delete Tenant"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -40,6 +40,14 @@ interface Passport {
   is_public: boolean;
   verified_at: string | null;
   created_at: string;
+  // Valuation & insurance (added in migration 20260314)
+  insured_value?: number | null;
+  replacement_value?: number | null;
+  insurance_provider?: string | null;
+  insurance_policy_number?: string | null;
+  last_valuation_amount?: number | null;
+  last_valuation_date?: string | null;
+  last_valuation_by?: string | null;
 }
 
 interface PassportEvent {
@@ -224,6 +232,7 @@ export default function PassportDetailClient({
   const hasStone = passport.stone_type || passport.stone_carat || passport.stone_colour || passport.stone_clarity;
   const hasRing = passport.ring_size || passport.setting_style;
   const hasMetal = passport.metal_type || passport.metal_purity || passport.metal_weight_grams;
+  const hasValuation = passport.insured_value || passport.last_valuation_amount || passport.insurance_provider;
 
   return (
     <>
@@ -326,6 +335,36 @@ export default function PassportDetailClient({
               )}
             </div>
           </div>
+
+          {/* Valuation & Insurance */}
+          {hasValuation && (
+            <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+              <h2 className="font-semibold text-lg text-stone-900 mb-4">Valuation & Insurance</h2>
+              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {passport.insured_value && (
+                  <SpecRow label="Insured Value" value={`$${passport.insured_value.toLocaleString()}`} />
+                )}
+                {passport.replacement_value && (
+                  <SpecRow label="Replacement Value" value={`$${passport.replacement_value.toLocaleString()}`} />
+                )}
+                {passport.insurance_provider && (
+                  <SpecRow label="Insurer" value={passport.insurance_provider} />
+                )}
+                {passport.insurance_policy_number && (
+                  <SpecRow label="Policy #" value={passport.insurance_policy_number} />
+                )}
+                {passport.last_valuation_amount && (
+                  <SpecRow label="Last Valuation" value={`$${passport.last_valuation_amount.toLocaleString()}`} />
+                )}
+                {passport.last_valuation_date && (
+                  <SpecRow label="Valuation Date" value={new Date(passport.last_valuation_date).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })} />
+                )}
+                {passport.last_valuation_by && (
+                  <SpecRow label="Valued By" value={passport.last_valuation_by} />
+                )}
+              </dl>
+            </div>
+          )}
 
           {/* Event Timeline */}
           <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">

@@ -19,7 +19,7 @@ export default async function CommunicationsPage() {
   const tenantId = userData?.tenant_id;
   const admin = createAdminClient();
 
-  const [{ data: comms }, { data: emailLogs }] = await Promise.all([
+  const [{ data: comms }, { data: emailLogs }, { data: notifications }] = await Promise.all([
     supabase
       .from("communications")
       .select("id, type, subject, customer_name, customer_email, status, sent_at, created_at")
@@ -31,12 +31,25 @@ export default async function CommunicationsPage() {
       .eq("tenant_id", tenantId ?? "")
       .order("created_at", { ascending: false })
       .limit(100),
+    admin
+      .from("notifications")
+      .select("id, type, title, body, link, read, created_at, users(full_name, email)")
+      .eq("tenant_id", tenantId ?? "")
+      .order("created_at", { ascending: false })
+      .limit(100),
   ]);
+
+  // Normalize notifications - Supabase returns users as array from join, flatten
+  const normalizedNotifications = (notifications ?? []).map((n) => ({
+    ...n,
+    users: Array.isArray(n.users) ? (n.users[0] ?? null) : n.users,
+  }));
 
   return (
     <CommunicationsListClient
       comms={comms ?? []}
       emailLogs={emailLogs ?? []}
+      notifications={normalizedNotifications as import("./CommunicationsListClient").NotificationLog[]}
     />
   );
 }
