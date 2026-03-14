@@ -11,7 +11,7 @@ import {
 import { Globe, Link2, ShoppingCart, Copy, Check, ExternalLink } from "lucide-react";
 
 type WebsiteType = "hosted" | "connect" | "domain-guide";
-type Tab = "setup" | "branding" | "content" | "ai" | "domain" | "preview";
+type Tab = "setup" | "branding" | "content" | "ai" | "domain" | "advanced" | "preview";
 
 interface AISuggestions {
   suggestions?: string[];
@@ -48,6 +48,20 @@ interface WebsiteConfig {
   external_url?: string;
   external_platform?: string;
   domain_verified?: boolean;
+  // Advanced settings
+  announcement_bar?: string;
+  announcement_bar_enabled?: boolean;
+  enable_appointments?: boolean;
+  enable_repairs_enquiry?: boolean;
+  enable_whatsapp_chat?: boolean;
+  whatsapp_number?: string;
+  google_analytics_id?: string;
+  facebook_pixel_id?: string;
+  catalogue_show_sku?: boolean;
+  catalogue_show_weight?: boolean;
+  catalogue_show_metal?: boolean;
+  catalogue_show_stone?: boolean;
+  catalogue_grid_columns?: number;
 }
 
 interface Props {
@@ -194,6 +208,21 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
   const [aiResult, setAiResult] = useState<AISuggestions | null>(null);
   const [aiApplied, setAiApplied] = useState<string | null>(null);
 
+  // Advanced settings state
+  const [announcementEnabled, setAnnouncementEnabled] = useState(initial?.announcement_bar_enabled ?? false);
+  const [announcementText, setAnnouncementText] = useState(initial?.announcement_bar ?? "");
+  const [enableAppointments, setEnableAppointments] = useState(initial?.enable_appointments ?? true);
+  const [enableRepairsEnquiry, setEnableRepairsEnquiry] = useState(initial?.enable_repairs_enquiry ?? true);
+  const [enableWhatsapp, setEnableWhatsapp] = useState(initial?.enable_whatsapp_chat ?? false);
+  const [whatsappNumber, setWhatsappNumber] = useState(initial?.whatsapp_number ?? "");
+  const [gaId, setGaId] = useState(initial?.google_analytics_id ?? "");
+  const [fbPixelId, setFbPixelId] = useState(initial?.facebook_pixel_id ?? "");
+  const [catalogueShowSku, setCatalogueShowSku] = useState(initial?.catalogue_show_sku ?? false);
+  const [catalogueShowWeight, setCatalogueShowWeight] = useState(initial?.catalogue_show_weight ?? false);
+  const [catalogueShowMetal, setCatalogueShowMetal] = useState(initial?.catalogue_show_metal ?? true);
+  const [catalogueShowStone, setCatalogueShowStone] = useState(initial?.catalogue_show_stone ?? true);
+  const [catalogueColumns, setCatalogueColumns] = useState(initial?.catalogue_grid_columns ?? 3);
+
   const previewUrl = config.subdomain
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/${config.subdomain}?preview=true`
     : null;
@@ -312,6 +341,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
     { id: "branding", label: "Branding" },
     { id: "content", label: "Content" },
     { id: "ai", label: "✦ AI" },
+    { id: "advanced", label: "Advanced" },
     { id: "domain", label: "Domain" },
     { id: "preview", label: "Preview" },
   ];
@@ -1054,6 +1084,146 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Tab: Advanced ── */}
+          {activeTab === "advanced" && (
+            <div className="space-y-5">
+              {/* Announcement Bar */}
+              <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+                <h2 className="text-base font-semibold text-stone-900 mb-1">Announcement Bar</h2>
+                <p className="text-sm text-stone-500 mb-4">Show a banner at the top of your site — promotions, sale notices, store hours.</p>
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    onClick={() => { setAnnouncementEnabled(!announcementEnabled); update("announcement_bar_enabled", !announcementEnabled); }}
+                    className={`relative inline-flex w-10 h-5.5 rounded-full transition-colors ${announcementEnabled ? "bg-[#8B7355]" : "bg-stone-200"}`}
+                    aria-label="Toggle announcement bar"
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${announcementEnabled ? "translate-x-5" : ""}`} />
+                  </button>
+                  <span className="text-sm text-stone-700">{announcementEnabled ? "Enabled" : "Disabled"}</span>
+                </div>
+                {announcementEnabled && (
+                  <input
+                    value={announcementText}
+                    onChange={(e) => { setAnnouncementText(e.target.value); update("announcement_bar", e.target.value); }}
+                    placeholder="e.g. 🎉 Free shipping on orders over $200 · Shop now →"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                  />
+                )}
+              </div>
+
+              {/* Catalogue Display Options */}
+              <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+                <h2 className="text-base font-semibold text-stone-900 mb-1">Catalogue Display</h2>
+                <p className="text-sm text-stone-500 mb-4">Control what information appears on each product card.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Show SKU", val: catalogueShowSku, set: setCatalogueShowSku, field: "catalogue_show_sku" },
+                    { label: "Show Weight", val: catalogueShowWeight, set: setCatalogueShowWeight, field: "catalogue_show_weight" },
+                    { label: "Show Metal", val: catalogueShowMetal, set: setCatalogueShowMetal, field: "catalogue_show_metal" },
+                    { label: "Show Stone", val: catalogueShowStone, set: setCatalogueShowStone, field: "catalogue_show_stone" },
+                  ].map(({ label, val, set, field }) => (
+                    <label key={field} className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={val}
+                        onChange={(e) => { set(e.target.checked); update(field as keyof WebsiteConfig, e.target.checked); }}
+                        className="w-4 h-4 accent-[#8B7355] rounded"
+                      />
+                      <span className="text-sm text-stone-700">{label}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="mt-4">
+                  <label className="text-sm font-medium text-stone-700 block mb-1">Grid Columns</label>
+                  <div className="flex gap-2">
+                    {[2, 3, 4].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => { setCatalogueColumns(n); update("catalogue_grid_columns", n); }}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${catalogueColumns === n ? "border-[#8B7355] bg-[#8B7355]/5 text-[#8B7355]" : "border-stone-200 text-stone-600"}`}
+                      >
+                        {n} cols
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Features */}
+              <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+                <h2 className="text-base font-semibold text-stone-900 mb-1">Site Features</h2>
+                <p className="text-sm text-stone-500 mb-4">Enable or disable specific pages and features.</p>
+                <div className="space-y-3">
+                  {[
+                    { label: "Appointment booking", sub: "Let customers book appointments via your site", val: enableAppointments, set: setEnableAppointments, field: "enable_appointments" },
+                    { label: "Repair enquiries", sub: "Allow customers to submit repair enquiry forms", val: enableRepairsEnquiry, set: setEnableRepairsEnquiry, field: "enable_repairs_enquiry" },
+                    { label: "WhatsApp chat button", sub: "Floating WhatsApp icon on every page", val: enableWhatsapp, set: setEnableWhatsapp, field: "enable_whatsapp_chat" },
+                  ].map(({ label, sub, val, set, field }) => (
+                    <div key={field} className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={val}
+                        onChange={(e) => { set(e.target.checked); update(field as keyof WebsiteConfig, e.target.checked); }}
+                        className="mt-0.5 w-4 h-4 accent-[#8B7355] rounded"
+                      />
+                      <div>
+                        <div className="text-sm font-medium text-stone-800">{label}</div>
+                        <div className="text-xs text-stone-400">{sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {enableWhatsapp && (
+                    <div className="ml-7">
+                      <label className="text-xs text-stone-500 block mb-1">WhatsApp Number (with country code)</label>
+                      <input
+                        value={whatsappNumber}
+                        onChange={(e) => { setWhatsappNumber(e.target.value); update("whatsapp_number", e.target.value); }}
+                        placeholder="+61412345678"
+                        className="w-full max-w-xs px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Analytics */}
+              <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+                <h2 className="text-base font-semibold text-stone-900 mb-1">Analytics & Tracking</h2>
+                <p className="text-sm text-stone-500 mb-4">Add tracking to measure your site's performance.</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-stone-700 block mb-1">Google Analytics ID</label>
+                    <input
+                      value={gaId}
+                      onChange={(e) => { setGaId(e.target.value); update("google_analytics_id", e.target.value); }}
+                      placeholder="G-XXXXXXXXXX"
+                      className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-stone-700 block mb-1">Meta / Facebook Pixel ID</label>
+                    <input
+                      value={fbPixelId}
+                      onChange={(e) => { setFbPixelId(e.target.value); update("facebook_pixel_id", e.target.value); }}
+                      placeholder="1234567890"
+                      className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50"
+                >
+                  {saving ? "Saving…" : saved ? "✓ Saved" : "Save Advanced Settings"}
+                </button>
               </div>
             </div>
           )}

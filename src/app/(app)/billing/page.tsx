@@ -43,10 +43,22 @@ export default async function BillingPage() {
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", userData.tenant_id);
 
+  const { count: inventoryCount } = await supabase
+    .from("inventory")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", userData.tenant_id);
+
+  const { count: customerCount } = await supabase
+    .from("customers")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", userData.tenant_id);
+
   return (
     <BillingClient
       subscription={subscription}
       userCount={userCount ?? 0}
+      inventoryCount={inventoryCount ?? 0}
+      customerCount={customerCount ?? 0}
     />
   );
 }

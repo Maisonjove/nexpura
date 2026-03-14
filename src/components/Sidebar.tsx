@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Package, Wrench, Gem, ShoppingCart, Users, Truck,
   FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
   Settings, CreditCard, Globe, ExternalLink, Monitor, ListTodo,
-  RotateCcw, Gift, Sun
+  RotateCcw, Gift, Sun, ClipboardList, ArrowLeftRight, Star
 } from 'lucide-react';
 
 const navGroups = [
@@ -45,6 +45,9 @@ const navGroups = [
     label: 'TOOLS',
     items: [
       { name: 'Passports', href: '/passports', icon: ShieldCheck },
+      { name: 'Stocktakes', href: '/stocktakes', icon: ClipboardList },
+      { name: 'Memo & Consignment', href: '/memo', icon: ArrowLeftRight },
+      { name: 'Appraisals', href: '/appraisals', icon: Star },
       { name: 'Tasks', href: '/tasks', icon: ListTodo },
       { name: 'Enquiries', href: '/enquiries', icon: MessageSquare },
       { name: 'Communications', href: '/communications', icon: MessageSquare },
@@ -57,6 +60,7 @@ const navGroups = [
     items: [
       { name: 'Settings', href: '/settings', icon: Settings },
       { name: 'Printing', href: '/settings/printing', icon: Settings },
+      { name: 'Print Queue', href: '/print-queue', icon: FileText },
       { name: 'Documents', href: '/documents', icon: FileText },
       { name: 'Team', href: '/settings/team', icon: Users },
       { name: 'Numbering', href: '/settings/numbering', icon: FileText },

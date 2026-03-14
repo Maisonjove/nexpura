@@ -48,6 +48,20 @@ export interface WebsiteConfigData {
   external_platform?: string;
   custom_domain?: string;
   domain_verified?: boolean;
+  // Advanced settings
+  announcement_bar?: string;
+  announcement_bar_enabled?: boolean;
+  enable_appointments?: boolean;
+  enable_repairs_enquiry?: boolean;
+  enable_whatsapp_chat?: boolean;
+  whatsapp_number?: string;
+  google_analytics_id?: string;
+  facebook_pixel_id?: string;
+  catalogue_show_sku?: boolean;
+  catalogue_show_weight?: boolean;
+  catalogue_show_metal?: boolean;
+  catalogue_show_stone?: boolean;
+  catalogue_grid_columns?: number;
 }
 
 export async function getWebsiteConfig() {

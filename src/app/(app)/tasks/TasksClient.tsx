@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createTask, updateTask, deleteTask, getTaskComments, addTaskComment } from "./actions";
 import type { StaffTask, TaskComment } from "./actions";
+import TaskKanbanView from "./TaskKanbanView";
 
 const PRIORITY_COLOURS: Record<string, string> = {
   low: "bg-stone-100 text-stone-500",
@@ -59,6 +60,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<"my" | "all">("my");
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [showNewTask, setShowNewTask] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<StaffTask | null>(null);
@@ -267,12 +269,31 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
           >
             Workshop View
           </Link>
-          <button
-            onClick={() => setShowNewTask(true)}
-            className="px-3 py-1.5 bg-[#071A0D] text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-colors"
-          >
-            + New Task
-          </button>
+          <div className="flex items-center gap-2">
+            {/* View mode toggle */}
+            <div className="flex items-center bg-stone-100 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode("list")}
+                title="List view"
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === "list" ? "bg-white shadow-sm text-stone-900" : "text-stone-500"}`}
+              >
+                ☰ List
+              </button>
+              <button
+                onClick={() => setViewMode("kanban")}
+                title="Kanban board"
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === "kanban" ? "bg-white shadow-sm text-stone-900" : "text-stone-500"}`}
+              >
+                ⊞ Board
+              </button>
+            </div>
+            <button
+              onClick={() => setShowNewTask(true)}
+              className="px-3 py-1.5 bg-[#071A0D] text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-colors"
+            >
+              + New Task
+            </button>
+          </div>
         </div>
       </div>
 
@@ -480,12 +501,23 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
           )}
         </div>
 
+        {/* Kanban view */}
+        {viewMode === "kanban" ? (
+          <div className="p-4">
+            <TaskKanbanView
+              tasks={displayTasks}
+              teamMembers={teamMembers}
+              onTaskUpdate={() => router.refresh()}
+            />
+          </div>
+        ) : null}
+
         {/* Tasks list */}
-        {displayTasks.length === 0 ? (
+        {viewMode === "list" && displayTasks.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm text-stone-400">
             {activeTab === "my" ? "No tasks assigned to you" : "No tasks yet"}
           </div>
-        ) : (
+        ) : viewMode === "list" ? (
           <div className="divide-y divide-stone-100">
             {displayTasks.map((task) => {
               const overdue = isOverdue(task);
@@ -566,7 +598,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
               );
             })}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

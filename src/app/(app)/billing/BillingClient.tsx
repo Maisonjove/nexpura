@@ -35,6 +35,10 @@ interface BillingInvoice {
 interface BillingClientProps {
   subscription: Subscription | null;
   userCount: number;
+  inventoryCount?: number;
+  customerCount?: number;
+  repairCount?: number;
+  storageUsedMb?: number;
 }
 
 const PLAN_DETAILS: Record<
@@ -138,6 +142,10 @@ function CheckCell({ value }: { value: boolean | string }) {
 export default function BillingClient({
   subscription,
   userCount,
+  inventoryCount = 0,
+  customerCount = 0,
+  repairCount = 0,
+  storageUsedMb = 0,
 }: BillingClientProps) {
   const router = useRouter();
   const [selectedInterval, setSelectedInterval] = useState<Interval>("monthly");
@@ -316,33 +324,43 @@ export default function BillingClient({
           )}
         </div>
 
-        {/* Usage stats */}
-        <div className="mt-5 pt-5 border-t border-stone-200 grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div className="bg-stone-50 rounded-xl p-4">
-            <p className="text-xs text-stone-500 font-medium mb-1">Users</p>
-            <p className="text-lg font-bold text-stone-900">
-              {userCount}
-              <span className="text-stone-400 font-normal text-sm">
-                {" "}
-                / {maxUsers === null ? "∞" : maxUsers}
-              </span>
-            </p>
-          </div>
-          <div className="bg-stone-50 rounded-xl p-4">
-            <p className="text-xs text-stone-500 font-medium mb-1">Storage</p>
-            <p className="text-lg font-bold text-stone-900">
-              0 GB
-              <span className="text-stone-400 font-normal text-sm">
-                {" "}/ {PLAN_FEATURES[currentPlan]?.storageGB}GB
-              </span>
-            </p>
-          </div>
-          <div className="bg-stone-50 rounded-xl p-4">
-            <p className="text-xs text-stone-500 font-medium mb-1">Plan</p>
-            <p className="text-lg font-bold text-stone-900 capitalize">
-              {currentPlanDetails.name}
-            </p>
-          </div>
+        {/* Usage meters */}
+        <div className="mt-5 pt-5 border-t border-stone-200 space-y-3">
+          <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-3">Usage</p>
+          {(() => {
+            const storageGB = storageUsedMb / 1024;
+            const maxStorage = PLAN_FEATURES[currentPlan]?.storageGB ?? 5;
+            const storagePercent = Math.min((storageGB / maxStorage) * 100, 100);
+            const userMax = maxUsers ?? 999;
+            const userPercent = Math.min((userCount / userMax) * 100, 100);
+            return (
+              <div className="space-y-3">
+                {[
+                  { label: "Team Members", used: userCount, max: maxUsers === null ? "∞" : maxUsers, pct: maxUsers === null ? 0 : userPercent, warn: maxUsers !== null && userPercent > 80 },
+                  { label: "Storage", used: storageGB < 1 ? `${storageUsedMb} MB` : `${storageGB.toFixed(1)} GB`, max: `${maxStorage} GB`, pct: storagePercent, warn: storagePercent > 80 },
+                  { label: "Inventory Items", used: inventoryCount, max: "Unlimited", pct: 0, warn: false },
+                  { label: "Customers", used: customerCount, max: "Unlimited", pct: 0, warn: false },
+                ].map(({ label, used, max, pct, warn }) => (
+                  <div key={label}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-stone-500">{label}</span>
+                      <span className={`text-xs font-medium ${warn ? "text-amber-600" : "text-stone-700"}`}>
+                        {used} / {max}
+                      </span>
+                    </div>
+                    {pct > 0 && (
+                      <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${warn ? "bg-amber-400" : "bg-[#8B7355]"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
