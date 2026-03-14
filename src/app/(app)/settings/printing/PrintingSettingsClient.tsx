@@ -398,30 +398,27 @@ export default function PrintingSettingsClient({ tenantId, configs }: Props) {
 
               {/* Barcode Position */}
               <div>
-                <label className={label}>Barcode / QR Position</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-stone-400 mb-2">Horizontal</p>
-                    <div className="flex gap-1.5">
-                      {["left", "center", "right"].map((h) => (
-                        <button key={h} type="button" onClick={() => setLBarcodeH(h)}
-                          className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors capitalize ${lBarcodeH === h ? "bg-[#8B7355] text-white border-[#8B7355]" : "bg-white text-stone-600 border-stone-200 hover:border-[#8B7355]"}`}>
-                          {h}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-stone-400 mb-2">Vertical</p>
-                    <div className="flex gap-1.5">
-                      {["top", "bottom"].map((v) => (
-                        <button key={v} type="button" onClick={() => setLBarcodeV(v)}
-                          className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors capitalize ${lBarcodeV === v ? "bg-[#8B7355] text-white border-[#8B7355]" : "bg-white text-stone-600 border-stone-200 hover:border-[#8B7355]"}`}>
-                          {v}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <label className={label}>Barcode / QR Position (3×2 Grid)</label>
+                <div className="grid grid-cols-3 gap-1.5 w-full max-w-sm">
+                  {[
+                    { v: "top", h: "left" }, { v: "top", h: "center" }, { v: "top", h: "right" },
+                    { v: "bottom", h: "left" }, { v: "bottom", h: "center" }, { v: "bottom", h: "right" }
+                  ].map(pos => (
+                    <button
+                      key={`${pos.v}-${pos.h}`}
+                      type="button"
+                      onClick={() => { setLBarcodeV(pos.v); setLBarcodeH(pos.h); }}
+                      className={`aspect-[4/3] rounded-xl border-2 transition-all flex items-center justify-center ${
+                        lBarcodeV === pos.v && lBarcodeH === pos.h 
+                          ? "border-[#8B7355] bg-[#8B7355]/5 shadow-inner" 
+                          : "border-stone-100 hover:border-stone-200 bg-white shadow-sm"
+                      }`}
+                    >
+                      <div className={`w-4 h-2 rounded-sm ${
+                        lBarcodeV === pos.v && lBarcodeH === pos.h ? "bg-[#8B7355]" : "bg-stone-300"
+                      }`} />
+                    </button>
+                  ))}
                 </div>
               </div>
 

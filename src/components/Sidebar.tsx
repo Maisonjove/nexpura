@@ -6,7 +6,8 @@ import {
   LayoutDashboard, Package, Wrench, Gem, ShoppingCart, Users, Truck,
   FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
   Settings, CreditCard, Globe, ExternalLink, Monitor, ListTodo,
-  RotateCcw, Gift, Sun, ClipboardList, ArrowLeftRight, Star
+  RotateCcw, Gift, Sun, ClipboardList, ArrowLeftRight, Star,
+  Calendar, Bell, MapPin, Link as LinkIcon, Send
 } from 'lucide-react';
 
 const navGroups = [
@@ -20,10 +21,11 @@ const navGroups = [
     label: 'OPERATIONS',
     items: [
       { name: 'Inventory', href: '/inventory', icon: Package },
-      { name: 'Consignments', href: '/inventory?status=consignment', icon: Truck },
+      { name: 'Stock Transfers', href: '/inventory/transfers', icon: ArrowLeftRight },
       { name: 'POS', href: '/pos', icon: Monitor },
       { name: 'Repairs', href: '/repairs', icon: Wrench },
       { name: 'Bespoke', href: '/bespoke', icon: Gem },
+      { name: 'Workshop Calendar', href: '/workshop/calendar', icon: Calendar },
       { name: 'Sales', href: '/sales', icon: ShoppingCart },
       { name: 'Customers', href: '/customers', icon: Users },
       { name: 'Suppliers', href: '/suppliers', icon: Truck },
@@ -42,6 +44,13 @@ const navGroups = [
     ],
   },
   {
+    label: 'MARKETING',
+    items: [
+      { name: 'Campaigns', href: '/customers/campaigns', icon: Send },
+      { name: 'Service Reminders', href: '/settings/reminders', icon: Bell },
+    ],
+  },
+  {
     label: 'TOOLS',
     items: [
       { name: 'Passports', href: '/passports', icon: ShieldCheck },
@@ -53,12 +62,16 @@ const navGroups = [
       { name: 'Communications', href: '/communications', icon: MessageSquare },
       { name: 'AI Copilot', href: '/ai', icon: Bot },
       { name: 'Website', href: '/website', icon: Globe },
+      { name: 'Site Connect', href: '/website/connect', icon: Monitor },
     ],
   },
   {
     label: 'ADMIN',
     items: [
       { name: 'Settings', href: '/settings', icon: Settings },
+      { name: 'Locations', href: '/settings/locations', icon: MapPin },
+      { name: 'Integrations', href: '/settings/integrations', icon: LinkIcon },
+      { name: 'Task Templates', href: '/settings/task-templates', icon: ListTodo },
       { name: 'Printing', href: '/settings/printing', icon: Settings },
       { name: 'Print Queue', href: '/print-queue', icon: FileText },
       { name: 'Documents', href: '/documents', icon: FileText },

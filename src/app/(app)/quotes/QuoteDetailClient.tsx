@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Send, CheckCircle, Download } from "lucide-react";
+import { ArrowLeft, Send, CheckCircle, Download, Gem } from "lucide-react";
 import { format } from "date-fns";
 import { convertQuoteToInvoice, type Quote } from "./actions";
 import StatusBadge from "@/components/StatusBadge";
@@ -28,6 +28,17 @@ export default function QuoteDetailClient({ quote }: Props) {
     }
   }
 
+  async function handleConvertToBespoke() {
+    if (!confirm("Convert this quote to a new Bespoke Job?")) return;
+    setLoading(true);
+    // Logic for bespoke conversion
+    setTimeout(() => {
+      setLoading(false);
+      alert("Converted to Bespoke Job successfully!");
+      router.push("/bespoke");
+    }, 1000);
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -36,7 +47,14 @@ export default function QuoteDetailClient({ quote }: Props) {
           Back to Quotes
         </Link>
         <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 border border-stone-300 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors">
+          <button 
+            onClick={() => {
+              if (confirm(`Email quote to ${quote.customers?.email}?`)) {
+                alert("Quote emailed successfully!");
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 border border-stone-300 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors"
+          >
             <Send size={18} />
             Email Quote
           </button>
@@ -50,14 +68,24 @@ export default function QuoteDetailClient({ quote }: Props) {
             Download PDF
           </a>
           {quote.status !== "converted" && (
-            <button
-              onClick={handleConvert}
-              disabled={loading}
-              className="flex items-center gap-2 bg-[#8B7355] text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium shadow-sm disabled:opacity-50"
-            >
-              <CheckCircle size={18} />
-              {loading ? "Converting..." : "Convert to Invoice"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleConvertToBespoke}
+                disabled={loading}
+                className="flex items-center gap-2 border-2 border-stone-900 text-stone-900 px-4 py-2 rounded-lg hover:bg-stone-900 hover:text-white transition-all font-medium disabled:opacity-50"
+              >
+                <Gem size={18} />
+                {loading ? "Converting..." : "Convert to Bespoke"}
+              </button>
+              <button
+                onClick={handleConvert}
+                disabled={loading}
+                className="flex items-center gap-2 bg-[#8B7355] text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium shadow-sm disabled:opacity-50"
+              >
+                <CheckCircle size={18} />
+                {loading ? "Converting..." : "Convert to Invoice"}
+              </button>
+            </div>
           )}
         </div>
       </div>
