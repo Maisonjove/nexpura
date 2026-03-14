@@ -303,6 +303,7 @@ export default async function BespokeJobDetailPage({
             depositPaid={job.deposit_paid}
             customerName={job.customers?.full_name ?? null}
             customerId={job.customers?.id ?? null}
+            customerEmail={job.customers?.email ?? null}
             isOverdue={!!isOverdue}
             invoiceId={invoiceId}
           />

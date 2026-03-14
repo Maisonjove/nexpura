@@ -62,6 +62,26 @@ export default function RepairDetailClient({
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [quoteSending, setQuoteSending] = useState(false);
   const [quoteToast, setQuoteToast] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<null | "sent" | "error">(null);
+
+  async function handleEmailReceipt() {
+    setIsSending(true);
+    setEmailStatus(null);
+    try {
+      const res = await fetch(`/api/repair/${repairId}/email-receipt`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) {
+        setEmailStatus("sent");
+      } else {
+        setEmailStatus("error");
+      }
+    } catch {
+      setEmailStatus("error");
+    } finally {
+      setIsSending(false);
+    }
+  }
 
   const p = PRIORITY_MAP[priority] || PRIORITY_MAP.normal;
 
@@ -125,6 +145,28 @@ export default function RepairDetailClient({
           </svg>
           Print Ticket
         </a>
+
+        {/* Email Receipt to Customer */}
+        {customerEmail && (
+          <div>
+            <button
+              onClick={handleEmailReceipt}
+              disabled={isSending}
+              className="w-full flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 text-sm font-medium px-4 py-2.5 rounded-lg hover:border-[#8B7355] hover:text-[#8B7355] transition-all disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {isSending ? "Sending…" : "Email Receipt to Customer"}
+            </button>
+            {emailStatus === "sent" && (
+              <p className="mt-2 text-xs font-medium text-[#8B7355]">✓ Email sent to {customerEmail}</p>
+            )}
+            {emailStatus === "error" && (
+              <p className="mt-2 text-xs font-medium text-red-500">✗ Failed to send. Try again.</p>
+            )}
+          </div>
+        )}
 
         {/* Print Invoice */}
         {invoiceId && (
