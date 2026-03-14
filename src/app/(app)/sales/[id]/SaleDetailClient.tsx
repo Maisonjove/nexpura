@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateSaleStatus, deleteSale, generatePassportFromSaleItem } from "../actions";
+import { processRefund } from "../../refunds/actions";
 
 interface SaleItem {
   id: string;
@@ -65,6 +66,12 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId }: Prop
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | null>(initialInvoiceId ?? null);
   const [passportMsgs, setPassportMsgs] = useState<Record<string, string>>({});
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundItems, setRefundItems] = useState<Record<string, boolean>>({});
+  const [refundReason, setRefundReason] = useState("");
+  const [refundMethod, setRefundMethod] = useState("card");
+  const [refundNotes, setRefundNotes] = useState("");
+  const [refundError, setRefundError] = useState<string | null>(null);
 
   function handleStatusChange(newStatus: string) {
     startTransition(async () => {
@@ -87,6 +94,37 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId }: Prop
   function handleDelete() {
     startTransition(async () => {
       await deleteSale(sale.id);
+    });
+  }
+
+  function handleProcessRefund() {
+    setRefundError(null);
+    const selectedItems = items.filter((item) => refundItems[item.id]);
+    if (selectedItems.length === 0) {
+      setRefundError("Select at least one item to refund");
+      return;
+    }
+    if (!refundReason.trim()) {
+      setRefundError("Refund reason is required");
+      return;
+    }
+    startTransition(async () => {
+      const result = await processRefund({
+        originalSaleId: sale.id,
+        reason: refundReason,
+        refundMethod,
+        notes: refundNotes,
+        items: selectedItems.map((item) => ({
+          original_sale_item_id: item.id,
+          inventory_id: item.inventory_id ?? null,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          line_total: item.line_total,
+          restock: !!item.inventory_id,
+        })),
+      });
+      if (result?.error) setRefundError(result.error);
     });
   }
 
@@ -297,6 +335,25 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId }: Prop
               </div>
             )}
 
+            {/* Refund */}
+            {(sale.status === "paid" || sale.status === "completed") && items.length > 0 && (
+              <div className="border-t border-stone-200 pt-4">
+                <button
+                  onClick={() => {
+                    setRefundItems({});
+                    setRefundReason("");
+                    setRefundMethod("card");
+                    setRefundNotes("");
+                    setRefundError(null);
+                    setShowRefundModal(true);
+                  }}
+                  className="w-full text-xs text-amber-600 hover:text-amber-700 font-medium transition-colors text-left"
+                >
+                  Process Refund…
+                </button>
+              </div>
+            )}
+
             {/* Delete */}
             <div className="border-t border-stone-200 pt-4">
               {showDelete ? (
@@ -377,6 +434,111 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId }: Prop
           </div>
         </div>
       </div>
+
+      {/* Refund Modal */}
+      {showRefundModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-5 border-b border-stone-200 flex items-center justify-between sticky top-0 bg-white">
+              <h3 className="font-semibold text-stone-900 text-lg">Process Refund</h3>
+              <button onClick={() => setShowRefundModal(false)} className="text-stone-400 hover:text-stone-900 text-xl">✕</button>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* Select items */}
+              <div>
+                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">Select items to refund</p>
+                <div className="border border-stone-200 rounded-lg overflow-hidden">
+                  {items.map((item) => (
+                    <label key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 cursor-pointer border-b border-stone-100 last:border-0">
+                      <input
+                        type="checkbox"
+                        checked={!!refundItems[item.id]}
+                        onChange={(e) => setRefundItems((prev) => ({ ...prev, [item.id]: e.target.checked }))}
+                        className="rounded border-stone-300 text-[#8B7355] focus:ring-[#8B7355]"
+                      />
+                      <span className="flex-1 text-sm text-stone-900">{item.description}</span>
+                      <span className="text-sm font-medium text-stone-700">{fmtCurrency(item.line_total)}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">Reason *</label>
+                <input
+                  type="text"
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="e.g. Faulty item, Customer changed mind"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                />
+              </div>
+
+              {/* Refund method */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">Refund Method *</label>
+                <select
+                  value={refundMethod}
+                  onChange={(e) => setRefundMethod(e.target.value)}
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                >
+                  <option value="card">Card / EFTPOS</option>
+                  <option value="cash">Cash</option>
+                  <option value="store_credit">Store Credit</option>
+                  <option value="voucher">Gift Voucher</option>
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">Notes (optional)</label>
+                <textarea
+                  value={refundNotes}
+                  onChange={(e) => setRefundNotes(e.target.value)}
+                  rows={2}
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355] resize-none"
+                />
+              </div>
+
+              {/* Totals preview */}
+              {Object.values(refundItems).some(Boolean) && (
+                <div className="bg-red-50 border border-red-100 rounded-lg p-4">
+                  <p className="text-xs text-red-600 font-medium mb-1">Refund Total (estimated)</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    −{fmtCurrency(
+                      items
+                        .filter((i) => refundItems[i.id])
+                        .reduce((sum, i) => sum + i.line_total, 0) * 1.1
+                    )}
+                  </p>
+                  <p className="text-xs text-red-400 mt-1">Including GST. Stock will be automatically returned for inventory items.</p>
+                </div>
+              )}
+
+              {refundError && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{refundError}</p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleProcessRefund}
+                  disabled={isPending}
+                  className="flex-1 py-3 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+                >
+                  {isPending ? "Processing…" : "Process Refund"}
+                </button>
+                <button
+                  onClick={() => setShowRefundModal(false)}
+                  className="flex-1 py-3 bg-stone-100 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

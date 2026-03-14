@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createPOSSale } from "./actions";
+import { lookupVoucher } from "../vouchers/actions";
 import CameraScannerModal from "@/components/CameraScannerModal";
 
 interface InventoryItem {
@@ -50,7 +51,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   loose_stone: "Loose Stones",
 };
 
-type PaymentTab = "card" | "cash" | "split";
+type PaymentTab = "card" | "cash" | "split" | "voucher";
 type SaleResult = { id: string; saleNumber: string; invoiceId?: string };
 
 export default function POSClient({ tenantId, userId, inventoryItems, customers, taxRate }: Props) {
@@ -71,6 +72,12 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
   const [isPending, setIsPending] = useState(false);
   const [saleResult, setSaleResult] = useState<SaleResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Voucher state
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherData, setVoucherData] = useState<{ id: string; code: string; balance: number } | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [voucherLookupPending, setVoucherLookupPending] = useState(false);
 
   // Camera scanner state
   const [showCameraScanner, setShowCameraScanner] = useState(false);
@@ -228,6 +235,33 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
       return;
     }
     handleCharge("split");
+  }
+
+  async function handleVoucherLookup() {
+    if (!voucherCode.trim()) return;
+    setVoucherError(null);
+    setVoucherLookupPending(true);
+    try {
+      const result = await lookupVoucher(voucherCode.trim());
+      if (result.error) {
+        setVoucherError(result.error);
+        setVoucherData(null);
+      } else if (result.data) {
+        setVoucherData(result.data);
+        setVoucherError(null);
+      }
+    } finally {
+      setVoucherLookupPending(false);
+    }
+  }
+
+  async function handleVoucherCharge() {
+    if (!voucherData) return;
+    if (voucherData.balance < total) {
+      setError(`Voucher balance (${voucherData.balance.toFixed(2)}) is less than total. Use split payment.`);
+      return;
+    }
+    handleCharge("voucher");
   }
 
   function resetSale() {
@@ -577,7 +611,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
 
             {/* Tabs */}
             <div className="flex border-b border-stone-200">
-              {(["card", "cash", "split"] as PaymentTab[]).map((tab) => (
+              {(["card", "cash", "split", "voucher"] as PaymentTab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setPaymentTab(tab)}
@@ -675,6 +709,48 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                     className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                   >
                     {isPending ? "Processing…" : "Complete Split Payment"}
+                  </button>
+                </div>
+              )}
+
+              {paymentTab === "voucher" && (
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter voucher code…"
+                      value={voucherCode}
+                      onChange={(e) => { setVoucherCode(e.target.value.toUpperCase()); setVoucherData(null); setVoucherError(null); }}
+                      className="flex-1 border border-stone-200 rounded-xl px-4 py-3 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    />
+                    <button
+                      onClick={handleVoucherLookup}
+                      disabled={voucherLookupPending || !voucherCode.trim()}
+                      className="px-4 py-3 bg-stone-100 text-stone-700 rounded-xl text-sm font-medium hover:bg-stone-200 transition-colors disabled:opacity-50"
+                    >
+                      {voucherLookupPending ? "…" : "Look up"}
+                    </button>
+                  </div>
+                  {voucherError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{voucherError}</p>}
+                  {voucherData && (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-mono font-semibold text-green-800">{voucherData.code}</span>
+                        <span className="text-sm font-bold text-green-700">Balance: ${voucherData.balance.toFixed(2)}</span>
+                      </div>
+                      {voucherData.balance >= total ? (
+                        <p className="text-xs text-green-600">✓ Sufficient balance to cover ${total.toFixed(2)}</p>
+                      ) : (
+                        <p className="text-xs text-amber-600">⚠ Voucher balance is less than total. Use split payment to cover the difference.</p>
+                      )}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleVoucherCharge}
+                    disabled={isPending || !voucherData || voucherData.balance < total}
+                    className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                  >
+                    {isPending ? "Processing…" : "Redeem Voucher"}
                   </button>
                 </div>
               )}

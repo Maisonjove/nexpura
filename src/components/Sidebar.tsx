@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Wrench, Gem, ShoppingCart, Users, Truck,
   FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
-  Settings, CreditCard, Globe, ExternalLink, Monitor, ListTodo
+  Settings, CreditCard, Globe, ExternalLink, Monitor, ListTodo,
+  RotateCcw, Gift, Sun
 } from 'lucide-react';
 
 const navGroups = [
@@ -34,6 +35,9 @@ const navGroups = [
       { name: 'Invoices', href: '/invoices', icon: FileText },
       { name: 'Quotes', href: '/quotes', icon: FileText },
       { name: 'Expenses', href: '/expenses', icon: DollarSign },
+      { name: 'Gift Vouchers', href: '/vouchers', icon: Gift },
+      { name: 'Refunds', href: '/refunds', icon: RotateCcw },
+      { name: 'End of Day', href: '/eod', icon: Sun },
       { name: 'Reports', href: '/reports', icon: BarChart2 },
     ],
   },
