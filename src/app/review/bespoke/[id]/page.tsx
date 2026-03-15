@@ -64,6 +64,15 @@ export default async function ReviewBespokeDetailPage({
 
   const depositPaid = job.deposit_received ?? job.deposit_paid ?? false;
 
+  // Fetch attachments
+  const { data: attachments } = await adminClient
+    .from("job_attachments")
+    .select("id, file_name, file_url, caption, created_at")
+    .eq("job_type", "bespoke")
+    .eq("job_id", id)
+    .eq("tenant_id", TENANT_ID)
+    .order("created_at", { ascending: true });
+
   return (
     <BespokeCommandCenter
       job={{
@@ -97,6 +106,7 @@ export default async function ReviewBespokeDetailPage({
       tenantId={TENANT_ID}
       currency="AUD"
       readOnly={true}
+      attachments={attachments ?? []}
     />
   );
 }

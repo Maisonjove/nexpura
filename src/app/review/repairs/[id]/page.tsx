@@ -62,6 +62,15 @@ export default async function ReviewRepairDetailPage({
     }
   }
 
+  // Fetch attachments
+  const { data: attachments } = await adminClient
+    .from("job_attachments")
+    .select("id, file_name, file_url, caption, created_at")
+    .eq("job_type", "repair")
+    .eq("job_id", id)
+    .eq("tenant_id", TENANT_ID)
+    .order("created_at", { ascending: true });
+
   return (
     <RepairCommandCenter
       repair={{
@@ -89,6 +98,7 @@ export default async function ReviewRepairDetailPage({
       tenantId={TENANT_ID}
       currency="AUD"
       readOnly={true}
+      attachments={attachments ?? []}
     />
   );
 }
