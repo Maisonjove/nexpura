@@ -174,11 +174,15 @@ export default function PassportDetailClient({
   const [transferNotes, setTransferNotes] = useState("");
   const [transferLoading, setTransferLoading] = useState(false);
 
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-    `https://nexpura-delta.vercel.app/verify/${passport.passport_uid}`
-  )}`;
-  const qrDownloadUrl = `${qrUrl}&download=1`;
+  // Use current origin so QR/verify links work correctly in any environment
+  // (preview, staging, or production) — avoids hardcoded production domain leaking into review builds
+  const appOrigin = typeof window !== "undefined"
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_APP_URL ?? "https://nexpura-delta.vercel.app");
   const verifyUrl = `/verify/${passport.passport_uid}`;
+  const verifyFullUrl = `${appOrigin}/verify/${passport.passport_uid}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(verifyFullUrl)}`;
+  const qrDownloadUrl = `${qrUrl}&download=1`;
 
   async function handleTogglePublic() {
     const newVal = !isPublic;
@@ -425,7 +429,7 @@ export default function PassportDetailClient({
               className="mx-auto rounded-lg border border-stone-200"
             />
             <p className="text-xs text-gray-400 mt-3 break-all">
-              nexpura-delta.vercel.app/verify/{passport.passport_uid}
+              {appOrigin.replace("https://", "")}/verify/{passport.passport_uid}
             </p>
             <div className="flex flex-col gap-2 mt-4">
               <a

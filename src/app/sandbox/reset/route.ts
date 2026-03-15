@@ -594,55 +594,78 @@ export async function GET(request: NextRequest) {
     ])
   );
 
-  // TASKS
+  // TASKS — operational jeweller tasks only, no test/placeholder entries
   await safeInsert(() =>
     admin.from("tasks").insert([
       {
         tenant_id: TENANT_ID,
-        title: "Follow up David re: wedding bands deposit",
-        status: "pending",
+        title: "Send David Moufarrej updated CAD renders for wedding band approval",
+        status: "todo",
         priority: "high",
         due_date: "2026-03-15",
       },
       {
         tenant_id: TENANT_ID,
-        title: "Call Emma Williams re: estate appraisal report",
-        status: "pending",
-        priority: "normal",
-        due_date: "2026-03-15",
-      },
-      {
-        tenant_id: TENANT_ID,
-        title: "Order platinum wire stock — running low",
-        status: "pending",
+        title: "Confirm platinum grain delivery — B-0001 fabrication starts Monday",
+        status: "todo",
         priority: "high",
         due_date: "2026-03-15",
       },
       {
         tenant_id: TENANT_ID,
-        title: "Photograph new sapphire ring arrivals for website",
-        status: "pending",
+        title: "Arrange collection for Lina Haddad — R-0004 pearl restring complete",
+        status: "todo",
         priority: "normal",
+        due_date: "2026-03-15",
+      },
+      {
+        tenant_id: TENANT_ID,
+        title: "Call Emma re: CAD approval",
+        status: "todo",
+        priority: "high",
+        due_date: "2026-03-15",
+      },
+      {
+        tenant_id: TENANT_ID,
+        title: "Follow up INV-0003 — partial payment outstanding",
+        status: "todo",
+        priority: "high",
+        due_date: "2026-03-15",
+      },
+      {
+        tenant_id: TENANT_ID,
+        title: "QC repair R-0005 before collection",
+        status: "todo",
+        priority: "normal",
+        due_date: "2026-03-15",
+      },
+      {
+        tenant_id: TENANT_ID,
+        title: "Order 18k rose gold findings — running low",
+        status: "todo",
+        priority: "normal",
+        due_date: "2026-03-16",
+      },
+      {
+        tenant_id: TENANT_ID,
+        title: "Chase GIA cert for sapphire — needed before B-0003 quote is issued",
+        status: "todo",
+        priority: "normal",
+        due_date: "2026-03-17",
+      },
+      {
+        tenant_id: TENANT_ID,
+        title: "Update website catalogue with new stock arrivals",
+        status: "todo",
+        priority: "low",
         due_date: "2026-03-18",
       },
       {
         tenant_id: TENANT_ID,
-        title: "Update website pricing for gold items (+8% spot)",
-        status: "pending",
+        title: "Review insurance renewal — 3 store policy certificates expire end of month",
+        status: "todo",
         priority: "normal",
-        due_date: "2026-03-20",
-      },
-      {
-        tenant_id: TENANT_ID,
-        title: "Book valuations course — GIA Sydney",
-        status: "pending",
-        priority: "low",
-      },
-      {
-        tenant_id: TENANT_ID,
-        title: "Review insurance certificates — 3 due for renewal",
-        status: "pending",
-        priority: "normal",
+        due_date: "2026-03-28",
       },
     ])
   );
