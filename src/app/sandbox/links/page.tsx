@@ -112,7 +112,7 @@ const SECTIONS = [
     title: "Admin",
     color: "red",
     links: [
-      { label: "Admin Panel", path: "/admin", note: "Super-admin tenant management" },
+      { label: "Admin Audit Logs", path: "/admin/audit", note: "System-wide audit trail" },
     ],
   },
 ];
