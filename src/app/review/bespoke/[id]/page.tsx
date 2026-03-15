@@ -273,6 +273,7 @@ export default async function ReviewBespokeDetailPage({
             jobId={id}
             tenantId={TENANT_ID}
             existingImages={(job.images ?? []) as string[]}
+            readOnly={true}
           />
         </div>
 

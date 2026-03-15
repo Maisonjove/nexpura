@@ -60,6 +60,7 @@ type TeamTaskSummary = {
 
 interface DashboardClientProps {
   basePath?: string;
+  readOnly?: boolean;
   firstName: string;
   tenantName: string | null;
   salesThisMonthRevenue: number;
@@ -125,6 +126,7 @@ function formatStageLabel(stage: string) {
 
 export default function DashboardClient({
   basePath = "",
+  readOnly = false,
   firstName,
   tenantName,
   salesThisMonthRevenue,
@@ -155,24 +157,26 @@ export default function DashboardClient({
           {tenantName || 'Your Store'} · {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
         {/* Quick actions */}
-        <div className="inline-flex mt-4 bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm">
-          {[
-            { label: 'New Sale', href: `${basePath}/sales/new` },
-            { label: 'New Customer', href: `${basePath}/customers/new` },
-            { label: 'New Repair', href: `${basePath}/repairs/new` },
-            { label: 'New Job', href: `${basePath}/bespoke/new` },
-          ].map((action, i) => (
-            <a
-              key={action.label}
-              href={action.href}
-              className={`px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors ${
-                i < 3 ? 'border-r border-stone-200' : ''
-              }`}
-            >
-              {action.label}
-            </a>
-          ))}
-        </div>
+        {!readOnly && (
+          <div className="inline-flex mt-4 bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm">
+            {[
+              { label: 'New Sale', href: `${basePath}/sales/new` },
+              { label: 'New Customer', href: `${basePath}/customers/new` },
+              { label: 'New Repair', href: `${basePath}/repairs/new` },
+              { label: 'New Job', href: `${basePath}/bespoke/new` },
+            ].map((action, i) => (
+              <a
+                key={action.label}
+                href={action.href}
+                className={`px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors ${
+                  i < 3 ? 'border-r border-stone-200' : ''
+                }`}
+              >
+                {action.label}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Tasks Due Today ──────────────────────────────────────────────────── */}
@@ -314,9 +318,11 @@ export default function DashboardClient({
           {activeRepairs.length === 0 ? (
             <div className="px-6 py-10 text-center">
               <p className="text-sm text-stone-400">No active repairs yet</p>
-              <a href={`${basePath}/repairs/new`} className="mt-2 inline-block text-sm font-medium text-[#8B7355] hover:underline">
-                Log your first repair →
-              </a>
+              {!readOnly && (
+                <a href={`${basePath}/repairs/new`} className="mt-2 inline-block text-sm font-medium text-[#8B7355] hover:underline">
+                  Log your first repair →
+                </a>
+              )}
             </div>
           ) : (
             <table className="w-full">
@@ -361,9 +367,11 @@ export default function DashboardClient({
             {activeBespokeJobs.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-sm text-stone-400">No bespoke jobs yet</p>
-                <a href={`${basePath}/bespoke/new`} className="mt-1 inline-block text-sm font-medium text-[#8B7355] hover:underline">
-                  Create first job →
-                </a>
+                {!readOnly && (
+                  <a href={`${basePath}/bespoke/new`} className="mt-1 inline-block text-sm font-medium text-[#8B7355] hover:underline">
+                    Create first job →
+                  </a>
+                )}
               </div>
             ) : (
               <div className="space-y-3">

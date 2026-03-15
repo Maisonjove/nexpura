@@ -224,6 +224,7 @@ export default async function ReviewRepairDetailPage({
             repairId={id}
             tenantId={TENANT_ID}
             existingPhotos={(repair.intake_photos ?? []) as string[]}
+            readOnly={true}
           />
         </div>
         <div className="space-y-4">

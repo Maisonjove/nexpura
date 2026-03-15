@@ -10,6 +10,7 @@ interface Props {
   tenantId: string;
   primaryImage: string | null;
   additionalImages: string[];
+  readOnly?: boolean;
 }
 
 export default function PassportPhotos({
@@ -17,6 +18,7 @@ export default function PassportPhotos({
   tenantId,
   primaryImage,
   additionalImages,
+  readOnly = false,
 }: Props) {
   const [, startTransition] = useTransition();
   const router = useRouter();
@@ -34,6 +36,23 @@ export default function PassportPhotos({
       await savePassportImages(passportId, urls);
       router.refresh();
     });
+  }
+
+  if (readOnly) {
+    const allImages = [primaryImage, ...additionalImages].filter(Boolean) as string[];
+    if (allImages.length === 0) return null;
+    return (
+      <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+        <h2 className="text-base font-semibold text-stone-900 mb-4">Photos</h2>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+          {allImages.map((url, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={i} src={url} alt={i === 0 ? "Primary photo" : `Photo ${i + 1}`}
+              className={`w-full aspect-square object-cover rounded-lg border ${i === 0 ? "border-amber-300 ring-1 ring-amber-200" : "border-stone-200"}`} />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (

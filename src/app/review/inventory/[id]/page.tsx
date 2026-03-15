@@ -102,6 +102,7 @@ export default async function ReviewInventoryDetailPage({ params }: PageProps) {
           tenantId={TENANT_ID}
           primaryImage={rawItem.primary_image ?? null}
           additionalImages={(rawItem.images ?? []) as string[]}
+          readOnly={true}
         />
       </div>
     </>

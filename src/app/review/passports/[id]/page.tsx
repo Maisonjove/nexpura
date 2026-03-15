@@ -71,6 +71,7 @@ export default async function ReviewPassportDetailPage({
         tenantId={TENANT_ID}
         primaryImage={(passport as Passport).primary_image ?? null}
         additionalImages={((passport as Passport).images ?? []) as string[]}
+        readOnly={true}
       />
     </div>
   );
