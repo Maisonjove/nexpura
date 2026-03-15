@@ -126,9 +126,16 @@ export async function createSale(
     // ignore
   }
 
+  const { data: tenantData } = await supabase
+    .from("tenants")
+    .select("tax_rate")
+    .eq("id", tenantId)
+    .single();
+  const taxRate = tenantData?.tax_rate ?? 0.1;
+
   const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
   const discountAmount = num("discount_amount");
-  const taxAmount = Math.round((subtotal - discountAmount) * 0.1 * 100) / 100;
+  const taxAmount = Math.round((subtotal - discountAmount) * taxRate * 100) / 100;
   const total = subtotal - discountAmount + taxAmount;
 
   const { data: sale, error: saleError } = await supabase

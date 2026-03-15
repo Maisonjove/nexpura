@@ -260,7 +260,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId }: Prop
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-stone-500">GST (10%)</span>
+                <span className="text-stone-500">Tax</span>
                 <span className="text-stone-900">{fmtCurrency(sale.tax_amount)}</span>
               </div>
               <div className="flex justify-between font-semibold border-t border-stone-200 pt-2">
@@ -512,7 +512,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId }: Prop
                         .reduce((sum, i) => sum + i.line_total, 0) * 1.1
                     )}
                   </p>
-                  <p className="text-xs text-red-400 mt-1">Including GST. Stock will be automatically returned for inventory items.</p>
+                  <p className="text-xs text-red-400 mt-1">Including tax. Stock will be automatically returned for inventory items.</p>
                 </div>
               )}
 

@@ -70,10 +70,10 @@ function FieldLabel({
   );
 }
 
-function fmtCurrency(amount: number) {
+function fmtCurrency(amount: number, currency: string = "AUD") {
   return new Intl.NumberFormat("en-AU", {
     style: "currency",
-    currency: "AUD",
+    currency: currency,
     minimumFractionDigits: 2,
   }).format(amount);
 }
@@ -82,7 +82,13 @@ function fmtCurrency(amount: number) {
 // Main Component
 // ────────────────────────────────────────────────────────────────
 
-export default function SaleForm() {
+interface SaleFormProps {
+  taxRate?: number;
+  taxName?: string;
+  currency?: string;
+}
+
+export default function SaleForm({ taxRate = 0.1, taxName = "GST", currency = "AUD" }: SaleFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -116,7 +122,7 @@ export default function SaleForm() {
   }
 
   const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
-  const taxAmount = Math.round((subtotal - discountAmount) * 0.1 * 100) / 100;
+  const taxAmount = Math.round((subtotal - discountAmount) * taxRate * 100) / 100;
   const total = subtotal - discountAmount + taxAmount;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -243,7 +249,7 @@ export default function SaleForm() {
                 />
               </div>
               <div className="col-span-3 sm:col-span-2 text-right text-sm font-medium text-stone-900">
-                {fmtCurrency(item.line_total)}
+                {fmtCurrency(item.line_total, currency)}
               </div>
               <div className="col-span-1 flex justify-end">
                 <button
@@ -276,7 +282,7 @@ export default function SaleForm() {
         <div className="border-t border-stone-200 pt-4 space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-stone-500">Subtotal</span>
-            <span className="font-medium text-stone-900">{fmtCurrency(subtotal)}</span>
+            <span className="font-medium text-stone-900">{fmtCurrency(subtotal, currency)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <label htmlFor="discount_amount" className="text-stone-500">
@@ -295,13 +301,13 @@ export default function SaleForm() {
             />
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-stone-500">GST (10%)</span>
-            <span className="font-medium text-stone-900">{fmtCurrency(taxAmount)}</span>
+            <span className="text-stone-500">{taxName} ({(taxRate * 100).toFixed(0)}%)</span>
+            <span className="font-medium text-stone-900">{fmtCurrency(taxAmount, currency)}</span>
           </div>
           <div className="flex items-center justify-between border-t border-stone-200 pt-2">
             <span className="font-semibold text-stone-900">Total</span>
             <span className="font-semibold text-lg font-semibold text-stone-900">
-              {fmtCurrency(total)}
+              {fmtCurrency(total, currency)}
             </span>
           </div>
         </div>
