@@ -81,8 +81,7 @@ export async function addRepairLineItem(
     inventory_id: item.inventoryId ?? null,
     quantity: item.qty,
     unit_price: item.unitPrice,
-    tax_amount: item.unitPrice * item.qty * taxRate,
-    discount_amount: 0,
+    discount_pct: 0,
     total: item.unitPrice * item.qty,
   });
   if (liErr) return { error: liErr.message };

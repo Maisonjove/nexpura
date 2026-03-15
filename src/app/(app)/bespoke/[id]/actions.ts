@@ -67,6 +67,7 @@ export async function addBespokeLineItem(
   const { data: invRow } = await admin.from("invoices").select("tax_rate").eq("id", invoiceId).single();
   const taxRate = invRow?.tax_rate ?? 0.1;
 
+  // Insert line item
   const { error: liErr } = await admin.from("invoice_line_items").insert({
     tenant_id: tenantId,
     invoice_id: invoiceId,
@@ -74,8 +75,7 @@ export async function addBespokeLineItem(
     inventory_id: item.inventoryId ?? null,
     quantity: item.qty,
     unit_price: item.unitPrice,
-    tax_amount: item.unitPrice * item.qty * taxRate,
-    discount_amount: 0,
+    discount_pct: 0,
     total: item.unitPrice * item.qty,
   });
   if (liErr) return { error: liErr.message };
