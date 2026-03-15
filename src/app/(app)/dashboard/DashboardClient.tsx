@@ -28,10 +28,27 @@ type ActiveBespokeJob = {
   due_date: string | null;
 };
 
-type AlertItem = {
-  text: string;
-  href: string;
-  urgency: "red" | "amber";
+type LowStockItem = {
+  id: string;
+  name: string;
+  sku: string | null;
+  quantity: number;
+};
+
+type OverdueRepair = {
+  id: string;
+  repairNumber: string;
+  item: string;
+  customer: string | null;
+  daysOverdue: number;
+};
+
+type ReadyItem = {
+  id: string;
+  number: string;
+  label: string;
+  customer: string | null;
+  type: "repair" | "bespoke";
 };
 
 interface DashboardClientProps {
@@ -43,8 +60,9 @@ interface DashboardClientProps {
   activeJobsCount: number;
   totalOutstanding: number;
   overdueInvoiceCount: number;
-  lowStockCount: number;
-  overdueRepairsCount: number;
+  lowStockItems: LowStockItem[];
+  overdueRepairs: OverdueRepair[];
+  readyForPickup: ReadyItem[];
   recentActivity: ActivityItem[];
   myTasks: {
     id: string;
@@ -69,7 +87,7 @@ function fmtCurrency(amount: number, currency: string) {
 
 function getStageBadgeClasses(stage: string) {
   switch (stage) {
-    case "in_progress": return "text-amber-700 bg-amber-50 border border-amber-200";
+    case "in_progress": return "text-blue-700 bg-blue-50 border border-blue-200";
     case "ready": return "text-emerald-700 bg-emerald-50 border border-emerald-200";
     case "quoted":
     case "assessed": return "text-amber-700 bg-amber-50 border border-amber-200";
@@ -78,7 +96,7 @@ function getStageBadgeClasses(stage: string) {
   }
 }
 
-function formatStagLabel(stage: string) {
+function formatStageLabel(stage: string) {
   const labels: Record<string, string> = {
     intake: "Intake",
     assessed: "Awaiting Approval",
@@ -104,38 +122,15 @@ export default function DashboardClient({
   activeJobsCount,
   totalOutstanding,
   overdueInvoiceCount,
-  lowStockCount,
-  overdueRepairsCount,
+  lowStockItems,
+  overdueRepairs,
+  readyForPickup,
   recentActivity,
   myTasks,
   activeRepairs,
   activeBespokeJobs,
   currency,
 }: DashboardClientProps) {
-  // Build real alerts from live data
-  const alerts: AlertItem[] = [];
-  if (overdueRepairsCount > 0) {
-    alerts.push({
-      text: `${overdueRepairsCount} repair${overdueRepairsCount !== 1 ? "s" : ""} past due date`,
-      href: "/repairs",
-      urgency: "red",
-    });
-  }
-  if (lowStockCount > 0) {
-    alerts.push({
-      text: `${lowStockCount} item${lowStockCount !== 1 ? "s" : ""} below minimum stock`,
-      href: "/inventory",
-      urgency: "amber",
-    });
-  }
-  if (overdueInvoiceCount > 0) {
-    alerts.push({
-      text: `${overdueInvoiceCount} invoice${overdueInvoiceCount !== 1 ? "s" : ""} overdue`,
-      href: "/invoices",
-      urgency: "red",
-    });
-  }
-
   return (
     <div className="space-y-6">
       {/* Greeting */}
@@ -167,15 +162,15 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {/* Task Section */}
-      {myTasks.length > 0 && (
+      {/* ── Tasks Due Today ──────────────────────────────────────────────────── */}
+      {myTasks.length > 0 ? (
         <div className="bg-[#FAF9F6] border border-[#8B7355]/20 rounded-xl p-6 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-sm font-bold text-stone-800 uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#8B7355] animate-pulse"></span>
-              My Tasks For Today
+              <span className="w-2 h-2 rounded-full bg-[#8B7355] animate-pulse" />
+              Tasks Due Today ({myTasks.length})
             </h2>
-            <a href="/tasks" className="text-xs font-medium text-[#8B7355] hover:underline">Go to Tasks →</a>
+            <a href="/tasks" className="text-xs font-medium text-[#8B7355] hover:underline">View all tasks →</a>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {myTasks.map(task => (
@@ -189,36 +184,80 @@ export default function DashboardClient({
                     }`}>
                       {task.priority}
                     </span>
-                    {task.due_date && <span className="text-[10px] text-stone-400 font-medium">Due {new Date(task.due_date).toLocaleDateString()}</span>}
                   </div>
                   <p className="text-sm font-semibold text-stone-800">{task.title}</p>
                 </div>
                 <div className="mt-4 flex justify-end">
-                  <a href={`/tasks/${task.id}`} className="text-[11px] font-medium text-stone-400 hover:text-[#8B7355]">Update Status</a>
+                  <a href={`/tasks`} className="text-[11px] font-medium text-stone-400 hover:text-[#8B7355]">Update →</a>
                 </div>
               </div>
             ))}
           </div>
         </div>
+      ) : (
+        <div className="bg-white border border-stone-200 rounded-xl p-5 flex items-center gap-3 shadow-sm">
+          <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-500">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-stone-700">No tasks due today</p>
+            <a href="/tasks" className="text-xs text-[#8B7355] hover:underline">View all tasks →</a>
+          </div>
+        </div>
       )}
 
-      {/* KPI Grid */}
+      {/* ── KPI Grid ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-6">
         {[
-          { label: 'Sales This Month', value: fmtCurrency(salesThisMonthRevenue, currency), sub: `${salesThisMonthCount} sales` },
-          { label: 'Active Repairs', value: String(activeRepairsCount), sub: `${overdueRepairsCount} overdue` },
+          { label: 'Sales This Month', value: fmtCurrency(salesThisMonthRevenue, currency), sub: `${salesThisMonthCount} sale${salesThisMonthCount !== 1 ? 's' : ''}` },
+          { label: 'Active Repairs', value: String(activeRepairsCount), sub: overdueRepairs.length > 0 ? `${overdueRepairs.length} overdue` : 'all on track', alert: overdueRepairs.length > 0 },
           { label: 'Bespoke Jobs', value: String(activeJobsCount), sub: 'in production' },
-          { label: 'Outstanding', value: fmtCurrency(totalOutstanding, currency), sub: `${overdueInvoiceCount} overdue` },
+          { label: 'Outstanding', value: fmtCurrency(totalOutstanding, currency), sub: `${overdueInvoiceCount} overdue`, alert: overdueInvoiceCount > 0 },
         ].map((kpi) => (
           <div key={kpi.label} className="bg-white rounded-lg border border-stone-200 p-6">
             <p className="text-xs font-medium text-stone-400 uppercase tracking-widest">{kpi.label}</p>
-            <p className="text-2xl font-semibold text-stone-900 mt-1">{kpi.value}</p>
-            <p className="text-xs text-stone-400 mt-0.5">{kpi.sub}</p>
+            <p className={`text-2xl font-semibold mt-1 ${(kpi as { alert?: boolean }).alert ? 'text-red-600' : 'text-stone-900'}`}>{kpi.value}</p>
+            <p className={`text-xs mt-0.5 ${(kpi as { alert?: boolean }).alert ? 'text-red-400' : 'text-stone-400'}`}>{kpi.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Operations Grid */}
+      {/* ── Ready for Pickup ─────────────────────────────────────────────────── */}
+      {readyForPickup.length > 0 && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-sm font-bold text-emerald-800 uppercase tracking-widest flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              Ready for Customer Pickup ({readyForPickup.length})
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {readyForPickup.map((item) => (
+              <a
+                key={`${item.type}-${item.id}`}
+                href={`/${item.type === 'repair' ? 'repairs' : 'bespoke'}/${item.id}`}
+                className="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 border border-emerald-100 hover:border-emerald-300 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                    {item.type === 'repair' ? 'Repair' : 'Bespoke'}
+                  </span>
+                  <span className="text-sm font-mono text-stone-600">{item.number}</span>
+                  <span className="text-sm text-stone-800 font-medium">{item.label}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-stone-500">{item.customer || 'No customer'}</span>
+                  <span className="text-xs text-emerald-600 font-semibold">→</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Operations Grid ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-6">
         {/* Repairs Table */}
         <div className="col-span-2 bg-white rounded-lg border border-stone-200 overflow-hidden">
@@ -230,7 +269,7 @@ export default function DashboardClient({
             <div className="px-6 py-10 text-center">
               <p className="text-sm text-stone-400">No active repairs yet</p>
               <a href="/repairs/new" className="mt-2 inline-block text-sm font-medium text-[#8B7355] hover:underline">
-                Create your first repair →
+                Log your first repair →
               </a>
             </div>
           ) : (
@@ -251,7 +290,7 @@ export default function DashboardClient({
                       <td className="px-4 py-3.5 text-sm text-stone-700">{r.item}</td>
                       <td className="px-4 py-3.5">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStageBadgeClasses(r.stage)}`}>
-                          {formatStagLabel(r.stage)}
+                          {formatStageLabel(r.stage)}
                         </span>
                       </td>
                       <td className={`px-4 py-3.5 text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-stone-500'}`}>
@@ -289,7 +328,7 @@ export default function DashboardClient({
                       <p className="text-xs text-stone-400 mt-0.5">{job.customer || "No customer"}</p>
                     </div>
                     <span className="text-xs font-medium text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">
-                      {formatStagLabel(job.stage)}
+                      {formatStageLabel(job.stage)}
                     </span>
                   </a>
                 ))}
@@ -300,19 +339,40 @@ export default function DashboardClient({
           {/* Alerts */}
           <div className="bg-white rounded-lg border border-stone-200 p-6">
             <p className="text-sm font-semibold text-stone-700 mb-4">Alerts</p>
-            {alerts.length === 0 ? (
+            {overdueRepairs.length === 0 && overdueInvoiceCount === 0 && lowStockItems.length === 0 ? (
               <p className="text-xs text-stone-400 text-center py-2">All clear — no alerts 🎉</p>
             ) : (
               <div className="space-y-2">
-                {alerts.map((alert, i) => (
+                {/* Overdue repairs — with details */}
+                {overdueRepairs.map((r) => (
                   <a
-                    key={i}
-                    href={alert.href}
-                    className={`block px-3 py-2 rounded-md text-xs text-stone-700 border-l-2 bg-stone-50 hover:bg-stone-100 transition-colors ${
-                      alert.urgency === 'red' ? 'border-red-400' : 'border-amber-400'
-                    }`}
+                    key={r.id}
+                    href={`/repairs/${r.id}`}
+                    className="block px-3 py-2 rounded-md text-xs border-l-2 border-red-400 bg-red-50 hover:bg-red-100 transition-colors"
                   >
-                    {alert.text}
+                    <span className="font-semibold text-red-700">REP-{r.repairNumber}</span>
+                    <span className="text-red-600"> · {r.customer || 'No customer'} · {r.daysOverdue}d overdue</span>
+                  </a>
+                ))}
+                {/* Overdue invoices count */}
+                {overdueInvoiceCount > 0 && (
+                  <a
+                    href="/invoices?status=overdue"
+                    className="block px-3 py-2 rounded-md text-xs border-l-2 border-red-400 bg-red-50 hover:bg-red-100 transition-colors text-red-700"
+                  >
+                    {overdueInvoiceCount} invoice{overdueInvoiceCount !== 1 ? 's' : ''} overdue
+                  </a>
+                )}
+                {/* Low stock — with names */}
+                {lowStockItems.map((item) => (
+                  <a
+                    key={item.id}
+                    href={`/inventory/${item.id}`}
+                    className="block px-3 py-2 rounded-md text-xs border-l-2 border-amber-400 bg-amber-50 hover:bg-amber-100 transition-colors"
+                  >
+                    <span className="font-semibold text-amber-700">{item.name}</span>
+                    {item.sku && <span className="text-amber-600"> ({item.sku})</span>}
+                    <span className="text-amber-600"> · {item.quantity} left</span>
                   </a>
                 ))}
               </div>

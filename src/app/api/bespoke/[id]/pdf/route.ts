@@ -56,13 +56,17 @@ export async function GET(
 
   const customer = Array.isArray(job.customers) ? job.customers[0] : job.customers;
 
+  const tenantAddress = [tenant?.address_line1, tenant?.suburb, tenant?.state, tenant?.postcode].filter(Boolean).join(", ");
+
   const jobData = {
     jobNumber: job.job_number ?? job.id,
     title: job.title,
     description: job.description,
-    tenantName: tenant?.business_name || tenant?.name || "Jewellery Studio",
-    tenantPhone: tenant?.phone,
-    tenantEmail: tenant?.email,
+    tenantName: tenant?.business_name || tenant?.name || "Your Store Name",
+    tenantPhone: tenant?.phone ?? undefined,
+    tenantEmail: tenant?.email ?? undefined,
+    tenantAddress: tenantAddress || undefined,
+    tenantAbn: tenant?.abn ?? undefined,
     customerName: customer?.full_name ?? job.customer_name,
     customerPhone: customer?.phone,
     customerEmail: customer?.email ?? job.customer_email,

@@ -169,7 +169,7 @@ export async function emailQuote(
   <tr>
     <td style="background:#F8F5F0;border-radius:0 0 12px 12px;padding:20px 36px;border-top:1px solid #E5E2DE;">
       <p style="margin:0;font-size:11px;color:#aaa;text-align:center;">
-        Sent via <a href="https://nexpura.com" style="color:#8B7355;text-decoration:none;font-weight:600;">Nexpura</a>
+        Sent by <strong>${businessName}</strong>${tenant?.phone ? ` | ${tenant.phone}` : ""} using <a href="https://nexpura.com" style="color:#8B7355;text-decoration:none;font-weight:600;">Nexpura</a>
       </p>
     </td>
   </tr>
@@ -179,8 +179,9 @@ export async function emailQuote(
 </html>`;
 
     const { error: sendError } = await resend.emails.send({
-      from: "quotes@nexpura.com",
+      from: `${businessName} <quotes@nexpura.com>`,
       to: customerEmail,
+      replyTo: tenant?.email ? tenant.email : undefined,
       subject: `Quote ${quoteNumber} from ${businessName}`,
       html: htmlBody,
     });

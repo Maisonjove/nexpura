@@ -43,13 +43,15 @@ export default async function DashboardPage() {
   // Outstanding invoices
   const { data: outstandingData } = await admin
     .from("invoices")
-    .select("amount_due")
+    .select("id, invoice_number, total, amount_paid, due_date, customers(full_name)")
     .eq("tenant_id", tenantId ?? "")
     .in("status", ["sent", "partially_paid", "overdue"])
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .order("due_date", { ascending: true })
+    .limit(5);
 
   const totalOutstanding = (outstandingData ?? []).reduce(
-    (sum, inv) => sum + (inv.amount_due || 0),
+    (sum, inv) => sum + Math.max(0, (inv.total || 0) - (inv.amount_paid || 0)),
     0
   );
 
@@ -77,27 +79,92 @@ export default async function DashboardPage() {
     .is("deleted_at", null)
     .not("stage", "in", '("collected","cancelled")');
 
-  // Overdue repairs count
-  const { count: overdueRepairsCount } = await admin
+  // Overdue repairs — detailed (for dashboard alert)
+  const { data: overdueRepairsData } = await admin
     .from("repairs")
-    .select("id", { count: "exact", head: true })
+    .select("id, repair_number, item_description, due_date, customers(full_name)")
     .eq("tenant_id", tenantId ?? "")
     .is("deleted_at", null)
     .not("stage", "in", '("collected","cancelled")')
-    .lt("due_date", today);
+    .lt("due_date", today)
+    .order("due_date", { ascending: true })
+    .limit(5);
 
-  // Low stock
-  const { data: lowStockItems } = await admin
+  const overdueRepairs = (overdueRepairsData ?? []).map((r) => {
+    const dueDate = r.due_date ? new Date(r.due_date) : null;
+    const daysOverdue = dueDate
+      ? Math.floor((Date.now() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+    const customer = Array.isArray(r.customers)
+      ? (r.customers[0] as { full_name: string | null } | null)?.full_name ?? null
+      : (r.customers as { full_name: string | null } | null)?.full_name ?? null;
+    return {
+      id: r.id,
+      repairNumber: r.repair_number ?? r.id.slice(-4).toUpperCase(),
+      item: r.item_description || "Repair",
+      customer,
+      daysOverdue,
+    };
+  });
+
+  // Low stock — with item names
+  const { data: lowStockRaw } = await admin
     .from("inventory")
-    .select("quantity, low_stock_threshold, track_quantity")
+    .select("id, name, sku, quantity, low_stock_threshold, track_quantity")
     .eq("tenant_id", tenantId ?? "")
     .eq("status", "active")
     .is("deleted_at", null)
     .eq("track_quantity", true);
 
-  const lowStockCount = (lowStockItems ?? []).filter(
-    (i) => i.quantity <= (i.low_stock_threshold ?? 1)
-  ).length;
+  const lowStockItems = (lowStockRaw ?? [])
+    .filter((i) => i.quantity <= (i.low_stock_threshold ?? 1))
+    .sort((a, b) => a.quantity - b.quantity)
+    .slice(0, 10)
+    .map((i) => ({ id: i.id, name: i.name, sku: i.sku ?? null, quantity: i.quantity }));
+
+  // Ready for pickup — repairs in 'ready' stage
+  const { data: readyRepairsData } = await admin
+    .from("repairs")
+    .select("id, repair_number, item_description, customers(full_name)")
+    .eq("tenant_id", tenantId ?? "")
+    .eq("stage", "ready")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: true })
+    .limit(5);
+
+  const readyRepairs = (readyRepairsData ?? []).map((r) => ({
+    id: r.id,
+    number: r.repair_number ?? r.id.slice(-4).toUpperCase(),
+    label: r.item_description || "Repair",
+    customer:
+      Array.isArray(r.customers)
+        ? (r.customers[0] as { full_name: string | null } | null)?.full_name ?? null
+        : (r.customers as { full_name: string | null } | null)?.full_name ?? null,
+    type: "repair" as const,
+  }));
+
+  // Ready for pickup — bespoke jobs in 'ready' stage
+  const { data: readyBespokeData } = await admin
+    .from("bespoke_jobs")
+    .select("id, job_number, title, customers(full_name)")
+    .eq("tenant_id", tenantId ?? "")
+    .eq("stage", "ready")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: true })
+    .limit(5);
+
+  const readyBespokeJobs = (readyBespokeData ?? []).map((j) => ({
+    id: j.id,
+    number: j.job_number ?? j.id.slice(-4).toUpperCase(),
+    label: j.title || "Bespoke Job",
+    customer:
+      Array.isArray(j.customers)
+        ? (j.customers[0] as { full_name: string | null } | null)?.full_name ?? null
+        : (j.customers as { full_name: string | null } | null)?.full_name ?? null,
+    type: "bespoke" as const,
+  }));
+
+  const readyForPickup = [...readyRepairs, ...readyBespokeJobs];
 
   // Active repairs for display (limit 5, ordered by due date)
   const { data: activeRepairsData } = await admin
@@ -193,15 +260,16 @@ export default async function DashboardPage() {
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 5);
 
-  // My Tasks for today
+  // Tasks due TODAY — tenant-scoped
   const { data: myTasks } = await admin
     .from("staff_tasks")
     .select("id, title, priority, status, due_date")
     .eq("tenant_id", tenantId ?? "")
     .eq("assigned_to", user?.id ?? "")
     .neq("status", "completed")
-    .order("due_date", { ascending: true })
-    .limit(5);
+    .eq("due_date", today)
+    .order("priority", { ascending: false })
+    .limit(10);
 
   return (
     <DashboardClient
@@ -213,8 +281,9 @@ export default async function DashboardPage() {
       activeJobsCount={activeJobsCount ?? 0}
       totalOutstanding={totalOutstanding}
       overdueInvoiceCount={overdueInvoiceCount ?? 0}
-      lowStockCount={lowStockCount}
-      overdueRepairsCount={overdueRepairsCount ?? 0}
+      lowStockItems={lowStockItems}
+      overdueRepairs={overdueRepairs}
+      readyForPickup={readyForPickup}
       recentActivity={recentActivity}
       myTasks={myTasks ?? []}
       activeRepairs={activeRepairs}

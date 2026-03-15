@@ -1,8 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { updateTask } from "./actions";
 import type { StaffTask } from "./actions";
+
+const LINKED_TYPE_HREFS: Record<string, string> = {
+  repair: "/repairs/",
+  bespoke: "/bespoke/",
+  inventory: "/inventory/",
+  supplier: "/suppliers/",
+};
 
 const COLUMNS: { id: string; label: string; color: string; dot: string }[] = [
   { id: "pending", label: "To Do", color: "bg-stone-50 border-stone-200", dot: "bg-stone-400" },
@@ -132,9 +140,22 @@ export default function TaskKanbanView({ tasks, teamMembers, onTaskUpdate }: Pro
                         </div>
                       )}
                     </div>
-                    {task.linked_type && (
-                      <div className="mt-2 text-xs text-stone-400">
-                        🔗 {task.linked_type}
+                    {task.linked_type && task.linked_id && (
+                      <div className="mt-2">
+                        <Link
+                          href={`${LINKED_TYPE_HREFS[task.linked_type] || "/"}${task.linked_id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border hover:underline transition-colors ${
+                            task.linked_type === "repair"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : task.linked_type === "bespoke"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-stone-50 text-stone-500 border-stone-200"
+                          }`}
+                        >
+                          {task.linked_type === "repair" ? "🔧" : task.linked_type === "bespoke" ? "💎" : "🔗"}
+                          {" "}{task.linked_type === "repair" ? "Repair" : task.linked_type === "bespoke" ? "Bespoke" : task.linked_type}
+                        </Link>
                       </div>
                     )}
                   </div>

@@ -97,6 +97,8 @@ export interface BespokeSheetData {
   tenantName: string;
   tenantPhone?: string;
   tenantEmail?: string;
+  tenantAddress?: string;
+  tenantAbn?: string;
   customerName?: string;
   customerPhone?: string;
   customerEmail?: string;
@@ -140,8 +142,10 @@ export default function BespokeSheetPDF({ job }: { job: BespokeSheetData }) {
         <View style={styles.header}>
           <View>
             <Text style={styles.businessName}>{job.tenantName}</Text>
+            {job.tenantAddress && <Text style={styles.businessMeta}>{job.tenantAddress}</Text>}
             {job.tenantPhone && <Text style={styles.businessMeta}>{job.tenantPhone}</Text>}
             {job.tenantEmail && <Text style={styles.businessMeta}>{job.tenantEmail}</Text>}
+            {job.tenantAbn && <Text style={styles.businessMeta}>ABN: {job.tenantAbn}</Text>}
           </View>
           <View>
             <Text style={styles.docTitle}>BESPOKE JOB</Text>

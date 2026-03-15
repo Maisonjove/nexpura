@@ -31,17 +31,20 @@ export default async function AppraisalDetailPage({ params }: { params: Promise<
 
   if (!appraisal) notFound();
 
-  const { data: tenant } = await admin
-    .from("tenants")
-    .select("name, email, phone, address")
-    .eq("id", userData.tenant_id)
-    .single();
+  const [tenantResult, insuranceResult] = await Promise.all([
+    admin.from("tenants").select("name, email, phone, address").eq("id", userData.tenant_id).single(),
+    admin.from("integrations").select("config").eq("tenant_id", userData.tenant_id).eq("type", "insurance").maybeSingle(),
+  ]);
+
+  const tenant = tenantResult.data;
+  const insuranceEnabled = (insuranceResult.data?.config as Record<string, unknown> | null)?.enabled === true;
 
   return (
     <AppraisalDetailClient
       appraisal={appraisal}
       tenant={tenant}
       userId={user.id}
+      insuranceEnabled={insuranceEnabled}
     />
   );
 }

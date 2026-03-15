@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import CustomerDetailClient from "./CustomerDetailClient";
 
 export default async function CustomerDetailPage({
@@ -18,21 +18,100 @@ export default async function CustomerDetailPage({
     .eq("id", user?.id ?? "")
     .single();
 
+  const tenantId = userData?.tenant_id ?? "";
+
+  // Main customer record — scoped to tenant
   const { data: customer } = await supabase
     .from("customers")
     .select("*")
     .eq("id", id)
-    .eq("tenant_id", userData?.tenant_id ?? "")
+    .eq("tenant_id", tenantId)
     .is("deleted_at", null)
     .single();
 
   if (!customer) notFound();
 
-  const { data: creditHistory } = await supabase
-    .from("customer_store_credit_history")
-    .select("*")
-    .eq("customer_id", id)
-    .order("created_at", { ascending: false });
+  const admin = createAdminClient();
 
-  return <CustomerDetailClient customer={customer} creditHistory={creditHistory || []} />;
+  // Fetch all related data in parallel — all scoped to tenant
+  const [
+    { data: creditHistory },
+    { data: repairs },
+    { data: bespokeJobs },
+    { data: quotes },
+    { data: invoices },
+    { data: passports },
+  ] = await Promise.all([
+    supabase
+      .from("customer_store_credit_history")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+    admin
+      .from("repairs")
+      .select("id, repair_number, item_description, stage, due_date, quoted_price, created_at")
+      .eq("customer_id", id)
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    admin
+      .from("bespoke_jobs")
+      .select("id, job_number, title, stage, due_date, quoted_price, created_at")
+      .eq("customer_id", id)
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    admin
+      .from("quotes")
+      .select("id, quote_number, status, total_amount, expires_at, created_at")
+      .eq("customer_id", id)
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    admin
+      .from("invoices")
+      .select("id, invoice_number, status, total, amount_paid, due_date, paid_at, created_at")
+      .eq("customer_id", id)
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    admin
+      .from("passports")
+      .select("id, passport_uid, title, jewellery_type, status, created_at")
+      .eq("customer_id", id)
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  // Lifetime spend = sum of paid invoices
+  const lifetimeSpend = (invoices ?? [])
+    .filter((inv) => inv.status === "paid")
+    .reduce((sum, inv) => sum + (inv.total || 0), 0);
+
+  // Last visit = most recent paid_at or invoice created_at
+  const lastVisitDates = (invoices ?? [])
+    .map((inv) => inv.paid_at || inv.created_at)
+    .filter(Boolean)
+    .sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime());
+  const lastVisit = lastVisitDates[0] ?? null;
+
+  return (
+    <CustomerDetailClient
+      customer={customer}
+      creditHistory={creditHistory || []}
+      repairs={repairs || []}
+      bespokeJobs={bespokeJobs || []}
+      quotes={quotes || []}
+      invoices={invoices || []}
+      passports={passports || []}
+      lifetimeSpend={lifetimeSpend}
+      lastVisit={lastVisit}
+    />
+  );
 }

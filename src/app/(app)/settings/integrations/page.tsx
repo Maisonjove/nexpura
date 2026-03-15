@@ -673,7 +673,7 @@ const DEFAULT_STATUS: IntegrationStatus = {
 export default function IntegrationsPage() {
   const [status, setStatus] = useState<IntegrationStatus>(DEFAULT_STATUS);
   const [loading, setLoading] = useState(true);
-  const [apiKey] = useState("np_live_51Msz7I9p2...xK8q");
+  // API key is managed server-side; no fake key displayed
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -733,28 +733,10 @@ export default function IntegrationsPage() {
               <h3 className="text-lg font-semibold text-stone-900">API Access</h3>
             </div>
             <p className="text-sm text-stone-500 mb-6 max-w-2xl">
-              Use your API key to build custom integrations or access your data
-              programmatically. Keep this key secure and never share it publicly.
+              API access for custom integrations is coming soon. Your API key will appear here once the feature is available.
             </p>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-stone-900 rounded-lg p-3 font-mono text-xs text-stone-300 overflow-hidden truncate">
-                  {apiKey}
-                </div>
-                <button
-                  disabled
-                  title="API key regeneration coming soon"
-                  className="p-3 border border-stone-200 rounded-lg opacity-40 cursor-not-allowed"
-                >
-                  <RefreshCw size={16} />
-                </button>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs text-stone-400">
-                  <ExternalLink size={14} />
-                  API documentation coming soon
-                </span>
-              </div>
+            <div className="flex items-center gap-3 p-4 bg-stone-50 rounded-lg border border-stone-100">
+              <span className="text-xs text-stone-400">API keys — Coming Soon</span>
             </div>
           </div>
         </div>

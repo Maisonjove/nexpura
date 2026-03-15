@@ -112,9 +112,11 @@ export const AppraisalPDF = ({ appraisal, tenant }: any) => (
           <Text style={styles.subtitle}>{appraisal.appraisal_number}</Text>
         </View>
         <View style={{ textAlign: "right" }}>
-          <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold" }}>{tenant?.business_name || tenant?.name}</Text>
-          <Text style={{ fontSize: 9, color: MUTED }}>{tenant?.address_line1}</Text>
-          <Text style={{ fontSize: 9, color: MUTED }}>{tenant?.email}</Text>
+          <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold" }}>{tenant?.business_name || tenant?.name || "Your Store Name"}</Text>
+          {tenant?.address_line1 && <Text style={{ fontSize: 9, color: MUTED }}>{tenant.address_line1}</Text>}
+          {tenant?.phone && <Text style={{ fontSize: 9, color: MUTED }}>{tenant.phone}</Text>}
+          {tenant?.email && <Text style={{ fontSize: 9, color: MUTED }}>{tenant.email}</Text>}
+          {tenant?.abn && <Text style={{ fontSize: 9, color: MUTED }}>ABN: {tenant.abn}</Text>}
         </View>
       </View>
 

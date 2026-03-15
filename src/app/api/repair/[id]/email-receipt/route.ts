@@ -59,11 +59,15 @@ export async function POST(
     .eq("id", userData.tenant_id)
     .single();
 
+  const tenantAddress = [tenant?.address_line1, tenant?.suburb, tenant?.state, tenant?.postcode].filter(Boolean).join(", ");
+
   const ticketData = {
     ticketNumber: repair.repair_number ?? repair.id,
-    tenantName: tenant?.business_name || tenant?.name || "Jewellery Studio",
-    tenantPhone: tenant?.phone,
-    tenantEmail: tenant?.email,
+    tenantName: tenant?.business_name || tenant?.name || "Your Store Name",
+    tenantPhone: tenant?.phone ?? undefined,
+    tenantEmail: tenant?.email ?? undefined,
+    tenantAddress: tenantAddress || undefined,
+    tenantAbn: tenant?.abn ?? undefined,
     customerName: customerRaw?.full_name ?? repair.customer_name,
     customerPhone: customerRaw?.phone,
     customerEmail: customerRaw?.email ?? repair.customer_email,
@@ -78,6 +82,8 @@ export async function POST(
     status: repair.stage,
     quotedPrice: repair.quoted_price,
     finalPrice: repair.final_price,
+    depositAmount: repair.deposit_amount,
+    depositPaid: repair.deposit_paid,
     dueDate: repair.due_date,
     technician: repair.technician,
     clientNotes: repair.client_notes,
@@ -92,13 +98,41 @@ export async function POST(
   const ticketNumber = ticketData.ticketNumber;
   const filename = `receipt-${String(ticketNumber).replace(/\//g, "-")}.pdf`;
 
+  const storePhone = tenant?.phone ? ` | ${tenant.phone}` : "";
+  const storeAddr = tenantAddress ? ` | ${tenantAddress}` : "";
+
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error: sendError } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: `${businessName} <receipts@nexpura.com>`,
     to: [recipientEmail],
     replyTo: tenant?.email ? [tenant.email] : undefined,
     subject: `Your Repair Receipt — ${ticketNumber}`,
-    text: `Please find attached your receipt for repair ticket ${ticketNumber}.\n\nThank you for choosing ${businessName}.`,
+    html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:#F8F5F0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+  <tr><td style="background:#1A1A1A;border-radius:12px 12px 0 0;padding:28px 36px;">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td><p style="margin:0;font-size:18px;font-weight:700;color:#fff;">${businessName}</p>${tenant?.abn ? `<p style="margin:4px 0 0;font-size:11px;color:rgba(255,255,255,0.5);">ABN: ${tenant.abn}</p>` : ""}</td>
+      <td align="right"><p style="margin:0;font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;">REPAIR RECEIPT</p><p style="margin:3px 0 0;font-size:18px;font-weight:700;color:#8B7355;">${ticketNumber}</p></td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="background:#fff;padding:36px;">
+    <p style="margin:0 0 6px;font-size:15px;color:#1A1A1A;font-weight:600;">Hi ${ticketData.customerName || "Valued Customer"},</p>
+    <p style="margin:0 0 24px;font-size:14px;color:#666;line-height:1.6;">Thank you for bringing in your item. Your repair receipt is attached as a PDF. Here's a summary:</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF9;border-radius:8px;margin-bottom:28px;border:1px solid #E5E2DE;"><tr><td style="padding:20px 24px;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="padding-bottom:12px;width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Ticket #</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${ticketNumber}</p></td>
+        <td style="padding-bottom:12px;width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Item</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${ticketData.itemDescription || ticketData.itemType || "—"}</p></td></tr>
+        ${ticketData.quotedPrice != null ? `<tr><td style="width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Quoted Price</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">$${Number(ticketData.quotedPrice).toFixed(2)}</p></td>` : "<tr><td>"}
+        <td style="width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Due Date</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${ticketData.dueDate ? new Date(ticketData.dueDate).toLocaleDateString("en-AU", {day:"numeric",month:"short",year:"numeric"}) : "To be advised"}</p></td></tr>
+      </table>
+    </td></tr></table>
+    <p style="margin:0;font-size:13px;color:#888;line-height:1.6;">We'll contact you when your item is ready for collection. If you have any questions, please reply to this email${tenant?.phone ? ` or call us at ${tenant.phone}` : ""}.</p>
+  </td></tr>
+  <tr><td style="background:#F8F5F0;border-radius:0 0 12px 12px;padding:16px 36px;border-top:1px solid #E5E2DE;">
+    <p style="margin:0;font-size:11px;color:#aaa;text-align:center;">Sent by <strong>${businessName}</strong>${storePhone}${storeAddr} using <a href="https://nexpura.com" style="color:#8B7355;text-decoration:none;">Nexpura</a></p>
+  </td></tr>
+</table></td></tr></table></body></html>`,
     attachments: [
       {
         filename,

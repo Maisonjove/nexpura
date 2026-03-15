@@ -116,6 +116,15 @@ export default async function BespokeJobDetailPage({
   if (job.ring_size) specs.push({ label: "Ring Size", value: job.ring_size });
   if (job.setting_style) specs.push({ label: "Setting", value: humanise(job.setting_style) ?? "" });
 
+  const customer = Array.isArray(job.customers) ? job.customers[0] : job.customers;
+  const depositPaidAmt = (job.deposit_received ?? false) ? (job.deposit_amount ?? 0) : 0;
+  const jobTotal = job.quoted_price ?? 0;
+  const jobBalanceDue = jobTotal - depositPaidAmt;
+  const hasContactInfo = !!(customer?.email || customer?.mobile);
+  const readyStageEntry = job.stage === "ready"
+    ? stageHistory?.filter((s: { stage: string; created_at: string }) => s.stage === "ready").at(-1) ?? null
+    : null;
+
   return (
     <div className="max-w-6xl mx-auto">
       {/* Breadcrumb */}
@@ -124,6 +133,54 @@ export default async function BespokeJobDetailPage({
           ← Bespoke Jobs
         </Link>
       </div>
+
+      {/* ── Status Banners ──────────────────────────────────────── */}
+
+      {/* Ready for Collection banner */}
+      {job.stage === "ready" && (
+        <div className="mb-5 flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-4">
+          <span className="text-xl flex-shrink-0">✅</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-emerald-800">Ready for Collection</p>
+            <p className="text-sm text-emerald-700 mt-0.5">
+              {readyStageEntry
+                ? `Marked ready on ${new Date(readyStageEntry.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+                : "Awaiting customer pickup"}
+              {!hasContactInfo && (
+                <span className="ml-2 text-amber-700 font-medium">· ⚠ No contact details — customer cannot be notified automatically</span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Outstanding balance banner */}
+      {jobBalanceDue > 0 && !["collected", "cancelled"].includes(job.stage) && (
+        <div className="mb-5 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
+          <span className="text-xl flex-shrink-0">⚠️</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-amber-800">
+              Balance Due: {formatCurrency(jobBalanceDue)}
+              {!invoiceId && <span className="ml-2 font-normal text-amber-700">— Invoice not yet generated</span>}
+            </p>
+            {invoiceId && (
+              <Link href={`/invoices/${invoiceId}`} className="text-sm text-amber-700 underline hover:text-amber-900 transition-colors">
+                View Invoice →
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* No contact info warning */}
+      {!hasContactInfo && job.stage !== "ready" && !["collected", "cancelled"].includes(job.stage) && (
+        <div className="mb-5 flex items-center gap-3 bg-stone-50 border border-stone-200 rounded-xl px-5 py-3">
+          <span className="text-base flex-shrink-0">📵</span>
+          <p className="text-sm text-stone-600">
+            <span className="font-semibold text-stone-800">No contact details on file</span> — customer cannot be notified automatically
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── Left Panel (65%) ─────────────────────────────────── */}

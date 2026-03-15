@@ -79,17 +79,17 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
 
   const getStageBadge = (stage: string) => {
     switch (stage.toLowerCase()) {
-      case "enquiry": return <Badge variant="outline" className="bg-stone-50 text-stone-600 border-stone-200">Enquiry</Badge>;
+      case "enquiry": return <Badge variant="outline" className="bg-stone-100 text-stone-600 border-stone-200">Enquiry</Badge>;
       case "consultation": return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Consultation</Badge>;
-      case "deposit_paid": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Deposit Paid</Badge>;
+      case "deposit_paid": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Deposit Paid</Badge>;
       case "stone_sourcing": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Stone Sourcing</Badge>;
-      case "cad": return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">CAD</Badge>;
-      case "approval": return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">Approval</Badge>;
-      case "setting": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Setting</Badge>;
-      case "polish": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Polish</Badge>;
-      case "ready": return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Ready</Badge>;
-      case "collected": return <Badge variant="outline" className="bg-stone-800 text-white border-stone-800">Collected</Badge>;
-      case "cancelled": return <Badge variant="outline" className="bg-stone-100 text-stone-400 border-stone-200">Cancelled</Badge>;
+      case "cad": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">CAD</Badge>;
+      case "approval": return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Approval</Badge>;
+      case "setting": return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Setting</Badge>;
+      case "polish": return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Polish</Badge>;
+      case "ready": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Ready</Badge>;
+      case "collected": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Collected</Badge>;
+      case "cancelled": return <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">Cancelled</Badge>;
       default: return <Badge variant="outline" className="text-stone-600 border-stone-200 capitalize">{stage.replace(/_/g, ' ')}</Badge>;
     }
   };

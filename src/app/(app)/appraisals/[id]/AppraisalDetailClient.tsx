@@ -29,6 +29,7 @@ interface Props {
   appraisal: Appraisal;
   tenant: Tenant | null;
   userId: string;
+  insuranceEnabled?: boolean;
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -41,7 +42,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export default function AppraisalDetailClient({ appraisal: initial, tenant, userId }: Props) {
+export default function AppraisalDetailClient({ appraisal: initial, tenant, userId, insuranceEnabled = true }: Props) {
   const router = useRouter();
   const [appraisal, setAppraisal] = useState(initial);
   const [isPending, startTransition] = useTransition();
@@ -161,24 +162,33 @@ export default function AppraisalDetailClient({ appraisal: initial, tenant, user
             <Download size={16} />
             PDF
           </a>
-          <a
-            href={`/api/appraisals/${appraisal.id}/insurance-export`}
-            download
-            className="flex items-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors text-sm font-medium"
-            title="Download Insurance Valuation Certificate PDF"
-          >
-            <Shield size={16} />
-            Insurance PDF
-          </a>
-          <button
-            onClick={handleInsuranceSend}
-            disabled={insuranceSending || !appraisal.customer_email}
-            className="flex items-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors text-sm font-medium disabled:opacity-40"
-            title={appraisal.customer_email ? "Email insurance certificate to customer" : "No customer email"}
-          >
-            {insuranceSending ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
-            Send to Customer
-          </button>
+          {insuranceEnabled ? (
+            <>
+              <a
+                href={`/api/appraisals/${appraisal.id}/insurance-export`}
+                download
+                className="flex items-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors text-sm font-medium"
+                title="Download Insurance Valuation Certificate PDF"
+              >
+                <Shield size={16} />
+                Insurance PDF
+              </a>
+              <button
+                onClick={handleInsuranceSend}
+                disabled={insuranceSending || !appraisal.customer_email}
+                className="flex items-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors text-sm font-medium disabled:opacity-40"
+                title={appraisal.customer_email ? "Email insurance certificate to customer" : "No customer email"}
+              >
+                {insuranceSending ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+                Send to Customer
+              </button>
+            </>
+          ) : (
+            <span className="flex items-center gap-2 px-4 py-2 border border-stone-100 text-stone-400 rounded-lg text-sm font-medium cursor-not-allowed" title="Enable Insurance Valuations in Integrations → Insurance">
+              <Shield size={16} />
+              Insurance (Not Enabled)
+            </span>
+          )}
           <button 
             onClick={() => setEditMode(!editMode)}
             className="flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors text-sm font-medium"

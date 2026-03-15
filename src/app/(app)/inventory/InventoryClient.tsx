@@ -98,7 +98,7 @@ export default function InventoryClient({
     if (useSampleData) return SAMPLE_ITEMS;
     return items.filter((item) => {
       const q = search.toLowerCase();
-      if (q && !item.name.toLowerCase().includes(q) && !(item.sku?.toLowerCase() ?? "").includes(q)) return false;
+      if (q && !item.name.toLowerCase().includes(q) && !(item.sku?.toLowerCase() ?? "").includes(q) && !(item.barcode_value?.toLowerCase() ?? "").includes(q)) return false;
       if (filterCategory !== "all" && item.category_id !== filterCategory) return false;
       if (filterMetal !== "all" && item.metal_type !== filterMetal) return false;
       if (filterStone !== "all" && item.stone_type !== filterStone) return false;

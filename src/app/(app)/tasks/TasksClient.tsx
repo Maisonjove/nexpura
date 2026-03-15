@@ -143,6 +143,8 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
     startTransition(async () => {
       await updateTask(taskId, { status });
       router.refresh();
+      const label = status === "completed" ? "Task marked as done ✓" : `Task moved to ${status.replace("_", " ")}`;
+      showMsg(label);
     });
   }
 
@@ -231,12 +233,14 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                 </div>
               )}
               {/* Assignee */}
-              {selectedTask.assigned_to && (
-                <div>
-                  <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-1">Assigned To</p>
+              <div>
+                <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-1">Assigned To</p>
+                {selectedTask.assigned_to ? (
                   <p className="text-sm text-stone-700">{teamMembers.find((m) => m.id === selectedTask.assigned_to)?.full_name ?? "Unknown"}</p>
-                </div>
-              )}
+                ) : (
+                  <span className="text-xs text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">Unassigned</span>
+                )}
+              </div>
               {/* Notes */}
               {selectedTask.notes && (
                 <div>
@@ -381,7 +385,9 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
       </div>
 
       {msg && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800">{msg}</div>
+        <div className="fixed bottom-6 right-6 z-50 bg-stone-900 text-white rounded-xl px-5 py-3 text-sm font-medium shadow-xl animate-in fade-in slide-in-from-bottom-2">
+          {msg}
+        </div>
       )}
 
       {/* New Task Modal */}
@@ -636,16 +642,30 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                     {task.description && (
                       <p className="text-xs text-stone-500 mt-0.5 truncate">{task.description}</p>
                     )}
-                    <div className="flex items-center gap-3 mt-1">
-                      {assignee && (
-                        <span className="text-xs text-stone-400">→ {assignee.full_name}</span>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      {assignee ? (
+                        <span className="text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                          👤 {assignee.full_name}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
+                          Unassigned
+                        </span>
                       )}
                       {task.linked_type && task.linked_id && (
                         <Link
                           href={`${LINKED_TYPE_HREFS[task.linked_type] || "/"}${task.linked_id}`}
-                          className="text-xs text-[#8B7355] hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                          className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border transition-colors hover:underline ${
+                            task.linked_type === "repair"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : task.linked_type === "bespoke"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-stone-50 text-stone-600 border-stone-200"
+                          }`}
                         >
-                          {LINKED_TYPE_LABELS[task.linked_type] || task.linked_type} ↗
+                          {task.linked_type === "repair" ? "🔧" : task.linked_type === "bespoke" ? "💎" : "🔗"}
+                          {" "}{LINKED_TYPE_LABELS[task.linked_type] || task.linked_type}
                         </Link>
                       )}
                     </div>

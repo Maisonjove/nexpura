@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/lib/pdf/InvoicePDF";
 import { ThermalInvoicePDF } from "@/lib/pdf/ThermalInvoicePDF";
@@ -33,8 +34,11 @@ export async function GET(
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  // Fetch invoice — validate ownership
-  const { data: invoice, error: invoiceError } = await supabase
+  // Use admin client for data fetch to bypass RLS
+  const adminClient = createAdminClient();
+
+  // Fetch invoice — validate ownership via tenant_id filter
+  const { data: invoice, error: invoiceError } = await adminClient
     .from("invoices")
     .select(
       `id, invoice_number, status, invoice_date, due_date,
@@ -56,14 +60,14 @@ export async function GET(
   const amount_due = isPaid ? 0 : (invoice.total ?? 0);
 
   // Fetch line items
-  const { data: lineItemsRaw } = await supabase
+  const { data: lineItemsRaw } = await adminClient
     .from("invoice_line_items")
     .select("description, quantity, unit_price, discount_pct, line_total")
     .eq("invoice_id", id)
     .order("sort_order", { ascending: true });
 
   // Fetch tenant info
-  const { data: tenant } = await supabase
+  const { data: tenant } = await adminClient
     .from("tenants")
     .select(
       "name, business_name, abn, logo_url, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer, tax_name, tax_rate, tax_inclusive"

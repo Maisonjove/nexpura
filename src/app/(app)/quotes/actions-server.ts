@@ -3,6 +3,31 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+// ── Tenant-scoped list fetch ─────────────────────────────────────────────────
+export async function getQuotesList() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: userData } = await supabase
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!userData?.tenant_id) throw new Error("No tenant found");
+
+  const { data, error } = await supabase
+    .from("quotes")
+    .select("*, customers(full_name, email)")
+    .eq("tenant_id", userData.tenant_id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function convertQuoteToInvoice(quoteId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -16,12 +16,12 @@ const STATUS_TABS = [
 ];
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-stone-100 text-stone-600" },
-  sent: { label: "Sent", className: "bg-stone-100 text-stone-700" },
-  partially_paid: { label: "Partial", className: "bg-amber-50 text-amber-600" },
-  paid: { label: "Paid", className: "bg-stone-100 text-[#8B7355]" },
-  overdue: { label: "Overdue", className: "bg-red-50 text-red-600" },
-  voided: { label: "Voided", className: "bg-stone-100 text-stone-400" },
+  draft: { label: "Draft", className: "bg-stone-100 text-stone-600 border border-stone-200" },
+  sent: { label: "Sent", className: "bg-blue-50 text-blue-700 border border-blue-200" },
+  partially_paid: { label: "Partial", className: "bg-amber-50 text-amber-700 border border-amber-200" },
+  paid: { label: "Paid", className: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
+  overdue: { label: "Overdue", className: "bg-red-50 text-red-700 border border-red-200" },
+  voided: { label: "Voided", className: "bg-stone-100 text-stone-400 border border-stone-200" },
 };
 
 function fmt(amount: number) {

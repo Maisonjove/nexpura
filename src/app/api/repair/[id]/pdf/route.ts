@@ -54,11 +54,15 @@ export async function GET(
 
   const customerRaw = Array.isArray(repair.customers) ? repair.customers[0] : repair.customers;
 
+  const tenantAddress = [tenant?.address_line1, tenant?.suburb, tenant?.state, tenant?.postcode].filter(Boolean).join(", ");
+
   const ticketData = {
     ticketNumber: repair.repair_number ?? repair.id,
-    tenantName: tenant?.business_name || tenant?.name || "Jewellery Studio",
-    tenantPhone: tenant?.phone,
-    tenantEmail: tenant?.email,
+    tenantName: tenant?.business_name || tenant?.name || "Your Store Name",
+    tenantPhone: tenant?.phone ?? undefined,
+    tenantEmail: tenant?.email ?? undefined,
+    tenantAddress: tenantAddress || undefined,
+    tenantAbn: tenant?.abn ?? undefined,
     customerName: customerRaw?.full_name ?? repair.customer_name,
     customerPhone: customerRaw?.phone,
     customerEmail: customerRaw?.email ?? repair.customer_email,
@@ -73,6 +77,8 @@ export async function GET(
     status: repair.stage,
     quotedPrice: repair.quoted_price,
     finalPrice: repair.final_price,
+    depositAmount: repair.deposit_amount,
+    depositPaid: repair.deposit_paid,
     dueDate: repair.due_date,
     technician: repair.technician,
     clientNotes: repair.client_notes,

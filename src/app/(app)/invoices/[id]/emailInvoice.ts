@@ -262,7 +262,7 @@ export async function emailInvoice(
   <tr>
     <td style="background:#F8F5F0;border-radius:0 0 12px 12px;padding:20px 36px;border-top:1px solid #E5E2DE;">
       <p style="margin:0;font-size:11px;color:#aaa;text-align:center;">
-        Sent via <a href="https://nexpura.com" style="color:#8B7355;text-decoration:none;font-weight:600;">Nexpura</a>
+        Sent by <strong>${businessName}</strong>${tenantData?.phone ? ` | ${tenantData.phone}` : ""}${tenantData?.address_line1 ? ` | ${[tenantData.address_line1, tenantData.suburb, tenantData.state, tenantData.postcode].filter(Boolean).join(", ")}` : ""} using <a href="https://nexpura.com" style="color:#8B7355;text-decoration:none;font-weight:600;">Nexpura</a>
       </p>
     </td>
   </tr>
@@ -273,8 +273,9 @@ export async function emailInvoice(
 
     // 6. Send via Resend with PDF attachment
     const { error: sendError } = await resend.emails.send({
-      from: "invoices@nexpura.com",
+      from: `${businessName} <invoices@nexpura.com>`,
       to: customerEmail,
+      replyTo: tenant?.email ? tenant.email : undefined,
       subject: `Tax Invoice ${invoice.invoice_number} from ${businessName}`,
       html: htmlBody,
       attachments: [

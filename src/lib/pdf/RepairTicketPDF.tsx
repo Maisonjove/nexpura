@@ -82,6 +82,8 @@ interface RepairTicketData {
   tenantName: string;
   tenantPhone?: string;
   tenantEmail?: string;
+  tenantAddress?: string;
+  tenantAbn?: string;
   customerName?: string;
   customerPhone?: string;
   customerEmail?: string;
@@ -96,6 +98,8 @@ interface RepairTicketData {
   status?: string;
   quotedPrice?: number;
   finalPrice?: number;
+  depositAmount?: number;
+  depositPaid?: boolean;
   dueDate?: string;
   technician?: string;
   internalNotes?: string;
@@ -121,8 +125,10 @@ export default function RepairTicketPDF({ ticket }: { ticket: RepairTicketData }
         <View style={styles.header}>
           <View>
             <Text style={styles.businessName}>{ticket.tenantName}</Text>
+            {ticket.tenantAddress && <Text style={styles.businessMeta}>{ticket.tenantAddress}</Text>}
             {ticket.tenantPhone && <Text style={styles.businessMeta}>{ticket.tenantPhone}</Text>}
             {ticket.tenantEmail && <Text style={styles.businessMeta}>{ticket.tenantEmail}</Text>}
+            {ticket.tenantAbn && <Text style={styles.businessMeta}>ABN: {ticket.tenantAbn}</Text>}
           </View>
           <View>
             <Text style={styles.ticketTitle}>REPAIR TICKET</Text>
@@ -235,6 +241,18 @@ export default function RepairTicketPDF({ ticket }: { ticket: RepairTicketData }
             <View style={styles.row}>
               <Text style={styles.label}>Final Price</Text>
               <Text style={styles.value}>{fmt(ticket.finalPrice)}</Text>
+            </View>
+          )}
+          {ticket.depositAmount != null && ticket.depositAmount > 0 && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Deposit</Text>
+              <Text style={styles.value}>{fmt(ticket.depositAmount)}{ticket.depositPaid ? " (Paid)" : " (Owing)"}</Text>
+            </View>
+          )}
+          {ticket.depositAmount != null && ticket.depositAmount > 0 && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Balance Due</Text>
+              <Text style={styles.value}>{fmt((ticket.finalPrice ?? ticket.quotedPrice ?? 0) - (ticket.depositPaid ? (ticket.depositAmount ?? 0) : 0))}</Text>
             </View>
           )}
           <View style={styles.row}>

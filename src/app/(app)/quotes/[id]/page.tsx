@@ -12,10 +12,21 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Get tenant from authenticated user — never trust URL params
+  const { data: userData } = await supabase
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!userData?.tenant_id) redirect("/onboarding");
+
+  // Scope quote to current tenant — prevents cross-tenant data leak
   const { data: quote } = await supabase
     .from("quotes")
     .select("*, customers(*)")
     .eq("id", id)
+    .eq("tenant_id", userData.tenant_id)
     .single();
 
   if (!quote) notFound();

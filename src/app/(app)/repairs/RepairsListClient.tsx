@@ -87,15 +87,15 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "intake": return <Badge className="bg-stone-100 text-stone-700 hover:bg-stone-100 border-none">Intake</Badge>;
-      case "assessed": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border-none">Assessed</Badge>;
-      case "quoted": return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-none">Quoted</Badge>;
-      case "approved": return <Badge className="bg-green-50 text-green-700 hover:bg-green-50 border-none">Approved</Badge>;
-      case "in_progress": return <Badge className="bg-stone-100 text-stone-700 hover:bg-stone-50 border-none">In Progress</Badge>;
-      case "quality_check": return <Badge className="bg-orange-50 text-orange-700 hover:bg-orange-50 border-none">Quality Check</Badge>;
-      case "ready": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-none">Ready</Badge>;
-      case "collected": return <Badge className="bg-stone-800 text-white hover:bg-stone-800 border-none">Collected</Badge>;
-      case "cancelled": return <Badge className="bg-stone-100 text-stone-400 hover:bg-stone-100 border-none">Cancelled</Badge>;
+      case "intake": return <Badge className="bg-stone-100 text-stone-600 hover:bg-stone-100 border border-stone-200">Intake</Badge>;
+      case "assessed": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Assessed</Badge>;
+      case "quoted": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Quoted</Badge>;
+      case "approved": return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-200">Approved</Badge>;
+      case "in_progress": return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-200">In Progress</Badge>;
+      case "quality_check": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Quality Check</Badge>;
+      case "ready": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200">Ready</Badge>;
+      case "collected": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200">Collected</Badge>;
+      case "cancelled": return <Badge className="bg-red-50 text-red-600 hover:bg-red-50 border border-red-200">Cancelled</Badge>;
       default: return <Badge variant="outline" className="text-stone-600 border-stone-200 capitalize">{status.replace(/_/g, ' ')}</Badge>;
     }
   };
@@ -176,35 +176,19 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
             </TableRow>
           </TableHeader>
           <TableBody>
-            {useSampleData
-              ? SAMPLE_REPAIRS.map((r) => (
-                  <TableRow key={r.id} className="hover:bg-stone-50/60 border-stone-100 cursor-pointer" onClick={() => router.push(`/repairs/${r.id}`)}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="bg-stone-100 text-stone-600 text-xs font-semibold">
-                            {r.initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium text-stone-900">{r.customer}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium text-sm text-stone-900">{r.item}</p>
-                      <p className="text-xs text-stone-400 mt-0.5">{r.issue}</p>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(r.status)}</TableCell>
-                    <TableCell className={`text-sm ${r.status === 'Overdue' ? 'text-red-600 font-medium' : 'text-stone-700'}`}>
-                      {r.due}
-                    </TableCell>
-                    <TableCell className="text-sm text-stone-700">{r.tech}</TableCell>
-                    <TableCell className="text-sm font-medium text-stone-900">{r.deposit}</TableCell>
-                    <TableCell>
-                      <ArrowRight className="w-4 h-4 text-stone-300 hover:text-[#8B7355]" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : repairs.map((repair) => {
+            {repairs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-16 text-stone-400">
+                  <div className="flex flex-col items-center gap-3">
+                    <svg className="w-10 h-10 text-stone-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <p className="text-sm font-medium text-stone-400">No repairs found</p>
+                    <p className="text-xs text-stone-300">Create a new repair to get started</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : repairs.map((repair) => {
                   const overdue = isOverdue(repair.due_date, repair.stage);
                   const name = repair.customers?.full_name || "Unknown";
                   return (
@@ -235,7 +219,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
                     </TableRow>
                   );
                 })}
-          </TableBody>
+            </TableBody>
         </Table>
       </Card>
 

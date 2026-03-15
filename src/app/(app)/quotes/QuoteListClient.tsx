@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Search, Filter, MoreVertical, FileText, Send, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
-import { getQuotes, convertQuoteToInvoice, type Quote } from "./actions";
+import { type Quote } from "./actions";
+import { getQuotesList, convertQuoteToInvoice } from "./actions-server";
 import { toast } from "sonner";
 import StatusBadge from "@/components/StatusBadge";
 import {
@@ -26,8 +27,8 @@ export default function QuoteListClient() {
   async function loadQuotes() {
     setLoading(true);
     try {
-      const data = await getQuotes();
-      setQuotes(data || []);
+      const data = await getQuotesList();
+      setQuotes((data || []) as Quote[]);
     } catch (err) {
       console.error(err);
     } finally {

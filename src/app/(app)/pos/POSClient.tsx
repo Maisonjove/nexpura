@@ -53,7 +53,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 type PaymentTab = "card" | "cash" | "split" | "voucher" | "store_credit";
-type SaleResult = { id: string; saleNumber: string; invoiceId?: string };
+type SaleResult = { id: string; saleNumber: string; invoiceId?: string; customerEmail?: string | null; cartSnapshot?: CartItem[] };
 
 export default function POSClient({ tenantId, userId, inventoryItems, customers, taxRate }: Props) {
   const router = useRouter();
@@ -224,7 +224,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
       if (result.error) {
         setError(result.error);
       } else if (result.id) {
-        setSaleResult({ id: result.id, saleNumber: result.saleNumber!, invoiceId: result.invoiceId });
+        setSaleResult({ id: result.id, saleNumber: result.saleNumber!, invoiceId: result.invoiceId, customerEmail: selectedCustomer?.email, cartSnapshot: [...cart] });
         setShowPaymentModal(false);
         setCart([]);
         setDiscountValue("");
@@ -337,6 +337,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
   }
 
   function legacyPrint() {
+    const items = saleResult?.cartSnapshot ?? cart;
     const receiptHTML = `
       <html><head><title>Receipt</title>
       <style>body{font-family:monospace;max-width:300px;margin:0 auto;padding:20px;font-size:12px}
@@ -346,9 +347,9 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
       </style></head><body>
       <h2>NEXPURA</h2>
       <p style="text-align:center">${new Date().toLocaleString("en-AU")}</p>
-      ${selectedCustomer ? `<p>Customer: ${selectedCustomer.full_name}</p>` : ""}
+      ${saleResult?.customerEmail ? `<p>Customer: ${saleResult.customerEmail}</p>` : ""}
       <hr/>
-      ${cart.map((c) => `<div class="row"><span>${c.name} x${c.quantity}</span><span>$${(c.unitPrice * c.quantity).toFixed(2)}</span></div>`).join("")}
+      ${items.map((c) => `<div class="row"><span>${c.name} x${c.quantity}</span><span>$${(c.unitPrice * c.quantity).toFixed(2)}</span></div>`).join("")}
       <hr/>
       <div class="row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
       ${discountAmount > 0 ? `<div class="row"><span>Discount</span><span>-$${discountAmount.toFixed(2)}</span></div>` : ""}
@@ -365,51 +366,106 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
     }
   }
 
+  // Email receipt on sale complete screen
+  const [emailReceiptSending, setEmailReceiptSending] = useState(false);
+  const [emailReceiptToast, setEmailReceiptToast] = useState<string | null>(null);
+
+  async function handleEmailReceiptAfterSale() {
+    if (!saleResult?.invoiceId) return;
+    setEmailReceiptSending(true);
+    setEmailReceiptToast(null);
+    try {
+      const res = await fetch(`/api/invoice/${saleResult.invoiceId}/email`, { method: "POST" });
+      const data = await res.json();
+      if (data.success || data.ok) {
+        setEmailReceiptToast(`✓ Receipt emailed to ${saleResult.customerEmail}`);
+      } else {
+        setEmailReceiptToast("✗ Failed to send email");
+      }
+    } catch {
+      setEmailReceiptToast("✗ Failed to send email");
+    } finally {
+      setEmailReceiptSending(false);
+      setTimeout(() => setEmailReceiptToast(null), 4000);
+    }
+  }
+
   if (saleResult) {
     return (
-      <div className="flex items-center justify-center min-h-[80vh]">
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-lg p-10 text-center max-w-md w-full">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+      <div className="flex items-center justify-center min-h-[80vh] p-4">
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-xl w-full max-w-sm">
+          {/* Success header */}
+          <div className="bg-green-50 border-b border-green-100 rounded-t-2xl px-8 py-7 text-center">
+            <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-green-800">Sale Complete ✅</h2>
+            <p className="text-sm font-mono text-green-700 mt-1 font-semibold">{saleResult.saleNumber}</p>
+            <p className="text-3xl font-bold text-stone-900 mt-2">${total.toFixed(2)}</p>
+            {paymentTab === "cash" && change > 0 && (
+              <p className="text-sm text-green-700 mt-1">Change: <span className="font-bold">${change.toFixed(2)}</span></p>
+            )}
           </div>
-          <h2 className="text-2xl font-semibold text-stone-900 mb-1">Sale Complete!</h2>
-          <p className="text-stone-500 mb-1">{saleResult.saleNumber}</p>
-          <p className="text-3xl font-bold text-stone-900 mb-6">${total.toFixed(2)}</p>
 
-          <div className="flex flex-col gap-3">
+          {/* Action buttons */}
+          <div className="p-5 flex flex-col gap-2.5">
+            {emailReceiptToast && (
+              <p className={`text-xs text-center font-medium py-1 ${emailReceiptToast.startsWith("✓") ? "text-green-600" : "text-red-500"}`}>
+                {emailReceiptToast}
+              </p>
+            )}
+
+            {/* Primary action: New Sale */}
+            <button
+              onClick={resetSale}
+              className="w-full py-3.5 bg-green-600 text-white rounded-xl font-bold text-base hover:bg-green-700 transition-colors"
+            >
+              + New Sale
+            </button>
+
+            {/* Print Receipt */}
             <button
               onClick={printReceipt}
               className="w-full py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-colors"
             >
               🖨️ Print Receipt
             </button>
+
+            {/* Email Receipt */}
+            {saleResult.invoiceId && saleResult.customerEmail && (
+              <button
+                onClick={handleEmailReceiptAfterSale}
+                disabled={emailReceiptSending}
+                className="w-full py-3 bg-stone-100 text-stone-900 rounded-xl font-medium hover:bg-stone-200 transition-colors disabled:opacity-50 text-sm"
+              >
+                {emailReceiptSending ? "Sending…" : `📧 Email to ${saleResult.customerEmail}`}
+              </button>
+            )}
+
+            {/* View Invoice */}
             {saleResult.invoiceId && (
               <button
                 onClick={() => router.push(`/invoices/${saleResult.invoiceId}`)}
-                className="w-full py-3 bg-stone-100 text-stone-900 rounded-xl font-medium hover:bg-stone-200 transition-colors"
+                className="w-full py-3 bg-stone-100 text-stone-900 rounded-xl font-medium hover:bg-stone-200 transition-colors text-sm"
               >
                 📄 View Invoice
               </button>
             )}
-            {cart.some((c) => c.itemType === "finished_piece") && (
+
+            {/* Issue Passport (finished pieces) */}
+            {(saleResult.cartSnapshot ?? []).some((c) => c.itemType === "finished_piece") && (
               <button
                 onClick={() => {
-                  const finishedItem = cart.find((c) => c.itemType === "finished_piece");
+                  const finishedItem = (saleResult.cartSnapshot ?? []).find((c) => c.itemType === "finished_piece");
                   if (finishedItem) router.push(`/passports/new?inventory_item_id=${finishedItem.inventoryId}`);
                 }}
-                className="w-full py-3 bg-[#8B7355]/10 text-[#8B7355] rounded-xl font-medium hover:bg-[#8B7355]/20 transition-colors"
+                className="w-full py-3 bg-[#8B7355]/10 text-[#8B7355] rounded-xl font-medium hover:bg-[#8B7355]/20 transition-colors text-sm"
               >
                 🛡️ Issue Passport
               </button>
             )}
-            <button
-              onClick={resetSale}
-              className="w-full py-3 text-stone-500 hover:text-stone-900 transition-colors"
-            >
-              New Sale →
-            </button>
           </div>
         </div>
       </div>
@@ -657,8 +713,9 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
             onClick={() => { setError(null); setShowPaymentModal(true); }}
             disabled={cart.length === 0}
             className="w-full py-3 bg-[#8B7355] text-white rounded-xl font-semibold text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title={cart.length === 0 ? "Add items to cart first" : undefined}
           >
-            Charge ${total.toFixed(2)}
+            {cart.length === 0 ? "Add items to charge" : `Charge $${total.toFixed(2)}`}
           </button>
         </div>
       </div>
