@@ -1,8 +1,11 @@
 /**
- * /sandbox/status — Sandbox health check
+ * /sandbox/status?rt=nexpura-review-2026 — Sandbox health check
  *
- * Returns JSON confirming whether the reviewer has an active authenticated session.
- * Also shows which auth cookies are present to help diagnose issues.
+ * With the middleware-injection approach, this route works without any browser
+ * cookie persistence. The ?rt= param causes the middleware to inject the demo
+ * session into the request, so cookies() here returns the demo session.
+ *
+ * Usage: GET /sandbox/status?rt=nexpura-review-2026
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -12,14 +15,20 @@ import { NextRequest, NextResponse } from "next/server";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const DEMO_USER_ID = "bd7d2c20-5727-4f80-a449-818429abecc9";
+const REVIEW_TOKEN = "nexpura-review-2026";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  // Check if review token was supplied (middleware will have injected the session)
+  const rtParam = request.nextUrl.searchParams.get("rt");
+  const hasToken = rtParam === REVIEW_TOKEN;
+
+  // Read cookies — middleware has already injected demo session cookies here
+  // if the ?rt= param was present on this request
   const cookieStore = await cookies();
   const allCookies = cookieStore.getAll();
 
-  // Check which Supabase auth cookies are present (for diagnostics)
   const authCookies = allCookies
     .filter((c) => c.name.includes("sb-") && c.name.includes("auth"))
     .map((c) => c.name);
@@ -32,9 +41,7 @@ export async function GET(request: NextRequest) {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll() {
-          // Read-only for status check
-        },
+        setAll() {},
       },
     }
   );
@@ -49,10 +56,14 @@ export async function GET(request: NextRequest) {
       {
         authenticated: false,
         sandboxReady: false,
-        message: "No active session. Visit /sandbox to enter the demo sandbox.",
-        entry: "/sandbox",
+        message: hasToken
+          ? "Session injection failed — check server logs."
+          : "No review token. Use: /sandbox/status?rt=nexpura-review-2026",
+        correctUrl: "/sandbox/status?rt=nexpura-review-2026",
         debug: {
-          authCookiesPresent: authCookies,
+          rtProvided: !!rtParam,
+          rtValid: hasToken,
+          authCookiesInjected: authCookies,
           totalCookies: allCookies.length,
           error: error?.message ?? null,
         },
@@ -89,12 +100,13 @@ export async function GET(request: NextRequest) {
       slug: tenant?.slug ?? "marcusco",
     },
     access: "read-write",
+    mechanism: "middleware session injection (cookie-free)",
     isolation: "seeded demo tenant only — no other tenant data accessible",
     urls: {
       entry: "/sandbox",
-      reset: "/sandbox/reset",
-      status: "/sandbox/status",
-      app: "/",
+      directEntry: `/dashboard?rt=${REVIEW_TOKEN}`,
+      reset: `/sandbox/reset`,
+      status: `/sandbox/status?rt=${REVIEW_TOKEN}`,
     },
   });
 }

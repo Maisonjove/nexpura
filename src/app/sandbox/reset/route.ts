@@ -783,5 +783,6 @@ export async function GET(request: NextRequest) {
     ])
   );
 
+  // Redirect to sandbox entry — which redirects to /dashboard?rt=TOKEN
   return NextResponse.redirect(new URL("/sandbox", request.url));
 }

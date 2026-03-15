@@ -1,36 +1,149 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+// ── Preview-only sandbox review mode ─────────────────────────────────────────
+// Token is hardcoded (preview-only; not production). Remove this block after review.
+const REVIEW_TOKEN = "nexpura-review-2026";
+const REVIEW_COOKIE = "nexpura-review";
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
+// Module-level session cache — persists for the lifetime of the process instance.
+// Each Vercel edge worker instance caches its own session; falls back to sign-in on cold start.
+let _cachedDemoCookies: Array<{ name: string; value: string }> | null = null;
+let _cacheExpiresAt = 0;
+
+async function getDemoSessionCookies(
+  supabaseUrl: string,
+  supabaseAnonKey: string
+): Promise<Array<{ name: string; value: string }>> {
+  const now = Math.floor(Date.now() / 1000);
+
+  // Return cached session if still valid (with 5-minute buffer)
+  if (_cachedDemoCookies && _cacheExpiresAt > now + 300) {
+    return _cachedDemoCookies;
+  }
+
+  // Sign in as demo user using a temporary in-memory client.
+  // Capture the cookies @supabase/ssr would set — this gives us the correct format.
+  const captured: Array<{ name: string; value: string }> = [];
+
+  const tmpClient = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return [];
       },
-    }
-  );
+      setAll(cs) {
+        captured.push(...cs.map((c) => ({ name: c.name, value: c.value })));
+      },
+    },
+  });
 
-  // Refresh session — must await getUser() to keep session fresh
+  const {
+    data: { session },
+    error,
+  } = await tmpClient.auth.signInWithPassword({
+    email: "demo@nexpura.com",
+    password: "nexpura-demo-2026",
+  });
+
+  if (error || !session) {
+    console.error("[sandbox] Demo session fetch failed:", error?.message);
+    return [];
+  }
+
+  _cachedDemoCookies = captured;
+  _cacheExpiresAt = session.expires_at ?? now + 3600;
+  return _cachedDemoCookies;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function updateSession(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const pathname = request.nextUrl.pathname;
+
+  // ── Review-mode detection ─────────────────────────────────────────────────
+  const rtParam = request.nextUrl.searchParams.get("rt");
+  const reviewCookieValue = request.cookies.get(REVIEW_COOKIE)?.value;
+  const isReviewRequest =
+    rtParam === REVIEW_TOKEN || reviewCookieValue === REVIEW_TOKEN;
+
+  // ── Build request headers — inject demo session if review mode ────────────
+  // This is the core of the cookie-free approach: we modify the Cookie header
+  // on the forwarded request. Server Components read cookies via await cookies()
+  // from next/headers, which reads from the forwarded request headers.
+  // So injecting here makes the demo session visible to ALL Server Components
+  // without requiring the browser to store or send any Supabase auth cookies.
+  const requestHeaders = new Headers(request.headers);
+  let demoCookies: Array<{ name: string; value: string }> = [];
+
+  if (isReviewRequest) {
+    demoCookies = await getDemoSessionCookies(supabaseUrl, supabaseAnonKey);
+
+    if (demoCookies.length > 0) {
+      const existingCookieHeader = requestHeaders.get("cookie") ?? "";
+      const demoCookieStr = demoCookies
+        .map((c) => `${c.name}=${c.value}`)
+        .join("; ");
+      // Merge: demo session cookies take precedence (appended, @supabase/ssr reads last-wins)
+      requestHeaders.set(
+        "cookie",
+        existingCookieHeader
+          ? `${existingCookieHeader}; ${demoCookieStr}`
+          : demoCookieStr
+      );
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Initial supabase response — uses modified request headers so Server Components
+  // receive the injected demo session cookies via await cookies()
+  let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
+
+  // The middleware's own Supabase client reads the merged cookies
+  // (existing browser cookies + injected demo session if review mode)
+  const mergedCookies = [
+    ...request.cookies
+      .getAll()
+      .filter((c) => !demoCookies.find((d) => d.name === c.name)),
+    ...demoCookies,
+  ];
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return mergedCookies;
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) =>
+          request.cookies.set(name, value)
+        );
+        // Preserve the modified requestHeaders when rebuilding supabaseResponse
+        supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
+
+  // Refresh / validate session
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
+  // Persist the review mode cookie on the response.
+  // Simple non-httpOnly cookie — much easier to retain across navigations than
+  // large Supabase auth tokens. Enables navigation within the app without ?rt= param.
+  if (isReviewRequest) {
+    supabaseResponse.cookies.set(REVIEW_COOKIE, REVIEW_TOKEN, {
+      path: "/",
+      maxAge: 86400 * 7, // 7 days
+      sameSite: "lax",
+      httpOnly: false,
+    });
+  }
+
+  // ── Route authorization ───────────────────────────────────────────────────
 
   // Public routes — no auth required
   const isPublicRoute =
@@ -40,9 +153,9 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/verify") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname.startsWith("/demo") || // Demo mode — public read-only preview
-    pathname.startsWith("/review") || // Review mode — public read-only routes
-    pathname.startsWith("/sandbox") || // Sandbox — public demo tenant access
+    pathname.startsWith("/demo") ||
+    pathname.startsWith("/review") ||
+    pathname.startsWith("/sandbox") ||
     pathname.includes(".");
 
   if (isPublicRoute) {
@@ -93,14 +206,12 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/ai");
 
   if (isProtectedRoute) {
-    // Must be authenticated
     if (!user) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       return NextResponse.redirect(loginUrl);
     }
 
-    // Check if user has a tenant record
     const { data: userRecord } = await supabase
       .from("users")
       .select("id, tenant_id, role")
@@ -108,13 +219,11 @@ export async function updateSession(request: NextRequest) {
       .single();
 
     if (!userRecord || !userRecord.tenant_id) {
-      // No tenant — redirect to onboarding
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = "/onboarding";
       return NextResponse.redirect(onboardingUrl);
     }
 
-    // Check for suspended subscription if not on /billing or /suspended
     if (!pathname.startsWith("/billing") && !pathname.startsWith("/suspended")) {
       const { data: sub } = await supabase
         .from("subscriptions")
