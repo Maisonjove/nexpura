@@ -41,6 +41,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/demo") || // Demo mode — public read-only preview
+    pathname.startsWith("/review") || // Review mode — public read-only routes
     pathname.includes(".");
 
   if (isPublicRoute) {
