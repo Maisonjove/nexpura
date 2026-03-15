@@ -71,10 +71,12 @@ export default async function BespokeJobDetailPage({
 
   if (!job) notFound();
 
+  // invoices uses reference_type/reference_id — no bespoke_job_id column
   const { data: invoiceRow } = await adminClient
     .from("invoices")
     .select("id")
-    .eq("bespoke_job_id", id)
+    .eq("reference_type", "bespoke")
+    .eq("reference_id", id)
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(1)

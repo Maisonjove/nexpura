@@ -27,15 +27,15 @@ export default async function InvoicesPage({
   const tenantId = userData?.tenant_id;
   const today = new Date().toISOString().split("T")[0];
 
-  // Stats: outstanding (use `total` as proxy since amount_due doesn't exist)
+  // Stats: outstanding — actual DB status values are unpaid/partial/overdue
   const { data: outstandingData } = await supabase
     .from("invoices")
-    .select("total")
+    .select("amount_due")
     .eq("tenant_id", tenantId ?? "")
-    .in("status", ["sent", "partially_paid", "overdue"]);
+    .in("status", ["unpaid", "partial", "overdue"]);
 
   const totalOutstanding = (outstandingData ?? []).reduce(
-    (sum, inv) => sum + (inv.total || 0),
+    (sum, inv) => sum + (inv.amount_due || 0),
     0
   );
 

@@ -437,29 +437,33 @@ export async function GET(request: NextRequest) {
     ])
   );
 
-  // REPAIRS
+  // REPAIRS — item_description + repair_type are NOT NULL in schema
   await safeInsert(() =>
     admin.from("repairs").insert([
       {
-        id: "3d4480d1-47cc-407c-99d9-9462d93f7eca",
+        id: "09686ec7-0ec5-4950-ba7f-9982c9830d43",
         tenant_id: TENANT_ID,
         repair_number: "R-0001",
         customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a",
-        description:
-          "Resize platinum solitaire ring from size L to N. Check prong integrity.",
+        item_type: "ring",
+        item_description: "Platinum solitaire ring — 4-claw, 1.20ct diamond",
+        repair_type: "Resize (L to N) + Prong Check",
+        work_description: "Resize platinum solitaire ring from size L to N. Check prong integrity.",
         stage: "in_progress",
         priority: "normal",
         quoted_price: 320,
         deposit_amount: 100,
-        deposit_paid: true,
+        deposit_paid: false,
         due_date: "2026-03-20",
       },
       {
         tenant_id: TENANT_ID,
         repair_number: "R-0002",
         customer_id: "7774e408-6231-4d99-bc9f-ec657456a364",
-        description:
-          "Polish and rhodium plate white gold bracelet. Replace broken clasp.",
+        item_type: "bracelet",
+        item_description: "18ct white gold bracelet",
+        repair_type: "Polish, Rhodium Plate + Clasp Replacement",
+        work_description: "Polish and rhodium plate white gold bracelet. Replace broken clasp.",
         stage: "quoted",
         priority: "normal",
         quoted_price: 180,
@@ -470,8 +474,10 @@ export async function GET(request: NextRequest) {
         tenant_id: TENANT_ID,
         repair_number: "R-0003",
         customer_id: "9790cd8c-e746-4a2a-995f-974b61590975",
-        description:
-          "Set 3 replacement diamonds in pendant. Stones provided by client.",
+        item_type: "pendant",
+        item_description: "Diamond pendant — 3 stones to be replaced",
+        repair_type: "Stone Setting",
+        work_description: "Set 3 replacement diamonds in pendant. Stones provided by client.",
         stage: "assessed",
         priority: "high",
         quoted_price: 450,
@@ -482,8 +488,10 @@ export async function GET(request: NextRequest) {
         tenant_id: TENANT_ID,
         repair_number: "R-0004",
         customer_id: "870c2497-feb4-4857-b53f-aa12ae12d41e",
-        description:
-          "Restring pearl necklace on silk with gold knotting. 48 pearls.",
+        item_type: "necklace",
+        item_description: "48-pearl strand necklace",
+        repair_type: "Restring on Silk",
+        work_description: "Restring pearl necklace on silk with gold knotting. 48 pearls.",
         stage: "ready",
         priority: "normal",
         quoted_price: 240,
@@ -496,8 +504,10 @@ export async function GET(request: NextRequest) {
         tenant_id: TENANT_ID,
         repair_number: "R-0005",
         customer_id: "a436d54f-efd6-47ec-8108-e133409bd9b3",
-        description:
-          "Full service and clean of vintage brooch. Tighten loose setting.",
+        item_type: "brooch",
+        item_description: "Vintage gold brooch",
+        repair_type: "Service + Setting Tighten",
+        work_description: "Full service and clean of vintage brooch. Tighten loose setting.",
         stage: "intake",
         priority: "low",
         quoted_price: 150,
@@ -510,7 +520,7 @@ export async function GET(request: NextRequest) {
   await safeInsert(() =>
     admin.from("bespoke_jobs").insert([
       {
-        id: "4db9a53d-5300-40f6-96fb-e89ccb3ebee3",
+        id: "ba62301b-0b26-423a-b02e-5a48bd7034b6",
         tenant_id: TENANT_ID,
         job_number: "B-0001",
         customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a",
@@ -520,7 +530,7 @@ export async function GET(request: NextRequest) {
         priority: "high",
         quoted_price: 8400,
         deposit_amount: 2800,
-        deposit_received: true,
+        deposit_paid: false,
         due_date: "2026-04-15",
       },
       {
@@ -533,7 +543,7 @@ export async function GET(request: NextRequest) {
         stage: "assessed",
         priority: "normal",
         quoted_price: 5200,
-        deposit_received: false,
+        deposit_paid: false,
         due_date: "2026-05-01",
       },
       {
@@ -547,13 +557,14 @@ export async function GET(request: NextRequest) {
         priority: "urgent",
         quoted_price: 9800,
         deposit_amount: 3000,
-        deposit_received: true,
+        deposit_paid: false,
         due_date: "2026-03-30",
       },
     ])
   );
 
-  // INVOICES
+  // INVOICES — invoice_date/subtotal/tax_amount/discount_amount/amount_paid all NOT NULL
+  // reference_type + reference_id link to repair/bespoke (no repair_id column)
   await safeInsert(() =>
     admin.from("invoices").insert([
       {
@@ -561,49 +572,73 @@ export async function GET(request: NextRequest) {
         tenant_id: TENANT_ID,
         invoice_number: "INV-0001",
         customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a",
+        reference_type: "sale",
         status: "paid",
+        invoice_date: "2026-03-01",
+        due_date: "2026-03-10",
+        paid_at: "2026-03-08T10:00:00Z",
         subtotal: 18500,
-        tax: 1850,
+        tax_amount: 1850,
+        discount_amount: 0,
         total: 20350,
         amount_paid: 20350,
-        due_date: "2026-03-10",
-        issued_date: "2026-03-01",
+        amount_due: 0,
+        tax_name: "GST",
+        tax_rate: 0.1,
       },
       {
         tenant_id: TENANT_ID,
         invoice_number: "INV-0002",
         customer_id: "7774e408-6231-4d99-bc9f-ec657456a364",
+        reference_type: "bespoke",
+        reference_id: "ba62301b-0b26-423a-b02e-5a48bd7034b6",
         status: "unpaid",
+        invoice_date: "2026-03-05",
+        due_date: "2026-03-31",
         subtotal: 8400,
-        tax: 840,
+        tax_amount: 840,
+        discount_amount: 0,
         total: 9240,
         amount_paid: 0,
-        due_date: "2026-03-31",
-        issued_date: "2026-03-05",
+        amount_due: 9240,
+        tax_name: "GST",
+        tax_rate: 0.1,
       },
       {
         tenant_id: TENANT_ID,
         invoice_number: "INV-0003",
         customer_id: "9790cd8c-e746-4a2a-995f-974b61590975",
+        reference_type: "repair",
+        reference_id: "09686ec7-0ec5-4950-ba7f-9982c9830d43",
         status: "partial",
+        invoice_date: "2026-02-25",
+        due_date: "2026-03-08",
         subtotal: 5600,
-        tax: 560,
+        tax_amount: 560,
+        discount_amount: 0,
         total: 6160,
         amount_paid: 3000,
-        due_date: "2026-03-08",
-        issued_date: "2026-02-25",
+        amount_due: 3160,
+        tax_name: "GST",
+        tax_rate: 0.1,
       },
       {
         tenant_id: TENANT_ID,
         invoice_number: "INV-0004",
         customer_id: "870c2497-feb4-4857-b53f-aa12ae12d41e",
+        reference_type: "sale",
         status: "paid",
+        invoice_date: "2026-03-12",
+        due_date: "2026-03-20",
+        paid_at: "2026-03-14T14:00:00Z",
         subtotal: 2200,
-        tax: 220,
+        tax_amount: 220,
+        discount_amount: 0,
         total: 2420,
         amount_paid: 2420,
-        due_date: "2026-03-20",
-        issued_date: "2026-03-12",
+        amount_due: 0,
+        tax_name: "GST",
+        tax_rate: 0.1,
       },
     ])
   );

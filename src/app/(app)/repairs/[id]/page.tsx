@@ -108,10 +108,12 @@ export default async function RepairDetailPage({
 
   if (!repair) notFound();
 
+  // invoices uses reference_type/reference_id — no repair_id column
   const { data: invoiceRow } = await adminClient
     .from("invoices")
     .select("id")
-    .eq("repair_id", id)
+    .eq("reference_type", "repair")
+    .eq("reference_id", id)
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(1)
