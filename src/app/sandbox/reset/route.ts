@@ -280,364 +280,40 @@ export async function GET(request: NextRequest) {
     ])
   );
 
-  // INVENTORY
-  await safeInsert(() =>
-    admin.from("inventory").insert([
-      {
-        id: "67940b89-90ed-43b7-96a5-7bfc14d1ed79",
-        tenant_id: TENANT_ID,
-        sku: "DSR-001",
-        name: "Diamond Solitaire Ring",
-        item_type: "jewellery",
-        jewellery_type: "ring",
-        metal_type: "platinum",
-        metal_purity: "950",
-        stone_type: "diamond",
-        stone_carat: 1.2,
-        stone_colour: "D",
-        stone_clarity: "VS1",
-        ring_size: "N",
-        retail_price: 18500,
-        quantity: 1,
-        status: "active",
-        description:
-          "Classic 4-claw platinum solitaire with 1.20ct D/VS1 round brilliant diamond. GIA certified.",
-      },
-      {
-        tenant_id: TENANT_ID,
-        sku: "SHR-002",
-        name: "Sapphire Halo Ring",
-        item_type: "jewellery",
-        jewellery_type: "ring",
-        metal_type: "white gold",
-        metal_purity: "18ct",
-        stone_type: "sapphire",
-        stone_carat: 1.8,
-        retail_price: 12800,
-        ring_size: "L",
-        quantity: 1,
-        status: "active",
-        description: "18ct white gold sapphire halo ring with diamond surround.",
-      },
-      {
-        tenant_id: TENANT_ID,
-        sku: "GDB-003",
-        name: "Gold Diamond Bracelet",
-        item_type: "jewellery",
-        jewellery_type: "bracelet",
-        metal_type: "yellow gold",
-        metal_purity: "18ct",
-        stone_type: "diamond",
-        retail_price: 8400,
-        quantity: 1,
-        status: "active",
-        description: "18ct yellow gold tennis bracelet with 3.5ct total diamond weight.",
-      },
-      {
-        tenant_id: TENANT_ID,
-        sku: "PEN-004",
-        name: "Pearl Pendant Necklace",
-        item_type: "jewellery",
-        jewellery_type: "necklace",
-        metal_type: "yellow gold",
-        metal_purity: "18ct",
-        retail_price: 2200,
-        quantity: 2,
-        status: "active",
-        description: "18ct yellow gold freshwater pearl pendant on 45cm chain.",
-      },
-      {
-        tenant_id: TENANT_ID,
-        sku: "EDD-005",
-        name: "Emerald Drop Earrings",
-        item_type: "jewellery",
-        jewellery_type: "earrings",
-        metal_type: "white gold",
-        metal_purity: "18ct",
-        stone_type: "emerald",
-        retail_price: 5600,
-        quantity: 1,
-        status: "active",
-        description:
-          "18ct white gold Colombian emerald drop earrings with diamond halos.",
-      },
-      {
-        tenant_id: TENANT_ID,
-        sku: "RGC-006",
-        name: "Rose Gold Chain",
-        item_type: "jewellery",
-        jewellery_type: "chain",
-        metal_type: "rose gold",
-        metal_purity: "18ct",
-        metal_weight_grams: 8.5,
-        retail_price: 1400,
-        quantity: 3,
-        status: "active",
-        description: "18ct rose gold fine curb chain, 50cm.",
-      },
-      {
-        tenant_id: TENANT_ID,
-        sku: "DWB-007",
-        name: "Diamond Wedding Band",
-        item_type: "jewellery",
-        jewellery_type: "ring",
-        metal_type: "platinum",
-        metal_purity: "950",
-        stone_type: "diamond",
-        retail_price: 4800,
-        ring_size: "M",
-        quantity: 2,
-        status: "active",
-        description: "Platinum channel-set diamond wedding band. 0.50ct total weight.",
-      },
-      {
-        tenant_id: TENANT_ID,
-        sku: "VBR-008",
-        name: "Vintage Brooch",
-        item_type: "jewellery",
-        jewellery_type: "brooch",
-        metal_type: "yellow gold",
-        metal_purity: "9ct",
-        retail_price: 950,
-        quantity: 1,
-        status: "active",
-        description:
-          "9ct gold Art Nouveau brooch with seed pearls and rose-cut diamonds. Circa 1910.",
-      },
-      {
-        tenant_id: TENANT_ID,
-        sku: "MEN-009",
-        name: "Men's Signet Ring",
-        item_type: "jewellery",
-        jewellery_type: "ring",
-        metal_type: "yellow gold",
-        metal_purity: "18ct",
-        ring_size: "T",
-        retail_price: 3200,
-        quantity: 1,
-        status: "active",
-        description: "18ct yellow gold men's signet ring with flat top.",
-      },
-      {
-        tenant_id: TENANT_ID,
-        sku: "AQP-010",
-        name: "Aquamarine Pendant",
-        item_type: "jewellery",
-        jewellery_type: "pendant",
-        metal_type: "white gold",
-        metal_purity: "18ct",
-        stone_type: "aquamarine",
-        stone_carat: 3.5,
-        retail_price: 3800,
-        quantity: 1,
-        status: "active",
-        description:
-          "18ct white gold aquamarine and diamond pendant. Oval aquamarine 3.50ct.",
-      },
-    ])
-  );
+  // INVENTORY — individual inserts to avoid "All object keys must match" PostgREST error
+  for (const item of [
+    { id: "67940b89-90ed-43b7-96a5-7bfc14d1ed79", tenant_id: TENANT_ID, sku: "DSR-001", name: "Diamond Solitaire Ring", item_type: "jewellery", jewellery_type: "ring", metal_type: "platinum", metal_purity: "950", stone_type: "diamond", stone_carat: 1.2, stone_colour: "D", stone_clarity: "VS1", ring_size: "N", retail_price: 18500, quantity: 1, status: "active", description: "Classic 4-claw platinum solitaire with 1.20ct D/VS1 round brilliant diamond. GIA certified." },
+    { id: "6a7a4edc-20dc-4f73-b3fb-bab23ced5591", tenant_id: TENANT_ID, sku: "SHR-002", name: "Sapphire Halo Ring", item_type: "jewellery", jewellery_type: "ring", metal_type: "white gold", metal_purity: "18ct", stone_type: "sapphire", stone_carat: 1.8, ring_size: "L", retail_price: 12800, quantity: 1, status: "active", description: "18ct white gold sapphire halo ring with diamond surround." },
+    { tenant_id: TENANT_ID, sku: "GDB-003", name: "Gold Diamond Bracelet", item_type: "jewellery", jewellery_type: "bracelet", metal_type: "yellow gold", metal_purity: "18ct", stone_type: "diamond", retail_price: 8400, quantity: 1, status: "active", description: "18ct yellow gold tennis bracelet with 3.5ct total diamond weight." },
+    { tenant_id: TENANT_ID, sku: "PEN-004", name: "Pearl Pendant Necklace", item_type: "jewellery", jewellery_type: "necklace", metal_type: "yellow gold", metal_purity: "18ct", retail_price: 2200, quantity: 2, status: "active", description: "18ct yellow gold freshwater pearl pendant on 45cm chain." },
+    { tenant_id: TENANT_ID, sku: "EDD-005", name: "Emerald Drop Earrings", item_type: "jewellery", jewellery_type: "earrings", metal_type: "white gold", metal_purity: "18ct", stone_type: "emerald", retail_price: 5600, quantity: 1, status: "active", description: "18ct white gold Colombian emerald drop earrings with diamond halos." },
+    { tenant_id: TENANT_ID, sku: "RGC-006", name: "Rose Gold Chain", item_type: "jewellery", jewellery_type: "chain", metal_type: "rose gold", metal_purity: "18ct", metal_weight_grams: 8.5, retail_price: 1400, quantity: 3, status: "active", description: "18ct rose gold fine curb chain, 50cm." },
+    { tenant_id: TENANT_ID, sku: "DWB-007", name: "Diamond Wedding Band", item_type: "jewellery", jewellery_type: "ring", metal_type: "platinum", metal_purity: "950", stone_type: "diamond", ring_size: "M", retail_price: 4800, quantity: 2, status: "active", description: "Platinum channel-set diamond wedding band. 0.50ct total weight." },
+    { tenant_id: TENANT_ID, sku: "VBR-008", name: "Vintage Brooch", item_type: "jewellery", jewellery_type: "brooch", metal_type: "yellow gold", metal_purity: "9ct", retail_price: 950, quantity: 1, status: "active", description: "9ct gold Art Nouveau brooch with seed pearls and rose-cut diamonds. Circa 1910." },
+    { tenant_id: TENANT_ID, sku: "MEN-009", name: "Men's Signet Ring", item_type: "jewellery", jewellery_type: "ring", metal_type: "yellow gold", metal_purity: "18ct", ring_size: "T", retail_price: 3200, quantity: 1, status: "active", description: "18ct yellow gold men's signet ring with flat top." },
+    { tenant_id: TENANT_ID, sku: "AQP-010", name: "Aquamarine Pendant", item_type: "jewellery", jewellery_type: "pendant", metal_type: "white gold", metal_purity: "18ct", stone_type: "aquamarine", stone_carat: 3.5, retail_price: 3800, quantity: 1, status: "active", description: "18ct white gold aquamarine and diamond pendant. Oval aquamarine 3.50ct." },
+  ] as const) {
+    await safeInsert(() => admin.from("inventory").insert(item as never));
+  }
 
-  // REPAIRS — item_description + repair_type are NOT NULL in schema
-  await safeInsert(() =>
-    admin.from("repairs").insert([
-      {
-        id: "09686ec7-0ec5-4950-ba7f-9982c9830d43",
-        tenant_id: TENANT_ID,
-        repair_number: "R-0001",
-        customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a",
-        item_type: "ring",
-        item_description: "Platinum solitaire ring — 4-claw, 1.20ct diamond",
-        repair_type: "Resize (L to N) + Prong Check",
-        work_description: "Resize platinum solitaire ring from size L to N. Check prong integrity.",
-        stage: "in_progress",
-        priority: "normal",
-        quoted_price: 320,
-        deposit_amount: 100,
-        deposit_paid: false,
-        due_date: "2026-03-20",
-      },
-      {
-        tenant_id: TENANT_ID,
-        repair_number: "R-0002",
-        customer_id: "7774e408-6231-4d99-bc9f-ec657456a364",
-        item_type: "bracelet",
-        item_description: "18ct white gold bracelet",
-        repair_type: "Polish, Rhodium Plate + Clasp Replacement",
-        work_description: "Polish and rhodium plate white gold bracelet. Replace broken clasp.",
-        stage: "quoted",
-        priority: "normal",
-        quoted_price: 180,
-        deposit_paid: false,
-        due_date: "2026-03-25",
-      },
-      {
-        tenant_id: TENANT_ID,
-        repair_number: "R-0003",
-        customer_id: "9790cd8c-e746-4a2a-995f-974b61590975",
-        item_type: "pendant",
-        item_description: "Diamond pendant — 3 stones to be replaced",
-        repair_type: "Stone Setting",
-        work_description: "Set 3 replacement diamonds in pendant. Stones provided by client.",
-        stage: "assessed",
-        priority: "high",
-        quoted_price: 450,
-        deposit_paid: false,
-        due_date: "2026-03-22",
-      },
-      {
-        tenant_id: TENANT_ID,
-        repair_number: "R-0004",
-        customer_id: "870c2497-feb4-4857-b53f-aa12ae12d41e",
-        item_type: "necklace",
-        item_description: "48-pearl strand necklace",
-        repair_type: "Restring on Silk",
-        work_description: "Restring pearl necklace on silk with gold knotting. 48 pearls.",
-        stage: "ready",
-        priority: "normal",
-        quoted_price: 240,
-        final_price: 240,
-        deposit_amount: 80,
-        deposit_paid: true,
-        due_date: "2026-03-15",
-      },
-      {
-        tenant_id: TENANT_ID,
-        repair_number: "R-0005",
-        customer_id: "a436d54f-efd6-47ec-8108-e133409bd9b3",
-        item_type: "brooch",
-        item_description: "Vintage gold brooch",
-        repair_type: "Service + Setting Tighten",
-        work_description: "Full service and clean of vintage brooch. Tighten loose setting.",
-        stage: "intake",
-        priority: "low",
-        quoted_price: 150,
-        deposit_paid: false,
-      },
-    ])
-  );
+  // REPAIRS — individual inserts; item_description + repair_type NOT NULL
+  await safeInsert(() => admin.from("repairs").insert({ id: "09686ec7-0ec5-4950-ba7f-9982c9830d43", tenant_id: TENANT_ID, repair_number: "R-0001", customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a", item_type: "ring", item_description: "Platinum solitaire ring — 4-claw, 1.20ct diamond", repair_type: "Resize (L to N) + Prong Check", work_description: "Resize platinum solitaire ring from size L to N. Check prong integrity.", stage: "in_progress", priority: "normal", quoted_price: 320, deposit_amount: 100, deposit_paid: false, due_date: "2026-03-20" }));
+  await safeInsert(() => admin.from("repairs").insert({ tenant_id: TENANT_ID, repair_number: "R-0002", customer_id: "7774e408-6231-4d99-bc9f-ec657456a364", item_type: "bracelet", item_description: "18ct white gold bracelet", repair_type: "Polish, Rhodium Plate + Clasp Replacement", work_description: "Polish and rhodium plate white gold bracelet. Replace broken clasp.", stage: "quoted", priority: "normal", quoted_price: 180, deposit_paid: false, due_date: "2026-03-25" }));
+  await safeInsert(() => admin.from("repairs").insert({ tenant_id: TENANT_ID, repair_number: "R-0003", customer_id: "9790cd8c-e746-4a2a-995f-974b61590975", item_type: "pendant", item_description: "Diamond pendant — 3 stones to be replaced", repair_type: "Stone Setting", work_description: "Set 3 replacement diamonds in pendant. Stones provided by client.", stage: "assessed", priority: "high", quoted_price: 450, deposit_paid: false, due_date: "2026-03-22" }));
+  await safeInsert(() => admin.from("repairs").insert({ tenant_id: TENANT_ID, repair_number: "R-0004", customer_id: "870c2497-feb4-4857-b53f-aa12ae12d41e", item_type: "necklace", item_description: "48-pearl strand necklace", repair_type: "Restring on Silk", work_description: "Restring pearl necklace on silk with gold knotting. 48 pearls.", stage: "ready", priority: "normal", quoted_price: 240, final_price: 240, deposit_amount: 80, deposit_paid: true, due_date: "2026-03-15" }));
+  await safeInsert(() => admin.from("repairs").insert({ tenant_id: TENANT_ID, repair_number: "R-0005", customer_id: "a436d54f-efd6-47ec-8108-e133409bd9b3", item_type: "brooch", item_description: "Vintage gold brooch", repair_type: "Service + Setting Tighten", work_description: "Full service and clean of vintage brooch. Tighten loose setting.", stage: "intake", priority: "low", quoted_price: 150, deposit_paid: false }));
 
-  // BESPOKE JOBS
-  await safeInsert(() =>
-    admin.from("bespoke_jobs").insert([
-      {
-        id: "ba62301b-0b26-423a-b02e-5a48bd7034b6",
-        tenant_id: TENANT_ID,
-        job_number: "B-0001",
-        customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a",
-        title: "Custom Platinum Wedding Bands",
-        description: "Matching platinum wedding bands with hand-engraved scrollwork.",
-        stage: "in_progress",
-        priority: "high",
-        quoted_price: 8400,
-        deposit_amount: 2800,
-        deposit_paid: false,
-        due_date: "2026-04-15",
-      },
-      {
-        tenant_id: TENANT_ID,
-        job_number: "B-0002",
-        customer_id: "7774e408-6231-4d99-bc9f-ec657456a364",
-        title: "Art Deco Inspired Cocktail Ring",
-        description:
-          "18ct white gold cocktail ring with central aquamarine and geometric diamond surround.",
-        stage: "assessed",
-        priority: "normal",
-        quoted_price: 5200,
-        deposit_paid: false,
-        due_date: "2026-05-01",
-      },
-      {
-        tenant_id: TENANT_ID,
-        job_number: "B-0003",
-        customer_id: "9790cd8c-e746-4a2a-995f-974b61590975",
-        title: "Sapphire Halo Engagement Ring",
-        description:
-          "18ct white gold sapphire halo engagement ring. Ceylon blue sapphire.",
-        stage: "quoted",
-        priority: "urgent",
-        quoted_price: 9800,
-        deposit_amount: 3000,
-        deposit_paid: false,
-        due_date: "2026-03-30",
-      },
-    ])
-  );
+  // BESPOKE JOBS — individual inserts
+  await safeInsert(() => admin.from("bespoke_jobs").insert({ id: "ba62301b-0b26-423a-b02e-5a48bd7034b6", tenant_id: TENANT_ID, job_number: "B-0001", customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a", title: "Custom Platinum Wedding Bands", description: "Matching platinum wedding bands with hand-engraved scrollwork.", stage: "in_progress", priority: "high", quoted_price: 8400, deposit_amount: 2800, deposit_paid: false, due_date: "2026-04-15" }));
+  await safeInsert(() => admin.from("bespoke_jobs").insert({ tenant_id: TENANT_ID, job_number: "B-0002", customer_id: "7774e408-6231-4d99-bc9f-ec657456a364", title: "Art Deco Inspired Cocktail Ring", description: "18ct white gold cocktail ring with central aquamarine and geometric diamond surround.", stage: "assessed", priority: "normal", quoted_price: 5200, deposit_paid: false, due_date: "2026-05-01" }));
+  await safeInsert(() => admin.from("bespoke_jobs").insert({ tenant_id: TENANT_ID, job_number: "B-0003", customer_id: "9790cd8c-e746-4a2a-995f-974b61590975", title: "Sapphire Halo Engagement Ring", description: "18ct white gold sapphire halo engagement ring. Ceylon blue sapphire.", stage: "quoted", priority: "urgent", quoted_price: 9800, deposit_amount: 3000, deposit_paid: false, due_date: "2026-03-30" }));
 
-  // INVOICES — invoice_date/subtotal/tax_amount/discount_amount/amount_paid all NOT NULL
-  // reference_type + reference_id link to repair/bespoke (no repair_id column)
-  await safeInsert(() =>
-    admin.from("invoices").insert([
-      {
-        id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e",
-        tenant_id: TENANT_ID,
-        invoice_number: "INV-0001",
-        customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a",
-        reference_type: "sale",
-        status: "paid",
-        invoice_date: "2026-03-01",
-        due_date: "2026-03-10",
-        paid_at: "2026-03-08T10:00:00Z",
-        subtotal: 18500,
-        tax_amount: 1850,
-        discount_amount: 0,
-        total: 20350,
-        amount_paid: 20350,
-        tax_name: "GST",
-        tax_rate: 0.1,
-      },
-      {
-        tenant_id: TENANT_ID,
-        invoice_number: "INV-0002",
-        customer_id: "7774e408-6231-4d99-bc9f-ec657456a364",
-        reference_type: "bespoke",
-        reference_id: "ba62301b-0b26-423a-b02e-5a48bd7034b6",
-        status: "unpaid",
-        invoice_date: "2026-03-05",
-        due_date: "2026-03-31",
-        subtotal: 8400,
-        tax_amount: 840,
-        discount_amount: 0,
-        total: 9240,
-        amount_paid: 0,
-        tax_name: "GST",
-        tax_rate: 0.1,
-      },
-      {
-        tenant_id: TENANT_ID,
-        invoice_number: "INV-0003",
-        customer_id: "9790cd8c-e746-4a2a-995f-974b61590975",
-        reference_type: "repair",
-        reference_id: "09686ec7-0ec5-4950-ba7f-9982c9830d43",
-        status: "partial",
-        invoice_date: "2026-02-25",
-        due_date: "2026-03-08",
-        subtotal: 5600,
-        tax_amount: 560,
-        discount_amount: 0,
-        total: 6160,
-        amount_paid: 3000,
-        tax_name: "GST",
-        tax_rate: 0.1,
-      },
-      {
-        tenant_id: TENANT_ID,
-        invoice_number: "INV-0004",
-        customer_id: "870c2497-feb4-4857-b53f-aa12ae12d41e",
-        reference_type: "sale",
-        status: "paid",
-        invoice_date: "2026-03-12",
-        due_date: "2026-03-20",
-        paid_at: "2026-03-14T14:00:00Z",
-        subtotal: 2200,
-        tax_amount: 220,
-        discount_amount: 0,
-        total: 2420,
-        amount_paid: 2420,
-        tax_name: "GST",
-        tax_rate: 0.1,
-      },
-    ])
-  );
+  // INVOICES — individual inserts; amount_due is a generated column (do not set it)
+  await safeInsert(() => admin.from("invoices").insert({ id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", tenant_id: TENANT_ID, invoice_number: "INV-0001", customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a", reference_type: "sale", status: "paid", invoice_date: "2026-03-01", due_date: "2026-03-10", paid_at: "2026-03-08T10:00:00Z", subtotal: 18500, tax_amount: 1850, discount_amount: 0, total: 20350, amount_paid: 20350, tax_name: "GST", tax_rate: 0.1 }));
+  await safeInsert(() => admin.from("invoices").insert({ tenant_id: TENANT_ID, invoice_number: "INV-0002", customer_id: "7774e408-6231-4d99-bc9f-ec657456a364", reference_type: "bespoke", reference_id: "ba62301b-0b26-423a-b02e-5a48bd7034b6", status: "unpaid", invoice_date: "2026-03-05", due_date: "2026-03-31", subtotal: 8400, tax_amount: 840, discount_amount: 0, total: 9240, amount_paid: 0, tax_name: "GST", tax_rate: 0.1 }));
+  await safeInsert(() => admin.from("invoices").insert({ tenant_id: TENANT_ID, invoice_number: "INV-0003", customer_id: "9790cd8c-e746-4a2a-995f-974b61590975", reference_type: "repair", reference_id: "09686ec7-0ec5-4950-ba7f-9982c9830d43", status: "partial", invoice_date: "2026-02-25", due_date: "2026-03-08", subtotal: 5600, tax_amount: 560, discount_amount: 0, total: 6160, amount_paid: 3000, tax_name: "GST", tax_rate: 0.1 }));
+  await safeInsert(() => admin.from("invoices").insert({ tenant_id: TENANT_ID, invoice_number: "INV-0004", customer_id: "870c2497-feb4-4857-b53f-aa12ae12d41e", reference_type: "sale", status: "paid", invoice_date: "2026-03-12", due_date: "2026-03-20", paid_at: "2026-03-14T14:00:00Z", subtotal: 2200, tax_amount: 220, discount_amount: 0, total: 2420, amount_paid: 2420, tax_name: "GST", tax_rate: 0.1 }));
+
 
   // SALES
   await safeInsert(() =>
