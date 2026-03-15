@@ -58,8 +58,6 @@ export default async function BespokeJobDetailPage({
     return fmt(n, tenantCurrency);
   }
 
-  const adminClient = createAdminClient();
-
   const { data: job } = await adminClient
     .from("bespoke_jobs")
     .select(

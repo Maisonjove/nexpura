@@ -19,6 +19,10 @@ export default async function POSPage() {
     .eq("id", user.id)
     .single();
 
+  if (!userData?.tenant_id) redirect("/onboarding");
+
+  const tenantId = userData.tenant_id;
+
   // Fetch inventory items
   const { data: inventoryItems } = await admin
     .from("inventory")
