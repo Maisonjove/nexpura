@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { createPOSSale } from "./actions";
+import { createPOSSale, createLaybySale } from "./actions";
 import { lookupVoucher } from "../vouchers/actions";
 import CameraScannerModal from "@/components/CameraScannerModal";
 
@@ -52,8 +52,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   loose_stone: "Loose Stones",
 };
 
-type PaymentTab = "card" | "cash" | "split" | "voucher" | "store_credit";
-type SaleResult = { id: string; saleNumber: string; invoiceId?: string; customerEmail?: string | null; cartSnapshot?: CartItem[] };
+type PaymentTab = "card" | "cash" | "split" | "voucher" | "store_credit" | "layby";
+type SaleResult = { id: string; saleNumber: string; invoiceId?: string; customerEmail?: string | null; cartSnapshot?: CartItem[]; paymentMethod?: string; depositAmount?: number; totalAmount?: number };
 
 export default function POSClient({ tenantId, userId, inventoryItems, customers, taxRate }: Props) {
   const router = useRouter();
@@ -85,6 +85,9 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
   const [voucherData, setVoucherData] = useState<{ id: string; code: string; balance: number } | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [voucherLookupPending, setVoucherLookupPending] = useState(false);
+
+  // Layby state
+  const [laybyDeposit, setLaybyDeposit] = useState("");
 
   // Camera scanner state
   const [showCameraScanner, setShowCameraScanner] = useState(false);
@@ -401,11 +404,26 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-green-800">Sale Complete ✅</h2>
-            <p className="text-sm font-mono text-green-700 mt-1 font-semibold">{saleResult.saleNumber}</p>
-            <p className="text-3xl font-bold text-stone-900 mt-2">${total.toFixed(2)}</p>
-            {paymentTab === "cash" && change > 0 && (
-              <p className="text-sm text-green-700 mt-1">Change: <span className="font-bold">${change.toFixed(2)}</span></p>
+            {saleResult.paymentMethod === "layby" ? (
+              <>
+                <h2 className="text-xl font-bold text-blue-800">Layby Created ✅</h2>
+                <p className="text-sm font-mono text-blue-700 mt-1 font-semibold">{saleResult.saleNumber}</p>
+                <p className="text-sm text-stone-600 mt-2">
+                  Deposit taken: <span className="font-bold text-stone-900">${(saleResult.depositAmount ?? 0).toFixed(2)}</span>
+                </p>
+                <p className="text-sm text-stone-600">
+                  Balance remaining: <span className="font-bold text-stone-900">${((saleResult.totalAmount ?? 0) - (saleResult.depositAmount ?? 0)).toFixed(2)}</span>
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-bold text-green-800">Sale Complete ✅</h2>
+                <p className="text-sm font-mono text-green-700 mt-1 font-semibold">{saleResult.saleNumber}</p>
+                <p className="text-3xl font-bold text-stone-900 mt-2">${total.toFixed(2)}</p>
+                {paymentTab === "cash" && change > 0 && (
+                  <p className="text-sm text-green-700 mt-1">Change: <span className="font-bold">${change.toFixed(2)}</span></p>
+                )}
+              </>
             )}
           </div>
 
@@ -731,7 +749,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
 
             {/* Tabs */}
             <div className="flex border-b border-stone-200 overflow-x-auto">
-              {(["card", "cash", "store_credit", "split", "voucher"] as PaymentTab[]).map((tab) => (
+              {(["card", "cash", "store_credit", "split", "voucher", "layby"] as PaymentTab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setPaymentTab(tab)}
@@ -985,6 +1003,95 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                   >
                     {isPending ? "Processing…" : "Redeem Voucher"}
                   </button>
+                </div>
+              )}
+
+              {paymentTab === "layby" && (
+                <div className="space-y-4">
+                  {!selectedCustomer ? (
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">
+                      <p className="text-sm text-amber-700 font-medium">Please select a customer above to create a layby.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="bg-stone-50 border border-stone-100 rounded-xl p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Customer</p>
+                        <p className="text-sm font-semibold text-stone-800">{selectedCustomer.full_name}</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-stone-500 mb-1.5">Deposit amount</label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="0.01"
+                          max={total - 0.01}
+                          placeholder="0.00"
+                          value={laybyDeposit}
+                          onChange={(e) => setLaybyDeposit(e.target.value)}
+                          className="w-full border border-stone-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                        />
+                      </div>
+                      {parseFloat(laybyDeposit) > 0 && parseFloat(laybyDeposit) < total && (
+                        <div className="bg-stone-50 rounded-xl p-4 flex justify-between text-sm">
+                          <span className="text-stone-500">Remaining balance</span>
+                          <span className="font-bold text-stone-900">${(total - parseFloat(laybyDeposit)).toFixed(2)}</span>
+                        </div>
+                      )}
+                      <p className="text-xs text-stone-400">
+                        The customer pays a deposit now and collects their item once the full balance is paid. Inventory is reserved but not yet deducted.
+                      </p>
+                      <button
+                        onClick={async () => {
+                          const deposit = parseFloat(laybyDeposit);
+                          if (!deposit || deposit <= 0) {
+                            setError("Enter a deposit amount");
+                            return;
+                          }
+                          if (deposit >= total) {
+                            setError("Deposit must be less than the total — use a regular sale instead");
+                            return;
+                          }
+                          setIsPending(true);
+                          setError(null);
+                          const result = await createLaybySale({
+                            tenantId,
+                            userId,
+                            cart,
+                            customerId: selectedCustomer.id,
+                            customerName: selectedCustomer.full_name,
+                            customerEmail: selectedCustomer.email,
+                            subtotal: subtotal,
+                            discountAmount: discountAmount,
+                            taxAmount: taxAmount,
+                            total,
+                            depositAmount: deposit,
+                          });
+                          setIsPending(false);
+                          if (result.error) {
+                            setError(result.error);
+                          } else {
+                            setSaleResult({
+                              id: result.id!,
+                              saleNumber: result.saleNumber!,
+                              customerEmail: selectedCustomer.email,
+                              cartSnapshot: [...cart],
+                              paymentMethod: "layby",
+                              depositAmount: deposit,
+                              totalAmount: total,
+                            });
+                            setShowPaymentModal(false);
+                            setCart([]);
+                            setSelectedCustomer(null);
+                            setLaybyDeposit("");
+                          }
+                        }}
+                        disabled={isPending || !laybyDeposit || parseFloat(laybyDeposit) <= 0}
+                        className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                      >
+                        {isPending ? "Processing…" : "Create Layby"}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
 

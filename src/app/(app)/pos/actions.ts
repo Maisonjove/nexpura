@@ -251,3 +251,83 @@ export async function createPOSSale(
 
   return { id: sale.id, saleNumber, invoiceId };
 }
+
+// ─── Layby Sale ───────────────────────────────────────────────────────────────
+
+interface CreateLaybySaleParams {
+  tenantId: string;
+  userId: string;
+  cart: CartItem[];
+  customerId: string;
+  customerName: string;
+  customerEmail: string | null;
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  total: number;
+  depositAmount: number;
+  taxName?: string;
+  taxRate?: number;
+}
+
+export async function createLaybySale(
+  params: CreateLaybySaleParams
+): Promise<{ id?: string; saleNumber?: string; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  if (!params.customerId) return { error: "Customer is required for layby" };
+  if (params.depositAmount <= 0) return { error: "Deposit must be greater than zero" };
+  if (params.depositAmount >= params.total) return { error: "Deposit must be less than total — use regular sale instead" };
+
+  const admin = createAdminClient();
+
+  // Generate sale number
+  const { count } = await admin
+    .from("sales")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", params.tenantId);
+
+  const saleNumber = `S-${String((count ?? 0) + 1).padStart(4, "0")}`;
+
+  // Create layby sale record (status='layby', inventory NOT yet deducted)
+  const { data: sale, error: saleErr } = await admin
+    .from("sales")
+    .insert({
+      tenant_id: params.tenantId,
+      sale_number: saleNumber,
+      customer_id: params.customerId,
+      customer_name: params.customerName,
+      customer_email: params.customerEmail,
+      subtotal: params.subtotal,
+      discount_amount: params.discountAmount,
+      tax_amount: params.taxAmount,
+      total: params.total,
+      payment_method: "layby",
+      store_credit_amount: 0,
+      status: "layby",
+      sold_by: params.userId,
+      sale_date: new Date().toISOString().split("T")[0],
+    })
+    .select("id")
+    .single();
+
+  if (saleErr || !sale) return { error: saleErr?.message ?? "Failed to create layby" };
+
+  // Create sale items (no inventory deduction — item reserved, not sold)
+  if (params.cart.length > 0) {
+    await admin.from("sale_items").insert(
+      params.cart.map((item) => ({
+        tenant_id: params.tenantId,
+        sale_id: sale.id,
+        description: item.name,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        line_total: item.unitPrice * item.quantity,
+      }))
+    );
+  }
+
+  return { id: sale.id, saleNumber };
+}

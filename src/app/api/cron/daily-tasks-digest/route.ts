@@ -50,10 +50,11 @@ export async function GET(request: Request) {
       if (!users) continue;
 
       for (const user of users) {
-        // 4. Get pending tasks for this user
+        // 4. Get pending tasks for this user — scoped to this tenant for safety
         const { data: tasks } = await supabase
           .from('staff_tasks')
           .select('id, title, description, priority, due_date, department')
+          .eq('tenant_id', tenant.id)
           .eq('assigned_to', user.id)
           .eq('status', 'pending')
           .order('priority', { ascending: false });

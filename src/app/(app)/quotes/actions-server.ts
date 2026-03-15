@@ -33,11 +33,21 @@ export async function convertQuoteToInvoice(quoteId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  // Get quote
+  // Resolve tenant from session (never trust URL params)
+  const { data: userData } = await supabase
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  if (!userData?.tenant_id) throw new Error("No tenant found");
+  const tenantId = userData.tenant_id;
+
+  // Get quote — explicitly scoped to this tenant
   const { data: quote, error: quoteError } = await supabase
     .from("quotes")
     .select("*")
     .eq("id", quoteId)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (quoteError || !quote) throw new Error("Quote not found");
@@ -95,11 +105,21 @@ export async function convertQuoteToBespoke(quoteId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  // Get quote
+  // Resolve tenant from session (never trust URL params)
+  const { data: userData } = await supabase
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  if (!userData?.tenant_id) throw new Error("No tenant found");
+  const tenantId = userData.tenant_id;
+
+  // Get quote — explicitly scoped to this tenant
   const { data: quote, error: quoteError } = await supabase
     .from("quotes")
     .select("*")
     .eq("id", quoteId)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (quoteError || !quote) throw new Error("Quote not found");
@@ -149,11 +169,21 @@ export async function convertQuoteToRepair(quoteId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  // Get quote
+  // Resolve tenant from session (never trust URL params)
+  const { data: userData } = await supabase
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  if (!userData?.tenant_id) throw new Error("No tenant found");
+  const tenantId = userData.tenant_id;
+
+  // Get quote — explicitly scoped to this tenant
   const { data: quote, error: quoteError } = await supabase
     .from("quotes")
     .select("*")
     .eq("id", quoteId)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (quoteError || !quote) throw new Error("Quote not found");
