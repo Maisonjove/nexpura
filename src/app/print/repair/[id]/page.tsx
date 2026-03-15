@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
+import { PrintAutoScript, CloseButton } from "@/app/print/PrintAutoScript";
 
 export default async function PrintRepairPage({
   params,
@@ -9,7 +10,6 @@ export default async function PrintRepairPage({
   const { id } = await params;
   const admin = createAdminClient();
 
-  // Fetch repair with customer
   const { data: repair } = await admin
     .from("repairs")
     .select("*, customers(id, full_name, email, mobile, address_line1, suburb, state, postcode)")
@@ -20,17 +20,12 @@ export default async function PrintRepairPage({
 
   const customer = Array.isArray(repair.customers) ? repair.customers[0] ?? null : repair.customers;
 
-  // Fetch invoice
   let invoice = null;
-  let lineItems: { description: string; quantity: number; unit_price: number; total?: number }[] = [];
+  let lineItems: { description: string; quantity: number; unit_price: number }[] = [];
   let payments: { amount: number; payment_method: string; payment_date: string | null; notes: string | null }[] = [];
 
   if (repair.invoice_id) {
-    const { data: inv } = await admin
-      .from("invoices")
-      .select("*")
-      .eq("id", repair.invoice_id)
-      .single();
+    const { data: inv } = await admin.from("invoices").select("*").eq("id", repair.invoice_id).single();
     if (inv) {
       invoice = inv;
       const { data: li } = await admin.from("invoice_line_items").select("*").eq("invoice_id", repair.invoice_id);
@@ -40,7 +35,6 @@ export default async function PrintRepairPage({
     }
   }
 
-  // Fetch job events
   const { data: events } = await admin
     .from("job_events")
     .select("*")
@@ -58,173 +52,163 @@ export default async function PrintRepairPage({
     return new Date(d).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
   };
 
-  const printedAt = new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const printedAt = new Date().toLocaleString("en-AU");
   const balanceDue = invoice ? Math.max(0, (invoice.total ?? 0) - (invoice.amount_paid ?? 0)) : 0;
 
+  const css = `
+    @media print { .no-print { display: none !important; } }
+    body { font-family: Georgia, serif; font-size: 12pt; color: #000; margin: 0; padding: 20pt; background: #fff; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { border: 1px solid #ccc; padding: 4px 8px; font-size: 10pt; }
+    th { background: #f5f5f5; text-align: left; }
+    .section { margin-bottom: 16pt; }
+    h1 { font-size: 18pt; margin: 0 0 4pt; }
+    h2 { font-size: 13pt; margin: 8pt 0 4pt; border-bottom: 1px solid #ccc; padding-bottom: 2pt; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 8pt; margin-bottom: 16pt; }
+    .meta { text-align: right; font-size: 10pt; color: #555; }
+    .totals-row { font-weight: bold; background: #f9f9f9; }
+    .balance-row { font-weight: bold; font-size: 11pt; }
+    .footer { margin-top: 24pt; border-top: 1px solid #ccc; padding-top: 8pt; font-size: 9pt; color: #666; text-align: center; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; }
+    .field { margin-bottom: 6pt; }
+    .field label { font-weight: bold; font-size: 9pt; text-transform: uppercase; color: #666; display: block; }
+    .field span { font-size: 11pt; }
+    .no-border td, .no-border th { border: none; padding: 2px 4px; }
+  `;
+
   return (
-    <html>
-      <head>
-        <title>Repair Ticket — {repair.repair_number}</title>
-        <style dangerouslySetInnerHTML={{__html: `
-          @media print { .no-print { display: none; } }
-          * { box-sizing: border-box; }
-          body { font-family: Georgia, serif; font-size: 12pt; color: #000; margin: 0; padding: 20pt; background: #fff; }
-          table { width: 100%; border-collapse: collapse; }
-          td, th { border: 1px solid #ccc; padding: 4px 8px; font-size: 10pt; }
-          th { background: #f5f5f5; text-align: left; }
-          .section { margin-bottom: 16pt; }
-          h1 { font-size: 18pt; margin: 0 0 4pt; }
-          h2 { font-size: 13pt; margin: 8pt 0 4pt; border-bottom: 1px solid #ccc; padding-bottom: 2pt; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 8pt; margin-bottom: 16pt; }
-          .meta { text-align: right; font-size: 10pt; color: #555; }
-          .totals-row { font-weight: bold; background: #f9f9f9; }
-          .balance-row { font-weight: bold; font-size: 11pt; }
-          .footer { margin-top: 24pt; border-top: 1px solid #ccc; padding-top: 8pt; font-size: 9pt; color: #666; text-align: center; }
-          .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; }
-          .field { margin-bottom: 6pt; }
-          .field label { font-weight: bold; font-size: 9pt; text-transform: uppercase; color: #666; display: block; }
-          .field span { font-size: 11pt; }
-          .no-border td, .no-border th { border: none; padding: 2px 4px; }
-        `}} />
-      </head>
-      <body>
-        <button
-          className="no-print"
-          onClick={() => window.close()}
-          style={{ position: "fixed", top: 12, right: 12, padding: "6px 14px", background: "#e5e7eb", border: "1px solid #ccc", borderRadius: 6, cursor: "pointer", fontSize: 12 }}
-        >
-          Close
-        </button>
-        <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
+    <>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
+      <PrintAutoScript />
+      <CloseButton />
 
-        <div className="header">
+      <div className="page-header">
+        <div>
+          <h1>Marcus &amp; Co. Fine Jewellery</h1>
+          <div style={{ fontSize: "10pt", color: "#555" }}>32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au</div>
+        </div>
+        <div className="meta">
+          <div><strong>Repair Ticket</strong></div>
+          <div>Job: <strong>{repair.repair_number}</strong></div>
+          <div>Printed: {printedAt}</div>
+        </div>
+      </div>
+
+      <div className="two-col section">
+        <div>
+          <h2>Customer</h2>
+          {customer ? (
+            <div>
+              <div className="field"><label>Name</label><span>{customer.full_name}</span></div>
+              {customer.mobile && <div className="field"><label>Phone</label><span>{customer.mobile}</span></div>}
+              {customer.email && <div className="field"><label>Email</label><span>{customer.email}</span></div>}
+            </div>
+          ) : <div style={{ color: "#888" }}>No customer linked</div>}
+        </div>
+        <div>
+          <h2>Job Details</h2>
+          <div className="field"><label>Repair Type</label><span>{repair.repair_type}</span></div>
+          {repair.due_date && <div className="field"><label>Due Date</label><span>{fmtDate(repair.due_date)}</span></div>}
+          <div className="field"><label>Stage</label><span style={{ textTransform: "capitalize" }}>{repair.stage?.replace(/_/g, " ")}</span></div>
+          <div className="field"><label>Priority</label><span style={{ textTransform: "capitalize" }}>{repair.priority}</span></div>
+        </div>
+      </div>
+
+      <div className="section">
+        <h2>Item Description</h2>
+        <div className="two-col">
           <div>
-            <h1>Marcus &amp; Co. Fine Jewellery</h1>
-            <div style={{ fontSize: "10pt", color: "#555" }}>32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au</div>
+            <div className="field"><label>Item Type</label><span style={{ textTransform: "capitalize" }}>{repair.item_type}</span></div>
+            <div className="field"><label>Description</label><span>{repair.item_description}</span></div>
           </div>
-          <div className="meta">
-            <div><strong>Repair Ticket</strong></div>
-            <div>Job: <strong>{repair.repair_number}</strong></div>
-            <div>Printed: {printedAt}</div>
+          <div>
+            {repair.work_description && <div className="field"><label>Work Description</label><span>{repair.work_description}</span></div>}
           </div>
         </div>
+        {repair.intake_notes && <div className="field" style={{ marginTop: 6 }}><label>Intake Notes</label><span>{repair.intake_notes}</span></div>}
+      </div>
 
-        <div className="two-col section">
-          <div>
-            <h2>Customer</h2>
-            {customer ? (
-              <div>
-                <div className="field"><label>Name</label><span>{customer.full_name}</span></div>
-                {customer.mobile && <div className="field"><label>Phone</label><span>{customer.mobile}</span></div>}
-                {customer.email && <div className="field"><label>Email</label><span>{customer.email}</span></div>}
-              </div>
-            ) : <div style={{ color: "#888" }}>No customer linked</div>}
-          </div>
-          <div>
-            <h2>Job Details</h2>
-            <div className="field"><label>Repair Type</label><span>{repair.repair_type}</span></div>
-            {repair.due_date && <div className="field"><label>Due Date</label><span>{fmtDate(repair.due_date)}</span></div>}
-            <div className="field"><label>Stage</label><span style={{ textTransform: "capitalize" }}>{repair.stage?.replace(/_/g, " ")}</span></div>
-            <div className="field"><label>Priority</label><span style={{ textTransform: "capitalize" }}>{repair.priority}</span></div>
-          </div>
-        </div>
-
+      {lineItems.length > 0 && (
         <div className="section">
-          <h2>Item Description</h2>
-          <div className="two-col">
-            <div>
-              <div className="field"><label>Item Type</label><span style={{ textTransform: "capitalize" }}>{repair.item_type}</span></div>
-              <div className="field"><label>Description</label><span>{repair.item_description}</span></div>
-            </div>
-            <div>
-              {repair.work_description && <div className="field"><label>Work Description</label><span>{repair.work_description}</span></div>}
-            </div>
-          </div>
-          {repair.intake_notes && <div className="field" style={{ marginTop: 6 }}><label>Intake Notes</label><span>{repair.intake_notes}</span></div>}
-        </div>
-
-        {lineItems.length > 0 && (
-          <div className="section">
-            <h2>Line Items</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>Description</th>
-                  <th style={{ width: 60, textAlign: "right" }}>Qty</th>
-                  <th style={{ width: 90, textAlign: "right" }}>Unit</th>
-                  <th style={{ width: 90, textAlign: "right" }}>Total</th>
+          <h2>Line Items</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th style={{ width: 60, textAlign: "right" }}>Qty</th>
+                <th style={{ width: 90, textAlign: "right" }}>Unit</th>
+                <th style={{ width: 90, textAlign: "right" }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineItems.map((li, i) => (
+                <tr key={i}>
+                  <td>{li.description}</td>
+                  <td style={{ textAlign: "right" }}>{li.quantity}</td>
+                  <td style={{ textAlign: "right" }}>{fmt(li.unit_price)}</td>
+                  <td style={{ textAlign: "right" }}>{fmt((li.quantity ?? 1) * (li.unit_price ?? 0))}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {lineItems.map((li, i) => (
-                  <tr key={i}>
-                    <td>{li.description}</td>
-                    <td style={{ textAlign: "right" }}>{li.quantity}</td>
-                    <td style={{ textAlign: "right" }}>{fmt(li.unit_price)}</td>
-                    <td style={{ textAlign: "right" }}>{fmt((li.quantity ?? 1) * (li.unit_price ?? 0))}</td>
-                  </tr>
-                ))}
-              </tbody>
-              {invoice && (
-                <tfoot>
-                  <tr><td colSpan={3} style={{ textAlign: "right", border: "none" }}>Subtotal</td><td style={{ textAlign: "right" }}>{fmt(invoice.subtotal)}</td></tr>
-                  <tr><td colSpan={3} style={{ textAlign: "right", border: "none" }}>GST (10%)</td><td style={{ textAlign: "right" }}>{fmt(invoice.tax_amount)}</td></tr>
-                  <tr className="totals-row"><td colSpan={3} style={{ textAlign: "right" }}>Total</td><td style={{ textAlign: "right" }}>{fmt(invoice.total)}</td></tr>
-                  <tr><td colSpan={3} style={{ textAlign: "right", border: "none" }}>Total Paid</td><td style={{ textAlign: "right" }}>{fmt(invoice.amount_paid)}</td></tr>
-                  <tr className="balance-row"><td colSpan={3} style={{ textAlign: "right" }}>Balance Due</td><td style={{ textAlign: "right" }}>{fmt(balanceDue)}</td></tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
-        )}
-
-        {payments.length > 0 && (
-          <div className="section">
-            <h2>Payment History</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Method</th>
-                  <th>Notes</th>
-                  <th style={{ textAlign: "right" }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((p, i) => (
-                  <tr key={i}>
-                    <td>{fmtDate(p.payment_date)}</td>
-                    <td style={{ textTransform: "capitalize" }}>{p.payment_method?.replace(/_/g, " ")}</td>
-                    <td>{p.notes ?? "—"}</td>
-                    <td style={{ textAlign: "right" }}>{fmt(p.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {events && events.length > 0 && (
-          <div className="section">
-            <h2>Activity Timeline</h2>
-            <table className="no-border">
-              <tbody>
-                {events.map((ev: { id: string; created_at: string; description: string; actor?: string }, i) => (
-                  <tr key={i}>
-                    <td style={{ width: 140, color: "#666", fontSize: "9pt" }}>{fmtDate(ev.created_at)}</td>
-                    <td>{ev.description}</td>
-                    <td style={{ color: "#888", fontSize: "9pt" }}>{ev.actor ?? "system"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div className="footer">
-          Thank you for choosing Marcus &amp; Co. Fine Jewellery · 32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au
+              ))}
+            </tbody>
+            {invoice && (
+              <tfoot>
+                <tr><td colSpan={3} style={{ textAlign: "right", border: "none" }}>Subtotal</td><td style={{ textAlign: "right" }}>{fmt(invoice.subtotal)}</td></tr>
+                <tr><td colSpan={3} style={{ textAlign: "right", border: "none" }}>GST (10%)</td><td style={{ textAlign: "right" }}>{fmt(invoice.tax_amount)}</td></tr>
+                <tr className="totals-row"><td colSpan={3} style={{ textAlign: "right" }}>Total</td><td style={{ textAlign: "right" }}>{fmt(invoice.total)}</td></tr>
+                <tr><td colSpan={3} style={{ textAlign: "right", border: "none" }}>Total Paid</td><td style={{ textAlign: "right" }}>{fmt(invoice.amount_paid)}</td></tr>
+                <tr className="balance-row"><td colSpan={3} style={{ textAlign: "right" }}>Balance Due</td><td style={{ textAlign: "right" }}>{fmt(balanceDue)}</td></tr>
+              </tfoot>
+            )}
+          </table>
         </div>
-      </body>
-    </html>
+      )}
+
+      {payments.length > 0 && (
+        <div className="section">
+          <h2>Payment History</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Method</th>
+                <th>Notes</th>
+                <th style={{ textAlign: "right" }}>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((p, i) => (
+                <tr key={i}>
+                  <td>{fmtDate(p.payment_date)}</td>
+                  <td style={{ textTransform: "capitalize" }}>{p.payment_method?.replace(/_/g, " ")}</td>
+                  <td>{p.notes ?? "—"}</td>
+                  <td style={{ textAlign: "right" }}>{fmt(p.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {events && events.length > 0 && (
+        <div className="section">
+          <h2>Activity Timeline</h2>
+          <table className="no-border">
+            <tbody>
+              {events.map((ev: { id: string; created_at: string; description: string; actor?: string }) => (
+                <tr key={ev.id}>
+                  <td style={{ width: 140, color: "#666", fontSize: "9pt" }}>{fmtDate(ev.created_at)}</td>
+                  <td>{ev.description}</td>
+                  <td style={{ color: "#888", fontSize: "9pt" }}>{ev.actor ?? "system"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="footer">
+        Thank you for choosing Marcus &amp; Co. Fine Jewellery · 32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au
+      </div>
+    </>
   );
 }
