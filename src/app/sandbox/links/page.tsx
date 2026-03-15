@@ -1,3 +1,4 @@
+"use client";
 /**
  * /sandbox/links — Reviewer route index
  *
