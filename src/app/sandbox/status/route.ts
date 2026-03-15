@@ -1,12 +1,8 @@
 /**
  * /sandbox/status — Sandbox health check
  *
- * Returns a JSON snapshot confirming:
- * - Whether the reviewer has a valid authenticated session
- * - The active demo user and tenant details
- * - Confirms isolation to demo tenant only
- *
- * If not authenticated, redirects to /sandbox to re-establish the session.
+ * Returns JSON confirming whether the reviewer has an active authenticated session.
+ * Also shows which auth cookies are present to help diagnose issues.
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,8 +13,16 @@ import { NextRequest, NextResponse } from "next/server";
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const DEMO_USER_ID = "bd7d2c20-5727-4f80-a449-818429abecc9";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
+  const allCookies = cookieStore.getAll();
+
+  // Check which Supabase auth cookies are present (for diagnostics)
+  const authCookies = allCookies
+    .filter((c) => c.name.includes("sb-") && c.name.includes("auth"))
+    .map((c) => c.name);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,8 +49,13 @@ export async function GET(request: NextRequest) {
       {
         authenticated: false,
         sandboxReady: false,
-        message: "No active session — visit /sandbox to enter the demo sandbox",
+        message: "No active session. Visit /sandbox to enter the demo sandbox.",
         entry: "/sandbox",
+        debug: {
+          authCookiesPresent: authCookies,
+          totalCookies: allCookies.length,
+          error: error?.message ?? null,
+        },
       },
       { status: 401 }
     );
@@ -56,7 +65,11 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
 
   const [{ data: tenant }, { data: userRecord }] = await Promise.all([
-    admin.from("tenants").select("name, slug, business_name").eq("id", TENANT_ID).single(),
+    admin
+      .from("tenants")
+      .select("name, slug, business_name")
+      .eq("id", TENANT_ID)
+      .single(),
     admin.from("users").select("role, full_name").eq("id", user.id).single(),
   ]);
 
