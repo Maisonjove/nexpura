@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { Suspense } from "react";
 import TasksClient from "@/app/(app)/tasks/TasksClient";
 import type { StaffTask } from "@/app/(app)/tasks/actions";
 
@@ -51,13 +52,15 @@ export default async function ReviewTasksPage() {
     .eq("tenant_id", TENANT_ID);
 
   return (
-    <TasksClient
-      userId={DEMO_USER_ID}
-      userRole="owner"
-      myTasks={myTasks}
-      allTasks={allTasks}
-      teamMembers={teamMembers ?? []}
-      tenantId={TENANT_ID}
-    />
+    <Suspense fallback={<div className="p-8 text-stone-400 text-sm">Loading tasks...</div>}>
+      <TasksClient
+        userId={DEMO_USER_ID}
+        userRole="owner"
+        myTasks={myTasks}
+        allTasks={allTasks}
+        teamMembers={teamMembers ?? []}
+        tenantId={TENANT_ID}
+      />
+    </Suspense>
   );
 }

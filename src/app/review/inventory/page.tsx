@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { Suspense } from "react";
 import InventoryClient from "@/app/(app)/inventory/InventoryClient";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -49,13 +50,15 @@ export default async function ReviewInventoryPage() {
   );
 
   return (
-    <InventoryClient
-      items={safeItems}
-      categories={categories ?? []}
-      totalItems={totalItems}
-      lowStockCount={lowStockCount}
-      totalValue={totalValue}
-      canViewCost={false}
-    />
+    <Suspense fallback={<div className="p-8 text-stone-400 text-sm">Loading inventory...</div>}>
+      <InventoryClient
+        items={safeItems}
+        categories={categories ?? []}
+        totalItems={totalItems}
+        lowStockCount={lowStockCount}
+        totalValue={totalValue}
+        canViewCost={false}
+      />
+    </Suspense>
   );
 }
