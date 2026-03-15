@@ -1,115 +1,96 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import InvoiceListClient from "@/app/(app)/invoices/InvoiceListClient";
-import type { InvoiceRow } from "@/app/(app)/invoices/page";
+import Link from "next/link";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
 export const revalidate = 60;
 
-export default async function ReviewInvoicesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
-}) {
-  const params = await searchParams;
-  const q = params.q || "";
-  const statusFilter = params.status || "all";
-  const page = parseInt(params.page || "1");
-  const pageSize = 20;
-  const offset = (page - 1) * pageSize;
+const statusBadge: Record<string, string> = {
+  paid: "bg-green-100 text-green-700",
+  partial: "bg-amber-100 text-amber-700",
+  partially_paid: "bg-amber-100 text-amber-700",
+  unpaid: "bg-red-100 text-red-600",
+  sent: "bg-blue-100 text-blue-700",
+  overdue: "bg-red-100 text-red-700",
+  draft: "bg-stone-100 text-stone-500",
+  voided: "bg-stone-100 text-stone-500",
+};
 
+function formatStatus(status: string) {
+  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export default async function ReviewInvoicesPage() {
   const admin = createAdminClient();
-  const today = new Date().toISOString().split("T")[0];
 
-  const { data: outstandingData } = await admin
+  const { data: rawInvoices } = await admin
     .from("invoices")
-    .select("total")
+    .select(
+      "id, invoice_number, status, due_date, total, amount_paid, customers(full_name)"
+    )
     .eq("tenant_id", TENANT_ID)
-    .in("status", ["sent", "partially_paid", "overdue"]);
+    .order("created_at", { ascending: false });
 
-  const totalOutstanding = (outstandingData ?? []).reduce(
-    (sum, inv) => sum + (inv.total || 0),
-    0
-  );
-
-  const { data: overdueData } = await admin
-    .from("invoices")
-    .select("total")
-    .eq("tenant_id", TENANT_ID)
-    .not("status", "in", '("paid","voided","draft")')
-    .lt("due_date", today);
-
-  const totalOverdue = (overdueData ?? []).reduce(
-    (sum, inv) => sum + (inv.total || 0),
-    0
-  );
-
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  const monthStartStr = monthStart.toISOString().split("T")[0];
-
-  const { data: paidThisMonthData } = await admin
-    .from("invoices")
-    .select("total")
-    .eq("tenant_id", TENANT_ID)
-    .eq("status", "paid")
-    .gte("paid_at", monthStartStr);
-
-  const paidThisMonth = (paidThisMonthData ?? []).reduce(
-    (sum, p) => sum + (p.total || 0),
-    0
-  );
-
-  let query = admin
-    .from("invoices")
-    .select("id, invoice_number, status, invoice_date, due_date, total, customers(full_name)", { count: "exact" })
-    .eq("tenant_id", TENANT_ID);
-
-  if (statusFilter !== "all") {
-    if (statusFilter === "overdue") {
-      query = query.not("status", "in", '("paid","voided","draft")').lt("due_date", today);
-    } else {
-      query = query.eq("status", statusFilter);
-    }
-  }
-
-  if (q) {
-    query = query.ilike("invoice_number", `%${q}%`);
-  }
-
-  query = query.order("created_at", { ascending: false }).range(offset, offset + pageSize - 1);
-
-  const { data: invoices, count } = await query;
-
-  const totalPages = Math.ceil((count || 0) / pageSize);
-
-  const normalizedInvoices: InvoiceRow[] = (invoices ?? []).map((inv) => ({
-    id: inv.id,
-    invoice_number: inv.invoice_number,
-    status: inv.status,
-    invoice_date: inv.invoice_date,
-    due_date: inv.due_date,
-    total: inv.total,
-    amount_due: inv.status === "paid" ? 0 : (inv.total || 0),
-    amount_paid: inv.status === "paid" ? (inv.total || 0) : 0,
-    customers: Array.isArray(inv.customers)
-      ? (inv.customers[0] ?? null)
-      : inv.customers,
+  const invoices = (rawInvoices || []).map((inv) => ({
+    ...inv,
+    customers: Array.isArray(inv.customers) ? (inv.customers[0] ?? null) : inv.customers,
   }));
 
   return (
-    <InvoiceListClient
-      invoices={normalizedInvoices}
-      totalCount={count || 0}
-      page={page}
-      totalPages={totalPages}
-      q={q}
-      statusFilter={statusFilter}
-      stats={{
-        totalOutstanding,
-        totalOverdue,
-        paidThisMonth,
-      }}
-    />
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-stone-900">Invoices</h1>
+        <p className="text-sm text-stone-400 mt-0.5">{invoices.length} invoice{invoices.length !== 1 ? "s" : ""}</p>
+      </div>
+
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-stone-50 border-b border-stone-100">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Invoice #</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Customer</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-stone-500 uppercase tracking-widest">Total</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-stone-500 uppercase tracking-widest">Paid</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Due Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {invoices.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-12 text-center text-sm text-stone-400">No invoices found</td>
+              </tr>
+            ) : (
+              invoices.map((inv) => (
+                <tr key={inv.id} className="border-b border-stone-100 hover:bg-stone-50/60 transition-colors">
+                  <td className="px-4 py-3 text-sm text-stone-700">
+                    <Link href={`/review/invoices/${inv.id}`} className="font-medium text-stone-900 hover:text-amber-700 transition-colors">
+                      {inv.invoice_number}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-stone-700">
+                    {(inv.customers as { full_name?: string } | null)?.full_name || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-stone-700 text-right">
+                    {inv.total != null ? `$${Number(inv.total).toFixed(2)}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-stone-700 text-right">
+                    {inv.amount_paid != null ? `$${Number(inv.amount_paid).toFixed(2)}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge[inv.status] || "bg-stone-100 text-stone-600"}`}>
+                      {formatStatus(inv.status || "—")}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-stone-700">
+                    {inv.due_date ? new Date(inv.due_date).toLocaleDateString("en-GB") : "—"}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

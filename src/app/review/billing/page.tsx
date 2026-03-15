@@ -22,11 +22,20 @@ export default async function ReviewBillingPage() {
     ]);
 
   return (
-    <BillingClient
-      subscription={subscription}
-      userCount={userCount ?? 0}
-      inventoryCount={inventoryCount ?? 0}
-      customerCount={customerCount ?? 0}
-    />
+    <div className="space-y-4">
+      {/* Review note for Stripe */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+        <span className="font-semibold">Demo billing history:</span> No live Stripe billing is connected to this review tenant.
+        The subscription plan (Pro, active) and plan comparison below reflect the real app logic.
+        Invoice history and payment method management require a live Stripe account.
+      </div>
+
+      <BillingClient
+        subscription={subscription}
+        userCount={userCount ?? 0}
+        inventoryCount={inventoryCount ?? 0}
+        customerCount={customerCount ?? 0}
+      />
+    </div>
   );
 }
