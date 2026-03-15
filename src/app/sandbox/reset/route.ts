@@ -95,7 +95,25 @@ export async function GET(request: NextRequest) {
   // 14. inventory
   await safeDelete(() => admin.from("inventory").delete().eq("tenant_id", TENANT_ID));
 
-  // 15. customers
+  // 15. gift_voucher_redemptions
+  await safeDelete(() => admin.from("gift_voucher_redemptions").delete().eq("tenant_id", TENANT_ID));
+
+  // 16. gift_vouchers
+  await safeDelete(() => admin.from("gift_vouchers").delete().eq("tenant_id", TENANT_ID));
+
+  // 17. refunds
+  await safeDelete(() => admin.from("refunds").delete().eq("tenant_id", TENANT_ID));
+
+  // 18. customer_store_credit_history
+  await safeDelete(() => admin.from("customer_store_credit_history").delete().eq("tenant_id", TENANT_ID));
+
+  // 19. locations
+  await safeDelete(() => admin.from("locations").delete().eq("tenant_id", TENANT_ID));
+
+  // 20. team_members
+  await safeDelete(() => admin.from("team_members").delete().eq("tenant_id", TENANT_ID));
+
+  // 21. customers
   await safeDelete(() => admin.from("customers").delete().eq("tenant_id", TENANT_ID));
 
   // ── SEED PHASE ──────────────────────────────────────────────────────────────
@@ -202,6 +220,59 @@ export async function GET(request: NextRequest) {
         postcode: "2000",
         country: "Australia",
         notes: "Gold and coloured stone preferences.",
+      },
+    ])
+  );
+
+  // CUSTOMERS — update store_credit for David Moufarrej after insert
+  await safeInsert(() =>
+    admin
+      .from("customers")
+      .update({ store_credit: 150.00 })
+      .eq("id", "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a")
+  );
+
+  // LOCATIONS
+  await safeInsert(() =>
+    admin.from("locations").insert([
+      {
+        id: "b1b2c3d4-0001-0001-0001-000000000001",
+        tenant_id: TENANT_ID,
+        name: "Marcus & Co. Main Store",
+        address: "32 Castlereagh St, Sydney NSW 2000",
+        is_default: true,
+      },
+    ])
+  );
+
+  // TEAM MEMBERS
+  await safeInsert(() =>
+    admin.from("team_members").insert([
+      {
+        tenant_id: TENANT_ID,
+        name: "Sarah (Sales)",
+        email: "staff@nexpura.com",
+        role: "staff",
+        invite_accepted: true,
+        user_id: "60392573-b7e1-43fc-b6e4-6637e69b4109",
+      },
+    ])
+  );
+
+  // GIFT VOUCHERS
+  await safeInsert(() =>
+    admin.from("gift_vouchers").insert([
+      {
+        id: "a1b2c3d4-0001-0001-0001-000000000001",
+        tenant_id: TENANT_ID,
+        code: "GV-MARC001",
+        original_amount: 200.00,
+        balance: 200.00,
+        issued_to_name: "Emma Williams",
+        issued_to_email: "emma@example.com",
+        issued_by: "bd7d2c20-5727-4f80-a449-818429abecc9",
+        status: "active",
+        notes: "Birthday gift voucher",
       },
     ])
   );

@@ -2,14 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // ── Preview-only sandbox review mode ─────────────────────────────────────────
-// Token is hardcoded (preview-only; not production). Remove this block after review.
+// Tokens are hardcoded (preview-only; not production). Remove this block after review.
 const REVIEW_TOKEN = "nexpura-review-2026";
 const REVIEW_COOKIE = "nexpura-review";
+const STAFF_TOKEN = "nexpura-staff-2026";
+const STAFF_COOKIE = "nexpura-staff";
 
 // Module-level session cache — persists for the lifetime of the process instance.
 // Each Vercel edge worker instance caches its own session; falls back to sign-in on cold start.
 let _cachedDemoCookies: Array<{ name: string; value: string }> | null = null;
 let _cacheExpiresAt = 0;
+let _cachedStaffCookies: Array<{ name: string; value: string }> | null = null;
+let _staffCacheExpiresAt = 0;
 
 async function getDemoSessionCookies(
   supabaseUrl: string,
@@ -54,6 +58,49 @@ async function getDemoSessionCookies(
   _cacheExpiresAt = session.expires_at ?? now + 3600;
   return _cachedDemoCookies;
 }
+
+async function getStaffSessionCookies(
+  supabaseUrl: string,
+  supabaseAnonKey: string
+): Promise<Array<{ name: string; value: string }>> {
+  const now = Math.floor(Date.now() / 1000);
+
+  // Return cached session if still valid (with 5-minute buffer)
+  if (_cachedStaffCookies && _staffCacheExpiresAt > now + 300) {
+    return _cachedStaffCookies;
+  }
+
+  // Sign in as staff user using a temporary in-memory client.
+  const captured: Array<{ name: string; value: string }> = [];
+
+  const tmpClient = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return [];
+      },
+      setAll(cs) {
+        captured.push(...cs.map((c) => ({ name: c.name, value: c.value })));
+      },
+    },
+  });
+
+  const {
+    data: { session },
+    error,
+  } = await tmpClient.auth.signInWithPassword({
+    email: "staff@nexpura.com",
+    password: "nexpura-staff-2026",
+  });
+
+  if (error || !session) {
+    console.error("[sandbox] Staff session fetch failed:", error?.message);
+    return [];
+  }
+
+  _cachedStaffCookies = captured;
+  _staffCacheExpiresAt = session.expires_at ?? now + 3600;
+  return _cachedStaffCookies;
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function updateSession(request: NextRequest) {
@@ -64,43 +111,48 @@ export async function updateSession(request: NextRequest) {
   // ── Review-mode detection ─────────────────────────────────────────────────
   const rtParam = request.nextUrl.searchParams.get("rt");
   const reviewCookieValue = request.cookies.get(REVIEW_COOKIE)?.value;
+  const staffCookieValue = request.cookies.get(STAFF_COOKIE)?.value;
   const isReviewRequest =
     rtParam === REVIEW_TOKEN || reviewCookieValue === REVIEW_TOKEN;
+  const isStaffRequest =
+    rtParam === STAFF_TOKEN || staffCookieValue === STAFF_TOKEN;
 
-  // ── Build request headers — inject demo session if review mode ────────────
+  // ── Build request headers — inject session if review/staff mode ────────────
   // This is the core of the cookie-free approach: we modify the Cookie header
   // on the forwarded request. Server Components read cookies via await cookies()
   // from next/headers, which reads from the forwarded request headers.
-  // So injecting here makes the demo session visible to ALL Server Components
+  // So injecting here makes the session visible to ALL Server Components
   // without requiring the browser to store or send any Supabase auth cookies.
   const requestHeaders = new Headers(request.headers);
   let demoCookies: Array<{ name: string; value: string }> = [];
 
-  if (isReviewRequest) {
+  if (isStaffRequest) {
+    demoCookies = await getStaffSessionCookies(supabaseUrl, supabaseAnonKey);
+  } else if (isReviewRequest) {
     demoCookies = await getDemoSessionCookies(supabaseUrl, supabaseAnonKey);
+  }
 
-    if (demoCookies.length > 0) {
-      const existingCookieHeader = requestHeaders.get("cookie") ?? "";
-      const demoCookieStr = demoCookies
-        .map((c) => `${c.name}=${c.value}`)
-        .join("; ");
-      // Merge: demo session cookies take precedence (appended, @supabase/ssr reads last-wins)
-      requestHeaders.set(
-        "cookie",
-        existingCookieHeader
-          ? `${existingCookieHeader}; ${demoCookieStr}`
-          : demoCookieStr
-      );
-    }
+  if (demoCookies.length > 0) {
+    const existingCookieHeader = requestHeaders.get("cookie") ?? "";
+    const demoCookieStr = demoCookies
+      .map((c) => `${c.name}=${c.value}`)
+      .join("; ");
+    // Merge: session cookies take precedence (appended, @supabase/ssr reads last-wins)
+    requestHeaders.set(
+      "cookie",
+      existingCookieHeader
+        ? `${existingCookieHeader}; ${demoCookieStr}`
+        : demoCookieStr
+    );
   }
   // ─────────────────────────────────────────────────────────────────────────
 
   // Initial supabase response — uses modified request headers so Server Components
-  // receive the injected demo session cookies via await cookies()
+  // receive the injected session cookies via await cookies()
   let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
 
   // The middleware's own Supabase client reads the merged cookies
-  // (existing browser cookies + injected demo session if review mode)
+  // (existing browser cookies + injected session if review/staff mode)
   const mergedCookies = [
     ...request.cookies
       .getAll()
@@ -131,10 +183,17 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Persist the review mode cookie on the response.
+  // Persist the review/staff mode cookie on the response.
   // Simple non-httpOnly cookie — much easier to retain across navigations than
   // large Supabase auth tokens. Enables navigation within the app without ?rt= param.
-  if (isReviewRequest) {
+  if (isStaffRequest) {
+    supabaseResponse.cookies.set(STAFF_COOKIE, STAFF_TOKEN, {
+      path: "/",
+      maxAge: 86400 * 7, // 7 days
+      sameSite: "lax",
+      httpOnly: false,
+    });
+  } else if (isReviewRequest) {
     supabaseResponse.cookies.set(REVIEW_COOKIE, REVIEW_TOKEN, {
       path: "/",
       maxAge: 86400 * 7, // 7 days

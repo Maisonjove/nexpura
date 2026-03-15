@@ -10,6 +10,7 @@
  */
 
 const RT = "nexpura-review-2026";
+const ST = "nexpura-staff-2026";
 
 // Real seeded record IDs — confirmed from DB
 const IDS = {
@@ -137,6 +138,21 @@ export default function SandboxLinksPage() {
         <a href={`/sandbox/status?rt=${RT}`} style={{ fontSize: 13, color: "#B45309", fontWeight: 600, marginLeft: "auto" }}>
           Verify status →
         </a>
+      </div>
+
+      {/* Staff access token */}
+      <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 12, padding: "14px 18px", marginBottom: 28 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#9a3412", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Staff Access (Permission Testing)</div>
+        <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 13, color: "#57534e" }}>👤 <strong>User:</strong> staff@nexpura.com (Staff — Sarah)</span>
+          <span style={{ fontSize: 13, color: "#57534e" }}>🔑 <strong>Token:</strong> <code style={{ background: "#ffedd5", padding: "2px 6px", borderRadius: 4, fontSize: 12, color: "#9a3412" }}>{ST}</code></span>
+          <a href={`/dashboard?rt=${ST}`} style={{ fontSize: 13, color: "#9a3412", fontWeight: 600, marginLeft: "auto" }}>
+            Open as staff →
+          </a>
+        </div>
+        <p style={{ fontSize: 12, color: "#a8a29e", margin: "8px 0 0" }}>
+          Use <code style={{ background: "#f5f5f4", padding: "1px 4px", borderRadius: 3 }}>?rt={ST}</code> on any route to view as the staff/salesperson user. Useful for testing role-based permission enforcement.
+        </p>
       </div>
 
       {/* Route sections */}
