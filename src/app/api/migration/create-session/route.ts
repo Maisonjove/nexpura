@@ -1,0 +1,39 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+export async function POST(req: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data: profile } = await supabase
+      .from('users')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .single();
+
+    const { sourcePlatform } = await req.json();
+    const admin = createAdminClient();
+
+    const { data: session, error } = await admin
+      .from('migration_sessions')
+      .insert({
+        tenant_id: profile?.tenant_id,
+        created_by: user.id,
+        source_platform: sourcePlatform || 'unknown',
+        status: 'draft',
+        mode: 'guided',
+        session_name: `${sourcePlatform} Migration`,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ sessionId: session.id, session });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

@@ -1,0 +1,96 @@
+export const MIGRATION_SOURCES = [
+  // Jewellery-specific
+  { id: 'swim', name: 'Swim', category: 'jewellery', logo: '💎', difficulty: 'medium', description: 'Jewellery POS with repairs, inventory, customers, and CRM', entities: ['customers','inventory','repairs','invoices','payments'], notes: 'Requires CSV export from Swim reporting module' },
+  { id: 'jewel360', name: 'Jewel360', category: 'jewellery', logo: '💎', difficulty: 'medium', description: 'Jewellery-focused POS with serialized inventory and work orders', entities: ['customers','inventory','repairs','bespoke','invoices'], notes: 'Export from Admin > Data Export' },
+  { id: 'wjewel', name: 'WJewel', category: 'jewellery', logo: '💎', difficulty: 'medium', description: 'Full jewellery ERP: POS, repairs, appraisals, consignment, multi-store', entities: ['customers','inventory','repairs','bespoke','appraisals','invoices','consignment'], notes: 'Supports rich jewellery metadata' },
+  { id: 'jewellery_pos', name: 'Other Jewellery POS', category: 'jewellery', logo: '💎', difficulty: 'easy', description: 'Generic jewellery POS export', entities: ['customers','inventory','repairs','invoices'], notes: 'Upload CSV/Excel exports from any jewellery system' },
+  // General retail/ecom
+  { id: 'shopify', name: 'Shopify', category: 'retail', logo: '🛍️', difficulty: 'easy', description: 'eCommerce: customers, products, orders', entities: ['customers','inventory','invoices'], notes: 'Export from Shopify Admin > Settings > Export' },
+  { id: 'lightspeed', name: 'Lightspeed', category: 'retail', logo: '⚡', difficulty: 'medium', description: 'Retail POS: inventory, customers, sales', entities: ['customers','inventory','invoices','payments'], notes: 'Export from Lightspeed Reports > Export' },
+  { id: 'square', name: 'Square', category: 'retail', logo: '◼', difficulty: 'easy', description: 'POS: customers, items, transactions', entities: ['customers','inventory','invoices'], notes: 'Export from Square Dashboard > Settings > Account > Export' },
+  { id: 'woocommerce', name: 'WooCommerce', category: 'retail', logo: '🛒', difficulty: 'medium', description: 'WordPress eCommerce: products, customers, orders', entities: ['customers','inventory','invoices'], notes: 'Use WooCommerce built-in CSV export or Store Manager plugin' },
+  { id: 'vend', name: 'Vend / Lightspeed X', category: 'retail', logo: '🏪', difficulty: 'medium', description: 'Retail POS: products, customers, sales', entities: ['customers','inventory','invoices'], notes: 'Export from Reporting' },
+  { id: 'quickbooks', name: 'QuickBooks', category: 'accounting', logo: '📊', difficulty: 'medium', description: 'Contacts, invoices, payments from accounting export', entities: ['customers','invoices','payments'], notes: 'Export customers and transactions from QuickBooks Reports' },
+  // Generic
+  { id: 'csv_excel', name: 'CSV / Excel Files', category: 'generic', logo: '📄', difficulty: 'easy', description: 'Upload any CSV or Excel file — AI will classify and map', entities: ['any'], notes: 'Supports .csv, .xls, .xlsx' },
+  { id: 'other', name: 'Other System', category: 'generic', logo: '🔧', difficulty: 'variable', description: 'Coming from something else? AI will do its best to understand your files.', entities: ['any'], notes: 'AI-assisted mapping with manual review' },
+];
+
+export const NEXPURA_FIELDS: Record<string, Array<{ field: string; label: string; required: boolean; description?: string }>> = {
+  customers: [
+    { field: 'full_name', label: 'Full Name', required: true },
+    { field: 'first_name', label: 'First Name', required: false },
+    { field: 'last_name', label: 'Last Name', required: false },
+    { field: 'email', label: 'Email', required: false },
+    { field: 'phone', label: 'Phone', required: false },
+    { field: 'mobile', label: 'Mobile', required: false },
+    { field: 'address_line1', label: 'Address Line 1', required: false },
+    { field: 'address_line2', label: 'Address Line 2', required: false },
+    { field: 'city', label: 'City', required: false },
+    { field: 'state', label: 'State', required: false },
+    { field: 'postcode', label: 'Postcode', required: false },
+    { field: 'country', label: 'Country', required: false },
+    { field: 'ring_size', label: 'Ring Size', required: false, description: 'Jewellery-specific' },
+    { field: 'bracelet_size', label: 'Bracelet Size', required: false },
+    { field: 'notes', label: 'Notes', required: false },
+    { field: 'date_of_birth', label: 'Date of Birth', required: false },
+    { field: 'anniversary', label: 'Anniversary', required: false },
+    { field: 'store_credit', label: 'Store Credit', required: false },
+    { field: 'loyalty_points', label: 'Loyalty Points', required: false },
+    { field: 'created_at', label: 'Created Date', required: false },
+  ],
+  inventory: [
+    { field: 'sku', label: 'SKU', required: true },
+    { field: 'name', label: 'Product Name', required: true },
+    { field: 'description', label: 'Description', required: false },
+    { field: 'category', label: 'Category', required: false },
+    { field: 'metal_type', label: 'Metal Type', required: false, description: 'Jewellery-specific' },
+    { field: 'metal_colour', label: 'Metal Colour', required: false },
+    { field: 'carat', label: 'Carat', required: false },
+    { field: 'stone_type', label: 'Stone Type', required: false },
+    { field: 'stone_weight', label: 'Stone Weight (ct)', required: false },
+    { field: 'cost_price', label: 'Cost Price', required: false },
+    { field: 'retail_price', label: 'Retail Price', required: false },
+    { field: 'stock_qty', label: 'Stock Quantity', required: false },
+    { field: 'barcode', label: 'Barcode', required: false },
+    { field: 'supplier', label: 'Supplier', required: false },
+    { field: 'location', label: 'Location', required: false },
+    { field: 'weight_grams', label: 'Weight (grams)', required: false },
+    { field: 'serial_number', label: 'Serial Number', required: false },
+    { field: 'brand', label: 'Brand', required: false },
+    { field: 'status', label: 'Status', required: false },
+  ],
+  repairs: [
+    { field: 'customer_name', label: 'Customer Name', required: true },
+    { field: 'item_description', label: 'Item Description', required: true },
+    { field: 'job_description', label: 'Job Description', required: false },
+    { field: 'status', label: 'Status', required: false },
+    { field: 'due_date', label: 'Due Date', required: false },
+    { field: 'price', label: 'Price', required: false },
+    { field: 'notes', label: 'Notes', required: false },
+    { field: 'created_at', label: 'Created Date', required: false },
+    { field: 'completed_at', label: 'Completed Date', required: false },
+    { field: 'technician', label: 'Technician', required: false },
+  ],
+  invoices: [
+    { field: 'invoice_number', label: 'Invoice Number', required: false },
+    { field: 'customer_name', label: 'Customer Name', required: false },
+    { field: 'total', label: 'Total', required: true },
+    { field: 'status', label: 'Status', required: false },
+    { field: 'date', label: 'Invoice Date', required: false },
+    { field: 'due_date', label: 'Due Date', required: false },
+    { field: 'notes', label: 'Notes', required: false },
+  ],
+  payments: [
+    { field: 'amount', label: 'Amount', required: true },
+    { field: 'payment_method', label: 'Payment Method', required: false },
+    { field: 'date', label: 'Payment Date', required: false },
+    { field: 'reference', label: 'Reference', required: false },
+    { field: 'customer_name', label: 'Customer Name', required: false },
+  ],
+};
+
+export type MigrationSource = typeof MIGRATION_SOURCES[0];
+export type DifficultyLevel = 'easy' | 'medium' | 'hard' | 'variable';
+export type EntityType = 'customers' | 'inventory' | 'repairs' | 'invoices' | 'payments' | 'bespoke' | 'settings' | 'unknown';
+export type SessionStatus = 'draft' | 'files_uploaded' | 'mapping' | 'preview' | 'executing' | 'complete' | 'failed' | 'cancelled';

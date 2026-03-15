@@ -7,7 +7,7 @@ import {
   FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
   Settings, CreditCard, Globe, ExternalLink, Monitor, ListTodo,
   RotateCcw, Gift, Sun, ClipboardList, ArrowLeftRight, Star,
-  Calendar, Bell, MapPin, Link as LinkIcon, Send, Zap, TrendingUp, Layers
+  Calendar, Bell, MapPin, Link as LinkIcon, Send, Zap, TrendingUp, Layers, ArrowRightLeft
 } from 'lucide-react';
 
 const navGroups = [
@@ -85,6 +85,7 @@ const navGroups = [
       { name: 'Numbering', href: '/settings/numbering', icon: FileText },
       { name: 'Import & Export', href: '/settings/import', icon: FileText },
       { name: 'Billing', href: '/billing', icon: CreditCard },
+      { name: 'Migration Hub', href: '/migration', icon: ArrowRightLeft },
     ],
   },
 ];
