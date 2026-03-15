@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import BespokeSheetPDF from "@/lib/pdf/BespokeSheetPDF";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
@@ -10,6 +11,7 @@ export async function GET(
 ) {
   const { id } = await params;
 
+  // Auth check via regular client (needs cookies)
   const supabase = await createClient();
   const {
     data: { user },
@@ -25,8 +27,10 @@ export async function GET(
 
   if (!userData?.tenant_id) return new NextResponse("Forbidden", { status: 403 });
 
-  // Select only real DB columns (from migration 013)
-  const { data: job, error } = await supabase
+  // Use admin client for data fetch to bypass RLS (same pattern as detail pages)
+  const adminClient = createAdminClient();
+
+  const { data: job, error } = await adminClient
     .from("bespoke_jobs")
     .select(
       `id, job_number, customer_id, customer_name, customer_email,
@@ -44,7 +48,7 @@ export async function GET(
 
   if (error || !job) return new NextResponse("Not found", { status: 404 });
 
-  const { data: tenant } = await supabase
+  const { data: tenant } = await adminClient
     .from("tenants")
     .select("name, business_name, abn, phone, email, address_line1, suburb, state, postcode")
     .eq("id", userData.tenant_id)

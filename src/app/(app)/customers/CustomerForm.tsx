@@ -28,6 +28,7 @@ type CustomerData = {
 interface Props {
   mode: "create" | "edit";
   customer?: CustomerData;
+  returnTo?: string;
 }
 
 const RING_SIZES = [
@@ -48,7 +49,7 @@ const TAG_COLORS: Record<string, string> = {
   Regular: "bg-stone-200 text-stone-500 border-stone-200",
 };
 
-export default function CustomerForm({ mode, customer }: Props) {
+export default function CustomerForm({ mode, customer, returnTo }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +81,13 @@ export default function CustomerForm({ mode, customer }: Props) {
         if (result.error) {
           setError(result.error);
         } else if (result.id) {
-          router.push(`/customers/${result.id}`);
+          // If there's a returnTo URL (e.g. coming from bespoke/repair new form),
+          // redirect back there with the new customer pre-selected
+          if (returnTo) {
+            router.push(`${returnTo}?customer_id=${result.id}`);
+          } else {
+            router.push(`/customers/${result.id}`);
+          }
         }
       } else if (mode === "edit" && customer?.id) {
         const result = await updateCustomer(customer.id, formData);

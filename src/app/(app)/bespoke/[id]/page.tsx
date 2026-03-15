@@ -300,7 +300,7 @@ export default async function BespokeJobDetailPage({
             priority={job.priority}
             quotedPrice={formatCurrency(job.quoted_price)}
             depositAmount={formatCurrency(job.deposit_amount)}
-            depositPaid={job.deposit_paid}
+            depositPaid={job.deposit_received ?? false}
             customerName={job.customers?.full_name ?? null}
             customerId={job.customers?.id ?? null}
             customerEmail={job.customers?.email ?? null}

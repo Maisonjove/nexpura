@@ -1,7 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import BespokeJobForm from "../BespokeJobForm";
 
-export default async function NewBespokeJobPage() {
+export default async function NewBespokeJobPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ customer_id?: string }>;
+}) {
+  const { customer_id } = await searchParams;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,7 +37,11 @@ export default async function NewBespokeJobPage() {
         </a>
         <h1 className="font-semibold text-2xl font-semibold text-stone-900 mt-2">New Bespoke Job</h1>
       </div>
-      <BespokeJobForm customers={customers || []} mode="create" />
+      <BespokeJobForm
+        customers={customers || []}
+        mode="create"
+        preselectedCustomerId={customer_id}
+      />
     </div>
   );
 }

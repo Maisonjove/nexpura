@@ -1,7 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import RepairForm from "../RepairForm";
 
-export default async function NewRepairPage() {
+export default async function NewRepairPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ customer_id?: string }>;
+}) {
+  const { customer_id } = await searchParams;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -35,7 +41,11 @@ export default async function NewRepairPage() {
           New Repair
         </h1>
       </div>
-      <RepairForm customers={customers || []} mode="create" />
+      <RepairForm
+        customers={customers || []}
+        mode="create"
+        preselectedCustomerId={customer_id}
+      />
     </div>
   );
 }

@@ -48,6 +48,7 @@ interface Props {
   customers: Customer[];
   mode: "create" | "edit";
   job?: JobData;
+  preselectedCustomerId?: string;
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ function SectionCard({
 // Main Form
 // ────────────────────────────────────────────────────────────────
 
-export default function BespokeJobForm({ customers, mode, job }: Props) {
+export default function BespokeJobForm({ customers, mode, job, preselectedCustomerId }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -110,11 +111,12 @@ export default function BespokeJobForm({ customers, mode, job }: Props) {
     !!(job?.stone_type || job?.stone_shape || job?.stone_carat)
   );
 
-  // Customer search state
+  // Customer search state — preselectedCustomerId takes priority (returned from "create customer" flow)
+  const initialCustomerId = preselectedCustomerId || job?.customer_id || "";
   const [customerSearch, setCustomerSearch] = useState(
-    customers.find((c) => c.id === job?.customer_id)?.full_name ?? ""
+    customers.find((c) => c.id === initialCustomerId)?.full_name ?? ""
   );
-  const [selectedCustomerId, setSelectedCustomerId] = useState(job?.customer_id ?? "");
+  const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomerId);
   const [showCustomerList, setShowCustomerList] = useState(false);
 
   const filteredCustomers = customers.filter((c) =>
@@ -180,8 +182,8 @@ export default function BespokeJobForm({ customers, mode, job }: Props) {
           )}
           <p className="mt-2 text-xs text-stone-400">
             Customer not listed?{" "}
-            <a href="/customers/new" target="_blank" rel="noreferrer" className="text-[#8B7355] hover:underline">
-              Add a new customer ↗
+            <a href="/customers/new?returnTo=/bespoke/new" className="text-[#8B7355] hover:underline">
+              Add a new customer →
             </a>
           </p>
         </div>

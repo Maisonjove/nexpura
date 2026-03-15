@@ -53,6 +53,8 @@ export function JobFinancePanel({
         const data = await res.json();
         if (data.error) {
           setError(data.error);
+        } else if (data.invoiceId) {
+          router.push(`/invoices/${data.invoiceId}`);
         } else {
           router.refresh();
         }

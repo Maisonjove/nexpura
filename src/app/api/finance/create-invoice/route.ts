@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -22,10 +23,13 @@ export async function POST(req: Request) {
 
     const tenantId = userData.tenant_id;
 
+    // Use admin client for data fetches to bypass RLS (same pattern as detail pages)
+    const adminClient = createAdminClient();
+
     // 1. Fetch job details
     let job;
     if (jobType === "repair") {
-      const { data } = await supabase
+      const { data } = await adminClient
         .from("repairs")
         .select("*")
         .eq("id", jobId)
@@ -33,7 +37,7 @@ export async function POST(req: Request) {
         .single();
       job = data;
     } else {
-      const { data } = await supabase
+      const { data } = await adminClient
         .from("bespoke_jobs")
         .select("*")
         .eq("id", jobId)
@@ -46,7 +50,7 @@ export async function POST(req: Request) {
 
     // 2. Check for existing invoice
     const field = jobType === "repair" ? "repair_id" : "bespoke_job_id";
-    const { data: existingInvoice } = await supabase
+    const { data: existingInvoice } = await adminClient
       .from("invoices")
       .select("id")
       .eq(field, jobId)
@@ -58,17 +62,17 @@ export async function POST(req: Request) {
     }
 
     // 3. Generate invoice number
-    const { data: invoiceNumberData } = await supabase.rpc("next_invoice_number", {
+    const { data: invoiceNumberData } = await adminClient.rpc("next_invoice_number", {
       p_tenant_id: tenantId,
     });
 
-    const total = job.final_price || job.quoted_price || 0;
+    const total = job.final_price || job.quoted_price || job.final_cost || job.estimated_cost || 0;
     const description = jobType === "repair" 
       ? `Repair #${job.ticket_number || job.repair_number}: ${job.item_description}`
       : `Bespoke Job #${job.job_number}: ${job.title}`;
 
     // 4. Create Invoice
-    const { data: newInvoice, error: invErr } = await supabase
+    const { data: newInvoice, error: invErr } = await adminClient
       .from("invoices")
       .insert({
         tenant_id: tenantId,
@@ -95,7 +99,7 @@ export async function POST(req: Request) {
     }
 
     // 5. Create Line Item
-    await supabase.from("invoice_line_items").insert({
+    await adminClient.from("invoice_line_items").insert({
       tenant_id: tenantId,
       invoice_id: newInvoice.id,
       description,

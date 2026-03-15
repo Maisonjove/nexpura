@@ -73,6 +73,7 @@ interface Props {
   customers: Customer[];
   mode: "create" | "edit";
   repair?: RepairData;
+  preselectedCustomerId?: string;
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -133,9 +134,11 @@ const selectCls =
 function CustomerSearch({
   customers,
   defaultCustomerId,
+  returnTo,
 }: {
   customers: Customer[];
   defaultCustomerId: string | null;
+  returnTo?: string;
 }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Customer | null>(
@@ -217,6 +220,15 @@ function CustomerSearch({
               )}
             </div>
           )}
+          <p className="mt-1.5 text-xs text-stone-400">
+            Customer not listed?{" "}
+            <a
+              href={`/customers/new${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+              className="text-[#8B7355] hover:underline"
+            >
+              Add a new customer →
+            </a>
+          </p>
         </div>
       )}
     </div>
@@ -227,7 +239,7 @@ function CustomerSearch({
 // Main Form Component
 // ────────────────────────────────────────────────────────────────
 
-export default function RepairForm({ customers, mode, repair }: Props) {
+export default function RepairForm({ customers, mode, repair, preselectedCustomerId }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -255,7 +267,8 @@ export default function RepairForm({ customers, mode, repair }: Props) {
           <FieldLabel htmlFor="customer_search">Customer</FieldLabel>
           <CustomerSearch
             customers={customers}
-            defaultCustomerId={repair?.customer_id || null}
+            defaultCustomerId={preselectedCustomerId || repair?.customer_id || null}
+            returnTo={mode === "create" ? "/repairs/new" : undefined}
           />
           <p className="text-xs text-stone-400 mt-1">
             Optional — leave blank for walk-in
