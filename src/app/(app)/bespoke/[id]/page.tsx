@@ -141,7 +141,13 @@ export default async function BespokeJobDetailPage({
         <div className="mb-5 flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-4">
           <span className="text-xl flex-shrink-0">✅</span>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-emerald-800">Ready for Collection</p>
+            <p className="font-semibold text-emerald-800">
+              Ready for Collection
+              {readyStageEntry && (() => {
+                const days = Math.floor((Date.now() - new Date(readyStageEntry.created_at).getTime()) / 86400000);
+                return days >= 3 ? <span className="ml-2 text-amber-700 text-sm font-semibold">⚠️ Waiting {days} day{days !== 1 ? "s" : ""}</span> : null;
+              })()}
+            </p>
             <p className="text-sm text-emerald-700 mt-0.5">
               {readyStageEntry
                 ? `Marked ready on ${new Date(readyStageEntry.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`

@@ -66,6 +66,16 @@ export default function PermissionsMatrixClient({
         </p>
       </div>
 
+      <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+        <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠️</span>
+        <div>
+          <p className="text-sm font-semibold text-amber-800">Partial Enforcement — Beta</p>
+          <p className="text-sm text-amber-700 mt-0.5">
+            Role-based access is currently enforced in reports, inventory cost prices, and billing. Granular enforcement across all modules is in progress. Some toggles here may not yet restrict access in every part of the app.
+          </p>
+        </div>
+      </div>
+
       {msg && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
           {msg}

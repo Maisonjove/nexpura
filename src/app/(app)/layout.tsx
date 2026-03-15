@@ -46,6 +46,18 @@ export default async function AppLayout({
     websiteConfig = wc;
   }
 
+  // Count items ready for pickup (repairs + bespoke)
+  let readyRepairsCount = 0;
+  let readyBespokeCount = 0;
+  if (profile?.tenant_id) {
+    const [repairsRes, bespokeRes] = await Promise.all([
+      supabase.from('repairs').select('id', { count: 'exact', head: true }).eq('tenant_id', profile.tenant_id).eq('stage', 'ready').is('deleted_at', null),
+      supabase.from('bespoke_jobs').select('id', { count: 'exact', head: true }).eq('tenant_id', profile.tenant_id).eq('stage', 'ready'),
+    ]);
+    readyRepairsCount = repairsRes.count ?? 0;
+    readyBespokeCount = bespokeRes.count ?? 0;
+  }
+
   return (
     <div className="flex min-h-screen bg-stone-50">
       <Sidebar 
@@ -53,6 +65,8 @@ export default async function AppLayout({
         isSuperAdmin={isSuperAdmin} 
         websiteConfig={websiteConfig} 
         businessMode={businessMode}
+        readyRepairsCount={readyRepairsCount}
+        readyBespokeCount={readyBespokeCount}
       />
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
         <Header user={userData} />

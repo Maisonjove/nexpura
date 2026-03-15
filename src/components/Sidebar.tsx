@@ -98,9 +98,11 @@ interface SidebarProps {
     published?: boolean;
   } | null;
   businessMode?: string;
+  readyRepairsCount?: number;
+  readyBespokeCount?: number;
 }
 
-export default function Sidebar({ user, isSuperAdmin, websiteConfig, businessMode = 'full' }: SidebarProps) {
+export default function Sidebar({ user, isSuperAdmin, websiteConfig, businessMode = 'full', readyRepairsCount = 0, readyBespokeCount = 0 }: SidebarProps) {
   const pathname = usePathname();
 
   const filteredNavGroups = navGroups.map(group => ({
@@ -161,7 +163,17 @@ export default function Sidebar({ user, isSuperAdmin, websiteConfig, businessMod
                         size={15}
                         className={`flex-shrink-0 ${isActive ? 'text-[#8B7355]' : 'text-stone-500'}`}
                       />
-                      {item.name}
+                      <span className="flex-1">{item.name}</span>
+                      {item.name === 'Repairs' && readyRepairsCount > 0 && (
+                        <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                          {readyRepairsCount}
+                        </span>
+                      )}
+                      {item.name === 'Bespoke' && readyBespokeCount > 0 && (
+                        <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                          {readyBespokeCount}
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );

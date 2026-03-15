@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Appointment Confirmed" };
 
@@ -16,6 +17,26 @@ export default async function AppointmentConfirmationPage({
   const date = sp.date ?? "";
   const time = sp.time ?? "";
   const type = sp.type ?? "Appointment";
+
+  // Fetch store contact details for branding
+  const admin = createAdminClient();
+  const { data: config } = await admin
+    .from("website_config")
+    .select("business_name, tenant_id")
+    .eq("subdomain", subdomain)
+    .maybeSingle();
+  let storePhone: string | null = null;
+  let storeEmail: string | null = null;
+  if (config?.tenant_id) {
+    const { data: tenant } = await admin
+      .from("tenants")
+      .select("phone, email")
+      .eq("id", config.tenant_id)
+      .maybeSingle();
+    storePhone = tenant?.phone ?? null;
+    storeEmail = tenant?.email ?? null;
+  }
+  const storeName = (config?.business_name as string | null) || null;
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
@@ -59,6 +80,21 @@ export default async function AppointmentConfirmationPage({
             <p className="text-sm text-stone-500">
               We&apos;ll send a confirmation to your email address. Please arrive a few minutes before your scheduled time.
             </p>
+            {(storePhone || storeEmail || storeName) && (
+              <div className="mt-3 pt-3 border-t border-stone-100 space-y-1">
+                {storeName && <p className="text-sm font-medium text-stone-700">{storeName}</p>}
+                {storePhone && (
+                  <a href={`tel:${storePhone}`} className="block text-sm text-[#8B7355] hover:underline">
+                    📞 {storePhone}
+                  </a>
+                )}
+                {storeEmail && (
+                  <a href={`mailto:${storeEmail}`} className="block text-sm text-[#8B7355] hover:underline">
+                    ✉️ {storeEmail}
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
