@@ -10,55 +10,72 @@ export default async function BespokeJobDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
   const adminClient = createAdminClient();
-  const { data: userData } = user
-    ? await adminClient.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single()
-    : { data: null };
-  const tenantId = userData?.tenant_id ?? "";
-  const tenantCurrency = (userData?.tenants as { currency?: string } | null)?.currency || "AUD";
 
-  const { data: job } = await adminClient
-    .from("bespoke_jobs")
-    .select("*, customers(id, full_name, email, mobile)")
-    .eq("id", id)
-    .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
-    .single();
+  // Auth + user data in parallel with job fetch
+  const [{ data: { user } }, { data: job }, { data: inventory }] = await Promise.all([
+    supabase.auth.getUser(),
+    adminClient
+      .from("bespoke_jobs")
+      .select("*, customers(id, full_name, email, mobile)")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .single(),
+    adminClient
+      .from("inventory")
+      .select("id, name, sku, retail_price")
+      .eq("status", "active")
+      .order("name", { ascending: true })
+      .limit(100),
+  ]);
 
   if (!job) notFound();
 
-  const customer = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
+  // User tenant lookup (needs user.id) — run in parallel with attachments + events
+  const [{ data: userData }, { data: attachments }, { data: events }] = await Promise.all([
+    user
+      ? adminClient.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single()
+      : Promise.resolve({ data: null }),
+    adminClient
+      .from("job_attachments")
+      .select("*")
+      .eq("job_type", "bespoke")
+      .eq("job_id", id)
+      .order("created_at", { ascending: true }),
+    adminClient
+      .from("job_events")
+      .select("*")
+      .eq("job_type", "bespoke")
+      .eq("job_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
-  // Fetch invoice via invoice_id on job (primary)
-  let invoice = null;
+  const tenantId = userData?.tenant_id ?? "";
+  const tenantCurrency = (userData?.tenants as { currency?: string } | null)?.currency || "AUD";
+  const customer = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
   const invoiceId = job.invoice_id ?? null;
 
+  // Invoice + line items + payments in parallel (only if invoice exists)
+  let invoice = null;
   if (invoiceId) {
-    const { data: inv } = await adminClient
-      .from("invoices")
-      .select("id, invoice_number, status, subtotal, tax_amount, tax_rate, total, amount_paid")
-      .eq("id", invoiceId)
-      .eq("tenant_id", tenantId)
-      .single();
-
-    if (inv) {
-      const { data: lineItems, error: liErr } = await adminClient
+    const [{ data: inv }, { data: lineItems }, { data: payments }] = await Promise.all([
+      adminClient
+        .from("invoices")
+        .select("id, invoice_number, status, subtotal, tax_amount, tax_rate, total, amount_paid")
+        .eq("id", invoiceId)
+        .single(),
+      adminClient
         .from("invoice_line_items")
         .select("*")
-        .eq("invoice_id", invoiceId);
-
-      if (liErr) console.error("Line items fetch error:", liErr);
-
-      const { data: payments, error: pErr } = await adminClient
+        .eq("invoice_id", invoiceId),
+      adminClient
         .from("payments")
         .select("*")
         .eq("invoice_id", invoiceId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true }),
+    ]);
 
-      if (pErr) console.error("Payments fetch error:", pErr);
-
+    if (inv) {
       invoice = {
         ...inv,
         lineItems: lineItems ?? [],
@@ -67,30 +84,6 @@ export default async function BespokeJobDetailPage({
     }
   }
 
-  const { data: inventory } = await adminClient
-    .from("inventory")
-    .select("id, name, sku, retail_price")
-    .eq("tenant_id", tenantId)
-    .eq("status", "active")
-    .order("name", { ascending: true })
-    .limit(100);
-
-  // Fetch attachments and events
-  const { data: attachments } = await adminClient
-    .from("job_attachments")
-    .select("*")
-    .eq("job_type", "bespoke")
-    .eq("job_id", id)
-    .order("created_at", { ascending: true });
-
-  const { data: events } = await adminClient
-    .from("job_events")
-    .select("*")
-    .eq("job_type", "bespoke")
-    .eq("job_id", id)
-    .order("created_at", { ascending: false });
-
-  // Map deposit_received to deposit_paid for the component
   const depositPaid = job.deposit_received ?? job.deposit_paid ?? false;
 
   return (

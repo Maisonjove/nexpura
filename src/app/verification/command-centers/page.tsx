@@ -1,8 +1,5 @@
 /**
  * /verification/command-centers — Direct route index for command center verification
- *
- * All links use ?rt=nexpura-review-2026 for authenticated routes (sandbox token).
- * Review routes require no auth token.
  * PREVIEW-ONLY. Remove after review cycle.
  */
 
@@ -11,93 +8,106 @@ import { headers } from "next/headers";
 const REPAIR_ID = "09686ec7-0ec5-4950-ba7f-9982c9830d43";
 const BESPOKE_ID = "ba62301b-0b26-423a-b02e-5a48bd7034b6";
 const INVOICE_REPAIR_ID = "2c6672d1-884e-4d96-accf-b8a88ab2e27e";
-const INVOICE_BESPOKE_ID = "b5b5b5b5-0005-0005-0005-000000000005";
 const RT = "nexpura-review-2026";
 
 const SECTIONS = [
   {
-    title: "Real Authenticated App — Repair Command Center",
-    description: "Full working command center. Line items, payments, email, print, stage advance. Uses sandbox token to inject demo auth without browser cookies.",
+    title: "Real Authenticated App",
+    color: "#b45309",
+    bg: "#fffbeb",
+    border: "#fde68a",
     routes: [
       {
         label: "Repair Command Center — R-0001 (David Moufarrej)",
         url: `/repairs/${REPAIR_ID}?rt=${RT}`,
-        note: "Authenticated via ?rt= sandbox token",
+        note: "Full command center: line items, payments, email, print, stage. Auth injected via ?rt= token.",
+        tag: "AUTHENTICATED",
       },
-    ],
-  },
-  {
-    title: "Real Authenticated App — Bespoke Command Center",
-    description: "Full working command center for bespoke jobs. Same feature set as repair.",
-    routes: [
       {
-        label: "Bespoke Command Center — B-0001 (Sarah Chen)",
+        label: "Bespoke Command Center — B-0001",
         url: `/bespoke/${BESPOKE_ID}?rt=${RT}`,
-        note: "Authenticated via ?rt= sandbox token",
+        note: "Full command center for bespoke jobs. Same feature set. Auth injected via ?rt= token.",
+        tag: "AUTHENTICATED",
       },
     ],
   },
   {
-    title: "Public Read-Only Review Routes",
-    description: "No auth required. All command center panels visible in read-only mode. No edit, payment, upload, or action controls.",
+    title: "Public Read-Only Review",
+    color: "#059669",
+    bg: "#f0fdf4",
+    border: "#bbf7d0",
     routes: [
       {
-        label: "Review — Repair R-0001 (read-only)",
+        label: "Review Repair — R-0001 (read-only)",
         url: `/review/repairs/${REPAIR_ID}`,
-        note: "No auth required",
+        note: "No auth required. All panels visible. No edit, payment, upload, or action controls.",
+        tag: "NO AUTH",
       },
       {
-        label: "Review — Bespoke B-0001 (read-only)",
+        label: "Review Bespoke — B-0001 (read-only)",
         url: `/review/bespoke/${BESPOKE_ID}`,
-        note: "No auth required",
+        note: "No auth required. Full read-only view.",
+        tag: "NO AUTH",
       },
     ],
   },
   {
     title: "Print Documents — Repair",
-    description: "Separate print-optimised documents for repair jobs. Each is a distinct document type.",
+    color: "#1c1917",
+    bg: "#fafaf9",
+    border: "#e7e5e4",
     routes: [
       {
-        label: "Print Repair Ticket — R-0001",
+        label: "Repair Ticket — R-0001",
         url: `/print/repair/${REPAIR_ID}?rt=${RT}`,
         note: "Job summary + item detail for workshop",
+        tag: "PRINT",
       },
       {
-        label: "Print Payment Receipt — Repair R-0001",
+        label: "Payment Receipt — Repair R-0001",
         url: `/print/receipt/repair/${REPAIR_ID}?rt=${RT}`,
-        note: "Payments received, balance remaining, RCP-R-0001-N",
+        note: "Payments received, balance remaining — RCP-R-0001-N (distinct from invoice)",
+        tag: "PRINT",
       },
       {
-        label: "Print Invoice — INV-0001",
+        label: "Invoice — INV-0001",
         url: `/print/invoice/${INVOICE_REPAIR_ID}?rt=${RT}`,
-        note: "Formal invoice with line items, INV-0001",
+        note: "Formal invoice with line items (distinct from receipt)",
+        tag: "PRINT",
       },
     ],
   },
   {
     title: "Print Documents — Bespoke",
-    description: "Separate print-optimised documents for bespoke jobs.",
+    color: "#1c1917",
+    bg: "#fafaf9",
+    border: "#e7e5e4",
     routes: [
       {
-        label: "Print Bespoke Job Sheet — B-0001",
+        label: "Bespoke Job Sheet — B-0001",
         url: `/print/bespoke/${BESPOKE_ID}?rt=${RT}`,
         note: "Job specification + client details",
+        tag: "PRINT",
       },
       {
-        label: "Print Payment Receipt — Bespoke B-0001",
+        label: "Payment Receipt — Bespoke B-0001",
         url: `/print/receipt/bespoke/${BESPOKE_ID}?rt=${RT}`,
         note: "Payments received, balance remaining",
+        tag: "PRINT",
       },
     ],
   },
   {
     title: "Proof Gallery",
-    description: "Sequential Playwright-captured screenshots proving interaction reliability from this exact build.",
+    color: "#7c3aed",
+    bg: "#faf5ff",
+    border: "#e9d5ff",
     routes: [
       {
         label: "Workflow Proof Gallery (screenshots + videos)",
         url: "/verification/workflows",
-        note: "Repair CC and Bespoke CC interaction reliability proof",
+        note: "Sequential Playwright screenshots proving interaction reliability",
+        tag: "GALLERY",
       },
     ],
   },
@@ -108,71 +118,88 @@ export default async function CommandCenterIndexPage() {
   const BUILD = hdrs.get("host") || "nexpura";
 
   return (
-    <html lang="en">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="robots" content="noindex" />
-        <title>Command Center Verification — {BUILD}</title>
-        <style>{`
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fafaf9; color: #1c1917; line-height: 1.5; }
-          .wrap { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
-          .header { border-bottom: 1px solid #e7e5e4; padding-bottom: 24px; margin-bottom: 40px; }
-          .badge { display: inline-block; background: #451a03; color: #fef3c7; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; margin-bottom: 12px; }
-          h1 { font-size: 22px; font-weight: 700; color: #1c1917; margin-bottom: 6px; }
-          .build-url { font-size: 12px; color: #78716c; font-family: monospace; background: #f5f5f4; padding: 4px 10px; border-radius: 4px; display: inline-block; margin-top: 8px; }
-          .section { margin-bottom: 36px; }
-          .section-title { font-size: 13px; font-weight: 700; color: #1c1917; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
-          .section-desc { font-size: 13px; color: #78716c; margin-bottom: 14px; }
-          .route-card { background: #fff; border: 1px solid #e7e5e4; border-radius: 10px; padding: 14px 18px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-          .route-label { font-size: 14px; font-weight: 600; color: #1c1917; }
-          .route-note { font-size: 11px; color: #a8a29e; margin-top: 2px; }
-          .route-link { display: inline-flex; align-items: center; gap-6px; background: #b45309; color: #fff; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 7px; text-decoration: none; white-space: nowrap; transition: background 0.15s; }
-          .route-link:hover { background: #92400e; }
-          .route-link.secondary { background: #f5f5f4; color: #57534e; border: 1px solid #e7e5e4; }
-          .route-link.secondary:hover { background: #e7e5e4; }
-          .full-url { font-family: monospace; font-size: 10px; color: #a8a29e; margin-top: 4px; word-break: break-all; }
-        `}</style>
-      </head>
-      <body>
-        <div className="wrap">
-          <div className="header">
-            <div className="badge">Verification Index</div>
-            <h1>Command Center — Direct Route Links</h1>
-            <p style={{ fontSize: 13, color: "#78716c", marginTop: 6 }}>
-              Every link on this page opens a real working route on this exact build.
-              Authenticated routes use the <code style={{ background: "#f5f5f4", padding: "1px 5px", borderRadius: 3, fontSize: 11 }}>?rt=nexpura-review-2026</code> sandbox token.
-              No browser login required for any link.
-            </p>
-            <div className="build-url">Build: https://{BUILD}</div>
-          </div>
+    <div style={{ fontFamily: "system-ui, sans-serif", background: "#fafaf9", minHeight: "100vh", padding: "48px 24px 80px" }}>
+      <div style={{ maxWidth: 820, margin: "0 auto" }}>
 
-          {SECTIONS.map((section) => (
-            <div key={section.title} className="section">
-              <div className="section-title">{section.title}</div>
-              <div className="section-desc">{section.description}</div>
-              {section.routes.map((r) => (
-                <div key={r.url} className="route-card">
-                  <div style={{ flex: 1 }}>
-                    <div className="route-label">{r.label}</div>
-                    <div className="route-note">{r.note}</div>
-                    <div className="full-url">https://{BUILD}{r.url}</div>
-                  </div>
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`route-link${r.url.startsWith("/verification") ? " secondary" : ""}`}
-                  >
-                    Open →
-                  </a>
-                </div>
-              ))}
-            </div>
-          ))}
+        {/* Header */}
+        <div style={{ marginBottom: 40, borderLeft: "4px solid #b45309", paddingLeft: 16 }}>
+          <span style={{ display: "inline-block", background: "#451a03", color: "#fef3c7", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, padding: "3px 8px", borderRadius: 4, marginBottom: 10 }}>
+            Verification Index
+          </span>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1c1917", margin: "0 0 6px" }}>
+            Command Center — Direct Route Links
+          </h1>
+          <p style={{ fontSize: 13, color: "#78716c", margin: 0 }}>
+            Every link below opens a real working route on this exact build. Authenticated routes use the{" "}
+            <code style={{ background: "#f5f5f4", padding: "1px 5px", borderRadius: 3, fontSize: 11 }}>?rt=nexpura-review-2026</code>{" "}
+            sandbox token. No browser login required.
+          </p>
+          <div style={{ marginTop: 10, display: "inline-block", background: "#f5f5f4", padding: "4px 10px", borderRadius: 4, fontFamily: "monospace", fontSize: 12, color: "#78716c" }}>
+            Build: https://{BUILD}
+          </div>
         </div>
-      </body>
-    </html>
+
+        {/* Sections */}
+        {SECTIONS.map((section) => (
+          <div key={section.title} style={{ marginBottom: 36 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: section.color, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 12 }}>
+              {section.title}
+            </div>
+            {section.routes.map((r) => (
+              <div
+                key={r.url}
+                style={{
+                  background: section.bg,
+                  border: `1px solid ${section.border}`,
+                  borderRadius: 10,
+                  padding: "14px 18px",
+                  marginBottom: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#1c1917" }}>{r.label}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, background: section.color, color: "#fff", padding: "1px 6px", borderRadius: 3, letterSpacing: "0.06em" }}>
+                      {r.tag}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#78716c", marginBottom: 3 }}>{r.note}</div>
+                  <div style={{ fontFamily: "monospace", fontSize: 10, color: "#a8a29e", wordBreak: "break-all" as const }}>
+                    https://{BUILD}{r.url}
+                  </div>
+                </div>
+                <a
+                  href={r.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-block",
+                    background: section.color,
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: "8px 16px",
+                    borderRadius: 7,
+                    textDecoration: "none",
+                    whiteSpace: "nowrap" as const,
+                  }}
+                >
+                  Open →
+                </a>
+              </div>
+            ))}
+          </div>
+        ))}
+
+        <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid #e7e5e4", display: "flex", gap: 20, flexWrap: "wrap" as const }}>
+          <a href="/verification/workflows" style={{ fontSize: 13, color: "#b45309", fontWeight: 600 }}>Proof Gallery →</a>
+          <a href={`/sandbox/links?rt=${RT}`} style={{ fontSize: 13, color: "#78716c" }}>Full route index</a>
+        </div>
+      </div>
+    </div>
   );
 }

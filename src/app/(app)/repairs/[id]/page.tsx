@@ -10,55 +10,72 @@ export default async function RepairDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
   const adminClient = createAdminClient();
-  const { data: userData } = user
-    ? await adminClient.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single()
-    : { data: null };
-  const tenantId = userData?.tenant_id ?? "";
-  const tenantCurrency = (userData?.tenants as { currency?: string } | null)?.currency || "AUD";
 
-  const { data: repair } = await adminClient
-    .from("repairs")
-    .select("*, customers(id, full_name, email, mobile)")
-    .eq("id", id)
-    .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
-    .single();
+  // Auth + repair + inventory all in parallel — no inter-dependencies at this stage
+  const [{ data: { user } }, { data: repair }, { data: inventory }] = await Promise.all([
+    supabase.auth.getUser(),
+    adminClient
+      .from("repairs")
+      .select("*, customers(id, full_name, email, mobile)")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .single(),
+    adminClient
+      .from("inventory")
+      .select("id, name, sku, retail_price")
+      .eq("status", "active")
+      .order("name", { ascending: true })
+      .limit(100),
+  ]);
 
   if (!repair) notFound();
 
-  const customer = Array.isArray(repair.customers) ? repair.customers[0] ?? null : repair.customers;
+  // User lookup + attachments + events in parallel (all independent)
+  const [{ data: userData }, { data: attachments }, { data: events }] = await Promise.all([
+    user
+      ? adminClient.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single()
+      : Promise.resolve({ data: null }),
+    adminClient
+      .from("job_attachments")
+      .select("*")
+      .eq("job_type", "repair")
+      .eq("job_id", id)
+      .order("created_at", { ascending: true }),
+    adminClient
+      .from("job_events")
+      .select("*")
+      .eq("job_type", "repair")
+      .eq("job_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
-  // Fetch invoice via invoice_id on repair (primary), fallback to reference lookup
-  let invoice = null;
+  const tenantId = userData?.tenant_id ?? "";
+  const tenantCurrency = (userData?.tenants as { currency?: string } | null)?.currency || "AUD";
+  const customer = Array.isArray(repair.customers) ? repair.customers[0] ?? null : repair.customers;
   const invoiceId = repair.invoice_id ?? null;
 
+  // Invoice + line items + payments in parallel (only if invoice exists)
+  let invoice = null;
   if (invoiceId) {
-    const { data: inv } = await adminClient
-      .from("invoices")
-      .select("id, invoice_number, status, subtotal, tax_amount, tax_rate, total, amount_paid")
-      .eq("id", invoiceId)
-      .eq("tenant_id", tenantId)
-      .single();
-
-    if (inv) {
-      const { data: lineItems, error: liErr } = await adminClient
+    const [{ data: inv }, { data: lineItems }, { data: payments }] = await Promise.all([
+      adminClient
+        .from("invoices")
+        .select("id, invoice_number, status, subtotal, tax_amount, tax_rate, total, amount_paid")
+        .eq("id", invoiceId)
+        .single(),
+      adminClient
         .from("invoice_line_items")
         .select("*")
-        .eq("invoice_id", invoiceId);
-
-      if (liErr) console.error("Line items fetch error:", liErr);
-
-      const { data: payments, error: pErr } = await adminClient
+        .eq("invoice_id", invoiceId),
+      adminClient
         .from("payments")
         .select("*")
         .eq("invoice_id", invoiceId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true }),
+    ]);
 
-      if (pErr) console.error("Payments fetch error:", pErr);
-
+    if (inv) {
       invoice = {
         ...inv,
         lineItems: lineItems ?? [],
@@ -66,30 +83,6 @@ export default async function RepairDetailPage({
       };
     }
   }
-
-  // Fetch inventory for stock item picker
-  const { data: inventory } = await adminClient
-    .from("inventory")
-    .select("id, name, sku, retail_price")
-    .eq("tenant_id", tenantId)
-    .eq("status", "active")
-    .order("name", { ascending: true })
-    .limit(100);
-
-  // Fetch attachments and events
-  const { data: attachments } = await adminClient
-    .from("job_attachments")
-    .select("*")
-    .eq("job_type", "repair")
-    .eq("job_id", id)
-    .order("created_at", { ascending: true });
-
-  const { data: events } = await adminClient
-    .from("job_events")
-    .select("*")
-    .eq("job_type", "repair")
-    .eq("job_id", id)
-    .order("created_at", { ascending: false });
 
   return (
     <RepairCommandCenter

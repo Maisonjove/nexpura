@@ -11,13 +11,29 @@ export default async function ReviewBespokeDetailPage({
   const { id } = await params;
   const adminClient = createAdminClient();
 
-  const { data: job } = await adminClient
-    .from("bespoke_jobs")
-    .select("*, customers(id, full_name, email, mobile)")
-    .eq("id", id)
-    .eq("tenant_id", TENANT_ID)
-    .is("deleted_at", null)
-    .single();
+  // Job + attachments + events in parallel
+  const [{ data: job }, { data: attachments }, { data: events }] = await Promise.all([
+    adminClient
+      .from("bespoke_jobs")
+      .select("*, customers(id, full_name, email, mobile)")
+      .eq("id", id)
+      .eq("tenant_id", TENANT_ID)
+      .is("deleted_at", null)
+      .single(),
+    adminClient
+      .from("job_attachments")
+      .select("id, file_name, file_url, caption, created_at")
+      .eq("job_type", "bespoke")
+      .eq("job_id", id)
+      .eq("tenant_id", TENANT_ID)
+      .order("created_at", { ascending: true }),
+    adminClient
+      .from("job_events")
+      .select("*")
+      .eq("job_type", "bespoke")
+      .eq("job_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (!job) {
     return (
@@ -29,31 +45,31 @@ export default async function ReviewBespokeDetailPage({
   }
 
   const customer = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
+  const invoiceId = job.invoice_id ?? null;
+  const depositPaid = job.deposit_received ?? job.deposit_paid ?? false;
 
   let invoice = null;
-  const invoiceId = job.invoice_id ?? null;
-
   if (invoiceId) {
-    const { data: inv } = await adminClient
-      .from("invoices")
-      .select("id, invoice_number, status, subtotal, tax_amount, tax_rate, total, amount_paid")
-      .eq("id", invoiceId)
-      .eq("tenant_id", TENANT_ID)
-      .single();
-
-    if (inv) {
-      const { data: lineItems } = await adminClient
+    const [{ data: inv }, { data: lineItems }, { data: payments }] = await Promise.all([
+      adminClient
+        .from("invoices")
+        .select("id, invoice_number, status, subtotal, tax_amount, tax_rate, total, amount_paid")
+        .eq("id", invoiceId)
+        .eq("tenant_id", TENANT_ID)
+        .single(),
+      adminClient
         .from("invoice_line_items")
         .select("id, description, quantity, unit_price, total")
         .eq("invoice_id", invoiceId)
-        .order("id", { ascending: true });
-
-      const { data: payments } = await adminClient
+        .order("id", { ascending: true }),
+      adminClient
         .from("payments")
         .select("id, amount, payment_method, payment_date, notes")
         .eq("invoice_id", invoiceId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true }),
+    ]);
 
+    if (inv) {
       invoice = {
         ...inv,
         lineItems: lineItems ?? [],
@@ -61,17 +77,6 @@ export default async function ReviewBespokeDetailPage({
       };
     }
   }
-
-  const depositPaid = job.deposit_received ?? job.deposit_paid ?? false;
-
-  // Fetch attachments
-  const { data: attachments } = await adminClient
-    .from("job_attachments")
-    .select("id, file_name, file_url, caption, created_at")
-    .eq("job_type", "bespoke")
-    .eq("job_id", id)
-    .eq("tenant_id", TENANT_ID)
-    .order("created_at", { ascending: true });
 
   return (
     <BespokeCommandCenter
@@ -107,6 +112,7 @@ export default async function ReviewBespokeDetailPage({
       currency="AUD"
       readOnly={true}
       attachments={attachments ?? []}
+      events={events ?? []}
     />
   );
 }
