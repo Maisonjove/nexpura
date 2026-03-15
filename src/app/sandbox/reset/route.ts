@@ -29,17 +29,8 @@ export async function GET(request: NextRequest) {
   // 1. payments
   await safeDelete(() => admin.from("payments").delete().eq("tenant_id", TENANT_ID));
 
-  // 2. invoice_line_items (via invoice join)
-  const { data: invoiceRows } = await admin
-    .from("invoices")
-    .select("id")
-    .eq("tenant_id", TENANT_ID);
-  const invoiceIds = invoiceRows?.map((i: { id: string }) => i.id) ?? [];
-  if (invoiceIds.length > 0) {
-    await safeDelete(() =>
-      admin.from("invoice_line_items").delete().in("invoice_id", invoiceIds)
-    );
-  }
+  // 2. invoice_line_items (direct tenant delete)
+  await safeDelete(() => admin.from("invoice_line_items").delete().eq("tenant_id", TENANT_ID));
 
   // 3. invoices
   await safeDelete(() => admin.from("invoices").delete().eq("tenant_id", TENANT_ID));
@@ -309,10 +300,26 @@ export async function GET(request: NextRequest) {
   await safeInsert(() => admin.from("bespoke_jobs").insert({ tenant_id: TENANT_ID, job_number: "B-0003", customer_id: "9790cd8c-e746-4a2a-995f-974b61590975", title: "Sapphire Halo Engagement Ring", description: "18ct white gold sapphire halo engagement ring. Ceylon blue sapphire.", stage: "quoted", priority: "urgent", quoted_price: 9800, deposit_amount: 3000, deposit_paid: false, due_date: "2026-03-30" }));
 
   // INVOICES — individual inserts; amount_due is a generated column (do not set it)
-  await safeInsert(() => admin.from("invoices").insert({ id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", tenant_id: TENANT_ID, invoice_number: "INV-0001", customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a", reference_type: "sale", status: "paid", invoice_date: "2026-03-01", due_date: "2026-03-10", paid_at: "2026-03-08T10:00:00Z", subtotal: 18500, tax_amount: 1850, discount_amount: 0, total: 20350, amount_paid: 20350, tax_name: "GST", tax_rate: 0.1 }));
-  await safeInsert(() => admin.from("invoices").insert({ tenant_id: TENANT_ID, invoice_number: "INV-0002", customer_id: "7774e408-6231-4d99-bc9f-ec657456a364", reference_type: "bespoke", reference_id: "ba62301b-0b26-423a-b02e-5a48bd7034b6", status: "unpaid", invoice_date: "2026-03-05", due_date: "2026-03-31", subtotal: 8400, tax_amount: 840, discount_amount: 0, total: 9240, amount_paid: 0, tax_name: "GST", tax_rate: 0.1 }));
-  await safeInsert(() => admin.from("invoices").insert({ tenant_id: TENANT_ID, invoice_number: "INV-0003", customer_id: "9790cd8c-e746-4a2a-995f-974b61590975", reference_type: "repair", reference_id: "09686ec7-0ec5-4950-ba7f-9982c9830d43", status: "partial", invoice_date: "2026-02-25", due_date: "2026-03-08", subtotal: 5600, tax_amount: 560, discount_amount: 0, total: 6160, amount_paid: 3000, tax_name: "GST", tax_rate: 0.1 }));
+  // INV-0001 is for repair R-0001 (ring resize + prong check). subtotal = 290.91 + tax = 320 total
+  await safeInsert(() => admin.from("invoices").insert({ id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", tenant_id: TENANT_ID, invoice_number: "INV-0001", customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a", reference_type: "repair", reference_id: "09686ec7-0ec5-4950-ba7f-9982c9830d43", status: "partial", invoice_date: "2026-03-01", due_date: "2026-03-20", subtotal: 290.91, tax_amount: 29.09, discount_amount: 0, total: 320, amount_paid: 100, tax_name: "GST", tax_rate: 0.1 }));
+  await safeInsert(() => admin.from("invoices").insert({ tenant_id: TENANT_ID, invoice_number: "INV-0002", customer_id: "7774e408-6231-4d99-bc9f-ec657456a364", reference_type: "sale", status: "unpaid", invoice_date: "2026-03-05", due_date: "2026-03-31", subtotal: 7636.36, tax_amount: 763.64, discount_amount: 0, total: 8400, amount_paid: 0, tax_name: "GST", tax_rate: 0.1 }));
+  await safeInsert(() => admin.from("invoices").insert({ tenant_id: TENANT_ID, invoice_number: "INV-0003", customer_id: "9790cd8c-e746-4a2a-995f-974b61590975", reference_type: "repair", status: "unpaid", invoice_date: "2026-02-25", due_date: "2026-03-08", subtotal: 409.09, tax_amount: 40.91, discount_amount: 0, total: 450, amount_paid: 0, tax_name: "GST", tax_rate: 0.1 }));
   await safeInsert(() => admin.from("invoices").insert({ tenant_id: TENANT_ID, invoice_number: "INV-0004", customer_id: "870c2497-feb4-4857-b53f-aa12ae12d41e", reference_type: "sale", status: "paid", invoice_date: "2026-03-12", due_date: "2026-03-20", paid_at: "2026-03-14T14:00:00Z", subtotal: 2200, tax_amount: 220, discount_amount: 0, total: 2420, amount_paid: 2420, tax_name: "GST", tax_rate: 0.1 }));
+  // INV-0005 for bespoke B-0001 (custom platinum wedding bands)
+  await safeInsert(() => admin.from("invoices").insert({ id: "b5b5b5b5-0005-0005-0005-000000000005", tenant_id: TENANT_ID, invoice_number: "INV-0005", customer_id: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a", reference_type: "bespoke", reference_id: "ba62301b-0b26-423a-b02e-5a48bd7034b6", status: "partial", invoice_date: "2026-03-10", due_date: "2026-04-15", subtotal: 7636.36, tax_amount: 763.64, discount_amount: 0, total: 8400, amount_paid: 2800, tax_name: "GST", tax_rate: 0.1 }));
+
+  // Link invoices to jobs
+  await safeInsert(() => admin.from("repairs").update({ invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", deposit_paid: false }).eq("id", "09686ec7-0ec5-4950-ba7f-9982c9830d43").eq("tenant_id", TENANT_ID));
+  await safeInsert(() => admin.from("bespoke_jobs").update({ invoice_id: "b5b5b5b5-0005-0005-0005-000000000005", deposit_paid: false }).eq("id", "ba62301b-0b26-423a-b02e-5a48bd7034b6").eq("tenant_id", TENANT_ID));
+
+  // INVOICE LINE ITEMS for R-0001 (INV-0001) — individual inserts
+  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", description: "Ring resizing labour", quantity: 1, unit_price: 180, tax_amount: 18, discount_amount: 0, total: 180 }));
+  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", description: "Prong check & tighten", quantity: 1, unit_price: 90, tax_amount: 9, discount_amount: 0, total: 90 }));
+  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", description: "Polishing & cleaning", quantity: 1, unit_price: 50, tax_amount: 5, discount_amount: 0, total: 50 }));
+
+  // INVOICE LINE ITEMS for B-0001 (INV-0005) — individual inserts
+  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "b5b5b5b5-0005-0005-0005-000000000005", description: "Custom platinum band", quantity: 2, unit_price: 3000, tax_amount: 600, discount_amount: 0, total: 6000 }));
+  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "b5b5b5b5-0005-0005-0005-000000000005", description: "Hand engraving (scrollwork)", quantity: 1, unit_price: 1200, tax_amount: 120, discount_amount: 0, total: 1200 }));
 
 
   // SALES
@@ -451,41 +458,11 @@ export async function GET(request: NextRequest) {
     ])
   );
 
-  // PAYMENTS — seed payment records for paid/partial invoices so payment history is consistent
-  await safeInsert(() =>
-    admin.from("payments").insert([
-      {
-        tenant_id: TENANT_ID,
-        invoice_id: "7af873a4-2cd5-4b12-b2aa-77fac3168e83", // INV-0001 paid
-        amount: 7480.00,
-        payment_method: "card",
-        payment_date: "2026-03-10",
-        reference: "EFTPOS-2036",
-        notes: "Full payment received in store",
-        created_by: "bd7d2c20-5727-4f80-a449-818429abecc9",
-      },
-      {
-        tenant_id: TENANT_ID,
-        invoice_id: "dea54c54-5565-4731-8fed-d2e0b9e90864", // INV-0004 paid
-        amount: 5280.00,
-        payment_method: "card",
-        payment_date: "2026-03-12",
-        reference: "EFTPOS-2041",
-        notes: "Full payment received in store",
-        created_by: "bd7d2c20-5727-4f80-a449-818429abecc9",
-      },
-      {
-        tenant_id: TENANT_ID,
-        invoice_id: "46d2b690-733d-4f23-abaf-10d81d3e9102", // INV-0003 partial
-        amount: 1000.00,
-        payment_method: "cash",
-        payment_date: "2026-03-08",
-        reference: null,
-        notes: "Partial deposit received",
-        created_by: "bd7d2c20-5727-4f80-a449-818429abecc9",
-      },
-    ])
-  );
+  // PAYMENTS — individual inserts (no batched arrays)
+  // INV-0001 (R-0001 repair) — initial deposit
+  await safeInsert(() => admin.from("payments").insert({ tenant_id: TENANT_ID, invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", amount: 100, payment_method: "card", payment_date: "2026-03-01", notes: "Initial deposit" }));
+  // INV-0005 (B-0001 bespoke) — 50% deposit
+  await safeInsert(() => admin.from("payments").insert({ tenant_id: TENANT_ID, invoice_id: "b5b5b5b5-0005-0005-0005-000000000005", amount: 2800, payment_method: "card", payment_date: "2026-03-10", notes: "50% deposit" }));
 
   // APPRAISALS
   await safeInsert(() =>
