@@ -1,5 +1,5 @@
 /**
- * /verification/workflows — Workflow video proof gallery
+ * /verification/workflows — Workflow video proof gallery + screenshot proof gallery
  *
  * Videos are loaded from Supabase Storage. They were captured from the
  * SAME deployed build that serves this page. The build ID shown in the
@@ -13,6 +13,45 @@ import { headers } from "next/headers";
 
 const STORAGE =
   "https://vkpjocnrefjfpuovzinn.supabase.co/storage/v1/object/public/verification/videos";
+
+const SCREENSHOT_STORAGE =
+  "https://vkpjocnrefjfpuovzinn.supabase.co/storage/v1/object/public/verification/screenshots";
+
+const PROOF_SECTIONS = [
+  {
+    title: "Repair Command Center — Finalization Proof",
+    buildUrl: "https://nexpura-ohiz0cvj6-maisonjoves-projects.vercel.app",
+    shots: [
+      { name: "R1-repair-initial-state", label: "Initial state — line items, totals, seeded photos" },
+      { name: "R2-repair-manual-item-form", label: "Manual item form — Express Rush Fee" },
+      { name: "R3-repair-after-manual-item", label: "After manual item — totals updated" },
+      { name: "R4-repair-stock-item-form", label: "Stock item selected from inventory" },
+      { name: "R5-repair-after-stock-item", label: "After stock item — totals updated again" },
+      { name: "R6-repair-after-photo-upload", label: "Photo uploaded — gallery updated live" },
+      { name: "R7-repair-after-photo-delete", label: "Photo deleted — gallery cleaned" },
+      { name: "R8-repair-email-result", label: "Email invoice result — sent or demo-limited shown" },
+      { name: "R9-repair-stage-ready", label: "Stage advanced — Mark Ready for Pickup" },
+      { name: "R10-repair-ticket-print", label: "Repair ticket print document" },
+      { name: "R11-repair-receipt-print", label: "Payment receipt (distinct from invoice)" },
+      { name: "R12-repair-invoice-print", label: "Formal invoice (distinct from receipt)" },
+    ],
+  },
+  {
+    title: "Bespoke Command Center — Finalization Proof",
+    buildUrl: "https://nexpura-ohiz0cvj6-maisonjoves-projects.vercel.app",
+    shots: [
+      { name: "B1-bespoke-initial-state", label: "Initial state — line items, totals, seeded photos" },
+      { name: "B2-bespoke-manual-item-form", label: "Manual item form — Courier delivery fee" },
+      { name: "B3-bespoke-after-manual-item", label: "After manual item — totals updated" },
+      { name: "B4-bespoke-stock-item-form", label: "Stock item selected" },
+      { name: "B5-bespoke-after-stock-item", label: "After stock item — totals updated again" },
+      { name: "B6-bespoke-after-photo-upload", label: "Photo uploaded — gallery updated" },
+      { name: "B7-bespoke-email-result", label: "Email invoice result" },
+      { name: "B8-bespoke-receipt-print", label: "Bespoke payment receipt" },
+      { name: "B9-bespoke-jobsheet-print", label: "Bespoke job sheet" },
+    ],
+  },
+];
 
 const FLOWS = [
   {
@@ -147,6 +186,25 @@ const FLOWS = [
 
 const CATEGORIES = ["POS", "Finance", "Operations", "Admin", "Security"] as const;
 
+function ScreenshotCard({ name, label }: { name: string; label: string }) {
+  return (
+    <div style={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,.06)" }}>
+      <div style={{ background: "#000", minHeight: 200 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`${SCREENSHOT_STORAGE}/${name}.png`}
+          alt={label}
+          style={{ width: "100%", display: "block" }}
+        />
+      </div>
+      <div style={{ padding: "10px 16px", borderTop: "1px solid #f5f5f4" }}>
+        <code style={{ fontSize: 10, color: "#78716c", background: "#f5f5f4", padding: "2px 6px", borderRadius: 4, marginRight: 8 }}>{name}</code>
+        <span style={{ fontSize: 13, color: "#57534e" }}>{label}</span>
+      </div>
+    </div>
+  );
+}
+
 function FlowCard({
   flow,
   build,
@@ -249,6 +307,35 @@ export default async function WorkflowsPage() {
               <strong>External Integrations:</strong> Xero, WhatsApp, Shopify show &quot;Not Connected&quot; — requires live merchant credentials not available in the demo tenant.
             </li>
           </ul>
+        </div>
+
+        {/* ── COMMAND CENTER SCREENSHOT PROOF ───────────────── */}
+        <div style={{ marginTop: 60 }}>
+          <div style={{ marginBottom: 28, borderLeft: "4px solid #059669", paddingLeft: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "#1c1917", margin: 0 }}>Command Center — Finalization Proof Screenshots</h2>
+            <p style={{ fontSize: 13, color: "#78716c", margin: "6px 0 0" }}>
+              Real Playwright interactions against the live app: add stock item, add manual item, upload photo, delete photo, email invoice, advance stage, print routes.
+            </p>
+          </div>
+          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "12px 18px", marginBottom: 28, fontSize: 12, color: "#166534" }}>
+            <strong>Compression spec:</strong> Client-side Canvas API (canvas.toBlob()) · Max dimension: 1400px width (height scales proportionally) · Output format: JPEG · Quality: 0.82 (not destructive — preserves fine detail) · EXIF/orientation: Canvas drawImage inherits browser&apos;s EXIF-aware decode for display, rotation baked in before upload
+          </div>
+          {PROOF_SECTIONS.map((section) => (
+            <div key={section.title} style={{ marginBottom: 48 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1c1917", margin: 0 }}>{section.title}</h3>
+                <span style={{ background: "#d1fae5", color: "#065f46", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>
+                  {section.shots.length} screenshots
+                </span>
+                <code style={{ fontSize: 10, color: "#78716c", background: "#f5f5f4", padding: "2px 6px", borderRadius: 4, marginLeft: "auto" }}>{section.buildUrl}</code>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+                {section.shots.map((shot) => (
+                  <ScreenshotCard key={shot.name} name={shot.name} label={shot.label} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div style={{ marginTop: 40, paddingTop: 20, borderTop: "1px solid #e7e5e4", display: "flex", gap: 20, flexWrap: "wrap" }}>
