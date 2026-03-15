@@ -5,6 +5,7 @@ import Link from "next/link";
 import StockAdjustModal from "./StockAdjustModal";
 import PrintTagModal from "./PrintTagModal";
 import { archiveInventoryItem } from "../actions";
+import { formatCurrency } from "@/lib/format-currency";
 
 interface Movement {
   id: string;
@@ -54,6 +55,7 @@ interface ItemDetailClientProps {
   item: InventoryItem;
   movements: Movement[];
   tenantName?: string;
+  currency?: string;
 }
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
@@ -99,7 +101,7 @@ function SpecRow({ label, value }: { label: string; value: string | number | nul
   );
 }
 
-export default function ItemDetailClient({ item, movements, tenantName = "Nexpura" }: ItemDetailClientProps) {
+export default function ItemDetailClient({ item, movements, tenantName = "Nexpura", currency = "AUD" }: ItemDetailClientProps) {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showPrintTag, setShowPrintTag] = useState(false);
@@ -381,19 +383,19 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-stone-500">Cost</span>
                   <span className="text-sm font-medium text-stone-900">
-                    {item.cost_price != null ? `£${item.cost_price.toFixed(2)}` : "—"}
+                    {item.cost_price != null ? formatCurrency(item.cost_price, currency) : "—"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-stone-500">Wholesale</span>
                   <span className="text-sm font-medium text-stone-900">
-                    {item.wholesale_price != null ? `£${item.wholesale_price.toFixed(2)}` : "—"}
+                    {item.wholesale_price != null ? formatCurrency(item.wholesale_price, currency) : "—"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center border-t border-stone-200 pt-3">
                   <span className="text-sm font-medium text-stone-900">Retail</span>
                   <span className="font-semibold text-lg font-semibold text-stone-900">
-                    £{item.retail_price.toFixed(2)}
+                    {formatCurrency(item.retail_price, currency)}
                   </span>
                 </div>
                 {margin !== null && (

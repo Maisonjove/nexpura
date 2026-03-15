@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Search, Filter, MoreVertical, FileText, Send, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { getQuotes, convertQuoteToInvoice, type Quote } from "./actions";
+import { toast } from "sonner";
 import StatusBadge from "@/components/StatusBadge";
 import {
   DropdownMenu,
@@ -41,7 +42,7 @@ export default function QuoteListClient() {
       loadQuotes();
     } catch (err) {
       console.error(err);
-      alert("Failed to convert quote");
+      toast.error("Failed to convert quote");
     }
   }
 

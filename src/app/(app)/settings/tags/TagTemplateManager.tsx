@@ -3,6 +3,7 @@
 import { useState } from "react"
 import StockTag, { type StockTagTemplate } from "@/components/StockTag"
 import { deleteTagTemplate, setDefaultTemplate, createTagTemplate, updateTagTemplate } from "./actions"
+import { toast } from "sonner"
 
 interface TagTemplateManagerProps {
   templates: (StockTagTemplate & { is_default?: boolean })[]
@@ -153,7 +154,7 @@ export default function TagTemplateManager({ templates: initialTemplates }: TagT
     if (!confirm("Delete this template?")) return
     setLoading(id)
     const result = await deleteTagTemplate(id)
-    if (result.error) alert(result.error)
+    if (result.error) toast.error(result.error)
     else setTemplates(t => t.filter(x => x.id !== id))
     setLoading(null)
   }

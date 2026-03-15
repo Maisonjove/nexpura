@@ -287,7 +287,7 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
           {/* Quick tips sidebar */}
           <div className="space-y-5">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-amber-800 mb-3">EOD Checklist</h3>
+              <h3 className="text-sm font-semibold text-amber-800 mb-3">End of Day Checklist</h3>
               <ul className="space-y-2 text-xs text-amber-700">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5">□</span>

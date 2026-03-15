@@ -49,7 +49,7 @@ export default async function EditInvoicePage({
       .order("full_name"),
     supabase
       .from("tenants")
-      .select("name, slug, logo_url")
+      .select("name, slug, logo_url, tax_name, tax_rate, tax_inclusive, bank_name, bank_bsb, bank_account")
       .eq("id", tenantId ?? "")
       .single(),
     supabase
@@ -61,15 +61,20 @@ export default async function EditInvoicePage({
 
   if (!invoice) notFound();
 
+  // Use tenant's configured tax settings as defaults; fall back to what's on the invoice
+  const defaultTaxName = tenant?.tax_name || invoice.tax_name || "GST";
+  const defaultTaxRate = tenant?.tax_rate ?? invoice.tax_rate ?? 0.1;
+  const defaultTaxInclusive = tenant?.tax_inclusive ?? invoice.tax_inclusive ?? true;
+
   const tenantSettings = {
     name: tenant?.name || null,
     business_name: tenant?.name || null,
-    tax_name: invoice.tax_name || "GST",
-    tax_rate: invoice.tax_rate ?? 0.1,
-    tax_inclusive: invoice.tax_inclusive ?? true,
-    bank_name: null,
-    bank_bsb: null,
-    bank_account: null,
+    tax_name: defaultTaxName,
+    tax_rate: defaultTaxRate,
+    tax_inclusive: defaultTaxInclusive,
+    bank_name: tenant?.bank_name ?? null,
+    bank_bsb: tenant?.bank_bsb ?? null,
+    bank_account: tenant?.bank_account ?? null,
   };
 
   const existingData = {
@@ -79,9 +84,9 @@ export default async function EditInvoicePage({
     due_date: invoice.due_date,
     reference_type: invoice.reference_type,
     reference_id: invoice.reference_id,
-    tax_name: invoice.tax_name || "GST",
-    tax_rate: invoice.tax_rate ?? 0.1,
-    tax_inclusive: invoice.tax_inclusive ?? true,
+    tax_name: invoice.tax_name || defaultTaxName,
+    tax_rate: invoice.tax_rate ?? defaultTaxRate,
+    tax_inclusive: invoice.tax_inclusive ?? defaultTaxInclusive,
     discount_amount: invoice.discount_amount || 0,
     notes: invoice.notes,
     footer_text: invoice.footer_text,

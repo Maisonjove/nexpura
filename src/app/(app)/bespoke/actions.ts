@@ -222,8 +222,8 @@ export async function advanceJobStage(
     }
   }
 
-  // Send notification when stage becomes 'completed'
-  if (newStage === "completed") {
+  // Send notification when stage becomes 'collected'
+  if (newStage === "collected") {
     const { data: jobData } = await supabase
       .from("bespoke_jobs")
       .select("job_number, customers(full_name)")
@@ -236,8 +236,8 @@ export async function advanceJobStage(
       await createNotification({
         tenantId,
         type: "job_completed",
-        title: `Bespoke job #${jobData.job_number} completed`,
-        body: customerName ? `${customerName}'s piece is ready` : undefined,
+        title: `Bespoke job #${jobData.job_number} collected`,
+        body: customerName ? `${customerName}'s piece has been collected` : undefined,
         link: `/bespoke/${jobId}`,
       });
     }

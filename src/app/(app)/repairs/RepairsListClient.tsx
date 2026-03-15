@@ -37,24 +37,21 @@ interface Props {
 
 // ─── Stage data ───────────────────────────────────────────────────────────────
 
+// Stages must match REPAIR_WORKFLOW_STAGES in repairs/[id]/page.tsx exactly
 export const ALL_REPAIR_STAGES = [
   { key: "all", label: "All" },
-  { key: "intake", label: "Received" },
-  { key: "assessed", label: "Awaiting Approval" },
-  { key: "in_progress", label: "In Workshop" },
-  { key: "waiting_parts", label: "Waiting Parts" },
-  { key: "ready", label: "Ready for Pickup" },
+  { key: "intake", label: "Intake" },
+  { key: "assessed", label: "Assessed" },
+  { key: "quoted", label: "Quoted" },
+  { key: "approved", label: "Approved" },
+  { key: "in_progress", label: "In Progress" },
+  { key: "quality_check", label: "Quality Check" },
+  { key: "ready", label: "Ready" },
   { key: "collected", label: "Collected" },
+  { key: "cancelled", label: "Cancelled" },
 ];
 
-// ─── Sample data ──────────────────────────────────────────────────────────────
-
-const SAMPLE_REPAIRS = [
-  { id: "r1", repair_number: "REP-0089", customer: "Sarah Khoury", initials: "SK", item: "Engagement Ring", issue: "Resize size 6→7", status: "In Workshop", due: "14 Mar", tech: "Ben", deposit: "$60" },
-  { id: "r2", repair_number: "REP-0088", customer: "Lina Haddad", initials: "LH", item: "Diamond Pendant", issue: "Replace clasp", status: "Ready for Pickup", due: "12 Mar", tech: "Emma", deposit: "$85" },
-  { id: "r3", repair_number: "REP-0087", customer: "David Moufarrej", initials: "DM", item: "Gold Bangle", issue: "Polish & clean", status: "Awaiting Approval", due: "15 Mar", tech: "Ben", deposit: "$0" },
-  { id: "r4", repair_number: "REP-0086", customer: "Mia Tanaka", initials: "MT", item: "Wedding Band", issue: "Repair prong", status: "Overdue", due: "10 Mar", tech: "—", deposit: "$75" },
-];
+// Sample data removed — real DB data is used exclusively
 
 function isOverdue(due_date: string | null, stage: string) {
   if (!due_date) return false;
@@ -76,7 +73,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
   const [activeTab, setActiveTab] = useState(stageFilter || "all");
   const [showCameraScanner, setShowCameraScanner] = useState(false);
 
-  const useSampleData = repairs.length === 0;
+  const useSampleData = false; // Always use real data — show empty state when no repairs
 
   function updateParams(updates: Record<string, string>) {
     const params = new URLSearchParams();
@@ -90,18 +87,16 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "In Workshop": 
-      case "in_progress": return <Badge className="bg-stone-100 text-stone-700 hover:bg-stone-50 border-none">In Workshop</Badge>;
-      case "Ready for Pickup":
+      case "intake": return <Badge className="bg-stone-100 text-stone-700 hover:bg-stone-100 border-none">Intake</Badge>;
+      case "assessed": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border-none">Assessed</Badge>;
+      case "quoted": return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-none">Quoted</Badge>;
+      case "approved": return <Badge className="bg-green-50 text-green-700 hover:bg-green-50 border-none">Approved</Badge>;
+      case "in_progress": return <Badge className="bg-stone-100 text-stone-700 hover:bg-stone-50 border-none">In Progress</Badge>;
+      case "quality_check": return <Badge className="bg-orange-50 text-orange-700 hover:bg-orange-50 border-none">Quality Check</Badge>;
       case "ready": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-none">Ready</Badge>;
-      case "Awaiting Approval":
-      case "assessed": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border-none">Awaiting Approval</Badge>;
-      case "Overdue": return <Badge className="bg-red-50 text-red-700 hover:bg-red-50 border-none">Overdue</Badge>;
-      case "Received":
-      case "intake": return <Badge className="bg-stone-100 text-stone-700 hover:bg-stone-100 border-none">Received</Badge>;
-      case "Waiting Parts":
-      case "waiting_parts": return <Badge className="bg-amber-50 text-amber-700 hover:bg-orange-50 border-none">Waiting Parts</Badge>;
-      default: return <Badge variant="outline" className="text-stone-600 border-stone-200 capitalize">{status.replace('_', ' ')}</Badge>;
+      case "collected": return <Badge className="bg-stone-800 text-white hover:bg-stone-800 border-none">Collected</Badge>;
+      case "cancelled": return <Badge className="bg-stone-100 text-stone-400 hover:bg-stone-100 border-none">Cancelled</Badge>;
+      default: return <Badge variant="outline" className="text-stone-600 border-stone-200 capitalize">{status.replace(/_/g, ' ')}</Badge>;
     }
   };
 
@@ -112,12 +107,20 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Repairs</h1>
           <div className="hidden sm:flex items-center gap-2">
-            <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-              4 In Workshop
-            </Badge>
-            <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-              2 Ready
-            </Badge>
+            {repairs.length > 0 && (
+              <>
+                {repairs.filter(r => r.stage === "in_progress").length > 0 && (
+                  <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
+                    {repairs.filter(r => r.stage === "in_progress").length} In Progress
+                  </Badge>
+                )}
+                {repairs.filter(r => r.stage === "ready").length > 0 && (
+                  <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
+                    {repairs.filter(r => r.stage === "ready").length} Ready
+                  </Badge>
+                )}
+              </>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

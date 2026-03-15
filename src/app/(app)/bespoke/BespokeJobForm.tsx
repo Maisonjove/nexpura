@@ -436,11 +436,11 @@ export default function BespokeJobForm({ customers, mode, job, preselectedCustom
             </select>
           </div>
           <div>
-            <FieldLabel>Quoted Price (£)</FieldLabel>
+            <FieldLabel>Quoted Price</FieldLabel>
             <input type="number" name="quoted_price" defaultValue={job?.quoted_price ?? ""} step="0.01" min="0" placeholder="0.00" className={inputCls} />
           </div>
           <div>
-            <FieldLabel>Deposit Amount (£)</FieldLabel>
+            <FieldLabel>Deposit Amount</FieldLabel>
             <input type="number" name="deposit_amount" defaultValue={job?.deposit_amount ?? ""} step="0.01" min="0" placeholder="0.00" className={inputCls} />
           </div>
           <div>
@@ -448,7 +448,7 @@ export default function BespokeJobForm({ customers, mode, job, preselectedCustom
             <input type="date" name="deposit_due_date" defaultValue={job?.deposit_due_date ?? ""} className={inputCls} />
           </div>
           <div>
-            <FieldLabel>Final Price (£)</FieldLabel>
+            <FieldLabel>Final Price</FieldLabel>
             <input type="number" name="final_price" defaultValue={job?.final_price ?? ""} step="0.01" min="0" placeholder="0.00" className={inputCls} />
           </div>
           <div className="col-span-2 flex items-center gap-3 pt-1">

@@ -31,7 +31,7 @@ export default async function NewInvoicePage({
         .order("full_name"),
       supabase
         .from("tenants")
-        .select("name, slug, logo_url")
+        .select("name, slug, logo_url, tax_name, tax_rate, tax_inclusive, bank_name, bank_bsb, bank_account")
         .eq("id", tenantId ?? "")
         .single(),
       supabase
@@ -41,16 +41,20 @@ export default async function NewInvoicePage({
         .order("name"),
     ]);
 
+  const tenantTaxName = tenant?.tax_name || "GST";
+  const tenantTaxRate = tenant?.tax_rate ?? 0.1;
+  const tenantTaxInclusive = tenant?.tax_inclusive ?? true;
+
   // Normalize tenant to what InvoiceForm expects
   const tenantSettings = {
     name: tenant?.name ?? null,
     business_name: tenant?.name ?? null,
-    tax_name: "GST",
-    tax_rate: 0.1,
-    tax_inclusive: true,
-    bank_name: null,
-    bank_bsb: null,
-    bank_account: null,
+    tax_name: tenantTaxName,
+    tax_rate: tenantTaxRate,
+    tax_inclusive: tenantTaxInclusive,
+    bank_name: tenant?.bank_name ?? null,
+    bank_bsb: tenant?.bank_bsb ?? null,
+    bank_account: tenant?.bank_account ?? null,
   };
 
   // Pre-fill existing if coming from a bespoke/repair/sale context
@@ -61,9 +65,9 @@ export default async function NewInvoicePage({
     due_date: null,
     reference_type: sp.bespoke_id ? "bespoke_job" : sp.repair_id ? "repair" : sp.sale_id ? "sale" : null,
     reference_id: sp.bespoke_id ?? sp.repair_id ?? sp.sale_id ?? null,
-    tax_name: "GST",
-    tax_rate: 0.1,
-    tax_inclusive: true,
+    tax_name: tenantTaxName,
+    tax_rate: tenantTaxRate,
+    tax_inclusive: tenantTaxInclusive,
     discount_amount: 0,
     notes: null,
     footer_text: null,

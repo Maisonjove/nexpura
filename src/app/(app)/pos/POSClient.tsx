@@ -70,6 +70,12 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
   const [cashTendered, setCashTendered] = useState("");
   const [splitCard, setSplitCard] = useState("");
   const [splitCash, setSplitCash] = useState("");
+  // Split payment with voucher state
+  const [splitVoucherCode, setSplitVoucherCode] = useState("");
+  const [splitVoucherData, setSplitVoucherData] = useState<{ id: string; code: string; balance: number } | null>(null);
+  const [splitVoucherError, setSplitVoucherError] = useState<string | null>(null);
+  const [splitVoucherLookupPending, setSplitVoucherLookupPending] = useState(false);
+  const [splitMode, setSplitMode] = useState<"cash+card" | "voucher+card" | "voucher+cash">("cash+card");
   const [isPending, setIsPending] = useState(false);
   const [saleResult, setSaleResult] = useState<SaleResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -232,13 +238,54 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
   }
 
   function handleSplitCharge() {
-    const cardAmt = parseFloat(splitCard) || 0;
-    const cashAmt = parseFloat(splitCash) || 0;
-    if (Math.abs(cardAmt + cashAmt - total) > 0.01) {
-      setError("Card + cash amounts must equal the total");
-      return;
+    if (splitMode === "cash+card") {
+      const cardAmt = parseFloat(splitCard) || 0;
+      const cashAmt = parseFloat(splitCash) || 0;
+      if (Math.abs(cardAmt + cashAmt - total) > 0.01) {
+        setError("Card + cash amounts must equal the total");
+        return;
+      }
+      handleCharge("split");
+    } else if (splitMode === "voucher+card" || splitMode === "voucher+cash") {
+      if (!splitVoucherData) {
+        setSplitVoucherError("Please look up and apply a voucher first");
+        return;
+      }
+      const voucherAmt = Math.min(splitVoucherData.balance, total);
+      const remaining = total - voucherAmt;
+      if (remaining > 0.01) {
+        const secondAmt = splitMode === "voucher+card" ? parseFloat(splitCard) || 0 : parseFloat(splitCash) || 0;
+        if (Math.abs(secondAmt - remaining) > 0.01) {
+          const method = splitMode === "voucher+card" ? "Card" : "Cash";
+          setError(`${method} amount (${secondAmt.toFixed(2)}) must equal remaining (${remaining.toFixed(2)})`);
+          return;
+        }
+      }
+      handleCharge(splitMode, splitVoucherData.id, voucherAmt);
     }
-    handleCharge("split");
+  }
+
+  async function handleSplitVoucherLookup() {
+    if (!splitVoucherCode.trim()) return;
+    setSplitVoucherError(null);
+    setSplitVoucherLookupPending(true);
+    try {
+      const result = await lookupVoucher(splitVoucherCode.trim());
+      if (result.error) {
+        setSplitVoucherError(result.error);
+        setSplitVoucherData(null);
+      } else if (result.data) {
+        setSplitVoucherData(result.data);
+        setSplitVoucherError(null);
+        // Auto-fill the remaining amount in the second field
+        const voucherAmt = Math.min(result.data.balance, total);
+        const remaining = total - voucherAmt;
+        if (splitMode === "voucher+card") setSplitCard(remaining.toFixed(2));
+        else setSplitCash(remaining.toFixed(2));
+      }
+    } finally {
+      setSplitVoucherLookupPending(false);
+    }
   }
 
   async function handleVoucherLookup() {
@@ -726,35 +773,112 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
 
               {paymentTab === "split" && (
                 <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs text-stone-500 mb-1">Card amount</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={splitCard}
-                      onChange={(e) => setSplitCard(e.target.value)}
-                      className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
-                    />
+                  {/* Split mode selector */}
+                  <div className="flex gap-2 bg-stone-100 rounded-xl p-1">
+                    {(["cash+card", "voucher+card", "voucher+cash"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => {
+                          setSplitMode(mode);
+                          setSplitCard("");
+                          setSplitCash("");
+                          setSplitVoucherData(null);
+                          setSplitVoucherCode("");
+                          setSplitVoucherError(null);
+                        }}
+                        className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          splitMode === mode
+                            ? "bg-white text-stone-900 shadow-sm"
+                            : "text-stone-500 hover:text-stone-700"
+                        }`}
+                      >
+                        {mode === "cash+card" ? "Cash + Card" : mode === "voucher+card" ? "Voucher + Card" : "Voucher + Cash"}
+                      </button>
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-xs text-stone-500 mb-1">Cash amount</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={splitCash}
-                      onChange={(e) => setSplitCash(e.target.value)}
-                      className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
-                    />
-                  </div>
-                  {(parseFloat(splitCard) || 0) + (parseFloat(splitCash) || 0) !== total && (
-                    <p className="text-xs text-amber-600">
-                      Must equal ${total.toFixed(2)} (currently ${((parseFloat(splitCard) || 0) + (parseFloat(splitCash) || 0)).toFixed(2)})
-                    </p>
+
+                  {splitMode === "cash+card" && (
+                    <>
+                      <div>
+                        <label className="block text-xs text-stone-500 mb-1">Card amount</label>
+                        <input type="number" min="0" step="0.01" placeholder="0.00" value={splitCard}
+                          onChange={(e) => setSplitCard(e.target.value)}
+                          className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-stone-500 mb-1">Cash amount</label>
+                        <input type="number" min="0" step="0.01" placeholder="0.00" value={splitCash}
+                          onChange={(e) => setSplitCash(e.target.value)}
+                          className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                        />
+                      </div>
+                      {(parseFloat(splitCard) || 0) + (parseFloat(splitCash) || 0) !== total && (
+                        <p className="text-xs text-amber-600">
+                          Must equal ${total.toFixed(2)} (currently ${((parseFloat(splitCard) || 0) + (parseFloat(splitCash) || 0)).toFixed(2)})
+                        </p>
+                      )}
+                    </>
                   )}
+
+                  {(splitMode === "voucher+card" || splitMode === "voucher+cash") && (
+                    <>
+                      {/* Voucher lookup */}
+                      <div>
+                        <label className="block text-xs text-stone-500 mb-1">Voucher code</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Enter voucher code…"
+                            value={splitVoucherCode}
+                            onChange={(e) => { setSplitVoucherCode(e.target.value.toUpperCase()); setSplitVoucherData(null); setSplitVoucherError(null); }}
+                            className="flex-1 border border-stone-200 rounded-xl px-4 py-3 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                          />
+                          <button
+                            onClick={handleSplitVoucherLookup}
+                            disabled={splitVoucherLookupPending || !splitVoucherCode.trim()}
+                            className="px-4 py-3 bg-stone-100 text-stone-700 rounded-xl text-sm font-medium hover:bg-stone-200 transition-colors disabled:opacity-50"
+                          >
+                            {splitVoucherLookupPending ? "…" : "Look up"}
+                          </button>
+                        </div>
+                        {splitVoucherError && <p className="text-xs text-red-600 mt-1">{splitVoucherError}</p>}
+                        {splitVoucherData && (
+                          <div className="mt-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex justify-between">
+                            <span className="text-sm font-mono text-green-800">{splitVoucherData.code}</span>
+                            <span className="text-sm font-bold text-green-700">
+                              Voucher: −${Math.min(splitVoucherData.balance, total).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {splitVoucherData && (
+                        <>
+                          <div className="flex justify-between text-sm px-1">
+                            <span className="text-stone-500">Remaining to pay</span>
+                            <span className="font-bold text-stone-900">
+                              ${Math.max(0, total - Math.min(splitVoucherData.balance, total)).toFixed(2)}
+                            </span>
+                          </div>
+                          {Math.max(0, total - Math.min(splitVoucherData.balance, total)) > 0.01 && (
+                            <div>
+                              <label className="block text-xs text-stone-500 mb-1">
+                                {splitMode === "voucher+card" ? "Card amount" : "Cash amount"}
+                              </label>
+                              <input
+                                type="number" min="0" step="0.01" placeholder="0.00"
+                                value={splitMode === "voucher+card" ? splitCard : splitCash}
+                                onChange={(e) => splitMode === "voucher+card" ? setSplitCard(e.target.value) : setSplitCash(e.target.value)}
+                                className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+
                   <button
                     onClick={handleSplitCharge}
                     disabled={isPending}

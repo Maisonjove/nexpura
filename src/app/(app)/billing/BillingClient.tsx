@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PLAN_FEATURES } from "@/lib/features";
+import { toast } from "sonner";
 
 type Plan = "basic" | "pro" | "ultimate";
 type Interval = "monthly" | "annual";
@@ -194,10 +195,10 @@ export default function BillingClient({
       if (data.url) {
         window.location.href = data.url;
       } else {
-        alert(data.error ?? "Failed to start checkout");
+        toast.error(data.error ?? "Failed to start checkout");
       }
     } catch {
-      alert("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoadingPlan(null);
     }
@@ -211,10 +212,10 @@ export default function BillingClient({
       if (data.url) {
         window.location.href = data.url;
       } else {
-        alert(data.error ?? "Failed to open billing portal");
+        toast.error(data.error ?? "Failed to open billing portal");
       }
     } catch {
-      alert("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoadingPortal(false);
     }

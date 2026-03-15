@@ -224,6 +224,16 @@ export async function updateSaleStatus(
         .single();
 
       if (!existingInvoice) {
+        // Fetch tenant tax config
+        const { data: tenantTaxData } = await supabase
+          .from("tenants")
+          .select("tax_name, tax_rate, tax_inclusive")
+          .eq("id", tenantId)
+          .single();
+        const saleTaxName = tenantTaxData?.tax_name || "GST";
+        const saleTaxRate = tenantTaxData?.tax_rate ?? 0.1;
+        const saleTaxInclusive = tenantTaxData?.tax_inclusive ?? true;
+
         // Generate invoice number
         const { data: invoiceNumberData } = await supabase.rpc("next_invoice_number", {
           p_tenant_id: tenantId,
@@ -251,9 +261,9 @@ export async function updateSaleStatus(
             invoice_date: new Date().toISOString().split("T")[0],
             subtotal: sale.subtotal,
             discount_amount: sale.discount_amount ?? 0,
-            tax_name: "GST",
-            tax_rate: 0.1,
-            tax_inclusive: true,
+            tax_name: saleTaxName,
+            tax_rate: saleTaxRate,
+            tax_inclusive: saleTaxInclusive,
             tax_amount: sale.tax_amount ?? 0,
             total: sale.total,
             status: status === "paid" ? "paid" : "sent",

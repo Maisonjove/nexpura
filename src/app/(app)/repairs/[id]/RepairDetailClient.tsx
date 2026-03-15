@@ -30,6 +30,7 @@ interface Props {
   customerMobile: string | null;
   isOverdue: boolean;
   invoiceId: string | null;
+  currency?: string;
 }
 
 const PRIORITY_MAP: Record<string, { dot: string; text: string; bg: string }> =
@@ -57,6 +58,7 @@ export default function RepairDetailClient({
   customerMobile,
   isOverdue,
   invoiceId,
+  currency = "AUD",
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -345,6 +347,7 @@ export default function RepairDetailClient({
           customerName={customerName}
           customerEmail={customerEmail}
           status={currentStage}
+          currency={currency}
         />
 
         {/* Customer */}

@@ -27,6 +27,8 @@ interface CreatePOSSaleParams {
   storeCreditAmount?: number;
   voucherId?: string | null;
   voucherAmount?: number;
+  taxName?: string;
+  taxRate?: number;
 }
 
 export async function createPOSSale(
@@ -215,8 +217,8 @@ export async function createPOSSale(
         invoice_date: new Date().toISOString().split("T")[0],
         subtotal: params.subtotal,
         discount_amount: params.discountAmount,
-        tax_name: "GST",
-        tax_rate: 0.1,
+        tax_name: params.taxName || "GST",
+        tax_rate: params.taxRate ?? 0.1,
         tax_inclusive: true,
         tax_amount: params.taxAmount,
         total: params.total,

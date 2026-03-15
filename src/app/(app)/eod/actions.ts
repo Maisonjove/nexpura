@@ -84,13 +84,38 @@ export async function getEODSummary(date?: string): Promise<{ data?: EODSummary;
 
   for (const sale of salesList) {
     const total = sale.total ?? 0;
-    switch (sale.payment_method) {
+    const method = sale.payment_method ?? "";
+    switch (method) {
       case "cash": totalSalesCash += total; break;
-      case "card": totalSalesCard += total; break;
+      case "card":
+      case "eftpos": totalSalesCard += total; break;
       case "transfer": totalSalesTransfer += total; break;
       case "layby": totalSalesLayby += total; break;
       case "mixed": totalSalesMixed += total; break;
-      default: totalSalesCard += total;
+      // Voucher-only payment: voucher covers full amount
+      case "voucher":
+      case "gift_voucher":
+      case "gift voucher": totalSalesVoucher += total; break;
+      // Store credit
+      case "store_credit":
+      case "store credit": totalSalesVoucher += total; break; // group with vouchers in EOD
+      // Split payments: parse the breakdown
+      case "split":
+      case "voucher+card":
+      case "voucher+cash": {
+        // For split payments, voucher portion is voucherAmount, rest goes to card/cash
+        const voucherPortion = sale.voucher_amount ?? 0;
+        totalSalesVoucher += voucherPortion;
+        const remainder = total - voucherPortion;
+        if (method === "voucher+cash") {
+          totalSalesCash += remainder;
+        } else {
+          // split (cash+card) or voucher+card — remainder goes to card
+          totalSalesCard += remainder;
+        }
+        break;
+      }
+      default: totalSalesCard += total; // Unknown: count as card
     }
   }
 

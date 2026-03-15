@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { resendEmailLog } from "./actions";
 import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 export interface Communication {
   id: string;
@@ -185,8 +186,8 @@ export default function CommunicationsListClient({ comms, emailLogs, notificatio
                             onClick={async () => {
                               if (!confirm("Resend this email?")) return;
                               const res = await resendEmailLog(log.id);
-                              if (res.error) alert(res.error);
-                              else alert("Email resent successfully");
+                              if (res.error) toast.error(res.error);
+                              else toast.success("Email resent successfully");
                             }}
                             className="p-1.5 text-stone-400 hover:text-[#8B7355] transition-colors"
                             title="Resend Email"

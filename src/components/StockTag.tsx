@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { formatCurrency } from "@/lib/format-currency"
 
 export interface StockTagTemplate {
   id: string
@@ -179,7 +180,7 @@ export default function StockTag({ item, template, tenantName }: StockTagProps) 
             color: "#000",
             lineHeight: 1,
           }}>
-            £{item.retail_price.toFixed(2)}
+            {formatCurrency(item.retail_price, "AUD")}
           </div>
         )}
 

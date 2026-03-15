@@ -94,6 +94,7 @@ export default async function EmbedAppointmentPage({ params }: Props) {
             </div>
           </div>
         </div>
+        <div id="error-msg" style={{ display: 'none', color: '#dc2626', padding: '12px', marginTop: '8px', background: '#fef2f2', borderRadius: '6px' }}>Failed to submit. Please try again.</div>
         <script dangerouslySetInnerHTML={{ __html: `
           document.getElementById('appt-form').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -112,7 +113,7 @@ export default async function EmbedAppointmentPage({ params }: Props) {
               document.getElementById('appt-form').style.display = 'none';
               document.getElementById('success-msg').style.display = 'block';
             } catch(err) {
-              alert('Failed to submit. Please try again.');
+              const errEl = document.getElementById('error-msg'); if (errEl) errEl.style.display = 'block';
             }
           });
         ` }} />

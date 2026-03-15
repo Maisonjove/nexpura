@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 type Template = { 
   id: string; 
@@ -59,7 +60,7 @@ export default function TaskTemplatesPage() {
       .single();
 
     if (error) {
-      alert(error.message);
+      toast.error(error.message);
       return;
     }
 
@@ -94,7 +95,7 @@ export default function TaskTemplatesPage() {
       .eq("id", editId);
 
     if (error) {
-      alert(error.message);
+      toast.error(error.message);
       return;
     }
 
@@ -115,7 +116,7 @@ export default function TaskTemplatesPage() {
     
     const { error } = await supabase.from("task_templates").delete().eq("id", id);
     if (error) {
-      alert(error.message);
+      toast.error(error.message);
       return;
     }
 

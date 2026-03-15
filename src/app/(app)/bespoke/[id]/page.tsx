@@ -4,21 +4,20 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import JobDetailClient from "./JobDetailClient";
 import JobPhotos from "./JobPhotos";
+import { formatCurrency as fmt } from "@/lib/format-currency";
 
 // All workflow stages in order
 export const WORKFLOW_STAGES = [
   { key: "enquiry", label: "Enquiry" },
-  { key: "quote_sent", label: "Quote Sent" },
-  { key: "approved", label: "Approved" },
+  { key: "consultation", label: "Consultation" },
   { key: "deposit_paid", label: "Deposit Paid" },
   { key: "stone_sourcing", label: "Stone Sourcing" },
   { key: "cad", label: "CAD" },
-  { key: "cad_approved", label: "CAD Approved" },
-  { key: "casting", label: "Casting" },
+  { key: "approval", label: "Approval" },
   { key: "setting", label: "Setting" },
-  { key: "polishing", label: "Polishing" },
+  { key: "polish", label: "Polish" },
   { key: "ready", label: "Ready" },
-  { key: "completed", label: "Completed" },
+  { key: "collected", label: "Collected" },
   { key: "cancelled", label: "Cancelled" },
 ];
 
@@ -31,10 +30,7 @@ function formatDate(d: string | null) {
   });
 }
 
-function formatCurrency(n: number | null) {
-  if (n == null) return null;
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(n);
-}
+// formatCurrency is wrapped below with tenant currency after userData fetch
 
 function humanise(val: string | null | undefined) {
   if (!val) return null;
@@ -52,9 +48,14 @@ export default async function BespokeJobDetailPage({
   // Get current user's tenant_id
   const { data: { user } } = await supabase.auth.getUser();
   const { data: userData } = user
-    ? await supabase.from("users").select("tenant_id").eq("id", user.id).single()
+    ? await supabase.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single()
     : { data: null };
   const tenantId = userData?.tenant_id ?? "";
+  const tenantCurrency = (userData?.tenants as { currency?: string } | null)?.currency || "AUD";
+  function formatCurrency(n: number | null) {
+    if (n == null) return null;
+    return fmt(n, tenantCurrency);
+  }
 
   const adminClient = createAdminClient();
 
@@ -88,14 +89,14 @@ export default async function BespokeJobDetailPage({
 
   const currentStageIndex = WORKFLOW_STAGES.findIndex((s) => s.key === job.stage);
   const nextStage =
-    job.stage !== "completed" && job.stage !== "cancelled"
+    job.stage !== "collected" && job.stage !== "cancelled"
       ? WORKFLOW_STAGES[Math.min(currentStageIndex + 1, WORKFLOW_STAGES.length - 1)]
       : null;
 
   const isOverdue =
     job.due_date &&
     new Date(job.due_date) < new Date(new Date().toDateString()) &&
-    !["completed", "cancelled"].includes(job.stage);
+    !["collected", "cancelled"].includes(job.stage);
 
   // Build spec grid
   const specs: { label: string; value: string }[] = [];
@@ -307,6 +308,7 @@ export default async function BespokeJobDetailPage({
             customerMobile={job.customers?.mobile ?? null}
             isOverdue={!!isOverdue}
             invoiceId={invoiceId}
+            currency={tenantCurrency}
           />
 
           {/* Edit button */}
@@ -348,25 +350,23 @@ function PriorityBadge({ priority }: { priority: string }) {
 
 const STAGE_MAP: Record<string, { dot: string; text: string }> = {
   enquiry: { dot: "bg-stone-400", text: "text-stone-600" },
-  quote_sent: { dot: "bg-stone-400", text: "text-stone-600" },
-  approved: { dot: "bg-green-400", text: "text-green-600" },
+  consultation: { dot: "bg-blue-400", text: "text-blue-600" },
   deposit_paid: { dot: "bg-emerald-400", text: "text-emerald-600" },
   stone_sourcing: { dot: "bg-yellow-400", text: "text-yellow-600" },
   cad: { dot: "bg-orange-400", text: "text-orange-600" },
-  cad_approved: { dot: "bg-orange-500", text: "text-orange-700" },
-  casting: { dot: "bg-red-400", text: "text-red-600" },
+  approval: { dot: "bg-purple-400", text: "text-purple-600" },
   setting: { dot: "bg-amber-400", text: "text-amber-600" },
-  polishing: { dot: "bg-stone-400", text: "text-stone-600" },
+  polish: { dot: "bg-stone-400", text: "text-stone-600" },
   ready: { dot: "bg-[#8B7355]", text: "text-[#8B7355]" },
-  completed: { dot: "bg-stone-900", text: "text-stone-900" },
+  collected: { dot: "bg-stone-900", text: "text-stone-900" },
   cancelled: { dot: "bg-stone-900/30", text: "text-stone-400" },
 };
 
 const ALL_STAGES_LABELS: Record<string, string> = {
-  enquiry: "Enquiry", quote_sent: "Quote Sent", approved: "Approved",
-  deposit_paid: "Deposit Paid", stone_sourcing: "Stone Sourcing", cad: "CAD",
-  cad_approved: "CAD Approved", casting: "Casting", setting: "Setting",
-  polishing: "Polishing", ready: "Ready", completed: "Completed", cancelled: "Cancelled",
+  enquiry: "Enquiry", consultation: "Consultation", deposit_paid: "Deposit Paid",
+  stone_sourcing: "Stone Sourcing", cad: "CAD", approval: "Approval",
+  setting: "Setting", polish: "Polish", ready: "Ready",
+  collected: "Collected", cancelled: "Cancelled",
 };
 
 function StageBadge({ stage }: { stage: string }) {

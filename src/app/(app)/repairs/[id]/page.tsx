@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import RepairDetailClient from "./RepairDetailClient";
 import RepairPhotos from "./RepairPhotos";
+import { formatCurrency as fmt } from "@/lib/format-currency";
 
 // All workflow stages in order
 export const REPAIR_WORKFLOW_STAGES = [
@@ -27,13 +28,8 @@ function formatDate(d: string | null) {
   });
 }
 
-function formatCurrency(n: number | null) {
-  if (n == null) return null;
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-  }).format(n);
-}
+// formatCurrency now comes from lib/format-currency.ts and needs currency from tenant
+// We'll create a local wrapper below once tenantCurrency is fetched
 
 const STAGE_MAP: Record<string, { dot: string; text: string }> = {
   intake: { dot: "bg-stone-400", text: "text-stone-600" },
@@ -91,9 +87,14 @@ export default async function RepairDetailPage({
   // Get current user's tenant_id
   const { data: { user } } = await supabase.auth.getUser();
   const { data: userData } = user
-    ? await supabase.from("users").select("tenant_id").eq("id", user.id).single()
+    ? await supabase.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single()
     : { data: null };
   const tenantId = userData?.tenant_id ?? "";
+  const tenantCurrency = (userData?.tenants as { currency?: string } | null)?.currency || "AUD";
+  function formatCurrency(n: number | null) {
+    if (n == null) return null;
+    return fmt(n, tenantCurrency);
+  }
 
   const adminClient = createAdminClient();
 
@@ -287,6 +288,7 @@ export default async function RepairDetailPage({
             customerMobile={customer?.mobile ?? null}
             isOverdue={!!isOverdue}
             invoiceId={invoiceId}
+            currency={tenantCurrency}
           />
           <Link
             href={`/repairs/${id}/edit`}

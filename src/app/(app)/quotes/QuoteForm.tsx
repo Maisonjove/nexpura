@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Save } from "lucide-react";
 import { createQuote, type QuoteItem } from "./actions";
+import { toast } from "sonner";
+import { toast } from "sonner";
 
 interface Customer {
   id: string;
@@ -42,7 +44,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!customerId) return alert("Please select a customer");
+    if (!customerId) { toast.error("Please select a customer"); return; }
     setLoading(true);
     try {
       const quote = {
@@ -59,7 +61,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
       router.refresh();
     } catch (err) {
       console.error(err);
-      alert("Failed to create quote");
+      toast.error("Failed to create quote");
     } finally {
       setLoading(false);
     }

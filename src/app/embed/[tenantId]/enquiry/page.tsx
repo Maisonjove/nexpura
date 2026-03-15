@@ -50,6 +50,7 @@ export default async function EmbedEnquiryPage({ params }: Props) {
           <textarea name="message" rows={4} required placeholder="Tell us about your enquiry..." />
           <button type="submit">Send Enquiry →</button>
         </form>
+        <div id="error-msg" style={{ display: 'none', color: '#dc2626', padding: '12px', marginTop: '8px', background: '#fef2f2', borderRadius: '6px' }}>Failed to send enquiry. Please try again.</div>
         <div id="success-msg" style={{ display: 'none' }}>
           <div className="success">
             <p style={{ fontSize: '24px', marginBottom: '8px' }}>✓</p>
@@ -73,7 +74,7 @@ export default async function EmbedEnquiryPage({ params }: Props) {
               document.getElementById('enquiry-form').style.display = 'none';
               document.getElementById('success-msg').style.display = 'block';
             } catch(err) {
-              alert('Failed to send enquiry. Please try again.');
+              const errEl = document.getElementById('error-msg'); if (errEl) errEl.style.display = 'block';
             }
           });
         ` }} />

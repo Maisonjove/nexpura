@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createInventoryItem, updateInventoryItem, createCategory } from "./actions";
+import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 
 interface Category {
   id: string;
@@ -92,15 +93,54 @@ const STONE_CLARITIES = ["FL", "IF", "VVS1", "VVS2", "VS1", "VS2", "SI1", "SI2",
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="border-b border-stone-200 pb-3 mb-5">
-      <h2 className="font-semibold text-lg font-semibold text-stone-900">{title}</h2>
+    <div className="border-b border-stone-100 pb-3 mb-5">
+      <h2 className="font-semibold text-base text-stone-900 uppercase tracking-wider">{title}</h2>
+    </div>
+  );
+}
+
+function CollapsibleSection({ 
+  title, 
+  children, 
+  defaultOpen = false,
+  badge 
+}: { 
+  title: string; 
+  children: React.ReactNode; 
+  defaultOpen?: boolean;
+  badge?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-stone-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="font-semibold text-stone-900 uppercase tracking-wider text-sm">{title}</span>
+          {badge && (
+            <span className="bg-[#8B7355]/10 text-[#8B7355] text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+              {badge}
+            </span>
+          )}
+        </div>
+        {isOpen ? <ChevronUp className="w-4 h-4 text-stone-400" /> : <ChevronDown className="w-4 h-4 text-stone-400" />}
+      </button>
+      {isOpen && (
+        <div className="px-6 pb-6 border-t border-stone-50 pt-6">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
 
 function FieldLabel({ htmlFor, children, required }: { htmlFor: string; children: React.ReactNode; required?: boolean }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm font-medium text-stone-900 mb-1">
+    <label htmlFor={htmlFor} className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
       {children}{required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
   );
@@ -168,7 +208,6 @@ export default function InventoryForm({ categories: initialCategories, item, mod
   const [consignmentCommPct, setConsignmentCommPct] = useState(item?.consignment_commission_pct?.toString() ?? "");
   const [supplierInvoiceRef, setSupplierInvoiceRef] = useState(item?.supplier_invoice_ref ?? "");
   const [secondaryStones, setSecondaryStones] = useState<SecondaryStone[]>(item?.secondary_stones ?? []);
-  const [showCertSection, setShowCertSection] = useState(false);
 
   function addSecondaryStone() {
     setSecondaryStones((prev) => [
@@ -217,6 +256,21 @@ export default function InventoryForm({ categories: initialCategories, item, mod
     formData.set("status", status);
     formData.set("category_id", categoryId);
 
+    // Add hidden fields for collapsible sections if they are not in the DOM
+    formData.set("certificate_number", certNumber);
+    formData.set("grading_lab", gradingLab);
+    formData.set("grade", grade);
+    formData.set("report_url", reportUrl);
+    formData.set("stock_location", stockLocation);
+    formData.set("metal_form", metalForm);
+    formData.set("consignor_name", consignorName);
+    formData.set("consignor_contact", consignorContact);
+    formData.set("consignment_start_date", consignmentStart);
+    formData.set("consignment_end_date", consignmentEnd);
+    formData.set("consignment_commission_pct", consignmentCommPct);
+    formData.set("supplier_invoice_ref", supplierInvoiceRef);
+    formData.set("secondary_stones", JSON.stringify(secondaryStones));
+
     startTransition(async () => {
       try {
         if (mode === "create") {
@@ -233,20 +287,79 @@ export default function InventoryForm({ categories: initialCategories, item, mod
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
           {error}
         </div>
       )}
 
-      {/* Basic Info */}
-      <div className="bg-white rounded-xl border border-stone-200 p-6">
-        <SectionHeader title="Basic Information" />
+      {/* Section 1: Basic Info — always open */}
+      <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+        <SectionHeader title="Section 1: Basic Information" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="sm:col-span-2">
             <FieldLabel htmlFor="name" required>Item Name</FieldLabel>
             <Input id="name" name="name" required placeholder="e.g. Diamond Solitaire Ring" defaultValue={item?.name} />
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="sku">SKU</FieldLabel>
+            {mode === "edit" ? (
+              <div className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-stone-50 text-stone-500 font-mono">
+                {item?.sku || "—"}
+              </div>
+            ) : (
+              <Input id="sku" name="sku" placeholder="Auto-generated" defaultValue={item?.sku ?? ""} className="font-mono" />
+            )}
+            {mode === "create" && (
+              <p className="text-[10px] text-stone-400 mt-1 uppercase font-bold tracking-tight">Leave blank to auto-generate</p>
+            )}
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="category_id">Category</FieldLabel>
+            <div className="flex gap-2">
+              <Select
+                id="category_id"
+                name="category_id"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="flex-1"
+              >
+                <option value="">No category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </Select>
+              <button
+                type="button"
+                onClick={() => setShowNewCategory(!showNewCategory)}
+                className="flex-shrink-0 px-3 py-2.5 border border-stone-200 text-stone-600 text-sm rounded-lg hover:bg-stone-50 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            {showNewCategory && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Category name"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCategory())}
+                  className="flex-1 px-3 py-2 text-sm border border-[#8B7355] rounded-lg focus:outline-none text-stone-900"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCategory}
+                  disabled={addingCat || !newCatName.trim()}
+                  className="px-3 py-2 bg-[#8B7355] text-white text-sm rounded-lg hover:bg-[#7A6347] disabled:opacity-50 transition-colors"
+                >
+                  {addingCat ? "..." : "Add"}
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
@@ -281,49 +394,23 @@ export default function InventoryForm({ categories: initialCategories, item, mod
           )}
 
           <div>
-            <FieldLabel htmlFor="category_id">Category</FieldLabel>
-            <div className="flex gap-2">
-              <Select
-                id="category_id"
-                name="category_id"
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="flex-1"
-              >
-                <option value="">No category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </Select>
-              <button
-                type="button"
-                onClick={() => setShowNewCategory(!showNewCategory)}
-                className="flex-shrink-0 px-3 py-2.5 border border-stone-900 text-stone-900 text-sm rounded-lg hover:bg-stone-900 hover:text-white transition-colors"
-                title="New category"
-              >
-                +
-              </button>
-            </div>
-            {showNewCategory && (
-              <div className="mt-2 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Category name"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCategory())}
-                  className="flex-1 px-3 py-2 text-sm border border-[#8B7355] rounded-lg focus:outline-none text-stone-900"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddCategory}
-                  disabled={addingCat || !newCatName.trim()}
-                  className="px-3 py-2 bg-[#8B7355] text-white text-sm rounded-lg hover:bg-[#7A6347] disabled:opacity-50 transition-colors"
-                >
-                  {addingCat ? "..." : "Add"}
-                </button>
-              </div>
-            )}
+            <FieldLabel htmlFor="status">Status</FieldLabel>
+            <Select id="status" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="consignment">Consignment</option>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-3 pt-6">
+            <button
+              type="button"
+              onClick={() => setIsFeatured(!isFeatured)}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${isFeatured ? "bg-[#8B7355]" : "bg-stone-200"}`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isFeatured ? "translate-x-4" : "translate-x-0.5"}`} />
+            </button>
+            <span className="text-sm text-stone-900">Featured item</span>
           </div>
 
           <div className="sm:col-span-2">
@@ -339,9 +426,56 @@ export default function InventoryForm({ categories: initialCategories, item, mod
         </div>
       </div>
 
-      {/* Specifications */}
-      <div className="bg-white rounded-xl border border-stone-200 p-6">
-        <SectionHeader title="Specifications" />
+      {/* Section 2: Pricing — always open */}
+      <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+        <SectionHeader title="Section 2: Pricing" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div>
+            <FieldLabel htmlFor="cost_price">Cost Price</FieldLabel>
+            <Input
+              id="cost_price"
+              name="cost_price"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={costPrice}
+              onChange={(e) => setCostPrice(e.target.value)}
+            />
+          </div>
+          <div>
+            <FieldLabel htmlFor="wholesale_price">Wholesale Price</FieldLabel>
+            <Input id="wholesale_price" name="wholesale_price" type="number" step="0.01" min="0" placeholder="0.00" defaultValue={item?.wholesale_price?.toString() ?? ""} />
+          </div>
+          <div>
+            <FieldLabel htmlFor="retail_price" required>Retail Price</FieldLabel>
+            <Input
+              id="retail_price"
+              name="retail_price"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              required
+              value={retailPrice}
+              onChange={(e) => setRetailPrice(e.target.value)}
+            />
+          </div>
+          <div>
+            <FieldLabel htmlFor="margin_display">Profit Margin</FieldLabel>
+            <div className={`w-full px-3 py-2.5 text-sm border rounded-lg font-medium ${
+              margin !== null && parseFloat(margin) > 0
+                ? "border-green-200 bg-green-50 text-green-700"
+                : "border-stone-200 bg-stone-50 text-stone-400"
+            }`}>
+              {margin !== null ? `${margin}%` : "—"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Section 3: Metal Details — Collapsible */}
+      <CollapsibleSection title="Section 3: Metal Details" defaultOpen badge={itemType === "raw_material" || metalForm ? "Relevant" : undefined}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <div>
             <FieldLabel htmlFor="metal_type">Metal Type</FieldLabel>
@@ -368,101 +502,190 @@ export default function InventoryForm({ categories: initialCategories, item, mod
             <FieldLabel htmlFor="metal_weight_grams">Metal Weight (g)</FieldLabel>
             <Input id="metal_weight_grams" name="metal_weight_grams" type="number" step="0.01" min="0" placeholder="0.00" defaultValue={item?.metal_weight_grams?.toString() ?? ""} />
           </div>
-
-          <div>
-            <FieldLabel htmlFor="stone_type">Stone Type</FieldLabel>
-            <Select id="stone_type" name="stone_type" defaultValue={item?.stone_type ?? ""}>
-              <option value="">None</option>
-              {STONE_TYPES.map((t) => <option key={t} value={t.toLowerCase()}>{t}</option>)}
-            </Select>
-          </div>
-          <div>
-            <FieldLabel htmlFor="stone_carat">Stone Carat</FieldLabel>
-            <Input id="stone_carat" name="stone_carat" type="number" step="0.01" min="0" placeholder="0.00" defaultValue={item?.stone_carat?.toString() ?? ""} />
-          </div>
-          <div>
-            <FieldLabel htmlFor="stone_colour">Stone Colour</FieldLabel>
-            <Select id="stone_colour" name="stone_colour" defaultValue={item?.stone_colour ?? ""}>
-              <option value="">None</option>
-              {STONE_COLOURS.map((t) => <option key={t} value={t.toLowerCase()}>{t}</option>)}
-            </Select>
-          </div>
-          <div>
-            <FieldLabel htmlFor="stone_clarity">Stone Clarity</FieldLabel>
-            <Select id="stone_clarity" name="stone_clarity" defaultValue={item?.stone_clarity ?? ""}>
-              <option value="">None</option>
-              {STONE_CLARITIES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </Select>
-          </div>
-
-          {(itemType === "finished_piece" && jewelleryType === "ring") && (
+          {itemType === "raw_material" && (
             <div>
-              <FieldLabel htmlFor="ring_size">Ring Size</FieldLabel>
-              <Input id="ring_size" name="ring_size" placeholder="e.g. L, M, N, 7" defaultValue={item?.ring_size ?? ""} />
+              <FieldLabel htmlFor="metal_form">Metal Form</FieldLabel>
+              <Select
+                id="metal_form"
+                value={metalForm}
+                onChange={(e) => setMetalForm(e.target.value)}
+              >
+                <option value="">Select…</option>
+                <option value="sheet">Sheet</option>
+                <option value="wire">Wire</option>
+                <option value="grain">Grain</option>
+                <option value="casting">Casting</option>
+              </Select>
             </div>
           )}
-          {itemType === "finished_piece" && jewelleryType !== "ring" && (
-            <input type="hidden" name="ring_size" value="" />
-          )}
+        </div>
+      </CollapsibleSection>
 
-          <div className="sm:col-span-2">
-            <FieldLabel htmlFor="dimensions">Dimensions / Other Specs</FieldLabel>
-            <Input id="dimensions" name="dimensions" placeholder="e.g. 18mm x 12mm" defaultValue={item?.dimensions ?? ""} />
+      {/* Section 4: Stone Details — Collapsible */}
+      <CollapsibleSection title="Section 4: Stone Details" badge={secondaryStones.length > 0 ? `${secondaryStones.length} stones` : undefined}>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div>
+              <FieldLabel htmlFor="stone_type">Stone Type</FieldLabel>
+              <Select id="stone_type" name="stone_type" defaultValue={item?.stone_type ?? ""}>
+                <option value="">None</option>
+                {STONE_TYPES.map((t) => <option key={t} value={t.toLowerCase()}>{t}</option>)}
+              </Select>
+            </div>
+            <div>
+              <FieldLabel htmlFor="stone_carat">Stone Carat</FieldLabel>
+              <Input id="stone_carat" name="stone_carat" type="number" step="0.01" min="0" placeholder="0.00" defaultValue={item?.stone_carat?.toString() ?? ""} />
+            </div>
+            <div>
+              <FieldLabel htmlFor="stone_colour">Stone Colour</FieldLabel>
+              <Select id="stone_colour" name="stone_colour" defaultValue={item?.stone_colour ?? ""}>
+                <option value="">None</option>
+                {STONE_COLOURS.map((t) => <option key={t} value={t.toLowerCase()}>{t}</option>)}
+              </Select>
+            </div>
+            <div>
+              <FieldLabel htmlFor="stone_clarity">Stone Clarity</FieldLabel>
+              <Select id="stone_clarity" name="stone_clarity" defaultValue={item?.stone_clarity ?? ""}>
+                <option value="">None</option>
+                {STONE_CLARITIES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </Select>
+            </div>
+            {(itemType === "finished_piece" && jewelleryType === "ring") && (
+              <div>
+                <FieldLabel htmlFor="ring_size">Ring Size</FieldLabel>
+                <Input id="ring_size" name="ring_size" placeholder="e.g. L, M, N, 7" defaultValue={item?.ring_size ?? ""} />
+              </div>
+            )}
+            <div className="sm:col-span-2">
+              <FieldLabel htmlFor="dimensions">Dimensions / Other Specs</FieldLabel>
+              <Input id="dimensions" name="dimensions" placeholder="e.g. 18mm x 12mm" defaultValue={item?.dimensions ?? ""} />
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-stone-100">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider">Secondary Stones</h3>
+              <button
+                type="button"
+                onClick={addSecondaryStone}
+                className="text-xs text-[#8B7355] font-bold uppercase hover:underline flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> Add Stone
+              </button>
+            </div>
+            {secondaryStones.length === 0 ? (
+              <p className="text-sm text-stone-400 italic">No secondary stones added.</p>
+            ) : (
+              <div className="space-y-4">
+                {secondaryStones.map((stone, idx) => (
+                  <div key={idx} className="border border-stone-200 rounded-xl p-4 relative bg-stone-50/30">
+                    <button
+                      type="button"
+                      onClick={() => removeSecondaryStone(idx)}
+                      className="absolute top-3 right-3 text-stone-300 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div>
+                        <FieldLabel htmlFor={`ss_type_${idx}`}>Stone Type</FieldLabel>
+                        <Input
+                          id={`ss_type_${idx}`}
+                          value={stone.stone_type}
+                          onChange={(e) => updateSecondaryStone(idx, "stone_type", e.target.value)}
+                          placeholder="Diamond"
+                        />
+                      </div>
+                      <div>
+                        <FieldLabel htmlFor={`ss_shape_${idx}`}>Shape</FieldLabel>
+                        <Input
+                          id={`ss_shape_${idx}`}
+                          value={stone.shape}
+                          onChange={(e) => updateSecondaryStone(idx, "shape", e.target.value)}
+                          placeholder="Round"
+                        />
+                      </div>
+                      <div>
+                        <FieldLabel htmlFor={`ss_carat_${idx}`}>Carat Weight</FieldLabel>
+                        <Input
+                          id={`ss_carat_${idx}`}
+                          value={stone.carat_weight}
+                          onChange={(e) => updateSecondaryStone(idx, "carat_weight", e.target.value)}
+                          placeholder="0.50"
+                        />
+                      </div>
+                      <div>
+                        <FieldLabel htmlFor={`ss_count_${idx}`}>Count</FieldLabel>
+                        <Input
+                          id={`ss_count_${idx}`}
+                          type="number"
+                          min="1"
+                          value={stone.count}
+                          onChange={(e) => updateSecondaryStone(idx, "count", e.target.value)}
+                          placeholder="1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* Pricing */}
-      <div className="bg-white rounded-xl border border-stone-200 p-6">
-        <SectionHeader title="Pricing" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {/* Section 5: Certificates — Collapsible */}
+      <CollapsibleSection title="Section 5: Certificates" badge={certNumber ? "Certified" : undefined}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <FieldLabel htmlFor="cost_price">Cost Price (£)</FieldLabel>
+            <FieldLabel htmlFor="certificate_number">Certificate Number</FieldLabel>
             <Input
-              id="cost_price"
-              name="cost_price"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={costPrice}
-              onChange={(e) => setCostPrice(e.target.value)}
+              id="certificate_number"
+              value={certNumber}
+              onChange={(e) => setCertNumber(e.target.value)}
+              placeholder="e.g. GIA 1234567890"
             />
           </div>
           <div>
-            <FieldLabel htmlFor="wholesale_price">Wholesale Price (£)</FieldLabel>
-            <Input id="wholesale_price" name="wholesale_price" type="number" step="0.01" min="0" placeholder="0.00" defaultValue={item?.wholesale_price?.toString() ?? ""} />
+            <FieldLabel htmlFor="grading_lab">Grading Lab</FieldLabel>
+            <Select
+              id="grading_lab"
+              value={gradingLab}
+              onChange={(e) => setGradingLab(e.target.value)}
+            >
+              <option value="">Select…</option>
+              <option value="GIA">GIA</option>
+              <option value="IGI">IGI</option>
+              <option value="AGS">AGS</option>
+              <option value="HRD">HRD</option>
+              <option value="Other">Other</option>
+            </Select>
           </div>
           <div>
-            <FieldLabel htmlFor="retail_price" required>Retail Price (£)</FieldLabel>
+            <FieldLabel htmlFor="grade">Grade</FieldLabel>
             <Input
-              id="retail_price"
-              name="retail_price"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              required
-              value={retailPrice}
-              onChange={(e) => setRetailPrice(e.target.value)}
+              id="grade"
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              placeholder="e.g. D/IF"
             />
           </div>
           <div>
-            <FieldLabel htmlFor="margin_display">Profit Margin</FieldLabel>
-            <div className={`w-full px-3 py-2.5 text-sm border rounded-lg font-medium ${
-              margin !== null && parseFloat(margin) > 0
-                ? "border-green-200 bg-green-50 text-green-700"
-                : "border-stone-200 bg-stone-50 text-stone-400"
-            }`}>
-              {margin !== null ? `${margin}%` : "—"}
-            </div>
+            <FieldLabel htmlFor="report_url">Report URL</FieldLabel>
+            <Input
+              id="report_url"
+              type="url"
+              value={reportUrl}
+              onChange={(e) => setReportUrl(e.target.value)}
+              placeholder="https://…"
+            />
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* Stock */}
-      <div className="bg-white rounded-xl border border-stone-200 p-6">
-        <SectionHeader title="Stock" />
+      {/* Section 6: Stock & Location — always open */}
+      <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+        <SectionHeader title="Section 6: Stock & Location" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {mode === "create" && (
             <div>
@@ -482,96 +705,13 @@ export default function InventoryForm({ categories: initialCategories, item, mod
             >
               <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${trackQuantity ? "translate-x-4" : "translate-x-0.5"}`} />
             </button>
-            <span className="text-sm text-stone-900">Track quantity</span>
+            <span className="text-sm text-stone-900 font-medium">Track quantity</span>
           </div>
 
-          <div>
-            <FieldLabel htmlFor="sku">SKU</FieldLabel>
-            {mode === "edit" ? (
-              <div className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-stone-50 text-stone-500 font-mono">
-                {item?.sku || "—"}
-              </div>
-            ) : (
-              <Input id="sku" name="sku" placeholder="Auto-generated" defaultValue={item?.sku ?? ""} className="font-mono" />
-            )}
-            {mode === "create" && (
-              <p className="text-xs text-stone-400 mt-1">Leave blank to auto-generate (SKU00001)</p>
-            )}
-          </div>
-          <div>
-            <FieldLabel htmlFor="barcode">Barcode</FieldLabel>
-            <Input id="barcode" name="barcode" placeholder="Optional barcode" defaultValue={item?.barcode ?? ""} className="font-mono" />
-          </div>
-          <div>
-            <FieldLabel htmlFor="supplier_name">Supplier Name</FieldLabel>
-            <Input id="supplier_name" name="supplier_name" placeholder="e.g. Gold Masters Ltd" defaultValue={item?.supplier_name ?? ""} />
-          </div>
-          <div>
-            <FieldLabel htmlFor="supplier_sku">Supplier SKU</FieldLabel>
-            <Input id="supplier_sku" name="supplier_sku" placeholder="Supplier's reference" defaultValue={item?.supplier_sku ?? ""} className="font-mono" />
-          </div>
-        </div>
-      </div>
-
-      {/* Display */}
-      <div className="bg-white rounded-xl border border-stone-200 p-6">
-        <SectionHeader title="Display" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <p className="text-sm font-medium text-stone-900 mb-3">Status</p>
-            <div className="flex gap-3">
-              {(["active", "inactive", "consignment"] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setStatus(s)}
-                  className={`px-4 py-2 text-sm rounded-lg border font-medium capitalize transition-colors ${
-                    status === s
-                      ? "bg-[#8B7355] text-white border-[#8B7355]"
-                      : "bg-white text-stone-900 border-stone-200 hover:border-[#8B7355]/50"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsFeatured(!isFeatured)}
-              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${isFeatured ? "bg-[#8B7355]" : "bg-stone-200"}`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isFeatured ? "translate-x-4" : "translate-x-0.5"}`} />
-            </button>
-            <div>
-              <p className="text-sm font-medium text-stone-900">Featured item</p>
-              <p className="text-xs text-stone-400">Highlight this item in your catalogue</p>
-            </div>
-          </div>
-
-          {/* Image upload placeholder */}
-          <div className="sm:col-span-2">
-            <p className="text-sm font-medium text-stone-900 mb-2">Images</p>
-            <div className="border-2 border-dashed border-stone-200 rounded-xl p-8 text-center bg-stone-50/50">
-              <svg className="w-10 h-10 text-stone-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p className="text-sm text-stone-400">Image upload available in Sprint 9</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stock Location */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
-        <SectionHeader title="Stock Location & Reference" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <FieldLabel htmlFor="stock_location">Stock Location</FieldLabel>
             <Select
               id="stock_location"
-              name="stock_location"
               value={stockLocation}
               onChange={(e) => setStockLocation(e.target.value)}
             >
@@ -582,11 +722,24 @@ export default function InventoryForm({ categories: initialCategories, item, mod
               <option value="consignment">On Consignment</option>
             </Select>
           </div>
+
+          <div>
+            <FieldLabel htmlFor="barcode">Barcode</FieldLabel>
+            <Input id="barcode" name="barcode" placeholder="Optional barcode" defaultValue={item?.barcode ?? ""} className="font-mono" />
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="supplier_name">Supplier Name</FieldLabel>
+            <Input id="supplier_name" name="supplier_name" placeholder="e.g. Gold Masters Ltd" defaultValue={item?.supplier_name ?? ""} />
+          </div>
+          <div>
+            <FieldLabel htmlFor="supplier_sku">Supplier SKU</FieldLabel>
+            <Input id="supplier_sku" name="supplier_sku" placeholder="Supplier's reference" defaultValue={item?.supplier_sku ?? ""} className="font-mono" />
+          </div>
           <div>
             <FieldLabel htmlFor="supplier_invoice_ref">Supplier Invoice Ref</FieldLabel>
             <Input
               id="supplier_invoice_ref"
-              name="supplier_invoice_ref"
               value={supplierInvoiceRef}
               onChange={(e) => setSupplierInvoiceRef(e.target.value)}
               placeholder="e.g. INV-2024-001"
@@ -595,212 +748,14 @@ export default function InventoryForm({ categories: initialCategories, item, mod
         </div>
       </div>
 
-      {/* Certificate */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowCertSection(!showCertSection)}
-          className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-stone-50 transition-colors"
-        >
-          <span className="font-semibold text-stone-900">Certificate / Grading</span>
-          <span className="text-stone-400 text-sm">{showCertSection ? "▲" : "▼"}</span>
-        </button>
-        {showCertSection && (
-          <div className="px-6 pb-6 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <FieldLabel htmlFor="certificate_number">Certificate Number</FieldLabel>
-                <Input
-                  id="certificate_number"
-                  name="certificate_number"
-                  value={certNumber}
-                  onChange={(e) => setCertNumber(e.target.value)}
-                  placeholder="e.g. GIA 1234567890"
-                />
-              </div>
-              <div>
-                <FieldLabel htmlFor="grading_lab">Grading Lab</FieldLabel>
-                <Select
-                  id="grading_lab"
-                  name="grading_lab"
-                  value={gradingLab}
-                  onChange={(e) => setGradingLab(e.target.value)}
-                >
-                  <option value="">Select…</option>
-                  <option value="GIA">GIA</option>
-                  <option value="IGI">IGI</option>
-                  <option value="AGS">AGS</option>
-                  <option value="HRD">HRD</option>
-                  <option value="Other">Other</option>
-                </Select>
-              </div>
-              <div>
-                <FieldLabel htmlFor="grade">Grade</FieldLabel>
-                <Input
-                  id="grade"
-                  name="grade"
-                  value={grade}
-                  onChange={(e) => setGrade(e.target.value)}
-                  placeholder="e.g. D/IF"
-                />
-              </div>
-              <div>
-                <FieldLabel htmlFor="report_url">Report URL</FieldLabel>
-                <Input
-                  id="report_url"
-                  name="report_url"
-                  type="url"
-                  value={reportUrl}
-                  onChange={(e) => setReportUrl(e.target.value)}
-                  placeholder="https://…"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Secondary Stones */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-5">
-          <SectionHeader title="Secondary Stones" />
-          <button
-            type="button"
-            onClick={addSecondaryStone}
-            className="text-xs text-[#8B7355] font-medium hover:underline"
-          >
-            + Add Stone
-          </button>
-        </div>
-        {secondaryStones.length === 0 ? (
-          <p className="text-sm text-stone-400">No secondary stones added.</p>
-        ) : (
-          <div className="space-y-4">
-            {secondaryStones.map((stone, idx) => (
-              <div key={idx} className="border border-stone-200 rounded-xl p-4 relative">
-                <button
-                  type="button"
-                  onClick={() => removeSecondaryStone(idx)}
-                  className="absolute top-3 right-3 text-stone-300 hover:text-red-400 text-xs"
-                >
-                  ✕ Remove
-                </button>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <FieldLabel htmlFor={`ss_type_${idx}`}>Stone Type</FieldLabel>
-                    <Input
-                      id={`ss_type_${idx}`}
-                      value={stone.stone_type}
-                      onChange={(e) => updateSecondaryStone(idx, "stone_type", e.target.value)}
-                      placeholder="Diamond"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor={`ss_shape_${idx}`}>Shape</FieldLabel>
-                    <Input
-                      id={`ss_shape_${idx}`}
-                      value={stone.shape}
-                      onChange={(e) => updateSecondaryStone(idx, "shape", e.target.value)}
-                      placeholder="Round"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor={`ss_carat_${idx}`}>Carat Weight</FieldLabel>
-                    <Input
-                      id={`ss_carat_${idx}`}
-                      value={stone.carat_weight}
-                      onChange={(e) => updateSecondaryStone(idx, "carat_weight", e.target.value)}
-                      placeholder="0.50"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor={`ss_count_${idx}`}>Count</FieldLabel>
-                    <Input
-                      id={`ss_count_${idx}`}
-                      type="number"
-                      min="1"
-                      value={stone.count}
-                      onChange={(e) => updateSecondaryStone(idx, "count", e.target.value)}
-                      placeholder="1"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor={`ss_color_${idx}`}>Color</FieldLabel>
-                    <Input
-                      id={`ss_color_${idx}`}
-                      value={stone.color}
-                      onChange={(e) => updateSecondaryStone(idx, "color", e.target.value)}
-                      placeholder="G"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor={`ss_clarity_${idx}`}>Clarity</FieldLabel>
-                    <Input
-                      id={`ss_clarity_${idx}`}
-                      value={stone.clarity}
-                      onChange={(e) => updateSecondaryStone(idx, "clarity", e.target.value)}
-                      placeholder="VS1"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor={`ss_cut_${idx}`}>Cut</FieldLabel>
-                    <Input
-                      id={`ss_cut_${idx}`}
-                      value={stone.cut}
-                      onChange={(e) => updateSecondaryStone(idx, "cut", e.target.value)}
-                      placeholder="Excellent"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor={`ss_treatment_${idx}`}>Treatment</FieldLabel>
-                    <Input
-                      id={`ss_treatment_${idx}`}
-                      value={stone.treatment}
-                      onChange={(e) => updateSecondaryStone(idx, "treatment", e.target.value)}
-                      placeholder="None"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {/* Hidden input for secondary_stones JSON */}
-        <input type="hidden" name="secondary_stones" value={JSON.stringify(secondaryStones)} />
-      </div>
-
-      {/* Metal Form (raw material) */}
-      {itemType === "raw_material" && (
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
-          <SectionHeader title="Metal Stock Details" />
-          <div>
-            <FieldLabel htmlFor="metal_form">Metal Form</FieldLabel>
-            <Select
-              id="metal_form"
-              name="metal_form"
-              value={metalForm}
-              onChange={(e) => setMetalForm(e.target.value)}
-            >
-              <option value="">Select…</option>
-              <option value="sheet">Sheet</option>
-              <option value="wire">Wire</option>
-              <option value="grain">Grain</option>
-              <option value="casting">Casting</option>
-            </Select>
-          </div>
-        </div>
-      )}
-
-      {/* Consignment Details */}
-      {status === "consignment" && (
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
-          <SectionHeader title="Consignment Details" />
+      {/* Section 7: Consignment — Collapsible, hidden unless relevant */}
+      {(status === "consignment" || consignorName) && (
+        <CollapsibleSection title="Section 7: Consignment" defaultOpen={status === "consignment"}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <FieldLabel htmlFor="consignor_name">Consignor Name</FieldLabel>
               <Input
                 id="consignor_name"
-                name="consignor_name"
                 value={consignorName}
                 onChange={(e) => setConsignorName(e.target.value)}
               />
@@ -809,7 +764,6 @@ export default function InventoryForm({ categories: initialCategories, item, mod
               <FieldLabel htmlFor="consignor_contact">Consignor Contact</FieldLabel>
               <Input
                 id="consignor_contact"
-                name="consignor_contact"
                 value={consignorContact}
                 onChange={(e) => setConsignorContact(e.target.value)}
               />
@@ -818,7 +772,6 @@ export default function InventoryForm({ categories: initialCategories, item, mod
               <FieldLabel htmlFor="consignment_start_date">Start Date</FieldLabel>
               <Input
                 id="consignment_start_date"
-                name="consignment_start_date"
                 type="date"
                 value={consignmentStart}
                 onChange={(e) => setConsignmentStart(e.target.value)}
@@ -828,7 +781,6 @@ export default function InventoryForm({ categories: initialCategories, item, mod
               <FieldLabel htmlFor="consignment_end_date">End Date</FieldLabel>
               <Input
                 id="consignment_end_date"
-                name="consignment_end_date"
                 type="date"
                 value={consignmentEnd}
                 onChange={(e) => setConsignmentEnd(e.target.value)}
@@ -838,7 +790,6 @@ export default function InventoryForm({ categories: initialCategories, item, mod
               <FieldLabel htmlFor="consignment_commission_pct">Commission (%)</FieldLabel>
               <Input
                 id="consignment_commission_pct"
-                name="consignment_commission_pct"
                 type="number"
                 min="0"
                 max="100"
@@ -849,42 +800,30 @@ export default function InventoryForm({ categories: initialCategories, item, mod
               />
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
-      {/* Hidden inputs for cert fields */}
-      <input type="hidden" name="certificate_number" value={certNumber} />
-      <input type="hidden" name="grading_lab" value={gradingLab} />
-      <input type="hidden" name="grade" value={grade} />
-      <input type="hidden" name="report_url" value={reportUrl} />
-      <input type="hidden" name="stock_location" value={stockLocation} />
-      <input type="hidden" name="metal_form" value={metalForm} />
-      <input type="hidden" name="consignor_name" value={consignorName} />
-      <input type="hidden" name="consignor_contact" value={consignorContact} />
-      <input type="hidden" name="consignment_start_date" value={consignmentStart} />
-      <input type="hidden" name="consignment_end_date" value={consignmentEnd} />
-      <input type="hidden" name="consignment_commission_pct" value={consignmentCommPct} />
-      <input type="hidden" name="supplier_invoice_ref" value={supplierInvoiceRef} />
+      {/* Section 8: Images — Collapsible */}
+      <CollapsibleSection title="Section 8: Images">
+        <div className="border-2 border-dashed border-stone-200 rounded-xl p-8 text-center bg-stone-50/50">
+          <svg className="w-10 h-10 text-stone-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <p className="text-sm text-stone-400">Image upload available in Sprint 9</p>
+        </div>
+      </CollapsibleSection>
 
       {/* Actions */}
-      <div className="flex items-center justify-between pb-8">
-        <a href={mode === "edit" && item ? `/inventory/${item.id}` : "/inventory"} className="px-5 py-2.5 text-sm font-medium text-stone-900 border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-colors">
+      <div className="flex items-center justify-between pb-12 pt-4">
+        <a href={mode === "edit" && item ? `/inventory/${item.id}` : "/inventory"} className="px-5 py-2.5 text-sm font-bold text-stone-400 uppercase tracking-wider border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors">
           Cancel
         </a>
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] disabled:opacity-60 transition-colors flex items-center gap-2"
+          className="px-8 py-2.5 bg-[#8B7355] text-white text-sm font-bold uppercase tracking-widest rounded-lg hover:bg-[#7A6347] disabled:opacity-60 transition-colors shadow-sm flex items-center gap-2"
         >
-          {isPending ? (
-            <>
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Saving...
-            </>
-          ) : mode === "create" ? "Add Item" : "Save Changes"}
+          {isPending ? "Saving..." : mode === "create" ? "Add Item" : "Save Changes"}
         </button>
       </div>
     </form>

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import DashboardClient from "./DashboardClient";
 
 export default async function DashboardPage() {
@@ -9,13 +10,17 @@ export default async function DashboardPage() {
 
   const { data: userData } = await supabase
     .from("users")
-    .select("full_name, tenant_id, tenants(name)")
+    .select("full_name, tenant_id, tenants(name, currency, tax_rate, tax_name)")
     .eq("id", user?.id ?? "")
     .single();
 
   const firstName = userData?.full_name?.split(" ")[0] || "there";
-  const tenantName = (userData?.tenants as { name?: string } | null)?.name ?? null;
+  const tenantData = userData?.tenants as { name?: string; currency?: string; tax_rate?: number; tax_name?: string } | null;
+  const tenantName = tenantData?.name ?? null;
   const tenantId = userData?.tenant_id;
+  const currency = tenantData?.currency || "AUD";
+
+  const admin = createAdminClient();
 
   const today = new Date().toISOString().split("T")[0];
   const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
@@ -24,7 +29,7 @@ export default async function DashboardPage() {
   let salesThisMonthRevenue = 0;
   let salesThisMonthCount = 0;
   try {
-    const { data: salesData } = await supabase
+    const { data: salesData } = await admin
       .from("sales")
       .select("total")
       .eq("tenant_id", tenantId ?? "")
@@ -36,7 +41,7 @@ export default async function DashboardPage() {
   }
 
   // Outstanding invoices
-  const { data: outstandingData } = await supabase
+  const { data: outstandingData } = await admin
     .from("invoices")
     .select("amount_due")
     .eq("tenant_id", tenantId ?? "")
@@ -48,7 +53,7 @@ export default async function DashboardPage() {
     0
   );
 
-  const { count: overdueInvoiceCount } = await supabase
+  const { count: overdueInvoiceCount } = await admin
     .from("invoices")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId ?? "")
@@ -56,24 +61,24 @@ export default async function DashboardPage() {
     .lt("due_date", today)
     .is("deleted_at", null);
 
-  // Active jobs
-  const { count: activeJobsCount } = await supabase
+  // Active jobs count
+  const { count: activeJobsCount } = await admin
     .from("bespoke_jobs")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId ?? "")
     .is("deleted_at", null)
     .not("stage", "in", '("completed","cancelled")');
 
-  // Active repairs
-  const { count: activeRepairsCount } = await supabase
+  // Active repairs count
+  const { count: activeRepairsCount } = await admin
     .from("repairs")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId ?? "")
     .is("deleted_at", null)
     .not("stage", "in", '("collected","cancelled")');
 
-  // Overdue repairs
-  const { count: overdueRepairsCount } = await supabase
+  // Overdue repairs count
+  const { count: overdueRepairsCount } = await admin
     .from("repairs")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId ?? "")
@@ -82,7 +87,7 @@ export default async function DashboardPage() {
     .lt("due_date", today);
 
   // Low stock
-  const { data: lowStockItems } = await supabase
+  const { data: lowStockItems } = await admin
     .from("inventory")
     .select("quantity, low_stock_threshold, track_quantity")
     .eq("tenant_id", tenantId ?? "")
@@ -94,8 +99,48 @@ export default async function DashboardPage() {
     (i) => i.quantity <= (i.low_stock_threshold ?? 1)
   ).length;
 
+  // Active repairs for display (limit 5, ordered by due date)
+  const { data: activeRepairsData } = await admin
+    .from("repairs")
+    .select("id, item_description, stage, due_date, customers(full_name)")
+    .eq("tenant_id", tenantId ?? "")
+    .is("deleted_at", null)
+    .not("stage", "in", '("collected","cancelled")')
+    .order("due_date", { ascending: true })
+    .limit(5);
+
+  const activeRepairs = (activeRepairsData ?? []).map((r) => ({
+    id: r.id,
+    customer: Array.isArray(r.customers)
+      ? (r.customers[0] as { full_name: string | null } | null)?.full_name ?? null
+      : (r.customers as { full_name: string | null } | null)?.full_name ?? null,
+    item: r.item_description || "Repair",
+    stage: r.stage || "intake",
+    due_date: r.due_date,
+  }));
+
+  // Active bespoke jobs for display (limit 5, ordered by due date)
+  const { data: activeBespokeData } = await admin
+    .from("bespoke_jobs")
+    .select("id, title, stage, due_date, customers(full_name)")
+    .eq("tenant_id", tenantId ?? "")
+    .is("deleted_at", null)
+    .not("stage", "in", '("completed","cancelled")')
+    .order("due_date", { ascending: true })
+    .limit(5);
+
+  const activeBespokeJobs = (activeBespokeData ?? []).map((j) => ({
+    id: j.id,
+    customer: Array.isArray(j.customers)
+      ? (j.customers[0] as { full_name: string | null } | null)?.full_name ?? null
+      : (j.customers as { full_name: string | null } | null)?.full_name ?? null,
+    title: j.title || "Untitled Job",
+    stage: j.stage || "enquiry",
+    due_date: j.due_date,
+  }));
+
   // Recent activity
-  const { data: recentJobs } = await supabase
+  const { data: recentJobs } = await admin
     .from("bespoke_jobs")
     .select("id, title, stage, updated_at, customers(full_name)")
     .eq("tenant_id", tenantId ?? "")
@@ -103,7 +148,7 @@ export default async function DashboardPage() {
     .order("updated_at", { ascending: false })
     .limit(5);
 
-  const { data: recentRepairs } = await supabase
+  const { data: recentRepairs } = await admin
     .from("repairs")
     .select("id, item_description, stage, updated_at, customers(full_name)")
     .eq("tenant_id", tenantId ?? "")
@@ -149,7 +194,7 @@ export default async function DashboardPage() {
     .slice(0, 5);
 
   // My Tasks for today
-  const { data: myTasks } = await supabase
+  const { data: myTasks } = await admin
     .from("staff_tasks")
     .select("id, title, priority, status, due_date")
     .eq("tenant_id", tenantId ?? "")
@@ -172,6 +217,9 @@ export default async function DashboardPage() {
       overdueRepairsCount={overdueRepairsCount ?? 0}
       recentActivity={recentActivity}
       myTasks={myTasks ?? []}
+      activeRepairs={activeRepairs}
+      activeBespokeJobs={activeBespokeJobs}
+      currency={currency}
     />
   );
 }

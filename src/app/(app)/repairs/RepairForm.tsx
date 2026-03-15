@@ -439,7 +439,7 @@ export default function RepairForm({ customers, mode, repair, preselectedCustome
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <FieldLabel htmlFor="quoted_price">Quoted Price (£)</FieldLabel>
+            <FieldLabel htmlFor="quoted_price">Quoted Price</FieldLabel>
             <input
               id="quoted_price"
               name="quoted_price"
@@ -454,7 +454,7 @@ export default function RepairForm({ customers, mode, repair, preselectedCustome
 
           <div>
             <FieldLabel htmlFor="deposit_amount">
-              Deposit Amount (£)
+              Deposit Amount
             </FieldLabel>
             <input
               id="deposit_amount"
@@ -472,7 +472,7 @@ export default function RepairForm({ customers, mode, repair, preselectedCustome
         {mode === "edit" && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel htmlFor="final_price">Final Price (£)</FieldLabel>
+              <FieldLabel htmlFor="final_price">Final Price</FieldLabel>
               <input
                 id="final_price"
                 name="final_price"

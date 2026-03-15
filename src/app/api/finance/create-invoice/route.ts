@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTenantTaxConfig } from "@/lib/tenant-tax";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -25,6 +26,9 @@ export async function POST(req: Request) {
 
     // Use admin client for data fetches to bypass RLS (same pattern as detail pages)
     const adminClient = createAdminClient();
+
+    // Fetch tenant tax config
+    const { tax_rate: taxRate, tax_name: taxName, tax_inclusive: taxInclusive } = await getTenantTaxConfig(tenantId);
 
     // 1. Fetch job details
     let job;
@@ -83,10 +87,10 @@ export async function POST(req: Request) {
         [field]: jobId,
         invoice_date: new Date().toISOString().split("T")[0],
         subtotal: total,
-        tax_name: "GST",
-        tax_rate: 0.1,
-        tax_inclusive: true,
-        tax_amount: Math.round(total * 0.1 * 100) / 100,
+        tax_name: taxName,
+        tax_rate: taxRate,
+        tax_inclusive: taxInclusive,
+        tax_amount: Math.round(total * taxRate * 100) / 100,
         total: total,
         status: "sent",
         created_by: user.id,

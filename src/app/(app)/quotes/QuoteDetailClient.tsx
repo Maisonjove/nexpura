@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { type Quote } from "./actions";
 import { convertQuoteToInvoice, convertQuoteToBespoke, convertQuoteToRepair } from "./actions-server";
 import { emailQuote } from "./emailQuote";
+import { toast } from "sonner";
 import StatusBadge from "@/components/StatusBadge";
 
 interface Props {
@@ -27,7 +28,7 @@ export default function QuoteDetailClient({ quote }: Props) {
       router.push(`/invoices/${invoiceId}`);
     } catch (err) {
       console.error(err);
-      alert("Failed to convert quote");
+      toast.error("Failed to convert quote");
     } finally {
       setLoading(false);
     }
@@ -38,11 +39,11 @@ export default function QuoteDetailClient({ quote }: Props) {
     setLoading(true);
     try {
       const jobId = await convertQuoteToBespoke(quote.id);
-      alert("Converted to Bespoke Job successfully!");
+      toast.success("Converted to Bespoke Job successfully!");
       router.push(`/bespoke/${jobId}`);
     } catch (err) {
       console.error(err);
-      alert("Failed to convert quote to bespoke job");
+      toast.error("Failed to convert quote to bespoke job");
     } finally {
       setLoading(false);
     }
@@ -53,11 +54,11 @@ export default function QuoteDetailClient({ quote }: Props) {
     setLoading(true);
     try {
       const repairId = await convertQuoteToRepair(quote.id);
-      alert("Converted to Repair Job successfully!");
+      toast.success("Converted to Repair Job successfully!");
       router.push(`/repairs/${repairId}`);
     } catch (err) {
       console.error(err);
-      alert("Failed to convert quote to repair job");
+      toast.error("Failed to convert quote to repair job");
     } finally {
       setLoading(false);
     }
@@ -74,7 +75,7 @@ export default function QuoteDetailClient({ quote }: Props) {
           <button 
             onClick={async () => {
               if (!quote.customers?.email) {
-                alert("No customer email on file.");
+                toast.error("No customer email on file.");
                 return;
               }
               if (!confirm(`Email quote to ${quote.customers.email}?`)) return;
@@ -82,12 +83,12 @@ export default function QuoteDetailClient({ quote }: Props) {
               try {
                 const result = await emailQuote(quote.id);
                 if (result.success) {
-                  alert("Quote emailed successfully!");
+                  toast.success("Quote emailed successfully!");
                 } else {
-                  alert(`Failed to send: ${result.error}`);
+                  toast.error(`Failed to send: ${result.error}`);
                 }
               } catch {
-                alert("Failed to send quote email.");
+                toast.error("Failed to send quote email.");
               } finally {
                 setEmailSending(false);
               }
