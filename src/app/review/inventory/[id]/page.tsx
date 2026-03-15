@@ -95,7 +95,7 @@ export default async function ReviewInventoryDetailPage({ params }: PageProps) {
 
   return (
     <>
-      <ItemDetailClient item={typedItem} movements={typedMovements} />
+      <ItemDetailClient item={typedItem} movements={typedMovements} readOnly={true} />
       <div className="mt-6">
         <InventoryPhotos
           itemId={id}

@@ -116,6 +116,7 @@ interface Props {
   lineItems: LineItem[];
   payments: Payment[];
   tenant: Tenant;
+  readOnly?: boolean;
 }
 
 export default function InvoiceDetailClient({
@@ -123,8 +124,9 @@ export default function InvoiceDetailClient({
   lineItems,
   payments,
   tenant,
+  readOnly = false,
 }: Props) {
-  const [view, setView] = useState<"manage" | "preview">("manage");
+  const [view, setView] = useState<"manage" | "preview">(readOnly ? "preview" : "manage");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showVoidConfirm, setShowVoidConfirm] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -249,7 +251,7 @@ export default function InvoiceDetailClient({
             </button>
           </div>
 
-          {canEdit && (
+          {!readOnly && canEdit && (
             <Link
               href={`/invoices/${invoice.id}/edit`}
               className="px-3 py-1.5 text-xs border border-stone-900 text-stone-900 rounded-lg hover:bg-stone-900/5 transition-colors"
@@ -257,7 +259,7 @@ export default function InvoiceDetailClient({
               Edit
             </Link>
           )}
-          {canMarkSent && (
+          {!readOnly && canMarkSent && (
             <button
               disabled={isPending}
               onClick={handleMarkSent}
@@ -266,7 +268,7 @@ export default function InvoiceDetailClient({
               Mark as Sent
             </button>
           )}
-          {canRecordPayment && (
+          {!readOnly && canRecordPayment && (
             <button
               onClick={() => {
                 setPayAmount(String(invoice.amount_due));
@@ -309,7 +311,7 @@ export default function InvoiceDetailClient({
             Thermal
           </a>
           <EmailInvoiceButton invoiceId={invoice.id} customerEmail={invoice.customers?.email ?? null} onToast={showToast} />
-          {canVoid && (
+          {!readOnly && canVoid && (
             <button
               onClick={() => setShowVoidConfirm(true)}
               className="px-3 py-1.5 text-xs border border-red-200 text-red-500 rounded-lg hover:bg-red-50 transition-colors"
@@ -342,7 +344,7 @@ export default function InvoiceDetailClient({
       )}
 
       {/* Payment Modal */}
-      {showPaymentModal && (
+      {!readOnly && showPaymentModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
             <div className="p-6 border-b border-stone-200">
@@ -434,7 +436,7 @@ export default function InvoiceDetailClient({
       )}
 
       {/* Void Confirm Modal */}
-      {showVoidConfirm && (
+      {!readOnly && showVoidConfirm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
             <h2 className="font-semibold text-lg font-semibold text-stone-900 mb-2">Void Invoice?</h2>

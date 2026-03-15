@@ -63,6 +63,7 @@ export default async function ReviewPassportDetailPage({
       <PassportDetailClient
         passport={passport as Passport}
         events={(events ?? []) as PassportEvent[]}
+        readOnly={true}
       />
 
       <PassportPhotos

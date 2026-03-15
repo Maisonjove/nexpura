@@ -56,6 +56,7 @@ interface ItemDetailClientProps {
   movements: Movement[];
   tenantName?: string;
   currency?: string;
+  readOnly?: boolean;
 }
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
@@ -101,7 +102,7 @@ function SpecRow({ label, value }: { label: string; value: string | number | nul
   );
 }
 
-export default function ItemDetailClient({ item, movements, tenantName = "Nexpura", currency = "AUD" }: ItemDetailClientProps) {
+export default function ItemDetailClient({ item, movements, tenantName = "Nexpura", currency = "AUD", readOnly = false }: ItemDetailClientProps) {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showPrintTag, setShowPrintTag] = useState(false);
@@ -151,7 +152,7 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
         />
       )}
 
-      {showArchiveConfirm && (
+      {!readOnly && showArchiveConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowArchiveConfirm(false)} />
           <div className="relative bg-white rounded-2xl border border-stone-200 shadow-xl w-full max-w-sm p-6">
@@ -219,36 +220,40 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <Link
-                    href={`/pos?item_id=${item.id}`}
-                    className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7a6349] transition-colors flex items-center gap-1.5"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    Quick Sell
-                  </Link>
-                  <button
-                    onClick={() => setShowPrintTag(true)}
-                    className="px-4 py-2 text-sm font-medium text-stone-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors flex items-center gap-1.5"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    Print Tag
-                  </button>
-                  <Link
-                    href={`/inventory/${item.id}/edit`}
-                    className="px-4 py-2 text-sm font-medium text-stone-900 border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-colors"
-                  >
-                    Edit
-                  </Link>
-                  <button
-                    onClick={() => setShowArchiveConfirm(true)}
-                    className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
-                  >
-                    Archive
-                  </button>
+                  {!readOnly && (
+                    <>
+                      <Link
+                        href={`/pos?item_id=${item.id}`}
+                        className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7a6349] transition-colors flex items-center gap-1.5"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Quick Sell
+                      </Link>
+                      <button
+                        onClick={() => setShowPrintTag(true)}
+                        className="px-4 py-2 text-sm font-medium text-stone-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors flex items-center gap-1.5"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Print Tag
+                      </button>
+                      <Link
+                        href={`/inventory/${item.id}/edit`}
+                        className="px-4 py-2 text-sm font-medium text-stone-900 border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-colors"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => setShowArchiveConfirm(true)}
+                        className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                      >
+                        Archive
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -368,12 +373,14 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
                 <p className="text-xs text-stone-400 mt-2">Quantity tracking disabled</p>
               )}
 
-              <button
-                onClick={() => setShowAdjustModal(true)}
-                className="w-full mt-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
-              >
-                Adjust Stock
-              </button>
+              {!readOnly && (
+                <button
+                  onClick={() => setShowAdjustModal(true)}
+                  className="w-full mt-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+                >
+                  Adjust Stock
+                </button>
+              )}
             </div>
 
             {/* Pricing */}
@@ -418,38 +425,40 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
             </div>
 
             {/* Quick actions */}
-            <div className="bg-white rounded-xl border border-stone-200 p-6">
-              <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Actions</p>
-              <div className="space-y-2">
-                <button
-                  onClick={() => setShowPrintTag(true)}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-stone-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Print Stock Tag
-                </button>
-                <Link
-                  href={`/inventory/${item.id}/edit`}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-stone-900 border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-colors font-medium"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Edit Item Details
-                </Link>
-                <button
-                  onClick={() => setShowArchiveConfirm(true)}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                  </svg>
-                  Archive Item
-                </button>
+            {!readOnly && (
+              <div className="bg-white rounded-xl border border-stone-200 p-6">
+                <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Actions</p>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setShowPrintTag(true)}
+                    className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-stone-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Print Stock Tag
+                  </button>
+                  <Link
+                    href={`/inventory/${item.id}/edit`}
+                    className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-stone-900 border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-colors font-medium"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Edit Item Details
+                  </Link>
+                  <button
+                    onClick={() => setShowArchiveConfirm(true)}
+                    className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    Archive Item
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

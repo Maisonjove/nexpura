@@ -104,6 +104,7 @@ export default async function ReviewInvoiceDetailPage({
       lineItems={lineItems || []}
       payments={payments}
       tenant={normalizedTenant}
+      readOnly={true}
     />
   );
 }

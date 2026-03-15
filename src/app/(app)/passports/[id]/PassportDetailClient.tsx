@@ -150,9 +150,11 @@ function SpecRow({ label, value }: { label: string; value: string | number | nul
 export default function PassportDetailClient({
   passport,
   events,
+  readOnly = false,
 }: {
   passport: Passport;
   events: PassportEvent[];
+  readOnly?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [isPublic, setIsPublic] = useState(passport.is_public);
@@ -248,12 +250,14 @@ export default function PassportDetailClient({
             {passport.status}
           </span>
         </div>
-        <Link
-          href={`/passports/${passport.id}/edit`}
-          className="px-4 py-2 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors"
-        >
-          Edit Passport
-        </Link>
+        {!readOnly && (
+          <Link
+            href={`/passports/${passport.id}/edit`}
+            className="px-4 py-2 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors"
+          >
+            Edit Passport
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -457,19 +461,25 @@ export default function PassportDetailClient({
                   {isPublic ? "Verifiable by anyone" : "Private — not publicly accessible"}
                 </p>
               </div>
-              <button
-                onClick={handleTogglePublic}
-                disabled={isPending}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  isPublic ? "bg-[#8B7355]" : "bg-gray-200"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                    isPublic ? "translate-x-6" : "translate-x-1"
+              {!readOnly ? (
+                <button
+                  onClick={handleTogglePublic}
+                  disabled={isPending}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    isPublic ? "bg-[#8B7355]" : "bg-gray-200"
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      isPublic ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              ) : (
+                <div className={`relative inline-flex h-6 w-11 items-center rounded-full ${isPublic ? "bg-[#8B7355]" : "bg-gray-200"}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ${isPublic ? "translate-x-6" : "translate-x-1"}`} />
+                </div>
+              )}
             </div>
           </div>
 
@@ -490,35 +500,39 @@ export default function PassportDetailClient({
               Download Certificate
             </a>
 
-            <button
-              onClick={() => setEventModalOpen(true)}
-              className="w-full px-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Event
-            </button>
-            <button
-              onClick={() => setTransferModalOpen(true)}
-              className="w-full px-4 py-2.5 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-              Transfer Ownership
-            </button>
-            {passport.current_owner_email && (
-              <button
-                onClick={handleSendPassportEmail}
-                disabled={emailSending}
-                className="w-full px-4 py-2.5 border border-[#8B7355] text-[#8B7355] text-sm font-medium rounded-lg hover:bg-[#8B7355]/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                {emailSending ? "Sending…" : "Send Passport Email"}
-              </button>
+            {!readOnly && (
+              <>
+                <button
+                  onClick={() => setEventModalOpen(true)}
+                  className="w-full px-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Event
+                </button>
+                <button
+                  onClick={() => setTransferModalOpen(true)}
+                  className="w-full px-4 py-2.5 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  Transfer Ownership
+                </button>
+                {passport.current_owner_email && (
+                  <button
+                    onClick={handleSendPassportEmail}
+                    disabled={emailSending}
+                    className="w-full px-4 py-2.5 border border-[#8B7355] text-[#8B7355] text-sm font-medium rounded-lg hover:bg-[#8B7355]/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    {emailSending ? "Sending…" : "Send Passport Email"}
+                  </button>
+                )}
+              </>
             )}
           </div>
 
@@ -541,7 +555,7 @@ export default function PassportDetailClient({
       </div>
 
       {/* Add Event Modal */}
-      {eventModalOpen && (
+      {!readOnly && eventModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setEventModalOpen(false)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 z-10">
@@ -591,7 +605,7 @@ export default function PassportDetailClient({
       )}
 
       {/* Transfer Ownership Modal */}
-      {transferModalOpen && (
+      {!readOnly && transferModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setTransferModalOpen(false)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 z-10">

@@ -245,6 +245,7 @@ export default async function ReviewRepairDetailPage({
             isOverdue={!!isOverdue}
             invoiceId={invoiceId}
             currency={tenantCurrency}
+            readOnly={true}
           />
         </div>
       </div>

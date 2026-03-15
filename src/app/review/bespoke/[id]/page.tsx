@@ -293,6 +293,7 @@ export default async function ReviewBespokeDetailPage({
             isOverdue={!!isOverdue}
             invoiceId={invoiceId}
             currency={tenantCurrency}
+            readOnly={true}
           />
         </div>
       </div>

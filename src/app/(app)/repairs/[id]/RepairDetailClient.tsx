@@ -31,6 +31,7 @@ interface Props {
   isOverdue: boolean;
   invoiceId: string | null;
   currency?: string;
+  readOnly?: boolean;
 }
 
 const PRIORITY_MAP: Record<string, { dot: string; text: string; bg: string }> =
@@ -59,6 +60,7 @@ export default function RepairDetailClient({
   isOverdue,
   invoiceId,
   currency = "AUD",
+  readOnly = false,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -192,7 +194,7 @@ export default function RepairDetailClient({
         )}
 
         {/* Email Receipt to Customer */}
-        {customerEmail && (
+        {!readOnly && customerEmail && (
           <div>
             <button
               onClick={handleEmailReceipt}
@@ -214,7 +216,7 @@ export default function RepairDetailClient({
         )}
 
         {/* Advance Stage */}
-        {nextStage && !isTerminal && (
+        {!readOnly && nextStage && !isTerminal && (
           <div>
             <button
               onClick={() => setShowModal(true)}
@@ -239,7 +241,7 @@ export default function RepairDetailClient({
         )}
 
         {/* Send Quote button — shown when stage is 'quoted' and there's a quoted price */}
-        {currentStage === "quoted" && quotedPriceRaw && (
+        {!readOnly && currentStage === "quoted" && quotedPriceRaw && (
           <div>
             <button
               onClick={handleSendQuote}
@@ -348,6 +350,7 @@ export default function RepairDetailClient({
           customerEmail={customerEmail}
           status={currentStage}
           currency={currency}
+          readOnly={readOnly}
         />
 
         {/* Customer */}
@@ -379,37 +382,39 @@ export default function RepairDetailClient({
         )}
 
         {/* Archive */}
-        <div className="border-t border-stone-200 pt-4">
-          {showArchiveConfirm ? (
-            <div className="space-y-2">
-              <p className="text-xs text-stone-500">
-                Archive this repair? It will be hidden from all views.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleArchive}
-                  disabled={isPending}
-                  className="flex-1 bg-red-500 text-white text-xs font-medium py-2 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
-                >
-                  {isPending ? "Archiving…" : "Confirm Archive"}
-                </button>
-                <button
-                  onClick={() => setShowArchiveConfirm(false)}
-                  className="flex-1 bg-white border border-stone-200 text-stone-900 text-xs font-medium py-2 rounded-lg hover:bg-stone-50 transition-colors"
-                >
-                  Cancel
-                </button>
+        {!readOnly && (
+          <div className="border-t border-stone-200 pt-4">
+            {showArchiveConfirm ? (
+              <div className="space-y-2">
+                <p className="text-xs text-stone-500">
+                  Archive this repair? It will be hidden from all views.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleArchive}
+                    disabled={isPending}
+                    className="flex-1 bg-red-500 text-white text-xs font-medium py-2 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+                  >
+                    {isPending ? "Archiving…" : "Confirm Archive"}
+                  </button>
+                  <button
+                    onClick={() => setShowArchiveConfirm(false)}
+                    className="flex-1 bg-white border border-stone-200 text-stone-900 text-xs font-medium py-2 rounded-lg hover:bg-stone-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowArchiveConfirm(true)}
-              className="w-full text-xs text-stone-400 hover:text-red-500 transition-colors text-left"
-            >
-              Archive repair…
-            </button>
-          )}
-        </div>
+            ) : (
+              <button
+                onClick={() => setShowArchiveConfirm(true)}
+                className="w-full text-xs text-stone-400 hover:text-red-500 transition-colors text-left"
+              >
+                Archive repair…
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Advance Stage Modal */}

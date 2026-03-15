@@ -29,6 +29,7 @@ interface FinanceProps {
   status: string;
   currency?: string;
   payments?: PaymentRecord[];
+  readOnly?: boolean;
 }
 
 export function JobFinancePanel({
@@ -45,6 +46,7 @@ export function JobFinancePanel({
   status,
   currency = "AUD",
   payments,
+  readOnly = false,
 }: FinanceProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -140,7 +142,7 @@ export function JobFinancePanel({
               )}
             </div>
             <p className="text-xl font-bold text-stone-800">{formatCurrency(depositAmount, currency)}</p>
-            {!depositPaid && (
+            {!depositPaid && !readOnly && (
               <button
                 onClick={handleMarkDepositPaid}
                 disabled={isPending}
@@ -187,7 +189,7 @@ export function JobFinancePanel({
                 </a>
               </Button>
             </div>
-          ) : (
+          ) : !readOnly ? (
             <Button
               onClick={handleCreateInvoice}
               disabled={isPending || !total}
@@ -195,18 +197,20 @@ export function JobFinancePanel({
             >
               {isPending ? "Generating…" : "Generate Invoice"}
             </Button>
-          )}
+          ) : null}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className="w-full text-xs text-stone-400 hover:text-stone-900"
-          >
-            <Link href={`/invoices/new?${jobType}_id=${jobId}${customerId ? `&customer_id=${customerId}` : ""}`}>
-              Manual Invoice
-            </Link>
-          </Button>
+          {!readOnly && (
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="w-full text-xs text-stone-400 hover:text-stone-900"
+            >
+              <Link href={`/invoices/new?${jobType}_id=${jobId}${customerId ? `&customer_id=${customerId}` : ""}`}>
+                Manual Invoice
+              </Link>
+            </Button>
+          )}
         </div>
 
         {/* Payment History */}

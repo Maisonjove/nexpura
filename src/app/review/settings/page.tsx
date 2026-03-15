@@ -114,15 +114,26 @@ export default async function ReviewSettingsPage() {
       {/* Document Centre — PDF Types */}
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">PDF Document Templates</h2>
+          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Document Centre</h2>
           <span className="text-xs text-stone-400">{PDF_DOCUMENT_TYPES.length} document types</span>
+        </div>
+        <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 flex items-start gap-2">
+          <span className="text-base flex-shrink-0 mt-0.5">💡</span>
+          <p className="text-xs text-amber-800 leading-relaxed">
+            <span className="font-semibold">How it works:</span> PDF documents are generated on-demand from live data. Templates are configured per document type with your logo, branding, and layout.
+          </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {PDF_DOCUMENT_TYPES.map((doc) => (
             <div key={doc.id} className="bg-white rounded-xl border border-stone-200 p-4 flex items-start gap-3">
               <span className="text-2xl flex-shrink-0">{doc.icon}</span>
-              <div>
-                <p className="text-sm font-semibold text-stone-900">{doc.label}</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-stone-900">{doc.label}</p>
+                  <span className="flex-shrink-0 inline-flex px-2 py-0.5 bg-[#8B7355]/10 text-[#8B7355] text-xs font-semibold rounded-full">
+                    In use
+                  </span>
+                </div>
                 <p className="text-xs text-stone-400 mt-0.5 leading-relaxed">{doc.desc}</p>
               </div>
             </div>
@@ -130,12 +141,14 @@ export default async function ReviewSettingsPage() {
         </div>
       </section>
 
-      {/* Label Templates */}
+      {/* Print & Labels */}
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Label / Print Templates</h2>
+          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Print &amp; Labels</h2>
           <span className="text-xs text-stone-400">ZPL-based label printing</span>
         </div>
+
+        {/* Label Templates table */}
         <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-stone-50 border-b border-stone-100">
@@ -161,7 +174,29 @@ export default async function ReviewSettingsPage() {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-stone-400">Custom ZPL templates can be created for any label printer. Supports Zebra, Brother, and compatible thermal printers.</p>
+
+        {/* Printer Configuration info */}
+        <div className="bg-white rounded-xl border border-stone-200 p-4 flex items-start gap-3">
+          <span className="text-xl flex-shrink-0">🖨️</span>
+          <div>
+            <p className="text-sm font-semibold text-stone-900">Printer Configuration</p>
+            <p className="text-xs text-stone-400 mt-0.5 leading-relaxed">
+              Supports Zebra ZPL, Brother QL, and standard receipt printers. Configuration is per-device.
+            </p>
+          </div>
+        </div>
+
+        {/* Print History empty state */}
+        <div className="bg-white rounded-xl border border-stone-200 p-5">
+          <p className="text-xs font-semibold text-stone-500 uppercase tracking-widest mb-3">Print History</p>
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <span className="text-3xl mb-3">🖨️</span>
+            <p className="text-sm font-medium text-stone-900 mb-1">No print jobs yet</p>
+            <p className="text-xs text-stone-400 max-w-sm leading-relaxed">
+              Print jobs appear here as stock tags, repair bag tags, and receipt labels are printed from any module.
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* Numbering Sequences */}
