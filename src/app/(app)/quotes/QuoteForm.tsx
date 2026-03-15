@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, Save } from "lucide-react";
 import { createQuote, type QuoteItem } from "./actions";
 import { toast } from "sonner";
-import { toast } from "sonner";
 
 interface Customer {
   id: string;
