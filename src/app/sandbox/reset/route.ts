@@ -313,13 +313,13 @@ export async function GET(request: NextRequest) {
   await safeInsert(() => admin.from("bespoke_jobs").update({ invoice_id: "b5b5b5b5-0005-0005-0005-000000000005", deposit_paid: false }).eq("id", "ba62301b-0b26-423a-b02e-5a48bd7034b6").eq("tenant_id", TENANT_ID));
 
   // INVOICE LINE ITEMS for R-0001 (INV-0001) — individual inserts
-  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", description: "Ring resizing labour", quantity: 1, unit_price: 180, total: 180 }));
-  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", description: "Prong check & tighten", quantity: 1, unit_price: 90, total: 90 }));
-  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", description: "Polishing & cleaning", quantity: 1, unit_price: 50, total: 50 }));
+  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", description: "Ring resizing labour", quantity: 1, unit_price: 180 }));
+  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", description: "Prong check & tighten", quantity: 1, unit_price: 90 }));
+  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "2c6672d1-884e-4d96-accf-b8a88ab2e27e", description: "Polishing & cleaning", quantity: 1, unit_price: 50 }));
 
   // INVOICE LINE ITEMS for B-0001 (INV-0005) — individual inserts
-  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "b5b5b5b5-0005-0005-0005-000000000005", description: "Custom platinum band", quantity: 2, unit_price: 3000, total: 6000 }));
-  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "b5b5b5b5-0005-0005-0005-000000000005", description: "Hand engraving (scrollwork)", quantity: 1, unit_price: 1200, total: 1200 }));
+  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "b5b5b5b5-0005-0005-0005-000000000005", description: "Custom platinum band", quantity: 2, unit_price: 3000 }));
+  await safeInsert(() => admin.from("invoice_line_items").insert({ tenant_id: TENANT_ID, invoice_id: "b5b5b5b5-0005-0005-0005-000000000005", description: "Hand engraving (scrollwork)", quantity: 1, unit_price: 1200 }));
 
 
   // SALES

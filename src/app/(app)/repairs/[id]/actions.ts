@@ -82,7 +82,6 @@ export async function addRepairLineItem(
     quantity: item.qty,
     unit_price: item.unitPrice,
     discount_pct: 0,
-    total: item.unitPrice * item.qty,
   });
   if (liErr) return { error: liErr.message };
 
