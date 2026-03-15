@@ -287,7 +287,8 @@ export default async function DashboardPage() {
   const { data: allTasks } = await myTasksQuery;
 
   // Split into own tasks and team tasks
-  const myTasks = (allTasks ?? []).filter((t) => t.assigned_to === user?.id).map((t) => ({
+  // Include unassigned tasks (assigned_to=null) in myTasks — they are visible to all managers
+  const myTasks = (allTasks ?? []).filter((t) => t.assigned_to === user?.id || t.assigned_to === null).map((t) => ({
     id: t.id,
     title: t.title,
     priority: t.priority,
@@ -295,7 +296,7 @@ export default async function DashboardPage() {
     due_date: t.due_date,
   }));
 
-  // For managers: build team summary grouped by assignee
+  // For managers: build team summary grouped by assignee (excludes null/self — those are in myTasks)
   type TeamTaskSummary = { assigneeId: string; assigneeName: string; taskCount: number; overdueCount: number };
   const teamTaskSummary: TeamTaskSummary[] = [];
   if (isManager) {

@@ -1,39 +1,49 @@
-import { createAdminClient } from "@/lib/supabase/admin";
-import { NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/demo/session
  *
- * Generates a magic link for the demo user and redirects to it.
- * Supabase verifies the link and sets real auth session cookies,
- * then redirects to /dashboard — giving access to all 15+ screens.
+ * Signs in as the demo user (demo@nexpura.com) and redirects to /dashboard.
+ * Sets real Supabase auth cookies — all 15+ protected screens become accessible.
  *
- * Public route — no auth required (middleware allows /api/*).
+ * Public route (middleware allows /api/*). Demo tenant only. Read-only intent.
  */
-export async function GET(request: Request) {
-  const admin = createAdminClient();
-
+export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const baseUrl = `${url.protocol}//${url.host}`;
 
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: "magiclink",
+  const response = NextResponse.redirect(`${baseUrl}/dashboard`);
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
+  const { error } = await supabase.auth.signInWithPassword({
     email: "demo@nexpura.com",
-    options: {
-      redirectTo: `${baseUrl}/dashboard`,
-    },
+    password: "nexpura-demo-2026",
   });
 
-  if (error || !data?.properties?.action_link) {
-    console.error("[demo/session] Failed to generate magic link:", error?.message);
-    return NextResponse.json(
-      { error: error?.message || "Failed to generate demo session" },
-      { status: 500 }
-    );
+  if (error) {
+    console.error("[demo/session] Sign-in failed:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Redirect to Supabase magic link — it will verify, set cookies, then bounce to /dashboard
-  return NextResponse.redirect(data.properties.action_link);
+  // Cookies were set on `response` via setAll — redirect carries them
+  return response;
 }

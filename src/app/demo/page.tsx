@@ -275,8 +275,9 @@ export default async function DemoPage() {
 
   const DEMO_USER_ID = "bd7d2c20-5727-4f80-a449-818429abecc9";
 
+  // Include unassigned tasks (null) alongside user-assigned — mirrors real dashboard logic
   const myTasks = (allTasksData ?? [])
-    .filter((t) => t.assigned_to === DEMO_USER_ID)
+    .filter((t) => t.assigned_to === DEMO_USER_ID || t.assigned_to === null)
     .map((t) => ({
       id: t.id,
       title: t.title,
