@@ -20,7 +20,7 @@ const SCREENSHOT_STORAGE =
 const PROOF_SECTIONS = [
   {
           title: "Repair Command Center — Interaction Reliability Proof",
-          buildUrl: "https://nexpura-dnk6y6vw1-maisonjoves-projects.vercel.app",
+          buildUrl: "https://nexpura-4s31bququ-maisonjoves-projects.vercel.app",
           shots: [
             { name: "SEQ-R1-initial", label: "Initial state — line items, photos, sidebar" },
             { name: "SEQ-R2-manual-open", label: "Step 1: Manual item form open" },
@@ -40,7 +40,7 @@ const PROOF_SECTIONS = [
         },
         {
           title: "Bespoke Command Center — Interaction Reliability Proof",
-          buildUrl: "https://nexpura-dnk6y6vw1-maisonjoves-projects.vercel.app",
+          buildUrl: "https://nexpura-4s31bququ-maisonjoves-projects.vercel.app",
           shots: [
             { name: "SEQ-B1-initial", label: "Initial state — line items, totals, seeded photos" },
             { name: "SEQ-B2-after-manual", label: "After manual item — modal closed, page fully interactive" },
