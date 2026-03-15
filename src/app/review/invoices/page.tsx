@@ -29,6 +29,8 @@ export default async function ReviewInvoicesPage() {
       "id, invoice_number, status, due_date, total, amount_paid, customers(full_name)"
     )
     .eq("tenant_id", TENANT_ID)
+    .not("invoice_number", "like", "Q-%") // exclude draft quote records from invoice list
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   const invoices = (rawInvoices || []).map((inv) => ({

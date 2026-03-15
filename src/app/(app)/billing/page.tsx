@@ -36,7 +36,9 @@ export default async function BillingPage() {
     .from("subscriptions")
     .select("*")
     .eq("tenant_id", userData.tenant_id)
-    .single();
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const { count: userCount } = await supabase
     .from("users")

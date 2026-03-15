@@ -27,7 +27,7 @@ export default async function ReviewRepairsPage() {
   const { data: rawRepairs } = await admin
     .from("repairs")
     .select(
-      `id, repair_number, item_description, stage, due_date, status, created_at,
+      `id, repair_number, item_description, stage, due_date, created_at,
        customers(id, full_name)`
     )
     .eq("tenant_id", TENANT_ID)

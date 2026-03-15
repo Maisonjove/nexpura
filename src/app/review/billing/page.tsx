@@ -12,7 +12,9 @@ export default async function ReviewBillingPage() {
     .from("subscriptions")
     .select("*")
     .eq("tenant_id", TENANT_ID)
-    .single();
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const [{ count: userCount }, { count: inventoryCount }, { count: customerCount }] =
     await Promise.all([

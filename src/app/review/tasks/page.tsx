@@ -39,7 +39,7 @@ export default async function ReviewTasksPage() {
 
   const { data: tasks, error } = await admin
     .from("tasks")
-    .select("id, title, description, priority, status, due_date, assigned_to, linked_type, linked_id, created_at")
+    .select("id, title, description, priority, status, due_date, assigned_to, related_type, related_id, created_at")
     .eq("tenant_id", TENANT_ID)
     .neq("status", "completed")
     .order("due_date", { ascending: true, nullsFirst: false });
@@ -71,8 +71,8 @@ export default async function ReviewTasksPage() {
                   {overdue ? "⚠ Overdue · " : ""}{formatDate(task.due_date)}
                 </span>
               )}
-              {task.linked_type && (
-                <span className="text-xs text-stone-400 capitalize">{task.linked_type.replace("_", " ")}</span>
+              {task.related_type && (
+                <span className="text-xs text-stone-400 capitalize">{task.related_type.replace("_", " ")}</span>
               )}
             </div>
           </div>
