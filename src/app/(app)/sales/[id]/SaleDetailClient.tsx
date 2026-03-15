@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateSaleStatus, deleteSale, generatePassportFromSaleItem } from "../actions";
 import { processRefund } from "../../refunds/actions";
+import { recordLaybyPayment } from "../actions-layby";
 
 interface SaleItem {
   id: string;
@@ -34,10 +35,19 @@ interface Sale {
   created_at: string;
 }
 
+interface LaybyPayment {
+  id: string;
+  amount: number;
+  payment_method: string;
+  payment_date: string;
+  notes: string | null;
+}
+
 interface Props {
   sale: Sale;
   items: SaleItem[];
   initialInvoiceId?: string | null;
+  laybyPayments?: LaybyPayment[];
 }
 
 const STATUSES = ["quote", "confirmed", "paid", "completed", "refunded", "layby"];
@@ -59,7 +69,7 @@ function fmtCurrency(amount: number) {
   }).format(amount);
 }
 
-export default function SaleDetailClient({ sale, items, initialInvoiceId }: Props) {
+export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyPayments = [] }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showDelete, setShowDelete] = useState(false);
@@ -72,6 +82,15 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId }: Prop
   const [refundMethod, setRefundMethod] = useState("card");
   const [refundNotes, setRefundNotes] = useState("");
   const [refundError, setRefundError] = useState<string | null>(null);
+  // Layby payment state
+  const [showLaybyModal, setShowLaybyModal] = useState(false);
+  const [laybyAmount, setLaybyAmount] = useState("");
+  const [laybyMethod, setLaybyMethod] = useState("cash");
+  const [laybyNotes, setLaybyNotes] = useState("");
+  const [laybyDate, setLaybyDate] = useState(new Date().toISOString().split("T")[0]);
+  const [laybyError, setLaybyError] = useState<string | null>(null);
+  const [laybySuccess, setLaybySuccess] = useState<string | null>(null);
+  const [currentAmountPaid, setCurrentAmountPaid] = useState<number>(sale.amount_paid ?? 0);
 
   function handleStatusChange(newStatus: string) {
     startTransition(async () => {
@@ -136,6 +155,45 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId }: Prop
       } else if (result.passportId) {
         setPassportMsgs((prev) => ({ ...prev, [item.id]: `Passport created!` }));
         router.refresh();
+      }
+    });
+  }
+
+  function handleLaybyPayment() {
+    setLaybyError(null);
+    const amount = parseFloat(laybyAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setLaybyError("Enter a valid payment amount");
+      return;
+    }
+    const remaining = sale.total - currentAmountPaid;
+    if (amount > remaining + 0.01) {
+      setLaybyError(`Amount exceeds remaining balance of ${fmtCurrency(remaining)}`);
+      return;
+    }
+    startTransition(async () => {
+      const result = await recordLaybyPayment({
+        saleId: sale.id,
+        amount,
+        paymentMethod: laybyMethod,
+        notes: laybyNotes || undefined,
+        paymentDate: laybyDate,
+      });
+      if (result.error) {
+        setLaybyError(result.error);
+      } else {
+        const newPaid = result.newAmountPaid ?? currentAmountPaid + amount;
+        setCurrentAmountPaid(newPaid);
+        setLaybyAmount("");
+        setLaybyNotes("");
+        setShowLaybyModal(false);
+        if (result.fullyPaid) {
+          setLaybySuccess("Layby complete — payment received in full");
+        } else {
+          setLaybySuccess(`Payment of ${fmtCurrency(amount)} recorded successfully`);
+        }
+        router.refresh();
+        setTimeout(() => setLaybySuccess(null), 6000);
       }
     });
   }
@@ -269,6 +327,84 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId }: Prop
               </div>
             </div>
           </div>
+
+          {/* Layby Payments Panel */}
+          {(sale.status === "layby" || sale.payment_method === "layby") && (
+            <div className="bg-white border border-amber-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="px-5 py-4 border-b border-amber-200 bg-amber-50/50 flex items-center justify-between">
+                <h2 className="text-base font-semibold text-stone-900">Layby Payments</h2>
+                {sale.status === "layby" && (
+                  <button
+                    onClick={() => {
+                      setLaybyError(null);
+                      setLaybyAmount("");
+                      setLaybyNotes("");
+                      setLaybyDate(new Date().toISOString().split("T")[0]);
+                      setShowLaybyModal(true);
+                    }}
+                    className="text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    + Record Payment
+                  </button>
+                )}
+              </div>
+              <div className="px-5 py-4 space-y-4">
+                {/* Summary */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-stone-50 rounded-lg p-3 text-center">
+                    <p className="text-xs text-stone-500 mb-1">Total</p>
+                    <p className="text-sm font-semibold text-stone-900">{fmtCurrency(sale.total)}</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-3 text-center">
+                    <p className="text-xs text-green-600 mb-1">Paid</p>
+                    <p className="text-sm font-semibold text-green-700">{fmtCurrency(currentAmountPaid)}</p>
+                  </div>
+                  <div className="bg-amber-50 rounded-lg p-3 text-center">
+                    <p className="text-xs text-amber-600 mb-1">Remaining</p>
+                    <p className="text-sm font-semibold text-amber-700">{fmtCurrency(Math.max(0, sale.total - currentAmountPaid))}</p>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-2 bg-amber-500 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (currentAmountPaid / sale.total) * 100)}%` }}
+                  />
+                </div>
+
+                {/* Payment history */}
+                {laybyPayments.length > 0 ? (
+                  <div className="space-y-0 border border-stone-100 rounded-lg overflow-hidden">
+                    <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-2 bg-stone-50 border-b border-stone-100">
+                      Payment History
+                    </p>
+                    {laybyPayments.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between px-4 py-3 border-b border-stone-100 last:border-0">
+                        <div>
+                          <p className="text-sm font-medium text-stone-900">{fmtCurrency(p.amount)}</p>
+                          <p className="text-xs text-stone-400 capitalize">
+                            {p.payment_method} · {new Date(p.payment_date + "T12:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                          </p>
+                          {p.notes && <p className="text-xs text-stone-400 italic mt-0.5">{p.notes}</p>}
+                        </div>
+                        <span className="text-xs text-green-600 font-medium">✓</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-stone-400 text-center py-2">No follow-up payments yet</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Layby success message */}
+          {laybySuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 font-medium">
+              ✓ {laybySuccess}
+            </div>
+          )}
 
           {/* Notes */}
           {sale.notes && (
@@ -434,6 +570,111 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId }: Prop
           </div>
         </div>
       </div>
+
+      {/* Layby Payment Modal */}
+      {showLaybyModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="px-6 py-5 border-b border-stone-200 flex items-center justify-between">
+              <h3 className="font-semibold text-stone-900 text-lg">Record Layby Payment</h3>
+              <button onClick={() => setShowLaybyModal(false)} className="text-stone-400 hover:text-stone-900 text-xl">✕</button>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* Balance info */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-stone-600">Remaining balance</span>
+                  <span className="font-semibold text-amber-700">{fmtCurrency(Math.max(0, sale.total - currentAmountPaid))}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-stone-600">Total paid so far</span>
+                  <span className="font-medium text-stone-700">{fmtCurrency(currentAmountPaid)}</span>
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">Amount *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={sale.total - currentAmountPaid}
+                  value={laybyAmount}
+                  onChange={(e) => setLaybyAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setLaybyAmount((sale.total - currentAmountPaid).toFixed(2))}
+                  className="mt-1 text-xs text-[#8B7355] hover:underline"
+                >
+                  Pay in full ({fmtCurrency(Math.max(0, sale.total - currentAmountPaid))})
+                </button>
+              </div>
+
+              {/* Payment method */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">Payment Method *</label>
+                <select
+                  value={laybyMethod}
+                  onChange={(e) => setLaybyMethod(e.target.value)}
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="card">Card / EFTPOS</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">Payment Date</label>
+                <input
+                  type="date"
+                  value={laybyDate}
+                  onChange={(e) => setLaybyDate(e.target.value)}
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">Notes (optional)</label>
+                <input
+                  type="text"
+                  value={laybyNotes}
+                  onChange={(e) => setLaybyNotes(e.target.value)}
+                  placeholder="e.g. Cash payment received"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                />
+              </div>
+
+              {laybyError && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{laybyError}</p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleLaybyPayment}
+                  disabled={isPending}
+                  className="flex-1 py-3 bg-amber-600 text-white text-sm font-semibold rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+                >
+                  {isPending ? "Recording…" : "Record Payment"}
+                </button>
+                <button
+                  onClick={() => setShowLaybyModal(false)}
+                  className="flex-1 py-3 bg-stone-100 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Refund Modal */}
       {showRefundModal && (

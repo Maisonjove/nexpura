@@ -10,6 +10,7 @@ export interface Sale {
   status: string;
   payment_method: string | null;
   total: number;
+  amount_paid: number | null;
   sale_date: string;
   created_at: string;
 }
@@ -108,6 +109,9 @@ export default function SalesListClient({ sales }: Props) {
                   <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
                     Total
                   </th>
+                  <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
+                    Balance
+                  </th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -141,13 +145,31 @@ export default function SalesListClient({ sales }: Props) {
                     <td className="px-4 py-3 text-right text-sm font-semibold text-stone-900">
                       {fmtCurrency(sale.total)}
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      {sale.status === "layby" ? (
+                        <span className="text-sm font-semibold text-amber-700">
+                          {fmtCurrency(sale.total - (sale.amount_paid ?? 0))}
+                        </span>
+                      ) : (
+                        <span className="text-stone-300 text-sm">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/sales/${sale.id}`}
-                        className="text-xs text-[#8B7355] font-medium hover:underline"
-                      >
-                        View →
-                      </Link>
+                      {sale.status === "layby" ? (
+                        <Link
+                          href={`/sales/${sale.id}`}
+                          className="text-xs text-amber-600 font-medium hover:underline whitespace-nowrap"
+                        >
+                          Record Payment →
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/sales/${sale.id}`}
+                          className="text-xs text-[#8B7355] font-medium hover:underline"
+                        >
+                          View →
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))}

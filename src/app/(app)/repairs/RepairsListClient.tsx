@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, ArrowRight, Camera } from "lucide-react";
+import { Plus, ArrowRight, Camera, Bell } from "lucide-react";
 import CameraScannerModal from "@/components/CameraScannerModal";
+import { toast } from "sonner";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -72,6 +73,32 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
   const [, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState(stageFilter || "all");
   const [showCameraScanner, setShowCameraScanner] = useState(false);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [notifying, setNotifying] = useState(false);
+  const [notifyResult, setNotifyResult] = useState<{ notified: number; skipped: number } | null>(null);
+
+  const readyRepairs = repairs.filter(r => r.stage === "ready");
+
+  async function handleBulkNotify() {
+    setNotifying(true);
+    try {
+      const res = await fetch("/api/repair/notify-ready", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "repair" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed");
+      setNotifyResult(data);
+      toast.success(`${data.notified} customer${data.notified !== 1 ? "s" : ""} notified`);
+    } catch (err) {
+      toast.error("Failed to send notifications");
+      console.error(err);
+    } finally {
+      setNotifying(false);
+      setShowNotifyModal(false);
+    }
+  }
 
   const useSampleData = false; // Always use real data — show empty state when no repairs
 
@@ -101,6 +128,41 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
   };
 
   return (
+    <>
+      {/* Bulk Notify Modal */}
+      {showNotifyModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+            <h3 className="font-bold text-stone-900 text-lg mb-2">Notify Ready Customers?</h3>
+            <p className="text-sm text-stone-500 mb-6">
+              Send a &quot;ready for collection&quot; email to <strong>{readyRepairs.length}</strong> customer{readyRepairs.length !== 1 ? "s" : ""} with repairs in the <em>Ready</em> stage.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowNotifyModal(false)}
+                disabled={notifying}
+                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkNotify}
+                disabled={notifying}
+                className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                <Bell className="w-4 h-4" />
+                {notifying ? "Sending…" : `Notify ${readyRepairs.length} Customer${readyRepairs.length !== 1 ? "s" : ""}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {notifyResult && (
+        <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800 flex items-center justify-between">
+          <span>✅ {notifyResult.notified} customer{notifyResult.notified !== 1 ? "s" : ""} notified{notifyResult.skipped > 0 ? `, ${notifyResult.skipped} skipped (no email)` : ""}.</span>
+          <button onClick={() => setNotifyResult(null)} className="text-emerald-600 hover:text-emerald-800 text-xs">Dismiss</button>
+        </div>
+      )}
     <div className="space-y-6 max-w-[1400px]">
       {/* HEADER */}
       <div className="flex items-center justify-between">
@@ -114,9 +176,9 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
                     {repairs.filter(r => r.stage === "in_progress").length} In Progress
                   </Badge>
                 )}
-                {repairs.filter(r => r.stage === "ready").length > 0 && (
+                {readyRepairs.length > 0 && (
                   <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                    {repairs.filter(r => r.stage === "ready").length} Ready
+                    {readyRepairs.length} Ready
                   </Badge>
                 )}
               </>
@@ -124,6 +186,16 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {readyRepairs.length > 0 && (
+            <button
+              onClick={() => setShowNotifyModal(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3 border border-emerald-300 bg-emerald-50 rounded-md text-sm text-emerald-700 hover:bg-emerald-100 transition-colors font-medium"
+              title={`Notify ${readyRepairs.length} ready customer${readyRepairs.length !== 1 ? "s" : ""}`}
+            >
+              <Bell className="w-4 h-4" />
+              Notify All Ready
+            </button>
+          )}
           <button
             onClick={() => setShowCameraScanner(true)}
             className="inline-flex items-center gap-1.5 h-9 px-3 border border-stone-200 rounded-md text-sm text-stone-600 hover:bg-stone-50 transition-colors"
@@ -243,5 +315,6 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
         />
       )}
     </div>
+    </>
   );
 }

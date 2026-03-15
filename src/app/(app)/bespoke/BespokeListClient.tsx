@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, ArrowRight } from "lucide-react";
+import { Plus, ArrowRight, Bell } from "lucide-react";
+import { toast } from "sonner";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,32 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
   const pathname = usePathname();
   const [, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState(stageFilter || "all");
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [notifying, setNotifying] = useState(false);
+  const [notifyResult, setNotifyResult] = useState<{ notified: number; skipped: number } | null>(null);
+
+  const readyJobs = jobs.filter(j => j.stage === "ready");
+
+  async function handleBulkNotify() {
+    setNotifying(true);
+    try {
+      const res = await fetch("/api/repair/notify-ready", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "bespoke" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed");
+      setNotifyResult(data);
+      toast.success(`${data.notified} customer${data.notified !== 1 ? "s" : ""} notified`);
+    } catch (err) {
+      toast.error("Failed to send notifications");
+      console.error(err);
+    } finally {
+      setNotifying(false);
+      setShowNotifyModal(false);
+    }
+  }
 
   function updateParams(updates: Record<string, string>) {
     const params = new URLSearchParams();
@@ -95,6 +122,41 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
   };
 
   return (
+    <>
+      {/* Bulk Notify Modal */}
+      {showNotifyModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+            <h3 className="font-bold text-stone-900 text-lg mb-2">Notify Ready Customers?</h3>
+            <p className="text-sm text-stone-500 mb-6">
+              Send a &quot;ready for collection&quot; email to <strong>{readyJobs.length}</strong> customer{readyJobs.length !== 1 ? "s" : ""} with bespoke jobs in the <em>Ready</em> stage.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowNotifyModal(false)}
+                disabled={notifying}
+                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkNotify}
+                disabled={notifying}
+                className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                <Bell className="w-4 h-4" />
+                {notifying ? "Sending…" : `Notify ${readyJobs.length} Customer${readyJobs.length !== 1 ? "s" : ""}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {notifyResult && (
+        <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800 flex items-center justify-between">
+          <span>✅ {notifyResult.notified} customer{notifyResult.notified !== 1 ? "s" : ""} notified{notifyResult.skipped > 0 ? `, ${notifyResult.skipped} skipped (no email)` : ""}.</span>
+          <button onClick={() => setNotifyResult(null)} className="text-emerald-600 hover:text-emerald-800 text-xs">Dismiss</button>
+        </div>
+      )}
     <div className="space-y-6 max-w-[1400px]">
       {/* HEADER */}
       <div className="flex items-center justify-between">
@@ -108,18 +170,30 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
                     {jobs.filter(j => !["collected", "cancelled"].includes(j.stage)).length} Active
                   </Badge>
                 )}
-                {jobs.filter(j => j.stage === "ready").length > 0 && (
+                {readyJobs.length > 0 && (
                   <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                    {jobs.filter(j => j.stage === "ready").length} Ready
+                    {readyJobs.length} Ready
                   </Badge>
                 )}
               </>
             )}
           </div>
         </div>
-        <Link href="/bespoke/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-10 px-4 py-2">
-          <Plus className="w-4 h-4 mr-2" /> New Job
-        </Link>
+        <div className="flex items-center gap-2">
+          {readyJobs.length > 0 && (
+            <button
+              onClick={() => setShowNotifyModal(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3 border border-emerald-300 bg-emerald-50 rounded-md text-sm text-emerald-700 hover:bg-emerald-100 transition-colors font-medium"
+              title={`Notify ${readyJobs.length} ready customer${readyJobs.length !== 1 ? "s" : ""}`}
+            >
+              <Bell className="w-4 h-4" />
+              Notify All Ready
+            </button>
+          )}
+          <Link href="/bespoke/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-10 px-4 py-2">
+            <Plus className="w-4 h-4 mr-2" /> New Job
+          </Link>
+        </div>
       </div>
 
       {/* STAGE TABS */}

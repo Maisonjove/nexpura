@@ -47,6 +47,15 @@ export default async function POSPage() {
 
   const taxRate = settings?.tax_rate ?? 0.1;
 
+  // Fetch tenant business name for receipt branding
+  const { data: tenantData } = await admin
+    .from("tenants")
+    .select("name")
+    .eq("id", tenantId)
+    .maybeSingle();
+
+  const businessName = tenantData?.name ?? "Our Store";
+
   return (
     <POSClient
       tenantId={tenantId}
@@ -54,6 +63,7 @@ export default async function POSPage() {
       inventoryItems={inventoryItems ?? []}
       customers={customers ?? []}
       taxRate={taxRate}
+      businessName={businessName}
     />
   );
 }

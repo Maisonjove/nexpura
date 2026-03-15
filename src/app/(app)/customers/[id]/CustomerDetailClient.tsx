@@ -100,7 +100,28 @@ type Passport = {
   created_at: string;
 };
 
-const TABS = ["Overview", "Repairs", "Bespoke", "Quotes", "Invoices", "Passports", "Store Credit", "Notes"] as const;
+type CustomerCommunication = {
+  id: string;
+  type: string;
+  subject: string | null;
+  sent_at: string;
+  sent_by: string | null;
+  reference_type: string | null;
+  reference_id: string | null;
+};
+
+type CustomerSale = {
+  id: string;
+  sale_number: string;
+  status: string;
+  payment_method: string | null;
+  total: number;
+  amount_paid: number | null;
+  sale_date: string | null;
+  created_at: string;
+};
+
+const TABS = ["Overview", "Repairs", "Bespoke", "Quotes", "Invoices", "Sales", "Passports", "Store Credit", "Communications", "Notes"] as const;
 type Tab = (typeof TABS)[number];
 
 function fmt(n: number) {
@@ -124,6 +145,8 @@ export default function CustomerDetailClient({
   quotes,
   invoices,
   passports,
+  sales = [],
+  communications,
   lifetimeSpend,
   lastVisit,
 }: {
@@ -134,6 +157,8 @@ export default function CustomerDetailClient({
   quotes: Quote[];
   invoices: Invoice[];
   passports: Passport[];
+  sales?: CustomerSale[];
+  communications: CustomerCommunication[];
   lifetimeSpend: number;
   lastVisit: string | null;
 }) {
@@ -277,6 +302,9 @@ export default function CustomerDetailClient({
             )}
             {tab === "Invoices" && invoices.length > 0 && (
               <span className="ml-1.5 text-[10px] bg-stone-200 text-stone-600 rounded-full px-1.5 py-0.5">{invoices.length}</span>
+            )}
+            {tab === "Sales" && sales.length > 0 && (
+              <span className="ml-1.5 text-[10px] bg-stone-200 text-stone-600 rounded-full px-1.5 py-0.5">{sales.length}</span>
             )}
           </button>
         ))}
@@ -480,6 +508,60 @@ export default function CustomerDetailClient({
           </div>
         )}
 
+        {/* ── Sales ────────────────────────────────────────────── */}
+        {activeTab === "Sales" && (
+          <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-stone-100 flex items-center justify-between">
+              <h2 className="font-bold text-stone-900">Sales</h2>
+              <Link href={`/sales/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Sale</Link>
+            </div>
+            {sales.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🛍️</div>
+                <p className="text-stone-500 font-medium">No sales yet</p>
+                <p className="text-stone-400 text-sm mt-1">Sales for this customer will appear here.</p>
+                <Link href={`/sales/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Create a sale →</Link>
+              </div>
+            ) : (
+              <div className="divide-y divide-stone-100">
+                {sales.map((s) => {
+                  const isLayby = s.status === "layby";
+                  const remaining = isLayby ? Math.max(0, s.total - (s.amount_paid ?? 0)) : 0;
+                  return (
+                    <Link key={s.id} href={`/sales/${s.id}`} className="flex items-center justify-between px-6 py-4 hover:bg-stone-50 transition-colors">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-stone-900 font-mono">{s.sale_number}</p>
+                          {isLayby && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                              Layby
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-stone-400 mt-0.5">
+                          {fmtDate(s.sale_date || s.created_at)}
+                          {isLayby && remaining > 0 && (
+                            <span className="text-amber-600 ml-1">· {fmt(remaining)} remaining</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-stone-700">{fmt(s.total)}</span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
+                          s.status === "paid" ? "bg-green-50 text-green-700" :
+                          s.status === "layby" ? "bg-amber-50 text-amber-700" :
+                          s.status === "refunded" ? "bg-red-50 text-red-600" :
+                          "bg-stone-100 text-stone-600"
+                        }`}>{s.status}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Passports ─────────────────────────────────────────── */}
         {activeTab === "Passports" && (
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
@@ -559,6 +641,69 @@ export default function CustomerDetailClient({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── Communications ────────────────────────────────────── */}
+        {activeTab === "Communications" && (
+          <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-stone-100">
+              <h2 className="font-bold text-stone-900">Communication History</h2>
+              <p className="text-xs text-stone-400 mt-1">All outbound emails and notifications sent to this customer</p>
+            </div>
+            {communications.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📬</div>
+                <p className="text-stone-500 font-medium">No communications yet</p>
+                <p className="text-stone-400 text-sm mt-1">Emails and notifications sent to this customer will appear here.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-stone-100">
+                {communications.map((comm) => {
+                  const typeLabels: Record<string, string> = {
+                    email_receipt: "Email Receipt",
+                    invoice: "Invoice",
+                    quote: "Quote",
+                    repair_ready: "Repair Ready",
+                    stage_update: "Stage Update",
+                    whatsapp: "WhatsApp",
+                  };
+                  const typeIcons: Record<string, string> = {
+                    email_receipt: "🧾",
+                    invoice: "📄",
+                    quote: "📋",
+                    repair_ready: "✅",
+                    stage_update: "🔄",
+                    whatsapp: "💬",
+                  };
+                  return (
+                    <div key={comm.id} className="flex items-start gap-4 px-6 py-4 hover:bg-stone-50 transition-colors">
+                      <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-lg flex-shrink-0">
+                        {typeIcons[comm.type] ?? "📧"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold uppercase tracking-wide text-[#8B7355]">
+                            {typeLabels[comm.type] ?? comm.type.replace(/_/g, " ")}
+                          </span>
+                          {comm.reference_type && (
+                            <span className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">
+                              · {comm.reference_type.replace(/_/g, " ")}
+                            </span>
+                          )}
+                        </div>
+                        {comm.subject && (
+                          <p className="text-sm font-medium text-stone-900 mt-0.5 truncate">{comm.subject}</p>
+                        )}
+                        <p className="text-xs text-stone-400 mt-1">
+                          {fmtDate(comm.sent_at)} · {new Date(comm.sent_at).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

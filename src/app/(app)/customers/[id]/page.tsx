@@ -41,6 +41,7 @@ export default async function CustomerDetailPage({
     { data: quotes },
     { data: invoices },
     { data: passports },
+    { data: sales },
   ] = await Promise.all([
     supabase
       .from("customer_store_credit_history")
@@ -87,7 +88,29 @@ export default async function CustomerDetailPage({
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(20),
+    admin
+      .from("sales")
+      .select("id, sale_number, status, payment_method, total, amount_paid, sale_date, created_at")
+      .eq("customer_id", id)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
+
+  // Fetch communication history (graceful fallback if table doesn't exist yet)
+  let communications: Array<{ id: string; type: string; subject: string | null; sent_at: string; sent_by: string | null; reference_type: string | null; reference_id: string | null }> = [];
+  try {
+    const { data: commsData } = await admin
+      .from("customer_communications")
+      .select("id, type, subject, sent_at, sent_by, reference_type, reference_id")
+      .eq("customer_id", id)
+      .eq("tenant_id", tenantId)
+      .order("sent_at", { ascending: false })
+      .limit(50);
+    communications = commsData ?? [];
+  } catch {
+    // table may not exist yet — silently ignore
+  }
 
   // Lifetime spend = sum of paid invoices
   const lifetimeSpend = (invoices ?? [])
@@ -110,6 +133,8 @@ export default async function CustomerDetailPage({
       quotes={quotes || []}
       invoices={invoices || []}
       passports={passports || []}
+      sales={sales || []}
+      communications={communications}
       lifetimeSpend={lifetimeSpend}
       lastVisit={lastVisit}
     />

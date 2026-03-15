@@ -51,6 +51,13 @@ type ReadyItem = {
   type: "repair" | "bespoke";
 };
 
+type TeamTaskSummary = {
+  assigneeId: string;
+  assigneeName: string;
+  taskCount: number;
+  overdueCount: number;
+};
+
 interface DashboardClientProps {
   firstName: string;
   tenantName: string | null;
@@ -71,6 +78,8 @@ interface DashboardClientProps {
     status: string;
     due_date: string | null;
   }[];
+  teamTaskSummary: TeamTaskSummary[];
+  isManager: boolean;
   activeRepairs: ActiveRepair[];
   activeBespokeJobs: ActiveBespokeJob[];
   currency: string;
@@ -127,6 +136,8 @@ export default function DashboardClient({
   readyForPickup,
   recentActivity,
   myTasks,
+  teamTaskSummary,
+  isManager,
   activeRepairs,
   activeBespokeJobs,
   currency,
@@ -163,36 +174,69 @@ export default function DashboardClient({
       </div>
 
       {/* ── Tasks Due Today ──────────────────────────────────────────────────── */}
-      {myTasks.length > 0 ? (
-        <div className="bg-[#FAF9F6] border border-[#8B7355]/20 rounded-xl p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
+      {(myTasks.length > 0 || (isManager && teamTaskSummary.length > 0)) ? (
+        <div className="bg-[#FAF9F6] border border-[#8B7355]/20 rounded-xl p-6 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
             <h2 className="text-sm font-bold text-stone-800 uppercase tracking-widest flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#8B7355] animate-pulse" />
-              Tasks Due Today ({myTasks.length})
+              {isManager ? "Tasks Due Today" : `Tasks Due Today (${myTasks.length})`}
             </h2>
             <a href="/tasks" className="text-xs font-medium text-[#8B7355] hover:underline">View all tasks →</a>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {myTasks.map(task => (
-              <div key={task.id} className="bg-white border border-stone-200 p-4 rounded-lg flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                      task.priority === 'urgent' ? 'bg-red-100 text-red-700' :
-                      task.priority === 'high' ? 'bg-amber-100 text-amber-700' :
-                      'bg-stone-100 text-stone-600'
-                    }`}>
-                      {task.priority}
-                    </span>
+
+          {/* My tasks */}
+          {myTasks.length > 0 && (
+            <>
+              {isManager && (
+                <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest">My Tasks ({myTasks.length})</p>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {myTasks.map(task => (
+                  <div key={task.id} className="bg-white border border-stone-200 p-4 rounded-lg flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                          task.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                          task.priority === 'high' ? 'bg-amber-100 text-amber-700' :
+                          'bg-stone-100 text-stone-600'
+                        }`}>
+                          {task.priority}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-stone-800">{task.title}</p>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <a href={`/tasks`} className="text-[11px] font-medium text-stone-400 hover:text-[#8B7355]">Update →</a>
+                    </div>
                   </div>
-                  <p className="text-sm font-semibold text-stone-800">{task.title}</p>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <a href={`/tasks`} className="text-[11px] font-medium text-stone-400 hover:text-[#8B7355]">Update →</a>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
+
+          {/* Team tasks summary — managers/owners only */}
+          {isManager && teamTaskSummary.length > 0 && (
+            <div className="border-t border-[#8B7355]/10 pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest">Team Tasks</p>
+                <a href="/tasks" className="text-xs font-medium text-[#8B7355] hover:underline">View All Team Tasks →</a>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {teamTaskSummary.map((member) => (
+                  <div
+                    key={member.assigneeId}
+                    className={`rounded-lg p-3 border ${member.overdueCount > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-stone-200'}`}
+                  >
+                    <p className="text-xs font-semibold text-stone-800 truncate">{member.assigneeName}</p>
+                    <p className="text-lg font-bold text-stone-900 mt-0.5">{member.taskCount}</p>
+                    <p className={`text-[10px] font-medium ${member.overdueCount > 0 ? 'text-red-600' : 'text-stone-400'}`}>
+                      {member.overdueCount > 0 ? `${member.overdueCount} overdue` : 'task due today'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white border border-stone-200 rounded-xl p-5 flex items-center gap-3 shadow-sm">

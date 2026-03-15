@@ -15,14 +15,59 @@ interface Props {
   quote: Quote;
 }
 
+type ConfirmAction = "invoice" | "bespoke" | "repair" | "email" | null;
+
+function ConfirmModal({
+  open,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  open: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading?: boolean;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+        <h3 className="font-bold text-stone-900 text-lg mb-2">{title}</h3>
+        <p className="text-sm text-stone-500 mb-6">{message}</p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+          >
+            {loading ? "Processing…" : "Confirm"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function QuoteDetailClient({ quote }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
   async function handleConvert() {
-    if (!confirm("Convert this quote to an invoice?")) return;
     setLoading(true);
+    setConfirmAction(null);
     try {
       const invoiceId = await convertQuoteToInvoice(quote.id);
       router.push(`/invoices/${invoiceId}`);
@@ -35,8 +80,8 @@ export default function QuoteDetailClient({ quote }: Props) {
   }
 
   async function handleConvertToBespoke() {
-    if (!confirm("Convert this quote to a new Bespoke Job?")) return;
     setLoading(true);
+    setConfirmAction(null);
     try {
       const jobId = await convertQuoteToBespoke(quote.id);
       toast.success("Converted to Bespoke Job successfully!");
@@ -50,8 +95,8 @@ export default function QuoteDetailClient({ quote }: Props) {
   }
 
   async function handleConvertToRepair() {
-    if (!confirm("Convert this quote to a new Repair Job?")) return;
     setLoading(true);
+    setConfirmAction(null);
     try {
       const repairId = await convertQuoteToRepair(quote.id);
       toast.success("Converted to Repair Job successfully!");
@@ -64,7 +109,58 @@ export default function QuoteDetailClient({ quote }: Props) {
     }
   }
 
+  async function handleEmailQuote() {
+    setEmailSending(true);
+    setConfirmAction(null);
+    try {
+      const result = await emailQuote(quote.id);
+      if (result.success) {
+        toast.success("Quote emailed successfully!");
+      } else {
+        toast.error(`Failed to send: ${result.error}`);
+      }
+    } catch {
+      toast.error("Failed to send quote email.");
+    } finally {
+      setEmailSending(false);
+    }
+  }
+
+  const confirmConfig: Record<NonNullable<ConfirmAction>, { title: string; message: string; onConfirm: () => void }> = {
+    invoice: {
+      title: "Convert to Invoice?",
+      message: "This will convert the quote to a new invoice. The quote will be marked as converted.",
+      onConfirm: handleConvert,
+    },
+    bespoke: {
+      title: "Convert to Bespoke Job?",
+      message: "This will create a new Bespoke Job from this quote. The quote will be marked as converted.",
+      onConfirm: handleConvertToBespoke,
+    },
+    repair: {
+      title: "Convert to Repair Job?",
+      message: "This will create a new Repair Job from this quote. The quote will be marked as converted.",
+      onConfirm: handleConvertToRepair,
+    },
+    email: {
+      title: "Email Quote?",
+      message: `Send this quote to ${quote.customers?.email ?? "the customer"}?`,
+      onConfirm: handleEmailQuote,
+    },
+  };
+
   return (
+    <>
+      {confirmAction && (
+        <ConfirmModal
+          open={true}
+          title={confirmConfig[confirmAction].title}
+          message={confirmConfig[confirmAction].message}
+          onConfirm={confirmConfig[confirmAction].onConfirm}
+          onCancel={() => setConfirmAction(null)}
+          loading={loading || emailSending}
+        />
+      )}
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <Link href="/quotes" className="flex items-center gap-2 text-stone-500 hover:text-stone-900 transition-colors">
@@ -73,25 +169,12 @@ export default function QuoteDetailClient({ quote }: Props) {
         </Link>
         <div className="flex gap-2">
           <button 
-            onClick={async () => {
+            onClick={() => {
               if (!quote.customers?.email) {
                 toast.error("No customer email on file.");
                 return;
               }
-              if (!confirm(`Email quote to ${quote.customers.email}?`)) return;
-              setEmailSending(true);
-              try {
-                const result = await emailQuote(quote.id);
-                if (result.success) {
-                  toast.success("Quote emailed successfully!");
-                } else {
-                  toast.error(`Failed to send: ${result.error}`);
-                }
-              } catch {
-                toast.error("Failed to send quote email.");
-              } finally {
-                setEmailSending(false);
-              }
+              setConfirmAction("email");
             }}
             disabled={emailSending}
             className="flex items-center gap-2 px-4 py-2 border border-stone-300 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
@@ -111,7 +194,7 @@ export default function QuoteDetailClient({ quote }: Props) {
           {quote.status !== "converted" && (
             <div className="flex gap-2">
               <button
-                onClick={handleConvertToRepair}
+                onClick={() => setConfirmAction("repair")}
                 disabled={loading}
                 className="flex items-center gap-2 border border-stone-300 text-stone-700 px-4 py-2 rounded-lg hover:bg-stone-50 transition-all font-medium disabled:opacity-50"
               >
@@ -119,7 +202,7 @@ export default function QuoteDetailClient({ quote }: Props) {
                 {loading ? "..." : "Convert to Repair"}
               </button>
               <button
-                onClick={handleConvertToBespoke}
+                onClick={() => setConfirmAction("bespoke")}
                 disabled={loading}
                 className="flex items-center gap-2 border-2 border-stone-900 text-stone-900 px-4 py-2 rounded-lg hover:bg-stone-900 hover:text-white transition-all font-medium disabled:opacity-50"
               >
@@ -127,7 +210,7 @@ export default function QuoteDetailClient({ quote }: Props) {
                 {loading ? "..." : "Convert to Bespoke"}
               </button>
               <button
-                onClick={handleConvert}
+                onClick={() => setConfirmAction("invoice")}
                 disabled={loading}
                 className="flex items-center gap-2 bg-[#8B7355] text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium shadow-sm disabled:opacity-50"
               >
@@ -221,5 +304,6 @@ export default function QuoteDetailClient({ quote }: Props) {
         </div>
       </div>
     </div>
+    </>
   );
 }

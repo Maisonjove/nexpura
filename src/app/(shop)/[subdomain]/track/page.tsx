@@ -36,23 +36,23 @@ export default async function TrackRepairPage({ params }: Props) {
     <div className="min-h-screen bg-stone-50" style={{ fontFamily: `'${font}', sans-serif` }}>
       {/* Nav */}
       <nav style={{ backgroundColor: primaryColor }} className="px-6 py-4 flex items-center justify-between">
-        <a href={`/store/${subdomain}`} className="text-white font-bold text-lg">
+        <a href={`/${subdomain}`} className="text-white font-bold text-lg">
           {businessName}
         </a>
         <div className="flex items-center gap-4 text-sm text-white/80">
-          <a href={`/store/${subdomain}/catalogue`} className="hover:text-white transition-colors">
+          <a href={`/${subdomain}/catalogue`} className="hover:text-white transition-colors">
             Catalogue
           </a>
-          <a href={`/store/${subdomain}/repairs`} className="hover:text-white transition-colors">
+          <a href={`/${subdomain}/repairs`} className="hover:text-white transition-colors">
             Repairs
           </a>
-          <a href={`/store/${subdomain}/appointments`} className="hover:text-white transition-colors">
+          <a href={`/${subdomain}/appointments`} className="hover:text-white transition-colors">
             Book Appointment
           </a>
-          <a href={`/store/${subdomain}/track`} className="text-white font-medium">
+          <a href={`/${subdomain}/track`} className="text-white font-medium">
             Track Repair
           </a>
-          <a href={`/store/${subdomain}/enquiry`} className="hover:text-white transition-colors">
+          <a href={`/${subdomain}/enquiry`} className="hover:text-white transition-colors">
             Contact
           </a>
         </div>

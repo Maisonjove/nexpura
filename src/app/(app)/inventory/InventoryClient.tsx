@@ -53,16 +53,7 @@ interface InventoryClientProps {
   canViewCost: boolean;
 }
 
-// ─── Sample data ──────────────────────────────────────────────────────────────
 
-const SAMPLE_ITEMS: InventoryItem[] = [
-  { id: "s1", sku: "NX-RNG-001", name: "Diamond Solitaire Ring", item_type: "jewellery", jewellery_type: "Rings", category_id: null, metal_type: "18k White Gold", stone_type: "Round Diamond", metal_weight_grams: null, barcode_value: "NX-HQ-RNG001", retail_price: 8500, cost_price: 4200, quantity: 1, low_stock_threshold: 1, is_featured: true, status: "active", primary_image: null, stock_categories: { name: "Rings" } },
-  { id: "s2", sku: "NX-BRC-002", name: "Yellow Gold Tennis Bracelet", item_type: "jewellery", jewellery_type: "Bracelets", category_id: null, metal_type: "18k Yellow Gold", stone_type: "Natural Diamond", metal_weight_grams: null, barcode_value: "NX-HQ-BRC002", retail_price: 12400, cost_price: 6800, quantity: 1, low_stock_threshold: 1, is_featured: false, status: "active", primary_image: null, stock_categories: { name: "Bracelets" } },
-  { id: "s3", sku: "NX-PND-003", name: "Sapphire Halo Pendant", item_type: "jewellery", jewellery_type: "Pendants", category_id: null, metal_type: "Platinum", stone_type: "Blue Sapphire", metal_weight_grams: null, barcode_value: "NX-HQ-PND003", retail_price: 6200, cost_price: 3100, quantity: 2, low_stock_threshold: 1, is_featured: false, status: "active", primary_image: null, stock_categories: { name: "Pendants" } },
-  { id: "s4", sku: "NX-RNG-004", name: "Oval Lab Diamond Ring", item_type: "jewellery", jewellery_type: "Rings", category_id: null, metal_type: "18k Rose Gold", stone_type: "Lab Diamond", metal_weight_grams: null, barcode_value: "NX-HQ-RNG004", retail_price: 5800, cost_price: 2400, quantity: 0, low_stock_threshold: 1, is_featured: false, status: "active", primary_image: null, stock_categories: { name: "Rings" } },
-  { id: "s5", sku: "NX-EAR-005", name: "Diamond Stud Earrings", item_type: "jewellery", jewellery_type: "Earrings", category_id: null, metal_type: "18k White Gold", stone_type: "Round Diamond", metal_weight_grams: null, barcode_value: "NX-HQ-EAR005", retail_price: 3200, cost_price: 1500, quantity: 3, low_stock_threshold: 2, is_featured: true, status: "active", primary_image: null, stock_categories: { name: "Earrings" } },
-  { id: "s6", sku: "NX-WTC-006", name: "Ladies Diamond Watch", item_type: "jewellery", jewellery_type: "Watches", category_id: null, metal_type: "18k White Gold", stone_type: "Round Diamond", metal_weight_grams: null, barcode_value: "NX-HQ-WTC006", retail_price: 18000, cost_price: 9500, quantity: 1, low_stock_threshold: 2, is_featured: false, status: "active", primary_image: null, stock_categories: { name: "Watches" } },
-];
 
 const DiamondPlaceholder = () => (
   <div className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center text-stone-300">
@@ -92,10 +83,7 @@ export default function InventoryClient({
   const [bulkAction, setBulkAction] = useState("");
   const [showCameraScanner, setShowCameraScanner] = useState(false);
 
-  const useSampleData = items.length === 0;
-
   const filtered = useMemo(() => {
-    if (useSampleData) return SAMPLE_ITEMS;
     return items.filter((item) => {
       const q = search.toLowerCase();
       if (q && !item.name.toLowerCase().includes(q) && !(item.sku?.toLowerCase() ?? "").includes(q) && !(item.barcode_value?.toLowerCase() ?? "").includes(q)) return false;
@@ -110,7 +98,7 @@ export default function InventoryClient({
       }
       return true;
     });
-  }, [items, useSampleData, search, filterCategory, filterMetal, filterStone, filterStatus]);
+  }, [items, search, filterCategory, filterMetal, filterStone, filterStatus]);
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -121,7 +109,6 @@ export default function InventoryClient({
   }
 
   function toggleAll() {
-    if (useSampleData) return;
     if (selectedIds.size === filtered.length) {
       setSelectedIds(new Set());
     } else {
@@ -129,7 +116,7 @@ export default function InventoryClient({
     }
   }
 
-  const selectedItems = (useSampleData ? [] : items)
+  const selectedItems = items
     .filter((i) => selectedIds.has(i.id))
     .map((i) => ({
       id: i.id,
@@ -143,7 +130,7 @@ export default function InventoryClient({
     }));
 
   function exportLowStockCSV() {
-    const lowStock = (useSampleData ? SAMPLE_ITEMS : items).filter((item) => {
+    const lowStock = items.filter((item) => {
       const t = item.low_stock_threshold ?? 1;
       return item.quantity <= t;
     });
@@ -170,7 +157,7 @@ export default function InventoryClient({
   }
 
   function exportAllCSV() {
-    const allItems = useSampleData ? SAMPLE_ITEMS : filtered;
+    const allItems = filtered;
     const rows = [
       ["SKU", "Name", "Type", "Metal", "Stone", "Quantity", "Cost Price", "Retail Price", "Status"],
       ...allItems.map((i) => [
@@ -275,7 +262,7 @@ export default function InventoryClient({
       </div>
 
       {/* BULK ACTIONS BAR */}
-      {selectedIds.size > 0 && !useSampleData && (
+      {selectedIds.size > 0 && (
         <div className="bg-[#8B7355]/10 border border-[#8B7355]/20 rounded-xl px-4 py-3 flex items-center gap-4">
           <span className="text-sm font-medium text-[#8B7355]">{selectedIds.size} item{selectedIds.size > 1 ? "s" : ""} selected</span>
           <div className="flex items-center gap-2 ml-auto">
@@ -354,86 +341,113 @@ export default function InventoryClient({
       </div>
 
       {/* TABLE */}
-      <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-stone-200">
-              <TableHead className="w-12 text-center">
-                <Checkbox 
-                  checked={!useSampleData && selectedIds.size === filtered.length && filtered.length > 0} 
-                  onCheckedChange={toggleAll}
-                  className="border-stone-300"
-                />
-              </TableHead>
-              <TableHead className="w-16"></TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Name & SKU</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Metal & Stone</TableHead>
-              {canViewCost && <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-right">Cost</TableHead>}
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-right">Price</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-center">Stock</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Status</TableHead>
-              <TableHead className="text-right"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(useSampleData ? SAMPLE_ITEMS : filtered).map((item) => (
-              <TableRow key={item.id} className="hover:bg-stone-50/80 border-stone-100">
-                <TableCell className="text-center">
+      {items.length === 0 ? (
+        <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
+          <div className="p-16 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
+              <Diamond className="w-8 h-8 text-[#8B7355]" />
+            </div>
+            <h3 className="font-semibold text-lg text-stone-900">No inventory yet</h3>
+            <p className="text-stone-500 mt-1 text-sm">Add your first item to start tracking stock.</p>
+            <Link
+              href="/inventory/new"
+              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add your first item →
+            </Link>
+          </div>
+        </Card>
+      ) : (
+        <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent border-stone-200">
+                <TableHead className="w-12 text-center">
                   <Checkbox 
-                    checked={selectedIds.has(item.id)} 
-                    onCheckedChange={() => toggleSelect(item.id)}
+                    checked={selectedIds.size === filtered.length && filtered.length > 0} 
+                    onCheckedChange={toggleAll}
                     className="border-stone-300"
                   />
-                </TableCell>
-                <TableCell>
-                  {item.primary_image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.primary_image} alt={item.name} className="w-9 h-9 rounded-lg object-cover" />
-                  ) : (
-                    <DiamondPlaceholder />
-                  )}
-                </TableCell>
-                <TableCell>
-                  <p className="font-medium text-sm text-stone-900">{item.name}</p>
-                  <p className="text-xs text-stone-400 mt-0.5">{item.sku || "—"}</p>
-                </TableCell>
-                <TableCell>
-                  <p className="text-sm text-stone-700">{item.metal_type || "—"}</p>
-                  <p className="text-xs text-stone-400 mt-0.5">{item.stone_type || "—"}</p>
-                </TableCell>
-                {canViewCost && (
-                  <TableCell className="text-right text-sm text-stone-500">
-                    ${item.cost_price?.toLocaleString() || "—"}
-                  </TableCell>
-                )}
-                <TableCell className="text-right text-sm font-medium text-stone-900">
-                  ${item.retail_price.toLocaleString()}
-                </TableCell>
-                <TableCell className="text-center text-sm text-stone-700">
-                  {item.quantity}
-                </TableCell>
-                <TableCell>
-                  {getStatusBadge(item.quantity, item.low_stock_threshold)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <button
-                      onClick={() => setPrintItem(item)}
-                      title="Print Stock Tag"
-                      className="inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-amber-50 h-8 text-stone-400 hover:text-[#8B7355] px-2 text-sm"
-                    >
-                      <Printer className="w-4 h-4" />
-                    </button>
-                    <Link href={`/inventory/${item.id}`} className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors hover:bg-stone-100 h-8 text-stone-500 hover:text-stone-900 px-2 text-sm">
-                      <Edit className="w-4 h-4 mr-1" /> Edit
-                    </Link>
-                  </div>
-                </TableCell>
+                </TableHead>
+                <TableHead className="w-16"></TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Name & SKU</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Metal & Stone</TableHead>
+                {canViewCost && <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-right">Cost</TableHead>}
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-right">Price</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-center">Stock</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Status</TableHead>
+                <TableHead className="text-right"></TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <td colSpan={canViewCost ? 9 : 8} className="px-5 py-10 text-center text-sm text-stone-400">
+                    No items match your filters.
+                  </td>
+                </TableRow>
+              ) : (
+                filtered.map((item) => (
+                  <TableRow key={item.id} className="hover:bg-stone-50/80 border-stone-100">
+                    <TableCell className="text-center">
+                      <Checkbox 
+                        checked={selectedIds.has(item.id)} 
+                        onCheckedChange={() => toggleSelect(item.id)}
+                        className="border-stone-300"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {item.primary_image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.primary_image} alt={item.name} className="w-9 h-9 rounded-lg object-cover" />
+                      ) : (
+                        <DiamondPlaceholder />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium text-sm text-stone-900">{item.name}</p>
+                      <p className="text-xs text-stone-400 mt-0.5">{item.sku || "—"}</p>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm text-stone-700">{item.metal_type || "—"}</p>
+                      <p className="text-xs text-stone-400 mt-0.5">{item.stone_type || "—"}</p>
+                    </TableCell>
+                    {canViewCost && (
+                      <TableCell className="text-right text-sm text-stone-500">
+                        ${item.cost_price?.toLocaleString() || "—"}
+                      </TableCell>
+                    )}
+                    <TableCell className="text-right text-sm font-medium text-stone-900">
+                      ${item.retail_price.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-center text-sm text-stone-700">
+                      {item.quantity}
+                    </TableCell>
+                    <TableCell>
+                      {getStatusBadge(item.quantity, item.low_stock_threshold)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setPrintItem(item)}
+                          title="Print Stock Tag"
+                          className="inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-amber-50 h-8 text-stone-400 hover:text-[#8B7355] px-2 text-sm"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
+                        <Link href={`/inventory/${item.id}`} className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors hover:bg-stone-100 h-8 text-stone-500 hover:text-stone-900 px-2 text-sm">
+                          <Edit className="w-4 h-4 mr-1" /> Edit
+                        </Link>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
 
       {/* Camera Scanner Modal */}
       {showCameraScanner && (
@@ -441,16 +455,11 @@ export default function InventoryClient({
           title="Scan Item Barcode"
           onScan={(barcode) => {
             // Find matching item by barcode_value or SKU
-            const allItems = useSampleData ? SAMPLE_ITEMS : items;
-            const found = allItems.find(
+            const found = items.find(
               (i) => i.barcode_value === barcode || i.sku === barcode
             );
             if (found) {
-              if (useSampleData) {
-                setSearch(found.name);
-              } else {
-                window.location.href = `/inventory/${found.id}`;
-              }
+              window.location.href = `/inventory/${found.id}`;
             } else {
               setSearch(barcode);
             }

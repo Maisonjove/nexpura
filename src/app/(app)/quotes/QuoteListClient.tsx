@@ -19,6 +19,7 @@ export default function QuoteListClient() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [confirmConvertId, setConfirmConvertId] = useState<string | null>(null);
 
   useEffect(() => {
     loadQuotes();
@@ -37,9 +38,9 @@ export default function QuoteListClient() {
   }
 
   async function handleConvert(id: string) {
-    if (!confirm("Convert this quote to an invoice?")) return;
     try {
       await convertQuoteToInvoice(id);
+      setConfirmConvertId(null);
       loadQuotes();
     } catch (err) {
       console.error(err);
@@ -54,6 +55,29 @@ export default function QuoteListClient() {
   );
 
   return (
+    <>
+      {confirmConvertId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+            <h3 className="font-bold text-stone-900 text-lg mb-2">Convert to Invoice?</h3>
+            <p className="text-sm text-stone-500 mb-6">This will convert the quote to a new invoice. The quote will be marked as converted.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmConvertId(null)}
+                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleConvert(confirmConvertId)}
+                className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7a6447] transition-colors"
+              >
+                Convert
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -153,7 +177,7 @@ export default function QuoteListClient() {
                           {quote.status !== "converted" && (
                             <DropdownMenuItem 
                               className="flex items-center gap-2 text-green-600 focus:text-green-700"
-                              onClick={() => handleConvert(quote.id)}
+                              onClick={() => setConfirmConvertId(quote.id)}
                             >
                               <CheckCircle size={14} /> Convert to Invoice
                             </DropdownMenuItem>
@@ -169,5 +193,6 @@ export default function QuoteListClient() {
         )}
       </div>
     </div>
+    </>
   );
 }

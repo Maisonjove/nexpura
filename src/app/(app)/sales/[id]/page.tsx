@@ -49,5 +49,17 @@ export default async function SaleDetailPage({
     .maybeSingle();
   const invoiceId = invoiceRow?.id ?? null;
 
-  return <SaleDetailClient sale={sale} items={items ?? []} initialInvoiceId={invoiceId} />;
+  // Fetch layby payments if this is a layby sale
+  let laybyPayments: Array<{ id: string; amount: number; payment_method: string; payment_date: string; notes: string | null }> = [];
+  if (sale.status === "layby" || sale.payment_method === "layby") {
+    const { data: payments } = await adminClient
+      .from("layby_payments")
+      .select("id, amount, payment_method, payment_date, notes")
+      .eq("sale_id", id)
+      .eq("tenant_id", tenantId ?? "")
+      .order("payment_date", { ascending: true });
+    laybyPayments = payments ?? [];
+  }
+
+  return <SaleDetailClient sale={sale} items={items ?? []} initialInvoiceId={invoiceId} laybyPayments={laybyPayments} />;
 }

@@ -40,6 +40,7 @@ interface Props {
   inventoryItems: InventoryItem[];
   customers: Customer[];
   taxRate: number;
+  businessName: string;
 }
 
 const CATEGORIES = ["All", "ring", "necklace", "earring", "bracelet", "loose_stone"];
@@ -55,7 +56,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 type PaymentTab = "card" | "cash" | "split" | "voucher" | "store_credit" | "layby";
 type SaleResult = { id: string; saleNumber: string; invoiceId?: string; customerEmail?: string | null; cartSnapshot?: CartItem[]; paymentMethod?: string; depositAmount?: number; totalAmount?: number };
 
-export default function POSClient({ tenantId, userId, inventoryItems, customers, taxRate }: Props) {
+export default function POSClient({ tenantId, userId, inventoryItems, customers, taxRate, businessName }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -348,7 +349,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
       .row{display:flex;justify-content:space-between;margin:4px 0}
       .total{font-weight:bold;font-size:14px;border-top:2px solid #000;margin-top:8px;padding-top:8px}
       </style></head><body>
-      <h2>NEXPURA</h2>
+      <h2>${businessName}</h2>
       <p style="text-align:center">${new Date().toLocaleString("en-AU")}</p>
       ${saleResult?.customerEmail ? `<p>Customer: ${saleResult.customerEmail}</p>` : ""}
       <hr/>

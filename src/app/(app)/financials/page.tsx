@@ -11,7 +11,7 @@ export default async function FinancialsPage() {
 
   const { data: userData } = await supabase
     .from("users")
-    .select("tenant_id, tenants(name, gst_rate)")
+    .select("tenant_id, tenants(name, gst_rate, currency)")
     .eq("id", user.id)
     .single();
 
@@ -25,6 +25,7 @@ export default async function FinancialsPage() {
       tenantId={userData.tenant_id}
       businessName={tenant?.name ?? "Your Business"}
       gstRate={tenant?.gst_rate ?? 0.1}
+      currency={tenant?.currency ?? "AUD"}
     />
   );
 }

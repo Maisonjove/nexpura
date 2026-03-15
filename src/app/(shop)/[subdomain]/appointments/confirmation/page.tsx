@@ -100,13 +100,13 @@ export default async function AppointmentConfirmationPage({
 
         <p className="text-sm text-stone-400">
           Need to reschedule?{" "}
-          <Link href={`/store/${subdomain}/appointments`} className="text-[#8B7355] hover:underline">
+          <Link href={`/${subdomain}/appointments`} className="text-[#8B7355] hover:underline">
             Book a new appointment
           </Link>
         </p>
 
         <Link
-          href={`/store/${subdomain}`}
+          href={`/${subdomain}`}
           className="inline-block px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-xl hover:bg-[#7a6447] transition-colors"
         >
           Back to Store

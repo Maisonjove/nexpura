@@ -53,7 +53,7 @@ export default async function EnquiryConfirmationPage({
 
         <div className="flex flex-col gap-3">
           <Link
-            href={`/store/${subdomain}`}
+            href={`/${subdomain}`}
             className="inline-block px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-xl hover:bg-[#7a6447] transition-colors"
           >
             Back to Store
@@ -61,7 +61,7 @@ export default async function EnquiryConfirmationPage({
           {isCustom && (
             <p className="text-xs text-stone-400">
               Interested in browsing our collection while you wait?{" "}
-              <Link href={`/store/${subdomain}/catalogue`} className="text-[#8B7355] hover:underline">
+              <Link href={`/${subdomain}/catalogue`} className="text-[#8B7355] hover:underline">
                 View catalogue →
               </Link>
             </p>

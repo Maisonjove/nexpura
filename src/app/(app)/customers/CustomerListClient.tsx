@@ -38,13 +38,7 @@ interface Props {
   sort: string;
 }
 
-// ─── Sample data ──────────────────────────────────────────────────────────────
 
-const SAMPLE_CUSTOMERS = [
-  { id: "c1", name: "Sarah Khoury", initials: "SK", tags: ["VIP", "Bridal"], phone: "+61 412 345 678", email: "sarah@email.com", lastPurchase: "8 Mar 2026", totalSpend: "$24,500" },
-  { id: "c2", name: "David Moufarrej", initials: "DM", tags: ["Retail"], phone: "+61 423 456 789", email: "david@email.com", lastPurchase: "5 Mar 2026", totalSpend: "$8,200" },
-  { id: "c3", name: "Lina Haddad", initials: "LH", tags: ["Bridal"], phone: "+61 434 567 890", email: "lina@email.com", lastPurchase: "1 Mar 2026", totalSpend: "$15,800" },
-];
 
 function getInitials(name: string | null) {
   if (!name) return "?";
@@ -65,8 +59,6 @@ export default function CustomerListClient({
   const router = useRouter();
   const [search, setSearch] = useState(q);
   const [activeTab, setActiveTab] = useState(tagFilter || "all");
-
-  const useSampleData = customers.length === 0;
 
   function buildUrl(params: Record<string, string | number>) {
     const url = new URLSearchParams();
@@ -101,7 +93,7 @@ export default function CustomerListClient({
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Customers</h1>
           <Badge variant="outline" className="text-stone-500 font-medium px-2.5 py-0.5 rounded-full border-stone-200">
-            {useSampleData ? "428" : totalCount}
+            {totalCount}
           </Badge>
         </div>
         <Link href="/customers/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-10 px-4 py-2">
@@ -135,92 +127,84 @@ export default function CustomerListClient({
       </div>
 
       {/* TABLE */}
-      <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-stone-100">
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Customer</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Phone</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Email</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Tags</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Last Purchase</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400 text-right">Total Spend</TableHead>
-              <TableHead className="w-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {useSampleData
-              ? SAMPLE_CUSTOMERS.map((c) => (
-                  <TableRow key={c.id} className="hover:bg-stone-50/60 border-stone-100 cursor-pointer transition-colors" onClick={() => router.push(`/customers/${c.id}`)}>
+      {customers.length === 0 ? (
+        <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
+          <div className="p-16 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <h3 className="font-semibold text-lg text-stone-900">No customers yet</h3>
+            <p className="text-stone-500 mt-1 text-sm">Add your first customer to get started.</p>
+            <Link
+              href="/customers/new"
+              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add your first customer →
+            </Link>
+          </div>
+        </Card>
+      ) : (
+        <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent border-stone-100">
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Customer</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Phone</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Email</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Tags</TableHead>
+                <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Last Updated</TableHead>
+                <TableHead className="w-10"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {customers.map((customer) => {
+                const name = customer.full_name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || "Unknown";
+                const initials = getInitials(name);
+                const tags: string[] = [
+                  ...(customer.is_vip ? ["VIP"] : []),
+                  ...(customer.tags || []),
+                ];
+                return (
+                  <TableRow key={customer.id} className="hover:bg-stone-50/60 border-stone-100 cursor-pointer transition-colors" onClick={() => router.push(`/customers/${customer.id}`)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
                           <AvatarFallback className="bg-stone-100 text-stone-600 text-xs font-semibold">
-                            {c.initials}
+                            {initials}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-medium text-stone-900">{c.name}</span>
+                        <span className="text-sm font-medium text-stone-900">{name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-stone-700">{c.phone}</TableCell>
-                    <TableCell className="text-sm text-stone-700">{c.email}</TableCell>
+                    <TableCell className="text-sm text-stone-700">{customer.mobile || customer.phone || "—"}</TableCell>
+                    <TableCell className="text-sm text-stone-700">{customer.email || "—"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1.5 flex-wrap">
-                        {c.tags.map((tag) => <span key={tag}>{getTagBadge(tag)}</span>)}
+                        {tags.map((tag) => <span key={tag}>{getTagBadge(tag)}</span>)}
+                        {tags.length === 0 && <span className="text-stone-300 text-xs">—</span>}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-stone-700">{c.lastPurchase}</TableCell>
-                    <TableCell className="text-sm font-medium text-stone-900 text-right">{c.totalSpend}</TableCell>
+                    <TableCell className="text-sm text-stone-700">
+                      {customer.updated_at
+                        ? new Date(customer.updated_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
+                        : "—"}
+                    </TableCell>
                     <TableCell>
-                      <ArrowRight className="w-4 h-4 text-stone-300 group-hover:text-[#8B7355]" />
+                      <ArrowRight className="w-4 h-4 text-stone-300 hover:text-[#8B7355]" />
                     </TableCell>
                   </TableRow>
-                ))
-              : customers.map((customer) => {
-                  const name = customer.full_name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || "Unknown";
-                  const initials = getInitials(name);
-                  const tags: string[] = [
-                    ...(customer.is_vip ? ["VIP"] : []),
-                    ...(customer.tags || []),
-                  ];
-                  return (
-                    <TableRow key={customer.id} className="hover:bg-stone-50/60 border-stone-100 cursor-pointer transition-colors" onClick={() => router.push(`/customers/${customer.id}`)}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="bg-stone-100 text-stone-600 text-xs font-semibold">
-                              {initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm font-medium text-stone-900">{name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-stone-700">{customer.mobile || customer.phone || "—"}</TableCell>
-                      <TableCell className="text-sm text-stone-700">{customer.email || "—"}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1.5 flex-wrap">
-                          {tags.map((tag) => <span key={tag}>{getTagBadge(tag)}</span>)}
-                          {tags.length === 0 && <span className="text-stone-300 text-xs">—</span>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-stone-700">
-                        {customer.updated_at
-                          ? new Date(customer.updated_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-sm font-medium text-stone-900 text-right">—</TableCell>
-                      <TableCell>
-                        <ArrowRight className="w-4 h-4 text-stone-300 hover:text-[#8B7355]" />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-          </TableBody>
-        </Table>
-      </Card>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
 
       {/* Pagination */}
-      {!useSampleData && totalPages > 1 && (
+      {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
           <p className="text-xs text-stone-500">
             Page {page} of {totalPages}

@@ -17,7 +17,7 @@ export default async function SalesPage() {
 
   const { data: sales } = await supabase
     .from("sales")
-    .select("id, sale_number, customer_name, customer_email, status, payment_method, total, sale_date, created_at")
+    .select("id, sale_number, customer_name, customer_email, status, payment_method, total, amount_paid, sale_date, created_at")
     .eq("tenant_id", tenantId ?? "")
     .order("created_at", { ascending: false });
 

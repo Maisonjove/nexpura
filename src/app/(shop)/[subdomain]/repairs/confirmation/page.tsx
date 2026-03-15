@@ -93,7 +93,7 @@ export default async function RepairConfirmationPage({
         <p className="text-xs text-stone-400">Please save your reference number for future correspondence.</p>
 
         <Link
-          href={`/store/${subdomain}`}
+          href={`/${subdomain}`}
           className="inline-block px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-xl hover:bg-[#7a6447] transition-colors"
         >
           Back to Store

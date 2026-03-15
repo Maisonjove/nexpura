@@ -10,7 +10,7 @@ export default async function DashboardPage() {
 
   const { data: userData } = await supabase
     .from("users")
-    .select("full_name, tenant_id, tenants(name, currency, tax_rate, tax_name)")
+    .select("full_name, tenant_id, role, tenants(name, currency, tax_rate, tax_name)")
     .eq("id", user?.id ?? "")
     .single();
 
@@ -19,6 +19,8 @@ export default async function DashboardPage() {
   const tenantName = tenantData?.name ?? null;
   const tenantId = userData?.tenant_id;
   const currency = tenantData?.currency || "AUD";
+  const userRole = (userData as { role?: string } | null)?.role ?? "staff";
+  const isManager = userRole === "owner" || userRole === "manager";
 
   const admin = createAdminClient();
 
@@ -261,15 +263,50 @@ export default async function DashboardPage() {
     .slice(0, 5);
 
   // Tasks due TODAY — tenant-scoped
-  const { data: myTasks } = await admin
+  // Managers/owners see ALL team tasks; staff see only their own
+  let myTasksQuery = admin
     .from("staff_tasks")
-    .select("id, title, priority, status, due_date")
+    .select("id, title, priority, status, due_date, assigned_to, users(full_name)")
     .eq("tenant_id", tenantId ?? "")
-    .eq("assigned_to", user?.id ?? "")
     .neq("status", "completed")
     .eq("due_date", today)
     .order("priority", { ascending: false })
-    .limit(10);
+    .limit(50);
+
+  if (!isManager) {
+    myTasksQuery = myTasksQuery.eq("assigned_to", user?.id ?? "");
+  }
+
+  const { data: allTasks } = await myTasksQuery;
+
+  // Split into own tasks and team tasks
+  const myTasks = (allTasks ?? []).filter((t) => t.assigned_to === user?.id).map((t) => ({
+    id: t.id,
+    title: t.title,
+    priority: t.priority,
+    status: t.status,
+    due_date: t.due_date,
+  }));
+
+  // For managers: build team summary grouped by assignee
+  type TeamTaskSummary = { assigneeId: string; assigneeName: string; taskCount: number; overdueCount: number };
+  const teamTaskSummary: TeamTaskSummary[] = [];
+  if (isManager) {
+    const byAssignee = new Map<string, { name: string; count: number; overdue: number }>();
+    for (const t of allTasks ?? []) {
+      if (!t.assigned_to || t.assigned_to === user?.id) continue;
+      const existing = byAssignee.get(t.assigned_to);
+      const assigneeName = (Array.isArray(t.users) ? t.users[0]?.full_name : (t.users as { full_name: string | null } | null)?.full_name) ?? "Unknown";
+      if (existing) {
+        existing.count++;
+      } else {
+        byAssignee.set(t.assigned_to, { name: assigneeName, count: 1, overdue: 0 });
+      }
+    }
+    for (const [id, data] of byAssignee) {
+      teamTaskSummary.push({ assigneeId: id, assigneeName: data.name, taskCount: data.count, overdueCount: data.overdue });
+    }
+  }
 
   return (
     <DashboardClient
@@ -285,7 +322,9 @@ export default async function DashboardPage() {
       overdueRepairs={overdueRepairs}
       readyForPickup={readyForPickup}
       recentActivity={recentActivity}
-      myTasks={myTasks ?? []}
+      myTasks={myTasks}
+      teamTaskSummary={teamTaskSummary}
+      isManager={isManager}
       activeRepairs={activeRepairs}
       activeBespokeJobs={activeBespokeJobs}
       currency={currency}

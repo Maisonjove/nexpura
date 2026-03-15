@@ -23,7 +23,7 @@ export async function recordLaybyPayment(params: {
   paymentMethod: string;
   notes?: string;
   paymentDate: string;
-}): Promise<{ success?: boolean; error?: string; newAmountPaid?: number }> {
+}): Promise<{ success?: boolean; error?: string; newAmountPaid?: number; fullyPaid?: boolean }> {
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, userId, tenantId } = ctx;
@@ -62,7 +62,8 @@ export async function recordLaybyPayment(params: {
   const updatePayload: Record<string, unknown> = { amount_paid: newPaid };
 
   // If fully paid, mark as paid
-  if (newPaid >= sale.total) {
+  const isFullyPaid = newPaid >= sale.total;
+  if (isFullyPaid) {
     updatePayload.status = "paid";
     updatePayload.payment_method = params.paymentMethod;
   }
@@ -73,8 +74,49 @@ export async function recordLaybyPayment(params: {
     .eq("id", params.saleId)
     .eq("tenant_id", tenantId);
 
+  // Deduct inventory when layby is fully paid
+  if (isFullyPaid) {
+    const { data: saleItems } = await admin
+      .from("sale_items")
+      .select("inventory_id, quantity")
+      .eq("sale_id", params.saleId)
+      .not("inventory_id", "is", null);
+
+    if (saleItems) {
+      for (const item of saleItems) {
+        if (!item.inventory_id) continue;
+        const { data: inv } = await admin
+          .from("inventory")
+          .select("quantity")
+          .eq("id", item.inventory_id)
+          .eq("tenant_id", tenantId)
+          .single();
+
+        if (inv) {
+          const newQty = Math.max(0, inv.quantity - item.quantity);
+          await admin
+            .from("inventory")
+            .update({ quantity: newQty })
+            .eq("id", item.inventory_id)
+            .eq("tenant_id", tenantId);
+
+          await admin.from("stock_movements").insert({
+            tenant_id: tenantId,
+            inventory_id: item.inventory_id,
+            movement_type: "sale",
+            quantity_change: -item.quantity,
+            quantity_after: newQty,
+            notes: `Layby sale ${params.saleId} — fully paid`,
+            created_by: userId,
+          });
+        }
+      }
+    }
+  }
+
   revalidatePath(`/sales/${params.saleId}`);
-  return { success: true, newAmountPaid: newPaid };
+  revalidatePath("/sales");
+  return { success: true, newAmountPaid: newPaid, fullyPaid: isFullyPaid };
 }
 
 export async function getLaybyPayments(saleId: string) {
