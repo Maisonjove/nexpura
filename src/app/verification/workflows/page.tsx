@@ -20,7 +20,6 @@ const SCREENSHOT_STORAGE =
 const PROOF_SECTIONS = [
   {
           title: "Repair Command Center — Interaction Reliability Proof",
-          buildUrl: "https://nexpura-4s31bququ-maisonjoves-projects.vercel.app",
           shots: [
             { name: "SEQ-R1-initial", label: "Initial state — line items, photos, sidebar" },
             { name: "SEQ-R2-manual-open", label: "Step 1: Manual item form open" },
@@ -40,7 +39,6 @@ const PROOF_SECTIONS = [
         },
         {
           title: "Bespoke Command Center — Interaction Reliability Proof",
-          buildUrl: "https://nexpura-4s31bququ-maisonjoves-projects.vercel.app",
           shots: [
             { name: "SEQ-B1-initial", label: "Initial state — line items, totals, seeded photos" },
             { name: "SEQ-B2-after-manual", label: "After manual item — modal closed, page fully interactive" },
@@ -328,7 +326,7 @@ export default async function WorkflowsPage() {
                 <span style={{ background: "#d1fae5", color: "#065f46", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>
                   {section.shots.length} screenshots
                 </span>
-                <code style={{ fontSize: 10, color: "#78716c", background: "#f5f5f4", padding: "2px 6px", borderRadius: 4, marginLeft: "auto" }}>{section.buildUrl}</code>
+                <code style={{ fontSize: 10, color: "#78716c", background: "#f5f5f4", padding: "2px 6px", borderRadius: 4, marginLeft: "auto" }}>{"https://" + BUILD}</code>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
                 {section.shots.map((shot) => (
