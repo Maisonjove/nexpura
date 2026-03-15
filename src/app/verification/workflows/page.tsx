@@ -19,38 +19,39 @@ const SCREENSHOT_STORAGE =
 
 const PROOF_SECTIONS = [
   {
-    title: "Repair Command Center — Finalization Proof",
-    buildUrl: "https://nexpura-ohiz0cvj6-maisonjoves-projects.vercel.app",
-    shots: [
-      { name: "R1-repair-initial-state", label: "Initial state — line items, totals, seeded photos" },
-      { name: "R2-repair-manual-item-form", label: "Manual item form — Express Rush Fee" },
-      { name: "R3-repair-after-manual-item", label: "After manual item — totals updated" },
-      { name: "R4-repair-stock-item-form", label: "Stock item selected from inventory" },
-      { name: "R5-repair-after-stock-item", label: "After stock item — totals updated again" },
-      { name: "R6-repair-after-photo-upload", label: "Photo uploaded — gallery updated live" },
-      { name: "R7-repair-after-photo-delete", label: "Photo deleted — gallery cleaned" },
-      { name: "R8-repair-email-result", label: "Email invoice result — sent or demo-limited shown" },
-      { name: "R9-repair-stage-ready", label: "Stage advanced — Mark Ready for Pickup" },
-      { name: "R10-repair-ticket-print", label: "Repair ticket print document" },
-      { name: "R11-repair-receipt-print", label: "Payment receipt (distinct from invoice)" },
-      { name: "R12-repair-invoice-print", label: "Formal invoice (distinct from receipt)" },
-    ],
-  },
-  {
-    title: "Bespoke Command Center — Finalization Proof",
-    buildUrl: "https://nexpura-ohiz0cvj6-maisonjoves-projects.vercel.app",
-    shots: [
-      { name: "B1-bespoke-initial-state", label: "Initial state — line items, totals, seeded photos" },
-      { name: "B2-bespoke-manual-item-form", label: "Manual item form — Courier delivery fee" },
-      { name: "B3-bespoke-after-manual-item", label: "After manual item — totals updated" },
-      { name: "B4-bespoke-stock-item-form", label: "Stock item selected" },
-      { name: "B5-bespoke-after-stock-item", label: "After stock item — totals updated again" },
-      { name: "B6-bespoke-after-photo-upload", label: "Photo uploaded — gallery updated" },
-      { name: "B7-bespoke-email-result", label: "Email invoice result" },
-      { name: "B8-bespoke-receipt-print", label: "Bespoke payment receipt" },
-      { name: "B9-bespoke-jobsheet-print", label: "Bespoke job sheet" },
-    ],
-  },
+          title: "Repair Command Center — Interaction Reliability Proof",
+          buildUrl: "https://nexpura-dnk6y6vw1-maisonjoves-projects.vercel.app",
+          shots: [
+            { name: "SEQ-R1-initial", label: "Initial state — line items, photos, sidebar" },
+            { name: "SEQ-R2-manual-open", label: "Step 1: Manual item form open" },
+            { name: "SEQ-R3-manual-filled", label: "Step 1: Manual item form filled" },
+            { name: "SEQ-R4-after-manual", label: "After manual add — modal closed, page fully interactive" },
+            { name: "SEQ-R5-stock-open", label: "Step 2: Stock modal open — no backdrop blocking" },
+            { name: "SEQ-R6-stock-selected", label: "Step 2: Stock item selected" },
+            { name: "SEQ-R7-after-stock", label: "After stock add — totals updated, page interactive" },
+            { name: "SEQ-R8-after-upload", label: "Step 3: Photo uploaded — gallery updated live" },
+            { name: "SEQ-R9-after-delete", label: "Step 4: Photo deleted — gallery updated live" },
+            { name: "SEQ-R10-email", label: "Step 5: Email invoice result — feedback shown" },
+            { name: "SEQ-R11-stage", label: "Step 6: Stage advanced — sequence complete on one screen" },
+            { name: "SEQ-R12-ticket", label: "Repair ticket print document" },
+            { name: "SEQ-R13-receipt", label: "Payment receipt (distinct from invoice)" },
+            { name: "SEQ-R14-invoice", label: "Formal invoice (distinct from receipt)" }
+          ]
+        },
+        {
+          title: "Bespoke Command Center — Interaction Reliability Proof",
+          buildUrl: "https://nexpura-dnk6y6vw1-maisonjoves-projects.vercel.app",
+          shots: [
+            { name: "SEQ-B1-initial", label: "Initial state — line items, totals, seeded photos" },
+            { name: "SEQ-B2-after-manual", label: "After manual item — modal closed, page fully interactive" },
+            { name: "SEQ-B3-stock-open", label: "Stock form open — no backdrop blocking" },
+            { name: "SEQ-B4-after-stock", label: "After stock item — totals updated, page interactive" },
+            { name: "SEQ-B5-after-upload", label: "Photo uploaded — gallery updated" },
+            { name: "SEQ-B6-email", label: "Email invoice result" },
+            { name: "SEQ-B7-receipt", label: "Bespoke payment receipt (distinct)" },
+            { name: "SEQ-B8-jobsheet", label: "Bespoke job sheet" }
+          ]
+        },
 ];
 
 const FLOWS = [
