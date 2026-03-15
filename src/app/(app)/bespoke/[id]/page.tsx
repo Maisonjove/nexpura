@@ -44,17 +44,20 @@ export default async function BespokeJobDetailPage({
       .single();
 
     if (inv) {
-      const { data: lineItems } = await adminClient
+      const { data: lineItems, error: liErr } = await adminClient
         .from("invoice_line_items")
-        .select("id, description, quantity, unit_price, total")
-        .eq("invoice_id", invoiceId)
-        .order("id", { ascending: true });
+        .select("*")
+        .eq("invoice_id", invoiceId);
 
-      const { data: payments } = await adminClient
+      if (liErr) console.error("Line items fetch error:", liErr);
+
+      const { data: payments, error: pErr } = await adminClient
         .from("payments")
-        .select("id, amount, payment_method, payment_date, notes")
+        .select("*")
         .eq("invoice_id", invoiceId)
         .order("created_at", { ascending: true });
+
+      if (pErr) console.error("Payments fetch error:", pErr);
 
       invoice = {
         ...inv,
