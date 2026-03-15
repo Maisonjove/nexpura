@@ -7,7 +7,7 @@ import {
   FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
   Settings, CreditCard, Globe, ExternalLink, Monitor, ListTodo,
   RotateCcw, Gift, Sun, ClipboardList, ArrowLeftRight, Star,
-  Calendar, Bell, MapPin, Link as LinkIcon, Send, Zap, TrendingUp
+  Calendar, Bell, MapPin, Link as LinkIcon, Send, Zap, TrendingUp, Layers
 } from 'lucide-react';
 
 const navGroups = [
@@ -38,6 +38,7 @@ const navGroups = [
       { name: 'Invoices', href: '/invoices', icon: FileText },
       { name: 'Quotes', href: '/quotes', icon: FileText },
       { name: 'Expenses', href: '/expenses', icon: DollarSign },
+      { name: 'Laybys', href: '/laybys', icon: Layers },
       { name: 'Gift Vouchers', href: '/vouchers', icon: Gift },
       { name: 'Refunds', href: '/refunds', icon: RotateCcw },
       { name: 'End of Day', href: '/eod', icon: Sun },

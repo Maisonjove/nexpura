@@ -44,7 +44,10 @@ export async function GET(request: NextRequest) {
   // 3. invoices
   await safeDelete(() => admin.from("invoices").delete().eq("tenant_id", TENANT_ID));
 
-  // 4. sale_items (via sales join)
+  // 4. layby_payments (before sale_items/sales)
+  await safeDelete(() => admin.from("layby_payments").delete().eq("tenant_id", TENANT_ID));
+
+  // 5. sale_items (via sales join)
   const { data: saleRows } = await admin
     .from("sales")
     .select("id")
@@ -56,7 +59,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 5. sales
+  // 6. sales
   await safeDelete(() => admin.from("sales").delete().eq("tenant_id", TENANT_ID));
 
   // 6. stock_movements
@@ -912,6 +915,64 @@ export async function GET(request: NextRequest) {
       },
     ])
   );
+
+  // LAYBY SALE (L-0001) — Lina Haddad, Sapphire Halo Ring, $600 deposit
+  let laybyId: string | undefined;
+  await safeInsert(async () => {
+    const { data: laybySale } = await admin
+      .from("sales")
+      .insert({
+        tenant_id: TENANT_ID,
+        sale_number: "L-0001",
+        customer_id: "870c2497-feb4-4857-b53f-aa12ae12d41e",
+        customer_name: "Lina Haddad",
+        subtotal: 2000.00,
+        discount_amount: 0,
+        tax_amount: 200.00,
+        total: 2200.00,
+        deposit_amount: 600.00,
+        amount_paid: 600.00,
+        payment_method: "layby",
+        status: "layby",
+        sale_date: "2026-03-10",
+      })
+      .select("id")
+      .single();
+    laybyId = laybySale?.id;
+  });
+
+  if (laybyId) {
+    // Find Sapphire Halo Ring inventory ID
+    const { data: sapphireInv } = await admin
+      .from("inventory")
+      .select("id")
+      .eq("tenant_id", TENANT_ID)
+      .eq("sku", "SHR-002")
+      .maybeSingle();
+
+    await safeInsert(() =>
+      admin.from("sale_items").insert({
+        tenant_id: TENANT_ID,
+        sale_id: laybyId,
+        inventory_id: sapphireInv?.id ?? null,
+        description: "Sapphire Halo Ring",
+        quantity: 1,
+        unit_price: 2000.00,
+        line_total: 2000.00,
+      })
+    );
+
+    await safeInsert(() =>
+      admin.from("layby_payments").insert({
+        tenant_id: TENANT_ID,
+        sale_id: laybyId,
+        amount: 600.00,
+        payment_method: "cash",
+        notes: "Initial deposit",
+        paid_at: "2026-03-10T00:00:00Z",
+      })
+    );
+  }
 
   // Redirect to sandbox entry — which redirects to /dashboard?rt=TOKEN
   return NextResponse.redirect(new URL("/sandbox", request.url));

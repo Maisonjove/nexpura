@@ -315,6 +315,26 @@ export async function createLaybySale(
 
   if (saleErr || !sale) return { error: saleErr?.message ?? "Failed to create layby" };
 
+  // Store deposit amount and amount_paid
+  await admin
+    .from("sales")
+    .update({
+      deposit_amount: params.depositAmount,
+      amount_paid: params.depositAmount,
+    })
+    .eq("id", sale.id);
+
+  // Record initial deposit payment
+  await admin.from("layby_payments").insert({
+    tenant_id: params.tenantId,
+    sale_id: sale.id,
+    amount: params.depositAmount,
+    payment_method: "cash",
+    notes: "Initial deposit",
+    paid_by: params.userId,
+    paid_at: new Date().toISOString(),
+  });
+
   // Create sale items (no inventory deduction — item reserved, not sold)
   if (params.cart.length > 0) {
     await admin.from("sale_items").insert(
@@ -325,6 +345,7 @@ export async function createLaybySale(
         quantity: item.quantity,
         unit_price: item.unitPrice,
         line_total: item.unitPrice * item.quantity,
+        inventory_id: item.inventoryId,
       }))
     );
   }

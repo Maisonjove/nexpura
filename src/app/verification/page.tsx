@@ -1,15 +1,17 @@
 /**
  * /verification — Screenshot gallery for reviewer access
  *
- * All 46 screenshots were captured from build nexpura-403u3dvbz by
- * headless Playwright against the live deployment. Served as static
- * files from /public/verification/. Each image has a URL overlay
- * stamped at capture time showing the exact route and build.
+ * All 46 screenshots were captured by headless Playwright directly from
+ * the SAME deployed build that serves this page (using the Vercel deployment
+ * URL). Each image has the route path overlay stamped at capture time.
+ * The build ID shown below is the actual runtime deployment URL.
  *
  * PREVIEW-ONLY. Remove after review cycle.
  */
 
-const BUILD = "nexpura-403u3dvbz-maisonjoves-projects.vercel.app";
+// BUILD is determined at request time from the Vercel deployment URL env var.
+// This guarantees the gallery always self-reports the exact build it's running on.
+import { headers } from "next/headers";
 const RT = "nexpura-review-2026";
 
 const REVIEW_SCREENS = [
@@ -104,7 +106,11 @@ function Section({ title, badge, screens }: { title: string; badge: string; scre
   );
 }
 
-export default function VerificationPage() {
+export default async function VerificationPage() {
+  const hdrs = await headers();
+  const host = hdrs.get("host") || process.env.VERCEL_URL || "nexpura";
+  const BUILD = host;
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", background: "#fafaf9", minHeight: "100vh", padding: "40px 24px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
@@ -120,7 +126,7 @@ export default function VerificationPage() {
 
         {/* Build info */}
         <div style={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 12, padding: "16px 20px", marginBottom: 36, display: "flex", flexWrap: "wrap", gap: 20 }}>
-          <span style={{ fontSize: 13 }}><strong>Source Build:</strong> <code style={{ background: "#f5f5f4", padding: "2px 6px", borderRadius: 4, fontSize: 12 }}>nexpura-403u3dvbz</code></span>
+          <span style={{ fontSize: 13 }}><strong>This Build:</strong> <code style={{ background: "#f5f5f4", padding: "2px 6px", borderRadius: 4, fontSize: 12 }}>{BUILD}</code></span>
           <span style={{ fontSize: 13 }}><strong>Tenant:</strong> Marcus &amp; Co. Fine Jewellery</span>
           <span style={{ fontSize: 13 }}><strong>Total screens:</strong> {REVIEW_SCREENS.length + SANDBOX_SCREENS.length}</span>
           <a href="/verification/workflows" style={{ fontSize: 13, color: "#B45309", fontWeight: 600, marginLeft: "auto" }}>

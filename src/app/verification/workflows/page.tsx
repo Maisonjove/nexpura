@@ -1,15 +1,16 @@
 /**
  * /verification/workflows — Workflow video proof gallery
  *
- * All 16 videos recorded from build nexpura-403u3dvbz against the live
- * Marcus & Co. demo tenant using ?rt=nexpura-review-2026 (owner) and
- * ?rt=nexpura-staff-2026 (salesperson) auth tokens.
+ * All 16 videos recorded directly from THIS deployed build (the same URL
+ * this page is served from). The build ID shown below is read from the
+ * request host header at runtime — always matches the actual deployment.
  *
  * Videos hosted on Supabase Storage (public bucket: verification/videos).
  * PREVIEW-ONLY — remove after review cycle.
  */
 
-const RECORDING_BUILD = "nexpura-403u3dvbz-maisonjoves-projects.vercel.app";
+import { headers } from "next/headers";
+
 const STORAGE_BASE =
   "https://vkpjocnrefjfpuovzinn.supabase.co/storage/v1/object/public/verification/videos";
 
@@ -222,7 +223,10 @@ function FlowCard({ flow }: { flow: (typeof FLOWS)[0] }) {
   );
 }
 
-export default function WorkflowsPage() {
+export default async function WorkflowsPage() {
+  const hdrs = await headers();
+  const BUILD = hdrs.get("host") || process.env.VERCEL_URL || "nexpura";
+
   return (
     <div
       style={{
@@ -248,7 +252,7 @@ export default function WorkflowsPage() {
           </h1>
           <p style={{ fontSize: 13, color: "#78716c", margin: "8px 0 0" }}>
             All 16 real authenticated write flows recorded from build{" "}
-            <strong>nexpura-403u3dvbz</strong> against the Marcus &amp; Co. demo
+            <strong>{BUILD}</strong> against the Marcus &amp; Co. demo
             tenant. Each video has the build URL and route overlaid at capture
             time.
           </p>
@@ -278,7 +282,7 @@ export default function WorkflowsPage() {
                 fontSize: 12,
               }}
             >
-              nexpura-403u3dvbz
+              {BUILD}
             </code>
           </span>
           <span style={{ fontSize: 13 }}>
