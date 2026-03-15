@@ -194,7 +194,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
   const total = taxableAmount + taxAmount;
   const change = paymentTab === "cash" ? (parseFloat(cashTendered) || 0) - total : 0;
 
-  async function handleCharge(paymentMethod: string) {
+  async function handleCharge(paymentMethod: string, voucherId?: string, voucherAmount?: number) {
     setIsPending(true);
     setError(null);
     try {
@@ -211,6 +211,8 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
         total,
         paymentMethod,
         storeCreditAmount: paymentMethod === "store_credit" ? total : 0,
+        voucherId: voucherId ?? null,
+        voucherAmount: voucherAmount ?? 0,
       });
 
       if (result.error) {
@@ -263,7 +265,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
       setError(`Voucher balance (${voucherData.balance.toFixed(2)}) is less than total. Use split payment.`);
       return;
     }
-    handleCharge("voucher");
+    handleCharge("voucher", voucherData.id, total);
   }
 
   function resetSale() {

@@ -15,6 +15,13 @@ interface OrderItem {
   quantity: number;
   unit_price: number;
   line_total: number;
+  inventory_item_id?: string | null;
+}
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  sku: string | null;
 }
 
 interface PurchaseOrder {
@@ -32,6 +39,7 @@ interface PurchaseOrder {
 interface Props {
   supplier: Supplier;
   orders: PurchaseOrder[];
+  inventoryItems: InventoryItem[];
 }
 
 const STATUS_COLOURS: Record<string, string> = {
@@ -46,12 +54,12 @@ function fmtCurrency(n: number) {
   return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 2 }).format(n);
 }
 
-export default function PurchaseOrdersClient({ supplier, orders: initialOrders }: Props) {
+export default function PurchaseOrdersClient({ supplier, orders: initialOrders, inventoryItems }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
-  const [items, setItems] = useState<{ description: string; quantity: number; unit_price: number }[]>([
-    { description: "", quantity: 1, unit_price: 0 },
+  const [items, setItems] = useState<{ description: string; quantity: number; unit_price: number; inventory_item_id?: string | null }[]>([
+    { description: "", quantity: 1, unit_price: 0, inventory_item_id: null },
   ]);
   const [notes, setNotes] = useState("");
   const [expectedDate, setExpectedDate] = useState("");
@@ -59,14 +67,14 @@ export default function PurchaseOrdersClient({ supplier, orders: initialOrders }
   const [orders, setOrders] = useState(initialOrders);
 
   function addItem() {
-    setItems((prev) => [...prev, { description: "", quantity: 1, unit_price: 0 }]);
+    setItems((prev) => [...prev, { description: "", quantity: 1, unit_price: 0, inventory_item_id: null }]);
   }
 
   function removeItem(i: number) {
     setItems((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  function updateItem(i: number, key: string, value: string | number) {
+  function updateItem(i: number, key: string, value: string | number | null) {
     setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, [key]: value } : item));
   }
 
@@ -83,6 +91,7 @@ export default function PurchaseOrdersClient({ supplier, orders: initialOrders }
       quantity: i.quantity,
       unit_price: i.unit_price,
       line_total: i.quantity * i.unit_price,
+      inventory_item_id: i.inventory_item_id || null,
     }))));
 
     startTransition(async () => {
@@ -140,39 +149,56 @@ export default function PurchaseOrdersClient({ supplier, orders: initialOrders }
             <div className="space-y-2">
               <label className="text-xs font-medium text-stone-500 uppercase tracking-wider">Items</label>
               {items.map((item, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    placeholder="Description"
-                    value={item.description}
-                    onChange={(e) => updateItem(i, "description", e.target.value)}
-                    className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52B788]"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Qty"
-                    value={item.quantity}
-                    min={1}
-                    onChange={(e) => updateItem(i, "quantity", parseInt(e.target.value) || 1)}
-                    className="w-20 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52B788]"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Unit Price"
-                    value={item.unit_price}
-                    min={0}
-                    step="0.01"
-                    onChange={(e) => updateItem(i, "unit_price", parseFloat(e.target.value) || 0)}
-                    className="w-28 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52B788]"
-                  />
-                  <span className="text-sm text-stone-500 w-24 text-right">
-                    {fmtCurrency(item.quantity * item.unit_price)}
-                  </span>
-                  {items.length > 1 && (
-                    <button type="button" onClick={() => removeItem(i)} className="text-stone-400 hover:text-red-500">
-                      ×
-                    </button>
-                  )}
+                <div key={i} className="flex flex-col gap-1.5 p-3 bg-stone-50 rounded-lg border border-stone-100">
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      placeholder="Description"
+                      value={item.description}
+                      onChange={(e) => updateItem(i, "description", e.target.value)}
+                      className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52B788] bg-white"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Qty"
+                      value={item.quantity}
+                      min={1}
+                      onChange={(e) => updateItem(i, "quantity", parseInt(e.target.value) || 1)}
+                      className="w-20 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52B788] bg-white"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Unit Price"
+                      value={item.unit_price}
+                      min={0}
+                      step="0.01"
+                      onChange={(e) => updateItem(i, "unit_price", parseFloat(e.target.value) || 0)}
+                      className="w-28 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52B788] bg-white"
+                    />
+                    <span className="text-sm text-stone-500 w-24 text-right">
+                      {fmtCurrency(item.quantity * item.unit_price)}
+                    </span>
+                    {items.length > 1 && (
+                      <button type="button" onClick={() => removeItem(i)} className="text-stone-400 hover:text-red-500">
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-stone-400 w-28 shrink-0">Link to inventory:</label>
+                    <select
+                      value={item.inventory_item_id || ""}
+                      onChange={(e) => updateItem(i, "inventory_item_id", e.target.value || null)}
+                      className="flex-1 border border-stone-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#52B788] bg-white text-stone-700"
+                    >
+                      <option value="">— No inventory link —</option>
+                      {inventoryItems.map((inv) => (
+                        <option key={inv.id} value={inv.id}>
+                          {inv.name}{inv.sku ? ` (${inv.sku})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               ))}
               <button type="button" onClick={addItem} className="text-sm text-[#52B788] hover:text-[#3d9068]">

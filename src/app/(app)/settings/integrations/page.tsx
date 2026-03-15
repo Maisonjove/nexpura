@@ -77,7 +77,9 @@ export default function IntegrationsPage() {
               {card.actions.map(action => (
                 <button 
                   key={action}
-                  className="px-3 py-1.5 text-xs font-medium border border-stone-200 bg-white rounded-lg hover:bg-stone-100 transition-colors"
+                  disabled
+                  title="This integration is not yet available"
+                  className="px-3 py-1.5 text-xs font-medium border border-stone-200 bg-white rounded-lg opacity-50 cursor-not-allowed"
                 >
                   {action}
                 </button>
@@ -106,26 +108,19 @@ export default function IntegrationsPage() {
                   {apiKey}
                 </div>
                 <button 
-                  onClick={() => {
-                    setIsRegenerating(true);
-                    setTimeout(() => {
-                      setApiKey("np_live_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
-                      setIsRegenerating(false);
-                    }, 1000);
-                  }}
-                  disabled={isRegenerating}
-                  className="p-3 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
-                  title="Regenerate Key"
+                  disabled
+                  title="API key generation not yet available"
+                  className="p-3 border border-stone-200 rounded-lg opacity-40 cursor-not-allowed"
                 >
-                  <RefreshCw size={16} className={isRegenerating ? "animate-spin" : ""} />
+                  <RefreshCw size={16} />
                 </button>
               </div>
               <div className="flex items-center justify-between">
-                <a href="#" className="flex items-center gap-1.5 text-xs text-[#8B7355] font-medium hover:underline">
+                <span className="flex items-center gap-1.5 text-xs text-stone-400">
                   <ExternalLink size={14} />
-                  View API Documentation
-                </a>
-                <span className="text-[10px] text-stone-400 font-medium italic">Last regenerated 2 days ago</span>
+                  API documentation coming soon
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-stone-100 text-stone-500">Coming Soon</span>
               </div>
             </div>
           </div>

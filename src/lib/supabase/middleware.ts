@@ -80,6 +80,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/invoices") ||
     pathname.startsWith("/passports") ||
     pathname.startsWith("/billing") ||
+    pathname.startsWith("/suspended") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/sales") ||
     pathname.startsWith("/suppliers") ||
@@ -99,15 +100,30 @@ export async function updateSession(request: NextRequest) {
     // Check if user has a tenant record
     const { data: userRecord } = await supabase
       .from("users")
-      .select("id, tenant_id")
+      .select("id, tenant_id, role")
       .eq("id", user.id)
       .single();
 
-    if (!userRecord) {
+    if (!userRecord || !userRecord.tenant_id) {
       // No tenant — redirect to onboarding
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = "/onboarding";
       return NextResponse.redirect(onboardingUrl);
+    }
+
+    // Check for suspended subscription if not on /billing or /suspended
+    if (!pathname.startsWith("/billing") && !pathname.startsWith("/suspended")) {
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("status")
+        .eq("tenant_id", userRecord.tenant_id)
+        .maybeSingle();
+
+      if (sub?.status === "suspended") {
+        const suspendedUrl = request.nextUrl.clone();
+        suspendedUrl.pathname = "/suspended";
+        return NextResponse.redirect(suspendedUrl);
+      }
     }
   }
 

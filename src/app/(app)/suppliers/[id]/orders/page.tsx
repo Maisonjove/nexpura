@@ -37,5 +37,20 @@ export default async function PurchaseOrdersPage({
     .eq("supplier_id", id)
     .order("created_at", { ascending: false });
 
-  return <PurchaseOrdersClient supplier={supplier} orders={orders ?? []} />;
+  // Fetch inventory items for the PO form (to link line items to inventory)
+  const { data: inventoryItems } = await supabase
+    .from("inventory")
+    .select("id, name, sku")
+    .eq("tenant_id", tenantId ?? "")
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .order("name");
+
+  return (
+    <PurchaseOrdersClient
+      supplier={supplier}
+      orders={orders ?? []}
+      inventoryItems={inventoryItems ?? []}
+    />
+  );
 }

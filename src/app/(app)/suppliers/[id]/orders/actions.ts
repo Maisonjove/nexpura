@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
 async function getAuthContext() {
@@ -26,7 +27,7 @@ export async function createPurchaseOrder(formData: FormData) {
   const expectedDate = formData.get("expected_date") as string || null;
   const itemsJson = formData.get("items") as string;
 
-  let items: { description: string; quantity: number; unit_price: number; line_total: number }[] = [];
+  let items: { description: string; quantity: number; unit_price: number; line_total: number; inventory_item_id?: string | null }[] = [];
   try {
     items = JSON.parse(itemsJson || "[]");
   } catch { /* ignore */ }
@@ -62,7 +63,9 @@ export async function updatePurchaseOrderStatus(
   id: string,
   status: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const { supabase, tenantId } = await getAuthContext();
+  const { supabase, userId, tenantId } = await getAuthContext();
+  const admin = createAdminClient();
+
   const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === "received") updates.received_date = new Date().toISOString().split("T")[0];
 
@@ -73,6 +76,60 @@ export async function updatePurchaseOrderStatus(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+
+  // When PO is received, update inventory quantities for linked items
+  if (status === "received") {
+    // Fetch the PO to get items and order_number
+    const { data: po } = await admin
+      .from("purchase_orders")
+      .select("order_number, items")
+      .eq("id", id)
+      .eq("tenant_id", tenantId)
+      .single();
+
+    if (po?.items && Array.isArray(po.items)) {
+      const poItems = po.items as Array<{
+        description: string;
+        quantity: number;
+        inventory_item_id?: string | null;
+      }>;
+
+      for (const item of poItems) {
+        if (!item.inventory_item_id || item.quantity <= 0) continue;
+
+        // Get current inventory quantity
+        const { data: inv } = await admin
+          .from("inventory")
+          .select("id, quantity, name")
+          .eq("id", item.inventory_item_id)
+          .eq("tenant_id", tenantId)
+          .single();
+
+        if (!inv) continue;
+
+        const newQty = (inv.quantity || 0) + item.quantity;
+
+        // Update inventory quantity
+        await admin
+          .from("inventory")
+          .update({ quantity: newQty, updated_at: new Date().toISOString() })
+          .eq("id", item.inventory_item_id)
+          .eq("tenant_id", tenantId);
+
+        // Log stock movement
+        await admin.from("stock_movements").insert({
+          tenant_id: tenantId,
+          inventory_id: item.inventory_item_id,
+          movement_type: "purchase_order_receive",
+          quantity_change: item.quantity,
+          quantity_after: newQty,
+          notes: `Received via PO ${po.order_number || id.slice(0, 8)}`,
+          created_by: userId,
+        });
+      }
+    }
+  }
+
   revalidatePath("/suppliers");
   return { success: true };
 }

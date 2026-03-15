@@ -202,9 +202,11 @@ export async function updateInventoryItem(id: string, formData: FormData) {
     if (secondaryStonesRaw) secondaryStones = JSON.parse(secondaryStonesRaw);
   } catch { /* ignore */ }
 
-  const { error } = await supabase
-    .from("inventory")
-    .update({
+  const { data: { user } } = await supabase.auth.getUser();
+  const { hasPermission } = await import("@/lib/permissions");
+  const canViewCost = await hasPermission(user?.id ?? "", tenantId, "view_cost_price");
+
+  const updates: any = {
       name,
       item_type: itemType,
       jewellery_type: jewelleryType || null,
@@ -220,8 +222,6 @@ export async function updateInventoryItem(id: string, formData: FormData) {
       stone_clarity: stoneClarity || null,
       ring_size: ringSize || null,
       dimensions: dimensions || null,
-      cost_price: costPrice,
-      wholesale_price: wholesalePrice,
       retail_price: retailPrice,
       low_stock_threshold: lowStockThreshold,
       track_quantity: trackQuantity,
@@ -244,7 +244,16 @@ export async function updateInventoryItem(id: string, formData: FormData) {
       consignment_commission_pct: formData.get("consignment_commission_pct") ? parseFloat(formData.get("consignment_commission_pct") as string) : null,
       supplier_invoice_ref: (formData.get("supplier_invoice_ref") as string) || null,
       secondary_stones: secondaryStones,
-    })
+  };
+
+  if (canViewCost) {
+    updates.cost_price = costPrice;
+    updates.wholesale_price = wholesalePrice;
+  }
+
+  const { error } = await supabase
+    .from("inventory")
+    .update(updates)
     .eq("id", id)
     .eq("tenant_id", tenantId);
 

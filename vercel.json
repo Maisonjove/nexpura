@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/trial-end-checker",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/daily-tasks-digest",
+      "schedule": "0 * * * *"
     }
   ]
 }

@@ -327,16 +327,19 @@ export default function CustomerDetailClient({
               </div>
            </div>
 
-           <div className="bg-stone-900 rounded-3xl p-8 space-y-6 text-white shadow-xl">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400">Engagement Score</h2>
-              <div className="flex items-end gap-2">
-                 <span className="text-4xl font-bold">82</span>
+           <div className="bg-stone-100 rounded-3xl p-8 space-y-4 border border-stone-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400">Engagement Score</h2>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-stone-200 text-stone-500">Coming Soon</span>
+              </div>
+              <div className="flex items-end gap-2 opacity-30 select-none">
+                 <span className="text-4xl font-bold text-stone-400">—</span>
                  <span className="text-stone-400 mb-1">/ 100</span>
               </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-[#8B7355] w-[82%]" />
+              <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
+                <div className="h-full bg-stone-300 w-0" />
               </div>
-              <p className="text-xs text-stone-400 leading-relaxed">Based on purchase frequency, sentiment analysis of notes, and attendance at showroom events.</p>
+              <p className="text-xs text-stone-400 leading-relaxed italic">Engagement scoring is not yet available. This feature is coming soon.</p>
            </div>
         </div>
       </div>

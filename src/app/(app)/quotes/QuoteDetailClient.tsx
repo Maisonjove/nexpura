@@ -7,6 +7,7 @@ import { ArrowLeft, Send, CheckCircle, Download, Gem, Hammer } from "lucide-reac
 import { format } from "date-fns";
 import { type Quote } from "./actions";
 import { convertQuoteToInvoice, convertQuoteToBespoke, convertQuoteToRepair } from "./actions-server";
+import { emailQuote } from "./emailQuote";
 import StatusBadge from "@/components/StatusBadge";
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
 export default function QuoteDetailClient({ quote }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
 
   async function handleConvert() {
     if (!confirm("Convert this quote to an invoice?")) return;
@@ -70,15 +72,31 @@ export default function QuoteDetailClient({ quote }: Props) {
         </Link>
         <div className="flex gap-2">
           <button 
-            onClick={() => {
-              if (confirm(`Email quote to ${quote.customers?.email}?`)) {
-                alert("Quote emailed successfully!");
+            onClick={async () => {
+              if (!quote.customers?.email) {
+                alert("No customer email on file.");
+                return;
+              }
+              if (!confirm(`Email quote to ${quote.customers.email}?`)) return;
+              setEmailSending(true);
+              try {
+                const result = await emailQuote(quote.id);
+                if (result.success) {
+                  alert("Quote emailed successfully!");
+                } else {
+                  alert(`Failed to send: ${result.error}`);
+                }
+              } catch {
+                alert("Failed to send quote email.");
+              } finally {
+                setEmailSending(false);
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 border border-stone-300 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors"
+            disabled={emailSending}
+            className="flex items-center gap-2 px-4 py-2 border border-stone-300 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
           >
             <Send size={18} />
-            Email Quote
+            {emailSending ? "Sending…" : "Email Quote"}
           </button>
           <a
             href={`/api/quote/${quote.id}/pdf`}

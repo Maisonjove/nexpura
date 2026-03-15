@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import ItemDetailClient from "./ItemDetailClient";
 import InventoryPhotos from "./InventoryPhotos";
 
+import { hasPermission } from "@/lib/permissions";
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -17,6 +19,8 @@ export default async function InventoryDetailPage({ params }: PageProps) {
     ? await supabase.from("users").select("tenant_id").eq("id", user.id).single()
     : { data: null };
   const tenantId = userData?.tenant_id ?? "";
+
+  const canViewCost = tenantId && user ? await hasPermission(user.id, tenantId, "view_cost_price") : false;
 
   const { data: item, error } = await supabase
     .from("inventory")
@@ -34,6 +38,11 @@ export default async function InventoryDetailPage({ params }: PageProps) {
     .single();
 
   if (error || !item) notFound();
+
+  if (!canViewCost) {
+    item.cost_price = null;
+    item.wholesale_price = null;
+  }
 
   const { data: movements } = await supabase
     .from("stock_movements")

@@ -25,6 +25,8 @@ interface CreatePOSSaleParams {
   total: number;
   paymentMethod: string;
   storeCreditAmount?: number;
+  voucherId?: string | null;
+  voucherAmount?: number;
 }
 
 export async function createPOSSale(
@@ -71,6 +73,23 @@ export async function createPOSSale(
     });
   }
 
+  // If using voucher, verify balance before creating sale
+  if (params.voucherId && params.voucherAmount && params.voucherAmount > 0) {
+    const { data: voucher } = await admin
+      .from("gift_vouchers")
+      .select("id, balance, status")
+      .eq("id", params.voucherId)
+      .eq("tenant_id", params.tenantId)
+      .single();
+
+    if (!voucher) return { error: "Voucher not found" };
+    if (voucher.status === "redeemed") return { error: "Voucher already redeemed" };
+    if (voucher.status === "cancelled") return { error: "Voucher is cancelled" };
+    if ((voucher.balance || 0) < params.voucherAmount) {
+      return { error: "Insufficient voucher balance" };
+    }
+  }
+
   // Generate sale number
   const { count } = await admin
     .from("sales")
@@ -102,6 +121,35 @@ export async function createPOSSale(
     .single();
 
   if (saleErr || !sale) return { error: saleErr?.message ?? "Failed to create sale" };
+
+  // Handle voucher redemption atomically with sale
+  if (params.voucherId && params.voucherAmount && params.voucherAmount > 0) {
+    const { data: voucher } = await admin
+      .from("gift_vouchers")
+      .select("id, balance")
+      .eq("id", params.voucherId)
+      .eq("tenant_id", params.tenantId)
+      .single();
+
+    if (voucher) {
+      const newBalance = Math.max(0, (voucher.balance || 0) - params.voucherAmount);
+      const newStatus = newBalance === 0 ? "redeemed" : "active";
+
+      await admin
+        .from("gift_vouchers")
+        .update({ balance: newBalance, status: newStatus })
+        .eq("id", params.voucherId)
+        .eq("tenant_id", params.tenantId);
+
+      await admin.from("gift_voucher_redemptions").insert({
+        voucher_id: params.voucherId,
+        sale_id: sale.id,
+        amount_used: params.voucherAmount,
+        tenant_id: params.tenantId,
+        redeemed_at: new Date().toISOString(),
+      });
+    }
+  }
 
   // Create sale items
   if (params.cart.length > 0) {

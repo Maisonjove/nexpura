@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import InventoryForm from "../../InventoryForm";
 
+import { hasPermission } from "@/lib/permissions";
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -18,6 +20,9 @@ export default async function EditInventoryPage({ params }: PageProps) {
     .eq("id", user?.id ?? "")
     .single();
 
+  const tenantId = userData?.tenant_id ?? "";
+  const canViewCost = tenantId && user ? await hasPermission(user.id, tenantId, "view_cost_price") : false;
+
   const [{ data: item }, { data: categories }] = await Promise.all([
     supabase
       .from("inventory")
@@ -28,11 +33,16 @@ export default async function EditInventoryPage({ params }: PageProps) {
     supabase
       .from("stock_categories")
       .select("id, name")
-      .eq("tenant_id", userData?.tenant_id ?? "")
+      .eq("tenant_id", tenantId)
       .order("name"),
   ]);
 
   if (!item) notFound();
+
+  if (!canViewCost) {
+    item.cost_price = null;
+    item.wholesale_price = null;
+  }
 
   const typedItem = item as {
     id: string;
