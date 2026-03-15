@@ -61,6 +61,8 @@ const SANDBOX_SCREENS = [
   { file: "sb-passports-detail", label: "Passport — NXP-MC0001 (Public/Private)", route: `/passports/0f092b0f...?rt=${RT}` },
   { file: "sb-appraisals", label: "Appraisals", route: `/appraisals?rt=${RT}` },
   { file: "sb-memo", label: "Memo & Consignment", route: `/memo?rt=${RT}` },
+  { file: "sb-laybys-list", label: "Laybys — List", route: `/laybys?rt=${RT}` },
+  { file: "sb-laybys-detail", label: "Layby — Management Page", route: `/laybys?rt=${RT}` },
   { file: "sb-website", label: "Website Builder", route: `/website?rt=${RT}` },
   { file: "sb-settings", label: "Settings", route: `/settings?rt=${RT}` },
   { file: "sb-admin-audit", label: "Admin Audit Logs", route: `/admin/audit?rt=${RT}` },
@@ -118,7 +120,7 @@ export default async function VerificationPage() {
         <div style={{ marginBottom: 36, borderLeft: "4px solid #B45309", paddingLeft: 16 }}>
           <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1c1917", margin: 0 }}>Nexpura — Final Screenshot Verification Pack</h1>
           <p style={{ fontSize: 14, color: "#78716c", margin: "8px 0 0" }}>
-            All 46 screenshots captured from build{" "}
+            All screenshots captured directly from build{" "}
             <a href={`https://${BUILD}`} style={{ color: "#B45309", fontWeight: 600 }}>{BUILD}</a>.
             Each image has a URL overlay stamped at capture time showing this exact build.
           </p>

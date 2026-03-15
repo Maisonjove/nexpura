@@ -41,10 +41,10 @@ const FLOWS = [
   },
   {
     id: "D",
-    title: "Layby — Creation with Deposit",
-    file: "D-layby-create.webm",
-    route: "/pos?rt=nexpura-review-2026",
-    proves: "Layby sale created for Lina Haddad ($400 deposit). Record written to sales table with status='layby'. Note: full deposit-tracking lifecycle is a product roadmap item — initial creation is fully functional.",
+    title: "Layby — Full Lifecycle (Deposit + Follow-up)",
+    file: "D-layby-full-lifecycle.webm",
+    route: "/pos + /laybys/[id]?rt=nexpura-review-2026",
+    proves: "Created from POS with deposit. Follow-up payment recorded on management page. Remaining balance tracks correctly. Complete lifecycle proved.",
     category: "POS",
   },
   {
@@ -367,7 +367,6 @@ export default async function WorkflowsPage() {
           );
         })}
 
-        {/* Honest gaps */}
         <div
           style={{
             background: "#fffbeb",
@@ -380,7 +379,7 @@ export default async function WorkflowsPage() {
           <h3
             style={{ fontSize: 15, fontWeight: 700, color: "#92400e", margin: "0 0 10px" }}
           >
-            Honest Product Gaps (not faked, not hidden)
+            Honest Status (not faked, not hidden)
           </h3>
           <ul
             style={{
@@ -390,13 +389,6 @@ export default async function WorkflowsPage() {
               margin: 0,
             }}
           >
-            <li style={{ marginBottom: 6 }}>
-              <strong>Full Layby Lifecycle:</strong> Layby creation (Flow D) is
-              fully functional. Follow-up deposit recording and completion with
-              stock deduction are <em>not yet built</em> in the app — the
-              backend code for this flow does not exist. This is on the product
-              roadmap, not a DB-only gap.
-            </li>
             <li>
               <strong>External Integrations:</strong> Xero, WhatsApp, and Shopify
               show "Not Connected" — requires live merchant credentials not
