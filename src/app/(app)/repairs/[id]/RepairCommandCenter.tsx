@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/format-currency";
@@ -202,6 +202,21 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
   const [toast, setToast] = useState<string | null>(null);
   const [emailSending, setEmailSending] = useState(false);
 
+  // Escape key closes any open modal — prevents stuck backdrop
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setShowAddManual(false);
+        setShowAddStock(false);
+        setShowPayment(false);
+        setShowStageModal(false);
+        setFormError(null);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   // Form state
   const [manualDesc, setManualDesc] = useState("");
   const [manualQty, setManualQty] = useState("1");
@@ -273,12 +288,14 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
     setFormError(null);
     const qty = parseInt(manualQty) || 1;
     const price = parseFloat(manualPrice) || 0;
-    if (!manualDesc.trim()) { setFormError("Description is required"); return; }
+    const desc = manualDesc.trim();
+    if (!desc) { setFormError("Description is required"); return; }
+    // Close modal immediately — before async work, so backdrop never lingers
+    setShowAddManual(false);
+    setManualDesc(""); setManualQty("1"); setManualPrice("");
     startTransition(async () => {
-      const result = await addRepairLineItem(repair.id, tenantId, { description: manualDesc, qty, unitPrice: price });
-      if (result.error) { setFormError(result.error); return; }
-      setShowAddManual(false);
-      setManualDesc(""); setManualQty("1"); setManualPrice("");
+      const result = await addRepairLineItem(repair.id, tenantId, { description: desc, qty, unitPrice: price });
+      if (result.error) { showToast(`Error: ${result.error}`); return; }
       refresh();
     });
   }
@@ -288,6 +305,9 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
     if (!selectedInventoryId) { setFormError("Select an item"); return; }
     const item = inventory.find(i => i.id === selectedInventoryId);
     if (!item) return;
+    // Close modal immediately
+    setShowAddStock(false);
+    setSelectedInventoryId("");
     startTransition(async () => {
       const result = await addRepairLineItem(repair.id, tenantId, {
         description: item.name,
@@ -295,9 +315,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
         unitPrice: item.retail_price ?? 0,
         inventoryId: item.id,
       });
-      if (result.error) { setFormError(result.error); return; }
-      setShowAddStock(false);
-      setSelectedInventoryId("");
+      if (result.error) { showToast(`Error: ${result.error}`); return; }
       refresh();
     });
   }
@@ -315,11 +333,14 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
     const amount = parseFloat(paymentAmount);
     if (!amount || amount <= 0) { setFormError("Enter a valid amount"); return; }
     if (!invoice) { setFormError("No invoice linked. Add a line item first."); return; }
+    const method = paymentMethod;
+    const notes = paymentNotes;
+    // Close modal immediately
+    setShowPayment(false);
+    setPaymentAmount(""); setPaymentNotes(""); setPaymentPrefill(null);
     startTransition(async () => {
-      const result = await recordRepairPayment(repair.id, invoice.id, tenantId, amount, paymentMethod, paymentNotes);
-      if (result.error) { setFormError(result.error); return; }
-      setShowPayment(false);
-      setPaymentAmount(""); setPaymentNotes(""); setPaymentPrefill(null);
+      const result = await recordRepairPayment(repair.id, invoice.id, tenantId, amount, method, notes);
+      if (result.error) { showToast(`Error: ${result.error}`); return; }
       refresh();
     });
   }
@@ -349,10 +370,13 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
   }
 
   async function confirmStageChange() {
+    const stage = targetStage;
+    // Close modal immediately
+    setShowStageModal(false);
     startTransition(async () => {
-      const result = await updateRepairStage(repair.id, tenantId, targetStage);
+      const result = await updateRepairStage(repair.id, tenantId, stage);
       if (result.error) showToast(`Error: ${result.error}`);
-      else { setShowStageModal(false); showToast(`✓ Stage updated to ${targetStage}`); refresh(); }
+      else { showToast(`✓ Stage updated to ${stage}`); refresh(); }
     });
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/format-currency";
@@ -183,6 +183,21 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
   const [toast, setToast] = useState<string | null>(null);
   const [emailSending, setEmailSending] = useState(false);
 
+  // Escape key closes any open modal — prevents stuck backdrop
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setShowAddManual(false);
+        setShowAddStock(false);
+        setShowPayment(false);
+        setShowStageModal(false);
+        setFormError(null);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   const [manualDesc, setManualDesc] = useState("");
   const [manualQty, setManualQty] = useState("1");
   const [manualPrice, setManualPrice] = useState("");
@@ -250,12 +265,14 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
     setFormError(null);
     const qty = parseInt(manualQty) || 1;
     const price = parseFloat(manualPrice) || 0;
-    if (!manualDesc.trim()) { setFormError("Description is required"); return; }
+    const desc = manualDesc.trim();
+    if (!desc) { setFormError("Description is required"); return; }
+    // Close modal immediately — before async work, so backdrop never lingers
+    setShowAddManual(false);
+    setManualDesc(""); setManualQty("1"); setManualPrice("");
     startTransition(async () => {
-      const result = await addBespokeLineItem(job.id, tenantId, { description: manualDesc, qty, unitPrice: price });
-      if (result.error) { setFormError(result.error); return; }
-      setShowAddManual(false);
-      setManualDesc(""); setManualQty("1"); setManualPrice("");
+      const result = await addBespokeLineItem(job.id, tenantId, { description: desc, qty, unitPrice: price });
+      if (result.error) { showToast(`Error: ${result.error}`); return; }
       refresh();
     });
   }
@@ -265,12 +282,14 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
     if (!selectedInventoryId) { setFormError("Select an item"); return; }
     const item = inventory.find(i => i.id === selectedInventoryId);
     if (!item) return;
+    // Close modal immediately
+    setShowAddStock(false);
+    setSelectedInventoryId("");
     startTransition(async () => {
       const result = await addBespokeLineItem(job.id, tenantId, {
         description: item.name, qty: 1, unitPrice: item.retail_price ?? 0, inventoryId: item.id,
       });
-      if (result.error) { setFormError(result.error); return; }
-      setShowAddStock(false); setSelectedInventoryId("");
+      if (result.error) { showToast(`Error: ${result.error}`); return; }
       refresh();
     });
   }
@@ -288,11 +307,14 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
     const amount = parseFloat(paymentAmount);
     if (!amount || amount <= 0) { setFormError("Enter a valid amount"); return; }
     if (!invoice) { setFormError("No invoice linked. Add a line item first."); return; }
+    const method = paymentMethod;
+    const notes = paymentNotes;
+    // Close modal immediately
+    setShowPayment(false);
+    setPaymentAmount(""); setPaymentNotes("");
     startTransition(async () => {
-      const result = await recordBespokePayment(job.id, invoice.id, tenantId, amount, paymentMethod, paymentNotes);
-      if (result.error) { setFormError(result.error); return; }
-      setShowPayment(false);
-      setPaymentAmount(""); setPaymentNotes("");
+      const result = await recordBespokePayment(job.id, invoice.id, tenantId, amount, method, notes);
+      if (result.error) { showToast(`Error: ${result.error}`); return; }
       refresh();
     });
   }
@@ -322,10 +344,13 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
   }
 
   async function confirmStageChange() {
+    const stage = targetStage;
+    // Close modal immediately
+    setShowStageModal(false);
     startTransition(async () => {
-      const result = await updateBespokeStage(job.id, tenantId, targetStage);
+      const result = await updateBespokeStage(job.id, tenantId, stage);
       if (result.error) showToast(`Error: ${result.error}`);
-      else { setShowStageModal(false); showToast(`✓ Stage updated`); refresh(); }
+      else { showToast(`✓ Stage updated`); refresh(); }
     });
   }
 
