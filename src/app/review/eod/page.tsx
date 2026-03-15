@@ -21,7 +21,7 @@ export default async function ReviewEODPage() {
   try {
     const { data: sales } = await admin
       .from("sales")
-      .select("payment_method, total, status, voucher_amount")
+      .select("payment_method, total, status")
       .eq("tenant_id", TENANT_ID)
       .gte("sale_date", startOfDay)
       .lte("sale_date", endOfDay)

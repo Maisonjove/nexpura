@@ -127,7 +127,7 @@ export async function getBespokeStats(
     const admin = createAdminClient();
     const { data } = await admin
       .from("bespoke_jobs")
-      .select("status, total_price, created_at")
+      .select("status, quoted_price, final_price, created_at")
       .eq("tenant_id", tenantId)
       .gte("created_at", dateFrom)
       .lte("created_at", dateTo + "T23:59:59");
@@ -136,7 +136,7 @@ export async function getBespokeStats(
     const completed = (data ?? []).filter((b) => b.status === "completed").length;
     const avgValue =
       total > 0
-        ? (data ?? []).reduce((s, b) => s + (b.total_price ?? 0), 0) / total
+        ? (data ?? []).reduce((s, b) => s + (b.final_price ?? b.quoted_price ?? 0), 0) / total
         : 0;
 
     return { data: { total, completed, avgValue: Math.round(avgValue) } };

@@ -76,7 +76,7 @@ export async function GET(req: Request) {
       // Bespoke jobs
       admin
         .from("bespoke_jobs")
-        .select("total_price, stage, created_at, customers(full_name)")
+        .select("quoted_price, final_price, stage, created_at, customers(full_name)")
         .eq("tenant_id", tenantId)
         .gte("created_at", fromISO)
         .lte("created_at", toISO)
@@ -102,7 +102,7 @@ export async function GET(req: Request) {
     const posSalesRevenue = sales.reduce((s, r) => s + (r.total || 0), 0);
     const invoiceRevenue = invoices.reduce((s, r) => s + (r.total || 0), 0);
     const repairRevenue = repairs.reduce((s, r) => s + (r.price || 0), 0);
-    const bespokeRevenue = bespoke.reduce((s, r) => s + (r.total_price || 0), 0);
+    const bespokeRevenue = bespoke.reduce((s, r) => s + (((r as {final_price?: number}).final_price ?? (r as {quoted_price?: number}).quoted_price) || 0), 0);
     const totalRevenue = posSalesRevenue + invoiceRevenue;
     const totalRefunds = refunds.reduce((s, r) => s + (r.total || 0), 0);
     const netRevenue = totalRevenue - totalRefunds;

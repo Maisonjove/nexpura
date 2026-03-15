@@ -53,7 +53,7 @@ export async function getEODSummary(date?: string): Promise<{ data?: EODSummary;
   // Fetch all sales for the day
   const { data: sales } = await admin
     .from("sales")
-    .select("payment_method, total, status, voucher_amount")
+    .select("payment_method, total, status")
     .eq("tenant_id", tenantId)
     .gte("sale_date", startOfDay)
     .lte("sale_date", endOfDay)
@@ -104,7 +104,7 @@ export async function getEODSummary(date?: string): Promise<{ data?: EODSummary;
       case "voucher+card":
       case "voucher+cash": {
         // For split payments, voucher portion is voucherAmount, rest goes to card/cash
-        const voucherPortion = sale.voucher_amount ?? 0;
+        const voucherPortion = (sale as { voucher_amount?: number }).voucher_amount ?? 0;
         totalSalesVoucher += voucherPortion;
         const remainder = total - voucherPortion;
         if (method === "voucher+cash") {

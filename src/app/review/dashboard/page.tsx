@@ -271,6 +271,7 @@ export default async function ReviewDashboardPage() {
 
   return (
     <DashboardClient
+      basePath="/review"
       firstName="Marcus"
       tenantName="Marcus & Co. Fine Jewellery"
       salesThisMonthRevenue={salesThisMonthRevenue}

@@ -86,7 +86,7 @@ export async function GET(req: Request) {
       // Bespoke revenue
       admin
         .from("bespoke_jobs")
-        .select("total_price, stage, created_at")
+        .select("quoted_price, final_price, stage, created_at")
         .eq("tenant_id", tenantId)
         .gte("created_at", sixtyDaysAgo)
         .is("deleted_at", null),
@@ -132,7 +132,7 @@ export async function GET(req: Request) {
 
     // Repairs & bespoke
     const repairRevenue = (repairsData.data ?? []).reduce((s, r) => s + (r.price || 0), 0);
-    const bespokeRevenue = (bespokeData.data ?? []).reduce((s, r) => s + (r.total_price || 0), 0);
+    const bespokeRevenue = (bespokeData.data ?? []).reduce((s, r) => s + ((r as {final_price?: number; quoted_price?: number}).final_price ?? (r as {final_price?: number; quoted_price?: number}).quoted_price ?? 0), 0);
 
     // Top products
     const productMap = new Map<string, { qty: number; revenue: number }>();

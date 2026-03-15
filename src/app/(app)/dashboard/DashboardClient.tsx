@@ -59,6 +59,7 @@ type TeamTaskSummary = {
 };
 
 interface DashboardClientProps {
+  basePath?: string;
   firstName: string;
   tenantName: string | null;
   salesThisMonthRevenue: number;
@@ -123,6 +124,7 @@ function formatStageLabel(stage: string) {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function DashboardClient({
+  basePath = "",
   firstName,
   tenantName,
   salesThisMonthRevenue,
@@ -155,10 +157,10 @@ export default function DashboardClient({
         {/* Quick actions */}
         <div className="inline-flex mt-4 bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm">
           {[
-            { label: 'New Sale', href: '/sales/new' },
-            { label: 'New Customer', href: '/customers/new' },
-            { label: 'New Repair', href: '/repairs/new' },
-            { label: 'New Job', href: '/bespoke/new' },
+            { label: 'New Sale', href: `${basePath}/sales/new` },
+            { label: 'New Customer', href: `${basePath}/customers/new` },
+            { label: 'New Repair', href: `${basePath}/repairs/new` },
+            { label: 'New Job', href: `${basePath}/bespoke/new` },
           ].map((action, i) => (
             <a
               key={action.label}
@@ -181,7 +183,7 @@ export default function DashboardClient({
               <span className="w-2 h-2 rounded-full bg-[#8B7355] animate-pulse" />
               {isManager ? "Tasks Due Today" : `Tasks Due Today (${myTasks.length})`}
             </h2>
-            <a href="/tasks" className="text-xs font-medium text-[#8B7355] hover:underline">View all tasks →</a>
+            <a href={`${basePath}/tasks`} className="text-xs font-medium text-[#8B7355] hover:underline">View all tasks →</a>
           </div>
 
           {/* My tasks */}
@@ -206,7 +208,7 @@ export default function DashboardClient({
                       <p className="text-sm font-semibold text-stone-800">{task.title}</p>
                     </div>
                     <div className="mt-4 flex justify-end">
-                      <a href={`/tasks`} className="text-[11px] font-medium text-stone-400 hover:text-[#8B7355]">Update →</a>
+                      <a href={`${basePath}/tasks`} className="text-[11px] font-medium text-stone-400 hover:text-[#8B7355]">Update →</a>
                     </div>
                   </div>
                 ))}
@@ -219,7 +221,7 @@ export default function DashboardClient({
             <div className="border-t border-[#8B7355]/10 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest">Team Tasks</p>
-                <a href="/tasks" className="text-xs font-medium text-[#8B7355] hover:underline">View All Team Tasks →</a>
+                <a href={`${basePath}/tasks`} className="text-xs font-medium text-[#8B7355] hover:underline">View All Team Tasks →</a>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {teamTaskSummary.map((member) => (
@@ -247,7 +249,7 @@ export default function DashboardClient({
           </div>
           <div>
             <p className="text-sm font-medium text-stone-700">No tasks due today</p>
-            <a href="/tasks" className="text-xs text-[#8B7355] hover:underline">View all tasks →</a>
+            <a href={`${basePath}/tasks`} className="text-xs text-[#8B7355] hover:underline">View all tasks →</a>
           </div>
         </div>
       )}
@@ -281,7 +283,7 @@ export default function DashboardClient({
             {readyForPickup.map((item) => (
               <a
                 key={`${item.type}-${item.id}`}
-                href={`/${item.type === 'repair' ? 'repairs' : 'bespoke'}/${item.id}`}
+                href={`${basePath}/${item.type === 'repair' ? 'repairs' : 'bespoke'}/${item.id}`}
                 className="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 border border-emerald-100 hover:border-emerald-300 transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -307,12 +309,12 @@ export default function DashboardClient({
         <div className="col-span-2 bg-white rounded-lg border border-stone-200 overflow-hidden">
           <div className="px-6 py-4 flex justify-between items-center border-b border-stone-100">
             <span className="text-sm font-semibold text-stone-700">Active Repairs</span>
-            <a href="/repairs" className="text-xs text-stone-400 hover:text-[#8B7355] transition-colors">View all →</a>
+            <a href={`${basePath}/repairs`} className="text-xs text-stone-400 hover:text-[#8B7355] transition-colors">View all →</a>
           </div>
           {activeRepairs.length === 0 ? (
             <div className="px-6 py-10 text-center">
               <p className="text-sm text-stone-400">No active repairs yet</p>
-              <a href="/repairs/new" className="mt-2 inline-block text-sm font-medium text-[#8B7355] hover:underline">
+              <a href={`${basePath}/repairs/new`} className="mt-2 inline-block text-sm font-medium text-[#8B7355] hover:underline">
                 Log your first repair →
               </a>
             </div>
@@ -329,7 +331,7 @@ export default function DashboardClient({
                 {activeRepairs.map((r) => {
                   const isOverdue = r.due_date && new Date(r.due_date) < new Date();
                   return (
-                    <tr key={r.id} className="border-b border-stone-100 hover:bg-stone-50/50 transition-colors cursor-pointer" onClick={() => window.location.href = `/repairs/${r.id}`}>
+                    <tr key={r.id} className="border-b border-stone-100 hover:bg-stone-50/50 transition-colors cursor-pointer" onClick={() => window.location.href = `${basePath}/repairs/${r.id}`}>
                       <td className="px-4 py-3.5 text-sm font-medium text-stone-900">{r.customer || "Unknown"}</td>
                       <td className="px-4 py-3.5 text-sm text-stone-700">{r.item}</td>
                       <td className="px-4 py-3.5">
@@ -354,19 +356,19 @@ export default function DashboardClient({
           <div className="bg-white rounded-lg border border-stone-200 p-6">
             <div className="flex justify-between items-center mb-4">
               <span className="text-sm font-semibold text-stone-700">Bespoke Jobs</span>
-              <a href="/bespoke" className="text-xs text-stone-400 hover:text-[#8B7355] transition-colors">View all →</a>
+              <a href={`${basePath}/bespoke`} className="text-xs text-stone-400 hover:text-[#8B7355] transition-colors">View all →</a>
             </div>
             {activeBespokeJobs.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-sm text-stone-400">No bespoke jobs yet</p>
-                <a href="/bespoke/new" className="mt-1 inline-block text-sm font-medium text-[#8B7355] hover:underline">
+                <a href={`${basePath}/bespoke/new`} className="mt-1 inline-block text-sm font-medium text-[#8B7355] hover:underline">
                   Create first job →
                 </a>
               </div>
             ) : (
               <div className="space-y-3">
                 {activeBespokeJobs.map((job) => (
-                  <a key={job.id} href={`/bespoke/${job.id}`} className="flex justify-between items-center hover:bg-stone-50 rounded-md -mx-1 px-1 py-0.5 transition-colors">
+                  <a key={job.id} href={`${basePath}/bespoke/${job.id}`} className="flex justify-between items-center hover:bg-stone-50 rounded-md -mx-1 px-1 py-0.5 transition-colors">
                     <div>
                       <p className="text-sm font-medium text-stone-900">{job.title}</p>
                       <p className="text-xs text-stone-400 mt-0.5">{job.customer || "No customer"}</p>
@@ -391,7 +393,7 @@ export default function DashboardClient({
                 {overdueRepairs.map((r) => (
                   <a
                     key={r.id}
-                    href={`/repairs/${r.id}`}
+                    href={`${basePath}/repairs/${r.id}`}
                     className="block px-3 py-2 rounded-md text-xs border-l-2 border-red-400 bg-red-50 hover:bg-red-100 transition-colors"
                   >
                     <span className="font-semibold text-red-700">REP-{r.repairNumber}</span>
@@ -401,7 +403,7 @@ export default function DashboardClient({
                 {/* Overdue invoices count */}
                 {overdueInvoiceCount > 0 && (
                   <a
-                    href="/invoices?status=overdue"
+                    href={`${basePath}/invoices`}
                     className="block px-3 py-2 rounded-md text-xs border-l-2 border-red-400 bg-red-50 hover:bg-red-100 transition-colors text-red-700"
                   >
                     {overdueInvoiceCount} invoice{overdueInvoiceCount !== 1 ? 's' : ''} overdue
@@ -411,7 +413,7 @@ export default function DashboardClient({
                 {lowStockItems.map((item) => (
                   <a
                     key={item.id}
-                    href={`/inventory/${item.id}`}
+                    href={`${basePath}/inventory/${item.id}`}
                     className="block px-3 py-2 rounded-md text-xs border-l-2 border-amber-400 bg-amber-50 hover:bg-amber-100 transition-colors"
                   >
                     <span className="font-semibold text-amber-700">{item.name}</span>

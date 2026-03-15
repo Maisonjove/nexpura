@@ -32,7 +32,7 @@ export default async function ReviewBespokePage() {
   const { data: rawJobs } = await admin
     .from("bespoke_jobs")
     .select(
-      `id, job_number, title, stage, due_date, total_price, deposit_amount, created_at,
+      `id, job_number, title, stage, due_date, quoted_price, final_price, deposit_amount, created_at,
        customers(id, full_name)`
     )
     .eq("tenant_id", TENANT_ID)
@@ -70,9 +70,10 @@ export default async function ReviewBespokePage() {
               </tr>
             ) : (
               jobs.map((j) => {
-                const value = (j as { total_price?: number | null }).total_price
-                  || (j as { deposit_amount?: number | null }).deposit_amount
-                  || null;
+                const value = (j as { final_price?: number | null }).final_price
+                  ?? (j as { quoted_price?: number | null }).quoted_price
+                  ?? (j as { deposit_amount?: number | null }).deposit_amount
+                  ?? null;
                 return (
                   <tr key={j.id} className="border-b border-stone-100 hover:bg-stone-50/60 transition-colors">
                     <td className="px-4 py-3 text-sm text-stone-700">
