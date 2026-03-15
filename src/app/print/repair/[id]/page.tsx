@@ -1,6 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
-import { PrintAutoScript, CloseButton } from "@/app/print/PrintAutoScript";
 
 export default async function PrintRepairPage({
   params,
@@ -79,8 +78,7 @@ export default async function PrintRepairPage({
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: css }} />
-      <PrintAutoScript />
-      <CloseButton />
+      <script dangerouslySetInnerHTML={{ __html: "window.onload=function(){window.print();};" }} /><script dangerouslySetInnerHTML={{ __html: "document.addEventListener(\"DOMContentLoaded\",function(){var b=document.getElementById(\"close-btn\");if(b)b.onclick=function(){window.close();};});" }} /><button id="close-btn" className="no-print" style={{position:"fixed",top:12,right:12,padding:"6px 14px",background:"#e5e7eb",border:"1px solid #ccc",borderRadius:6,cursor:"pointer",fontSize:12,zIndex:1000}}>Close</button>
 
       <div className="page-header">
         <div>
