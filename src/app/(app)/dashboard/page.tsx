@@ -271,9 +271,10 @@ export default async function DashboardPage() {
 
   // Tasks due TODAY — tenant-scoped (table is `tasks`, not `staff_tasks`)
   // Managers/owners see ALL team tasks; staff see only their own
+  // Note: tasks table has no FK to users — select without join, team names fall back to "Unknown"
   let myTasksQuery = admin
     .from("tasks")
-    .select("id, title, priority, status, due_date, assigned_to, users(full_name)")
+    .select("id, title, priority, status, due_date, assigned_to")
     .eq("tenant_id", tenantId ?? "")
     .neq("status", "completed")
     .eq("due_date", today)
@@ -304,7 +305,7 @@ export default async function DashboardPage() {
     for (const t of allTasks ?? []) {
       if (!t.assigned_to || t.assigned_to === user?.id) continue;
       const existing = byAssignee.get(t.assigned_to);
-      const assigneeName = (Array.isArray(t.users) ? t.users[0]?.full_name : (t.users as { full_name: string | null } | null)?.full_name) ?? "Unknown";
+      const assigneeName = "Unknown"; // tasks has no FK to users — names not available without separate lookup
       if (existing) {
         existing.count++;
       } else {

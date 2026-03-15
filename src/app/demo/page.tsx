@@ -264,9 +264,10 @@ export default async function DemoPage() {
     .slice(0, 5);
 
   // Tasks due TODAY — all tenant tasks (demo shows manager view, table is `tasks`) (mirrors real dashboard)
+  // Note: tasks has no FK to users — select without join
   const { data: allTasksData } = await admin
     .from("tasks")
-    .select("id, title, priority, status, due_date, assigned_to, users(full_name)")
+    .select("id, title, priority, status, due_date, assigned_to")
     .eq("tenant_id", tenantId)
     .neq("status", "completed")
     .eq("due_date", today)
@@ -292,10 +293,7 @@ export default async function DemoPage() {
   for (const t of allTasksData ?? []) {
     if (!t.assigned_to || t.assigned_to === DEMO_USER_ID) continue;
     const existing = byAssignee.get(t.assigned_to);
-    const assigneeName =
-      (Array.isArray(t.users)
-        ? t.users[0]?.full_name
-        : (t.users as { full_name: string | null } | null)?.full_name) ?? "Unknown";
+    const assigneeName = "Unknown"; // tasks has no FK to users
     if (existing) {
       existing.count++;
     } else {
