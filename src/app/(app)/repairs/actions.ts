@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { sendRepairReadyEmail, sendQuoteEmail } from "@/lib/email/send";
 import { createNotification } from "@/lib/notifications";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -175,6 +177,34 @@ export async function advanceRepairStage(
   // Send "repair ready" email when stage becomes 'ready'
   if (newStage === "ready") {
     await sendRepairReadyEmail(repairId);
+
+    // WhatsApp notification — fire & forget, don't block on errors
+    try {
+      const admin = createAdminClient();
+      const { data: repairData } = await admin
+        .from("repairs")
+        .select("item_type, customers(full_name, phone), tenants(business_name, name)")
+        .eq("id", repairId)
+        .single();
+      if (repairData) {
+        const customer = Array.isArray(repairData.customers)
+          ? repairData.customers[0]
+          : (repairData.customers as any);
+        const tenantInfo = Array.isArray(repairData.tenants)
+          ? repairData.tenants[0]
+          : (repairData.tenants as any);
+        const phone = customer?.phone;
+        if (phone) {
+          const storeName = tenantInfo?.business_name || tenantInfo?.name || "our store";
+          const customerName = customer?.full_name || "Valued Customer";
+          const jobType = `repair (${repairData.item_type || "jewellery"})`;
+          const message = `Hi ${customerName}, your ${jobType} is ready for collection at ${storeName}. Please contact us to arrange pickup.`;
+          await sendWhatsAppMessage(tenantId, phone, message);
+        }
+      }
+    } catch (e) {
+      console.error("[repairs/advanceJobStage] WhatsApp notification failed:", e);
+    }
   }
 
   // Send notification when stage becomes 'completed'

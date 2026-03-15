@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { sendJobReadyEmail } from "@/lib/email/send";
 import { createNotification } from "@/lib/notifications";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -188,6 +190,36 @@ export async function advanceJobStage(
   // Send "ready for collection" email when stage becomes 'ready'
   if (newStage === "ready") {
     await sendJobReadyEmail(jobId);
+
+    // WhatsApp notification — fire & forget
+    try {
+      const admin = createAdminClient();
+      const { data: jobData } = await admin
+        .from("bespoke_jobs")
+        .select("jewellery_type, title, customers(full_name, phone), tenants(business_name, name)")
+        .eq("id", jobId)
+        .single();
+      if (jobData) {
+        const customer = Array.isArray(jobData.customers)
+          ? jobData.customers[0]
+          : (jobData.customers as any);
+        const tenantInfo = Array.isArray(jobData.tenants)
+          ? jobData.tenants[0]
+          : (jobData.tenants as any);
+        const phone = customer?.phone;
+        if (phone) {
+          const storeName = tenantInfo?.business_name || tenantInfo?.name || "our store";
+          const customerName = customer?.full_name || "Valued Customer";
+          const jobType = jobData.jewellery_type
+            ? jobData.jewellery_type.replace(/_/g, " ")
+            : jobData.title || "bespoke piece";
+          const message = `Hi ${customerName}, your ${jobType} is ready for collection at ${storeName}. Please contact us to arrange pickup.`;
+          await sendWhatsAppMessage(tenantId, phone, message);
+        }
+      }
+    } catch (e) {
+      console.error("[bespoke/advanceJobStage] WhatsApp notification failed:", e);
+    }
   }
 
   // Send notification when stage becomes 'completed'

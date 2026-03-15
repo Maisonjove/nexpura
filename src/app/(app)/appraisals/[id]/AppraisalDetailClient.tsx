@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateAppraisal, issueAppraisal } from "../actions";
 import type { Appraisal } from "../actions";
-import { Mail, Download, ChevronLeft, Check, Edit2, Shield, User, FileText, Calendar } from "lucide-react";
+import { Mail, Download, ChevronLeft, Check, Edit2, Shield, User, FileText, Calendar, Loader2 } from "lucide-react";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-stone-100 text-stone-600",
@@ -49,6 +49,7 @@ export default function AppraisalDetailClient({ appraisal: initial, tenant, user
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
+  const [insuranceSending, setInsuranceSending] = useState(false);
 
   // Editable fields
   const [notes, setNotes] = useState(appraisal.notes ?? "");
@@ -112,6 +113,30 @@ export default function AppraisalDetailClient({ appraisal: initial, tenant, user
     }, 1500);
   }
 
+  async function handleInsuranceSend() {
+    if (!appraisal.customer_email) {
+      showFeedback("No customer email on this appraisal", true);
+      return;
+    }
+    if (!confirm(`Email insurance valuation PDF to ${appraisal.customer_email}?`)) return;
+    setInsuranceSending(true);
+    try {
+      const res = await fetch(`/api/appraisals/${appraisal.id}/insurance-send`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (res.ok) {
+        showFeedback("Insurance valuation sent to " + appraisal.customer_email);
+      } else {
+        showFeedback(json.error ?? "Failed to send", true);
+      }
+    } catch {
+      showFeedback("Network error", true);
+    } finally {
+      setInsuranceSending(false);
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto py-10 px-4 space-y-8">
       <div className="flex items-center justify-between">
@@ -136,6 +161,24 @@ export default function AppraisalDetailClient({ appraisal: initial, tenant, user
             <Download size={16} />
             PDF
           </a>
+          <a
+            href={`/api/appraisals/${appraisal.id}/insurance-export`}
+            download
+            className="flex items-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors text-sm font-medium"
+            title="Download Insurance Valuation Certificate PDF"
+          >
+            <Shield size={16} />
+            Insurance PDF
+          </a>
+          <button
+            onClick={handleInsuranceSend}
+            disabled={insuranceSending || !appraisal.customer_email}
+            className="flex items-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors text-sm font-medium disabled:opacity-40"
+            title={appraisal.customer_email ? "Email insurance certificate to customer" : "No customer email"}
+          >
+            {insuranceSending ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+            Send to Customer
+          </button>
           <button 
             onClick={() => setEditMode(!editMode)}
             className="flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors text-sm font-medium"
