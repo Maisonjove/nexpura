@@ -48,7 +48,7 @@ export default async function BespokeJobDetailPage({
         .from("invoice_line_items")
         .select("id, description, quantity, unit_price, total")
         .eq("invoice_id", invoiceId)
-        .order("created_at", { ascending: true });
+        .order("id", { ascending: true });
 
       const { data: payments } = await adminClient
         .from("payments")
