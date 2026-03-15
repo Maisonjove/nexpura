@@ -11,14 +11,22 @@ const STORE_PAGES = [
   { slug: "/repairs", name: "Repairs", desc: "Intake form for repair requests", status: "draft" },
 ];
 
-function ReadOnlyField({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div>
-      <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">{label}</p>
-      <p className="text-sm text-stone-900 mt-0.5 font-medium">{value || "—"}</p>
-    </div>
-  );
-}
+const BUILDER_CAPABILITIES = [
+  { label: "Theme & Branding", desc: "Logo, primary/secondary colours, font selection" },
+  { label: "Pages & Content", desc: "Hero section, about text, feature highlights" },
+  { label: "Domain & Subdomain", desc: "Custom domain or *.nexpura.com subdomain" },
+  { label: "Store Mode", desc: "Catalogue-only, enquiry, or full e-commerce" },
+  { label: "Pricing Visibility", desc: "Show or hide prices to public visitors" },
+  { label: "Enquiry Forms", desc: "Customer contact and product enquiry forms" },
+  { label: "Social Links", desc: "Instagram, Facebook, and other social channels" },
+  { label: "SEO Metadata", desc: "Page title, meta description for search engines" },
+];
+
+const MODE_LABELS: Record<string, { title: string; desc: string; badge: string }> = {
+  A: { title: "Catalogue Only", desc: "Public product catalogue — browse without checkout", badge: "bg-stone-100 text-stone-700" },
+  B: { title: "Catalogue + Enquiry", desc: "Product catalogue with customer enquiry forms", badge: "bg-amber-50 text-amber-700" },
+  C: { title: "Full Online Store", desc: "Full e-commerce with cart and checkout", badge: "bg-green-50 text-green-700" },
+};
 
 function ToggleDisplay({ label, enabled, desc }: { label: string; enabled: boolean; desc?: string }) {
   return (
@@ -37,34 +45,26 @@ function ToggleDisplay({ label, enabled, desc }: { label: string; enabled: boole
   );
 }
 
-const MODE_LABELS: Record<string, { title: string; desc: string; badge: string }> = {
-  A: { title: "Catalogue Only", desc: "Public product catalogue — browse without checkout", badge: "bg-stone-100 text-stone-700" },
-  B: { title: "Catalogue + Enquiry", desc: "Product catalogue with customer enquiry forms", badge: "bg-amber-50 text-amber-700" },
-  C: { title: "Full Online Store", desc: "Full e-commerce with cart and checkout", badge: "bg-green-50 text-green-700" },
-};
-
-const BUILDER_CAPABILITIES = [
-  { icon: "🎨", label: "Theme & Branding", desc: "Logo, primary/secondary colours, font selection" },
-  { icon: "📄", label: "Pages & Content", desc: "Hero section, about text, feature highlights" },
-  { icon: "🌐", label: "Domain & Subdomain", desc: "Custom domain or *.nexpura.com subdomain" },
-  { icon: "🛒", label: "Store Mode", desc: "Catalogue-only, enquiry, or full e-commerce" },
-  { icon: "💰", label: "Pricing Visibility", desc: "Show or hide prices to public visitors" },
-  { icon: "📬", label: "Enquiry Forms", desc: "Customer contact and product enquiry forms" },
-  { icon: "🔗", label: "Social Links", desc: "Instagram, Facebook, and other social channels" },
-  { icon: "🔍", label: "SEO Metadata", desc: "Page title, meta description for search engines" },
-];
-
 export default async function ReviewWebsitePage() {
   const admin = createAdminClient();
 
   const { data: config } = await admin
     .from("website_config")
-    .select("id, mode, subdomain, custom_domain, published, show_prices, allow_enquiry, stripe_enabled, business_name, tagline, logo_url, hero_image_url, primary_color, secondary_color, about_text, contact_email, contact_phone, website_type")
+    .select("id, mode, subdomain, custom_domain, published, show_prices, allow_enquiry, stripe_enabled, business_name, tagline, logo_url, hero_image_url, primary_color, secondary_color, about_text, contact_email, contact_phone, contact_address, social_instagram, meta_title, meta_description, website_type")
     .eq("tenant_id", TENANT_ID)
     .maybeSingle();
 
   const modeInfo = MODE_LABELS[config?.mode ?? "B"] ?? MODE_LABELS["B"];
-  const subdomainUrl = config?.subdomain ? `https://${config.subdomain}.nexpura.com` : null;
+  const subdomainUrl = config?.subdomain ? `https://${config.subdomain}.nexpura.com` : "https://marcusco.nexpura.com";
+  const primaryColor = config?.primary_color ?? "#8B7355";
+  const businessName = config?.business_name ?? "Marcus & Co. Fine Jewellery";
+  const tagline = config?.tagline ?? "Exquisite jewellery, crafted for every moment";
+  const metaTitle = (config as Record<string, unknown> | null)?.meta_title as string | null ?? "Marcus & Co. Fine Jewellery — Sydney";
+  const metaDesc = (config as Record<string, unknown> | null)?.meta_description as string | null ?? "Bespoke fine jewellery, expert repairs, and timeless collections. Visit us in Sydney CBD.";
+  const instagram = (config as Record<string, unknown> | null)?.social_instagram as string | null ?? "@marcuscojewellery";
+  const contactAddress = (config as Record<string, unknown> | null)?.contact_address as string | null ?? "42 Crown Street, Sydney NSW 2000";
+  const contactEmail = config?.contact_email ?? "hello@marcusco.com.au";
+  const contactPhone = config?.contact_phone ?? "+61 2 9XXX XXXX";
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -79,14 +79,145 @@ export default async function ReviewWebsitePage() {
         </div>
       </div>
 
-      {/* Live Status Card */}
+      {/* ── STORE PREVIEW MOCKUP ── */}
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Live Store Preview</h2>
+          <span className="text-xs text-amber-700 font-medium">marcusco.nexpura.com</span>
+        </div>
+
+        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
+          {/* Browser chrome */}
+          <div className="bg-stone-100 border-b border-stone-200 px-4 py-2.5 flex items-center gap-3">
+            <div className="flex gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-red-300" />
+              <span className="w-3 h-3 rounded-full bg-amber-300" />
+              <span className="w-3 h-3 rounded-full bg-green-300" />
+            </div>
+            <span className="text-xs font-mono text-stone-500 bg-white border border-stone-200 rounded px-3 py-1 flex-1 truncate">
+              {subdomainUrl}
+            </span>
+          </div>
+
+          {/* Store nav bar */}
+          <div className="bg-white border-b border-stone-100 px-6 py-3 flex items-center justify-between">
+            <span className="text-sm font-bold text-stone-900 tracking-tight">{businessName.split(" ").slice(0, 3).join(" ")}</span>
+            <nav className="flex items-center gap-5 text-xs font-medium text-stone-500">
+              <span>Home</span>
+              <span>·</span>
+              <span>Products</span>
+              <span>·</span>
+              <span>About</span>
+              <span>·</span>
+              <span>Repairs</span>
+              <span>·</span>
+              <span>Contact</span>
+            </nav>
+          </div>
+
+          {/* Hero section */}
+          <div
+            className="px-8 py-12 text-center relative overflow-hidden"
+            style={{
+              backgroundColor: primaryColor,
+              backgroundImage: "linear-gradient(135deg, rgba(0,0,0,0.18) 0%, transparent 60%)",
+            }}
+          >
+            <p className="text-xs font-semibold tracking-widest uppercase text-white/50 mb-3">Fine Jewellery · Sydney</p>
+            <h2 className="text-3xl font-bold text-white mb-3 leading-tight">{businessName}</h2>
+            <p className="text-sm text-white/80 max-w-sm mx-auto leading-relaxed mb-6">{tagline}</p>
+            <div className="flex items-center justify-center gap-3">
+              <span className="inline-flex items-center px-5 py-2 rounded-lg text-xs font-semibold bg-white text-stone-900 shadow-sm">
+                View Collection
+              </span>
+              <span className="inline-flex items-center px-5 py-2 rounded-lg text-xs font-semibold text-white border border-white/40 bg-white/10">
+                Enquire
+              </span>
+            </div>
+          </div>
+
+          {/* Featured products section */}
+          <div className="bg-stone-50 px-6 py-8">
+            <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest text-center mb-6">Featured Collection</p>
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { name: "Diamond Solitaire Ring", price: "$18,500", tag: "Bestseller" },
+                { name: "Sapphire Halo Ring", price: "$12,800", tag: "New Arrival" },
+                { name: "Gold Diamond Bracelet", price: "$8,400", tag: "In Stock" },
+              ].map((p) => (
+                <div key={p.name} className="bg-white rounded-lg border border-stone-100 overflow-hidden shadow-sm">
+                  {/* Product image placeholder */}
+                  <div
+                    className="h-28 flex items-center justify-center"
+                    style={{ backgroundColor: `${primaryColor}18` }}
+                  >
+                    <div className="w-12 h-12 rounded-full border-2 border-dashed flex items-center justify-center"
+                      style={{ borderColor: `${primaryColor}60` }}>
+                      <span className="text-lg">💎</span>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <span className="text-xs font-medium px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: primaryColor }}>
+                      {p.tag}
+                    </span>
+                    <p className="text-xs font-semibold text-stone-900 mt-2 leading-snug">{p.name}</p>
+                    <p className="text-xs font-bold mt-1" style={{ color: primaryColor }}>{p.price}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Store footer */}
+          <div className="bg-stone-900 px-6 py-3 flex items-center justify-between text-xs text-stone-400">
+            <span>{contactAddress}</span>
+            <span>{contactEmail}</span>
+            <span>{instagram}</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SEO PREVIEW ── */}
+      <section className="space-y-3">
+        <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Search Engine Preview</h2>
+        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+          <p className="text-xs text-stone-400 mb-4">How this store appears in Google search results:</p>
+          <div className="border border-stone-100 rounded-lg px-4 py-3 bg-white max-w-xl">
+            <p className="text-xs text-stone-400 mb-1 font-mono">{subdomainUrl}</p>
+            <p className="text-base font-medium text-blue-700 leading-snug mb-1 cursor-pointer hover:underline">{metaTitle}</p>
+            <p className="text-xs text-stone-500 leading-relaxed">{metaDesc}</p>
+          </div>
+          <p className="text-xs text-stone-300 mt-3 italic">Preview only — colours and formatting match Google SERP style</p>
+        </div>
+      </section>
+
+      {/* ── SOCIAL & CONTACT ── */}
+      <section className="space-y-3">
+        <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Social &amp; Contact</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Instagram", value: instagram, icon: "📸" },
+            { label: "Email", value: contactEmail, icon: "✉️" },
+            { label: "Phone", value: contactPhone, icon: "📞" },
+            { label: "Address", value: contactAddress, icon: "📍" },
+          ].map((item) => (
+            <div key={item.label} className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm flex flex-col gap-2">
+              <span className="text-lg">{item.icon}</span>
+              <p className="text-xs font-semibold text-stone-400 uppercase tracking-wide">{item.label}</p>
+              <p className="text-xs font-medium text-stone-800 leading-snug break-all">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── LIVE STATUS ── */}
       <section className="space-y-3">
         <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Live Status</h2>
         <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
           <div className="flex items-start gap-4 flex-wrap">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-xl font-semibold text-stone-900">{config?.business_name ?? "Marcus & Co. Fine Jewellery"}</h1>
+                <h1 className="text-xl font-semibold text-stone-900">{businessName}</h1>
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
                   config?.published ? "bg-green-50 text-green-700" : "bg-stone-100 text-stone-500"
                 }`}>
@@ -97,8 +228,8 @@ export default async function ReviewWebsitePage() {
                   {modeInfo.title}
                 </span>
               </div>
-              {config?.tagline && (
-                <p className="text-sm text-stone-500 mt-1">{config.tagline}</p>
+              {tagline && (
+                <p className="text-sm text-stone-500 mt-1">{tagline}</p>
               )}
               <p className="text-xs text-stone-400 mt-1">{modeInfo.desc}</p>
             </div>
@@ -107,11 +238,7 @@ export default async function ReviewWebsitePage() {
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-stone-100">
             <div>
               <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">Subdomain URL</p>
-              {subdomainUrl ? (
-                <p className="text-sm font-mono text-amber-700 mt-0.5">{subdomainUrl}</p>
-              ) : (
-                <p className="text-sm text-stone-400 mt-0.5">No subdomain configured</p>
-              )}
+              <p className="text-sm font-mono text-amber-700 mt-0.5">{subdomainUrl}</p>
             </div>
             <div>
               <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">Custom Domain</p>
@@ -129,19 +256,19 @@ export default async function ReviewWebsitePage() {
         </div>
       </section>
 
-      {/* Branding */}
+      {/* ── BRANDING ── */}
       <section className="space-y-3">
         <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Branding</h2>
         <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div>
               <p className="text-xs text-stone-400 font-medium uppercase tracking-wide mb-2">Primary Colour</p>
               <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 rounded-lg border border-stone-200 shadow-sm flex-shrink-0"
-                  style={{ backgroundColor: config?.primary_color ?? "#8B7355" }}
+                  style={{ backgroundColor: primaryColor }}
                 />
-                <span className="text-sm font-mono text-stone-700">{config?.primary_color ?? "#8B7355"}</span>
+                <span className="text-sm font-mono text-stone-700">{primaryColor}</span>
               </div>
             </div>
             <div>
@@ -163,86 +290,11 @@ export default async function ReviewWebsitePage() {
                 <span className="text-sm text-stone-400 italic">No logo uploaded</span>
               )}
             </div>
-            {config?.hero_image_url && (
-              <div>
-                <p className="text-xs text-stone-400 font-medium uppercase tracking-wide mb-2">Hero Image</p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={config.hero_image_url} alt="Hero" className="h-16 w-full object-cover rounded border border-stone-200" />
-              </div>
-            )}
           </div>
         </div>
       </section>
 
-      {/* Content */}
-      <section className="space-y-3">
-        <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Content</h2>
-        <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm space-y-5">
-          <ReadOnlyField label="Business Name" value={config?.business_name} />
-          <ReadOnlyField label="Tagline" value={config?.tagline} />
-          <div>
-            <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">About Text</p>
-            <p className="text-sm text-stone-900 mt-1 leading-relaxed whitespace-pre-wrap">{config?.about_text || "—"}</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-stone-100">
-            <ReadOnlyField label="Contact Email" value={config?.contact_email} />
-            <ReadOnlyField label="Contact Phone" value={config?.contact_phone} />
-          </div>
-        </div>
-      </section>
-
-      {/* Homepage Preview Mockup */}
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Homepage Preview</h2>
-          {subdomainUrl && (
-            <a href={subdomainUrl} target="_blank" rel="noopener noreferrer"
-              className="text-xs text-amber-700 hover:text-amber-800 font-medium transition-colors">
-              Open store ↗
-            </a>
-          )}
-        </div>
-        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
-          {/* Simulated browser chrome */}
-          <div className="bg-stone-100 border-b border-stone-200 px-4 py-2.5 flex items-center gap-3">
-            <div className="flex gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-stone-300" />
-              <span className="w-3 h-3 rounded-full bg-stone-300" />
-              <span className="w-3 h-3 rounded-full bg-stone-300" />
-            </div>
-            <span className="text-xs font-mono text-stone-400 bg-white border border-stone-200 rounded px-2 py-1 flex-1 truncate">
-              {subdomainUrl ?? "https://marcusco.nexpura.com"}
-            </span>
-          </div>
-          {/* Hero section mockup */}
-          <div
-            className="px-8 py-10 text-center"
-            style={{ backgroundColor: config?.primary_color ?? "#8B7355", backgroundImage: "linear-gradient(135deg, rgba(0,0,0,0.15) 0%, transparent 100%)" }}
-          >
-            <p className="text-xs font-semibold tracking-widest uppercase text-white/60 mb-2">
-              {config?.website_type?.replace(/_/g, " ") ?? "Jewellery Store"}
-            </p>
-            <h2 className="text-2xl font-bold text-white mb-2">
-              {config?.business_name ?? "Marcus & Co. Fine Jewellery"}
-            </h2>
-            <p className="text-sm text-white/80 max-w-md mx-auto">
-              {config?.tagline ?? "Timeless jewellery crafted with precision"}
-            </p>
-            <div className="mt-5 flex items-center justify-center gap-3">
-              <span className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-semibold text-white border border-white/40 bg-white/10">
-                View Collection
-              </span>
-              {(config?.allow_enquiry ?? true) && (
-                <span className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-semibold text-white/70 border border-white/20">
-                  Enquire
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Site Pages */}
+      {/* ── SITE PAGES ── */}
       <section className="space-y-3">
         <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Site Pages</h2>
         <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
@@ -257,9 +309,9 @@ export default async function ReviewWebsitePage() {
             </thead>
             <tbody>
               {STORE_PAGES.map((page) => (
-                <tr key={page.slug} className="border-b border-stone-100">
+                <tr key={page.slug} className="border-b border-stone-100 last:border-0">
                   <td className="px-4 py-3 text-sm font-semibold text-stone-900">{page.name}</td>
-                  <td className="px-4 py-3 text-xs font-mono text-stone-400">{subdomainUrl ? `${subdomainUrl}${page.slug === "/" ? "" : page.slug}` : page.slug}</td>
+                  <td className="px-4 py-3 text-xs font-mono text-stone-400">{`${subdomainUrl}${page.slug === "/" ? "" : page.slug}`}</td>
                   <td className="px-4 py-3 text-xs text-stone-500">{page.desc}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -276,7 +328,7 @@ export default async function ReviewWebsitePage() {
         </div>
       </section>
 
-      {/* Commerce Settings */}
+      {/* ── COMMERCE SETTINGS ── */}
       <section className="space-y-3">
         <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Commerce Settings</h2>
         <div className="bg-white rounded-xl border border-stone-200 px-5 shadow-sm">
@@ -298,7 +350,7 @@ export default async function ReviewWebsitePage() {
         </div>
       </section>
 
-      {/* Builder Capabilities */}
+      {/* ── BUILDER CAPABILITIES ── */}
       <section className="space-y-3">
         <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">What You Can Configure</h2>
         <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
@@ -306,7 +358,12 @@ export default async function ReviewWebsitePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {BUILDER_CAPABILITIES.map((cap) => (
               <div key={cap.label} className="flex items-start gap-3 p-3 bg-stone-50 rounded-lg border border-stone-100">
-                <span className="text-xl flex-shrink-0">{cap.icon}</span>
+                <div
+                  className="w-7 h-7 rounded-md flex-shrink-0 flex items-center justify-center mt-0.5"
+                  style={{ backgroundColor: `${primaryColor}20` }}
+                >
+                  <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: primaryColor }} />
+                </div>
                 <div>
                   <p className="text-sm font-semibold text-stone-900">{cap.label}</p>
                   <p className="text-xs text-stone-400 mt-0.5">{cap.desc}</p>
