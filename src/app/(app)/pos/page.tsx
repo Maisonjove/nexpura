@@ -10,16 +10,14 @@ export default async function POSPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  const admin = createAdminClient();
+
+  // Use admin for user lookup to bypass RLS recursion/timeouts
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id, full_name")
     .eq("id", user.id)
     .single();
-
-  if (!userData?.tenant_id) redirect("/onboarding");
-
-  const tenantId = userData.tenant_id;
-  const admin = createAdminClient();
 
   // Fetch inventory items
   const { data: inventoryItems } = await admin

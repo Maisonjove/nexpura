@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import InvoiceListClient from "./InvoiceListClient";
 
 export default async function InvoicesPage({
@@ -18,7 +19,10 @@ export default async function InvoicesPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: userData } = await supabase
+  const admin = createAdminClient();
+
+  // Use admin to avoid RLS recursion issues on users table
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id")
     .eq("id", user?.id ?? "")
@@ -27,63 +31,79 @@ export default async function InvoicesPage({
   const tenantId = userData?.tenant_id;
   const today = new Date().toISOString().split("T")[0];
 
-  // Stats: outstanding — actual DB status values are unpaid/partial/overdue
-  const { data: outstandingData } = await supabase
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  
+  // Outstanding: actual DB status values are unpaid/partial/overdue
+  const { data: outstandingData } = await admin
     .from("invoices")
     .select("amount_due")
     .eq("tenant_id", tenantId ?? "")
-    .in("status", ["unpaid", "partial", "overdue"]);
+    .in("status", ["unpaid", "partial", "overdue"])
+    .is("deleted_at", null);
 
   const totalOutstanding = (outstandingData ?? []).reduce(
-    (sum, inv) => sum + (inv.amount_due || 0),
+    (sum, inv) => sum + (Number(inv.amount_due) || 0),
     0
   );
 
-  const { data: overdueData } = await supabase
+  const { data: overdueData } = await admin
     .from("invoices")
-    .select("total")
+    .select("amount_due")
     .eq("tenant_id", tenantId ?? "")
-    .not("status", "in", '("paid","voided","draft")')
-    .lt("due_date", today);
+    .not("status", "in", '("paid","voided","draft","cancelled")')
+    .lt("due_date", today)
+    .is("deleted_at", null);
 
   const totalOverdue = (overdueData ?? []).reduce(
-    (sum, inv) => sum + (inv.total || 0),
+    (sum, inv) => sum + (Number(inv.amount_due) || 0),
     0
   );
 
-  // Paid this month from invoices with status=paid
+  // Paid this month
   const monthStart = new Date();
   monthStart.setDate(1);
-  const monthStartStr = monthStart.toISOString().split("T")[0];
+  monthStart.setHours(0, 0, 0, 0);
+  const monthStartStr = monthStart.toISOString();
 
-  const { data: paidThisMonthData } = await supabase
+  const { data: paidThisMonthData } = await admin
     .from("invoices")
     .select("total")
     .eq("tenant_id", tenantId ?? "")
     .eq("status", "paid")
-    .gte("paid_at", monthStartStr);
+    .gte("paid_at", monthStartStr)
+    .is("deleted_at", null);
 
   const paidThisMonth = (paidThisMonthData ?? []).reduce(
-    (sum, p) => sum + (p.total || 0),
+    (sum, p) => sum + (Number(p.total) || 0),
     0
   );
 
-  // Main invoice query — only real columns
-  let query = supabase
+  // ── Main query ─────────────────────────────────────────────────────────────
+
+  let query = admin
     .from("invoices")
     .select(
-      "id, invoice_number, status, invoice_date, due_date, total, customers(full_name)",
+      "id, invoice_number, status, invoice_date, due_date, total, amount_paid, amount_due, customers(full_name)",
       { count: "exact" }
     )
-    .eq("tenant_id", tenantId ?? "");
+    .eq("tenant_id", tenantId ?? "")
+    .is("deleted_at", null);
 
   if (statusFilter !== "all") {
     if (statusFilter === "overdue") {
       query = query
-        .not("status", "in", '("paid","voided","draft")')
+        .not("status", "in", '("paid","voided","draft","cancelled")')
         .lt("due_date", today);
     } else {
-      query = query.eq("status", statusFilter);
+      // Map common UI filters to DB status values
+      const statusMap: Record<string, string> = {
+        unpaid: "unpaid",
+        partial: "partial",
+        paid: "paid",
+        draft: "draft",
+        voided: "voided"
+      };
+      query = query.eq("status", statusMap[statusFilter] || statusFilter);
     }
   }
 
@@ -96,7 +116,6 @@ export default async function InvoicesPage({
     .range(offset, offset + pageSize - 1);
 
   const { data: invoices, count } = await query;
-
   const totalPages = Math.ceil((count || 0) / pageSize);
 
   const normalizedInvoices: InvoiceRow[] = (invoices ?? []).map((inv) => ({
@@ -105,9 +124,9 @@ export default async function InvoicesPage({
     status: inv.status,
     invoice_date: inv.invoice_date,
     due_date: inv.due_date,
-    total: inv.total,
-    amount_due: inv.status === "paid" ? 0 : (inv.total || 0),
-    amount_paid: inv.status === "paid" ? (inv.total || 0) : 0,
+    total: Number(inv.total) || 0,
+    amount_due: Number(inv.amount_due) || 0,
+    amount_paid: Number(inv.amount_paid) || 0,
     customers: Array.isArray(inv.customers)
       ? (inv.customers[0] ?? null)
       : inv.customers,

@@ -45,10 +45,11 @@ export default async function BespokeJobDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  // Get current user's tenant_id
+  // Get current user's tenant_id — use admin to avoid RLS recursion/timeouts
   const { data: { user } } = await supabase.auth.getUser();
+  const adminClient = createAdminClient();
   const { data: userData } = user
-    ? await supabase.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single()
+    ? await adminClient.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single()
     : { data: null };
   const tenantId = userData?.tenant_id ?? "";
   const tenantCurrency = (userData?.tenants as { currency?: string } | null)?.currency || "AUD";

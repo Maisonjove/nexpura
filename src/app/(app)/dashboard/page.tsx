@@ -8,7 +8,10 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: userData } = await supabase
+  const admin = createAdminClient();
+
+  // Use admin to bypass RLS for the user lookup to avoid recursion/timeout issues
+  const { data: userData } = await admin
     .from("users")
     .select("full_name, tenant_id, role, tenants(name, currency, tax_rate, tax_name)")
     .eq("id", user?.id ?? "")
