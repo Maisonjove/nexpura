@@ -75,7 +75,6 @@ export async function addBespokeLineItem(
     inventory_id: item.inventoryId ?? null,
     quantity: item.qty,
     unit_price: item.unitPrice,
-    discount_pct: 0,
   });
   if (liErr) return { error: liErr.message };
 
