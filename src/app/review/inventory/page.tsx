@@ -12,7 +12,7 @@ export default async function ReviewInventoryPage() {
   const [{ data: items }, { data: categories }] = await Promise.all([
     admin
       .from("inventory")
-      .select("id, sku, name, item_type, jewellery_type, category_id, quantity, low_stock_threshold, retail_price, cost_price, status, is_featured, primary_image, stock_categories(name)")
+      .select("id, sku, name, item_type, jewellery_type, category_id, quantity, low_stock_threshold, retail_price, cost_price, status, is_featured, primary_image, metal_type, metal_colour, metal_purity, stone_type, stone_carat, metal_weight_grams, stock_categories(name)")
       .eq("tenant_id", TENANT_ID)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
@@ -37,6 +37,12 @@ export default async function ReviewInventoryPage() {
     status: string;
     is_featured: boolean;
     primary_image: string | null;
+    metal_type: string | null;
+    metal_colour: string | null;
+    metal_purity: string | null;
+    stone_type: string | null;
+    stone_carat: number | null;
+    metal_weight_grams: number | null;
     stock_categories: { name: string } | null;
   }>;
 

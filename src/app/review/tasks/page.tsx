@@ -1,66 +1,153 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Suspense } from "react";
-import TasksClient from "@/app/(app)/tasks/TasksClient";
-import type { StaffTask } from "@/app/(app)/tasks/actions";
+import Link from "next/link";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
-const DEMO_USER_ID = "bd7d2c20-5727-4f80-a449-818429abecc9";
 
 export const revalidate = 60;
 
+const PRIORITY_LABEL: Record<string, string> = {
+  high: "High",
+  normal: "Normal",
+  low: "Low",
+};
+
+const PRIORITY_COLOUR: Record<string, string> = {
+  high: "bg-red-100 text-red-700",
+  normal: "bg-amber-100 text-amber-700",
+  low: "bg-stone-100 text-stone-500",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  todo: "To Do",
+  in_progress: "In Progress",
+  completed: "Completed",
+};
+
+function formatDate(d: string | null) {
+  if (!d) return null;
+  return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function isOverdue(dueDate: string | null) {
+  if (!dueDate) return false;
+  return new Date(dueDate) < new Date(new Date().toDateString());
+}
+
 export default async function ReviewTasksPage() {
   const admin = createAdminClient();
+  const today = new Date().toISOString().split("T")[0];
 
-  let myTasks: StaffTask[] = [];
-  let allTasks: StaffTask[] = [];
+  const { data: tasks, error } = await admin
+    .from("tasks")
+    .select("id, title, description, priority, status, due_date, assigned_to, linked_type, linked_id, created_at")
+    .eq("tenant_id", TENANT_ID)
+    .neq("status", "completed")
+    .order("due_date", { ascending: true, nullsFirst: false });
 
-  // Try staff_tasks first, fall back to tasks table, then empty
-  try {
-    const { data: myTasksData } = await admin
-      .from("staff_tasks")
-      .select("*")
-      .eq("tenant_id", TENANT_ID)
-      .eq("assigned_to", DEMO_USER_ID)
-      .order("due_date", { ascending: true, nullsFirst: false });
-    myTasks = (myTasksData ?? []) as StaffTask[];
+  const allTasks = tasks ?? [];
+  const todayTasks = allTasks.filter((t) => t.due_date === today);
+  const upcomingTasks = allTasks.filter((t) => t.due_date && t.due_date > today);
+  const overdueTasks = allTasks.filter((t) => t.due_date && t.due_date < today);
+  const unscheduledTasks = allTasks.filter((t) => !t.due_date);
 
-    const { data: allTasksData } = await admin
-      .from("staff_tasks")
-      .select("*")
-      .eq("tenant_id", TENANT_ID)
-      .order("created_at", { ascending: false });
-    allTasks = (allTasksData ?? []) as StaffTask[];
-  } catch {
-    // staff_tasks doesn't exist — try tasks table
-    try {
-      const { data: tasksData } = await admin
-        .from("tasks")
-        .select("id, tenant_id, title, description, assigned_to, created_by, linked_type, linked_id, due_date, priority, status, notes, created_at, updated_at")
-        .eq("tenant_id", TENANT_ID)
-        .order("due_date", { ascending: true, nullsFirst: false });
+  const completedCount = 0; // neq filter above means we don't fetch completed
 
-      myTasks = (tasksData ?? []).filter((t) => t.assigned_to === DEMO_USER_ID || !t.assigned_to) as StaffTask[];
-      allTasks = (tasksData ?? []) as StaffTask[];
-    } catch {
-      // both fail — empty state
-    }
+  function TaskCard({ task }: { task: typeof allTasks[0] }) {
+    const overdue = isOverdue(task.due_date);
+    return (
+      <div className="bg-white rounded-xl border border-stone-200 p-4 hover:border-stone-300 transition-colors">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-stone-800 leading-snug">{task.title}</p>
+            {task.description && (
+              <p className="text-xs text-stone-400 mt-1 line-clamp-2">{task.description}</p>
+            )}
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PRIORITY_COLOUR[task.priority ?? "normal"] ?? "bg-stone-100 text-stone-500"}`}>
+                {PRIORITY_LABEL[task.priority ?? "normal"] ?? task.priority}
+              </span>
+              {task.due_date && (
+                <span className={`text-xs ${overdue ? "text-red-600 font-semibold" : "text-stone-400"}`}>
+                  {overdue ? "⚠ Overdue · " : ""}{formatDate(task.due_date)}
+                </span>
+              )}
+              {task.linked_type && (
+                <span className="text-xs text-stone-400 capitalize">{task.linked_type.replace("_", " ")}</span>
+              )}
+            </div>
+          </div>
+          <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+            task.status === "in_progress" ? "bg-blue-100 text-blue-700" : "bg-stone-100 text-stone-500"
+          }`}>
+            {STATUS_LABEL[task.status ?? "todo"] ?? task.status}
+          </span>
+        </div>
+      </div>
+    );
   }
 
-  const { data: teamMembers } = await admin
-    .from("users")
-    .select("id, full_name, email")
-    .eq("tenant_id", TENANT_ID);
+  function Section({ title, tasks, badge, badgeColour }: { title: string; tasks: typeof allTasks; badge?: string; badgeColour?: string }) {
+    if (tasks.length === 0) return null;
+    return (
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-widest">{title}</h2>
+          {badge && (
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badgeColour ?? "bg-stone-100 text-stone-500"}`}>
+              {badge}
+            </span>
+          )}
+        </div>
+        <div className="space-y-2">
+          {tasks.map((task) => <TaskCard key={task.id} task={task} />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Suspense fallback={<div className="p-8 text-stone-400 text-sm">Loading tasks...</div>}>
-      <TasksClient
-        userId={DEMO_USER_ID}
-        userRole="owner"
-        myTasks={myTasks}
-        allTasks={allTasks}
-        teamMembers={teamMembers ?? []}
-        tenantId={TENANT_ID}
+    <div className="max-w-3xl mx-auto space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-stone-900">Tasks</h1>
+          <p className="text-sm text-stone-400 mt-0.5">
+            {allTasks.length} open task{allTasks.length !== 1 ? "s" : ""}
+            {todayTasks.length > 0 && ` · ${todayTasks.length} due today`}
+            {overdueTasks.length > 0 && ` · ${overdueTasks.length} overdue`}
+          </p>
+        </div>
+        <Link href="/review/workshop" className="text-xs text-stone-500 hover:text-stone-800 underline">
+          Workshop view →
+        </Link>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-700 rounded-xl p-4 text-sm">
+          Could not load tasks: {error.message}
+        </div>
+      )}
+
+      {allTasks.length === 0 && !error && (
+        <div className="bg-white rounded-xl border border-stone-200 p-12 text-center">
+          <p className="text-stone-400 text-sm">No open tasks for this tenant.</p>
+        </div>
+      )}
+
+      <Section
+        title="Due Today"
+        tasks={todayTasks}
+        badge={todayTasks.length > 0 ? String(todayTasks.length) : undefined}
+        badgeColour="bg-amber-100 text-amber-700"
       />
-    </Suspense>
+      <Section
+        title="Overdue"
+        tasks={overdueTasks}
+        badge={overdueTasks.length > 0 ? String(overdueTasks.length) : undefined}
+        badgeColour="bg-red-100 text-red-700"
+      />
+      <Section title="Upcoming" tasks={upcomingTasks} />
+      <Section title="Unscheduled" tasks={unscheduledTasks} />
+    </div>
   );
 }

@@ -230,7 +230,7 @@ export default async function ReviewDashboardPage() {
         : (j.customers as { full_name: string | null } | null)?.full_name ?? null,
       updatedAt: j.updated_at,
       type: "job" as const,
-      href: `/review/dashboard`,
+      href: `/review/bespoke/${j.id}`,
     })),
     ...(recentRepairs ?? []).map((r) => ({
       id: r.id,
@@ -241,7 +241,7 @@ export default async function ReviewDashboardPage() {
         : (r.customers as { full_name: string | null } | null)?.full_name ?? null,
       updatedAt: r.updated_at,
       type: "repair" as const,
-      href: `/review/dashboard`,
+      href: `/review/repairs/${r.id}`,
     })),
   ]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
