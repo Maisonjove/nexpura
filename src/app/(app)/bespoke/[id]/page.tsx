@@ -75,6 +75,21 @@ export default async function BespokeJobDetailPage({
     .order("name", { ascending: true })
     .limit(100);
 
+  // Fetch attachments and events
+  const { data: attachments } = await adminClient
+    .from("job_attachments")
+    .select("*")
+    .eq("job_type", "bespoke")
+    .eq("job_id", id)
+    .order("created_at", { ascending: true });
+
+  const { data: events } = await adminClient
+    .from("job_events")
+    .select("*")
+    .eq("job_type", "bespoke")
+    .eq("job_id", id)
+    .order("created_at", { ascending: false });
+
   // Map deposit_received to deposit_paid for the component
   const depositPaid = job.deposit_received ?? job.deposit_paid ?? false;
 
@@ -110,6 +125,8 @@ export default async function BespokeJobDetailPage({
       inventory={inventory ?? []}
       tenantId={tenantId}
       currency={tenantCurrency}
+      attachments={attachments ?? []}
+      events={events ?? []}
     />
   );
 }

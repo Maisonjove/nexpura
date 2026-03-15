@@ -10,6 +10,7 @@ import {
   recordBespokePayment,
   generateBespokeInvoice,
   updateBespokeStage,
+  emailBespokeInvoice,
 } from "./actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,6 +58,22 @@ interface InventoryItem {
   retail_price: number | null;
 }
 
+interface JobAttachment {
+  id: string;
+  file_name: string;
+  file_url: string;
+  caption: string | null;
+  created_at: string;
+}
+
+interface JobEvent {
+  id: string;
+  event_type: string;
+  description: string;
+  actor: string | null;
+  created_at: string;
+}
+
 interface BespokeJob {
   id: string;
   job_number: string;
@@ -91,6 +108,8 @@ interface Props {
   tenantId: string;
   currency: string;
   readOnly?: boolean;
+  attachments?: JobAttachment[];
+  events?: JobEvent[];
 }
 
 // ─── Stage Config ─────────────────────────────────────────────────────────────
@@ -145,7 +164,7 @@ function statusChip(invoice: Invoice | null, job: BespokeJob, currency: string) 
   return <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">Unpaid</span>;
 }
 
-export default function BespokeCommandCenter({ job, customer, invoice, inventory, tenantId, currency, readOnly = false }: Props) {
+export default function BespokeCommandCenter({ job, customer, invoice, inventory, tenantId, currency, readOnly = false, attachments = [], events = [] }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -156,6 +175,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
   const [targetStage, setTargetStage] = useState("");
   const [showNotes, setShowNotes] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [emailSending, setEmailSending] = useState(false);
 
   const [manualDesc, setManualDesc] = useState("");
   const [manualQty, setManualQty] = useState("1");
@@ -269,6 +289,20 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
     setPaymentAmount(prefill ? String(prefill) : "");
     setPaymentMethod("card"); setPaymentNotes(""); setFormError(null);
     setShowPayment(true);
+  }
+
+  async function handleEmailInvoice() {
+    if (!invoice) return;
+    setEmailSending(true);
+    const result = await emailBespokeInvoice(job.id, invoice.id);
+    setEmailSending(false);
+    if (result.error) showToast(`Error: ${result.error}`);
+    else { showToast("✓ Invoice emailed to customer"); refresh(); }
+  }
+
+  function formatDate(d: string | null | undefined) {
+    if (!d) return "—";
+    return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   }
 
   // Build specs list
@@ -425,6 +459,40 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
                   );
                 })}
               </div>
+            </div>
+          </div>
+
+          {/* Photos & Attachments */}
+          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Photos &amp; Attachments</h2>
+            {attachments.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {attachments.map(a => (
+                  <div key={a.id} className="relative group">
+                    <img src={a.file_url} alt={a.caption ?? a.file_name} className="w-full aspect-square object-cover rounded-lg" />
+                    <p className="text-xs text-stone-500 mt-1 truncate">{a.caption ?? a.file_name}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-stone-400">No photos attached</p>
+            )}
+            {!readOnly && (
+              <p className="text-xs text-stone-400 mt-3">Photo upload via cloud storage — coming soon</p>
+            )}
+          </div>
+
+          {/* Activity Timeline */}
+          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Activity</h2>
+            <div className="space-y-2">
+              {events.map(ev => (
+                <div key={ev.id} className="flex items-start gap-2 text-sm">
+                  <span className="text-stone-400 text-xs whitespace-nowrap mt-0.5">{formatDate(ev.created_at)}</span>
+                  <span className="text-stone-600">{ev.description}</span>
+                </div>
+              ))}
+              {events.length === 0 && <p className="text-sm text-stone-400">No activity yet</p>}
             </div>
           </div>
 
@@ -637,27 +705,33 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
             <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Documents</h2>
             <div className="space-y-2">
-              <button onClick={() => showToast("Coming soon: Print Invoice")} className="w-full text-sm text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 text-left transition-colors">🖨 Print Invoice</button>
-              <button onClick={() => showToast("Coming soon: Email Invoice")} className="w-full text-sm text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 text-left transition-colors">✉️ Email Invoice</button>
-              <a href={`/api/bespoke/${job.id}/pdf`} target="_blank" className="block w-full text-sm text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 transition-colors">📋 Print Job Sheet</a>
-            </div>
-          </div>
-
-          {/* Customer Communication */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Customer Communication</h2>
-            <div className="space-y-2">
-              {customer?.mobile ? (
-                <a href={`https://wa.me/${customer.mobile.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="block w-full text-sm text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 transition-colors">💬 Send WhatsApp</a>
+              <button onClick={() => window.open(`/print/bespoke/${job.id}`, "_blank")} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
+                🖨️ Print Job Sheet
+              </button>
+              {invoice?.id ? (
+                <>
+                  <button onClick={() => window.open(`/print/invoice/${invoice.id}`, "_blank")} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
+                    🖨️ Print Invoice
+                  </button>
+                  <button onClick={() => handleEmailInvoice()} disabled={emailSending} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 disabled:opacity-50 transition-colors">
+                    ✉️ {emailSending ? "Sending..." : "Email Invoice"}
+                  </button>
+                </>
               ) : (
-                <button onClick={() => showToast("No mobile number on file")} className="w-full text-sm text-stone-400 border border-stone-200 px-4 py-2 rounded-lg text-left">💬 Send Message</button>
+                <button onClick={() => handleGenerateInvoice()} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 flex items-center gap-2 transition-colors">
+                  📄 Generate Invoice
+                </button>
               )}
               {customer?.email ? (
-                <a href={`mailto:${customer.email}`} className="block w-full text-sm text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 transition-colors">✉️ Send Email</a>
+                <a href={`mailto:${customer.email}?subject=Re: Your bespoke order — Marcus & Co.`} className="block w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
+                  ✉️ Email Customer
+                </a>
               ) : (
-                <button onClick={() => showToast("No email address on file")} className="w-full text-sm text-stone-400 border border-stone-200 px-4 py-2 rounded-lg text-left">✉️ Send Email</button>
+                <div className="text-sm text-stone-400 px-3 py-2">No email on file</div>
               )}
-              <button onClick={() => showToast("Ready for Pickup notification — coming soon")} className="w-full text-sm text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 text-left transition-colors">🔔 Ready Notification</button>
+              <div className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-100 text-stone-300 flex items-center gap-2 cursor-not-allowed" title="WhatsApp not connected — configure in Settings">
+                💬 WhatsApp (not connected)
+              </div>
             </div>
           </div>
 

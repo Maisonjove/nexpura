@@ -76,6 +76,21 @@ export default async function RepairDetailPage({
     .order("name", { ascending: true })
     .limit(100);
 
+  // Fetch attachments and events
+  const { data: attachments } = await adminClient
+    .from("job_attachments")
+    .select("*")
+    .eq("job_type", "repair")
+    .eq("job_id", id)
+    .order("created_at", { ascending: true });
+
+  const { data: events } = await adminClient
+    .from("job_events")
+    .select("*")
+    .eq("job_type", "repair")
+    .eq("job_id", id)
+    .order("created_at", { ascending: false });
+
   return (
     <RepairCommandCenter
       repair={{
@@ -102,6 +117,8 @@ export default async function RepairDetailPage({
       inventory={inventory ?? []}
       tenantId={tenantId}
       currency={tenantCurrency}
+      attachments={attachments ?? []}
+      events={events ?? []}
     />
   );
 }

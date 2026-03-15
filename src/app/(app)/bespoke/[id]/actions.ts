@@ -194,6 +194,151 @@ export async function updateBespokeStage(
   if (error) return { error: error.message };
 
   await admin.from("bespoke_job_stages").insert({ tenant_id: tenantId, job_id: jobId, stage, notes: null, created_by: userId });
+
+  // Log stage change event
+  const stageLabel = stage.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  await admin.from("job_events").insert({
+    tenant_id: tenantId,
+    job_type: "bespoke",
+    job_id: jobId,
+    event_type: "stage_change",
+    description: `Stage changed to ${stageLabel}`,
+    actor: ctx.userId,
+  });
+
   revalidatePath(`/bespoke/${jobId}`);
+  return { success: true };
+}
+
+export async function emailBespokeInvoice(
+  jobId: string,
+  invoiceId: string
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  const { admin, tenantId } = ctx;
+
+  const { data: job } = await admin.from("bespoke_jobs").select("job_number, title, customer_id").eq("id", jobId).eq("tenant_id", tenantId).single();
+  if (!job) return { error: "Job not found" };
+
+  const { data: customer } = job.customer_id
+    ? await admin.from("customers").select("full_name, email").eq("id", job.customer_id).single()
+    : { data: null };
+
+  if (!customer?.email) return { error: "Customer has no email address" };
+
+  const { data: invoice } = await admin.from("invoices").select("invoice_number, total, amount_paid, subtotal, tax_amount, status, due_date").eq("id", invoiceId).single();
+  if (!invoice) return { error: "Invoice not found" };
+
+  const { data: lineItems } = await admin.from("invoice_line_items").select("description, quantity, unit_price").eq("invoice_id", invoiceId);
+
+  const balanceDue = Math.max(0, (invoice.total ?? 0) - (invoice.amount_paid ?? 0));
+  const fmt = (n: number) => `$${n.toFixed(2)}`;
+
+  const lineItemsHtml = (lineItems ?? []).map((li) =>
+    `<tr><td style="padding:4px 8px;border:1px solid #eee;">${li.description}</td><td style="padding:4px 8px;border:1px solid #eee;text-align:right;">${li.quantity}</td><td style="padding:4px 8px;border:1px solid #eee;text-align:right;">${fmt(li.unit_price)}</td><td style="padding:4px 8px;border:1px solid #eee;text-align:right;">${fmt((li.quantity ?? 1) * (li.unit_price ?? 0))}</td></tr>`
+  ).join("");
+
+  const htmlBody = `
+<div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;color:#1c1917;">
+  <div style="background:#1c1917;color:#fff;padding:24px;text-align:center;">
+    <h1 style="margin:0;font-size:22px;">Marcus &amp; Co. Fine Jewellery</h1>
+    <p style="margin:4px 0 0;font-size:13px;color:#d6d3d1;">Invoice ${invoice.invoice_number}</p>
+  </div>
+  <div style="padding:24px;background:#fafaf9;">
+    <p>Hi ${customer.full_name},</p>
+    <p>Please find your invoice below for your bespoke commission: <strong>${job.title}</strong>.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <thead>
+        <tr style="background:#f5f5f4;">
+          <th style="padding:4px 8px;border:1px solid #eee;text-align:left;">Description</th>
+          <th style="padding:4px 8px;border:1px solid #eee;text-align:right;">Qty</th>
+          <th style="padding:4px 8px;border:1px solid #eee;text-align:right;">Unit</th>
+          <th style="padding:4px 8px;border:1px solid #eee;text-align:right;">Total</th>
+        </tr>
+      </thead>
+      <tbody>${lineItemsHtml}</tbody>
+    </table>
+    <div style="text-align:right;margin-top:8px;">
+      <div>Subtotal: ${fmt(invoice.subtotal ?? 0)}</div>
+      <div>GST (10%): ${fmt(invoice.tax_amount ?? 0)}</div>
+      <div style="font-size:16px;font-weight:bold;margin-top:4px;">Total: ${fmt(invoice.total ?? 0)}</div>
+      <div>Paid: ${fmt(invoice.amount_paid ?? 0)}</div>
+      <div style="font-weight:bold;color:${balanceDue > 0 ? "#b45309" : "#1c1917"};">Balance Due: ${fmt(balanceDue)}</div>
+    </div>
+  </div>
+  <div style="padding:16px 24px;background:#fff;text-align:center;font-size:12px;color:#78716c;">
+    Marcus &amp; Co. Fine Jewellery · 32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au
+  </div>
+</div>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Marcus & Co. <onboarding@resend.dev>",
+      to: [customer.email],
+      subject: `Invoice ${invoice.invoice_number} — Marcus & Co. Fine Jewellery`,
+      html: htmlBody,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Resend error:", errText);
+    return { error: "Email failed to send" };
+  }
+
+  await admin.from("job_events").insert({
+    tenant_id: tenantId,
+    job_type: "bespoke",
+    job_id: jobId,
+    event_type: "email_sent",
+    description: `Invoice ${invoice.invoice_number} emailed to ${customer.email}`,
+    actor: ctx.userId,
+  });
+
+  revalidatePath(`/bespoke/${jobId}`);
+  return { success: true };
+}
+
+export async function uploadJobAttachment(
+  jobType: "repair" | "bespoke",
+  jobId: string,
+  fileUrl: string,
+  fileName: string,
+  caption: string | null
+): Promise<{ success?: boolean; id?: string; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  const { admin, tenantId } = ctx;
+
+  const { data, error } = await admin.from("job_attachments").insert({
+    tenant_id: tenantId,
+    job_type: jobType,
+    job_id: jobId,
+    file_name: fileName,
+    file_url: fileUrl,
+    caption: caption ?? null,
+  }).select("id").single();
+
+  if (error) return { error: error.message };
+  return { success: true, id: data?.id };
+}
+
+export async function deleteJobAttachment(
+  attachmentId: string,
+  jobType: "repair" | "bespoke",
+  jobId: string
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  const { admin, tenantId } = ctx;
+
+  const { error } = await admin.from("job_attachments").delete().eq("id", attachmentId).eq("tenant_id", tenantId).eq("job_type", jobType).eq("job_id", jobId);
+  if (error) return { error: error.message };
   return { success: true };
 }

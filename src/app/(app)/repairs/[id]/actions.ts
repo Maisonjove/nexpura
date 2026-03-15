@@ -201,6 +201,186 @@ export async function updateRepairStage(
   if (error) return { error: error.message };
 
   await admin.from("repair_stages").insert({ tenant_id: tenantId, repair_id: repairId, stage, notes: null, created_by: userId });
+
+  // Log stage change event
+  const stageLabel = stage.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  await admin.from("job_events").insert({
+    tenant_id: tenantId,
+    job_type: "repair",
+    job_id: repairId,
+    event_type: "stage_change",
+    description: `Stage changed to ${stageLabel}`,
+    actor: ctx.userId,
+  });
+
   revalidatePath(`/repairs/${repairId}`);
+  return { success: true };
+}
+
+export async function emailRepairInvoice(
+  repairId: string,
+  invoiceId: string
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  const { admin, tenantId } = ctx;
+
+  // Fetch repair + customer + invoice + line items
+  const { data: repair } = await admin.from("repairs").select("repair_number, item_description, customer_id").eq("id", repairId).eq("tenant_id", tenantId).single();
+  if (!repair) return { error: "Repair not found" };
+
+  const { data: customer } = repair.customer_id
+    ? await admin.from("customers").select("full_name, email").eq("id", repair.customer_id).single()
+    : { data: null };
+
+  if (!customer?.email) return { error: "Customer has no email address" };
+
+  const { data: invoice } = await admin.from("invoices").select("invoice_number, total, amount_paid, subtotal, tax_amount, status, due_date").eq("id", invoiceId).single();
+  if (!invoice) return { error: "Invoice not found" };
+
+  const { data: lineItems } = await admin.from("invoice_line_items").select("description, quantity, unit_price").eq("invoice_id", invoiceId);
+
+  const balanceDue = Math.max(0, (invoice.total ?? 0) - (invoice.amount_paid ?? 0));
+  const fmt = (n: number) => `$${n.toFixed(2)}`;
+
+  const lineItemsHtml = (lineItems ?? []).map((li) =>
+    `<tr><td style="padding:4px 8px;border:1px solid #eee;">${li.description}</td><td style="padding:4px 8px;border:1px solid #eee;text-align:right;">${li.quantity}</td><td style="padding:4px 8px;border:1px solid #eee;text-align:right;">${fmt(li.unit_price)}</td><td style="padding:4px 8px;border:1px solid #eee;text-align:right;">${fmt((li.quantity ?? 1) * (li.unit_price ?? 0))}</td></tr>`
+  ).join("");
+
+  const htmlBody = `
+<div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;color:#1c1917;">
+  <div style="background:#1c1917;color:#fff;padding:24px;text-align:center;">
+    <h1 style="margin:0;font-size:22px;">Marcus &amp; Co. Fine Jewellery</h1>
+    <p style="margin:4px 0 0;font-size:13px;color:#d6d3d1;">Invoice ${invoice.invoice_number}</p>
+  </div>
+  <div style="padding:24px;background:#fafaf9;">
+    <p>Hi ${customer.full_name},</p>
+    <p>Please find your invoice below for repair work on your <strong>${repair.item_description}</strong>.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <thead>
+        <tr style="background:#f5f5f4;">
+          <th style="padding:4px 8px;border:1px solid #eee;text-align:left;">Description</th>
+          <th style="padding:4px 8px;border:1px solid #eee;text-align:right;">Qty</th>
+          <th style="padding:4px 8px;border:1px solid #eee;text-align:right;">Unit</th>
+          <th style="padding:4px 8px;border:1px solid #eee;text-align:right;">Total</th>
+        </tr>
+      </thead>
+      <tbody>${lineItemsHtml}</tbody>
+    </table>
+    <div style="text-align:right;margin-top:8px;">
+      <div>Subtotal: ${fmt(invoice.subtotal ?? 0)}</div>
+      <div>GST (10%): ${fmt(invoice.tax_amount ?? 0)}</div>
+      <div style="font-size:16px;font-weight:bold;margin-top:4px;">Total: ${fmt(invoice.total ?? 0)}</div>
+      <div>Paid: ${fmt(invoice.amount_paid ?? 0)}</div>
+      <div style="font-weight:bold;color:${balanceDue > 0 ? "#b45309" : "#1c1917"};">Balance Due: ${fmt(balanceDue)}</div>
+    </div>
+  </div>
+  <div style="padding:16px 24px;background:#fff;text-align:center;font-size:12px;color:#78716c;">
+    Marcus &amp; Co. Fine Jewellery · 32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au
+  </div>
+</div>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Marcus & Co. <onboarding@resend.dev>",
+      to: [customer.email],
+      subject: `Invoice ${invoice.invoice_number} — Marcus & Co. Fine Jewellery`,
+      html: htmlBody,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Resend error:", errText);
+    return { error: "Email failed to send" };
+  }
+
+  // Log to job_events
+  await admin.from("job_events").insert({
+    tenant_id: tenantId,
+    job_type: "repair",
+    job_id: repairId,
+    event_type: "email_sent",
+    description: `Invoice ${invoice.invoice_number} emailed to ${customer.email}`,
+    actor: ctx.userId,
+  });
+
+  revalidatePath(`/repairs/${repairId}`);
+  return { success: true };
+}
+
+export async function emailJobReady(
+  jobType: "repair" | "bespoke",
+  jobId: string
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  const { admin, tenantId } = ctx;
+
+  let customer = null;
+  let itemDesc = "";
+  let jobNumber = "";
+
+  if (jobType === "repair") {
+    const { data: repair } = await admin.from("repairs").select("repair_number, item_description, customer_id").eq("id", jobId).eq("tenant_id", tenantId).single();
+    if (!repair) return { error: "Job not found" };
+    itemDesc = repair.item_description;
+    jobNumber = repair.repair_number;
+    if (repair.customer_id) {
+      const { data: cust } = await admin.from("customers").select("full_name, email").eq("id", repair.customer_id).single();
+      customer = cust;
+    }
+  }
+
+  if (!customer?.email) return { error: "Customer has no email address" };
+
+  const htmlBody = `
+<div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;color:#1c1917;">
+  <div style="background:#1c1917;color:#fff;padding:24px;text-align:center;">
+    <h1 style="margin:0;font-size:22px;">Marcus &amp; Co. Fine Jewellery</h1>
+  </div>
+  <div style="padding:24px;background:#fafaf9;">
+    <p>Hi ${customer.full_name},</p>
+    <p>Great news — your <strong>${itemDesc}</strong> (${jobNumber}) is ready for collection at Marcus &amp; Co.</p>
+    <p>Please come in at your convenience during business hours. Don't forget to bring your receipt.</p>
+    <p>If you have any questions, please don't hesitate to get in touch.</p>
+    <p style="margin-top:24px;">Warm regards,<br/>The team at Marcus &amp; Co. Fine Jewellery</p>
+  </div>
+  <div style="padding:16px 24px;background:#fff;text-align:center;font-size:12px;color:#78716c;">
+    Marcus &amp; Co. Fine Jewellery · 32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au
+  </div>
+</div>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Marcus & Co. <onboarding@resend.dev>",
+      to: [customer.email],
+      subject: `Your repair is ready — Marcus & Co. Fine Jewellery`,
+      html: htmlBody,
+    }),
+  });
+
+  if (!res.ok) return { error: "Email failed to send" };
+
+  await admin.from("job_events").insert({
+    tenant_id: tenantId,
+    job_type: jobType,
+    job_id: jobId,
+    event_type: "email_sent",
+    description: `Ready for collection email sent to ${customer.email}`,
+    actor: ctx.userId,
+  });
+
+  revalidatePath(`/repairs/${jobId}`);
   return { success: true };
 }

@@ -26,6 +26,10 @@ export async function GET(request: NextRequest) {
 
   // ── DELETE PHASE (FK-safe order) ────────────────────────────────────────────
 
+  // 0. job_attachments and job_events
+  await safeDelete(() => admin.from("job_attachments").delete().eq("tenant_id", TENANT_ID));
+  await safeDelete(() => admin.from("job_events").delete().eq("tenant_id", TENANT_ID));
+
   // 1. payments
   await safeDelete(() => admin.from("payments").delete().eq("tenant_id", TENANT_ID));
 
@@ -657,6 +661,18 @@ export async function GET(request: NextRequest) {
       })
     );
   }
+
+  // JOB ATTACHMENTS
+  await safeInsert(() => admin.from("job_attachments").insert({ tenant_id: TENANT_ID, job_type: "repair", job_id: "09686ec7-0ec5-4950-ba7f-9982c9830d43", file_name: "ring-before.jpg", file_url: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800", caption: "Ring before repair" }));
+  await safeInsert(() => admin.from("job_attachments").insert({ tenant_id: TENANT_ID, job_type: "repair", job_id: "09686ec7-0ec5-4950-ba7f-9982c9830d43", file_name: "damage-closeup.jpg", file_url: "https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=800", caption: "Prong damage closeup" }));
+  await safeInsert(() => admin.from("job_attachments").insert({ tenant_id: TENANT_ID, job_type: "bespoke", job_id: "ba62301b-0b26-423a-b02e-5a48bd7034b6", file_name: "reference-band.jpg", file_url: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=800", caption: "Client reference — platinum band" }));
+  await safeInsert(() => admin.from("job_attachments").insert({ tenant_id: TENANT_ID, job_type: "bespoke", job_id: "ba62301b-0b26-423a-b02e-5a48bd7034b6", file_name: "sketch.jpg", file_url: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=800", caption: "Designer sketch — scrollwork detail" }));
+
+  // JOB EVENTS
+  await safeInsert(() => admin.from("job_events").insert({ tenant_id: TENANT_ID, job_type: "repair", job_id: "09686ec7-0ec5-4950-ba7f-9982c9830d43", event_type: "stage_change", description: "Job received — stage set to In Progress", actor: "demo@nexpura.com" }));
+  await safeInsert(() => admin.from("job_events").insert({ tenant_id: TENANT_ID, job_type: "repair", job_id: "09686ec7-0ec5-4950-ba7f-9982c9830d43", event_type: "payment", description: "Deposit of $100 recorded (card)", actor: "demo@nexpura.com" }));
+  await safeInsert(() => admin.from("job_events").insert({ tenant_id: TENANT_ID, job_type: "bespoke", job_id: "ba62301b-0b26-423a-b02e-5a48bd7034b6", event_type: "stage_change", description: "Brief confirmed — job started", actor: "demo@nexpura.com" }));
+  await safeInsert(() => admin.from("job_events").insert({ tenant_id: TENANT_ID, job_type: "bespoke", job_id: "ba62301b-0b26-423a-b02e-5a48bd7034b6", event_type: "payment", description: "50% deposit of $2,800 recorded (card)", actor: "demo@nexpura.com" }));
 
   // Redirect to sandbox entry — which redirects to /dashboard?rt=TOKEN
   return NextResponse.redirect(new URL("/sandbox", request.url));
