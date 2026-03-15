@@ -40,6 +40,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/verify") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
+    pathname.startsWith("/demo") || // Demo mode — public read-only preview
     pathname.includes(".");
 
   if (isPublicRoute) {
