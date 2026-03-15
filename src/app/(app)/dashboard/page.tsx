@@ -42,12 +42,12 @@ export default async function DashboardPage() {
     // sales table may not exist yet
   }
 
-  // Outstanding invoices
+  // Outstanding invoices — statuses cover both legacy and current DB values
   const { data: outstandingData } = await admin
     .from("invoices")
     .select("id, invoice_number, total, amount_paid, due_date, customers(full_name)")
     .eq("tenant_id", tenantId ?? "")
-    .in("status", ["sent", "partially_paid", "overdue"])
+    .in("status", ["partial", "unpaid", "sent", "partially_paid", "overdue"])
     .is("deleted_at", null)
     .order("due_date", { ascending: true })
     .limit(5);
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
     .from("invoices")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId ?? "")
-    .not("status", "in", '("paid","voided","draft")')
+    .not("status", "in", '("paid","voided","draft","cancelled")')
     .lt("due_date", today)
     .is("deleted_at", null);
 
@@ -109,7 +109,7 @@ export default async function DashboardPage() {
     };
   });
 
-  // Low stock — with item names
+  // Low stock — with item names; deduplicate by SKU to guard against duplicate seed rows
   const { data: lowStockRaw } = await admin
     .from("inventory")
     .select("id, name, sku, quantity, low_stock_threshold, track_quantity")
@@ -118,7 +118,14 @@ export default async function DashboardPage() {
     .is("deleted_at", null)
     .eq("track_quantity", true);
 
-  const lowStockItems = (lowStockRaw ?? [])
+  const _seenSkus = new Map<string, (typeof lowStockRaw extends (infer T)[] | null ? T : never)>();
+  for (const item of lowStockRaw ?? []) {
+    const key = item.sku ?? item.id;
+    if (!_seenSkus.has(key)) _seenSkus.set(key, item);
+  }
+  const dedupedInventory = Array.from(_seenSkus.values());
+
+  const lowStockItems = dedupedInventory
     .filter((i) => i.quantity <= (i.low_stock_threshold ?? 1))
     .sort((a, b) => a.quantity - b.quantity)
     .slice(0, 10)
@@ -262,10 +269,10 @@ export default async function DashboardPage() {
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 5);
 
-  // Tasks due TODAY — tenant-scoped
+  // Tasks due TODAY — tenant-scoped (table is `tasks`, not `staff_tasks`)
   // Managers/owners see ALL team tasks; staff see only their own
   let myTasksQuery = admin
-    .from("staff_tasks")
+    .from("tasks")
     .select("id, title, priority, status, due_date, assigned_to, users(full_name)")
     .eq("tenant_id", tenantId ?? "")
     .neq("status", "completed")

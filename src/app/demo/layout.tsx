@@ -16,8 +16,9 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex min-h-screen bg-stone-50">
       {/* Demo mode banner */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white text-center text-xs font-semibold py-1.5 tracking-wide">
-        🔍 DEMO MODE — Read-only preview · Marcus &amp; Co. Fine Jewellery · No real data
+      <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white text-center text-xs font-semibold py-1.5 flex items-center justify-center gap-4">
+        <span>🔍 DEMO MODE — Read-only · Marcus &amp; Co. Fine Jewellery · No real data</span>
+        <a href="/api/demo/session" className="underline font-bold hover:opacity-80">Open Full Demo (all screens) →</a>
       </div>
 
       <div className="pt-7 flex w-full">

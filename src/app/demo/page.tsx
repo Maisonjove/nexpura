@@ -38,12 +38,12 @@ export default async function DemoPage() {
     // sales table may not exist yet
   }
 
-  // Outstanding invoices
+  // Outstanding invoices — statuses cover both legacy and current DB values (mirrors real dashboard)
   const { data: outstandingData } = await admin
     .from("invoices")
     .select("id, invoice_number, total, amount_paid, due_date, customers(full_name)")
     .eq("tenant_id", tenantId)
-    .in("status", ["sent", "partially_paid", "overdue"])
+    .in("status", ["partial", "unpaid", "sent", "partially_paid", "overdue"])
     .is("deleted_at", null)
     .order("due_date", { ascending: true })
     .limit(5);
@@ -57,7 +57,7 @@ export default async function DemoPage() {
     .from("invoices")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
-    .not("status", "in", '("paid","voided","draft")')
+    .not("status", "in", '("paid","voided","draft","cancelled")')
     .lt("due_date", today)
     .is("deleted_at", null);
 
@@ -105,7 +105,7 @@ export default async function DemoPage() {
     };
   });
 
-  // Low stock items
+  // Low stock — deduplicate by SKU to guard against duplicate seed rows (mirrors real dashboard)
   const { data: lowStockRaw } = await admin
     .from("inventory")
     .select("id, name, sku, quantity, low_stock_threshold, track_quantity")
@@ -114,7 +114,14 @@ export default async function DemoPage() {
     .is("deleted_at", null)
     .eq("track_quantity", true);
 
-  const lowStockItems = (lowStockRaw ?? [])
+  const _seenSkus = new Map<string, (typeof lowStockRaw extends (infer T)[] | null ? T : never)>();
+  for (const item of lowStockRaw ?? []) {
+    const key = item.sku ?? item.id;
+    if (!_seenSkus.has(key)) _seenSkus.set(key, item);
+  }
+  const dedupedInventory = Array.from(_seenSkus.values());
+
+  const lowStockItems = dedupedInventory
     .filter((i) => i.quantity <= (i.low_stock_threshold ?? 1))
     .sort((a, b) => a.quantity - b.quantity)
     .slice(0, 10)
@@ -256,6 +263,48 @@ export default async function DemoPage() {
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 5);
 
+  // Tasks due TODAY — all tenant tasks (demo shows manager view, table is `tasks`) (mirrors real dashboard)
+  const { data: allTasksData } = await admin
+    .from("tasks")
+    .select("id, title, priority, status, due_date, assigned_to, users(full_name)")
+    .eq("tenant_id", tenantId)
+    .neq("status", "completed")
+    .eq("due_date", today)
+    .order("priority", { ascending: false })
+    .limit(50);
+
+  const DEMO_USER_ID = "bd7d2c20-5727-4f80-a449-818429abecc9";
+
+  const myTasks = (allTasksData ?? [])
+    .filter((t) => t.assigned_to === DEMO_USER_ID)
+    .map((t) => ({
+      id: t.id,
+      title: t.title,
+      priority: t.priority,
+      status: t.status,
+      due_date: t.due_date,
+    }));
+
+  type TeamTaskSummary = { assigneeId: string; assigneeName: string; taskCount: number; overdueCount: number };
+  const teamTaskSummary: TeamTaskSummary[] = [];
+  const byAssignee = new Map<string, { name: string; count: number; overdue: number }>();
+  for (const t of allTasksData ?? []) {
+    if (!t.assigned_to || t.assigned_to === DEMO_USER_ID) continue;
+    const existing = byAssignee.get(t.assigned_to);
+    const assigneeName =
+      (Array.isArray(t.users)
+        ? t.users[0]?.full_name
+        : (t.users as { full_name: string | null } | null)?.full_name) ?? "Unknown";
+    if (existing) {
+      existing.count++;
+    } else {
+      byAssignee.set(t.assigned_to, { name: assigneeName, count: 1, overdue: 0 });
+    }
+  }
+  for (const [id, data] of byAssignee) {
+    teamTaskSummary.push({ assigneeId: id, assigneeName: data.name, taskCount: data.count, overdueCount: data.overdue });
+  }
+
   return (
     <DashboardClient
       firstName="Marcus"
@@ -270,8 +319,8 @@ export default async function DemoPage() {
       overdueRepairs={overdueRepairs}
       readyForPickup={readyForPickup}
       recentActivity={recentActivity}
-      myTasks={[]}
-      teamTaskSummary={[]}
+      myTasks={myTasks}
+      teamTaskSummary={teamTaskSummary}
       isManager={true}
       activeRepairs={activeRepairs}
       activeBespokeJobs={activeBespokeJobs}
