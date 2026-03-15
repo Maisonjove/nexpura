@@ -1,7 +1,7 @@
 /**
  * /verification — Screenshot gallery for reviewer access
  *
- * All 46 screenshots were captured from build nexpura-g8f7s581y by
+ * All 46 screenshots were captured from build nexpura-403u3dvbz by
  * headless Playwright against the live deployment. Served as static
  * files from /public/verification/. Each image has a URL overlay
  * stamped at capture time showing the exact route and build.
@@ -9,8 +9,7 @@
  * PREVIEW-ONLY. Remove after review cycle.
  */
 
-const BUILD = "nexpura-g8f7s581y-maisonjoves-projects.vercel.app";
-const BASE_URL = `https://${BUILD}`;
+const BUILD = "nexpura-403u3dvbz-maisonjoves-projects.vercel.app";
 const RT = "nexpura-review-2026";
 
 const REVIEW_SCREENS = [
@@ -40,7 +39,7 @@ const REVIEW_SCREENS = [
 const SANDBOX_SCREENS = [
   { file: "sb-dashboard", label: "Dashboard", route: `/dashboard?rt=${RT}` },
   { file: "sb-pos", label: "POS — Point of Sale", route: `/pos?rt=${RT}` },
-  { file: "sb-tasks", label: "Tasks Board (cleaned)", route: `/tasks?rt=${RT}` },
+  { file: "sb-tasks", label: "Tasks Board", route: `/tasks?rt=${RT}` },
   { file: "sb-workshop", label: "Workshop", route: `/workshop?rt=${RT}` },
   { file: "sb-eod", label: "End of Day — Totals", route: `/eod?rt=${RT}` },
   { file: "sb-billing", label: "Billing — Pro Plan", route: `/billing?rt=${RT}` },
@@ -61,7 +60,7 @@ const SANDBOX_SCREENS = [
   { file: "sb-appraisals", label: "Appraisals", route: `/appraisals?rt=${RT}` },
   { file: "sb-memo", label: "Memo & Consignment", route: `/memo?rt=${RT}` },
   { file: "sb-website", label: "Website Builder", route: `/website?rt=${RT}` },
-  { file: "sb-settings", label: "Settings / Document Centre", route: `/settings?rt=${RT}` },
+  { file: "sb-settings", label: "Settings", route: `/settings?rt=${RT}` },
   { file: "sb-admin-audit", label: "Admin Audit Logs", route: `/admin/audit?rt=${RT}` },
 ];
 
@@ -75,7 +74,7 @@ function Section({ title, badge, screens }: { title: string; badge: string; scre
         </span>
         <span style={{ color: "#a8a29e", fontSize: 13, marginLeft: "auto" }}>{screens.length} screens</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
         {screens.map((s) => (
           <a
             key={s.file}
@@ -89,7 +88,7 @@ function Section({ title, badge, screens }: { title: string; badge: string; scre
               <img
                 src={`/verification/${s.file}.png`}
                 alt={s.label}
-                style={{ width: "100%", height: 220, objectFit: "cover", objectPosition: "top", display: "block", borderBottom: "1px solid #f5f5f4" }}
+                style={{ width: "100%", height: 180, objectFit: "cover", objectPosition: "top", display: "block", borderBottom: "1px solid #f5f5f4" }}
               />
               <div style={{ padding: "10px 14px" }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "#1c1917", margin: 0 }}>{s.label}</p>
@@ -111,22 +110,21 @@ export default function VerificationPage() {
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ marginBottom: 36, borderLeft: "4px solid #B45309", paddingLeft: 16 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1c1917", margin: 0 }}>Nexpura — Screenshot Verification Pack</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1c1917", margin: 0 }}>Nexpura — Final Screenshot Verification Pack</h1>
           <p style={{ fontSize: 14, color: "#78716c", margin: "8px 0 0" }}>
-            All 46 screenshots captured by headless Playwright from build{" "}
+            All 46 screenshots captured from build{" "}
             <a href={`https://${BUILD}`} style={{ color: "#B45309", fontWeight: 600 }}>{BUILD}</a>.
-            Each image has a URL overlay stamped at capture time.
+            Each image has a URL overlay stamped at capture time showing this exact build.
           </p>
         </div>
 
         {/* Build info */}
         <div style={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 12, padding: "16px 20px", marginBottom: 36, display: "flex", flexWrap: "wrap", gap: 20 }}>
-          <span style={{ fontSize: 13 }}><strong>Build:</strong> <code style={{ background: "#f5f5f4", padding: "2px 6px", borderRadius: 4, fontSize: 12 }}>nexpura-g8f7s581y</code></span>
+          <span style={{ fontSize: 13 }}><strong>Source Build:</strong> <code style={{ background: "#f5f5f4", padding: "2px 6px", borderRadius: 4, fontSize: 12 }}>nexpura-403u3dvbz</code></span>
           <span style={{ fontSize: 13 }}><strong>Tenant:</strong> Marcus &amp; Co. Fine Jewellery</span>
-          <span style={{ fontSize: 13 }}><strong>Auth token:</strong> <code style={{ background: "#f5f5f4", padding: "2px 6px", borderRadius: 4, fontSize: 12 }}>?rt=nexpura-review-2026</code></span>
           <span style={{ fontSize: 13 }}><strong>Total screens:</strong> {REVIEW_SCREENS.length + SANDBOX_SCREENS.length}</span>
-          <a href="/sandbox/links?rt=nexpura-review-2026" style={{ fontSize: 13, color: "#B45309", fontWeight: 600, marginLeft: "auto" }}>
-            Open live route index →
+          <a href="/verification/workflows" style={{ fontSize: 13, color: "#B45309", fontWeight: 600, marginLeft: "auto" }}>
+            Open workflow video gallery →
           </a>
         </div>
 

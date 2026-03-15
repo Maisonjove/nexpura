@@ -1,7 +1,7 @@
 /**
  * /verification/workflows — Workflow video proof gallery
  *
- * All 16 videos recorded from build nexpura-mhgeb7x3w against the live
+ * All 16 videos recorded from build nexpura-403u3dvbz against the live
  * Marcus & Co. demo tenant using ?rt=nexpura-review-2026 (owner) and
  * ?rt=nexpura-staff-2026 (salesperson) auth tokens.
  *
@@ -9,7 +9,7 @@
  * PREVIEW-ONLY — remove after review cycle.
  */
 
-const RECORDING_BUILD = "nexpura-mhgeb7x3w-maisonjoves-projects.vercel.app";
+const RECORDING_BUILD = "nexpura-403u3dvbz-maisonjoves-projects.vercel.app";
 const STORAGE_BASE =
   "https://vkpjocnrefjfpuovzinn.supabase.co/storage/v1/object/public/verification/videos";
 
@@ -244,11 +244,11 @@ export default function WorkflowsPage() {
           <h1
             style={{ fontSize: 24, fontWeight: 800, color: "#1c1917", margin: 0 }}
           >
-            Nexpura — Workflow Proof Pack
+            Nexpura — Final Workflow Proof Pack
           </h1>
           <p style={{ fontSize: 13, color: "#78716c", margin: "8px 0 0" }}>
-            16 real authenticated write flows recorded from build{" "}
-            <strong>{RECORDING_BUILD}</strong> against the Marcus &amp; Co. demo
+            All 16 real authenticated write flows recorded from build{" "}
+            <strong>nexpura-403u3dvbz</strong> against the Marcus &amp; Co. demo
             tenant. Each video has the build URL and route overlaid at capture
             time.
           </p>
@@ -269,7 +269,7 @@ export default function WorkflowsPage() {
           }}
         >
           <span style={{ fontSize: 13 }}>
-            <strong>Recording build:</strong>{" "}
+            <strong>Source Build:</strong>{" "}
             <code
               style={{
                 background: "#f5f5f4",
@@ -278,7 +278,7 @@ export default function WorkflowsPage() {
                 fontSize: 12,
               }}
             >
-              nexpura-mhgeb7x3w
+              nexpura-403u3dvbz
             </code>
           </span>
           <span style={{ fontSize: 13 }}>
