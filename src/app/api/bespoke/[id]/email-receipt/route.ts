@@ -152,5 +152,17 @@ export async function POST(
     return NextResponse.json({ error: sendError.message }, { status: 500 });
   }
 
+  // Log communication to customer_communications
+  if (job.customer_id) {
+    await adminClient.from("customer_communications").insert({
+      tenant_id: userData.tenant_id,
+      customer_id: job.customer_id,
+      type: "email_receipt",
+      subject: `Bespoke Job Receipt — ${job.job_number ?? job.id}`,
+      sent_at: new Date().toISOString(),
+      sent_by: user.id,
+    });
+  }
+
   return NextResponse.json({ success: true });
 }

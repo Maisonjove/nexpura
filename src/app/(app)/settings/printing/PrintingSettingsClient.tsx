@@ -35,9 +35,10 @@ interface PrinterConfig {
 interface Props {
   tenantId: string;
   configs: Record<string, PrinterConfig>;
+  businessName?: string;
 }
 
-export default function PrintingSettingsClient({ tenantId, configs }: Props) {
+export default function PrintingSettingsClient({ tenantId, configs, businessName = "Your Store" }: Props) {
   const [activeTab, setActiveTab] = useState<PrinterType>("receipt");
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
@@ -145,7 +146,7 @@ export default function PrintingSettingsClient({ tenantId, configs }: Props) {
   .divider { border-top: 1px dashed #000; margin: 8px 0; }
   .row { display: flex; justify-content: space-between; }
 </style></head><body>
-<h2>NEXPURA</h2>
+<h2>${businessName}</h2>
 <p class="center">123 Jewellery Lane</p>
 <p class="center">Sydney NSW 2000</p>
 <div class="divider"></div>
@@ -296,7 +297,7 @@ export default function PrintingSettingsClient({ tenantId, configs }: Props) {
                 <p className="text-xs font-medium text-stone-500 mb-3 uppercase tracking-wider">Receipt Preview</p>
                 <div className="flex justify-center">
                   <div style={{ width: rPaperWidth === "58mm" ? 220 : 280 }} className="border border-stone-300 rounded p-4 font-mono text-xs bg-white shadow-sm">
-                    <p className="text-center font-bold text-sm mb-1">NEXPURA</p>
+                    <p className="text-center font-bold text-sm mb-1">{businessName}</p>
                     <p className="text-center text-xs text-stone-500">123 Jewellery Lane, Sydney NSW</p>
                     <div className="border-t border-dashed border-stone-300 my-2" />
                     <div className="flex justify-between"><span>Diamond Ring</span><span>$8,500</span></div>

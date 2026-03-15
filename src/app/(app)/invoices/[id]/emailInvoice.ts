@@ -63,6 +63,7 @@ export async function emailInvoice(
           `id, invoice_number, status, invoice_date, due_date,
            subtotal, tax_amount, discount_amount, total, paid_at,
            tax_name, tax_rate, tax_inclusive, notes, footer_text,
+           customer_id,
            customers(full_name, email, phone, address)`
         )
         .eq("id", invoiceId)
@@ -299,6 +300,18 @@ export async function emailInvoice(
 
       revalidatePath(`/invoices/${invoiceId}`);
       revalidatePath("/invoices");
+    }
+
+    // 8. Log to customer_communications
+    if ((invoice as Record<string, unknown>).customer_id) {
+      await supabase.from("customer_communications").insert({
+        tenant_id: userData.tenant_id,
+        customer_id: (invoice as Record<string, unknown>).customer_id,
+        type: "invoice",
+        subject: `Tax Invoice ${invoice.invoice_number}`,
+        sent_at: new Date().toISOString(),
+        sent_by: user.id,
+      });
     }
 
     return { success: true };

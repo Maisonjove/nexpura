@@ -26,12 +26,22 @@ export default async function PrintingSettingsPage() {
     .select("*")
     .eq("tenant_id", tenantId);
 
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("name, business_name")
+    .eq("id", tenantId)
+    .single();
+
   const configMap: Record<string, Record<string, unknown>> = {};
   for (const c of configs ?? []) {
     configMap[c.printer_type as string] = c;
   }
 
   return (
-    <PrintingSettingsClient tenantId={tenantId} configs={configMap} />
+    <PrintingSettingsClient
+      tenantId={tenantId}
+      configs={configMap}
+      businessName={tenant?.business_name || tenant?.name || "Your Store"}
+    />
   );
 }

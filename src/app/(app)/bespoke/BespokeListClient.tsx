@@ -275,5 +275,6 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
         </Table>
       </Card>
     </div>
+    </>
   );
 }
