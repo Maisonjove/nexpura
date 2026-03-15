@@ -670,6 +670,42 @@ export async function GET(request: NextRequest) {
     ])
   );
 
+  // PAYMENTS — seed payment records for paid/partial invoices so payment history is consistent
+  await safeInsert(() =>
+    admin.from("payments").insert([
+      {
+        tenant_id: TENANT_ID,
+        invoice_id: "7af873a4-2cd5-4b12-b2aa-77fac3168e83", // INV-0001 paid
+        amount: 7480.00,
+        payment_method: "card",
+        payment_date: "2026-03-10",
+        reference: "EFTPOS-2036",
+        notes: "Full payment received in store",
+        created_by: "bd7d2c20-5727-4f80-a449-818429abecc9",
+      },
+      {
+        tenant_id: TENANT_ID,
+        invoice_id: "dea54c54-5565-4731-8fed-d2e0b9e90864", // INV-0004 paid
+        amount: 5280.00,
+        payment_method: "card",
+        payment_date: "2026-03-12",
+        reference: "EFTPOS-2041",
+        notes: "Full payment received in store",
+        created_by: "bd7d2c20-5727-4f80-a449-818429abecc9",
+      },
+      {
+        tenant_id: TENANT_ID,
+        invoice_id: "46d2b690-733d-4f23-abaf-10d81d3e9102", // INV-0003 partial
+        amount: 1000.00,
+        payment_method: "cash",
+        payment_date: "2026-03-08",
+        reference: null,
+        notes: "Partial deposit received",
+        created_by: "bd7d2c20-5727-4f80-a449-818429abecc9",
+      },
+    ])
+  );
+
   // APPRAISALS
   await safeInsert(() =>
     admin.from("appraisals").insert([
