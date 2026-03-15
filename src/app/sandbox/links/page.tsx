@@ -92,6 +92,13 @@ const SECTIONS = [
     ],
   },
   {
+    title: "Laybys",
+    color: "stone",
+    links: [
+      { label: "Laybys — Active List", path: "/laybys", note: "L-0001: Lina Haddad, $2,200 total, $600 deposit paid" },
+    ],
+  },
+  {
     title: "Financial & Reporting",
     color: "stone",
     links: [
