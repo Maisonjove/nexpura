@@ -21,9 +21,11 @@ interface Props {
   active: number;
   verified: number;
   publicCount: number;
+  basePath?: string;
+  readOnly?: boolean;
 }
 
-export default function PassportsListClient({ passports, total, active, verified, publicCount }: Props) {
+export default function PassportsListClient({ passports, total, active, verified, publicCount, basePath = "", readOnly = false }: Props) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterVisibility, setFilterVisibility] = useState("all");
@@ -53,15 +55,17 @@ export default function PassportsListClient({ passports, total, active, verified
           <h1 className="font-semibold text-3xl text-stone-900">Digital Passports</h1>
           <p className="text-sm text-gray-500 mt-1">Verifiable certificates of authenticity for every piece</p>
         </div>
-        <Link
-          href="/passports/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Create Passport
-        </Link>
+        {!readOnly && (
+          <Link
+            href={`${basePath}/passports/new`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create Passport
+          </Link>
+        )}
       </div>
 
       {/* Stats */}
@@ -142,9 +146,9 @@ export default function PassportsListClient({ passports, total, active, verified
             <p className="text-sm text-gray-500 mt-1 mb-4">
               {search ? "Try a different search" : "Create your first digital jewellery passport"}
             </p>
-            {!search && (
+            {!search && !readOnly && (
               <Link
-                href="/passports/new"
+                href={`${basePath}/passports/new`}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,17 +231,19 @@ export default function PassportsListClient({ passports, total, active, verified
                           </button>
                         )}
                         <Link
-                          href={`/passports/${passport.id}`}
+                          href={`${basePath}/passports/${passport.id}`}
                           className="text-[#8B7355] hover:text-[#8B7355]/80 text-xs font-medium transition-colors"
                         >
                           View
                         </Link>
-                        <Link
-                          href={`/passports/${passport.id}/edit`}
-                          className="text-gray-400 hover:text-gray-600 text-xs font-medium transition-colors"
-                        >
-                          Edit
-                        </Link>
+                        {!readOnly && (
+                          <Link
+                            href={`${basePath}/passports/${passport.id}/edit`}
+                            className="text-gray-400 hover:text-gray-600 text-xs font-medium transition-colors"
+                          >
+                            Edit
+                          </Link>
+                        )}
                       </div>
                     </td>
                   </tr>

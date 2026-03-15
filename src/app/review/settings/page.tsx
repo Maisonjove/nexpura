@@ -20,12 +20,12 @@ const LABEL_TYPES = [
 ];
 
 const NUMBERING_SEQUENCES = [
-  { module: "Invoices", prefix: "INV-", format: "INV-0001", current: "INV-0004", next: "INV-0005" },
-  { module: "Repairs", prefix: "R-", format: "R-0001", current: "R-0005", next: "R-0006" },
-  { module: "Bespoke Jobs", prefix: "B-", format: "B-0001", current: "B-0003", next: "B-0004" },
-  { module: "Appraisals", prefix: "APR-", format: "APR-0001", current: "APR-0003", next: "APR-0004" },
-  { module: "Memo / Consignment", prefix: "M-/C-", format: "M-0001", current: "M-0001", next: "M-0002" },
-  { module: "Sales", prefix: "S-", format: "S-0001", current: "S-0006", next: "S-0007" },
+  { module: "Invoices", pattern: "INV-0001", lastIssued: "INV-0004", nextUp: "INV-0005" },
+  { module: "Repairs", pattern: "R-0001", lastIssued: "R-0005", nextUp: "R-0006" },
+  { module: "Bespoke Jobs", pattern: "B-0001", lastIssued: "B-0003", nextUp: "B-0004" },
+  { module: "Appraisals", pattern: "APR-0001", lastIssued: "APR-0003", nextUp: "APR-0004" },
+  { module: "Memo / Consignment", pattern: "M-0001 / C-0001", lastIssued: "M-0001 / C-0001", nextUp: "M-0002 / C-0002" },
+  { module: "Sales", pattern: "S-0001", lastIssued: "S-0006", nextUp: "S-0007" },
 ];
 
 export default async function ReviewSettingsPage() {
@@ -207,18 +207,18 @@ export default async function ReviewSettingsPage() {
             <thead className="bg-stone-50 border-b border-stone-100">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Module</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Prefix</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Current</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Next</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Pattern</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Last Issued</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Next Number</th>
               </tr>
             </thead>
             <tbody>
               {NUMBERING_SEQUENCES.map((seq) => (
                 <tr key={seq.module} className="border-b border-stone-100">
                   <td className="px-4 py-3 text-sm font-medium text-stone-900">{seq.module}</td>
-                  <td className="px-4 py-3 text-sm font-mono text-amber-700">{seq.prefix}</td>
-                  <td className="px-4 py-3 text-sm font-mono text-stone-500">{seq.current}</td>
-                  <td className="px-4 py-3 text-sm font-mono text-stone-700 font-semibold">{seq.next}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-stone-400">{seq.pattern}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-stone-500">{seq.lastIssued}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-amber-700 font-semibold">{seq.nextUp}</td>
                 </tr>
               ))}
             </tbody>

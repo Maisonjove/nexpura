@@ -27,6 +27,8 @@ export default async function ReviewPassportsPage() {
       active={active}
       verified={verified}
       publicCount={publicCount}
+      basePath="/review"
+      readOnly={true}
     />
   );
 }

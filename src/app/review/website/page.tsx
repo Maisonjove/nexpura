@@ -3,6 +3,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 export const revalidate = 60;
 
+const STORE_PAGES = [
+  { slug: "/", name: "Home", desc: "Hero banner, featured products, about blurb", status: "published" },
+  { slug: "/products", name: "Products", desc: "Full catalogue grid with category filters", status: "published" },
+  { slug: "/about", name: "About", desc: "Store story, team, and craftsmanship statement", status: "published" },
+  { slug: "/contact", name: "Contact", desc: "Enquiry form, address, and opening hours", status: "published" },
+  { slug: "/repairs", name: "Repairs", desc: "Intake form for repair requests", status: "draft" },
+];
+
 function ReadOnlyField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
@@ -183,6 +191,91 @@ export default async function ReviewWebsitePage() {
         </div>
       </section>
 
+      {/* Homepage Preview Mockup */}
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Homepage Preview</h2>
+          {subdomainUrl && (
+            <a href={subdomainUrl} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-amber-700 hover:text-amber-800 font-medium transition-colors">
+              Open store ↗
+            </a>
+          )}
+        </div>
+        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
+          {/* Simulated browser chrome */}
+          <div className="bg-stone-100 border-b border-stone-200 px-4 py-2.5 flex items-center gap-3">
+            <div className="flex gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-stone-300" />
+              <span className="w-3 h-3 rounded-full bg-stone-300" />
+              <span className="w-3 h-3 rounded-full bg-stone-300" />
+            </div>
+            <span className="text-xs font-mono text-stone-400 bg-white border border-stone-200 rounded px-2 py-1 flex-1 truncate">
+              {subdomainUrl ?? "https://marcusco.nexpura.com"}
+            </span>
+          </div>
+          {/* Hero section mockup */}
+          <div
+            className="px-8 py-10 text-center"
+            style={{ backgroundColor: config?.primary_color ?? "#8B7355", backgroundImage: "linear-gradient(135deg, rgba(0,0,0,0.15) 0%, transparent 100%)" }}
+          >
+            <p className="text-xs font-semibold tracking-widest uppercase text-white/60 mb-2">
+              {config?.website_type?.replace(/_/g, " ") ?? "Jewellery Store"}
+            </p>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {config?.business_name ?? "Marcus & Co. Fine Jewellery"}
+            </h2>
+            <p className="text-sm text-white/80 max-w-md mx-auto">
+              {config?.tagline ?? "Timeless jewellery crafted with precision"}
+            </p>
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <span className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-semibold text-white border border-white/40 bg-white/10">
+                View Collection
+              </span>
+              {(config?.allow_enquiry ?? true) && (
+                <span className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-semibold text-white/70 border border-white/20">
+                  Enquire
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Site Pages */}
+      <section className="space-y-3">
+        <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Site Pages</h2>
+        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-stone-50 border-b border-stone-100">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Page</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">URL</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-widest">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {STORE_PAGES.map((page) => (
+                <tr key={page.slug} className="border-b border-stone-100">
+                  <td className="px-4 py-3 text-sm font-semibold text-stone-900">{page.name}</td>
+                  <td className="px-4 py-3 text-xs font-mono text-stone-400">{subdomainUrl ? `${subdomainUrl}${page.slug === "/" ? "" : page.slug}` : page.slug}</td>
+                  <td className="px-4 py-3 text-xs text-stone-500">{page.desc}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                      page.status === "published" ? "bg-green-50 text-green-700" : "bg-stone-100 text-stone-500"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${page.status === "published" ? "bg-green-500" : "bg-stone-400"}`} />
+                      {page.status === "published" ? "Published" : "Draft"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {/* Commerce Settings */}
       <section className="space-y-3">
         <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Commerce Settings</h2>
@@ -207,9 +300,9 @@ export default async function ReviewWebsitePage() {
 
       {/* Builder Capabilities */}
       <section className="space-y-3">
-        <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">Builder Capabilities</h2>
+        <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest">What You Can Configure</h2>
         <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <p className="text-xs text-stone-400 mb-4">In the live app, the Website Builder lets you configure:</p>
+          <p className="text-xs text-stone-400 mb-4">In the live app, the Website Builder gives you full control over:</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {BUILDER_CAPABILITIES.map((cap) => (
               <div key={cap.label} className="flex items-start gap-3 p-3 bg-stone-50 rounded-lg border border-stone-100">
