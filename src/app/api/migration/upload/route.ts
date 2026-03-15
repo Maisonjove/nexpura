@@ -4,10 +4,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
-// Simple CSV parser
-function parseCSV(text: string): { headers: string[]; rows: any[][] } {
+// Simple CSV parser (header + sample only)
+function parseCSVSample(text: string): { headers: string[]; rows: unknown[][]; rowCount: number } {
   const lines = text.split('\n').filter(l => l.trim());
-  if (lines.length === 0) return { headers: [], rows: [] };
+  if (lines.length === 0) return { headers: [], rows: [], rowCount: 0 };
 
   function parseLine(line: string): string[] {
     const result: string[] = [];
@@ -30,7 +30,8 @@ function parseCSV(text: string): { headers: string[]; rows: any[][] } {
 
   const headers = parseLine(lines[0]);
   const rows = lines.slice(1, 11).map(l => parseLine(l));
-  return { headers, rows };
+  const rowCount = lines.length - 1;
+  return { headers, rows, rowCount };
 }
 
 export async function POST(req: NextRequest) {
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    const tenantId = profile?.tenant_id;
+    const tenantId = (profile as { tenant_id: string } | null)?.tenant_id;
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const sessionId = formData.get('sessionId') as string;
@@ -61,20 +62,34 @@ export async function POST(req: NextRequest) {
     const uint8 = new Uint8Array(buffer);
 
     let headers: string[] = [];
-    let sampleRows: any[][] = [];
+    let sampleRows: unknown[][] = [];
     let rowCount = 0;
 
     const fileName = file.name.toLowerCase();
 
     if (fileName.endsWith('.csv')) {
       const text = new TextDecoder('utf-8').decode(uint8);
-      const parsed = parseCSV(text);
+      const parsed = parseCSVSample(text);
       headers = parsed.headers;
       sampleRows = parsed.rows;
-      // Count rows
-      rowCount = text.split('\n').filter(l => l.trim()).length - 1;
+      rowCount = parsed.rowCount;
+    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      try {
+        const XLSX = await import('xlsx');
+        const workbook = XLSX.read(uint8, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
+        headers = (jsonData[0] as unknown[] ?? []).map(String);
+        sampleRows = jsonData.slice(1, 11) as unknown[][];
+        rowCount = Math.max(0, jsonData.length - 1);
+      } catch (e) {
+        console.error('XLSX parse error:', e);
+        return NextResponse.json({ error: 'Failed to parse Excel file' }, { status: 400 });
+      }
+    } else {
+      return NextResponse.json({ error: 'Unsupported file type. Please upload CSV or Excel (.xlsx/.xls)' }, { status: 400 });
     }
-    // Note: Excel parsing requires a library; for V1 we handle CSV primarily
 
     // Upload to Supabase Storage
     const storagePath = `${tenantId}/${sessionId}/${Date.now()}-${file.name}`;
@@ -85,6 +100,11 @@ export async function POST(req: NextRequest) {
         contentType: file.type || 'application/octet-stream',
         upsert: false,
       });
+
+    if (storageError) {
+      console.error('Storage upload error:', storageError);
+      // Non-fatal — still create the DB record
+    }
 
     // Create migration_files record
     const { data: fileRecord, error: dbError } = await admin
@@ -112,7 +132,7 @@ export async function POST(req: NextRequest) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': req.headers.get('cookie') || '' },
         body: JSON.stringify({
-          fileId: fileRecord.id,
+          fileId: (fileRecord as { id: string }).id,
           fileName: file.name,
           headers,
           sampleRows,
@@ -122,15 +142,15 @@ export async function POST(req: NextRequest) {
       });
       if (classifyRes.ok) {
         const classifyData = await classifyRes.json();
-        return NextResponse.json({ file: { ...fileRecord, ...classifyData }, success: true });
+        return NextResponse.json({ file: { ...(fileRecord as object), ...classifyData }, success: true });
       }
     } catch {
       // Classification failed gracefully — file still uploaded
     }
 
     return NextResponse.json({ file: fileRecord, success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Upload error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

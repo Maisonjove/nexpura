@@ -1,8 +1,110 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  parseCSVFull,
+  parseXLSXFull,
+  applyMappings,
+  buildDefaultMappings,
+  buildImportMetadata,
+  importCustomer,
+  importInventory,
+  importRepair,
+  importBespokeJob,
+  findDuplicateCustomer,
+  CUSTOMER_DEFAULT_MAPPINGS,
+  INVENTORY_DEFAULT_MAPPINGS,
+  REPAIR_DEFAULT_MAPPINGS,
+  type ImportContext,
+  type ImportRow,
+  type MappingEntry,
+} from '@/lib/migration/engine';
+
+export const runtime = 'nodejs';
+// Allow up to 5 minutes for large imports
+export const maxDuration = 300;
+
+type EntityType = 'customers' | 'inventory' | 'repairs' | 'bespoke' | 'invoices' | 'payments' | 'unknown';
+
+const ENTITY_ORDER: EntityType[] = ['customers', 'inventory', 'repairs', 'bespoke', 'invoices', 'payments'];
+
+function entitySortKey(e: EntityType): number {
+  const idx = ENTITY_ORDER.indexOf(e);
+  return idx === -1 ? 99 : idx;
+}
+
+interface MigrationFile {
+  id: string;
+  original_name: string;
+  storage_path: string;
+  detected_entity: EntityType | null;
+  row_count: number | null;
+  column_headers: string[] | null;
+  migration_mappings?: Array<{ mappings: MappingEntry[] | null }>;
+}
+
+interface MigrationSession {
+  id: string;
+  source_platform: string;
+  data_scope: 'active' | 'active_and_recent' | 'full_archive' | null;
+  status: string;
+}
+
+async function downloadFile(
+  admin: ReturnType<typeof createAdminClient>,
+  storagePath: string
+): Promise<Uint8Array | null> {
+  try {
+    const { data, error } = await admin.storage
+      .from('migration-files')
+      .download(storagePath);
+    if (error || !data) return null;
+    const buf = await data.arrayBuffer();
+    return new Uint8Array(buf);
+  } catch {
+    return null;
+  }
+}
+
+async function parseFileFromStorage(
+  admin: ReturnType<typeof createAdminClient>,
+  file: MigrationFile
+): Promise<Array<Record<string, unknown>>> {
+  const bytes = await downloadFile(admin, file.storage_path);
+  if (!bytes) return [];
+
+  const name = file.original_name.toLowerCase();
+  if (name.endsWith('.csv')) {
+    const text = new TextDecoder('utf-8').decode(bytes);
+    const parsed = parseCSVFull(text);
+    return parsed.rows;
+  } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    const parsed = await parseXLSXFull(bytes);
+    return parsed.rows;
+  }
+  return [];
+}
+
+function getMappingsForFile(file: MigrationFile): MappingEntry[] {
+  // If we have stored AI mappings, use them
+  const storedMappings = file.migration_mappings?.[0]?.mappings;
+  if (storedMappings && storedMappings.length > 0) return storedMappings;
+
+  // Fall back to default pattern matching
+  const headers = file.column_headers ?? [];
+  const entity = (file.detected_entity ?? 'unknown') as EntityType;
+
+  if (entity === 'customers') return buildDefaultMappings(headers, CUSTOMER_DEFAULT_MAPPINGS);
+  if (entity === 'inventory') return buildDefaultMappings(headers, INVENTORY_DEFAULT_MAPPINGS);
+  if (entity === 'repairs') return buildDefaultMappings(headers, REPAIR_DEFAULT_MAPPINGS);
+  if (entity === 'bespoke') return buildDefaultMappings(headers, REPAIR_DEFAULT_MAPPINGS);
+
+  return [];
+}
 
 export async function POST(req: NextRequest) {
+  const admin = createAdminClient();
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -14,30 +116,37 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    const tenantId = profile?.tenant_id;
-    const { sessionId } = await req.json();
-    const admin = createAdminClient();
+    const tenantId = (profile as { tenant_id: string } | null)?.tenant_id;
+    const { sessionId } = await req.json() as { sessionId: string };
 
     // Get session
-    const { data: session } = await admin
+    const { data: sessionData } = await admin
       .from('migration_sessions')
       .select('*')
       .eq('id', sessionId)
       .single();
 
+    const session = sessionData as MigrationSession | null;
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
 
-    // Get files with mappings
-    const { data: files } = await admin
+    // Get files with their stored mappings
+    const { data: rawFiles } = await admin
       .from('migration_files')
       .select('*, migration_mappings(*)')
       .eq('session_id', sessionId)
-      .in('status', ['classified', 'ready']);
+      .in('status', ['classified', 'ready', 'pending']);
 
-    const totalRecords = (files || []).reduce((sum, f) => sum + (f.row_count || 0), 0);
+    const files = (rawFiles ?? []) as MigrationFile[];
 
-    // Create migration job
-    const { data: job, error: jobError } = await admin
+    // Sort by entity import order
+    const sortedFiles = [...files].sort((a, b) =>
+      entitySortKey(a.detected_entity ?? 'unknown') - entitySortKey(b.detected_entity ?? 'unknown')
+    );
+
+    const totalRecords = sortedFiles.reduce((sum, f) => sum + (f.row_count || 0), 0);
+
+    // Create migration job record
+    const { data: jobData, error: jobError } = await admin
       .from('migration_jobs')
       .insert({
         tenant_id: tenantId,
@@ -55,8 +164,9 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (jobError) throw jobError;
+    const job = jobData as { id: string };
 
-    // Log the start
+    // Log start
     await admin.from('migration_logs').insert({
       tenant_id: tenantId,
       session_id: sessionId,
@@ -66,27 +176,87 @@ export async function POST(req: NextRequest) {
       details: { total_records: totalRecords, source_platform: session.source_platform },
     });
 
-    // Simulate migration processing (V1 — processes metadata only for safety)
-    // In production, this would process each file's data rows and insert to destination tables
-    const importTimestamp = new Date().toISOString();
+    const dataScope = session.data_scope ?? 'active_and_recent';
     let processed = 0;
     let success = 0;
     let warnings = 0;
     let errors = 0;
+    let skipped = 0;
+    let duplicates = 0;
 
-    const jobRecords: any[] = [];
+    const byEntity: Record<string, { success: number; error: number; skipped: number; duplicate: number }> = {};
 
-    for (const file of (files || [])) {
-      const rowCount = file.row_count || 0;
-      const entity = file.detected_entity || 'unknown';
+    // ─── Process each file ────────────────────────────────────────────────────
 
-      // Insert batch of record results (sample, not real rows)
-      const sampleCount = Math.min(rowCount, 20);
-      for (let i = 0; i < sampleCount; i++) {
-        const rowStatus = i % 20 === 0 && warnings < 5 ? 'warning' : 'success';
-        if (rowStatus === 'warning') warnings++;
-        else success++;
+    for (const file of sortedFiles) {
+      const entity = (file.detected_entity ?? 'unknown') as EntityType;
+      if (!byEntity[entity]) byEntity[entity] = { success: 0, error: 0, skipped: 0, duplicate: 0 };
+
+      const mappings = getMappingsForFile(file);
+      const rows = await parseFileFromStorage(admin, file);
+
+      const ctx: ImportContext = {
+        tenantId: tenantId!,
+        jobId: job.id,
+        sessionId,
+        sourcePlatform: session.source_platform,
+        sourceFileName: file.original_name,
+        importUserId: user.id,
+        dataScope,
+      };
+
+      // Process rows in batches to avoid timeout
+      const BATCH_SIZE = 50;
+      const jobRecords: Array<Record<string, unknown>> = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const sourceRow = rows[i];
+        const rowNum = i + 1;
+        const mappedData = applyMappings(sourceRow, mappings);
+
+        const importRow: ImportRow = {
+          sourceRowNumber: rowNum,
+          sourceData: sourceRow,
+          sourceExternalId: String(mappedData.source_id || mappedData.sku || mappedData.repair_number || ''),
+        };
+
+        let result: { status: string; recordId?: string; error?: string } = { status: 'skipped' };
+
+        if (entity === 'customers') {
+          result = await importCustomer(admin, ctx, importRow, mappedData);
+        } else if (entity === 'inventory') {
+          result = await importInventory(admin, ctx, importRow, mappedData);
+        } else if (entity === 'repairs') {
+          // Try to link to a customer
+          let customerId: string | undefined;
+          if (mappedData.customer_email || mappedData.customer_name) {
+            const found = await findDuplicateCustomer(admin, tenantId!, {
+              email: mappedData.customer_email as string | undefined,
+              full_name: mappedData.customer_name as string | undefined,
+            });
+            customerId = found ?? undefined;
+          }
+          result = await importRepair(admin, ctx, importRow, mappedData, customerId);
+        } else if (entity === 'bespoke') {
+          let customerId: string | undefined;
+          if (mappedData.customer_email || mappedData.customer_name) {
+            const found = await findDuplicateCustomer(admin, tenantId!, {
+              email: mappedData.customer_email as string | undefined,
+              full_name: mappedData.customer_name as string | undefined,
+            });
+            customerId = found ?? undefined;
+          }
+          result = await importBespokeJob(admin, ctx, importRow, mappedData, customerId);
+        } else {
+          // Unknown/invoices/payments: record as skipped for now
+          result = { status: 'skipped' };
+        }
+
         processed++;
+        if (result.status === 'success') { success++; byEntity[entity].success++; }
+        else if (result.status === 'duplicate') { duplicates++; byEntity[entity].duplicate++; success++; }
+        else if (result.status === 'error') { errors++; byEntity[entity].error++; }
+        else if (result.status === 'skipped') { skipped++; byEntity[entity].skipped++; }
 
         jobRecords.push({
           tenant_id: tenantId,
@@ -94,43 +264,62 @@ export async function POST(req: NextRequest) {
           session_id: sessionId,
           source_file_id: file.id,
           entity_type: entity,
-          source_row_number: i + 1,
-          status: rowStatus,
-          warning_message: rowStatus === 'warning' ? 'Field may need manual review' : null,
-          source_data: { row: i + 1, file: file.original_name },
+          source_row_number: rowNum,
+          source_external_id: importRow.sourceExternalId || null,
+          destination_record_id: result.recordId || null,
+          destination_table: entity === 'customers' ? 'customers'
+            : entity === 'inventory' ? 'inventory'
+            : entity === 'repairs' ? 'repairs'
+            : entity === 'bespoke' ? 'bespoke_jobs' : null,
+          status: result.status === 'duplicate' ? 'warning' : result.status,
+          error_message: result.error || null,
+          warning_message: result.status === 'duplicate' ? `Duplicate — matched existing record ${result.recordId}` : null,
+          source_data: { ...sourceRow, _mapped: mappedData },
         });
+
+        // Flush job records in batches
+        if (jobRecords.length >= BATCH_SIZE) {
+          await admin.from('migration_job_records').insert(jobRecords.splice(0, BATCH_SIZE));
+          // Update progress
+          await admin.from('migration_jobs').update({
+            processed_records: processed,
+            success_count: success,
+            error_count: errors,
+            skipped_count: skipped,
+          }).eq('id', job.id);
+        }
       }
 
-      // Count the rest as success
-      const remaining = rowCount - sampleCount;
-      if (remaining > 0) {
-        success += remaining;
-        processed += remaining;
+      // Flush remaining
+      if (jobRecords.length > 0) {
+        await admin.from('migration_job_records').insert(jobRecords);
       }
+
+      // Mark file as imported
+      await admin.from('migration_files').update({ status: 'imported' }).eq('id', file.id);
     }
 
-    // Insert sample job records
-    if (jobRecords.length > 0) {
-      await admin.from('migration_job_records').insert(jobRecords);
-    }
-
-    // Update job as complete
+    // Final job update
+    const finalStatus = errors > 0 && success === 0 ? 'failed' : errors > 0 ? 'complete_with_errors' : 'complete';
     await admin.from('migration_jobs').update({
-      status: 'complete',
+      status: finalStatus,
       processed_records: processed,
       success_count: success,
-      warning_count: warnings,
+      warning_count: warnings + duplicates,
       error_count: errors,
+      skipped_count: skipped,
       completed_at: new Date().toISOString(),
       results_summary: {
-        by_entity: (files || []).reduce((acc: any, f) => {
-          acc[f.detected_entity || 'unknown'] = f.row_count || 0;
-          return acc;
-        }, {}),
+        by_entity: byEntity,
+        total_processed: processed,
+        total_success: success,
+        total_errors: errors,
+        total_skipped: skipped,
+        total_duplicates: duplicates,
       },
     }).eq('id', job.id);
 
-    // Update session status
+    // Update session
     await admin.from('migration_sessions').update({
       status: 'complete',
       updated_at: new Date().toISOString(),
@@ -143,12 +332,27 @@ export async function POST(req: NextRequest) {
       job_id: job.id,
       actor_id: user.id,
       action: 'job_complete',
-      details: { success_count: success, warning_count: warnings, error_count: errors },
+      details: {
+        success_count: success,
+        warning_count: warnings,
+        error_count: errors,
+        skipped_count: skipped,
+        duplicate_count: duplicates,
+        by_entity: byEntity,
+      },
     });
 
-    return NextResponse.json({ jobId: job.id, success: true });
-  } catch (err: any) {
+    return NextResponse.json({
+      jobId: job.id,
+      success: true,
+      summary: { processed, success, errors, skipped, duplicates, byEntity },
+    });
+
+  } catch (err: unknown) {
     console.error('Execute error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
   }
 }
