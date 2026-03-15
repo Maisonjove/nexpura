@@ -57,8 +57,16 @@ export async function processRefund(params: {
 
   const refundNumber = `REF-${String((count ?? 0) + 1).padStart(4, "0")}`;
 
+  // Fetch tenant tax config
+  const { data: tenantData } = await admin
+    .from("tenants")
+    .select("tax_rate")
+    .eq("id", tenantId)
+    .single();
+  const taxRate = tenantData?.tax_rate ?? 0.1;
+
   const subtotal = params.items.reduce((sum, i) => sum + i.line_total, 0);
-  const taxAmount = Math.round(subtotal * 0.1 * 100) / 100;
+  const taxAmount = Math.round(subtotal * taxRate * 100) / 100;
   const total = subtotal + taxAmount;
 
   // Create refund record
