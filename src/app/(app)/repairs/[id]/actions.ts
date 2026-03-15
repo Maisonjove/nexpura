@@ -220,7 +220,7 @@ export async function updateRepairStage(
 export async function emailRepairInvoice(
   repairId: string,
   invoiceId: string
-): Promise<{ success?: boolean; note?: string; error?: string }> {
+): Promise<{ success?: boolean; note?: string; message?: string; error?: string }> {
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, tenantId } = ctx;
@@ -309,7 +309,7 @@ export async function emailRepairInvoice(
       });
     } catch { /* ignore */ }
     revalidatePath(`/repairs/${repairId}`);
-    return { success: true, note: "demo_limited" };
+    return { success: true, note: "demo_limited", message: "Email logged — configure a verified sending domain in Settings for external delivery" };
   }
 
   // Log to job_events
@@ -323,7 +323,7 @@ export async function emailRepairInvoice(
   });
 
   revalidatePath(`/repairs/${repairId}`);
-  return { success: true, note: "sent" };
+  return { success: true, note: "sent", message: `Invoice emailed to ${customer.email}` };
 }
 
 export async function emailJobReady(

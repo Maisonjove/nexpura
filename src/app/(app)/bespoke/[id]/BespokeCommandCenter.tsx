@@ -169,6 +169,10 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [localAttachments, setLocalAttachments] = useState(attachments);
+  const [localEvents, setLocalEvents] = useState(events);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const [showAddManual, setShowAddManual] = useState(false);
   const [showAddStock, setShowAddStock] = useState(false);
@@ -203,6 +207,44 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
   }
 
   function refresh() { router.refresh(); }
+
+  async function logJobEvent(jobType: string, jobId: string, tId: string, eventType: string, description: string) {
+    const res = await fetch("/api/job-event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tenantId: tId, jobType, jobId, eventType, description }),
+    });
+    if (res.ok) {
+      setLocalEvents(prev => [
+        {
+          id: Date.now().toString(),
+          created_at: new Date().toISOString(),
+          event_type: eventType,
+          description,
+          actor: "demo@nexpura.com",
+        },
+        ...prev,
+      ]);
+    }
+  }
+
+  async function handleDeletePhoto(a: JobAttachment) {
+    if (!confirm(`Remove "${a.caption ?? a.file_name}"?`)) return;
+    setDeletingPhotoId(a.id);
+    try {
+      const res = await fetch("/api/job-attachment/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attachmentId: a.id, tenantId, fileUrl: a.file_url }),
+      });
+      if (res.ok) {
+        setLocalAttachments(prev => prev.filter(x => x.id !== a.id));
+        await logJobEvent("bespoke", job.id, tenantId, "photo_removed", `Photo removed: ${a.caption ?? a.file_name}`);
+      }
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  }
 
   async function handleAddManual() {
     setFormError(null);
@@ -296,19 +338,42 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
   async function handleEmailInvoice() {
     if (!invoice) return;
     setEmailSending(true);
+    setEmailSuccess(null);
+    setEmailError(null);
     const result = await emailBespokeInvoice(job.id, invoice.id);
     setEmailSending(false);
-    if (result.error) showToast(`Error: ${result.error}`);
-    else if (result.note === "demo_limited") {
-      showToast("Email logged (demo mode — configure a verified sending domain in Settings for external delivery)");
+    if (result.error) {
+      setEmailError(result.error);
+    } else {
+      const msg = result.message ?? (result.note === "sent" ? "Email sent ✓" : "Email logged (demo mode)");
+      setEmailSuccess(msg);
+      setTimeout(() => setEmailSuccess(null), 4000);
+      await logJobEvent("bespoke", job.id, tenantId, "email_sent", result.message ?? "Invoice email attempted");
       refresh();
-    } else { showToast("✓ Invoice emailed to customer"); refresh(); }
+    }
   }
 
   function formatDate(d: string | null | undefined) {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   }
+
+  function formatEventDate(d: string | null | undefined) {
+    if (!d) return "—";
+    const date = new Date(d);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isToday = date.toDateString() === today.toDateString();
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+    const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    if (isToday) return `Today at ${time}`;
+    if (isYesterday) return `Yesterday at ${time}`;
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  // unused variable suppression
+  void formatDate;
 
   // Build specs list
   const specs: { label: string; value: string }[] = [];
@@ -473,13 +538,25 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
             {localAttachments.length > 0 ? (
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {localAttachments.map(a => (
-                  <div key={a.id} className="group relative">
+                  <div key={a.id} className="relative group">
                     <img
                       src={a.file_url}
                       alt={a.caption ?? a.file_name}
                       className="w-full aspect-square object-cover rounded-lg cursor-pointer"
                       onClick={() => window.open(a.file_url, "_blank")}
                     />
+                    {!readOnly && (
+                      <button
+                        onClick={() => handleDeletePhoto(a)}
+                        disabled={deletingPhotoId === a.id}
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 disabled:opacity-50"
+                        title="Remove photo"
+                      >
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
                     {a.caption && <p className="text-xs text-stone-500 mt-1 truncate">{a.caption}</p>}
                   </div>
                 ))}
@@ -492,7 +569,10 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
                 jobType="bespoke"
                 jobId={job.id}
                 tenantId={tenantId}
-                onUploaded={(att) => setLocalAttachments(prev => [...prev, att])}
+                onUploaded={(att) => {
+                  setLocalAttachments(prev => [...prev, att]);
+                  logJobEvent("bespoke", job.id, tenantId, "photo_uploaded", `Photo uploaded: ${att.caption ?? att.file_name}`);
+                }}
               />
             )}
           </div>
@@ -501,13 +581,13 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
             <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Activity</h2>
             <div className="space-y-2">
-              {events.map(ev => (
+              {[...localEvents].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(ev => (
                 <div key={ev.id} className="flex items-start gap-2 text-sm">
-                  <span className="text-stone-400 text-xs whitespace-nowrap mt-0.5">{formatDate(ev.created_at)}</span>
+                  <span className="text-stone-400 text-xs whitespace-nowrap mt-0.5">{formatEventDate(ev.created_at)}</span>
                   <span className="text-stone-600">{ev.description}</span>
                 </div>
               ))}
-              {events.length === 0 && <p className="text-sm text-stone-400">No activity yet</p>}
+              {localEvents.length === 0 && <p className="text-sm text-stone-400">No activity yet</p>}
             </div>
           </div>
 
@@ -605,7 +685,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
             ) : !readOnly ? (
               <div className="flex items-center gap-3">
                 <p className="text-sm text-stone-400 flex-1">No invoice generated yet.</p>
-                <button onClick={handleGenerateInvoice} disabled={isPending} className="text-xs font-medium bg-stone-900 text-white px-3 py-1.5 rounded-lg hover:bg-stone-800 transition-colors disabled:opacity-50">
+                <button onClick={handleGenerateInvoice} disabled={isPending} className="text-xs font-medium bg-amber-600 text-white px-3 py-1.5 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50">
                   Generate Invoice
                 </button>
               </div>
@@ -666,6 +746,13 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
               ) : null}
             </div>
 
+            {/* Release nudge when balance clear */}
+            {balanceDue === 0 && !isTerminal && (
+              <div className="mt-3 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs text-stone-600 flex items-center gap-2">
+                <span className="text-green-600">✓</span> Balance clear — ready to release
+              </div>
+            )}
+
             {invoice && invoice.payments.length > 0 && (
               <div className="mt-4 border-t border-stone-100 pt-4">
                 <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Payment History</p>
@@ -708,7 +795,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
                     📄 View Invoice
                   </Link>
                 ) : (
-                  <button onClick={handleGenerateInvoice} disabled={isPending} className="w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2.5 rounded-lg hover:bg-stone-50 transition-colors text-left disabled:opacity-50">
+                  <button onClick={handleGenerateInvoice} disabled={isPending} className="w-full text-sm font-medium bg-amber-600 text-white px-4 py-2.5 rounded-lg hover:bg-amber-700 transition-colors text-left disabled:opacity-50">
                     📄 Generate Invoice
                   </button>
                 )}
@@ -728,15 +815,25 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
               </button>
               {invoice?.id ? (
                 <>
-                  <button onClick={() => window.open(`/print/invoice/${invoice.id}`, "_blank")} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
-                    🖨️ Print Invoice
-                  </button>
                   <button onClick={() => handleEmailInvoice()} disabled={emailSending} title="Sends invoice via email. In demo mode, external delivery requires a verified sending domain." className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 disabled:opacity-50 transition-colors">
                     ✉️ {emailSending ? "Sending..." : "Email Invoice"}
                   </button>
+                  {emailSuccess && (
+                    <div className={`text-xs px-3 py-2 rounded-lg ${emailSuccess.toLowerCase().includes("demo") || emailSuccess.toLowerCase().includes("logged") ? "bg-amber-50 text-amber-700" : "bg-stone-900 text-white"}`}>
+                      {emailSuccess}
+                    </div>
+                  )}
+                  {emailError && (
+                    <div className="text-xs px-3 py-2 rounded-lg bg-red-50 text-red-700">
+                      {emailError}
+                    </div>
+                  )}
+                  <button onClick={() => window.open(`/print/invoice/${invoice.id}`, "_blank")} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
+                    🖨️ Print Invoice
+                  </button>
                 </>
               ) : (
-                <button onClick={() => handleGenerateInvoice()} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 flex items-center gap-2 transition-colors">
+                <button onClick={() => handleGenerateInvoice()} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 flex items-center gap-2 transition-colors font-medium">
                   📄 Generate Invoice
                 </button>
               )}

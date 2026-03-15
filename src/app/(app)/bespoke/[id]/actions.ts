@@ -213,7 +213,7 @@ export async function updateBespokeStage(
 export async function emailBespokeInvoice(
   jobId: string,
   invoiceId: string
-): Promise<{ success?: boolean; note?: string; error?: string }> {
+): Promise<{ success?: boolean; note?: string; message?: string; error?: string }> {
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, tenantId } = ctx;
@@ -301,7 +301,7 @@ export async function emailBespokeInvoice(
       });
     } catch { /* ignore */ }
     revalidatePath(`/bespoke/${jobId}`);
-    return { success: true, note: "demo_limited" };
+    return { success: true, note: "demo_limited", message: "Email logged — configure a verified sending domain in Settings for external delivery" };
   }
 
   await admin.from("job_events").insert({
@@ -314,7 +314,7 @@ export async function emailBespokeInvoice(
   });
 
   revalidatePath(`/bespoke/${jobId}`);
-  return { success: true, note: "sent" };
+  return { success: true, note: "sent", message: `Invoice emailed to ${customer.email}` };
 }
 
 export async function uploadJobAttachment(
