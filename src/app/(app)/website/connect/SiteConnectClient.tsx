@@ -18,6 +18,7 @@ const AI_ACTIONS = [
 interface Props {
   tenantId: string;
   config: Record<string, unknown> | null;
+  hasWebsite?: boolean;
 }
 
 function ConnectionStatus({ url }: { url: string | null }) {
@@ -184,7 +185,7 @@ function WidgetCode({ tab, tenantId }: { tab: WidgetTab; tenantId: string }) {
   );
 }
 
-export default function SiteConnectClient({ tenantId, config }: Props) {
+export default function SiteConnectClient({ tenantId, config, hasWebsite }: Props) {
   const [activeWidget, setActiveWidget] = useState<WidgetTab>("passport");
   const [siteUrl, setSiteUrl] = useState<string>((config?.external_url as string) ?? "");
   const [editingUrl, setEditingUrl] = useState(false);
@@ -193,6 +194,40 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+
+  if (!hasWebsite) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 px-4 text-center">
+        <div className="bg-white rounded-2xl border border-stone-200 p-12 shadow-sm space-y-6">
+          <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="text-4xl">🌐</span>
+          </div>
+          <h1 className="text-3xl font-bold text-stone-900">Site Connect</h1>
+          <p className="text-stone-500 max-w-md mx-auto leading-relaxed">
+            Connect your existing website and embed Nexpura widgets to sync inventory, take enquiries, and showcase Jewellery Passports.
+          </p>
+          <div className="bg-stone-50 rounded-xl p-6 max-w-sm mx-auto border border-stone-100">
+            <p className="text-sm font-semibold text-stone-900 mb-2">Upgrade to Studio</p>
+            <ul className="text-xs text-stone-500 space-y-2 mb-6">
+              <li className="flex items-center gap-2">✅ Live Inventory Catalogue</li>
+              <li className="flex items-center gap-2">✅ Website Enquiry Widgets</li>
+              <li className="flex items-center gap-2">✅ Passport Lookups</li>
+              <li className="flex items-center gap-2">✅ Up to 5 users & 3 stores</li>
+            </ul>
+            <Link 
+              href="/billing"
+              className="block w-full py-3 bg-amber-700 text-white rounded-lg font-bold hover:bg-amber-800 transition-all shadow-lg shadow-amber-900/10"
+            >
+              View Pricing →
+            </Link>
+          </div>
+          <Link href="/website" className="inline-block text-sm text-stone-400 hover:text-stone-600">
+            ← Back to Website
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   function saveUrl() {
     startTransition(async () => {

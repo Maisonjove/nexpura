@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { PLAN_FEATURES } from "@/lib/features";
 import { toast } from "sonner";
 
-type Plan = "boutique" | "studio" | "group";
+type Plan = "boutique" | "studio" | "atelier";
 type Interval = "monthly" | "annual";
 
 interface Subscription {
@@ -65,24 +65,27 @@ const PLAN_DETAILS: Record<
     color: "sage",
     badge: "Most popular",
   },
-  group: {
-    name: "Group",
-    monthlyPrice: "Custom",
-    annualPrice: "Custom",
+  atelier: {
+    name: "Atelier",
+    monthlyPrice: "AUD $299",
+    annualPrice: "AUD $2,990",
     color: "gold",
-    badge: "Enterprise",
+    badge: "Most powerful",
   },
 };
 
 const FEATURES_TABLE = [
-  { label: "Users", boutique: "2", studio: "10", group: "Unlimited" },
-  { label: "Business Modes (Workshop/Retail)", boutique: true, studio: true, group: true },
-  { label: "Bespoke Production Manager", boutique: true, studio: true, group: true },
-  { label: "Storage", boutique: "5GB", studio: "20GB", group: "100GB" },
-  { label: "Jewellery Passports", boutique: true, studio: true, group: true },
-  { label: "AI Business Copilot", boutique: false, studio: true, group: true },
-  { label: "AI Website Builder", boutique: false, studio: false, group: true },
-  { label: "Custom Domain", boutique: false, studio: false, group: true },
+  { label: "Users", boutique: "1", studio: "5", atelier: "Unlimited" },
+  { label: "Stores / Locations", boutique: "1", studio: "3", atelier: "Unlimited" },
+  { label: "AI Business Copilot", boutique: true, studio: true, atelier: true },
+  { label: "Core operations (repairs, bespoke, POS, inventory)", boutique: true, studio: true, atelier: true },
+  { label: "Jewellery Passports", boutique: true, studio: true, atelier: true },
+  { label: "Full analytics", boutique: false, studio: true, atelier: true },
+  { label: "Website Builder", boutique: false, studio: true, atelier: true },
+  { label: "Connect Existing Website", boutique: false, studio: true, atelier: true },
+  { label: "AI Website Builder", boutique: false, studio: false, atelier: true },
+  { label: "Custom Domain", boutique: false, studio: false, atelier: true },
+  { label: "Storage", boutique: "5GB", studio: "20GB", atelier: "100GB" },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -181,8 +184,8 @@ export default function BillingClient({
 
   // Normalize legacy plan keys (basic→boutique, pro→studio, ultimate→group)
   const PLAN_KEY_MAP: Record<string, Plan> = {
-    boutique: "boutique", studio: "studio", group: "group",
-    basic: "boutique", pro: "studio", ultimate: "group",
+    boutique: "boutique", studio: "studio", atelier: "atelier",
+    group: "atelier", basic: "boutique", pro: "studio", ultimate: "atelier",
   };
   const currentPlan: Plan = PLAN_KEY_MAP[subscription?.plan ?? "boutique"] ?? "boutique";
   const currentPlanDetails = PLAN_DETAILS[currentPlan];
@@ -312,7 +315,7 @@ export default function BillingClient({
             <div className="flex items-center gap-3 mb-2">
               <h2
                 className={`font-semibold text-2xl font-semibold ${
-                  currentPlan === "group"
+                  currentPlan === "atelier"
                     ? "text-[#C9A96E]"
                     : "text-stone-900"
                 }`}
@@ -446,10 +449,10 @@ export default function BillingClient({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {(["boutique", "studio", "group"] as Plan[]).map((plan) => {
+          {(["boutique", "studio", "atelier"] as Plan[]).map((plan) => {
             const details = PLAN_DETAILS[plan];
             const isCurrent = plan === currentPlan;
-            const isGold = plan === "group";
+            const isGold = plan === "atelier";
             const isSage = plan === "studio";
 
             return (

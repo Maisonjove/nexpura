@@ -38,6 +38,10 @@ interface Props {
   tasks: Task[];
   currentUserRole: string;
   businessMode: string;
+  plan?: string;
+  planName?: string;
+  maxUsers?: number | null;
+  isAtLimit?: boolean;
 }
 
 const ROLE_COLOURS: Record<string, string> = {
@@ -213,18 +217,47 @@ export default function TeamClient({ members, tasks, currentUserRole, businessMo
       {/* Team Members */}
       <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-stone-900">Team Members</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-semibold text-stone-900">Team Members</h2>
+            {isAtLimit && (
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full uppercase tracking-tight">
+                Plan Limit Reached ({maxUsers} staff)
+              </span>
+            )}
+          </div>
           {isOwner && (
             <button
               onClick={() => setShowInvite(!showInvite)}
-              className="px-3 py-1.5 bg-[#071A0D] text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-colors"
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                isAtLimit 
+                  ? "bg-stone-100 text-stone-400 cursor-not-allowed"
+                  : "bg-[#071A0D] text-white hover:bg-stone-800"
+              }`}
             >
               + Invite
             </button>
           )}
         </div>
 
-        {showInvite && (
+        {isAtLimit && (
+          <div className="px-5 py-4 bg-amber-50 border-b border-amber-200 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🚀</span>
+              <div>
+                <p className="text-sm font-semibold text-amber-900">Need more staff members?</p>
+                <p className="text-xs text-amber-700">You&apos;ve reached the {planName} limit of {maxUsers} users. Upgrade your plan to add more team members.</p>
+              </div>
+            </div>
+            <Link 
+              href="/billing"
+              className="px-4 py-2 bg-amber-700 text-white text-xs font-bold rounded-lg hover:bg-amber-800 transition-all shadow-sm shadow-amber-900/10 whitespace-nowrap"
+            >
+              View Plans →
+            </Link>
+          </div>
+        )}
+
+        {showInvite && !isAtLimit && (
           <div className="px-5 py-4 border-b border-stone-200 bg-stone-50">
             <form onSubmit={handleInvite} className="flex flex-wrap gap-3 items-end">
               <div>

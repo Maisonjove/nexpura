@@ -49,8 +49,8 @@ export default async function AICopilotPage() {
     if (subs?.plan) plan = subs.plan;
   }
 
-  // studio/group (and legacy pro/ultimate aliases) can use AI
-  const canUseAI = plan === "studio" || plan === "group" || plan === "pro" || plan === "ultimate";
+  // All plans include AI Copilot (boutique, studio, atelier + legacy aliases)
+  const canUseAI = true; // included in all plans per entitlement spec
 
   // Fetch existing conversations
   let conversations: { id: string; title: string | null; updated_at: string }[] = [];

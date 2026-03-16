@@ -17,11 +17,10 @@
  *      - Price 1: AUD $179/month recurring → copy price ID → STRIPE_PRICE_STUDIO_MONTHLY
  *      - Price 2: AUD $1790/year recurring  → copy price ID → STRIPE_PRICE_STUDIO_ANNUAL
  *
- *    Product 3: "Nexpura Group"  (custom/contact-sales — set to a nominal amount or free)
- *      - Add metadata: plan=group
- *      - Price 1: AUD $1/month (placeholder until custom quoting is built)
- *                               → copy price ID → STRIPE_PRICE_GROUP_MONTHLY
- *      - Price 2: AUD $1/year   → copy price ID → STRIPE_PRICE_GROUP_ANNUAL
+ *    Product 3: "Nexpura Atelier"
+ *      - Add metadata: plan=atelier
+ *      - Price 1: AUD $299/month recurring → copy price ID → STRIPE_PRICE_ATELIER_MONTHLY
+ *      - Price 2: AUD $2990/year recurring  → copy price ID → STRIPE_PRICE_ATELIER_ANNUAL
  *
  * 3. Add the 6 price IDs as environment variables in Vercel:
  *    Vercel → Project → Settings → Environment Variables
@@ -30,8 +29,8 @@
  *    STRIPE_PRICE_BOUTIQUE_ANNUAL  = price_xxxx
  *    STRIPE_PRICE_STUDIO_MONTHLY   = price_xxxx
  *    STRIPE_PRICE_STUDIO_ANNUAL    = price_xxxx
- *    STRIPE_PRICE_GROUP_MONTHLY    = price_xxxx
- *    STRIPE_PRICE_GROUP_ANNUAL     = price_xxxx
+ *    STRIPE_PRICE_ATELIER_MONTHLY  = price_xxxx
+ *    STRIPE_PRICE_ATELIER_ANNUAL   = price_xxxx
  *
  * 4. Set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET — already done in Vercel ✅
  *
@@ -57,9 +56,14 @@ export const STRIPE_PRICES = {
     monthly: process.env.STRIPE_PRICE_STUDIO_MONTHLY ?? "price_studio_monthly_placeholder",
     annual: process.env.STRIPE_PRICE_STUDIO_ANNUAL ?? "price_studio_annual_placeholder",
   },
+  atelier: {
+    monthly: process.env.STRIPE_PRICE_ATELIER_MONTHLY ?? "price_atelier_monthly_placeholder",
+    annual: process.env.STRIPE_PRICE_ATELIER_ANNUAL ?? "price_atelier_annual_placeholder",
+  },
+  // Legacy alias — keep so any old checkout calls don't break
   group: {
-    monthly: process.env.STRIPE_PRICE_GROUP_MONTHLY ?? "price_group_monthly_placeholder",
-    annual: process.env.STRIPE_PRICE_GROUP_ANNUAL ?? "price_group_annual_placeholder",
+    monthly: process.env.STRIPE_PRICE_ATELIER_MONTHLY ?? "price_atelier_monthly_placeholder",
+    annual: process.env.STRIPE_PRICE_ATELIER_ANNUAL ?? "price_atelier_annual_placeholder",
   },
 } as const;
 

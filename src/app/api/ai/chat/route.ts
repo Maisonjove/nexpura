@@ -263,8 +263,8 @@ export async function POST(req: Request) {
       if (subs?.plan) plan = subs.plan;
     }
 
-    // Plan gate — studio/group (and legacy pro/ultimate) can use AI
-    const aiPlans = ["studio", "group", "pro", "ultimate"];
+    // AI Copilot is included in all plans — boutique, studio, atelier
+    const aiPlans = ["boutique", "studio", "atelier", "group", "pro", "ultimate", "basic"];
     if (!aiPlans.includes(plan)) {
       return Response.json({ error: "AI Copilot requires Studio or Group plan" }, { status: 403 });
     }

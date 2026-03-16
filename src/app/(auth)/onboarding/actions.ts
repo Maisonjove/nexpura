@@ -19,7 +19,7 @@ function randomSuffix(): string {
 export async function completeOnboarding(
   businessName: string,
   businessType: string,
-  plan: "boutique" | "studio" | "group"
+  plan: "boutique" | "studio" | "atelier"
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
   const {

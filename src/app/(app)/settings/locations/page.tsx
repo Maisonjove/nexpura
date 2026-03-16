@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { getEntitlementContext } from "@/lib/auth/entitlements";
+import { getMaxLocations, planDisplayName } from "@/lib/features";
 import LocationsClient from "./LocationsClient";
 
 export const metadata = { title: "Locations — Nexpura" };
@@ -9,19 +12,27 @@ export default async function LocationsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
+  const ctx = await getEntitlementContext();
+  if (!ctx.tenantId) redirect("/login");
 
-  if (!userData?.tenant_id) redirect("/login");
-
-  const { data: locations } = await supabase
+  const admin = createAdminClient();
+  const { data: locations } = await admin
     .from("locations")
     .select("*")
-    .eq("tenant_id", userData.tenant_id)
+    .eq("tenant_id", ctx.tenantId)
     .order("created_at", { ascending: true });
 
-  return <LocationsClient tenantId={userData.tenant_id} initialLocations={locations ?? []} />;
+  const maxLocations = getMaxLocations(ctx.plan);
+  const currentLocations = locations?.length ?? 0;
+  const isAtLimit = maxLocations !== null && currentLocations >= maxLocations;
+
+  return (
+    <LocationsClient 
+      tenantId={ctx.tenantId} 
+      initialLocations={locations ?? []} 
+      planName={planDisplayName(ctx.plan)}
+      maxLocations={maxLocations}
+      isAtLimit={isAtLimit}
+    />
+  );
 }

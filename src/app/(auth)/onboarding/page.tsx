@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { completeOnboarding } from "./actions";
 import { Gem } from "lucide-react";
 
-type Plan = "boutique" | "studio" | "group";
+type Plan = "boutique" | "studio" | "atelier";
 
 const BUSINESS_TYPES = [
   "Independent Jeweller",
@@ -52,16 +52,16 @@ const PLANS: PlanCard[] = [
     recommended: true,
   },
   {
-    id: "group",
-    name: "Group",
-    price: "Custom",
+    id: "atelier",
+    name: "Atelier",
+    price: "$299",
     features: [
       "Unlimited staff",
+      "Unlimited stores",
       "Everything in Studio",
-      "Multi-location",
-      "Custom branding",
+      "AI Website Builder",
+      "Custom domain",
       "100GB storage",
-      "White-glove onboarding",
     ],
   },
 ];

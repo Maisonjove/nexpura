@@ -4,11 +4,12 @@ import Link from "next/link";
 const PLAN_PRICES: Record<string, number> = {
   boutique: 89,
   studio: 179,
-  group: 0, // custom / contact-sales
+  atelier: 299,
   // Legacy aliases
+  group: 299,
   basic: 89,
   pro: 179,
-  ultimate: 0,
+  ultimate: 299,
 };
 
 function formatDate(dateStr: string | null | undefined) {
@@ -42,7 +43,7 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const cls =
     p === "studio" || p === "pro"
       ? "bg-stone-100 text-amber-700"
-      : p === "group" || p === "ultimate"
+      : p === "atelier" || p === "group" || p === "ultimate"
       ? "bg-amber-700/15 text-amber-700"
       : "bg-stone-200 text-stone-500";
   return (

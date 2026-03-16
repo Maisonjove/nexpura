@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
+import { canonicalPlan } from '@/lib/features';
 
 export default async function AppLayout({
   children,
@@ -39,15 +40,16 @@ export default async function AppLayout({
 
   const isSuperAdmin = profile?.role === 'super_admin';
 
-  // Fetch website config for sidebar
+  // Fetch website config + subscription plan for sidebar
   let websiteConfig = null;
+  let tenantPlan = "boutique";
   if (profile?.tenant_id) {
-    const { data: wc } = await admin
-      .from('website_config')
-      .select('website_type, external_url, subdomain, published')
-      .eq('tenant_id', profile.tenant_id)
-      .maybeSingle();
-    websiteConfig = wc;
+    const [wcRes, subRes] = await Promise.all([
+      admin.from('website_config').select('website_type, external_url, subdomain, published').eq('tenant_id', profile.tenant_id).maybeSingle(),
+      admin.from('subscriptions').select('plan').eq('tenant_id', profile.tenant_id).maybeSingle(),
+    ]);
+    websiteConfig = wcRes.data;
+    tenantPlan = canonicalPlan(subRes.data?.plan ?? 'boutique');
   }
 
   // Count items ready for pickup (repairs + bespoke)
@@ -71,6 +73,7 @@ export default async function AppLayout({
         businessMode={businessMode}
         readyRepairsCount={readyRepairsCount}
         readyBespokeCount={readyBespokeCount}
+        plan={tenantPlan}
       />
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
         <Header user={userData} />

@@ -87,6 +87,7 @@ interface SidebarProps {
   businessMode?: string;
   readyRepairsCount?: number;
   readyBespokeCount?: number;
+  plan?: string; // boutique | studio | atelier
 }
 
 export default function Sidebar({
@@ -96,7 +97,9 @@ export default function Sidebar({
   businessMode = 'full',
   readyRepairsCount = 0,
   readyBespokeCount = 0,
+  plan = 'boutique',
 }: SidebarProps) {
+  const hasWebsite = plan === 'studio' || plan === 'atelier';
   const pathname = usePathname();
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -201,6 +204,8 @@ export default function Sidebar({
 
         {/* Grouped collapsible sections */}
         {NAV_GROUPS.map((group) => {
+          // Hide Website group entirely for Boutique plan
+          if (group.id === 'website' && !hasWebsite) return null;
           const groupItems = filterItems(group.items);
           if (groupItems.length === 0) return null;
           const isCollapsed = collapsed[group.id] ?? false;

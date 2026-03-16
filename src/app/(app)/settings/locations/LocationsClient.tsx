@@ -4,6 +4,8 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+import Link from "next/link";
+
 interface Location {
   id: string;
   name: string;
@@ -15,7 +17,15 @@ interface Location {
   is_active: boolean;
 }
 
-export default function LocationsClient({ tenantId, initialLocations }: { tenantId: string, initialLocations: Location[] }) {
+interface Props {
+  tenantId: string;
+  initialLocations: Location[];
+  planName?: string;
+  maxLocations?: number | null;
+  isAtLimit?: boolean;
+}
+
+export default function LocationsClient({ tenantId, initialLocations, planName, maxLocations, isAtLimit }: Props) {
   const [locations, setLocations] = useState(initialLocations);
   const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -62,19 +72,45 @@ export default function LocationsClient({ tenantId, initialLocations }: { tenant
   return (
     <div className="max-w-4xl mx-auto py-10 px-4 space-y-8">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold text-stone-900">Locations</h1>
-          <p className="text-sm text-stone-500 mt-0.5">Manage your showrooms, workshops, and warehouses</p>
+          {isAtLimit && (
+            <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full uppercase tracking-tight">
+              Plan Limit Reached ({maxLocations} stores)
+            </span>
+          )}
         </div>
         <button
-          onClick={() => setShowNew(true)}
-          className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800"
+          onClick={() => setShowNew(!showNew)}
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            isAtLimit && !showNew
+              ? "bg-stone-100 text-stone-400 cursor-not-allowed" 
+              : "bg-amber-700 text-white hover:bg-amber-800"
+          }`}
         >
-          + Add Location
+          {showNew ? "Cancel" : "+ Add Location"}
         </button>
       </div>
 
-      {showNew && (
+      {isAtLimit && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🏪</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-900">Need more store locations?</p>
+              <p className="text-xs text-amber-700">You&apos;ve reached the {planName} limit of {maxLocations} stores. Upgrade your plan to add more locations.</p>
+            </div>
+          </div>
+          <Link 
+            href="/billing"
+            className="px-4 py-2 bg-amber-700 text-white text-xs font-bold rounded-lg hover:bg-amber-800 transition-all shadow-sm shadow-amber-900/10 whitespace-nowrap"
+          >
+            View Plans →
+          </Link>
+        </div>
+      )}
+
+      {showNew && !isAtLimit && (
         <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
