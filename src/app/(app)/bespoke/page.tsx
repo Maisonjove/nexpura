@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthOrReviewContext } from "@/lib/auth/review";
 import Link from "next/link";
 import BespokeListClient from "./BespokeListClient";
 
@@ -12,26 +12,15 @@ export default async function BespokePage({
   const q = params.q || "";
   const stageFilter = params.stage || "";
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { tenantId, admin } = await getAuthOrReviewContext();
 
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user?.id ?? "")
-    .single();
-
-  const tenantId = userData?.tenant_id;
-
-  let query = supabase
+  let query = admin
     .from("bespoke_jobs")
     .select(
       `id, job_number, title, stage, priority, due_date, created_at,
        customers(id, full_name)`
     )
-    .eq("tenant_id", tenantId ?? "")
+    .eq("tenant_id", tenantId ?? "00000000-0000-0000-0000-000000000000")
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 

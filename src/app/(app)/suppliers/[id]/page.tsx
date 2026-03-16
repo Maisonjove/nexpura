@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { notFound } from "next/navigation";
 import SupplierDetailClient from "./SupplierDetailClient";
 
@@ -8,24 +8,15 @@ export default async function SupplierDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { tenantId, admin } = await getAuthOrReviewContext();
 
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user?.id ?? "")
-    .single();
+  if (!tenantId) notFound();
 
-  const tenantId = userData?.tenant_id;
-
-  const { data: supplier } = await supabase
+  const { data: supplier } = await admin
     .from("suppliers")
     .select("*")
     .eq("id", id)
-    .eq("tenant_id", tenantId ?? "")
+    .eq("tenant_id", tenantId)
     .single();
 
   if (!supplier) notFound();

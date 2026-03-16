@@ -1,5 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthOrReviewContext } from "@/lib/auth/review";
 import InvoiceListClient from "./InvoiceListClient";
 
 export default async function InvoicesPage({
@@ -14,21 +13,7 @@ export default async function InvoicesPage({
   const pageSize = 20;
   const offset = (page - 1) * pageSize;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const admin = createAdminClient();
-
-  // Use admin to avoid RLS recursion issues on users table
-  const { data: userData } = await admin
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user?.id ?? "")
-    .single();
-
-  const tenantId = userData?.tenant_id;
+  const { tenantId, admin } = await getAuthOrReviewContext();
   const today = new Date().toISOString().split("T")[0];
 
   // ── Stats ──────────────────────────────────────────────────────────────────

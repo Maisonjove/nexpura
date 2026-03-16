@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { notFound } from "next/navigation";
 import InvoiceDetailClient from "./InvoiceDetailClient";
 
@@ -8,22 +8,11 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user?.id ?? "")
-    .single();
-
-  const tenantId = userData?.tenant_id;
+  const { tenantId, admin: adminClient } = await getAuthOrReviewContext();
 
   const [{ data: invoice }, { data: lineItems }, { data: tenant }, { data: paymentsRaw }] =
     await Promise.all([
-      supabase
+      adminClient
         .from("invoices")
         .select(
           `id, invoice_number, status, invoice_date, due_date, paid_at,
@@ -35,18 +24,18 @@ export default async function InvoiceDetailPage({
         .eq("id", id)
         .eq("tenant_id", tenantId ?? "")
         .single(),
-      supabase
+      adminClient
         .from("invoice_line_items")
         .select("id, description, quantity, unit_price, discount_pct, total, sort_order")
         .eq("invoice_id", id)
         .order("sort_order"),
-      supabase
+      adminClient
         .from("tenants")
         .select("name, slug, logo_url, brand_color, business_name, abn, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer")
         .eq("id", tenantId ?? "")
         .single(),
       // Fetch real payment records — balance due = total - sum(payments)
-      supabase
+      adminClient
         .from("payments")
         .select("id, amount, payment_method, payment_date, reference, notes, created_at")
         .eq("invoice_id", id)

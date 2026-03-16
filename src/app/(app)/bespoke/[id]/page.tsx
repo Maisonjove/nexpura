@@ -1,5 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { notFound } from "next/navigation";
 import BespokeCommandCenter from "./BespokeCommandCenter";
 
@@ -9,12 +8,10 @@ export default async function BespokeJobDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const adminClient = createAdminClient();
+  const { tenantId: _tenantId, currency: tenantCurrencyFromCtx, admin: adminClient } = await getAuthOrReviewContext();
 
-  // Auth + user data in parallel with job fetch
-  const [{ data: { user } }, { data: job }, { data: inventory }] = await Promise.all([
-    supabase.auth.getUser(),
+  // Fetch job + inventory in parallel (adminClient has no auth dependency)
+  const [{ data: job }, { data: inventory }] = await Promise.all([
     adminClient
       .from("bespoke_jobs")
       .select("*, customers(id, full_name, email, mobile)")
@@ -31,11 +28,8 @@ export default async function BespokeJobDetailPage({
 
   if (!job) notFound();
 
-  // User tenant lookup (needs user.id) — run in parallel with attachments + events
-  const [{ data: userData }, { data: attachments }, { data: events }] = await Promise.all([
-    user
-      ? adminClient.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single()
-      : Promise.resolve({ data: null }),
+  // Attachments + events in parallel
+  const [{ data: attachments }, { data: events }] = await Promise.all([
     adminClient
       .from("job_attachments")
       .select("*")
@@ -50,8 +44,8 @@ export default async function BespokeJobDetailPage({
       .order("created_at", { ascending: false }),
   ]);
 
-  const tenantId = userData?.tenant_id ?? "";
-  const tenantCurrency = (userData?.tenants as { currency?: string } | null)?.currency || "AUD";
+  const tenantId = _tenantId ?? "";
+  const tenantCurrency = tenantCurrencyFromCtx;
   const customer = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
   const invoiceId = job.invoice_id ?? null;
 
