@@ -18,6 +18,21 @@ async function _proxyInner(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // ── Review / staff mode — skip ALL subscription checks ───────────────────
+  // Sandbox sessions have no subscription record and must never hit the users
+  // table via the anon-key RLS client (causes recursion → hang → 500).
+  const REVIEW_TOKEN = "nexpura-review-2026";
+  const STAFF_TOKEN = "nexpura-staff-2026";
+  const rtParam = request.nextUrl.searchParams.get("rt");
+  const reviewCookie = request.cookies.get("nexpura-review")?.value;
+  const staffCookie = request.cookies.get("nexpura-staff")?.value;
+  if (
+    rtParam === REVIEW_TOKEN || reviewCookie === REVIEW_TOKEN ||
+    rtParam === STAFF_TOKEN  || staffCookie  === STAFF_TOKEN
+  ) {
+    return response;
+  }
+
   // Skip suspension check for public/auth/billing/api routes
   const isExempt =
     pathname === "/" ||
