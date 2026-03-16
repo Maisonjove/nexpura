@@ -24,7 +24,8 @@ export default async function WorkshopTasksPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  const admin = createAdminClient();
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)
@@ -33,7 +34,6 @@ export default async function WorkshopTasksPage() {
   if (!userData?.tenant_id) redirect("/onboarding");
 
   const tenantId = userData.tenant_id;
-  const admin = createAdminClient();
 
   // Fetch workshop tasks
   const { data: tasks } = await admin

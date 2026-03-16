@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import TaskDetailClient from "./TaskDetailClient";
 import { getTaskComments, getTaskActivities, getTaskAttachments } from "../actions";
@@ -12,13 +13,14 @@ export default async function TaskDetailPage({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: userData } = await supabase
+  const admin = createAdminClient();
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id")
     .eq("id", user?.id ?? "")
     .single();
 
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from("tasks")
     .select("*, assignee:assigned_to(full_name, avatar_url), creator:created_by(full_name)")
     .eq("id", id)
