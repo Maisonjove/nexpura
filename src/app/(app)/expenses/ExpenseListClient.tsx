@@ -48,7 +48,7 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
         <h1 className="font-semibold text-2xl font-semibold text-stone-900">Expenses</h1>
         <Link
           href="/expenses/new"
-          className="inline-flex items-center gap-2 bg-[#8B7355] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#7A6347] transition-colors"
+          className="inline-flex items-center gap-2 bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-800 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -89,7 +89,7 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
       {expenses.length === 0 ? (
         <div className="bg-white border border-stone-200 rounded-xl p-16 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
           </div>
@@ -97,7 +97,7 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
           <p className="text-stone-500 mt-1 text-sm">Track your business expenses here.</p>
           <Link
             href="/expenses/new"
-            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
           >
             Add first expense
           </Link>
@@ -155,7 +155,7 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
                     <td className="px-4 py-3">
                       <Link
                         href={`/expenses/${expense.id}`}
-                        className="text-xs text-[#8B7355] font-medium hover:underline"
+                        className="text-xs text-amber-700 font-medium hover:underline"
                       >
                         View →
                       </Link>

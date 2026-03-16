@@ -184,7 +184,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
     initial || {
       mode: "A",
       published: false,
-      primary_color: "#8B7355",
+      primary_color: "amber-700",
       secondary_color: "#1A1A1A",
       font: "Inter",
       show_prices: true,
@@ -376,7 +376,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 config.published
                   ? "bg-stone-200 text-stone-700 hover:bg-stone-300"
-                  : "bg-[#8B7355] text-white hover:bg-[#7a6349]"
+                  : "bg-amber-700 text-white hover:bg-[#7a6349]"
               } disabled:opacity-50`}
             >
               {config.published ? "Unpublish" : "Publish Site"}
@@ -405,18 +405,18 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                 onClick={() => handleTypeChange(opt.id)}
                 className={`text-left p-4 rounded-xl border-2 transition-all relative ${
                   isSelected
-                    ? "border-[#8B7355] bg-[#8B7355]/5"
+                    ? "border-amber-600 bg-amber-700/5"
                     : "border-stone-200 hover:border-stone-300 bg-white"
                 }`}
               >
                 {opt.badge && (
-                  <span className="absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 bg-[#8B7355] text-white rounded-full">
+                  <span className="absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 bg-amber-700 text-white rounded-full">
                     {opt.badge}
                   </span>
                 )}
                 <Icon
                   size={20}
-                  className={`mb-2 ${isSelected ? "text-[#8B7355]" : "text-stone-400"}`}
+                  className={`mb-2 ${isSelected ? "text-amber-700" : "text-stone-400"}`}
                 />
                 <div className="font-semibold text-stone-900 text-sm">{opt.title}</div>
                 <div className="text-xs text-stone-500 mt-1 leading-relaxed">{opt.desc}</div>
@@ -438,7 +438,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                   onClick={() => setActiveTab(tab.id)}
                   className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === tab.id
-                      ? "border-[#8B7355] text-[#8B7355]"
+                      ? "border-amber-600 text-amber-700"
                       : "border-transparent text-stone-500 hover:text-stone-900 hover:border-stone-300"
                   }`}
                 >
@@ -461,7 +461,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       onClick={() => update("mode", m.id)}
                       className={`text-left p-4 rounded-xl border-2 transition-all ${
                         config.mode === m.id
-                          ? "border-[#8B7355] bg-[#8B7355]/5"
+                          ? "border-amber-600 bg-amber-700/5"
                           : "border-stone-200 hover:border-stone-300"
                       }`}
                     >
@@ -487,7 +487,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
               <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm space-y-4">
                 <h2 className="text-base font-semibold text-stone-900">Your Website URL</h2>
                 <div className="flex gap-2">
-                  <div className="flex-1 flex items-center border border-stone-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[#8B7355]/30 focus-within:border-[#8B7355]">
+                  <div className="flex-1 flex items-center border border-stone-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[amber-700]/30 focus-within:border-amber-600">
                     <input
                       type="text"
                       value={subdomainInput}
@@ -527,7 +527,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       href={`/${config.subdomain}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[#8B7355] hover:underline"
+                      className="text-amber-700 hover:underline"
                     >
                       {config.subdomain}.nexpura.com
                     </a>
@@ -545,7 +545,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                         type="checkbox"
                         checked={config.show_prices ?? true}
                         onChange={(e) => update("show_prices", e.target.checked)}
-                        className="w-4 h-4 rounded border-stone-300 text-[#8B7355] focus:ring-[#8B7355]"
+                        className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600"
                       />
                       <span className="text-sm text-stone-700">Show prices on catalogue</span>
                     </label>
@@ -554,7 +554,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                         type="checkbox"
                         checked={config.allow_enquiry ?? true}
                         onChange={(e) => update("allow_enquiry", e.target.checked)}
-                        className="w-4 h-4 rounded border-stone-300 text-[#8B7355] focus:ring-[#8B7355]"
+                        className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600"
                       />
                       <span className="text-sm text-stone-700">Allow customer enquiries</span>
                     </label>
@@ -564,7 +564,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                           type="checkbox"
                           checked={config.stripe_enabled ?? false}
                           onChange={(e) => update("stripe_enabled", e.target.checked)}
-                          className="w-4 h-4 rounded border-stone-300 text-[#8B7355] focus:ring-[#8B7355]"
+                          className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600"
                         />
                         <span className="text-sm text-stone-700">Enable Stripe payments</span>
                       </label>
@@ -590,7 +590,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       value={config.business_name || ""}
                       onChange={(e) => update("business_name", e.target.value)}
                       placeholder="e.g. Goldsmith Jewellers"
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                     />
                   </div>
                   <div>
@@ -602,7 +602,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       value={config.tagline || ""}
                       onChange={(e) => update("tagline", e.target.value)}
                       placeholder="e.g. Crafting timeless pieces since 1985"
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                     />
                   </div>
                 </div>
@@ -650,15 +650,15 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                     <div className="flex items-center gap-2">
                       <input
                         type="color"
-                        value={config.primary_color || "#8B7355"}
+                        value={config.primary_color || "amber-700"}
                         onChange={(e) => update("primary_color", e.target.value)}
                         className="w-10 h-10 rounded cursor-pointer border border-stone-200"
                       />
                       <input
                         type="text"
-                        value={config.primary_color || "#8B7355"}
+                        value={config.primary_color || "amber-700"}
                         onChange={(e) => update("primary_color", e.target.value)}
-                        className="flex-1 px-2 py-1.5 border border-stone-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                        className="flex-1 px-2 py-1.5 border border-stone-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                       />
                     </div>
                   </div>
@@ -677,7 +677,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                         type="text"
                         value={config.secondary_color || "#1A1A1A"}
                         onChange={(e) => update("secondary_color", e.target.value)}
-                        className="flex-1 px-2 py-1.5 border border-stone-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                        className="flex-1 px-2 py-1.5 border border-stone-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                       />
                     </div>
                   </div>
@@ -688,7 +688,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                     <select
                       value={config.font || "Inter"}
                       onChange={(e) => update("font", e.target.value)}
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                     >
                       {FONTS.map((f) => (
                         <option key={f} value={f}>
@@ -702,7 +702,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                 <div className="flex gap-3 mt-2">
                   <div
                     className="flex-1 h-10 rounded-lg flex items-center justify-center text-white text-sm font-medium"
-                    style={{ backgroundColor: config.primary_color || "#8B7355" }}
+                    style={{ backgroundColor: config.primary_color || "amber-700" }}
                   >
                     Primary
                   </div>
@@ -727,7 +727,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                   onChange={(e) => update("about_text", e.target.value)}
                   rows={5}
                   placeholder="Tell your story — your history, craftsmanship, what makes you unique…"
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] resize-none"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none"
                 />
               </div>
 
@@ -743,7 +743,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       value={config.contact_email || ""}
                       onChange={(e) => update("contact_email", e.target.value)}
                       placeholder="hello@yourshop.com"
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                     />
                   </div>
                   <div>
@@ -755,7 +755,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       value={config.contact_phone || ""}
                       onChange={(e) => update("contact_phone", e.target.value)}
                       placeholder="+61 2 9000 0000"
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                     />
                   </div>
                 </div>
@@ -768,7 +768,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                     value={config.contact_address || ""}
                     onChange={(e) => update("contact_address", e.target.value)}
                     placeholder="123 Jewellery Lane, Sydney NSW 2000"
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                   />
                 </div>
               </div>
@@ -780,7 +780,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                     <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5">
                       Instagram
                     </label>
-                    <div className="flex items-center border border-stone-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[#8B7355]/30">
+                    <div className="flex items-center border border-stone-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[amber-700]/30">
                       <span className="px-3 text-sm text-stone-400 bg-stone-50 border-r border-stone-200 py-2">
                         @
                       </span>
@@ -797,7 +797,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                     <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5">
                       Facebook
                     </label>
-                    <div className="flex items-center border border-stone-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[#8B7355]/30">
+                    <div className="flex items-center border border-stone-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[amber-700]/30">
                       <span className="px-3 text-sm text-stone-400 bg-stone-50 border-r border-stone-200 py-2 text-xs">
                         fb.com/
                       </span>
@@ -825,7 +825,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       value={config.meta_title || ""}
                       onChange={(e) => update("meta_title", e.target.value)}
                       placeholder="Goldsmith Jewellers — Handcrafted Fine Jewellery Sydney"
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                     />
                   </div>
                   <div>
@@ -837,7 +837,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       onChange={(e) => update("meta_description", e.target.value)}
                       rows={3}
                       placeholder="Handcrafted fine jewellery in Sydney. Rings, pendants, bangles and bespoke commissions."
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 resize-none"
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 resize-none"
                     />
                     <p className="text-xs text-stone-400 mt-1">
                       {(config.meta_description || "").length}/160 characters
@@ -851,7 +851,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
           {/* ── Tab: AI ── */}
           {activeTab === "ai" && (
             <div className="space-y-6">
-              <div className="bg-gradient-to-br from-[#8B7355]/10 to-stone-50 border border-[#8B7355]/20 rounded-xl p-5">
+              <div className="bg-gradient-to-br from-[amber-700]/10 to-stone-50 border border-amber-600/20 rounded-xl p-5">
                 <h2 className="text-base font-semibold text-stone-900 mb-1">✦ AI Website Assistant</h2>
                 <p className="text-sm text-stone-500">
                   Let AI improve your website content. Changes are applied to the editor — review them and save when happy.
@@ -874,11 +874,11 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                   <h3 className="text-sm font-semibold text-stone-900">Tagline Suggestions — pick one:</h3>
                   <div className="space-y-2">
                     {aiResult.suggestions.map((s, i) => (
-                      <div key={i} className="flex items-center justify-between gap-3 p-3 border border-stone-200 rounded-lg hover:border-[#8B7355] transition-colors">
+                      <div key={i} className="flex items-center justify-between gap-3 p-3 border border-stone-200 rounded-lg hover:border-amber-600 transition-colors">
                         <p className="text-sm text-stone-700 italic">&quot;{s}&quot;</p>
                         <button
                           onClick={() => applyTaglineSuggestion(s)}
-                          className="flex-shrink-0 px-3 py-1.5 bg-[#8B7355] text-white text-xs font-medium rounded-lg hover:bg-[#7a6349]"
+                          className="flex-shrink-0 px-3 py-1.5 bg-amber-700 text-white text-xs font-medium rounded-lg hover:bg-[#7a6349]"
                         >
                           Use This
                         </button>
@@ -950,8 +950,8 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       disabled={aiLoading || !!missingData}
                       className={`text-left p-4 rounded-xl border-2 transition-all ${
                         isLoading
-                          ? "border-[#8B7355] bg-[#8B7355]/5"
-                          : "border-stone-200 hover:border-[#8B7355]/50 bg-white"
+                          ? "border-amber-600 bg-amber-700/5"
+                          : "border-stone-200 hover:border-amber-600/50 bg-white"
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <div className="flex items-start gap-3">
@@ -965,7 +965,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                             </p>
                           )}
                           {isLoading && (
-                            <p className="text-xs text-[#8B7355] mt-1 animate-pulse">AI is thinking…</p>
+                            <p className="text-xs text-amber-700 mt-1 animate-pulse">AI is thinking…</p>
                           )}
                         </div>
                       </div>
@@ -1017,7 +1017,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                     value={customDomainInput}
                     onChange={(e) => setCustomDomainInput(e.target.value)}
                     placeholder="yourdomain.com.au"
-                    className="flex-1 px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                    className="flex-1 px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                   />
                   <button
                     onClick={handleSave}
@@ -1076,7 +1076,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                           href={link.href}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs text-[#8B7355] hover:underline"
+                          className="text-xs text-amber-700 hover:underline"
                         >
                           {link.label}
                         </a>
@@ -1098,7 +1098,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                 <div className="flex items-center gap-3 mb-3">
                   <button
                     onClick={() => { setAnnouncementEnabled(!announcementEnabled); update("announcement_bar_enabled", !announcementEnabled); }}
-                    className={`relative inline-flex w-10 h-5.5 rounded-full transition-colors ${announcementEnabled ? "bg-[#8B7355]" : "bg-stone-200"}`}
+                    className={`relative inline-flex w-10 h-5.5 rounded-full transition-colors ${announcementEnabled ? "bg-amber-700" : "bg-stone-200"}`}
                     aria-label="Toggle announcement bar"
                   >
                     <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${announcementEnabled ? "translate-x-5" : ""}`} />
@@ -1131,7 +1131,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                         type="checkbox"
                         checked={val}
                         onChange={(e) => { set(e.target.checked); update(field as keyof WebsiteConfig, e.target.checked); }}
-                        className="w-4 h-4 accent-[#8B7355] rounded"
+                        className="w-4 h-4 accent-[amber-700] rounded"
                       />
                       <span className="text-sm text-stone-700">{label}</span>
                     </label>
@@ -1144,7 +1144,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       <button
                         key={n}
                         onClick={() => { setCatalogueColumns(n); update("catalogue_grid_columns", n); }}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${catalogueColumns === n ? "border-[#8B7355] bg-[#8B7355]/5 text-[#8B7355]" : "border-stone-200 text-stone-600"}`}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${catalogueColumns === n ? "border-amber-600 bg-amber-700/5 text-amber-700" : "border-stone-200 text-stone-600"}`}
                       >
                         {n} cols
                       </button>
@@ -1168,7 +1168,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                         type="checkbox"
                         checked={val}
                         onChange={(e) => { set(e.target.checked); update(field as keyof WebsiteConfig, e.target.checked); }}
-                        className="mt-0.5 w-4 h-4 accent-[#8B7355] rounded"
+                        className="mt-0.5 w-4 h-4 accent-[amber-700] rounded"
                       />
                       <div>
                         <div className="text-sm font-medium text-stone-800">{label}</div>
@@ -1220,7 +1220,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50"
+                  className="px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50"
                 >
                   {saving ? "Saving…" : saved ? "✓ Saved" : "Save Advanced Settings"}
                 </button>
@@ -1264,7 +1264,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                       className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                         config.published
                           ? "bg-red-100 text-red-700 hover:bg-red-200"
-                          : "bg-[#8B7355] text-white hover:bg-[#7a6349]"
+                          : "bg-amber-700 text-white hover:bg-[#7a6349]"
                       } disabled:opacity-50`}
                     >
                       {config.published ? "Unpublish" : "Publish Now"}
@@ -1320,7 +1320,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                 value={externalUrlInput}
                 onChange={(e) => setExternalUrlInput(e.target.value)}
                 placeholder="https://myjewelleryshop.com.au"
-                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
               />
             </div>
 
@@ -1336,7 +1336,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                     onClick={() => setSelectedPlatform(p.id)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                       selectedPlatform === p.id
-                        ? "border-[#8B7355] bg-[#8B7355]/10 text-[#8B7355]"
+                        ? "border-amber-600 bg-amber-700/10 text-amber-700"
                         : "border-stone-200 text-stone-600 hover:border-stone-300"
                     }`}
                   >
@@ -1363,7 +1363,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                 <ol className="space-y-1.5">
                   {PLATFORM_INSTRUCTIONS[selectedPlatform].map((step, i) => (
                     <li key={i} className="flex gap-2 text-sm text-stone-700">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#8B7355]/10 text-[#8B7355] text-xs font-semibold flex items-center justify-center mt-0.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-700/10 text-amber-700 text-xs font-semibold flex items-center justify-center mt-0.5">
                         {i + 1}
                       </span>
                       {step}
@@ -1456,7 +1456,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
             <button
               onClick={handleConnectSave}
               disabled={saving}
-              className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </button>
@@ -1481,10 +1481,10 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
             </p>
             <ul className="space-y-1">
               <li className="text-sm text-stone-600 flex gap-2">
-                <span className="text-[#8B7355]">•</span> Point it to your Nexpura hosted site
+                <span className="text-amber-700">•</span> Point it to your Nexpura hosted site
               </li>
               <li className="text-sm text-stone-600 flex gap-2">
-                <span className="text-[#8B7355]">•</span> Or connect it to your existing website
+                <span className="text-amber-700">•</span> Or connect it to your existing website
               </li>
             </ul>
           </div>
@@ -1492,7 +1492,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
           {/* Step 1 */}
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm space-y-4">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-[#8B7355] text-white text-xs font-semibold flex items-center justify-center flex-shrink-0">
+              <span className="w-6 h-6 rounded-full bg-amber-700 text-white text-xs font-semibold flex items-center justify-center flex-shrink-0">
                 1
               </span>
               <h2 className="text-base font-semibold text-stone-900">
@@ -1559,7 +1559,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                 "Use your business name if available",
               ].map((tip) => (
                 <p key={tip} className="text-sm text-stone-600 flex gap-2">
-                  <span className="text-[#8B7355]">•</span> {tip}
+                  <span className="text-amber-700">•</span> {tip}
                 </p>
               ))}
             </div>
@@ -1605,7 +1605,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
             </button>
             <button
               onClick={() => handleTypeChange("hosted")}
-              className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors"
+              className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors"
             >
               Switch to Nexpura Hosted →
             </button>

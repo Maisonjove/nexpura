@@ -117,8 +117,8 @@ export default function QuickPrintTagModal({ item, tenantName, onClose }: Props)
           <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">Label Size</label>
           <div className="space-y-2">
             {(Object.entries(SIZE_LABELS) as [TagSize, string][]).map(([val, label]) => (
-              <label key={val} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${size === val ? "border-[#8B7355] bg-[#8B7355]/5" : "border-stone-200 hover:border-stone-300"}`}>
-                <input type="radio" name="size" value={val} checked={size === val} onChange={() => setSize(val)} className="accent-[#8B7355]" />
+              <label key={val} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${size === val ? "border-amber-600 bg-amber-700/5" : "border-stone-200 hover:border-stone-300"}`}>
+                <input type="radio" name="size" value={val} checked={size === val} onChange={() => setSize(val)} className="accent-[amber-700]" />
                 <span className="text-sm text-stone-700">{label}</span>
               </label>
             ))}
@@ -135,7 +135,7 @@ export default function QuickPrintTagModal({ item, tenantName, onClose }: Props)
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={handleCopy}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-stone-200 hover:border-[#8B7355] hover:bg-[#8B7355]/5 transition-colors text-stone-600 hover:text-[#8B7355]"
+            className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-stone-200 hover:border-amber-600 hover:bg-amber-700/5 transition-colors text-stone-600 hover:text-amber-700"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
             <span className="text-xs font-medium">{copied ? "Copied!" : "Copy ZPL"}</span>
@@ -143,7 +143,7 @@ export default function QuickPrintTagModal({ item, tenantName, onClose }: Props)
 
           <button
             onClick={handleDownload}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-stone-200 hover:border-[#8B7355] hover:bg-[#8B7355]/5 transition-colors text-stone-600 hover:text-[#8B7355]"
+            className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-stone-200 hover:border-amber-600 hover:bg-amber-700/5 transition-colors text-stone-600 hover:text-amber-700"
           >
             <Download className="w-4 h-4" />
             <span className="text-xs font-medium">Download .zpl</span>
@@ -151,7 +151,7 @@ export default function QuickPrintTagModal({ item, tenantName, onClose }: Props)
 
           <button
             onClick={handleBrowserPrint}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-stone-200 hover:border-[#8B7355] hover:bg-[#8B7355]/5 transition-colors text-stone-600 hover:text-[#8B7355]"
+            className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-stone-200 hover:border-amber-600 hover:bg-amber-700/5 transition-colors text-stone-600 hover:text-amber-700"
           >
             <Printer className="w-4 h-4" />
             <span className="text-xs font-medium">Print Preview</span>

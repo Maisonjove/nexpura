@@ -107,7 +107,7 @@ export default async function LaybysPage() {
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/laybys/${lb.id}`}
-                        className="text-xs font-medium text-[#8B7355] hover:underline"
+                        className="text-xs font-medium text-amber-700 hover:underline"
                       >
                         View →
                       </Link>

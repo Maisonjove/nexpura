@@ -21,7 +21,7 @@ export default function FreeToPaidConversionEmail({ businessName, paymentUrl, de
                 <table width="600" cellPadding={0} cellSpacing={0} style={{ maxWidth: '600px', width: '100%' }}>
                   <tbody>
                     <tr>
-                      <td style={{ backgroundColor: '#8B7355', borderRadius: '12px 12px 0 0', padding: '32px 40px' }}>
+                      <td style={{ backgroundColor: 'amber-700', borderRadius: '12px 12px 0 0', padding: '32px 40px' }}>
                         <p style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#fff', letterSpacing: '0.05em', fontFamily: 'Georgia, serif' }}>nexpura</p>
                       </td>
                     </tr>
@@ -36,7 +36,7 @@ export default function FreeToPaidConversionEmail({ businessName, paymentUrl, de
                         <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#4a5568', lineHeight: '1.7' }}>
                           <strong>Deadline:</strong> {deadline}
                         </p>
-                        <a href={paymentUrl} style={{ display: 'inline-block', backgroundColor: '#8B7355', color: '#FFFFFF', fontSize: '15px', fontWeight: '600', padding: '14px 32px', borderRadius: '8px', textDecoration: 'none' }}>
+                        <a href={paymentUrl} style={{ display: 'inline-block', backgroundColor: 'amber-700', color: '#FFFFFF', fontSize: '15px', fontWeight: '600', padding: '14px 32px', borderRadius: '8px', textDecoration: 'none' }}>
                           Add payment method →
                         </a>
                         <p style={{ margin: '24px 0 0', fontSize: '13px', color: '#6B7280' }}>

@@ -80,7 +80,7 @@ export function PreviewClient({ sessionId, summary, totalErrors, totalWarnings, 
               key={opt.value}
               className={`cursor-pointer border rounded-xl p-3 transition-colors ${
                 scope === opt.value
-                  ? 'border-[#B45309] bg-amber-50'
+                  ? 'border-[amber-700] bg-amber-50'
                   : 'border-stone-200 hover:border-stone-300'
               }`}
             >
@@ -107,7 +107,7 @@ export function PreviewClient({ sessionId, summary, totalErrors, totalWarnings, 
         <button
           onClick={() => setShowConfirm(true)}
           disabled={totalErrors > 0}
-          className="w-full flex items-center justify-center gap-2 bg-[#B45309] text-white text-sm font-bold px-6 py-4 rounded-xl hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 bg-amber-700 text-white text-sm font-bold px-6 py-4 rounded-xl hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Start Import — {totalCreate.toLocaleString()} records <ArrowRight className="w-5 h-5" />
         </button>
@@ -127,7 +127,7 @@ export function PreviewClient({ sessionId, summary, totalErrors, totalWarnings, 
             <button
               onClick={handleImport}
               disabled={importing}
-              className="flex-1 bg-[#B45309] text-white text-sm font-bold px-4 py-2.5 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+              className="flex-1 bg-amber-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
             >
               {importing ? 'Starting...' : 'Yes, Start Import'}
             </button>

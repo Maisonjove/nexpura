@@ -9,7 +9,7 @@ import {
 
 const FOREST = "#071A0D";
 const SAGE = "#52B788";
-const GOLD = "#8B7355";
+const GOLD = "amber-700";
 const PLATINUM = "#E8E8E8";
 const IVORY = "#F8F5F0";
 

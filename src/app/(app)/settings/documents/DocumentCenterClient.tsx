@@ -53,7 +53,7 @@ export default function DocumentCenterClient({ tenantId: _tenantId, labelTemplat
               onClick={() => setActiveTab(tab)}
               className={`px-5 py-3 text-sm font-medium capitalize transition-colors ${
                 activeTab === tab
-                  ? "border-b-2 border-[#8B7355] text-[#8B7355]"
+                  ? "border-b-2 border-amber-600 text-amber-700"
                   : "text-stone-500 hover:text-stone-900"
               }`}
             >
@@ -66,7 +66,7 @@ export default function DocumentCenterClient({ tenantId: _tenantId, labelTemplat
           <div className="p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-stone-500">ZPL label templates for jewellery tags and price labels.</p>
-              <Link href="/settings" className="text-xs text-[#8B7355] hover:underline">
+              <Link href="/settings" className="text-xs text-amber-700 hover:underline">
                 Manage in Tag Settings →
               </Link>
             </div>

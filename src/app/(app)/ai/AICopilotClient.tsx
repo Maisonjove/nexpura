@@ -212,7 +212,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
         <div className="p-4 border-b border-stone-200">
           <button
             onClick={newConversation}
-            className="w-full flex items-center gap-2 px-3 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -232,7 +232,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
                 key={convo.id}
                 onClick={() => loadConversation(convo.id)}
                 className={`w-full text-left px-4 py-3 hover:bg-stone-50 transition-colors group ${
-                  activeConvoId === convo.id ? "bg-stone-100 border-r-2 border-[#8B7355]" : ""
+                  activeConvoId === convo.id ? "bg-stone-100 border-r-2 border-amber-600" : ""
                 }`}
               >
                 <p className={`text-sm truncate ${activeConvoId === convo.id ? "text-stone-900 font-medium" : "text-stone-900/70"}`}>
@@ -262,7 +262,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
           </button>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center">
-              <svg className="w-4 h-4 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             </div>
@@ -279,7 +279,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
             <div className="max-w-2xl mx-auto">
               <div className="text-center mb-8 mt-8">
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
-                  <svg className="w-7 h-7 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-7 h-7 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </div>
@@ -296,7 +296,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
                   <button
                     key={prompt}
                     onClick={() => sendMessage(prompt)}
-                    className="text-left p-4 bg-white rounded-xl border border-stone-200 hover:border-[#8B7355]/40 hover:shadow-sm transition-all text-sm text-stone-900/70 hover:text-stone-900"
+                    className="text-left p-4 bg-white rounded-xl border border-stone-200 hover:border-amber-600/40 hover:shadow-sm transition-all text-sm text-stone-900/70 hover:text-stone-900"
                   >
                     {prompt}
                   </button>
@@ -312,7 +312,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
                 >
                   {msg.role === "assistant" && (
                     <div className="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0 mr-2 mt-0.5">
-                      <svg className="w-4 h-4 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                       </svg>
                     </div>
@@ -320,7 +320,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
                   <div
                     className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm ${
                       msg.role === "user"
-                        ? "bg-[#8B7355] text-white rounded-tr-sm"
+                        ? "bg-amber-700 text-white rounded-tr-sm"
                         : "bg-white border border-stone-200 text-stone-900 rounded-tl-sm shadow-sm"
                     }`}
                   >
@@ -340,7 +340,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
               {streamingContent && (
                 <div className="flex justify-start">
                   <div className="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0 mr-2 mt-0.5">
-                    <svg className="w-4 h-4 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
@@ -349,7 +349,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
                       className="prose-sm leading-relaxed"
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent) }}
                     />
-                    <span className="inline-block w-1.5 h-3.5 bg-[#8B7355] animate-pulse ml-0.5 rounded-sm" />
+                    <span className="inline-block w-1.5 h-3.5 bg-amber-700 animate-pulse ml-0.5 rounded-sm" />
                   </div>
                 </div>
               )}
@@ -358,15 +358,15 @@ export default function AICopilotClient({ conversations: initialConversations, p
               {isLoading && !streamingContent && (
                 <div className="flex justify-start">
                   <div className="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0 mr-2 mt-0.5">
-                    <svg className="w-4 h-4 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
                   <div className="bg-white border border-stone-200 rounded-2xl rounded-tl-sm shadow-sm px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-[#8B7355]/40 animate-bounce [animation-delay:0ms]" />
-                      <span className="w-2 h-2 rounded-full bg-[#8B7355]/40 animate-bounce [animation-delay:150ms]" />
-                      <span className="w-2 h-2 rounded-full bg-[#8B7355]/40 animate-bounce [animation-delay:300ms]" />
+                      <span className="w-2 h-2 rounded-full bg-amber-700/40 animate-bounce [animation-delay:0ms]" />
+                      <span className="w-2 h-2 rounded-full bg-amber-700/40 animate-bounce [animation-delay:150ms]" />
+                      <span className="w-2 h-2 rounded-full bg-amber-700/40 animate-bounce [animation-delay:300ms]" />
                     </div>
                   </div>
                 </div>
@@ -379,7 +379,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
         {/* Input area */}
         <div className="bg-white border-t border-stone-200 p-4">
           <div className="max-w-3xl mx-auto">
-            <div className="flex items-end gap-3 bg-stone-50 border border-stone-200 rounded-xl p-2 focus-within:border-[#8B7355] transition-colors">
+            <div className="flex items-end gap-3 bg-stone-50 border border-stone-200 rounded-xl p-2 focus-within:border-amber-600 transition-colors">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -399,7 +399,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
               <button
                 onClick={() => sendMessage()}
                 disabled={!input.trim() || isLoading}
-                className="flex-shrink-0 w-9 h-9 rounded-lg bg-[#8B7355] text-white flex items-center justify-center hover:bg-[#7A6347] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-shrink-0 w-9 h-9 rounded-lg bg-amber-700 text-white flex items-center justify-center hover:bg-amber-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

@@ -21,7 +21,7 @@ export default async function EnquiryConfirmationPage({
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center space-y-6">
         {/* Icon */}
-        <div className="w-16 h-16 bg-[#8B7355]/10 rounded-full flex items-center justify-center mx-auto">
+        <div className="w-16 h-16 bg-amber-700/10 rounded-full flex items-center justify-center mx-auto">
           <span className="text-3xl">💎</span>
         </div>
 
@@ -39,7 +39,7 @@ export default async function EnquiryConfirmationPage({
           {ref && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-stone-500">Reference</span>
-              <span className="text-sm font-mono font-semibold text-[#8B7355]">{ref}</span>
+              <span className="text-sm font-mono font-semibold text-amber-700">{ref}</span>
             </div>
           )}
           <div className="border-t border-stone-100 pt-3">
@@ -54,14 +54,14 @@ export default async function EnquiryConfirmationPage({
         <div className="flex flex-col gap-3">
           <Link
             href={`/${subdomain}`}
-            className="inline-block px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-xl hover:bg-[#7a6447] transition-colors"
+            className="inline-block px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-xl hover:bg-[#7a6447] transition-colors"
           >
             Back to Store
           </Link>
           {isCustom && (
             <p className="text-xs text-stone-400">
               Interested in browsing our collection while you wait?{" "}
-              <Link href={`/${subdomain}/catalogue`} className="text-[#8B7355] hover:underline">
+              <Link href={`/${subdomain}/catalogue`} className="text-amber-700 hover:underline">
                 View catalogue →
               </Link>
             </p>

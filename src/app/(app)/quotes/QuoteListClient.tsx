@@ -70,7 +70,7 @@ export default function QuoteListClient() {
               </button>
               <button
                 onClick={() => handleConvert(confirmConvertId)}
-                className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7a6447] transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-xl hover:bg-[#7a6447] transition-colors"
               >
                 Convert
               </button>
@@ -86,7 +86,7 @@ export default function QuoteListClient() {
         </div>
         <Link
           href="/quotes/new"
-          className="flex items-center gap-2 bg-[#8B7355] text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium shadow-sm"
+          className="flex items-center gap-2 bg-amber-700 text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium shadow-sm"
         >
           <Plus size={18} />
           New Quote
@@ -99,7 +99,7 @@ export default function QuoteListClient() {
           <input
             type="text"
             placeholder="Search by customer or quote #..."
-            className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+            className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -141,7 +141,7 @@ export default function QuoteListClient() {
                 {filteredQuotes.map((quote) => (
                   <tr key={quote.id} className="hover:bg-stone-50 transition-colors">
                     <td className="px-6 py-4">
-                      <Link href={`/quotes/${quote.id}`} className="font-mono text-sm text-[#8B7355] hover:underline">
+                      <Link href={`/quotes/${quote.id}`} className="font-mono text-sm text-amber-700 hover:underline">
                         {quote.quote_number || quote.id.slice(0, 8)}
                       </Link>
                     </td>

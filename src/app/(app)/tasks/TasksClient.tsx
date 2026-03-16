@@ -9,14 +9,14 @@ import TaskKanbanView from "./TaskKanbanView";
 
 const PRIORITY_COLOURS: Record<string, string> = {
   low: "bg-stone-100 text-stone-500",
-  medium: "bg-blue-50 text-blue-600",
+  medium: "bg-amber-50 text-amber-700",
   high: "bg-amber-50 text-amber-700",
   urgent: "bg-red-50 text-red-600",
 };
 
 const STATUS_COLOURS: Record<string, string> = {
   pending: "bg-stone-100 text-stone-600",
-  in_progress: "bg-blue-50 text-blue-700",
+  in_progress: "bg-amber-50 text-amber-700",
   completed: "bg-green-50 text-green-700",
   cancelled: "bg-red-50 text-red-400",
 };
@@ -202,7 +202,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                     setSelectedTask((prev) => prev ? { ...prev, status: newStatus } : null);
                     startTransition(async () => { await updateTask(selectedTask.id, { status: newStatus }); router.refresh(); });
                   }}
-                  className="text-xs border border-stone-200 rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                  className="text-xs border border-stone-200 rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                 >
                   <option value="pending">Pending</option>
                   <option value="in_progress">In Progress</option>
@@ -226,7 +226,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                   <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-1">Linked To</p>
                   <Link
                     href={`${LINKED_TYPE_HREFS[selectedTask.linked_type] || "/"}${selectedTask.linked_id}`}
-                    className="text-sm text-[#8B7355] hover:underline"
+                    className="text-sm text-amber-700 hover:underline"
                   >
                     {LINKED_TYPE_LABELS[selectedTask.linked_type] || selectedTask.linked_type} ↗
                   </Link>
@@ -280,7 +280,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                     })}
                   </div>
                 )}
-                <label className="flex items-center gap-2 text-xs text-stone-500 cursor-pointer hover:text-[#8B7355] border border-dashed border-stone-200 rounded-lg px-3 py-2 hover:border-[#8B7355] transition-colors mb-3">
+                <label className="flex items-center gap-2 text-xs text-stone-500 cursor-pointer hover:text-amber-700 border border-dashed border-stone-200 rounded-lg px-3 py-2 hover:border-amber-600 transition-colors mb-3">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                   </svg>
@@ -324,12 +324,12 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Add a comment…"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 resize-none mb-2"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 resize-none mb-2"
                 />
                 <button
                   onClick={handleAddComment}
                   disabled={addingComment || !commentText.trim()}
-                  className="w-full py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
+                  className="w-full py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
                 >
                   {addingComment ? "Adding…" : "Add Comment"}
                 </button>
@@ -406,7 +406,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                   type="text"
                   value={form.title}
                   onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 />
               </div>
               <div>
@@ -415,7 +415,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                   rows={3}
                   value={form.description}
                   onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -424,7 +424,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                   <select
                     value={form.assigned_to}
                     onChange={(e) => setForm((p) => ({ ...p, assigned_to: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                   >
                     <option value="">Unassigned</option>
                     {teamMembers.map((m) => (
@@ -438,7 +438,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                     type="date"
                     value={form.due_date}
                     onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                   />
                 </div>
                 <div>
@@ -446,7 +446,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                   <select
                     value={form.priority}
                     onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -459,7 +459,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                   <select
                     value={form.status}
                     onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                   >
                     <option value="pending">Pending</option>
                     <option value="in_progress">In Progress</option>
@@ -473,7 +473,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                 <select
                   value={form.linked_type}
                   onChange={(e) => setForm((p) => ({ ...p, linked_type: e.target.value, linked_id: "" }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 >
                   <option value="">None</option>
                   <option value="repair">Repair</option>
@@ -490,7 +490,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                     value={form.linked_id}
                     onChange={(e) => setForm((p) => ({ ...p, linked_id: e.target.value }))}
                     placeholder="Paste ID here"
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-600"
                   />
                 </div>
               )}
@@ -498,7 +498,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="flex-1 py-2.5 bg-[#8B7355] text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-amber-700 text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                 >
                   {isPending ? "Creating…" : "Create Task"}
                 </button>
@@ -522,7 +522,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
             onClick={() => setActiveTab("my")}
             className={`px-5 py-3 text-sm font-medium transition-colors ${
               activeTab === "my"
-                ? "border-b-2 border-[#8B7355] text-[#8B7355]"
+                ? "border-b-2 border-amber-600 text-amber-700"
                 : "text-stone-500 hover:text-stone-900"
             }`}
           >
@@ -538,7 +538,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
               onClick={() => setActiveTab("all")}
               className={`px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === "all"
-                  ? "border-b-2 border-[#8B7355] text-[#8B7355]"
+                  ? "border-b-2 border-amber-600 text-amber-700"
                   : "text-stone-500 hover:text-stone-900"
               }`}
             >
@@ -658,7 +658,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                           onClick={(e) => e.stopPropagation()}
                           className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border transition-colors hover:underline ${
                             task.linked_type === "repair"
-                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
                               : task.linked_type === "bespoke"
                               ? "bg-amber-50 text-amber-700 border-amber-200"
                               : "bg-stone-50 text-stone-600 border-stone-200"
@@ -675,7 +675,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                       <button
                         onClick={() => handleStatusChange(task.id, "in_progress")}
                         disabled={isPending}
-                        className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                        className="text-xs text-amber-700 hover:text-stone-800 px-2 py-1 rounded transition-colors disabled:opacity-50"
                       >
                         Start
                       </button>

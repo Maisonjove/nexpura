@@ -108,7 +108,7 @@ export default function FilesPage() {
             <Upload className="w-10 h-10 text-stone-400 mx-auto mb-4" />
             <h3 className="font-semibold text-stone-900 mb-1">Drop your files here</h3>
             <p className="text-sm text-stone-500 mb-4">Supports CSV and Excel (.csv, .xls, .xlsx)</p>
-            <label className="cursor-pointer inline-flex items-center gap-2 bg-[#B45309] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors">
+            <label className="cursor-pointer inline-flex items-center gap-2 bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors">
               <Upload className="w-4 h-4" />
               {uploading ? 'Uploading...' : 'Browse Files'}
               <input
@@ -137,7 +137,7 @@ export default function FilesPage() {
           {canContinue && (
             <button
               onClick={handleContinue}
-              className="w-full flex items-center justify-center gap-2 bg-[#B45309] text-white text-sm font-semibold px-6 py-3 rounded-xl hover:bg-amber-700 transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-amber-700 text-white text-sm font-semibold px-6 py-3 rounded-xl hover:bg-amber-700 transition-colors"
             >
               Continue to Mapping <ArrowRight className="w-4 h-4" />
             </button>

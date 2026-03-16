@@ -44,7 +44,7 @@ interface Props {
 
 const STATUS_COLOURS: Record<string, string> = {
   draft: "bg-stone-100 text-stone-600",
-  ordered: "bg-blue-50 text-blue-700",
+  ordered: "bg-amber-50 text-amber-700",
   partial: "bg-amber-50 text-amber-700",
   received: "bg-green-50 text-green-700",
   cancelled: "bg-red-50 text-red-600",

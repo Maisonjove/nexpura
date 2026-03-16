@@ -14,7 +14,7 @@ const LINKED_TYPE_HREFS: Record<string, string> = {
 
 const COLUMNS: { id: string; label: string; color: string; dot: string }[] = [
   { id: "pending", label: "To Do", color: "bg-stone-50 border-stone-200", dot: "bg-stone-400" },
-  { id: "in_progress", label: "In Progress", color: "bg-blue-50 border-blue-200", dot: "bg-blue-500" },
+  { id: "in_progress", label: "In Progress", color: "bg-amber-50 border-amber-200", dot: "bg-amber-500" },
   { id: "completed", label: "Done", color: "bg-green-50 border-green-200", dot: "bg-green-500" },
 ];
 
@@ -89,7 +89,7 @@ export default function TaskKanbanView({ tasks, teamMembers, onTaskUpdate }: Pro
         return (
           <div
             key={col.id}
-            className={`flex-shrink-0 w-72 rounded-xl border-2 transition-colors ${col.color} ${isOver ? "border-[#8B7355]" : ""}`}
+            className={`flex-shrink-0 w-72 rounded-xl border-2 transition-colors ${col.color} ${isOver ? "border-amber-600" : ""}`}
             onDragOver={(e) => handleDragOver(e, col.id)}
             onDrop={(e) => handleDrop(e, col.id)}
             onDragLeave={() => setDragOverCol(null)}
@@ -132,8 +132,8 @@ export default function TaskKanbanView({ tasks, teamMembers, onTaskUpdate }: Pro
                       )}
                       {assigneeName && (
                         <div className="flex items-center gap-1 ml-auto">
-                          <div className="w-5 h-5 rounded-full bg-[#8B7355]/20 flex items-center justify-center">
-                            <span className="text-[8px] font-bold text-[#8B7355]">
+                          <div className="w-5 h-5 rounded-full bg-amber-700/20 flex items-center justify-center">
+                            <span className="text-[8px] font-bold text-amber-700">
                               {assigneeName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                             </span>
                           </div>
@@ -147,7 +147,7 @@ export default function TaskKanbanView({ tasks, teamMembers, onTaskUpdate }: Pro
                           onClick={(e) => e.stopPropagation()}
                           className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border hover:underline transition-colors ${
                             task.linked_type === "repair"
-                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
                               : task.linked_type === "bespoke"
                               ? "bg-amber-50 text-amber-700 border-amber-200"
                               : "bg-stone-50 text-stone-500 border-stone-200"

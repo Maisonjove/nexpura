@@ -78,7 +78,7 @@ export default function PrintTagModal({ item, tenantName, onClose }: PrintTagMod
                 <select
                   value={selectedTemplateId ?? ""}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 text-stone-900 bg-white"
+                  className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 text-stone-900 bg-white"
                 >
                   {templates.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>

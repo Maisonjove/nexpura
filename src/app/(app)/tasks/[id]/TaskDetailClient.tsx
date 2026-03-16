@@ -72,7 +72,7 @@ export default function TaskDetailClient({
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
                   task.status === "completed" 
                     ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
-                    : "bg-[#8B7355] text-white shadow-sm"
+                    : "bg-amber-700 text-white shadow-sm"
                 }`}
               >
                 {task.status === "completed" ? <CheckCircle2 size={18} /> : <Circle size={18} />}
@@ -104,7 +104,7 @@ export default function TaskDetailClient({
                    <Tag size={18} className="text-stone-400" />
                    <div>
                      <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Linked {task.linked_type}</p>
-                     <Link href={`/${task.linked_type}s/${task.linked_id}`} className="text-sm font-medium text-[#8B7355] hover:underline uppercase tracking-tight">View Record</Link>
+                     <Link href={`/${task.linked_type}s/${task.linked_id}`} className="text-sm font-medium text-amber-700 hover:underline uppercase tracking-tight">View Record</Link>
                    </div>
                  </div>
                )}
@@ -115,7 +115,7 @@ export default function TaskDetailClient({
         {/* Comments Section */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-stone-900 px-2">
-            <MessageSquare size={20} className="text-[#8B7355]" />
+            <MessageSquare size={20} className="text-amber-700" />
             <h2 className="font-bold">Discussion</h2>
           </div>
 
@@ -146,9 +146,9 @@ export default function TaskDetailClient({
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
                 placeholder="Type a comment..."
-                className="flex-1 bg-stone-50 border-none rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-[#8B7355]"
+                className="flex-1 bg-stone-50 border-none rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-amber-600"
               />
-              <button className="p-2 bg-[#8B7355] text-white rounded-xl hover:bg-[#7A6347] transition-colors">
+              <button className="p-2 bg-amber-700 text-white rounded-xl hover:bg-amber-800 transition-colors">
                 <Send size={18} />
               </button>
             </form>
@@ -161,7 +161,7 @@ export default function TaskDetailClient({
         {/* Activity Timeline */}
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-stone-100 flex items-center gap-2">
-            <History size={18} className="text-[#8B7355]" />
+            <History size={18} className="text-amber-700" />
             <h3 className="font-bold text-sm text-stone-900">Activity Timeline</h3>
           </div>
           <div className="p-5">
@@ -171,7 +171,7 @@ export default function TaskDetailClient({
               ) : (
                 activities.map((act: any) => (
                   <div key={act.id} className="relative flex items-start gap-4 ml-1">
-                    <div className="mt-1.5 w-3 h-3 rounded-full bg-white border-2 border-[#8B7355] z-10" />
+                    <div className="mt-1.5 w-3 h-3 rounded-full bg-white border-2 border-amber-600 z-10" />
                     <div className="flex-1">
                       <p className="text-xs text-stone-700 leading-snug">
                         <span className="font-bold text-stone-900">{act.activity_type.replace(/_/g, " ")}</span>: {act.description}
@@ -189,10 +189,10 @@ export default function TaskDetailClient({
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-stone-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Paperclip size={18} className="text-[#8B7355]" />
+              <Paperclip size={18} className="text-amber-700" />
               <h3 className="font-bold text-sm text-stone-900">Attachments</h3>
             </div>
-            <button className="text-[10px] font-bold text-[#8B7355] uppercase tracking-widest hover:underline">+ Upload</button>
+            <button className="text-[10px] font-bold text-amber-700 uppercase tracking-widest hover:underline">+ Upload</button>
           </div>
           <div className="p-5 space-y-3">
             {attachments.length === 0 ? (

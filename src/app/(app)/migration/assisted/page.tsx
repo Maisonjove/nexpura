@@ -41,7 +41,7 @@ export default function AssistedMigrationPage() {
       <div className="p-6 max-w-2xl mx-auto">
         <div className="bg-white border border-stone-200 rounded-2xl p-12 text-center shadow-sm">
           <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-8 h-8 text-[#B45309]" />
+            <CheckCircle className="w-8 h-8 text-amber-700" />
           </div>
           <h1 className="text-2xl font-semibold text-stone-900 mb-3">Request Received!</h1>
           <p className="text-stone-600 text-sm leading-relaxed max-w-sm mx-auto">
@@ -50,7 +50,7 @@ export default function AssistedMigrationPage() {
           <div className="mt-8">
             <Link
               href="/migration"
-              className="inline-flex items-center gap-2 bg-[#B45309] text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-amber-700 transition-colors"
+              className="inline-flex items-center gap-2 bg-amber-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-amber-700 transition-colors"
             >
               Back to Migration Hub
             </Link>
@@ -175,7 +175,7 @@ export default function AssistedMigrationPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-[#B45309] text-white text-sm font-bold px-6 py-3 rounded-xl hover:bg-amber-700 transition-colors disabled:opacity-50"
+          className="w-full bg-amber-700 text-white text-sm font-bold px-6 py-3 rounded-xl hover:bg-amber-700 transition-colors disabled:opacity-50"
         >
           {submitting ? 'Submitting...' : 'Submit Migration Request'}
         </button>

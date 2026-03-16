@@ -22,7 +22,7 @@ export default async function EnquiryPage({ params, searchParams }: Props) {
 
   if (!config) notFound();
 
-  const primaryColor = config.primary_color || "#8B7355";
+  const primaryColor = config.primary_color || "amber-700";
   const secondaryColor = config.secondary_color || "#1A1A1A";
   const font = config.font || "Inter";
 

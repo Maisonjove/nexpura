@@ -355,7 +355,7 @@ export default async function ReportsPage() {
     quote: "bg-stone-100 text-stone-700",
     confirmed: "bg-stone-100 text-stone-700",
     paid: "bg-green-50 text-green-700",
-    completed: "bg-stone-100 text-[#8B7355]",
+    completed: "bg-stone-100 text-amber-700",
     refunded: "bg-red-50 text-red-600",
     layby: "bg-amber-50 text-amber-700",
   };
@@ -384,7 +384,7 @@ export default async function ReportsPage() {
                 </span>
                 <div
                   className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    card.urgent ? "bg-red-50 text-red-500" : "bg-stone-100 text-[#8B7355]"
+                    card.urgent ? "bg-red-50 text-red-500" : "bg-stone-100 text-amber-700"
                   }`}
                 >
                   {card.icon}
@@ -399,7 +399,7 @@ export default async function ReportsPage() {
             </>
           );
           const cls = `bg-white rounded-xl border border-stone-200 p-5 shadow-sm ${
-            card.href ? "hover:border-[#8B7355]/40 transition-all cursor-pointer" : ""
+            card.href ? "hover:border-amber-600/40 transition-all cursor-pointer" : ""
           }`;
           if (card.href) {
             return (
@@ -430,7 +430,7 @@ export default async function ReportsPage() {
                 </span>
                 <div className="flex-1 bg-stone-100 rounded-full h-5 overflow-hidden">
                   <div
-                    className={`h-5 rounded-full transition-all duration-500 ${isCurrent ? "bg-[#8B7355]" : "bg-stone-300"}`}
+                    className={`h-5 rounded-full transition-all duration-500 ${isCurrent ? "bg-amber-700" : "bg-stone-300"}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -456,7 +456,7 @@ export default async function ReportsPage() {
             </div>
             <div className="w-full bg-stone-200 rounded-full h-4 overflow-hidden">
               <div
-                className="h-4 bg-[#8B7355] rounded-full transition-all duration-500"
+                className="h-4 bg-amber-700 rounded-full transition-all duration-500"
                 style={{ width: `${thisMonthWidth}%` }}
               />
             </div>
@@ -483,7 +483,7 @@ export default async function ReportsPage() {
         <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
             <h2 className="text-base font-semibold text-stone-900">Top Customers by Revenue</h2>
-            <Link href="/customers" className="text-xs text-[#8B7355] font-medium hover:underline">
+            <Link href="/customers" className="text-xs text-amber-700 font-medium hover:underline">
               View all →
             </Link>
           </div>
@@ -515,7 +515,7 @@ export default async function ReportsPage() {
         <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
             <h2 className="text-base font-semibold text-stone-900">Low Stock Items</h2>
-            <Link href="/inventory" className="text-xs text-[#8B7355] font-medium hover:underline">
+            <Link href="/inventory" className="text-xs text-amber-700 font-medium hover:underline">
               View all →
             </Link>
           </div>
@@ -553,7 +553,7 @@ export default async function ReportsPage() {
       <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
           <h2 className="text-base font-semibold text-stone-900">Recent Sales</h2>
-          <Link href="/sales" className="text-xs text-[#8B7355] font-medium hover:underline">
+          <Link href="/sales" className="text-xs text-amber-700 font-medium hover:underline">
             View all →
           </Link>
         </div>
@@ -609,7 +609,7 @@ export default async function ReportsPage() {
             <Link key={r.href} href={r.href} className="flex items-center gap-4 px-5 py-4 hover:bg-stone-50 transition-colors group">
               <span className="text-2xl">{r.icon}</span>
               <div>
-                <p className="font-medium text-stone-900 group-hover:text-[#8B7355] transition-colors text-sm">{r.title}</p>
+                <p className="font-medium text-stone-900 group-hover:text-amber-700 transition-colors text-sm">{r.title}</p>
                 <p className="text-xs text-stone-400">{r.desc}</p>
               </div>
             </Link>

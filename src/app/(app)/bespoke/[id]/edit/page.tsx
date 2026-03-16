@@ -42,7 +42,7 @@ export default async function EditBespokeJobPage({
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <Link href={`/bespoke/${id}`} className="text-sm text-stone-500 hover:text-[#8B7355] transition-colors">
+        <Link href={`/bespoke/${id}`} className="text-sm text-stone-500 hover:text-amber-700 transition-colors">
           ← {job.job_number}
         </Link>
         <h1 className="font-semibold text-2xl font-semibold text-stone-900 mt-2">Edit Job</h1>

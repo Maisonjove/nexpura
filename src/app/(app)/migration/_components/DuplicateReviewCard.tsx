@@ -86,7 +86,7 @@ export function DuplicateReviewCard({ pair, onAction }: DuplicateReviewCardProps
             onClick={() => handleAction('merge')}
             className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
               selected === 'merge'
-                ? 'bg-[#B45309] text-white border-[#B45309]'
+                ? 'bg-amber-700 text-white border-[amber-700]'
                 : 'border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50'
             }`}
           >

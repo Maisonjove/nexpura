@@ -104,7 +104,7 @@ export default async function MigrationHubPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
           href="/migration/new"
-          className="group bg-[#B45309] text-white rounded-xl p-6 shadow-sm hover:bg-amber-700 transition-colors flex items-start gap-4"
+          className="group bg-amber-700 text-white rounded-xl p-6 shadow-sm hover:bg-amber-700 transition-colors flex items-start gap-4"
         >
           <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
             <Upload className="w-5 h-5" />
@@ -166,7 +166,7 @@ export default async function MigrationHubPage() {
             <p className="text-stone-400 text-xs mt-1">Start your first migration to get going</p>
             <Link
               href="/migration/new"
-              className="inline-flex items-center gap-2 mt-4 bg-[#B45309] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+              className="inline-flex items-center gap-2 mt-4 bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
             >
               Start Migration <ArrowRight className="w-4 h-4" />
             </Link>

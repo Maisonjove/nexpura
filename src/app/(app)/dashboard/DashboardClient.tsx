@@ -98,7 +98,7 @@ function fmtCurrency(amount: number, currency: string) {
 
 function getStageBadgeClasses(stage: string) {
   switch (stage) {
-    case "in_progress": return "text-blue-700 bg-blue-50 border border-blue-200";
+    case "in_progress": return "text-amber-700 bg-amber-50 border border-amber-200";
     case "ready": return "text-emerald-700 bg-emerald-50 border border-emerald-200";
     case "quoted":
     case "assessed": return "text-amber-700 bg-amber-50 border border-amber-200";
@@ -181,13 +181,13 @@ export default function DashboardClient({
 
       {/* ── Tasks Due Today ──────────────────────────────────────────────────── */}
       {(myTasks.length > 0 || (isManager && teamTaskSummary.length > 0)) ? (
-        <div className="bg-[#FAF9F6] border border-[#8B7355]/20 rounded-xl p-6 shadow-sm space-y-4">
+        <div className="bg-[#FAF9F6] border border-amber-600/20 rounded-xl p-6 shadow-sm space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-bold text-stone-800 uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#8B7355] animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-amber-700 animate-pulse" />
               {isManager ? "Tasks Due Today" : `Tasks Due Today (${myTasks.length})`}
             </h2>
-            <a href={`${basePath}/tasks`} className="text-xs font-medium text-[#8B7355] hover:underline">View all tasks →</a>
+            <a href={`${basePath}/tasks`} className="text-xs font-medium text-amber-700 hover:underline">View all tasks →</a>
           </div>
 
           {/* My tasks */}
@@ -212,7 +212,7 @@ export default function DashboardClient({
                       <p className="text-sm font-semibold text-stone-800">{task.title}</p>
                     </div>
                     <div className="mt-4 flex justify-end">
-                      <a href={`${basePath}/tasks`} className="text-[11px] font-medium text-stone-400 hover:text-[#8B7355]">Update →</a>
+                      <a href={`${basePath}/tasks`} className="text-[11px] font-medium text-stone-400 hover:text-amber-700">Update →</a>
                     </div>
                   </div>
                 ))}
@@ -222,10 +222,10 @@ export default function DashboardClient({
 
           {/* Team tasks summary — managers/owners only */}
           {isManager && teamTaskSummary.length > 0 && (
-            <div className="border-t border-[#8B7355]/10 pt-4">
+            <div className="border-t border-amber-600/10 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest">Team Tasks</p>
-                <a href={`${basePath}/tasks`} className="text-xs font-medium text-[#8B7355] hover:underline">View All Team Tasks →</a>
+                <a href={`${basePath}/tasks`} className="text-xs font-medium text-amber-700 hover:underline">View All Team Tasks →</a>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {teamTaskSummary.map((member) => (
@@ -253,23 +253,23 @@ export default function DashboardClient({
           </div>
           <div>
             <p className="text-sm font-medium text-stone-700">No tasks due today</p>
-            <a href={`${basePath}/tasks`} className="text-xs text-[#8B7355] hover:underline">View all tasks →</a>
+            <a href={`${basePath}/tasks`} className="text-xs text-amber-700 hover:underline">View all tasks →</a>
           </div>
         </div>
       )}
 
       {/* ── KPI Grid ─────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Sales This Month', value: fmtCurrency(salesThisMonthRevenue, currency), sub: `${salesThisMonthCount} sale${salesThisMonthCount !== 1 ? 's' : ''}` },
           { label: 'Active Repairs', value: String(activeRepairsCount), sub: overdueRepairs.length > 0 ? `${overdueRepairs.length} overdue` : 'all on track', alert: overdueRepairs.length > 0 },
           { label: 'Bespoke Jobs', value: String(activeJobsCount), sub: 'in production' },
-          { label: 'Outstanding', value: fmtCurrency(totalOutstanding, currency), sub: `${overdueInvoiceCount} overdue`, alert: overdueInvoiceCount > 0 },
+          { label: 'Outstanding', value: fmtCurrency(totalOutstanding, currency), sub: `${overdueInvoiceCount} invoice${overdueInvoiceCount !== 1 ? 's' : ''} overdue`, alert: overdueInvoiceCount > 0 },
         ].map((kpi) => (
-          <div key={kpi.label} className="bg-white rounded-lg border border-stone-200 p-6">
-            <p className="text-xs font-medium text-stone-400 uppercase tracking-widest">{kpi.label}</p>
-            <p className={`text-2xl font-semibold mt-1 ${(kpi as { alert?: boolean }).alert ? 'text-red-600' : 'text-stone-900'}`}>{kpi.value}</p>
-            <p className={`text-xs mt-0.5 ${(kpi as { alert?: boolean }).alert ? 'text-red-400' : 'text-stone-400'}`}>{kpi.sub}</p>
+          <div key={kpi.label} className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">{kpi.label}</p>
+            <p className={`text-2xl font-semibold tracking-tight ${(kpi as { alert?: boolean }).alert ? 'text-rose-600' : 'text-stone-900'}`}>{kpi.value}</p>
+            <p className={`text-xs mt-1 ${(kpi as { alert?: boolean }).alert ? 'text-rose-400' : 'text-stone-400'}`}>{kpi.sub}</p>
           </div>
         ))}
       </div>
@@ -313,13 +313,13 @@ export default function DashboardClient({
         <div className="col-span-2 bg-white rounded-lg border border-stone-200 overflow-hidden">
           <div className="px-6 py-4 flex justify-between items-center border-b border-stone-100">
             <span className="text-sm font-semibold text-stone-700">Active Repairs</span>
-            <a href={`${basePath}/repairs`} className="text-xs text-stone-400 hover:text-[#8B7355] transition-colors">View all →</a>
+            <a href={`${basePath}/repairs`} className="text-xs text-stone-400 hover:text-amber-700 transition-colors">View all →</a>
           </div>
           {activeRepairs.length === 0 ? (
             <div className="px-6 py-10 text-center">
               <p className="text-sm text-stone-400">No active repairs yet</p>
               {!readOnly && (
-                <a href={`${basePath}/repairs/new`} className="mt-2 inline-block text-sm font-medium text-[#8B7355] hover:underline">
+                <a href={`${basePath}/repairs/new`} className="mt-2 inline-block text-sm font-medium text-amber-700 hover:underline">
                   Log your first repair →
                 </a>
               )}
@@ -362,13 +362,13 @@ export default function DashboardClient({
           <div className="bg-white rounded-lg border border-stone-200 p-6">
             <div className="flex justify-between items-center mb-4">
               <span className="text-sm font-semibold text-stone-700">Bespoke Jobs</span>
-              <a href={`${basePath}/bespoke`} className="text-xs text-stone-400 hover:text-[#8B7355] transition-colors">View all →</a>
+              <a href={`${basePath}/bespoke`} className="text-xs text-stone-400 hover:text-amber-700 transition-colors">View all →</a>
             </div>
             {activeBespokeJobs.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-sm text-stone-400">No bespoke jobs yet</p>
                 {!readOnly && (
-                  <a href={`${basePath}/bespoke/new`} className="mt-1 inline-block text-sm font-medium text-[#8B7355] hover:underline">
+                  <a href={`${basePath}/bespoke/new`} className="mt-1 inline-block text-sm font-medium text-amber-700 hover:underline">
                     Create first job →
                   </a>
                 )}

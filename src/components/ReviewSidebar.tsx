@@ -79,7 +79,7 @@ export default function ReviewSidebar({ user, isSuperAdmin, websiteConfig, busin
     <aside className="w-64 h-screen bg-[#1A1A1A] flex flex-col fixed left-0 top-0 z-30">
       {/* Logo */}
       <div className="px-5 py-5 flex items-center gap-2.5 border-b border-white/[0.06]">
-        <div className="w-7 h-7 rounded bg-[#8B7355] flex items-center justify-center flex-shrink-0">
+        <div className="w-7 h-7 rounded bg-amber-700 flex items-center justify-center flex-shrink-0">
           <Gem size={14} color="white" />
         </div>
         <div className="flex flex-col">
@@ -110,7 +110,7 @@ export default function ReviewSidebar({ user, isSuperAdmin, websiteConfig, busin
                     >
                       <item.icon
                         size={15}
-                        className={`flex-shrink-0 ${isActive ? 'text-[#8B7355]' : 'text-stone-500'}`}
+                        className={`flex-shrink-0 ${isActive ? 'text-amber-700' : 'text-stone-500'}`}
                       />
                       <span className="flex-1">{item.name}</span>
                       {item.name === 'Repairs' && readyRepairsCount > 0 && (

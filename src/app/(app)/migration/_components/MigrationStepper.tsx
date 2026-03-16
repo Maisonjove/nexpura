@@ -33,7 +33,7 @@ export function MigrationStepper({ sessionId, currentStep, completedSteps = [] }
                   href={`/migration/${sessionId}/${step.slug}`}
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
                     isComplete
-                      ? 'bg-[#B45309] text-white hover:bg-amber-700'
+                      ? 'bg-amber-700 text-white hover:bg-amber-700'
                       : isCurrent
                       ? 'bg-stone-900 text-white'
                       : 'bg-stone-100 text-stone-400 border border-stone-200'
@@ -54,7 +54,7 @@ export function MigrationStepper({ sessionId, currentStep, completedSteps = [] }
               )}
               <span
                 className={`text-xs mt-1 font-medium ${
-                  isCurrent ? 'text-stone-900' : isComplete ? 'text-[#B45309]' : 'text-stone-400'
+                  isCurrent ? 'text-stone-900' : isComplete ? 'text-amber-700' : 'text-stone-400'
                 }`}
               >
                 {step.label}
@@ -63,7 +63,7 @@ export function MigrationStepper({ sessionId, currentStep, completedSteps = [] }
             {idx < STEPS.length - 1 && (
               <div
                 className={`h-px w-8 mx-1 mb-4 ${
-                  step.id < currentStep ? 'bg-[#B45309]' : 'bg-stone-200'
+                  step.id < currentStep ? 'bg-amber-700' : 'bg-stone-200'
                 }`}
               />
             )}

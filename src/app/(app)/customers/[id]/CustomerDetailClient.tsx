@@ -204,7 +204,7 @@ export default function CustomerDetailClient({
         {!readOnly && (
           <div className="flex gap-3">
             <button onClick={() => setShowArchiveModal(true)} className="px-4 py-2 text-sm font-medium border border-red-100 text-red-600 rounded-xl hover:bg-red-50 transition-colors">Archive</button>
-            <Link href={`/customers/${customer.id}/edit`} className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7A6347] transition-shadow shadow-sm">Edit Profile</Link>
+            <Link href={`/customers/${customer.id}/edit`} className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-xl hover:bg-amber-800 transition-shadow shadow-sm">Edit Profile</Link>
           </div>
         )}
       </div>
@@ -212,7 +212,7 @@ export default function CustomerDetailClient({
       {/* Hero Card */}
       <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
         <div className="flex flex-col md:flex-row gap-8 items-start">
-          <div className="w-20 h-20 rounded-2xl bg-[#8B7355]/5 flex items-center justify-center border border-[#8B7355]/10 text-2xl font-bold text-[#8B7355] flex-shrink-0">
+          <div className="w-20 h-20 rounded-2xl bg-amber-700/5 flex items-center justify-center border border-amber-600/10 text-2xl font-bold text-amber-700 flex-shrink-0">
             {(customer.first_name?.[0] || "?")}{ (customer.last_name?.[0] || "")}
           </div>
           <div className="flex-1 min-w-0">
@@ -236,7 +236,7 @@ export default function CustomerDetailClient({
             {(customer.preferred_metal || customer.ring_size || customer.allergies || customer.gold_preference || customer.wrist_size) && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {customer.preferred_metal && (
-                  <span className="inline-flex items-center gap-1 text-xs bg-[#8B7355]/10 text-[#8B7355] border border-[#8B7355]/20 px-2.5 py-1 rounded-full font-medium">
+                  <span className="inline-flex items-center gap-1 text-xs bg-amber-700/10 text-amber-700 border border-amber-600/20 px-2.5 py-1 rounded-full font-medium">
                     💎 {customer.preferred_metal}
                   </span>
                 )}
@@ -266,8 +266,8 @@ export default function CustomerDetailClient({
 
           {/* Stats column */}
           <div className="flex flex-col gap-3 flex-shrink-0 min-w-[160px]">
-            <div className="bg-[#8B7355]/5 rounded-2xl p-4 border border-[#8B7355]/10">
-              <p className="text-[10px] font-bold text-[#8B7355] uppercase tracking-widest mb-1">Store Credit</p>
+            <div className="bg-amber-700/5 rounded-2xl p-4 border border-amber-600/10">
+              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1">Store Credit</p>
               <p className="text-2xl font-bold text-stone-900">{fmt(customer.store_credit || 0)}</p>
             </div>
             <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
@@ -379,14 +379,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Repair History</h2>
-              {!readOnly && <Link href={`/repairs/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Repair</Link>}
+              {!readOnly && <Link href={`/repairs/new?customer_id=${customer.id}`} className="text-sm font-semibold text-amber-700 hover:underline">+ New Repair</Link>}
             </div>
             {repairs.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🔧</div>
                 <p className="text-stone-500 font-medium">No repairs yet</p>
                 <p className="text-stone-400 text-sm mt-1">Repairs booked for this customer will appear here.</p>
-                {!readOnly && <Link href={`/repairs/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Log first repair →</Link>}
+                {!readOnly && <Link href={`/repairs/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-amber-700 hover:underline">Log first repair →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -412,14 +412,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Bespoke Jobs</h2>
-              {!readOnly && <Link href={`/bespoke/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Job</Link>}
+              {!readOnly && <Link href={`/bespoke/new?customer_id=${customer.id}`} className="text-sm font-semibold text-amber-700 hover:underline">+ New Job</Link>}
             </div>
             {bespokeJobs.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">💎</div>
                 <p className="text-stone-500 font-medium">No bespoke jobs yet</p>
                 <p className="text-stone-400 text-sm mt-1">Custom jewellery projects for this customer will appear here.</p>
-                {!readOnly && <Link href={`/bespoke/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Start a bespoke job →</Link>}
+                {!readOnly && <Link href={`/bespoke/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-amber-700 hover:underline">Start a bespoke job →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -445,14 +445,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Quotes</h2>
-              {!readOnly && <Link href={`/quotes/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Quote</Link>}
+              {!readOnly && <Link href={`/quotes/new?customer_id=${customer.id}`} className="text-sm font-semibold text-amber-700 hover:underline">+ New Quote</Link>}
             </div>
             {quotes.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📋</div>
                 <p className="text-stone-500 font-medium">No quotes yet</p>
                 <p className="text-stone-400 text-sm mt-1">Quotes sent to this customer will appear here.</p>
-                {!readOnly && <Link href={`/quotes/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Create a quote →</Link>}
+                {!readOnly && <Link href={`/quotes/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-amber-700 hover:underline">Create a quote →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -478,14 +478,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Invoices</h2>
-              {!readOnly && <Link href={`/invoices/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Invoice</Link>}
+              {!readOnly && <Link href={`/invoices/new?customer_id=${customer.id}`} className="text-sm font-semibold text-amber-700 hover:underline">+ New Invoice</Link>}
             </div>
             {invoices.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🧾</div>
                 <p className="text-stone-500 font-medium">No invoices yet</p>
                 <p className="text-stone-400 text-sm mt-1">Invoices issued to this customer will appear here.</p>
-                {!readOnly && <Link href={`/invoices/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Create an invoice →</Link>}
+                {!readOnly && <Link href={`/invoices/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-amber-700 hover:underline">Create an invoice →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -517,14 +517,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Sales</h2>
-              {!readOnly && <Link href={`/sales/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Sale</Link>}
+              {!readOnly && <Link href={`/sales/new?customer_id=${customer.id}`} className="text-sm font-semibold text-amber-700 hover:underline">+ New Sale</Link>}
             </div>
             {sales.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🛍️</div>
                 <p className="text-stone-500 font-medium">No sales yet</p>
                 <p className="text-stone-400 text-sm mt-1">Sales for this customer will appear here.</p>
-                {!readOnly && <Link href={`/sales/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Create a sale →</Link>}
+                {!readOnly && <Link href={`/sales/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-amber-700 hover:underline">Create a sale →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -571,14 +571,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Digital Passports</h2>
-              {!readOnly && <Link href={`/passports/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Passport</Link>}
+              {!readOnly && <Link href={`/passports/new?customer_id=${customer.id}`} className="text-sm font-semibold text-amber-700 hover:underline">+ New Passport</Link>}
             </div>
             {passports.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🔏</div>
                 <p className="text-stone-500 font-medium">No passports yet</p>
                 <p className="text-stone-400 text-sm mt-1">Digital jewellery passports for this customer will appear here.</p>
-                {!readOnly && <Link href={`/passports/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Issue a passport →</Link>}
+                {!readOnly && <Link href={`/passports/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-amber-700 hover:underline">Issue a passport →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -687,7 +687,7 @@ export default function CustomerDetailClient({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold uppercase tracking-wide text-[#8B7355]">
+                          <span className="text-xs font-bold uppercase tracking-wide text-amber-700">
                             {typeLabels[comm.type] ?? comm.type.replace(/_/g, " ")}
                           </span>
                           {comm.reference_type && (
@@ -722,10 +722,10 @@ export default function CustomerDetailClient({
                     value={newNote}
                     onChange={e => setNewNote(e.target.value)}
                     placeholder="Type a note about this customer..."
-                    className="w-full h-32 p-4 rounded-2xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-[#8B7355] resize-none text-sm"
+                    className="w-full h-32 p-4 rounded-2xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-amber-600 resize-none text-sm"
                   />
                   <div className="flex justify-end">
-                    <button disabled={noteSubmitting || !newNote.trim()} className="px-6 py-2.5 bg-[#8B7355] text-white rounded-xl font-bold disabled:opacity-50 text-sm">
+                    <button disabled={noteSubmitting || !newNote.trim()} className="px-6 py-2.5 bg-amber-700 text-white rounded-xl font-bold disabled:opacity-50 text-sm">
                       Save Note
                     </button>
                   </div>

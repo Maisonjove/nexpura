@@ -107,13 +107,13 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
   const getStageBadge = (stage: string) => {
     switch (stage.toLowerCase()) {
       case "enquiry": return <Badge variant="outline" className="bg-stone-100 text-stone-600 border-stone-200">Enquiry</Badge>;
-      case "consultation": return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Consultation</Badge>;
+      case "consultation": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Consultation</Badge>;
       case "deposit_paid": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Deposit Paid</Badge>;
       case "stone_sourcing": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Stone Sourcing</Badge>;
       case "cad": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">CAD</Badge>;
-      case "approval": return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Approval</Badge>;
-      case "setting": return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Setting</Badge>;
-      case "polish": return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Polish</Badge>;
+      case "approval": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Approval</Badge>;
+      case "setting": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Setting</Badge>;
+      case "polish": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Polish</Badge>;
       case "ready": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Ready</Badge>;
       case "collected": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Collected</Badge>;
       case "cancelled": return <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">Cancelled</Badge>;
@@ -142,7 +142,7 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
               <button
                 onClick={handleBulkNotify}
                 disabled={notifying}
-                className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 <Bell className="w-4 h-4" />
                 {notifying ? "Sending…" : `Notify ${readyJobs.length} Customer${readyJobs.length !== 1 ? "s" : ""}`}
@@ -190,7 +190,7 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
               Notify All Ready
             </button>
           )}
-          <Link href="/bespoke/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-10 px-4 py-2">
+          <Link href="/bespoke/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
             <Plus className="w-4 h-4 mr-2" /> New Job
           </Link>
         </div>
@@ -209,7 +209,7 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
               }}
               className={`pb-3 px-1 text-sm transition-colors flex-shrink-0 ${
                 isActive
-                  ? "border-b-2 border-[#8B7355] text-stone-900 font-medium"
+                  ? "border-b-2 border-amber-600 text-stone-900 font-medium"
                   : "text-stone-400 hover:text-stone-600"
               }`}
             >
@@ -265,7 +265,7 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
                     </TableCell>
                     <TableCell className="text-sm text-stone-700">—</TableCell>
                     <TableCell>
-                      <ArrowRight className="w-4 h-4 text-stone-300 hover:text-[#8B7355]" />
+                      <ArrowRight className="w-4 h-4 text-stone-300 hover:text-amber-700" />
                     </TableCell>
                   </TableRow>
                 );

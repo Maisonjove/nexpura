@@ -70,7 +70,7 @@ export default function RefundDetailClient({ refund, items }: Props) {
           <p className="text-sm text-stone-700">This refund was processed against an original sale</p>
           <Link
             href={`/sales/${refund.original_sale_id}`}
-            className="text-sm text-[#8B7355] font-semibold hover:underline"
+            className="text-sm text-amber-700 font-semibold hover:underline"
           >
             View Original Sale →
           </Link>

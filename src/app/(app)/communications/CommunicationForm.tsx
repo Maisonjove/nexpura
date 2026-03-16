@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { sendCommunication } from "./actions";
 
 const inputCls =
-  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600";
 
 const selectCls =
-  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -63,7 +63,7 @@ export default function CommunicationForm() {
     return (
       <div className="bg-white border border-stone-200 rounded-xl p-10 text-center shadow-sm">
         <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-stone-100 flex items-center justify-center">
-          <svg className="w-6 h-6 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
@@ -164,7 +164,7 @@ export default function CommunicationForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
         >
           {isPending ? "Sending…" : type === "note" ? "Save Note" : "Send Message"}
         </button>

@@ -46,8 +46,8 @@ export default async function ReviewWorkshopPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="nx-card">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
-              <ClipboardList className="text-blue-600" size={24} />
+            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+              <ClipboardList className="text-amber-700" size={24} />
             </div>
             <div>
               <p className="nx-label">Total Active</p>
@@ -90,14 +90,14 @@ export default async function ReviewWorkshopPage() {
               <Wrench size={18} className="text-stone-400" />
               Active Repairs
             </h2>
-            <Link href="/review/repairs" className="text-xs text-[#8B7355] font-medium hover:underline">View All</Link>
+            <Link href="/review/repairs" className="text-xs text-amber-700 font-medium hover:underline">View All</Link>
           </div>
           <div className="divide-y divide-stone-100">
             {activeRepairs && activeRepairs.length > 0 ? (
               activeRepairs.slice(0, 8).map((repair) => (
                 <div key={repair.id} className="px-6 py-4 hover:bg-stone-50 transition-colors flex justify-between items-center">
                   <div>
-                    <Link href={`/review/repairs/${repair.id}`} className="text-sm font-medium text-stone-900 hover:text-[#8B7355]">
+                    <Link href={`/review/repairs/${repair.id}`} className="text-sm font-medium text-stone-900 hover:text-amber-700">
                       {repair.item_description}
                     </Link>
                     <p className="text-xs text-stone-400 mt-0.5">
@@ -126,14 +126,14 @@ export default async function ReviewWorkshopPage() {
               <CheckCircle2 size={18} className="text-stone-400" />
               Bespoke Production
             </h2>
-            <Link href="/review/bespoke" className="text-xs text-[#8B7355] font-medium hover:underline">View All</Link>
+            <Link href="/review/bespoke" className="text-xs text-amber-700 font-medium hover:underline">View All</Link>
           </div>
           <div className="divide-y divide-stone-100">
             {activeJobs && activeJobs.length > 0 ? (
               activeJobs.slice(0, 8).map((job) => (
                 <div key={job.id} className="px-6 py-4 hover:bg-stone-50 transition-colors flex justify-between items-center">
                   <div>
-                    <Link href={`/review/bespoke/${job.id}`} className="text-sm font-medium text-stone-900 hover:text-[#8B7355]">
+                    <Link href={`/review/bespoke/${job.id}`} className="text-sm font-medium text-stone-900 hover:text-amber-700">
                       {job.title}
                     </Link>
                     <p className="text-xs text-stone-400 mt-0.5">
@@ -141,7 +141,7 @@ export default async function ReviewWorkshopPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#8B7355]/10 text-[#8B7355] border border-[#8B7355]/20">
+                    <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-700/10 text-amber-700 border border-amber-600/20">
                       {job.stage}
                     </span>
                     {job.due_date && (

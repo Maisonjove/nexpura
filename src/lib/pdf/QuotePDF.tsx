@@ -8,7 +8,7 @@ import {
   Image,
 } from "@react-pdf/renderer";
 
-const BRONZE = "#8B7355";
+const BRONZE = "amber-700";
 const DARK = "#1A1A1A";
 const LIGHT_BG = "#FAFAF9";
 const PLATINUM = "#E5E2DE";

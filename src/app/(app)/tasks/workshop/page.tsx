@@ -7,14 +7,14 @@ export const metadata = { title: "Workshop Tasks — Nexpura" };
 
 const STATUS_COLOURS: Record<string, string> = {
   pending: "bg-stone-100 text-stone-600",
-  in_progress: "bg-blue-50 text-blue-700",
+  in_progress: "bg-amber-50 text-amber-700",
   completed: "bg-green-50 text-green-700",
   cancelled: "bg-red-50 text-red-400",
 };
 
 const PRIORITY_COLOURS: Record<string, string> = {
   low: "bg-stone-100 text-stone-500",
-  medium: "bg-blue-50 text-blue-600",
+  medium: "bg-amber-50 text-amber-700",
   high: "bg-amber-50 text-amber-700",
   urgent: "bg-red-50 text-red-600",
 };
@@ -58,7 +58,7 @@ export default async function WorkshopTasksPage() {
           <h1 className="text-2xl font-semibold text-stone-900">Workshop Tasks</h1>
           <p className="text-stone-500 mt-1 text-sm">Tasks linked to repairs and bespoke jobs</p>
         </div>
-        <Link href="/tasks" className="text-sm text-[#8B7355] hover:underline">← All Tasks</Link>
+        <Link href="/tasks" className="text-sm text-amber-700 hover:underline">← All Tasks</Link>
       </div>
 
       {grouped.size === 0 ? (
@@ -78,7 +78,7 @@ export default async function WorkshopTasksPage() {
               <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
                 <div>
                   <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">{label}</span>
-                  <Link href={href} className="ml-2 text-sm font-semibold text-[#8B7355] hover:underline font-mono">
+                  <Link href={href} className="ml-2 text-sm font-semibold text-amber-700 hover:underline font-mono">
                     {linkedId?.slice(0, 8)}… ↗
                   </Link>
                 </div>

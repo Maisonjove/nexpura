@@ -68,7 +68,7 @@ function SectionPreview({ section }: { section: SiteSection }) {
       <div style={{ ...bgStyle, background: c.background_image_url ? `linear-gradient(rgba(0,0,0,${(c.overlay_opacity as number) || 0.4}), rgba(0,0,0,${(c.overlay_opacity as number) || 0.4})), url(${c.background_image_url as string}) center/cover` : "#1c1917", color: "#fff", minHeight: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", borderRadius: 8, padding: "48px 24px" }}>
         <h2 style={{ fontSize: 28, fontFamily: "Georgia, serif", margin: "0 0 12px" }}>{heroHeading}</h2>
         <p style={{ opacity: 0.85, margin: "0 0 20px", fontSize: 16 }}>{heroSubheading}</p>
-        {heroCta && <span style={{ background: "#8B7355", color: "#fff", padding: "10px 24px", borderRadius: 6, fontSize: 14 }}>{heroCta}</span>}
+        {heroCta && <span style={{ background: "amber-700", color: "#fff", padding: "10px 24px", borderRadius: 6, fontSize: 14 }}>{heroCta}</span>}
       </div>
     );
   }
@@ -108,7 +108,7 @@ function SectionEditor({ section, onChange }: { section: SiteSection; onChange: 
     onChange({ ...section, styles: { ...stl, [field]: value } });
   }
 
-  const inputCls = "w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]";
+  const inputCls = "w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600";
   const labelCls = "block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5";
 
   return (
@@ -272,9 +272,9 @@ function AIEditPanel({ section, onApply }: { section: SiteSection; onApply: (con
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="e.g. Make the heading more luxurious and elegant"
-        className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] resize-none mb-2"
+        className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none mb-2"
       />
-      <button onClick={handleAI} disabled={loading || !prompt.trim()} className="w-full px-3 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors">
+      <button onClick={handleAI} disabled={loading || !prompt.trim()} className="w-full px-3 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors">
         {loading ? "Generating…" : "Generate Suggestion"}
       </button>
       {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
@@ -382,7 +382,7 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
               <div
                 key={section.id}
                 onClick={() => setSelectedId(section.id)}
-                className={`group flex items-center gap-2 px-3 py-2.5 cursor-pointer transition-colors ${isSelected ? "bg-stone-100 border-r-2 border-[#8B7355]" : "hover:bg-stone-50"}`}
+                className={`group flex items-center gap-2 px-3 py-2.5 cursor-pointer transition-colors ${isSelected ? "bg-stone-100 border-r-2 border-amber-600" : "hover:bg-stone-50"}`}
               >
                 <span className="text-base flex-shrink-0">{typeInfo?.icon || "📄"}</span>
                 <span className="flex-1 text-xs font-medium text-stone-700 truncate">{typeInfo?.label || section.section_type}</span>
@@ -399,7 +399,7 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
         <div className="border-t border-stone-200 p-3">
           <button
             onClick={() => setShowAddSection(true)}
-            className="w-full py-2 border-2 border-dashed border-stone-300 text-stone-500 text-xs font-medium rounded-lg hover:border-[#8B7355] hover:text-[#8B7355] transition-colors"
+            className="w-full py-2 border-2 border-dashed border-stone-300 text-stone-500 text-xs font-medium rounded-lg hover:border-amber-600 hover:text-amber-700 transition-colors"
           >
             + Add Section
           </button>
@@ -413,7 +413,7 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
           >
             {saving ? "Saving…" : saved ? "✓ Saved" : "Save Page"}
           </button>
@@ -430,7 +430,7 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
               <div
                 key={section.id}
                 onClick={() => setSelectedId(section.id)}
-                className={`cursor-pointer transition-all ${selectedId === section.id ? "ring-2 ring-inset ring-[#8B7355]" : "hover:ring-1 hover:ring-inset hover:ring-stone-300"}`}
+                className={`cursor-pointer transition-all ${selectedId === section.id ? "ring-2 ring-inset ring-[amber-700]" : "hover:ring-1 hover:ring-inset hover:ring-stone-300"}`}
               >
                 <SectionPreview section={section} />
               </div>
@@ -467,7 +467,7 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
                 <button
                   key={t.type}
                   onClick={() => handleAddSection(t.type)}
-                  className="flex items-center gap-2 px-3 py-2.5 border border-stone-200 rounded-lg hover:border-[#8B7355] hover:bg-[#8B7355]/5 text-left transition-colors"
+                  className="flex items-center gap-2 px-3 py-2.5 border border-stone-200 rounded-lg hover:border-amber-600 hover:bg-amber-700/5 text-left transition-colors"
                 >
                   <span className="text-base">{t.icon}</span>
                   <span className="text-xs font-medium text-stone-700">{t.label}</span>

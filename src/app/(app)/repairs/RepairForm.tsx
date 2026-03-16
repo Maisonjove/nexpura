@@ -122,10 +122,10 @@ function FieldLabel({
 }
 
 const inputCls =
-  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600";
 
 const selectCls =
-  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600";
 
 // ────────────────────────────────────────────────────────────────
 // Customer Search
@@ -156,7 +156,7 @@ function CustomerSearch({
     <div className="relative">
       <input type="hidden" name="customer_id" value={selected?.id || ""} />
       {selected ? (
-        <div className="flex items-center justify-between px-3 py-2 bg-white border border-[#8B7355]/40 rounded-lg">
+        <div className="flex items-center justify-between px-3 py-2 bg-white border border-amber-600/40 rounded-lg">
           <span className="text-sm font-medium text-stone-900">
             {selected.full_name}
           </span>
@@ -224,7 +224,7 @@ function CustomerSearch({
             Customer not listed?{" "}
             <a
               href={`/customers/new${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
-              className="text-[#8B7355] hover:underline"
+              className="text-amber-700 hover:underline"
             >
               Add a new customer →
             </a>
@@ -492,7 +492,7 @@ export default function RepairForm({ customers, mode, repair, preselectedCustome
                 type="checkbox"
                 value="true"
                 defaultChecked={repair?.deposit_paid}
-                className="w-4 h-4 rounded border-stone-200 text-[#8B7355] focus:ring-[#8B7355]"
+                className="w-4 h-4 rounded border-stone-200 text-amber-700 focus:ring-amber-600"
               />
               <label
                 htmlFor="deposit_paid"
@@ -570,7 +570,7 @@ export default function RepairForm({ customers, mode, repair, preselectedCustome
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
         >
           {isPending
             ? mode === "create"

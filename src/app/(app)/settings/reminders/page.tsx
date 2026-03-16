@@ -18,16 +18,16 @@ export default function RemindersPage() {
           <h1 className="text-2xl font-semibold text-stone-900">Service Reminders</h1>
           <p className="text-sm text-stone-500 mt-0.5">Automated notifications sent to customers based on events or dates</p>
         </div>
-        <button className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347]">
+        <button className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800">
           + Create Reminder
         </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
         {reminders.map(rem => (
-          <div key={rem.id} className="bg-white rounded-xl border border-stone-200 p-6 flex items-center gap-6 shadow-sm hover:border-[#8B7355]/30 transition-colors">
+          <div key={rem.id} className="bg-white rounded-xl border border-stone-200 p-6 flex items-center gap-6 shadow-sm hover:border-amber-600/30 transition-colors">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-              rem.status === "Active" ? "bg-[#8B7355]/10 text-[#8B7355]" : "bg-stone-100 text-stone-400"
+              rem.status === "Active" ? "bg-amber-700/10 text-amber-700" : "bg-stone-100 text-stone-400"
             }`}>
               <rem.icon size={24} />
             </div>
@@ -56,7 +56,7 @@ export default function RemindersPage() {
       {/* Template Editor Preview (Visual) */}
       <div className="bg-white rounded-2xl border border-stone-200 p-8 space-y-6">
         <h2 className="text-lg font-semibold text-stone-900 flex items-center gap-2">
-          <Mail size={20} className="text-[#8B7355]" />
+          <Mail size={20} className="text-amber-700" />
           Template: Birthday Email
         </h2>
         <div className="space-y-4">
@@ -70,11 +70,11 @@ export default function RemindersPage() {
           </div>
           <div className="aspect-video w-full bg-stone-50 rounded-xl border border-stone-200 p-6 overflow-auto">
             <div className="max-w-md mx-auto bg-white border border-stone-100 shadow-sm p-8 text-center space-y-4">
-              <div className="text-2xl font-serif text-[#8B7355]">Happy Birthday, {"{first_name}"}!</div>
+              <div className="text-2xl font-serif text-amber-700">Happy Birthday, {"{first_name}"}!</div>
               <p className="text-sm text-stone-600">
                 We hope your special day is as radiant as you are. To celebrate, we've added a special gift to your account...
               </p>
-              <div className="py-4 px-8 border-2 border-dashed border-[#8B7355]/30 text-[#8B7355] font-bold tracking-widest">
+              <div className="py-4 px-8 border-2 border-dashed border-amber-600/30 text-amber-700 font-bold tracking-widest">
                 BDAY2024
               </div>
               <p className="text-[10px] text-stone-400">Valid for 30 days. One use per customer.</p>

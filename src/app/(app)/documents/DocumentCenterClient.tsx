@@ -37,7 +37,7 @@ function StatusPill({ status }: { status: string }) {
       ? "bg-stone-100 text-stone-500"
       : s === "cancelled" || s === "voided"
       ? "bg-red-50 text-red-500"
-      : "bg-[#8B7355]/10 text-[#8B7355]";
+      : "bg-amber-700/10 text-amber-700";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {s.replace(/_/g, " ")}
@@ -107,7 +107,7 @@ export default function DocumentCenterClient({ invoices, quotes, repairs, bespok
               onClick={() => setActiveTab(type.id)}
               className={`p-3 rounded-xl border-2 text-center transition-all ${
                 activeTab === type.id
-                  ? "border-[#8B7355] bg-[#8B7355]/5"
+                  ? "border-amber-600 bg-amber-700/5"
                   : "border-stone-200 bg-white hover:border-stone-300"
               }`}
             >
@@ -128,7 +128,7 @@ export default function DocumentCenterClient({ invoices, quotes, repairs, bespok
               onClick={() => setActiveTab(type.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
                 activeTab === type.id
-                  ? "border-b-2 border-[#8B7355] text-[#8B7355]"
+                  ? "border-b-2 border-amber-600 text-amber-700"
                   : "text-stone-500 hover:text-stone-900"
               }`}
             >
@@ -240,7 +240,7 @@ export default function DocumentCenterClient({ invoices, quotes, repairs, bespok
         <p className="text-sm text-stone-500">
           💡 <strong>Tip:</strong> PDFs open in a new tab — use your browser&apos;s print dialog to print or save to your device.
           For thermal receipts, configure your printer in{" "}
-          <Link href="/settings/printing" className="text-[#8B7355] hover:underline">Printing Settings</Link>.
+          <Link href="/settings/printing" className="text-amber-700 hover:underline">Printing Settings</Link>.
         </p>
       </div>
     </div>

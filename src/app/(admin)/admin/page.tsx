@@ -20,9 +20,9 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-stone-100 text-[#8B7355]"
+      ? "bg-stone-100 text-amber-700"
       : s === "trialing"
-      ? "bg-[#8B7355]/10 text-[#8B7355]"
+      ? "bg-amber-700/10 text-amber-700"
       : s === "past_due"
       ? "bg-yellow-500/10 text-yellow-700"
       : "bg-red-500/10 text-red-600";
@@ -37,9 +37,9 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
     p === "pro"
-      ? "bg-stone-100 text-[#8B7355]"
+      ? "bg-stone-100 text-amber-700"
       : p === "ultimate"
-      ? "bg-[#8B7355]/15 text-[#8B7355]"
+      ? "bg-amber-700/15 text-amber-700"
       : "bg-stone-200 text-stone-500";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
@@ -118,7 +118,7 @@ export default async function AdminDashboardPage() {
             }`}
           >
             <p className="text-xs text-stone-500 font-medium uppercase tracking-wide">{stat.label}</p>
-            <p className={`text-2xl font-semibold font-semibold mt-1 ${stat.accent ? "text-[#8B7355]" : "text-stone-900"}`}>
+            <p className={`text-2xl font-semibold font-semibold mt-1 ${stat.accent ? "text-amber-700" : "text-stone-900"}`}>
               {stat.value}
             </p>
           </div>
@@ -129,7 +129,7 @@ export default async function AdminDashboardPage() {
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
           <h2 className="text-base font-semibold text-stone-900 font-semibold">Recent Signups</h2>
-          <Link href="/admin/tenants" className="text-sm text-[#8B7355] hover:underline">
+          <Link href="/admin/tenants" className="text-sm text-amber-700 hover:underline">
             View all →
           </Link>
         </div>
@@ -157,7 +157,7 @@ export default async function AdminDashboardPage() {
                   return (
                     <tr key={tenant.id} className="hover:bg-stone-50/40 transition-colors">
                       <td className="px-6 py-4 font-medium text-stone-900">
-                        <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-[#8B7355]">
+                        <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-amber-700">
                           {tenant.name}
                         </Link>
                       </td>

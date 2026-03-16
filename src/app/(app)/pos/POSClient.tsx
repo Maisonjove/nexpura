@@ -407,8 +407,8 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
             </div>
             {saleResult.paymentMethod === "layby" ? (
               <>
-                <h2 className="text-xl font-bold text-blue-800">Layby Created ✅</h2>
-                <p className="text-sm font-mono text-blue-700 mt-1 font-semibold">{saleResult.saleNumber}</p>
+                <h2 className="text-xl font-bold text-stone-800">Layby Created ✅</h2>
+                <p className="text-sm font-mono text-amber-700 mt-1 font-semibold">{saleResult.saleNumber}</p>
                 <p className="text-sm text-stone-600 mt-2">
                   Deposit taken: <span className="font-bold text-stone-900">${(saleResult.depositAmount ?? 0).toFixed(2)}</span>
                 </p>
@@ -480,7 +480,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                   const finishedItem = (saleResult.cartSnapshot ?? []).find((c) => c.itemType === "finished_piece");
                   if (finishedItem) router.push(`/passports/new?inventory_item_id=${finishedItem.inventoryId}`);
                 }}
-                className="w-full py-3 bg-[#8B7355]/10 text-[#8B7355] rounded-xl font-medium hover:bg-[#8B7355]/20 transition-colors text-sm"
+                className="w-full py-3 bg-amber-700/10 text-amber-700 rounded-xl font-medium hover:bg-amber-700/20 transition-colors text-sm"
               >
                 🛡️ Issue Passport
               </button>
@@ -515,11 +515,11 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
               placeholder="Search inventory by name or SKU…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+              className="flex-1 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
             />
             <button
               onClick={() => setShowCameraScanner(true)}
-              className="px-3 py-2 border border-stone-200 rounded-xl text-stone-500 hover:border-[#8B7355] hover:text-[#8B7355] transition-colors text-lg"
+              className="px-3 py-2 border border-stone-200 rounded-xl text-stone-500 hover:border-amber-600 hover:text-amber-700 transition-colors text-lg"
               title="Scan barcode with camera"
             >
               📷
@@ -533,7 +533,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                 onClick={() => setCategoryFilter(cat)}
                 className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                   categoryFilter === cat
-                    ? "bg-[#8B7355] text-white"
+                    ? "bg-amber-700 text-white"
                     : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                 }`}
               >
@@ -553,7 +553,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                 <button
                   key={item.id}
                   onClick={() => addToCart(item)}
-                  className="bg-white border border-stone-200 rounded-xl p-3 text-left hover:border-[#8B7355] hover:shadow-sm transition-all group"
+                  className="bg-white border border-stone-200 rounded-xl p-3 text-left hover:border-amber-600 hover:shadow-sm transition-all group"
                 >
                   <div className="aspect-square w-full mb-2 rounded-lg overflow-hidden bg-stone-100 flex items-center justify-center">
                     {item.primary_image ? (
@@ -569,7 +569,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                   </div>
                   <p className="text-xs font-semibold text-stone-900 truncate">{item.name}</p>
                   {item.sku && <p className="text-[10px] text-stone-400 font-mono">{item.sku}</p>}
-                  <p className="text-sm font-bold text-[#8B7355] mt-1">${item.retail_price.toFixed(2)}</p>
+                  <p className="text-sm font-bold text-amber-700 mt-1">${item.retail_price.toFixed(2)}</p>
                   <p className="text-[10px] text-stone-400">Qty: {item.quantity}</p>
                 </button>
               ))}
@@ -585,7 +585,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
           <h2 className="font-semibold text-stone-900">
             Cart
             {cart.length > 0 && (
-              <span className="ml-2 bg-[#8B7355] text-white text-xs rounded-full px-2 py-0.5">
+              <span className="ml-2 bg-amber-700 text-white text-xs rounded-full px-2 py-0.5">
                 {cart.reduce((s, c) => s + c.quantity, 0)}
               </span>
             )}
@@ -660,7 +660,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
               }}
               onFocus={() => setShowCustomerDropdown(true)}
               onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
-              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#8B7355]"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
             />
             {showCustomerDropdown && filteredCustomers.length > 0 && !selectedCustomer && (
               <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-32 overflow-y-auto z-10">
@@ -698,7 +698,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
               placeholder="Discount"
               value={discountValue}
               onChange={(e) => setDiscountValue(e.target.value)}
-              className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#8B7355]"
+              className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
             />
           </div>
 
@@ -731,7 +731,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
           <button
             onClick={() => { setError(null); setShowPaymentModal(true); }}
             disabled={cart.length === 0}
-            className="w-full py-3 bg-[#8B7355] text-white rounded-xl font-semibold text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-amber-700 text-white rounded-xl font-semibold text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             title={cart.length === 0 ? "Add items to cart first" : undefined}
           >
             {cart.length === 0 ? "Add items to charge" : `Charge $${total.toFixed(2)}`}
@@ -756,7 +756,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                   onClick={() => setPaymentTab(tab)}
                   className={`flex-1 min-w-[80px] py-3 text-[10px] font-bold uppercase tracking-widest transition-colors ${
                     paymentTab === tab
-                      ? "border-b-2 border-[#8B7355] text-[#8B7355]"
+                      ? "border-b-2 border-amber-600 text-amber-700"
                       : "text-stone-400 hover:text-stone-900"
                   }`}
                 >
@@ -798,7 +798,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                       <button
                         onClick={() => handleCharge("store_credit")}
                         disabled={isPending || (selectedCustomer.store_credit || 0) < total}
-                        className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-bold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50 shadow-sm"
+                        className="w-full py-4 bg-amber-700 text-white rounded-xl font-bold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50 shadow-sm"
                       >
                         {isPending ? "Processing…" : "Pay with Store Credit"}
                       </button>
@@ -811,7 +811,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                 <button
                   onClick={() => handleCharge("card")}
                   disabled={isPending}
-                  className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                  className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                 >
                   {isPending ? "Processing…" : "Record Card Payment"}
                 </button>
@@ -828,7 +828,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                       placeholder="0.00"
                       value={cashTendered}
                       onChange={(e) => setCashTendered(e.target.value)}
-                      className="w-full border border-stone-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                      className="w-full border border-stone-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-600"
                     />
                   </div>
                   {parseFloat(cashTendered) >= total && (
@@ -840,7 +840,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                   <button
                     onClick={() => handleCharge("cash")}
                     disabled={isPending || (parseFloat(cashTendered) || 0) < total}
-                    className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                    className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                   >
                     {isPending ? "Processing…" : "Complete Cash Sale"}
                   </button>
@@ -879,14 +879,14 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                         <label className="block text-xs text-stone-500 mb-1">Card amount</label>
                         <input type="number" min="0" step="0.01" placeholder="0.00" value={splitCard}
                           onChange={(e) => setSplitCard(e.target.value)}
-                          className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                          className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-600"
                         />
                       </div>
                       <div>
                         <label className="block text-xs text-stone-500 mb-1">Cash amount</label>
                         <input type="number" min="0" step="0.01" placeholder="0.00" value={splitCash}
                           onChange={(e) => setSplitCash(e.target.value)}
-                          className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                          className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-600"
                         />
                       </div>
                       {(parseFloat(splitCard) || 0) + (parseFloat(splitCash) || 0) !== total && (
@@ -908,7 +908,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                             placeholder="Enter voucher code…"
                             value={splitVoucherCode}
                             onChange={(e) => { setSplitVoucherCode(e.target.value.toUpperCase()); setSplitVoucherData(null); setSplitVoucherError(null); }}
-                            className="flex-1 border border-stone-200 rounded-xl px-4 py-3 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                            className="flex-1 border border-stone-200 rounded-xl px-4 py-3 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-amber-600"
                           />
                           <button
                             onClick={handleSplitVoucherLookup}
@@ -946,7 +946,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                                 type="number" min="0" step="0.01" placeholder="0.00"
                                 value={splitMode === "voucher+card" ? splitCard : splitCash}
                                 onChange={(e) => splitMode === "voucher+card" ? setSplitCard(e.target.value) : setSplitCash(e.target.value)}
-                                className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                                className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-600"
                               />
                             </div>
                           )}
@@ -958,7 +958,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                   <button
                     onClick={handleSplitCharge}
                     disabled={isPending}
-                    className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                    className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                   >
                     {isPending ? "Processing…" : "Complete Split Payment"}
                   </button>
@@ -973,7 +973,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                       placeholder="Enter voucher code…"
                       value={voucherCode}
                       onChange={(e) => { setVoucherCode(e.target.value.toUpperCase()); setVoucherData(null); setVoucherError(null); }}
-                      className="flex-1 border border-stone-200 rounded-xl px-4 py-3 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                      className="flex-1 border border-stone-200 rounded-xl px-4 py-3 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-amber-600"
                     />
                     <button
                       onClick={handleVoucherLookup}
@@ -1000,7 +1000,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                   <button
                     onClick={handleVoucherCharge}
                     disabled={isPending || !voucherData || voucherData.balance < total}
-                    className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                    className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                   >
                     {isPending ? "Processing…" : "Redeem Voucher"}
                   </button>
@@ -1029,7 +1029,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                           placeholder="0.00"
                           value={laybyDeposit}
                           onChange={(e) => setLaybyDeposit(e.target.value)}
-                          className="w-full border border-stone-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                          className="w-full border border-stone-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-600"
                         />
                       </div>
                       {parseFloat(laybyDeposit) > 0 && parseFloat(laybyDeposit) < total && (
@@ -1087,7 +1087,7 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                           }
                         }}
                         disabled={isPending || !laybyDeposit || parseFloat(laybyDeposit) <= 0}
-                        className="w-full py-4 bg-[#8B7355] text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                        className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                       >
                         {isPending ? "Processing…" : "Create Layby"}
                       </button>

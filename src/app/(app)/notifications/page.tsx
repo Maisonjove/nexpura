@@ -28,7 +28,7 @@ const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
   repair_completed: { label: "Repair", colour: "bg-stone-100 text-stone-700" },
   repair_ready: { label: "Repair Ready", colour: "bg-green-50 text-green-700" },
   job_completed: { label: "Bespoke Job", colour: "bg-amber-50 text-amber-700" },
-  sale_created: { label: "Sale", colour: "bg-[#8B7355]/10 text-[#8B7355]" },
+  sale_created: { label: "Sale", colour: "bg-amber-700/10 text-amber-700" },
   invoice_paid: { label: "Invoice Paid", colour: "bg-green-50 text-green-700" },
   account_suspended: { label: "Account", colour: "bg-red-50 text-red-700" },
   grace_period_24h: { label: "Billing", colour: "bg-red-50 text-red-700" },
@@ -70,7 +70,7 @@ export default async function NotificationsPage() {
           <form action={markAllReadAction}>
             <button
               type="submit"
-              className="text-sm text-[#8B7355] hover:text-[#7A6347] font-medium transition-colors"
+              className="text-sm text-amber-700 hover:text-[amber-800] font-medium transition-colors"
             >
               Mark all as read
             </button>
@@ -95,7 +95,7 @@ export default async function NotificationsPage() {
               const inner = (
                 <div
                   className={`flex items-start gap-4 px-5 py-4 transition-colors ${
-                    !n.is_read ? "bg-[#8B7355]/5" : "hover:bg-stone-50/50"
+                    !n.is_read ? "bg-amber-700/5" : "hover:bg-stone-50/50"
                   }`}
                 >
                   <div className="flex-1 min-w-0">
@@ -104,7 +104,7 @@ export default async function NotificationsPage() {
                         {typeInfo.label}
                       </span>
                       {!n.is_read && (
-                        <span className="w-2 h-2 rounded-full bg-[#8B7355] flex-shrink-0" />
+                        <span className="w-2 h-2 rounded-full bg-amber-700 flex-shrink-0" />
                       )}
                     </div>
                     <p className={`text-sm ${!n.is_read ? "font-semibold text-stone-900" : "text-stone-800"}`}>

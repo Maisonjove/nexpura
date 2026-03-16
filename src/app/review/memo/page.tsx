@@ -5,7 +5,7 @@ const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 export const revalidate = 60;
 
 const statusBadge: Record<string, string> = {
-  active: "bg-blue-50 text-blue-700",
+  active: "bg-amber-50 text-amber-700",
   returned: "bg-stone-100 text-stone-600",
   sold: "bg-green-50 text-green-700",
   expired: "bg-amber-50 text-amber-700",

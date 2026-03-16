@@ -67,7 +67,7 @@ const PLANS: PlanCard[] = [
 ];
 
 const CheckIcon = () => (
-  <svg className="w-3.5 h-3.5 text-[#8B7355] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
   </svg>
 );
@@ -108,7 +108,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-stone-50 flex flex-col">
       {/* Top bar */}
       <div className="border-b border-stone-200 bg-white px-6 py-4 flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded bg-[#8B7355] flex items-center justify-center">
+        <div className="w-7 h-7 rounded bg-amber-700 flex items-center justify-center">
           <Gem size={14} color="white" />
         </div>
         <span className="text-sm font-semibold text-stone-900">Nexpura</span>
@@ -123,7 +123,7 @@ export default function OnboardingPage() {
                 <div className="flex flex-col items-center">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
                     s < step
-                      ? "bg-[#8B7355] text-white"
+                      ? "bg-amber-700 text-white"
                       : s === step
                       ? "bg-stone-900 text-white ring-4 ring-stone-200"
                       : "bg-white border-2 border-stone-200 text-stone-400"
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
                   </span>
                 </div>
                 {s < 3 && (
-                  <div className={`w-24 h-0.5 mb-5 mx-1 ${s < step ? "bg-[#8B7355]" : "bg-stone-200"}`} />
+                  <div className={`w-24 h-0.5 mb-5 mx-1 ${s < step ? "bg-amber-700" : "bg-stone-200"}`} />
                 )}
               </div>
             ))}
@@ -165,7 +165,7 @@ export default function OnboardingPage() {
                   onKeyDown={(e) => e.key === "Enter" && handleContinue()}
                   placeholder="e.g. Smith & Sons Jewellers"
                   autoFocus
-                  className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
+                  className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors text-sm"
                 />
               </div>
               <div>
@@ -175,7 +175,7 @@ export default function OnboardingPage() {
                 <select
                   value={businessType}
                   onChange={(e) => setBusinessType(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
+                  className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors text-sm"
                 >
                   <option value="">Select a type…</option>
                   {BUSINESS_TYPES.map((t) => (
@@ -186,7 +186,7 @@ export default function OnboardingPage() {
               <button
                 onClick={handleContinue}
                 disabled={!businessName.trim()}
-                className="w-full bg-[#8B7355] hover:bg-[#7A6347] disabled:opacity-40 text-white font-semibold py-2.5 rounded-md transition-colors text-sm flex items-center justify-center gap-2"
+                className="w-full bg-amber-700 hover:bg-amber-800 disabled:opacity-40 text-white font-semibold py-2.5 rounded-md transition-colors text-sm flex items-center justify-center gap-2"
               >
                 Continue
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,12 +216,12 @@ export default function OnboardingPage() {
                 <div
                   key={plan.id}
                   className={`relative bg-white rounded-xl border-2 transition-all hover:shadow-md ${
-                    plan.recommended ? "border-[#8B7355] shadow-sm" : "border-stone-200 hover:border-stone-300"
+                    plan.recommended ? "border-amber-600 shadow-sm" : "border-stone-200 hover:border-stone-300"
                   }`}
                 >
                   {plan.recommended && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-[#8B7355] text-white text-xs font-semibold px-3 py-1 rounded-full">
+                      <span className="bg-amber-700 text-white text-xs font-semibold px-3 py-1 rounded-full">
                         Most popular
                       </span>
                     </div>
@@ -246,7 +246,7 @@ export default function OnboardingPage() {
                       onClick={() => handleSelectPlan(plan.id)}
                       className={`w-full py-2.5 rounded-md font-semibold text-sm transition-all ${
                         plan.recommended
-                          ? "bg-[#8B7355] hover:bg-[#7A6347] text-white"
+                          ? "bg-amber-700 hover:bg-amber-800 text-white"
                           : "bg-white border-2 border-stone-200 text-stone-700 hover:border-stone-300"
                       }`}
                     >
@@ -306,7 +306,7 @@ export default function OnboardingPage() {
               <button
                 onClick={handleGoToDashboard}
                 disabled={isPending}
-                className="w-full bg-[#8B7355] hover:bg-[#7A6347] disabled:opacity-50 text-white font-semibold py-2.5 rounded-md transition-colors text-sm flex items-center justify-center gap-2"
+                className="w-full bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-md transition-colors text-sm flex items-center justify-center gap-2"
               >
                 {isPending ? (
                   <>

@@ -5,9 +5,9 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-stone-100 text-[#8B7355]"
+      ? "bg-stone-100 text-amber-700"
       : s === "trialing"
-      ? "bg-[#8B7355]/10 text-[#8B7355]"
+      ? "bg-amber-700/10 text-amber-700"
       : s === "past_due"
       ? "bg-yellow-500/10 text-yellow-700"
       : "bg-red-500/10 text-red-600";
@@ -22,9 +22,9 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
     p === "pro"
-      ? "bg-stone-100 text-[#8B7355]"
+      ? "bg-stone-100 text-amber-700"
       : p === "ultimate"
-      ? "bg-[#8B7355]/15 text-[#8B7355]"
+      ? "bg-amber-700/15 text-amber-700"
       : "bg-stone-200 text-stone-500";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
@@ -83,7 +83,7 @@ export default async function SubscriptionsPage() {
                     <tr key={sub.id} className="hover:bg-stone-50/40 transition-colors">
                       <td className="px-6 py-4 font-medium text-stone-900">
                         {tenant ? (
-                          <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-[#8B7355]">
+                          <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-amber-700">
                             {tenant.name}
                           </Link>
                         ) : "—"}

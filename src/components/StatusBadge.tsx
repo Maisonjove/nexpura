@@ -10,7 +10,7 @@ export const StatusBadge = ({ status }: { status: string; type?: string }) => {
     // Blue — actively in progress
     if (['in_progress', 'in_workshop', 'processing', 'stone_sourcing', 'cad', 'setting', 'polish',
          'casting', 'polishing'].includes(k)) {
-      return 'text-blue-700 bg-blue-50 border-blue-200';
+      return 'text-amber-700 bg-amber-50 border-amber-200';
     }
     // Amber — pending/waiting/quoted/draft/sent (awaiting action)
     if (['pending', 'draft', 'sent', 'awaiting_approval', 'waiting_parts', 'enquiry', 'quote_sent',

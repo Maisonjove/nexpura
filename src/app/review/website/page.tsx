@@ -56,7 +56,7 @@ export default async function ReviewWebsitePage() {
 
   const modeInfo = MODE_LABELS[config?.mode ?? "B"] ?? MODE_LABELS["B"];
   const subdomainUrl = config?.subdomain ? `https://${config.subdomain}.nexpura.com` : "https://marcusco.nexpura.com";
-  const primaryColor = config?.primary_color ?? "#8B7355";
+  const primaryColor = config?.primary_color ?? "amber-700";
   const businessName = config?.business_name ?? "Marcus & Co. Fine Jewellery";
   const tagline = config?.tagline ?? "Exquisite jewellery, crafted for every moment";
   const metaTitle = (config as Record<string, unknown> | null)?.meta_title as string | null ?? "Marcus & Co. Fine Jewellery — Sydney";
@@ -184,7 +184,7 @@ export default async function ReviewWebsitePage() {
           <p className="text-xs text-stone-400 mb-4">How this store appears in Google search results:</p>
           <div className="border border-stone-100 rounded-lg px-4 py-3 bg-white max-w-xl">
             <p className="text-xs text-stone-400 mb-1 font-mono">{subdomainUrl}</p>
-            <p className="text-base font-medium text-blue-700 leading-snug mb-1 cursor-pointer hover:underline">{metaTitle}</p>
+            <p className="text-base font-medium text-amber-700 leading-snug mb-1 cursor-pointer hover:underline">{metaTitle}</p>
             <p className="text-xs text-stone-500 leading-relaxed">{metaDesc}</p>
           </div>
           <p className="text-xs text-stone-300 mt-3 italic">Preview only — colours and formatting match Google SERP style</p>

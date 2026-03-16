@@ -98,7 +98,7 @@ export default function BatchReceiveClient({ tenantId, userId, suppliers, invent
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-stone-500">
-        <Link href="/inventory" className="hover:text-[#8B7355]">Inventory</Link>
+        <Link href="/inventory" className="hover:text-amber-700">Inventory</Link>
         <span>›</span>
         <span className="text-stone-900">Receive Stock</span>
       </div>
@@ -123,7 +123,7 @@ export default function BatchReceiveClient({ tenantId, userId, suppliers, invent
               <select
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
-                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
               >
                 <option value="">Select supplier…</option>
                 {suppliers.map((s) => (
@@ -138,7 +138,7 @@ export default function BatchReceiveClient({ tenantId, userId, suppliers, invent
                 value={invoiceRef}
                 onChange={(e) => setInvoiceRef(e.target.value)}
                 placeholder="e.g. INV-2024-001"
-                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
               />
             </div>
           </div>
@@ -154,7 +154,7 @@ export default function BatchReceiveClient({ tenantId, userId, suppliers, invent
               value={itemSearch}
               onChange={(e) => setItemSearch(e.target.value)}
               placeholder="Search existing inventory items to add…"
-              className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
             />
             {itemSearch && filteredItems.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
@@ -200,7 +200,7 @@ export default function BatchReceiveClient({ tenantId, userId, suppliers, invent
                         min="0"
                         value={line.receiveQty}
                         onChange={(e) => updateQty(line.inventoryId, parseInt(e.target.value) || 0)}
-                        className="w-20 border border-stone-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                        className="w-20 border border-stone-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-600"
                       />
                     </td>
                     <td className="py-3">
@@ -233,7 +233,7 @@ export default function BatchReceiveClient({ tenantId, userId, suppliers, invent
           <button
             type="submit"
             disabled={isPending || lines.length === 0}
-            className="flex-1 py-3 bg-[#8B7355] text-white rounded-xl font-semibold text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+            className="flex-1 py-3 bg-amber-700 text-white rounded-xl font-semibold text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
           >
             {isPending ? "Receiving…" : `Receive ${lines.length} Item${lines.length !== 1 ? "s" : ""}`}
           </button>

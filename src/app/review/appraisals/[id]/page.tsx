@@ -13,7 +13,7 @@ function fmt(v: number | null) {
 
 const statusBadge: Record<string, string> = {
   draft: "bg-stone-100 text-stone-600",
-  in_progress: "bg-blue-100 text-blue-700",
+  in_progress: "bg-amber-50 text-amber-700",
   completed: "bg-amber-100 text-amber-700",
   issued: "bg-green-100 text-green-700",
 };

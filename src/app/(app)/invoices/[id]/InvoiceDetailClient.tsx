@@ -10,7 +10,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   // Valid DB status values only
   unpaid: { label: "Sent", className: "bg-stone-100 text-stone-700" },
   partial: { label: "Partially Paid", className: "bg-amber-50 text-amber-600" },
-  paid: { label: "Paid", className: "bg-stone-100 text-[#8B7355]" },
+  paid: { label: "Paid", className: "bg-stone-100 text-amber-700" },
   overdue: { label: "Overdue", className: "bg-red-50 text-red-600" },
   voided: { label: "Voided", className: "bg-stone-100 text-stone-400" },
 };
@@ -275,7 +275,7 @@ export default function InvoiceDetailClient({
                 setPayAmount(String(invoice.amount_due));
                 setShowPaymentModal(true);
               }}
-              className="px-3 py-1.5 text-xs bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors"
+              className="px-3 py-1.5 text-xs bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors"
             >
               Record Payment
             </button>
@@ -283,7 +283,7 @@ export default function InvoiceDetailClient({
           {invoice.customers?.id && (
             <Link
               href={`/passports/new?invoice_id=${invoice.id}&customer_id=${invoice.customers.id}`}
-              className="px-3 py-1.5 text-xs border border-[#8B7355] text-[#8B7355] rounded-lg hover:bg-[#8B7355]/5 transition-colors inline-flex items-center gap-1"
+              className="px-3 py-1.5 text-xs border border-amber-600 text-amber-700 rounded-lg hover:bg-amber-700/5 transition-colors inline-flex items-center gap-1"
               title="Issue a Digital Passport for an item on this invoice"
             >
               🛡️ Issue Passport
@@ -293,7 +293,7 @@ export default function InvoiceDetailClient({
             href={`/api/invoice/${invoice.id}/pdf`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1.5 text-xs bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors inline-flex items-center gap-1"
+            className="px-3 py-1.5 text-xs bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors inline-flex items-center gap-1"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -304,7 +304,7 @@ export default function InvoiceDetailClient({
             href={`/api/invoice/${invoice.id}/pdf?format=thermal`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1.5 text-xs border border-stone-200 text-stone-500 rounded-lg hover:border-[#8B7355]/40 hover:text-stone-900 transition-colors inline-flex items-center gap-1"
+            className="px-3 py-1.5 text-xs border border-stone-200 text-stone-500 rounded-lg hover:border-amber-600/40 hover:text-stone-900 transition-colors inline-flex items-center gap-1"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -368,7 +368,7 @@ export default function InvoiceDetailClient({
                     step="0.01"
                     value={payAmount}
                     onChange={(e) => setPayAmount(e.target.value)}
-                    className="w-full pl-6 pr-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                    className="w-full pl-6 pr-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                   />
                 </div>
               </div>
@@ -377,7 +377,7 @@ export default function InvoiceDetailClient({
                 <select
                   value={payMethod}
                   onChange={(e) => setPayMethod(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                 >
                   {PAYMENT_METHODS.map((m) => (
                     <option key={m} value={m}>{m}</option>
@@ -390,7 +390,7 @@ export default function InvoiceDetailClient({
                   type="date"
                   value={payDate}
                   onChange={(e) => setPayDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                 />
               </div>
               <div>
@@ -400,7 +400,7 @@ export default function InvoiceDetailClient({
                   value={payRef}
                   onChange={(e) => setPayRef(e.target.value)}
                   placeholder="Transaction ID, receipt number…"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                 />
               </div>
               <div>
@@ -410,7 +410,7 @@ export default function InvoiceDetailClient({
                   onChange={(e) => setPayNotes(e.target.value)}
                   rows={2}
                   placeholder="Optional notes…"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] resize-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none"
                 />
               </div>
             </div>
@@ -427,7 +427,7 @@ export default function InvoiceDetailClient({
               <button
                 disabled={isPending}
                 onClick={handleRecordPayment}
-                className="px-4 py-2 text-sm bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
               >
                 {isPending ? "Recording…" : "Record Payment"}
               </button>
@@ -500,7 +500,7 @@ function EmailInvoiceButton({
       onClick={handleSend}
       disabled={sending || !customerEmail}
       title={!customerEmail ? "No customer email on file" : "Email invoice to customer"}
-      className="px-3 py-1.5 text-xs border border-stone-200 text-stone-500 rounded-lg hover:border-[#8B7355]/40 hover:text-stone-900 transition-colors inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+      className="px-3 py-1.5 text-xs border border-stone-200 text-stone-500 rounded-lg hover:border-amber-600/40 hover:text-stone-900 transition-colors inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
     >
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -546,7 +546,7 @@ function ManagementView({
               </span>
             </p>
             {invoice.paid_at && (
-              <p className="text-sm text-[#8B7355] mt-0.5">
+              <p className="text-sm text-amber-700 mt-0.5">
                 <span className="text-stone-500">Paid:</span> {fmtDate(invoice.paid_at)}
               </p>
             )}
@@ -556,7 +556,7 @@ function ManagementView({
             <p className="font-semibold text-2xl font-semibold text-stone-900">{fmt(invoice.amount_due)}</p>
             <p className="text-xs text-stone-400 mt-0.5">Total: {fmt(invoice.total)}</p>
             {invoice.amount_paid > 0 && (
-              <p className="text-xs text-[#8B7355] mt-0.5">Paid: {fmt(invoice.amount_paid)}</p>
+              <p className="text-xs text-amber-700 mt-0.5">Paid: {fmt(invoice.amount_paid)}</p>
             )}
           </div>
         </div>
@@ -625,7 +625,7 @@ function ManagementView({
               <span className="font-semibold">{fmt(invoice.total)}</span>
             </div>
             {invoice.amount_paid > 0 && (
-              <div className="flex justify-between text-sm text-[#8B7355]">
+              <div className="flex justify-between text-sm text-amber-700">
                 <span>Amount Paid</span>
                 <span>{fmt(invoice.amount_paid)}</span>
               </div>
@@ -661,7 +661,7 @@ function ManagementView({
                   </p>
                   {p.notes && <p className="text-xs text-stone-400 mt-0.5">{p.notes}</p>}
                 </div>
-                <p className="text-base font-semibold text-[#8B7355]">{fmt(p.amount)}</p>
+                <p className="text-base font-semibold text-amber-700">{fmt(p.amount)}</p>
               </div>
             ))}
           </div>
@@ -833,7 +833,7 @@ function PreviewView({
             </div>
             {totalPaid > 0 && (
               <>
-                <div className="flex justify-between text-sm text-[#8B7355]">
+                <div className="flex justify-between text-sm text-amber-700">
                   <span>Amount Paid</span>
                   <span>{fmt(totalPaid)}</span>
                 </div>

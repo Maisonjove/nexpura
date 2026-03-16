@@ -39,10 +39,10 @@ interface LineItem {
 // ────────────────────────────────────────────────────────────────
 
 const inputCls =
-  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600";
 
 const selectCls =
-  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -269,7 +269,7 @@ export default function SaleForm({ taxRate = 0.1, taxName = "GST", currency = "A
           <button
             type="button"
             onClick={addLineItem}
-            className="flex items-center gap-2 text-sm text-[#8B7355] font-medium hover:text-[#8B7355]/80 transition-colors"
+            className="flex items-center gap-2 text-sm text-amber-700 font-medium hover:text-amber-700/80 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -297,7 +297,7 @@ export default function SaleForm({ taxRate = 0.1, taxName = "GST", currency = "A
               value={discountAmount}
               onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
               placeholder="0.00"
-              className="w-32 px-3 py-1.5 text-sm text-right bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+              className="w-32 px-3 py-1.5 text-sm text-right bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600"
             />
           </div>
           <div className="flex items-center justify-between text-sm">
@@ -343,7 +343,7 @@ export default function SaleForm({ taxRate = 0.1, taxName = "GST", currency = "A
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
         >
           {isPending ? "Creating…" : "Create Sale"}
         </button>

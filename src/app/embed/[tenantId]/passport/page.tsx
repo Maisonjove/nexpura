@@ -23,11 +23,11 @@ export default async function EmbedPassportPage({ params }: Props) {
           p { color: #78716c; font-size: 14px; margin-bottom: 20px; }
           .form { display: flex; gap: 8px; margin-bottom: 20px; }
           input { flex: 1; padding: 10px 14px; border: 1px solid #d6d3d1; border-radius: 8px; font-size: 14px; font-family: monospace; }
-          input:focus { outline: none; border-color: #8B7355; box-shadow: 0 0 0 3px rgba(139,115,85,0.2); }
-          button { padding: 10px 20px; background: #8B7355; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+          input:focus { outline: none; border-color: amber-700; box-shadow: 0 0 0 3px rgba(139,115,85,0.2); }
+          button { padding: 10px 20px; background: amber-700; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
           button:hover { background: #7a6349; }
           .result { background: white; border: 1px solid #e7e5e4; border-radius: 12px; padding: 20px; }
-          .uid { font-family: monospace; font-size: 12px; background: #f5f5f4; padding: 4px 8px; border-radius: 4px; color: #8B7355; }
+          .uid { font-family: monospace; font-size: 12px; background: #f5f5f4; padding: 4px 8px; border-radius: 4px; color: amber-700; }
           .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
           .badge-active { background: #f0fdf4; color: #166534; }
           .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f5f5f4; font-size: 14px; }
@@ -69,7 +69,7 @@ export default async function EmbedPassportPage({ params }: Props) {
                   <div class="row"><span class="label">Owner</span><span class="value">\${p.current_owner_name || '—'}</span></div>
                   <div class="row"><span class="label">Issued</span><span class="value">\${new Date(p.created_at).toLocaleDateString('en-AU')}</span></div>
                   <div style="margin-top:16px;text-align:center">
-                    <a href="/verify/\${p.passport_uid}" target="_blank" style="color:#8B7355;font-size:13px;text-decoration:none">View full passport →</a>
+                    <a href="/verify/\${p.passport_uid}" target="_blank" style="color:amber-700;font-size:13px;text-decoration:none">View full passport →</a>
                   </div>
                 </div>\`;
               }

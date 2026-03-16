@@ -135,7 +135,7 @@ export default function Sidebar({ user, isSuperAdmin, websiteConfig, businessMod
     <aside className="w-64 h-screen bg-[#1A1A1A] flex flex-col fixed left-0 top-0 z-30">
       {/* Logo */}
       <div className="px-5 py-5 flex items-center gap-2.5 border-b border-white/[0.06]">
-        <div className="w-7 h-7 rounded bg-[#8B7355] flex items-center justify-center flex-shrink-0">
+        <div className="w-7 h-7 rounded bg-amber-600 flex items-center justify-center flex-shrink-0">
           <Gem size={14} color="white" />
         </div>
         <span className="text-white font-semibold text-sm">Nexpura</span>
@@ -155,15 +155,15 @@ export default function Sidebar({ user, isSuperAdmin, websiteConfig, businessMod
                   <li key={item.name}>
                     <Link
                       href={item.href}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm cursor-pointer transition-colors ${
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm cursor-pointer transition-colors relative ${
                         isActive
-                          ? 'bg-white/[0.08] text-white'
+                          ? 'bg-stone-800 text-white border-l-2 border-amber-500 -ml-px pl-[11px]'
                           : 'text-stone-400 hover:bg-white/[0.05] hover:text-stone-200'
                       }`}
                     >
                       <item.icon
                         size={15}
-                        className={`flex-shrink-0 ${isActive ? 'text-[#8B7355]' : 'text-stone-500'}`}
+                        className={`flex-shrink-0 ${isActive ? 'text-amber-500' : 'text-stone-500'}`}
                       />
                       <span className="flex-1">{item.name}</span>
                       {item.name === 'Repairs' && readyRepairsCount > 0 && (
@@ -204,10 +204,13 @@ export default function Sidebar({ user, isSuperAdmin, websiteConfig, businessMod
 
       {/* Footer */}
       <div className="mt-auto border-t border-white/[0.06] px-4 py-4 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-full bg-stone-600 flex items-center justify-center flex-shrink-0">
-          <span className="text-[10px] font-semibold text-white">{initials}</span>
+        <div className="w-8 h-8 rounded-full bg-amber-700 flex items-center justify-center flex-shrink-0">
+          <span className="text-[11px] font-semibold text-white">{initials}</span>
         </div>
-        <p className="text-xs text-stone-400 truncate">{user?.email || 'user@nexpura.com'}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-stone-300 truncate">{user?.full_name || user?.email?.split('@')[0] || 'User'}</p>
+          <p className="text-[10px] text-stone-500 truncate capitalize">{user?.role || 'Staff'}</p>
+        </div>
       </div>
     </aside>
   );

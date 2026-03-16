@@ -50,7 +50,7 @@ interface Props {
 
 const STATUS_COLOURS: Record<string, string> = {
   sent: "bg-green-50 text-green-700",
-  delivered: "bg-stone-100 text-[#8B7355]",
+  delivered: "bg-stone-100 text-amber-700",
   failed: "bg-red-50 text-red-600",
   draft: "bg-stone-900/10 text-stone-500",
 };
@@ -112,7 +112,7 @@ export default function CommunicationsListClient({ comms, emailLogs, notificatio
               onClick={() => setActiveTab(tab)}
               className={`px-5 py-3 text-sm font-medium capitalize transition-colors ${
                 activeTab === tab
-                  ? "border-b-2 border-[#8B7355] text-[#8B7355]"
+                  ? "border-b-2 border-amber-600 text-amber-700"
                   : "text-stone-500 hover:text-stone-900"
               }`}
             >
@@ -172,7 +172,7 @@ export default function CommunicationsListClient({ comms, emailLogs, notificatio
                           {log.linked_entity_type && log.linked_entity_id ? (
                             <Link
                               href={`${ENTITY_HREFS[log.linked_entity_type] || "/"}${log.linked_entity_id}`}
-                              className="text-xs text-[#8B7355] hover:underline capitalize"
+                              className="text-xs text-amber-700 hover:underline capitalize"
                             >
                               {log.linked_entity_type} ↗
                             </Link>
@@ -189,7 +189,7 @@ export default function CommunicationsListClient({ comms, emailLogs, notificatio
                               if (res.error) toast.error(res.error);
                               else toast.success("Email resent successfully");
                             }}
-                            className="p-1.5 text-stone-400 hover:text-[#8B7355] transition-colors"
+                            className="p-1.5 text-stone-400 hover:text-amber-700 transition-colors"
                             title="Resend Email"
                           >
                             <RefreshCw size={14} />
@@ -240,7 +240,7 @@ export default function CommunicationsListClient({ comms, emailLogs, notificatio
                         </td>
                         <td className="px-4 py-3 text-xs text-stone-400">{formatDate(comm.created_at)}</td>
                         <td className="px-4 py-3 text-right">
-                          <Link href={`/communications/${comm.id}`} className="text-xs text-[#8B7355] hover:underline">
+                          <Link href={`/communications/${comm.id}`} className="text-xs text-amber-700 hover:underline">
                             View →
                           </Link>
                         </td>
@@ -277,7 +277,7 @@ export default function CommunicationsListClient({ comms, emailLogs, notificatio
                   </thead>
                   <tbody className="divide-y divide-stone-100">
                     {notifications.map((notif) => (
-                      <tr key={notif.id} className={`hover:bg-stone-50 ${!notif.read ? "bg-[#8B7355]/5" : ""}`}>
+                      <tr key={notif.id} className={`hover:bg-stone-50 ${!notif.read ? "bg-amber-700/5" : ""}`}>
                         <td className="px-5 py-3">
                           <span className="text-base">{NOTIF_TYPE_ICONS[notif.type] ?? "🔔"}</span>
                         </td>
@@ -292,14 +292,14 @@ export default function CommunicationsListClient({ comms, emailLogs, notificatio
                           {notif.users?.full_name || "All users"}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${notif.read ? "bg-stone-100 text-stone-400" : "bg-[#8B7355]/10 text-[#8B7355]"}`}>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${notif.read ? "bg-stone-100 text-stone-400" : "bg-amber-700/10 text-amber-700"}`}>
                             {notif.read ? "Read" : "Unread"}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-xs text-stone-400">{formatDate(notif.created_at)}</td>
                         <td className="px-4 py-3">
                           {notif.link && (
-                            <a href={notif.link} className="text-xs text-[#8B7355] hover:underline">
+                            <a href={notif.link} className="text-xs text-amber-700 hover:underline">
                               View →
                             </a>
                           )}

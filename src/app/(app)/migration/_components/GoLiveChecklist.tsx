@@ -33,7 +33,7 @@ export function GoLiveChecklist() {
 
       <div className="w-full bg-stone-100 rounded-full h-1.5 mb-4">
         <div
-          className="bg-[#B45309] h-1.5 rounded-full transition-all duration-300"
+          className="bg-amber-700 h-1.5 rounded-full transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -46,7 +46,7 @@ export function GoLiveChecklist() {
               className="flex items-start gap-3 w-full text-left group"
             >
               {checked.includes(item.id) ? (
-                <CheckSquare className="w-4 h-4 text-[#B45309] flex-shrink-0 mt-0.5" />
+                <CheckSquare className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
               ) : (
                 <Square className="w-4 h-4 text-stone-300 flex-shrink-0 mt-0.5 group-hover:text-stone-400" />
               )}

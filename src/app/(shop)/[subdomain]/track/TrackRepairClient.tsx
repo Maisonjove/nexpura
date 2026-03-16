@@ -147,8 +147,8 @@ export default function TrackRepairClient({ subdomain }: { subdomain: string }) 
   return (
     <div className="max-w-xl mx-auto py-12 px-4">
       <div className="text-center mb-10">
-        <div className="w-14 h-14 bg-[#8B7355]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Wrench size={26} className="text-[#8B7355]" />
+        <div className="w-14 h-14 bg-amber-700/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <Wrench size={26} className="text-amber-700" />
         </div>
         <h1 className="text-3xl font-bold text-stone-900 mb-2">Track Your Repair</h1>
         <p className="text-stone-500 text-sm">
@@ -165,13 +165,13 @@ export default function TrackRepairClient({ subdomain }: { subdomain: string }) 
                 value={ticketNumber}
                 onChange={(e) => setTicketNumber(e.target.value.toUpperCase())}
                 placeholder="e.g. REP-1001"
-                className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8B7355] font-mono text-base"
+                className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-600 font-mono text-base"
               />
             </div>
             <button
               disabled={loading}
               type="submit"
-              className="px-6 py-3 bg-[#8B7355] text-white rounded-xl font-semibold hover:bg-[#7A6347] transition-all disabled:opacity-50 text-sm"
+              className="px-6 py-3 bg-amber-700 text-white rounded-xl font-semibold hover:bg-amber-800 transition-all disabled:opacity-50 text-sm"
             >
               {loading ? "Searching…" : "Track"}
             </button>
@@ -227,7 +227,7 @@ export default function TrackRepairClient({ subdomain }: { subdomain: string }) 
                 Repair Progress
               </p>
               <StageTimeline stage={result.ticket.stage} />
-              <div className="mt-3 inline-block px-3 py-1.5 bg-[#8B7355]/10 text-[#8B7355] rounded-full text-xs font-semibold">
+              <div className="mt-3 inline-block px-3 py-1.5 bg-amber-700/10 text-amber-700 rounded-full text-xs font-semibold">
                 {result.ticket.stageLabel}
               </div>
             </div>
@@ -262,7 +262,7 @@ export default function TrackRepairClient({ subdomain }: { subdomain: string }) 
                 {result.store.phone && (
                   <a
                     href={`tel:${result.store.phone}`}
-                    className="flex items-center gap-2 text-sm text-[#8B7355] hover:underline"
+                    className="flex items-center gap-2 text-sm text-amber-700 hover:underline"
                   >
                     <Phone size={14} /> {result.store.phone}
                   </a>
@@ -270,7 +270,7 @@ export default function TrackRepairClient({ subdomain }: { subdomain: string }) 
                 {result.store.email && (
                   <a
                     href={`mailto:${result.store.email}`}
-                    className="flex items-center gap-2 text-sm text-[#8B7355] hover:underline"
+                    className="flex items-center gap-2 text-sm text-amber-700 hover:underline"
                   >
                     <Mail size={14} /> {result.store.email}
                   </a>

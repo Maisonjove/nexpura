@@ -31,7 +31,7 @@ const statusIcon = {
   classified: <CheckCircle className="w-4 h-4 text-green-600" />,
   needs_review: <AlertCircle className="w-4 h-4 text-amber-600" />,
   unsupported: <XCircle className="w-4 h-4 text-red-500" />,
-  ready: <CheckCircle className="w-4 h-4 text-[#B45309]" />,
+  ready: <CheckCircle className="w-4 h-4 text-amber-700" />,
 };
 
 function formatBytes(bytes: number | null): string {

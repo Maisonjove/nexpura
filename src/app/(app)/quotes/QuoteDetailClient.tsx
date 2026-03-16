@@ -49,7 +49,7 @@ function ConfirmModal({
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50"
           >
             {loading ? "Processing…" : "Confirm"}
           </button>
@@ -212,7 +212,7 @@ export default function QuoteDetailClient({ quote }: Props) {
               <button
                 onClick={() => setConfirmAction("invoice")}
                 disabled={loading}
-                className="flex items-center gap-2 bg-[#8B7355] text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium shadow-sm disabled:opacity-50"
+                className="flex items-center gap-2 bg-amber-700 text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium shadow-sm disabled:opacity-50"
               >
                 <CheckCircle size={18} />
                 {loading ? "..." : "Convert to Invoice"}
@@ -292,7 +292,7 @@ export default function QuoteDetailClient({ quote }: Props) {
                 <td className="py-6 pt-12 text-right">
                   <div className="space-y-2">
                     <p className="text-stone-900">${quote.total_amount?.toLocaleString()}</p>
-                    <p className="text-xl font-bold text-[#8B7355]">${quote.total_amount?.toLocaleString()}</p>
+                    <p className="text-xl font-bold text-amber-700">${quote.total_amount?.toLocaleString()}</p>
                   </div>
                 </td>
               </tr>

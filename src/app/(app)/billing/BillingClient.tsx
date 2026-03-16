@@ -109,7 +109,7 @@ function StatusBadge({ status }: { status: string }) {
           status === "active"
             ? "bg-green-500"
             : status === "trialing"
-            ? "bg-[#8B7355]"
+            ? "bg-amber-700"
             : status === "past_due"
             ? "bg-red-500"
             : "bg-stone-400"
@@ -127,7 +127,7 @@ function CheckCell({ value }: { value: boolean | string }) {
   if (value) {
     return (
       <svg
-        className="w-5 h-5 text-[#8B7355] mx-auto"
+        className="w-5 h-5 text-amber-700 mx-auto"
         fill="currentColor"
         viewBox="0 0 20 20"
       >
@@ -262,10 +262,10 @@ export default function BillingClient({
         </div>
       )}
       {subscription?.is_free_forever && (
-        <div className="bg-[#8B7355]/10 border border-[#8B7355]/20 rounded-xl px-5 py-4 flex items-center gap-3">
+        <div className="bg-amber-700/10 border border-amber-600/20 rounded-xl px-5 py-4 flex items-center gap-3">
           <span className="text-2xl">🎁</span>
           <div>
-            <p className="text-sm font-semibold text-[#8B7355]">Free Membership</p>
+            <p className="text-sm font-semibold text-amber-700">Free Membership</p>
             <p className="text-sm text-stone-600 mt-0.5">You have lifetime free access to Nexpura. No billing required.</p>
           </div>
         </div>
@@ -371,7 +371,7 @@ export default function BillingClient({
                     {pct > 0 && (
                       <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all ${warn ? "bg-amber-400" : "bg-[#8B7355]"}`}
+                          className={`h-full rounded-full transition-all ${warn ? "bg-amber-400" : "bg-amber-700"}`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -417,7 +417,7 @@ export default function BillingClient({
               }`}
             >
               Annual
-              <span className="text-xs bg-stone-100 text-[#8B7355] px-1.5 py-0.5 rounded-md font-semibold">
+              <span className="text-xs bg-stone-100 text-amber-700 px-1.5 py-0.5 rounded-md font-semibold">
                 Save 20%
               </span>
             </button>
@@ -438,7 +438,7 @@ export default function BillingClient({
                   isCurrent
                     ? isGold
                       ? "border-[#C9A96E] shadow-md"
-                      : "border-[#8B7355] shadow-md"
+                      : "border-amber-600 shadow-md"
                     : "border-stone-200 hover:border-stone-200 hover:shadow-sm"
                 }`}
               >
@@ -446,7 +446,7 @@ export default function BillingClient({
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span
                       className={`text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm ${
-                        isGold ? "bg-[#C9A96E]" : "bg-[#8B7355]"
+                        isGold ? "bg-[#C9A96E]" : "bg-amber-700"
                       }`}
                     >
                       Current plan
@@ -481,7 +481,7 @@ export default function BillingClient({
                       : isGold
                       ? "bg-[#C9A96E] hover:bg-[#C9A96E]/90 text-white shadow-sm"
                       : isSage
-                      ? "bg-[#8B7355] hover:bg-[#7A6347] text-white shadow-sm"
+                      ? "bg-amber-700 hover:bg-amber-800 text-white shadow-sm"
                       : "bg-white border-2 border-stone-900 text-stone-900 hover:bg-stone-900 hover:text-white"
                   } disabled:opacity-60`}
                 >
@@ -526,7 +526,7 @@ export default function BillingClient({
                   <br />
                   <span className="text-stone-900 font-bold normal-case text-sm">$49</span>
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-[#8B7355] uppercase tracking-wide">
+                <th className="px-4 py-3 text-center text-xs font-semibold text-amber-700 uppercase tracking-wide">
                   Pro
                   <br />
                   <span className="text-stone-900 font-bold normal-case text-sm">$99</span>
@@ -573,7 +573,7 @@ export default function BillingClient({
             <button
               onClick={handleManageBilling}
               disabled={loadingPortal}
-              className="text-xs text-[#8B7355] hover:underline"
+              className="text-xs text-amber-700 hover:underline"
             >
               Manage payment method →
             </button>
@@ -615,7 +615,7 @@ export default function BillingClient({
                       </td>
                       <td className="py-3 text-right">
                         {inv.invoice_pdf && (
-                          <a href={inv.invoice_pdf} target="_blank" rel="noopener noreferrer" className="text-xs text-[#8B7355] hover:underline">
+                          <a href={inv.invoice_pdf} target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 hover:underline">
                             Download
                           </a>
                         )}
@@ -641,7 +641,7 @@ export default function BillingClient({
                 <select
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600"
                 >
                   <option value="">Choose a reason…</option>
                   <option value="too_expensive">Too expensive</option>
@@ -672,7 +672,7 @@ export default function BillingClient({
       {/* Contact note */}
       <p className="text-center text-sm text-stone-400">
         Need a custom plan for your business?{" "}
-        <a href="mailto:hello@nexpura.com" className="text-[#8B7355] hover:underline">
+        <a href="mailto:hello@nexpura.com" className="text-amber-700 hover:underline">
           Contact us
         </a>
       </p>

@@ -39,7 +39,7 @@ export default async function DuplicatesPage({ params }: Props) {
         <div className="mt-6">
           <Link
             href={`/migration/${sessionId}/preview`}
-            className="inline-flex items-center gap-2 bg-[#B45309] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-amber-700 transition-colors"
+            className="inline-flex items-center gap-2 bg-amber-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-amber-700 transition-colors"
           >
             Continue to Preview
           </Link>

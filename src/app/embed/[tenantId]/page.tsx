@@ -20,7 +20,7 @@ export default async function EmbedCataloguePage({ params, searchParams }: Props
 
   if (!config) notFound();
 
-  const primaryColor = config.primary_color || "#8B7355";
+  const primaryColor = config.primary_color || "amber-700";
   const font = config.font || "Inter";
   const showPrices = config.mode !== "A" && config.show_prices;
 

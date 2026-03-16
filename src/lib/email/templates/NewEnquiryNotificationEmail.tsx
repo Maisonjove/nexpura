@@ -31,7 +31,7 @@ export default function NewEnquiryNotificationEmail({
             <td align="center">
               <table role="presentation" width="100%" style={{ maxWidth: '560px', backgroundColor: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
                 <tr>
-                  <td style={{ backgroundColor: '#8B7355', padding: '28px 40px', textAlign: 'center' }}>
+                  <td style={{ backgroundColor: 'amber-700', padding: '28px 40px', textAlign: 'center' }}>
                     <h1 style={{ margin: 0, color: '#ffffff', fontSize: '20px', fontWeight: 600 }}>
                       🔔 New {enquiryType} Enquiry
                     </h1>
@@ -69,7 +69,7 @@ export default function NewEnquiryNotificationEmail({
                     </table>
 
                     {/* Message */}
-                    <div style={{ backgroundColor: '#f5f0ea', borderLeft: '3px solid #8B7355', borderRadius: '4px', padding: '16px 20px', marginBottom: '28px' }}>
+                    <div style={{ backgroundColor: '#f5f0ea', borderLeft: '3px solid amber-700', borderRadius: '4px', padding: '16px 20px', marginBottom: '28px' }}>
                       <p style={{ margin: '0 0 8px', color: '#78716c', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>
                         Message
                       </p>

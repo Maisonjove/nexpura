@@ -107,7 +107,7 @@ function StatCard({ label, value, sub, trend, icon, urgent }: {
     <div className={`bg-white rounded-xl border ${urgent ? 'border-red-200' : 'border-stone-200'} p-5 shadow-sm`}>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">{label}</span>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${urgent ? 'bg-red-50 text-red-500' : 'bg-stone-100 text-[#8B7355]'}`}>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${urgent ? 'bg-red-50 text-red-500' : 'bg-stone-100 text-amber-700'}`}>
           {icon}
         </div>
       </div>
@@ -165,7 +165,7 @@ function AIInsightsPanel() {
     <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-[#8B7355]" />
+          <Sparkles size={16} className="text-amber-700" />
           <h2 className="font-semibold text-stone-900">AI Financial Insights</h2>
         </div>
         <button
@@ -309,7 +309,7 @@ function FinancialChat() {
             <button
               key={p}
               onClick={() => sendMessage(p)}
-              className="text-xs px-3 py-1.5 rounded-full border border-stone-200 text-stone-600 hover:border-[#8B7355] hover:text-[#8B7355] transition-colors"
+              className="text-xs px-3 py-1.5 rounded-full border border-stone-200 text-stone-600 hover:border-amber-600 hover:text-amber-700 transition-colors"
             >
               {p}
             </button>
@@ -323,7 +323,7 @@ function FinancialChat() {
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                 m.role === 'user'
-                  ? 'bg-[#8B7355] text-white rounded-br-sm'
+                  ? 'bg-amber-700 text-white rounded-br-sm'
                   : 'bg-stone-100 text-stone-800 rounded-bl-sm'
               }`}>
                 {m.content || (streaming && i === messages.length - 1 ? <span className="animate-pulse">…</span> : '')}
@@ -344,12 +344,12 @@ function FinancialChat() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask anything about your finances…"
             disabled={streaming}
-            className="flex-1 text-sm border border-stone-200 rounded-lg px-3 py-2 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]/20 disabled:opacity-50 placeholder:text-stone-400"
+            className="flex-1 text-sm border border-stone-200 rounded-lg px-3 py-2 outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600/20 disabled:opacity-50 placeholder:text-stone-400"
           />
           <button
             type="submit"
             disabled={streaming || !input.trim()}
-            className="px-3 py-2 bg-[#8B7355] text-white rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+            className="px-3 py-2 bg-amber-700 text-white rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
           >
             <Send size={14} />
           </button>
@@ -440,7 +440,7 @@ function FinancialReportTab({ gstRate, currency = 'AUD' }: { gstRate: number; cu
       h1{font-size:22px;font-weight:700;margin-bottom:4px}
       h2{font-size:15px;font-weight:600;margin:24px 0 8px;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
       table{width:100%;border-collapse:collapse;font-size:13px}
-      .badge{display:inline-block;padding:2px 10px;border-radius:999px;background:#f5f0eb;color:#8B7355;font-size:12px;font-weight:600}
+      .badge{display:inline-block;padding:2px 10px;border-radius:999px;background:#f5f0eb;color:amber-700;font-size:12px;font-weight:600}
       @media print{body{padding:20px}}
     </style></head><body>
       <h1>Financial Report</h1>
@@ -482,8 +482,8 @@ function FinancialReportTab({ gstRate, currency = 'AUD' }: { gstRate: number; cu
               onClick={() => applyPreset(p.label, p.fn)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activePreset === p.label
-                  ? 'bg-[#8B7355] border-[#8B7355] text-white'
-                  : 'border-stone-200 text-stone-600 hover:border-[#8B7355] hover:text-[#8B7355]'
+                  ? 'bg-amber-700 border-amber-600 text-white'
+                  : 'border-stone-200 text-stone-600 hover:border-amber-600 hover:text-amber-700'
               }`}
             >
               {p.label}
@@ -493,8 +493,8 @@ function FinancialReportTab({ gstRate, currency = 'AUD' }: { gstRate: number; cu
             onClick={() => setActivePreset('Custom')}
             className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
               activePreset === 'Custom'
-                ? 'bg-[#8B7355] border-[#8B7355] text-white'
-                : 'border-stone-200 text-stone-600 hover:border-[#8B7355] hover:text-[#8B7355]'
+                ? 'bg-amber-700 border-amber-600 text-white'
+                : 'border-stone-200 text-stone-600 hover:border-amber-600 hover:text-amber-700'
             }`}
           >
             Custom
@@ -508,7 +508,7 @@ function FinancialReportTab({ gstRate, currency = 'AUD' }: { gstRate: number; cu
               value={from}
               max={to}
               onChange={(e) => { setFrom(e.target.value); setActivePreset('Custom'); }}
-              className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#8B7355]"
+              className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 outline-none focus:border-amber-600"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -519,7 +519,7 @@ function FinancialReportTab({ gstRate, currency = 'AUD' }: { gstRate: number; cu
               min={from}
               max={todayStr()}
               onChange={(e) => { setTo(e.target.value); setActivePreset('Custom'); }}
-              className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#8B7355]"
+              className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 outline-none focus:border-amber-600"
             />
           </div>
           <button
@@ -533,7 +533,7 @@ function FinancialReportTab({ gstRate, currency = 'AUD' }: { gstRate: number; cu
               <button
                 onClick={generateSummary}
                 disabled={loadingSummary}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-[#8B7355] text-[#8B7355] rounded-lg hover:bg-[#8B7355]/5 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-amber-600 text-amber-700 rounded-lg hover:bg-amber-700/5 transition-colors disabled:opacity-50"
               >
                 <Sparkles size={12} />
                 {loadingSummary ? 'Summarising…' : 'Summarise this period'}
@@ -552,9 +552,9 @@ function FinancialReportTab({ gstRate, currency = 'AUD' }: { gstRate: number; cu
 
       {/* AI Summary */}
       {aiSummary && (
-        <div className="bg-gradient-to-r from-[#8B7355]/5 to-amber-50 rounded-xl border border-[#8B7355]/20 p-5">
+        <div className="bg-gradient-to-r from-[amber-700]/5 to-amber-50 rounded-xl border border-amber-600/20 p-5">
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles size={14} className="text-[#8B7355]" />
+            <Sparkles size={14} className="text-amber-700" />
             <span className="text-sm font-semibold text-stone-900">AI Period Summary</span>
           </div>
           <p className="text-sm text-stone-700 leading-relaxed">{aiSummary}</p>
@@ -611,7 +611,7 @@ function FinancialReportTab({ gstRate, currency = 'AUD' }: { gstRate: number; cu
                   {report.totalRevenue > 0 && (
                     <div className="mt-2 h-1 bg-stone-200 rounded-full overflow-hidden">
                       <div
-                        className="h-1 bg-[#8B7355] rounded-full"
+                        className="h-1 bg-amber-700 rounded-full"
                         style={{ width: `${Math.min((cat.value / report.totalRevenue) * 100, 100)}%` }}
                       />
                     </div>
@@ -743,7 +743,7 @@ export default function FinancialsClient({
             onClick={() => setTab(t.key as typeof tab)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
               tab === t.key
-                ? 'border-[#8B7355] text-[#8B7355]'
+                ? 'border-amber-600 text-amber-700'
                 : 'border-transparent text-stone-500 hover:text-stone-700'
             }`}
           >
@@ -819,7 +819,7 @@ export default function FinancialsClient({
                                 <span className="text-stone-500">{pct.toFixed(0)}%</span>
                               </div>
                               <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
-                                <div className="h-1.5 bg-[#8B7355] rounded-full" style={{ width: `${pct}%` }} />
+                                <div className="h-1.5 bg-amber-700 rounded-full" style={{ width: `${pct}%` }} />
                               </div>
                             </div>
                           );

@@ -56,7 +56,7 @@ export default function VouchersClient({ vouchers }: Props) {
         </div>
         <button
           onClick={() => setShowNew(true)}
-          className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6447] transition-colors"
+          className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6447] transition-colors"
         >
           + New Voucher
         </button>
@@ -82,7 +82,7 @@ export default function VouchersClient({ vouchers }: Props) {
                   step="0.01"
                   required
                   placeholder="0.00"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 />
               </div>
               <div>
@@ -93,7 +93,7 @@ export default function VouchersClient({ vouchers }: Props) {
                   name="custom_code"
                   type="text"
                   placeholder="e.g. BIRTHDAY2026"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-amber-600"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -102,7 +102,7 @@ export default function VouchersClient({ vouchers }: Props) {
                   <input
                     name="issued_to_name"
                     type="text"
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                   />
                 </div>
                 <div>
@@ -110,7 +110,7 @@ export default function VouchersClient({ vouchers }: Props) {
                   <input
                     name="issued_to_email"
                     type="email"
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                   />
                 </div>
               </div>
@@ -119,7 +119,7 @@ export default function VouchersClient({ vouchers }: Props) {
                 <input
                   name="expires_at"
                   type="date"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 />
               </div>
               <div>
@@ -127,7 +127,7 @@ export default function VouchersClient({ vouchers }: Props) {
                 <textarea
                   name="notes"
                   rows={2}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355] resize-none"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 resize-none"
                 />
               </div>
               {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
@@ -135,7 +135,7 @@ export default function VouchersClient({ vouchers }: Props) {
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="flex-1 py-2.5 bg-[#8B7355] text-white text-sm font-semibold rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-amber-700 text-white text-sm font-semibold rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                 >
                   {isPending ? "Creating…" : "Issue Voucher"}
                 </button>
@@ -197,7 +197,7 @@ export default function VouchersClient({ vouchers }: Props) {
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/vouchers/${v.id}`}
-                      className="text-xs text-[#8B7355] hover:text-[#7a6447] font-medium transition-colors"
+                      className="text-xs text-amber-700 hover:text-[#7a6447] font-medium transition-colors"
                     >
                       View →
                     </Link>

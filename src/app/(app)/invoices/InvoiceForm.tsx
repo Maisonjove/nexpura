@@ -322,7 +322,7 @@ export default function InvoiceForm({
               onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 150)}
               placeholder="Search customer…"
               disabled={!!isSentEdit}
-              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] disabled:bg-gray-50"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 disabled:bg-gray-50"
             />
             {showCustomerDropdown && filteredCustomers.length > 0 && (
               <div className="absolute z-20 w-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -330,7 +330,7 @@ export default function InvoiceForm({
                   <button
                     key={c.id}
                     type="button"
-                    className="w-full text-left px-3 py-2.5 text-sm hover:bg-[#8B7355]/5 transition-colors"
+                    className="w-full text-left px-3 py-2.5 text-sm hover:bg-amber-700/5 transition-colors"
                     onClick={() => {
                       setCustomerId(c.id);
                       setCustomerSearch(c.full_name || "");
@@ -353,7 +353,7 @@ export default function InvoiceForm({
               value={invoiceDate}
               onChange={(e) => setInvoiceDate(e.target.value)}
               disabled={!!isSentEdit}
-              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] disabled:bg-gray-50"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 disabled:bg-gray-50"
             />
           </div>
 
@@ -365,7 +365,7 @@ export default function InvoiceForm({
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
               disabled={!!isSentEdit}
-              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] disabled:bg-gray-50"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 disabled:bg-gray-50"
             />
           </div>
 
@@ -376,7 +376,7 @@ export default function InvoiceForm({
               value={referenceType}
               onChange={(e) => setReferenceType(e.target.value)}
               disabled={!!isSentEdit}
-              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] disabled:bg-gray-50"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 disabled:bg-gray-50"
             >
               {REFERENCE_TYPES.map((rt) => (
                 <option key={rt.value} value={rt.value}>
@@ -396,7 +396,7 @@ export default function InvoiceForm({
             <button
               type="button"
               onClick={() => setShowInventorySearch(!showInventorySearch)}
-              className="text-xs text-[#8B7355] hover:text-[#8B7355]/80 font-medium transition-colors flex items-center gap-1"
+              className="text-xs text-amber-700 hover:text-amber-700/80 font-medium transition-colors flex items-center gap-1"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -414,7 +414,7 @@ export default function InvoiceForm({
               placeholder="Search inventory…"
               value={inventoryQuery}
               onChange={(e) => setInventoryQuery(e.target.value)}
-              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] mb-2"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 mb-2"
               autoFocus
             />
             <div className="max-h-40 overflow-y-auto space-y-1">
@@ -423,7 +423,7 @@ export default function InvoiceForm({
                   key={item.id}
                   type="button"
                   onClick={() => addFromInventory(item)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-[#8B7355]/5 rounded-lg transition-colors flex items-center justify-between"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-amber-700/5 rounded-lg transition-colors flex items-center justify-between"
                 >
                   <span className="text-stone-900 font-medium">{item.name}</span>
                   <span className="text-stone-500">{item.retail_price ? fmt(item.retail_price) : "—"}</span>
@@ -472,7 +472,7 @@ export default function InvoiceForm({
                         onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
                         placeholder="Item description…"
                         disabled={!!isSentEdit}
-                        className="w-full px-2 py-1.5 border border-transparent hover:border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]/30 disabled:bg-transparent"
+                        className="w-full px-2 py-1.5 border border-transparent hover:border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600/30 disabled:bg-transparent"
                       />
                     </td>
                     <td className="py-2 px-3">
@@ -483,7 +483,7 @@ export default function InvoiceForm({
                         value={item.quantity}
                         onChange={(e) => updateLineItem(item.id, "quantity", parseFloat(e.target.value) || 0)}
                         disabled={!!isSentEdit}
-                        className="w-full px-2 py-1.5 border border-transparent hover:border-stone-200 rounded-lg text-sm text-right text-stone-900 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]/30 disabled:bg-transparent"
+                        className="w-full px-2 py-1.5 border border-transparent hover:border-stone-200 rounded-lg text-sm text-right text-stone-900 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600/30 disabled:bg-transparent"
                       />
                     </td>
                     <td className="py-2 px-3">
@@ -494,7 +494,7 @@ export default function InvoiceForm({
                         value={item.unit_price}
                         onChange={(e) => updateLineItem(item.id, "unit_price", parseFloat(e.target.value) || 0)}
                         disabled={!!isSentEdit}
-                        className="w-full px-2 py-1.5 border border-transparent hover:border-stone-200 rounded-lg text-sm text-right text-stone-900 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]/30 disabled:bg-transparent"
+                        className="w-full px-2 py-1.5 border border-transparent hover:border-stone-200 rounded-lg text-sm text-right text-stone-900 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600/30 disabled:bg-transparent"
                       />
                     </td>
                     <td className="py-2 px-3">
@@ -507,7 +507,7 @@ export default function InvoiceForm({
                         onChange={(e) => updateLineItem(item.id, "discount_pct", parseFloat(e.target.value) || 0)}
                         placeholder="0"
                         disabled={!!isSentEdit}
-                        className="w-full px-2 py-1.5 border border-transparent hover:border-stone-200 rounded-lg text-sm text-right text-stone-900 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]/30 disabled:bg-transparent"
+                        className="w-full px-2 py-1.5 border border-transparent hover:border-stone-200 rounded-lg text-sm text-right text-stone-900 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600/30 disabled:bg-transparent"
                       />
                     </td>
                     <td className="py-2 px-3 text-right font-medium text-stone-900">
@@ -535,7 +535,7 @@ export default function InvoiceForm({
           <button
             type="button"
             onClick={addLineItem}
-            className="flex items-center gap-1.5 text-sm text-[#8B7355] hover:text-[#8B7355]/80 font-medium transition-colors"
+            className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-700/80 font-medium transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -555,7 +555,7 @@ export default function InvoiceForm({
                   type="text"
                   value={taxName}
                   onChange={(e) => setTaxName(e.target.value)}
-                  className="w-16 px-2 py-1 border border-stone-200 rounded text-xs text-stone-900 focus:outline-none focus:border-[#8B7355]"
+                  className="w-16 px-2 py-1 border border-stone-200 rounded text-xs text-stone-900 focus:outline-none focus:border-amber-600"
                 />
                 <input
                   type="number"
@@ -564,7 +564,7 @@ export default function InvoiceForm({
                   step="0.01"
                   value={taxRate}
                   onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
-                  className="w-16 px-2 py-1 border border-stone-200 rounded text-xs text-right text-stone-900 focus:outline-none focus:border-[#8B7355]"
+                  className="w-16 px-2 py-1 border border-stone-200 rounded text-xs text-right text-stone-900 focus:outline-none focus:border-amber-600"
                 />
                 <span className="text-xs text-stone-400">({(taxRate * 100).toFixed(0)}%)</span>
               </div>
@@ -573,7 +573,7 @@ export default function InvoiceForm({
                   type="checkbox"
                   checked={taxInclusive}
                   onChange={(e) => setTaxInclusive(e.target.checked)}
-                  className="rounded border-stone-200 text-[#8B7355] focus:ring-[#8B7355]/30"
+                  className="rounded border-stone-200 text-amber-700 focus:ring-amber-600/30"
                 />
                 Tax inclusive
               </label>
@@ -601,7 +601,7 @@ export default function InvoiceForm({
                     value={discountAmount || ""}
                     onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
                     placeholder="0.00"
-                    className="w-24 px-2 py-1 border border-stone-200 rounded text-sm text-right text-stone-900 focus:outline-none focus:border-[#8B7355]"
+                    className="w-24 px-2 py-1 border border-stone-200 rounded text-sm text-right text-stone-900 focus:outline-none focus:border-amber-600"
                   />
                 </div>
               </div>
@@ -633,7 +633,7 @@ export default function InvoiceForm({
               disabled={!!isSentEdit}
               rows={3}
               placeholder="Thank you for your business…"
-              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] resize-none disabled:bg-gray-50"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none disabled:bg-gray-50"
             />
           </div>
           <div>
@@ -646,7 +646,7 @@ export default function InvoiceForm({
               disabled={!!isSentEdit}
               rows={3}
               placeholder="Bank details, payment instructions…"
-              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] resize-none disabled:bg-gray-50"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none disabled:bg-gray-50"
             />
           </div>
         </div>
@@ -673,7 +673,7 @@ export default function InvoiceForm({
             type="button"
             disabled={isPending}
             onClick={() => handleSubmit("sent")}
-            className="px-4 py-2 text-sm bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
           >
             {isPending ? "Saving…" : "Save & Send"}
           </button>

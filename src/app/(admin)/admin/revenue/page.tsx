@@ -89,7 +89,7 @@ export default async function RevenueAdminPage() {
       {/* Secondary KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Trialing", value: trialSubs.length, color: "text-[#8B7355]" },
+          { label: "Trialing", value: trialSubs.length, color: "text-amber-700" },
           { label: "Past Due", value: pastDueSubs.length, color: pastDueSubs.length > 0 ? "text-red-600" : "text-stone-900" },
           { label: "Churned", value: cancelledSubs.length, color: cancelledSubs.length > 5 ? "text-red-600" : "text-stone-900" },
           { label: "Churn Rate", value: `${churnRate}%`, color: "text-stone-900" },
@@ -117,7 +117,7 @@ export default async function RevenueAdminPage() {
                   </div>
                   <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#8B7355] rounded-full transition-all"
+                      className="h-full bg-amber-700 rounded-full transition-all"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -144,7 +144,7 @@ export default async function RevenueAdminPage() {
                 </div>
                 <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[#8B7355]/60 rounded-full"
+                    className="h-full bg-amber-700/60 rounded-full"
                     style={{ width: `${row.width}%` }}
                   />
                 </div>
@@ -176,7 +176,7 @@ export default async function RevenueAdminPage() {
                 return (
                   <tr key={sub.tenant_id} className="hover:bg-stone-50">
                     <td className="px-5 py-3">
-                      <Link href={`/admin/tenants/${sub.tenant_id}`} className="font-medium text-stone-900 hover:text-[#8B7355]">
+                      <Link href={`/admin/tenants/${sub.tenant_id}`} className="font-medium text-stone-900 hover:text-amber-700">
                         {tenant?.name ?? "Unknown"}
                       </Link>
                       {tenant?.is_free_forever && (

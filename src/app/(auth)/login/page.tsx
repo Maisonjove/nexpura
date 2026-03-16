@@ -58,7 +58,7 @@ export default function LoginPage() {
       {/* Logo */}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-2.5 mb-3">
-          <div className="w-9 h-9 rounded-lg bg-[#8B7355] flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-amber-700 flex items-center justify-center">
             <Gem size={18} color="white" />
           </div>
           <span className="text-xl font-semibold text-stone-900">Nexpura</span>
@@ -78,7 +78,7 @@ export default function LoginPage() {
             onClick={() => { setMode("password"); setError(null); }}
             className={`flex-1 text-sm py-1.5 rounded-md transition-all ${
               mode === "password"
-                ? "bg-[#8B7355] text-white font-medium"
+                ? "bg-amber-700 text-white font-medium"
                 : "text-stone-500 hover:text-stone-700"
             }`}
           >
@@ -89,7 +89,7 @@ export default function LoginPage() {
             onClick={() => { setMode("magic"); setError(null); }}
             className={`flex-1 text-sm py-1.5 rounded-md transition-all ${
               mode === "magic"
-                ? "bg-[#8B7355] text-white font-medium"
+                ? "bg-amber-700 text-white font-medium"
                 : "text-stone-500 hover:text-stone-700"
             }`}
           >
@@ -109,7 +109,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@yourshop.com"
-                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
+                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
               />
             </div>
             <div>
@@ -122,7 +122,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
+                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
               />
             </div>
 
@@ -133,7 +133,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#8B7355] hover:bg-[#7A6347] text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
+              className="w-full bg-amber-700 hover:bg-amber-800 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>
@@ -150,7 +150,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@yourshop.com"
-                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
+                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
               />
             </div>
 
@@ -164,7 +164,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !!success}
-              className="w-full bg-[#8B7355] hover:bg-[#7A6347] text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
+              className="w-full bg-amber-700 hover:bg-amber-800 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
             >
               {loading ? "Sending…" : "Send magic link"}
             </button>
@@ -173,7 +173,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-stone-500 mt-6">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-[#8B7355] hover:underline font-medium">
+          <Link href="/signup" className="text-amber-700 hover:underline font-medium">
             Sign up free
           </Link>
         </p>

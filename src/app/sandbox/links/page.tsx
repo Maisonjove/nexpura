@@ -138,7 +138,7 @@ export default function SandboxLinksPage() {
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 860, margin: "0 auto", padding: "32px 24px", background: "#fafaf9", minHeight: "100vh" }}>
       {/* Header */}
-      <div style={{ borderLeft: "4px solid #B45309", paddingLeft: 16, marginBottom: 32 }}>
+      <div style={{ borderLeft: "4px solid amber-700", paddingLeft: 16, marginBottom: 32 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1c1917", margin: 0 }}>Nexpura — Reviewer Route Index</h1>
         <p style={{ fontSize: 14, color: "#78716c", margin: "6px 0 0" }}>
           All routes open the real authenticated app as the Marcus &amp; Co. demo owner.
@@ -151,7 +151,7 @@ export default function SandboxLinksPage() {
         <span style={{ fontSize: 13, color: "#57534e" }}>🏪 <strong>Tenant:</strong> Marcus &amp; Co. Fine Jewellery</span>
         <span style={{ fontSize: 13, color: "#57534e" }}>👤 <strong>User:</strong> demo@nexpura.com (Owner)</span>
         <span style={{ fontSize: 13, color: "#57534e" }}>🔐 <strong>Auth:</strong> Middleware injection — cookie-free</span>
-        <a href={`/sandbox/status?rt=${RT}`} style={{ fontSize: 13, color: "#B45309", fontWeight: 600, marginLeft: "auto" }}>
+        <a href={`/sandbox/status?rt=${RT}`} style={{ fontSize: 13, color: "amber-700", fontWeight: 600, marginLeft: "auto" }}>
           Verify status →
         </a>
       </div>
@@ -202,7 +202,7 @@ export default function SandboxLinksPage() {
                   <code style={{ fontSize: 11, color: "#78716c", background: "#f5f5f4", padding: "2px 8px", borderRadius: 4 }}>
                     {link.path}
                   </code>
-                  <span style={{ color: "#B45309", fontSize: 14 }}>→</span>
+                  <span style={{ color: "amber-700", fontSize: 14 }}>→</span>
                 </div>
               </a>
             ))}
@@ -212,8 +212,8 @@ export default function SandboxLinksPage() {
 
       {/* Footer */}
       <div style={{ marginTop: 32, padding: "16px 0", borderTop: "1px solid #e7e5e4", display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <a href={`/sandbox?rt=${RT}`} style={{ fontSize: 13, color: "#B45309" }}>← Sandbox entry</a>
-        <a href={`/sandbox/status?rt=${RT}`} style={{ fontSize: 13, color: "#B45309" }}>Auth status check</a>
+        <a href={`/sandbox?rt=${RT}`} style={{ fontSize: 13, color: "amber-700" }}>← Sandbox entry</a>
+        <a href={`/sandbox/status?rt=${RT}`} style={{ fontSize: 13, color: "amber-700" }}>Auth status check</a>
         <a href={`/sandbox/reset`} style={{ fontSize: 13, color: "#9ca3af" }}>Reset demo data</a>
         <a href="/review" style={{ fontSize: 13, color: "#9ca3af" }}>Public review surface →</a>
       </div>

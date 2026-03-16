@@ -29,7 +29,7 @@ export function ProgressRing({ progress, size = 120, strokeWidth = 10, label, su
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#B45309"
+          stroke="amber-700"
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}

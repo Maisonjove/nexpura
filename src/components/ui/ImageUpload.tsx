@@ -167,14 +167,14 @@ export default function ImageUpload({
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading.length > 0}
             className={`w-32 h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors ${
-              isDragging ? "border-[#8B7355] bg-[#8B7355]/5" : "border-stone-200 hover:border-[#8B7355]/60 hover:bg-[#8B7355]/5"
+              isDragging ? "border-amber-600 bg-amber-700/5" : "border-stone-200 hover:border-amber-600/60 hover:bg-amber-700/5"
             } disabled:opacity-50`}
             onDrop={onDrop}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
           >
             {uploading.length > 0 ? (
-              <div className="w-6 h-6 rounded-full border-2 border-[#8B7355] border-t-transparent animate-spin" />
+              <div className="w-6 h-6 rounded-full border-2 border-amber-600 border-t-transparent animate-spin" />
             ) : (
               <>
                 <svg className="w-7 h-7 text-stone-900/25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +229,7 @@ export default function ImageUpload({
               className="w-[120px] h-[120px] rounded-xl border border-stone-200 flex items-center justify-center bg-stone-50 flex-shrink-0"
             >
               <div className="flex flex-col items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2 border-[#8B7355] border-t-transparent animate-spin" />
+                <div className="w-6 h-6 rounded-full border-2 border-amber-600 border-t-transparent animate-spin" />
                 <span className="text-[10px] text-stone-400 text-center px-1 truncate max-w-full">{u.name}</span>
               </div>
             </div>
@@ -245,12 +245,12 @@ export default function ImageUpload({
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-            isDragging ? "border-[#8B7355] bg-[#8B7355]/5" : "border-stone-200 hover:border-[#8B7355]/60 hover:bg-[#8B7355]/5"
+            isDragging ? "border-amber-600 bg-amber-700/5" : "border-stone-200 hover:border-amber-600/60 hover:bg-amber-700/5"
           }`}
         >
           {uploading.length > 0 ? (
             <div className="flex items-center justify-center gap-3">
-              <div className="w-5 h-5 rounded-full border-2 border-[#8B7355] border-t-transparent animate-spin" />
+              <div className="w-5 h-5 rounded-full border-2 border-amber-600 border-t-transparent animate-spin" />
               <span className="text-sm text-stone-500">Uploading {uploading.length} file{uploading.length > 1 ? "s" : ""}…</span>
             </div>
           ) : (
@@ -259,7 +259,7 @@ export default function ImageUpload({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <p className="text-sm text-stone-400">
-                Drag & drop or <span className="text-[#8B7355] font-medium">click to upload</span>
+                Drag & drop or <span className="text-amber-700 font-medium">click to upload</span>
               </p>
               <p className="text-xs text-stone-400 mt-1">JPG, PNG, WebP · up to 10MB each · max {maxImages} images</p>
             </>

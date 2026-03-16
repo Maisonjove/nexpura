@@ -80,15 +80,15 @@ export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
       {/* Wordmark */}
       <div className="px-5 py-5 border-b border-white/10">
         <Link href="/admin" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-[#8B7355]/30 flex items-center justify-center">
-            <svg className="w-4 h-4 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-7 h-7 rounded bg-amber-700/30 flex items-center justify-center">
+            <svg className="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </div>
           <div>
             <span className="text-base font-semibold tracking-tight text-white">
               nexpura{" "}
-              <span className="text-[#8B7355]">admin</span>
+              <span className="text-amber-700">admin</span>
             </span>
           </div>
         </Link>
@@ -135,14 +135,14 @@ export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
       {/* User info */}
       <div className="px-3 py-4 border-t border-white/10">
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
-          <div className="w-8 h-8 rounded-full bg-[#8B7355]/30 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-semibold text-[#8B7355]">
+          <div className="w-8 h-8 rounded-full bg-amber-700/30 flex items-center justify-center flex-shrink-0">
+            <span className="text-xs font-semibold text-amber-700">
               {(userEmail || "A")[0].toUpperCase()}
             </span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-white/40 truncate">{userEmail}</p>
-            <p className="text-xs text-[#8B7355]">Super Admin</p>
+            <p className="text-xs text-amber-700">Super Admin</p>
           </div>
           <button
             onClick={handleSignOut}

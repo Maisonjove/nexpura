@@ -65,7 +65,7 @@ export default function ItemEnquiryForm({ subdomain, tenantId, itemName, primary
           value={form.name}
           onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
           required
-          className="px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+          className="px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
         />
         <input
           type="email"
@@ -73,7 +73,7 @@ export default function ItemEnquiryForm({ subdomain, tenantId, itemName, primary
           value={form.email}
           onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
           required
-          className="px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+          className="px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
         />
       </div>
       <input
@@ -81,14 +81,14 @@ export default function ItemEnquiryForm({ subdomain, tenantId, itemName, primary
         placeholder="Phone (optional)"
         value={form.phone}
         onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-        className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+        className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
       />
       <textarea
         placeholder={`I'm interested in the ${itemName}…`}
         value={form.message}
         onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))}
         rows={3}
-        className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 resize-none"
+        className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 resize-none"
       />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button

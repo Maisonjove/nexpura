@@ -77,7 +77,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 }
 
 const inputCls =
-  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355] transition-colors";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600 transition-colors";
 
 function SectionCard({
   title,
@@ -182,7 +182,7 @@ export default function BespokeJobForm({ customers, mode, job, preselectedCustom
           )}
           <p className="mt-2 text-xs text-stone-400">
             Customer not listed?{" "}
-            <a href="/customers/new?returnTo=/bespoke/new" className="text-[#8B7355] hover:underline">
+            <a href="/customers/new?returnTo=/bespoke/new" className="text-amber-700 hover:underline">
               Add a new customer →
             </a>
           </p>
@@ -520,7 +520,7 @@ export default function BespokeJobForm({ customers, mode, job, preselectedCustom
         <button
           type="submit"
           disabled={isPending}
-          className="bg-[#8B7355] text-white text-sm font-medium px-6 py-2.5 rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-amber-700 text-white text-sm font-medium px-6 py-2.5 rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPending ? "Saving…" : mode === "create" ? "Create Job" : "Save Changes"}
         </button>

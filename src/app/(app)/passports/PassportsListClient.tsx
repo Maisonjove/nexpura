@@ -58,7 +58,7 @@ export default function PassportsListClient({ passports, total, active, verified
         {!readOnly && (
           <Link
             href={`${basePath}/passports/new`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -72,7 +72,7 @@ export default function PassportsListClient({ passports, total, active, verified
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: "Total", value: total, color: "text-stone-900" },
-          { label: "Active", value: active, color: "text-[#8B7355]" },
+          { label: "Active", value: active, color: "text-amber-700" },
           { label: "Verified", value: verified, color: "text-green-700" },
           { label: "Public", value: publicCount, color: "text-stone-600" },
         ].map((stat) => (
@@ -94,14 +94,14 @@ export default function PassportsListClient({ passports, total, active, verified
             placeholder="Search by name, UID or owner…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+            className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
           />
         </div>
 
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+          className="px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
@@ -112,7 +112,7 @@ export default function PassportsListClient({ passports, total, active, verified
         <select
           value={filterVisibility}
           onChange={(e) => setFilterVisibility(e.target.value)}
-          className="px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+          className="px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
         >
           <option value="all">All Visibility</option>
           <option value="public">Public</option>
@@ -138,7 +138,7 @@ export default function PassportsListClient({ passports, total, active, verified
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-14 h-14 rounded-full bg-stone-100 flex items-center justify-center mb-4">
-              <svg className="w-7 h-7 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-7 h-7 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
@@ -149,7 +149,7 @@ export default function PassportsListClient({ passports, total, active, verified
             {!search && !readOnly && (
               <Link
                 href={`${basePath}/passports/new`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -176,7 +176,7 @@ export default function PassportsListClient({ passports, total, active, verified
                 {filtered.map((passport) => (
                   <tr key={passport.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-5 py-4">
-                      <span className="font-mono text-xs font-semibold bg-stone-100 text-[#8B7355] px-2 py-1 rounded">
+                      <span className="font-mono text-xs font-semibold bg-stone-100 text-amber-700 px-2 py-1 rounded">
                         {passport.passport_uid}
                       </span>
                     </td>
@@ -225,14 +225,14 @@ export default function PassportsListClient({ passports, total, active, verified
                           <button
                             onClick={() => copyVerifyLink(passport.passport_uid)}
                             title="Copy verify link"
-                            className="text-xs text-stone-400 hover:text-[#8B7355] transition-colors"
+                            className="text-xs text-stone-400 hover:text-amber-700 transition-colors"
                           >
                             {copiedId === passport.passport_uid ? "✓ Copied" : "Copy Link"}
                           </button>
                         )}
                         <Link
                           href={`${basePath}/passports/${passport.id}`}
-                          className="text-[#8B7355] hover:text-[#8B7355]/80 text-xs font-medium transition-colors"
+                          className="text-amber-700 hover:text-amber-700/80 text-xs font-medium transition-colors"
                         >
                           View
                         </Link>

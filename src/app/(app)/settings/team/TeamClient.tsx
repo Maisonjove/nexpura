@@ -41,13 +41,13 @@ interface Props {
 }
 
 const ROLE_COLOURS: Record<string, string> = {
-  owner: "bg-purple-50 text-purple-700",
-  manager: "bg-blue-50 text-blue-700",
+  owner: "bg-stone-100 text-stone-600",
+  manager: "bg-amber-50 text-amber-700",
   salesperson: "bg-green-50 text-green-700",
   workshop_jeweller: "bg-amber-50 text-amber-700",
   repair_technician: "bg-orange-50 text-orange-700",
   inventory_manager: "bg-teal-50 text-teal-700",
-  accountant: "bg-indigo-50 text-indigo-700",
+  accountant: "bg-stone-100 text-stone-600",
   staff: "bg-stone-100 text-stone-700",
   technician: "bg-amber-50 text-amber-700",
 };
@@ -66,14 +66,14 @@ const ROLE_LABELS: Record<string, string> = {
 
 const PRIORITY_COLOURS: Record<string, string> = {
   low: "bg-stone-100 text-stone-500",
-  normal: "bg-blue-50 text-blue-600",
+  normal: "bg-amber-50 text-amber-700",
   high: "bg-amber-50 text-amber-700",
   urgent: "bg-red-50 text-red-600",
 };
 
 const STATUS_COLOURS: Record<string, string> = {
   todo: "bg-stone-100 text-stone-600",
-  in_progress: "bg-blue-50 text-blue-700",
+  in_progress: "bg-amber-50 text-amber-700",
   done: "bg-green-50 text-green-700",
   cancelled: "bg-red-50 text-red-400",
 };
@@ -481,7 +481,7 @@ export default function TeamClient({ members, tasks, currentUserRole, businessMo
                     <button
                       onClick={() => handleTaskStatus(task.id, "in_progress")}
                       disabled={isPending}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded transition-colors disabled:opacity-50"
+                      className="text-xs text-amber-700 hover:text-stone-800 font-medium px-2 py-1 rounded transition-colors disabled:opacity-50"
                     >
                       Start
                     </button>

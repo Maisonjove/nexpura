@@ -102,7 +102,7 @@ export default function BuilderPageListClient({ initialPages }: Props) {
           </Link>
           <button
             onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors"
+            className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors"
           >
             + Add Page
           </button>
@@ -122,13 +122,13 @@ export default function BuilderPageListClient({ initialPages }: Props) {
                   value={newTitle}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   placeholder="e.g. Our Story"
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                   autoFocus
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5">URL Slug</label>
-                <div className="flex items-center border border-stone-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[#8B7355]/30">
+                <div className="flex items-center border border-stone-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[amber-700]/30">
                   <span className="px-3 py-2 text-sm text-stone-400 bg-stone-50 border-r border-stone-200">/</span>
                   <input
                     type="text"
@@ -144,7 +144,7 @@ export default function BuilderPageListClient({ initialPages }: Props) {
                 <select
                   value={newType}
                   onChange={(e) => setNewType(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                 >
                   {PAGE_TYPE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -163,7 +163,7 @@ export default function BuilderPageListClient({ initialPages }: Props) {
               <button
                 onClick={handleCreate}
                 disabled={isPending || !newTitle.trim() || !newSlug.trim()}
-                className="flex-1 px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
               >
                 {isPending ? "Creating…" : "Create Page"}
               </button>
@@ -218,7 +218,7 @@ export default function BuilderPageListClient({ initialPages }: Props) {
                     <div className="flex items-center gap-3">
                       <Link
                         href={`/website/builder/${page.id}`}
-                        className="text-[#8B7355] hover:text-[#7a6349] text-xs font-medium"
+                        className="text-amber-700 hover:text-[#7a6349] text-xs font-medium"
                       >
                         Edit
                       </Link>

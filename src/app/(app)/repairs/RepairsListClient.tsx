@@ -117,8 +117,8 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
       case "intake": return <Badge className="bg-stone-100 text-stone-600 hover:bg-stone-100 border border-stone-200">Intake</Badge>;
       case "assessed": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Assessed</Badge>;
       case "quoted": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Quoted</Badge>;
-      case "approved": return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-200">Approved</Badge>;
-      case "in_progress": return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-200">In Progress</Badge>;
+      case "approved": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Approved</Badge>;
+      case "in_progress": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">In Progress</Badge>;
       case "quality_check": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Quality Check</Badge>;
       case "ready": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200">Ready</Badge>;
       case "collected": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200">Collected</Badge>;
@@ -148,7 +148,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
               <button
                 onClick={handleBulkNotify}
                 disabled={notifying}
-                className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 <Bell className="w-4 h-4" />
                 {notifying ? "Sending…" : `Notify ${readyRepairs.length} Customer${readyRepairs.length !== 1 ? "s" : ""}`}
@@ -204,7 +204,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
             <Camera className="w-4 h-4" />
             Scan
           </button>
-          <Link href="/repairs/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-10 px-4 py-2">
+          <Link href="/repairs/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
             <Plus className="w-4 h-4 mr-2" /> New Repair
           </Link>
         </div>
@@ -223,7 +223,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
               }}
               className={`pb-3 px-1 text-sm transition-colors ${
                 isActive
-                  ? "border-b-2 border-[#8B7355] text-stone-900 font-medium"
+                  ? "border-b-2 border-amber-600 text-stone-900 font-medium"
                   : "text-stone-400 hover:text-stone-600"
               }`}
             >
@@ -286,7 +286,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
                       <TableCell className="text-sm text-stone-700">—</TableCell>
                       <TableCell className="text-sm font-medium text-stone-900">—</TableCell>
                       <TableCell>
-                        <ArrowRight className="w-4 h-4 text-stone-300 hover:text-[#8B7355]" />
+                        <ArrowRight className="w-4 h-4 text-stone-300 hover:text-amber-700" />
                       </TableCell>
                     </TableRow>
                   );

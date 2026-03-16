@@ -65,13 +65,13 @@ export default function TransfersClient({ tenantId, initialTransfers, locations,
         <div>
           <h1 className="text-2xl font-semibold text-stone-900 flex items-center gap-2">
             Stock Transfers
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 mt-1">BETA</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 mt-1">BETA</span>
           </h1>
           <p className="text-sm text-stone-500 mt-0.5">Move items between locations and track history. <span className="italic">Note: Advanced multi-store allocation is in Beta.</span></p>
         </div>
         <button
           onClick={() => setShowNew(true)}
-          className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347]"
+          className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800"
         >
           + New Transfer
         </button>
@@ -140,7 +140,7 @@ export default function TransfersClient({ tenantId, initialTransfers, locations,
               <button
                 type="button"
                 onClick={() => setForm({ ...form, items: [...form.items, { inventory_id: "", quantity: 1 }] })}
-                className="text-xs text-[#8B7355] font-medium hover:underline"
+                className="text-xs text-amber-700 font-medium hover:underline"
               >
                 + Add Another Item
               </button>
@@ -164,7 +164,7 @@ export default function TransfersClient({ tenantId, initialTransfers, locations,
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg disabled:opacity-50"
+                className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
               >
                 Confirm Transfer
               </button>
@@ -191,7 +191,7 @@ export default function TransfersClient({ tenantId, initialTransfers, locations,
                 <td className="px-6 py-4 font-medium">{t.from?.name || "Multiple/Various"}</td>
                 <td className="px-6 py-4 font-medium">{t.to?.name || "Unknown"}</td>
                 <td className="px-6 py-4">
-                  <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider">
+                  <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wider">
                     {t.status}
                   </span>
                 </td>

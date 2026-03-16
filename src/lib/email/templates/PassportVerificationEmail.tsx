@@ -33,7 +33,7 @@ export default function PassportVerificationEmail({
                 {/* Header */}
                 <tr>
                   <td style={{ backgroundColor: '#1a1a1a', padding: '40px 40px 32px', textAlign: 'center' }}>
-                    <p style={{ margin: 0, color: '#8B7355', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'sans-serif', fontWeight: 600 }}>
+                    <p style={{ margin: 0, color: 'amber-700', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'sans-serif', fontWeight: 600 }}>
                       Jewellery Passport
                     </p>
                     <h1 style={{ margin: '12px 0 0', color: '#ffffff', fontSize: '26px', fontWeight: 400, letterSpacing: '1px' }}>
@@ -83,7 +83,7 @@ export default function PassportVerificationEmail({
                             href={verificationUrl}
                             style={{
                               display: 'inline-block',
-                              backgroundColor: '#8B7355',
+                              backgroundColor: 'amber-700',
                               color: '#ffffff',
                               textDecoration: 'none',
                               padding: '14px 36px',
@@ -103,7 +103,7 @@ export default function PassportVerificationEmail({
                     <p style={{ margin: '0 0 4px', color: '#a8a29e', fontSize: '12px', fontFamily: 'sans-serif', textAlign: 'center' }}>
                       Or copy this link:
                     </p>
-                    <p style={{ margin: 0, color: '#8B7355', fontSize: '12px', fontFamily: 'monospace', textAlign: 'center', wordBreak: 'break-all' }}>
+                    <p style={{ margin: 0, color: 'amber-700', fontSize: '12px', fontFamily: 'monospace', textAlign: 'center', wordBreak: 'break-all' }}>
                       {verificationUrl}
                     </p>
                   </td>
@@ -124,7 +124,7 @@ export default function PassportVerificationEmail({
                     </p>
                     {businessEmail && (
                       <p style={{ margin: 0, color: '#a8a29e', fontSize: '12px', fontFamily: 'sans-serif' }}>
-                        <a href={`mailto:${businessEmail}`} style={{ color: '#8B7355', textDecoration: 'none' }}>{businessEmail}</a>
+                        <a href={`mailto:${businessEmail}`} style={{ color: 'amber-700', textDecoration: 'none' }}>{businessEmail}</a>
                       </p>
                     )}
                     <p style={{ margin: '16px 0 0', color: '#d6d3d1', fontSize: '11px', fontFamily: 'sans-serif' }}>

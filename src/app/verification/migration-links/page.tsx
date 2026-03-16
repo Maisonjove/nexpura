@@ -155,7 +155,7 @@ export default async function MigrationLinksPage() {
       <div style={{ maxWidth: 880, margin: "0 auto" }}>
 
         {/* Header */}
-        <div style={{ borderLeft: "4px solid #B45309", paddingLeft: 16, marginBottom: 32 }}>
+        <div style={{ borderLeft: "4px solid amber-700", paddingLeft: 16, marginBottom: 32 }}>
           <p style={{ fontSize: 12, color: "#78350f", fontWeight: 600, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Migration Hub · Direct Route Verification Pack
           </p>
@@ -195,10 +195,10 @@ export default async function MigrationLinksPage() {
                   }}
                 >
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#B45309", marginBottom: 2 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "amber-700", marginBottom: 2 }}>
                       → {link.label}
                       {link.highlight && (
-                        <span style={{ marginLeft: 8, fontSize: 10, background: "#B45309", color: "white", borderRadius: 20, padding: "1px 8px", fontWeight: 700 }}>
+                        <span style={{ marginLeft: 8, fontSize: 10, background: "amber-700", color: "white", borderRadius: 20, padding: "1px 8px", fontWeight: 700 }}>
                           {link.highlight}
                         </span>
                       )}
@@ -260,9 +260,9 @@ export default async function MigrationLinksPage() {
         </div>
 
         <p style={{ fontSize: 11, color: "#a8a29e", textAlign: "center" }}>
-          <a href={`${BASE}/verification/migration?rt=${RT}`} target="_blank" style={{ color: "#B45309" }}>→ Migration Proof Gallery</a>
+          <a href={`${BASE}/verification/migration?rt=${RT}`} target="_blank" style={{ color: "amber-700" }}>→ Migration Proof Gallery</a>
           {" · "}
-          <a href={`${BASE}/verification/workflows?rt=${RT}`} target="_blank" style={{ color: "#B45309" }}>→ Command Center Proof</a>
+          <a href={`${BASE}/verification/workflows?rt=${RT}`} target="_blank" style={{ color: "amber-700" }}>→ Command Center Proof</a>
         </p>
       </div>
     </div>

@@ -318,7 +318,7 @@ export default function LaybyDetailClient({
               {!isFullyPaid && !showPayForm && (
                 <button
                   onClick={() => setShowPayForm(true)}
-                  className="w-full px-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6347] transition-colors"
+                  className="w-full px-4 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6347] transition-colors"
                 >
                   Record Payment
                 </button>
@@ -338,7 +338,7 @@ export default function LaybyDetailClient({
                       value={payAmount}
                       onChange={(e) => setPayAmount(e.target.value)}
                       placeholder={`Max $${remaining.toFixed(2)}`}
-                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                     />
                   </div>
                   <div>
@@ -348,7 +348,7 @@ export default function LaybyDetailClient({
                     <select
                       value={payMethod}
                       onChange={(e) => setPayMethod(e.target.value)}
-                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                     >
                       {PAYMENT_METHODS.map((m) => (
                         <option key={m} value={m}>
@@ -366,14 +366,14 @@ export default function LaybyDetailClient({
                       value={payNotes}
                       onChange={(e) => setPayNotes(e.target.value)}
                       placeholder="e.g. Cash received in store"
-                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
                     />
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={handleRecordPayment}
                       disabled={isPending}
-                      className="flex-1 px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6347] disabled:opacity-50 transition-colors"
+                      className="flex-1 px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6347] disabled:opacity-50 transition-colors"
                     >
                       {isPending ? "Saving…" : "Save Payment"}
                     </button>

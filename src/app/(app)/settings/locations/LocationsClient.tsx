@@ -68,7 +68,7 @@ export default function LocationsClient({ tenantId, initialLocations }: { tenant
         </div>
         <button
           onClick={() => setShowNew(true)}
-          className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347]"
+          className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800"
         >
           + Add Location
         </button>
@@ -84,7 +84,7 @@ export default function LocationsClient({ tenantId, initialLocations }: { tenant
                   required
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#8B7355] outline-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
                   placeholder="Main Showroom"
                 />
               </div>
@@ -93,7 +93,7 @@ export default function LocationsClient({ tenantId, initialLocations }: { tenant
                 <select
                   value={form.type}
                   onChange={e => setForm({ ...form, type: e.target.value })}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#8B7355] outline-none bg-white"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none bg-white"
                 >
                   <option value="showroom">Showroom</option>
                   <option value="workshop">Workshop</option>
@@ -108,7 +108,7 @@ export default function LocationsClient({ tenantId, initialLocations }: { tenant
               <input
                 value={form.address_line1}
                 onChange={e => setForm({ ...form, address_line1: e.target.value })}
-                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#8B7355] outline-none"
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
                 placeholder="123 Jewellery St"
               />
             </div>
@@ -117,19 +117,19 @@ export default function LocationsClient({ tenantId, initialLocations }: { tenant
                 placeholder="Suburb"
                 value={form.suburb}
                 onChange={e => setForm({ ...form, suburb: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#8B7355] outline-none"
+                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
               />
               <input
                 placeholder="State"
                 value={form.state}
                 onChange={e => setForm({ ...form, state: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#8B7355] outline-none"
+                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
               />
               <input
                 placeholder="Postcode"
                 value={form.postcode}
                 onChange={e => setForm({ ...form, postcode: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#8B7355] outline-none"
+                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
               />
             </div>
             <div className="flex justify-end gap-3 pt-2">
@@ -143,7 +143,7 @@ export default function LocationsClient({ tenantId, initialLocations }: { tenant
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg disabled:opacity-50"
+                className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
               >
                 {loading ? "Saving..." : "Save Location"}
               </button>

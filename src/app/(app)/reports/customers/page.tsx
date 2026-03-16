@@ -57,7 +57,7 @@ export default async function CustomerReportsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
-          <div className="p-2 w-fit rounded-lg bg-blue-50 text-blue-600 mb-4"><Users size={20} /></div>
+          <div className="p-2 w-fit rounded-lg bg-amber-50 text-amber-700 mb-4"><Users size={20} /></div>
           <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">Total Customers</p>
           <p className="text-3xl font-bold text-stone-900 mt-1">{totalCustomers}</p>
         </div>
@@ -74,7 +74,7 @@ export default async function CustomerReportsPage() {
           </p>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
-          <div className="p-2 w-fit rounded-lg bg-purple-50 text-purple-600 mb-4"><ShoppingBag size={20} /></div>
+          <div className="p-2 w-fit rounded-lg bg-stone-100 text-stone-600 mb-4"><ShoppingBag size={20} /></div>
           <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">Total Store Credit</p>
           <p className="text-3xl font-bold text-stone-900 mt-1">${totalStoreCredit.toFixed(2)}</p>
         </div>
@@ -83,7 +83,7 @@ export default async function CustomerReportsPage() {
       <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
         <div className="px-8 py-6 border-b border-stone-100 flex items-center justify-between">
           <h2 className="font-bold text-stone-900 text-lg">Top 10 Customers by Spend</h2>
-          <button className="text-sm font-semibold text-[#8B7355] hover:underline">Export CSV</button>
+          <button className="text-sm font-semibold text-amber-700 hover:underline">Export CSV</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">

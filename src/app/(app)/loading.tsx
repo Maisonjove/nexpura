@@ -6,9 +6,9 @@ export default function AppLoading() {
           <span className="font-semibold text-sm font-bold text-white">N</span>
         </div>
         <div className="flex items-center gap-1.5 justify-center">
-          <span className="w-2 h-2 rounded-full bg-[#8B7355] animate-bounce [animation-delay:0ms]" />
-          <span className="w-2 h-2 rounded-full bg-[#8B7355] animate-bounce [animation-delay:150ms]" />
-          <span className="w-2 h-2 rounded-full bg-[#8B7355] animate-bounce [animation-delay:300ms]" />
+          <span className="w-2 h-2 rounded-full bg-amber-700 animate-bounce [animation-delay:0ms]" />
+          <span className="w-2 h-2 rounded-full bg-amber-700 animate-bounce [animation-delay:150ms]" />
+          <span className="w-2 h-2 rounded-full bg-amber-700 animate-bounce [animation-delay:300ms]" />
         </div>
       </div>
     </div>

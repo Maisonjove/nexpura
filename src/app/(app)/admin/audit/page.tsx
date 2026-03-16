@@ -30,7 +30,7 @@ export default async function AuditLogsPage() {
         <div className="flex gap-2">
            <div className="relative">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
-             <input placeholder="Search logs..." className="pl-10 pr-4 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#8B7355]" />
+             <input placeholder="Search logs..." className="pl-10 pr-4 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-amber-600" />
            </div>
            <button className="flex items-center gap-2 px-4 py-2 border border-stone-200 bg-white rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-50">
              <Filter size={16} /> Filter
@@ -64,7 +64,7 @@ export default async function AuditLogsPage() {
                       <p className="text-stone-400">{log.users?.email}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-0.5 bg-[#8B7355]/10 text-[#8B7355] font-bold rounded uppercase tracking-tighter">
+                      <span className="px-2 py-0.5 bg-amber-700/10 text-amber-700 font-bold rounded uppercase tracking-tighter">
                         {log.action.replace(/_/g, " ")}
                       </span>
                     </td>

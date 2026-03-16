@@ -42,7 +42,7 @@ export default function DailyTaskDigestEmail({
                     {/* Header */}
                     <tr>
                       <td style={{ backgroundColor: '#1A1A1A', borderRadius: '12px 12px 0 0', padding: '32px 40px' }}>
-                        <p style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#8B7355', letterSpacing: '0.05em', fontFamily: 'Georgia, serif' }}>
+                        <p style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: 'amber-700', letterSpacing: '0.05em', fontFamily: 'Georgia, serif' }}>
                           nexpura
                         </p>
                         <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'rgba(248,245,240,0.6)', letterSpacing: '0.03em' }}>
@@ -63,7 +63,7 @@ export default function DailyTaskDigestEmail({
 
                         {urgentTasks.length > 0 && (
                           <div style={{ marginBottom: '32px' }}>
-                            <p style={{ margin: '0 0 12px', fontSize: '12px', fontWeight: '700', color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            <p style={{ margin: '0 0 12px', fontSize: '12px', fontWeight: '700', color: 'amber-700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                               ⚠️ High Priority & Urgent
                             </p>
                             <table width="100%" cellPadding={0} cellSpacing={0}>
@@ -72,7 +72,7 @@ export default function DailyTaskDigestEmail({
                                   <tr key={task.id}>
                                     <td style={{ padding: '12px', backgroundColor: '#FFFBEB', borderLeft: '4px solid #F59E0B', marginBottom: '8px', borderRadius: '0 4px 4px 0' }}>
                                       <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#92400E' }}>{task.title}</p>
-                                      {task.description && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#B45309' }}>{task.description}</p>}
+                                      {task.description && <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'amber-700' }}>{task.description}</p>}
                                     </td>
                                   </tr>
                                 ))}
@@ -107,7 +107,7 @@ export default function DailyTaskDigestEmail({
                         </div>
 
                         <div style={{ marginTop: '40px', textAlign: 'center' }}>
-                          <a href={dashboardUrl} style={{ display: 'inline-block', backgroundColor: '#8B7355', color: '#FFFFFF', fontSize: '14px', fontWeight: '600', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none' }}>
+                          <a href={dashboardUrl} style={{ display: 'inline-block', backgroundColor: 'amber-700', color: '#FFFFFF', fontSize: '14px', fontWeight: '600', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none' }}>
                             Open Dashboard
                           </a>
                         </div>
@@ -119,7 +119,7 @@ export default function DailyTaskDigestEmail({
                       <td style={{ backgroundColor: '#F8F5F0', borderRadius: '0 0 12px 12px', padding: '24px 40px', borderTop: '1px solid #E8E8E8' }}>
                         <p style={{ margin: 0, fontSize: '12px', color: '#9CA3AF', textAlign: 'center' }}>
                           Sent via{' '}
-                          <a href="https://nexpura.com" style={{ color: '#8B7355', textDecoration: 'none', fontWeight: '600' }}>
+                          <a href="https://nexpura.com" style={{ color: 'amber-700', textDecoration: 'none', fontWeight: '600' }}>
                             Nexpura
                           </a>
                         </p>

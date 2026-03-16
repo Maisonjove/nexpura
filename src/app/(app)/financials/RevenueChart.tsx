@@ -82,7 +82,7 @@ export default function RevenueChart({ data }: { data: DataPoint[] }) {
         <Line
           type="monotone"
           dataKey="revenue"
-          stroke="#8B7355"
+          stroke="amber-700"
           strokeWidth={2}
           dot={false}
           activeDot={{ r: 4, strokeWidth: 0 }}

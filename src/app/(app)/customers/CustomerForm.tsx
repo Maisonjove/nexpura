@@ -43,8 +43,8 @@ const METALS = ["Yellow Gold", "White Gold", "Rose Gold", "Platinum", "Silver"];
 const STANDARD_TAGS = ["VIP", "Wholesale", "Trade", "Regular"];
 
 const TAG_COLORS: Record<string, string> = {
-  VIP: "bg-[#8B7355]/10 text-[#8B7355] border-[#8B7355]/30",
-  Wholesale: "bg-stone-100 text-[#8B7355] border-[#8B7355]/30",
+  VIP: "bg-amber-700/10 text-amber-700 border-amber-600/30",
+  Wholesale: "bg-stone-100 text-amber-700 border-amber-600/30",
   Trade: "bg-stone-900/10 text-stone-900 border-stone-900/30",
   Regular: "bg-stone-200 text-stone-500 border-stone-200",
 };
@@ -110,8 +110,8 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
     </label>
   );
 
-  const inputClass = "w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white";
-  const selectClass = "w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white";
+  const inputClass = "w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white";
+  const selectClass = "w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -256,7 +256,7 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
                 onClick={() => toggleTag(tag)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all ${
                   selectedTags.includes(tag)
-                    ? `${TAG_COLORS[tag] || "bg-stone-100 text-[#8B7355] border-[#8B7355]/30"} shadow-sm`
+                    ? `${TAG_COLORS[tag] || "bg-stone-100 text-amber-700 border-amber-600/30"} shadow-sm`
                     : "bg-white text-stone-500 border-stone-200 hover:border-stone-900/30"
                 }`}
               >
@@ -283,7 +283,7 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
           name="notes"
           defaultValue={customer?.notes || ""}
           rows={4}
-          className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white resize-none"
+          className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white resize-none"
           placeholder="Any special notes about this customer…"
         />
       </div>
@@ -300,7 +300,7 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
         >
           {isPending
             ? mode === "create" ? "Creating…" : "Saving…"

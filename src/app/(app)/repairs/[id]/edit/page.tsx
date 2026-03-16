@@ -44,7 +44,7 @@ export default async function EditRepairPage({
       <div className="mb-6">
         <Link
           href={`/repairs/${id}`}
-          className="text-sm text-stone-500 hover:text-[#8B7355] transition-colors"
+          className="text-sm text-stone-500 hover:text-amber-700 transition-colors"
         >
           ← Back to Repair
         </Link>

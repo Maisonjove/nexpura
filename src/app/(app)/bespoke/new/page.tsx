@@ -32,7 +32,7 @@ export default async function NewBespokeJobPage({
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <a href="/bespoke" className="text-sm text-stone-500 hover:text-[#8B7355] transition-colors">
+        <a href="/bespoke" className="text-sm text-stone-500 hover:text-amber-700 transition-colors">
           ← Bespoke Jobs
         </a>
         <h1 className="font-semibold text-2xl font-semibold text-stone-900 mt-2">New Bespoke Job</h1>

@@ -151,7 +151,7 @@ export default function TenantActions({
           <select
             value={plan}
             onChange={(e) => setPlan(e.target.value)}
-            className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+            className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30"
           >
             <option value="basic">Basic ($49/mo)</option>
             <option value="pro">Pro ($99/mo)</option>
@@ -160,13 +160,13 @@ export default function TenantActions({
           <button
             onClick={handlePlanSave}
             disabled={planPending}
-            className="px-4 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] transition-colors disabled:opacity-60"
+            className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors disabled:opacity-60"
           >
             {planPending ? "Saving…" : "Save"}
           </button>
         </div>
         {planMsg && (
-          <p className={`text-xs ${planMsg.includes("Failed") ? "text-red-500" : "text-[#8B7355]"}`}>
+          <p className={`text-xs ${planMsg.includes("Failed") ? "text-red-500" : "text-amber-700"}`}>
             {planMsg}
           </p>
         )}
@@ -179,7 +179,7 @@ export default function TenantActions({
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+            className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30"
           >
             <option value="trialing">Trialing</option>
             <option value="active">Active</option>
@@ -191,13 +191,13 @@ export default function TenantActions({
           <button
             onClick={handleStatusSave}
             disabled={statusPending}
-            className="px-4 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] transition-colors disabled:opacity-60"
+            className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors disabled:opacity-60"
           >
             {statusPending ? "Saving…" : "Save"}
           </button>
         </div>
         {statusMsg && (
-          <p className={`text-xs ${statusMsg.includes("Failed") ? "text-red-500" : "text-[#8B7355]"}`}>
+          <p className={`text-xs ${statusMsg.includes("Failed") ? "text-red-500" : "text-amber-700"}`}>
             {statusMsg}
           </p>
         )}
@@ -221,7 +221,7 @@ export default function TenantActions({
         </button>
       </div>
       {freeMsg && (
-        <p className={`text-xs ${freeMsg.includes("Failed") ? "text-red-500" : "text-[#8B7355]"}`}>
+        <p className={`text-xs ${freeMsg.includes("Failed") ? "text-red-500" : "text-amber-700"}`}>
           {freeMsg}
         </p>
       )}
@@ -234,13 +234,13 @@ export default function TenantActions({
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           placeholder="Internal notes about this tenant…"
-          className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 resize-none"
+          className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 resize-none"
         />
         <div className="flex gap-2">
           <button
             onClick={handleSaveNotes}
             disabled={notesPending}
-            className="flex-1 px-3 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] disabled:opacity-60"
+            className="flex-1 px-3 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-60"
           >
             {notesPending ? "Saving…" : "Save Notes"}
           </button>
@@ -254,7 +254,7 @@ export default function TenantActions({
           )}
         </div>
         {notesMsg && (
-          <p className={`text-xs ${notesMsg.includes("Failed") ? "text-red-500" : "text-[#8B7355]"}`}>
+          <p className={`text-xs ${notesMsg.includes("Failed") ? "text-red-500" : "text-amber-700"}`}>
             {notesMsg}
           </p>
         )}

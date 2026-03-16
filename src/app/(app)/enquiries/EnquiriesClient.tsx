@@ -26,15 +26,15 @@ interface Props {
 }
 
 const TYPE_COLOURS: Record<string, string> = {
-  general: "bg-blue-50 text-blue-700",
+  general: "bg-amber-50 text-amber-700",
   repair: "bg-amber-50 text-amber-700",
-  appointment: "bg-purple-50 text-purple-700",
+  appointment: "bg-stone-100 text-stone-600",
 };
 
 const STATUS_COLOURS: Record<string, string> = {
   new: "bg-green-50 text-green-700",
-  contacted: "bg-blue-50 text-blue-600",
-  booked: "bg-purple-50 text-purple-700",
+  contacted: "bg-amber-50 text-amber-700",
+  booked: "bg-stone-100 text-stone-600",
   completed: "bg-stone-100 text-stone-500",
 };
 
@@ -136,7 +136,7 @@ export default function EnquiriesClient({ enquiries, tenantId: _tenantId }: Prop
                     <button
                       onClick={(e) => { e.stopPropagation(); handleStatusChange(enquiry.id, "contacted"); }}
                       disabled={isPending}
-                      className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded transition-colors"
+                      className="text-xs text-amber-700 hover:text-stone-800 px-2 py-1 rounded transition-colors"
                     >
                       Mark Contacted
                     </button>
@@ -182,7 +182,7 @@ export default function EnquiriesClient({ enquiries, tenantId: _tenantId }: Prop
                 </div>
                 <div>
                   <p className="text-xs text-stone-500 mb-0.5">Email</p>
-                  <a href={`mailto:${selectedEnquiry.email}`} className="text-[#8B7355] hover:underline">{selectedEnquiry.email}</a>
+                  <a href={`mailto:${selectedEnquiry.email}`} className="text-amber-700 hover:underline">{selectedEnquiry.email}</a>
                 </div>
                 {selectedEnquiry.phone && (
                   <div>
@@ -239,7 +239,7 @@ export default function EnquiriesClient({ enquiries, tenantId: _tenantId }: Prop
                       disabled={isPending || selectedEnquiry.status === s}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
                         selectedEnquiry.status === s
-                          ? "bg-[#8B7355] text-white"
+                          ? "bg-amber-700 text-white"
                           : "bg-stone-100 text-stone-600 hover:bg-stone-200 disabled:opacity-50"
                       }`}
                     >

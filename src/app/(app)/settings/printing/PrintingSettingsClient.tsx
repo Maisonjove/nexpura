@@ -186,7 +186,7 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
     } else {
       w.document.write(`<!DOCTYPE html><html><head><title>Test Page</title>
 <style>body { font-family: Arial, sans-serif; padding: 40px; }</style></head><body>
-<h1 style="color:#8B7355">Nexpura</h1>
+<h1 style="color:amber-700">Nexpura</h1>
 <h2>Test Print — ${oPaperSize}</h2>
 <p>This is a test print for your office printer.</p>
 <p>${new Date().toLocaleString("en-AU")}</p>
@@ -200,10 +200,10 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
 
   const tabClass = (t: PrinterType) =>
     `flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
-      activeTab === t ? "border-[#8B7355] text-[#8B7355]" : "border-transparent text-stone-500 hover:text-stone-800"
+      activeTab === t ? "border-amber-600 text-amber-700" : "border-transparent text-stone-500 hover:text-stone-800"
     }`;
 
-  const input = "w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]";
+  const input = "w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600";
   const label = "block text-xs font-medium text-stone-500 mb-1";
 
   // Label preview dimensions (scaled to pixels, max 300px wide)
@@ -271,7 +271,7 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
                   <button
                     type="button"
                     onClick={() => setRCut(!rCut)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${rCut ? "bg-[#8B7355]" : "bg-stone-200"}`}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${rCut ? "bg-amber-700" : "bg-stone-200"}`}
                   >
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${rCut ? "translate-x-4" : "translate-x-0.5"}`} />
                   </button>
@@ -309,7 +309,7 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
               </div>
 
               <div className="flex gap-3">
-                <button onClick={handleSaveReceipt} disabled={isPending} className="flex-1 py-2.5 bg-[#8B7355] hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
+                <button onClick={handleSaveReceipt} disabled={isPending} className="flex-1 py-2.5 bg-amber-700 hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
                   {isPending ? "Saving…" : "Save Receipt Printer"}
                 </button>
                 <button onClick={() => testPrint("receipt")} className="px-5 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50 transition-colors">
@@ -354,8 +354,8 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
                       onClick={() => applyLabelPreset(s.label)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                         lSizePreset === s.label
-                          ? "bg-[#8B7355] text-white border-[#8B7355]"
-                          : "bg-white text-stone-600 border-stone-200 hover:border-[#8B7355]"
+                          ? "bg-amber-700 text-white border-amber-600"
+                          : "bg-white text-stone-600 border-stone-200 hover:border-amber-600"
                       }`}
                     >
                       {s.label}
@@ -387,8 +387,8 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
                       onClick={() => setLAlignment(a)}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
                         lAlignment === a
-                          ? "bg-[#8B7355] text-white border-[#8B7355]"
-                          : "bg-white text-stone-600 border-stone-200 hover:border-[#8B7355]"
+                          ? "bg-amber-700 text-white border-amber-600"
+                          : "bg-white text-stone-600 border-stone-200 hover:border-amber-600"
                       }`}
                     >
                       {a === "left" ? "⬅️" : a === "center" ? "⬆️" : "➡️"} {a.charAt(0).toUpperCase() + a.slice(1)}
@@ -411,12 +411,12 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
                       onClick={() => { setLBarcodeV(pos.v); setLBarcodeH(pos.h); }}
                       className={`aspect-[4/3] rounded-xl border-2 transition-all flex items-center justify-center ${
                         lBarcodeV === pos.v && lBarcodeH === pos.h 
-                          ? "border-[#8B7355] bg-[#8B7355]/5 shadow-inner" 
+                          ? "border-amber-600 bg-amber-700/5 shadow-inner" 
                           : "border-stone-100 hover:border-stone-200 bg-white shadow-sm"
                       }`}
                     >
                       <div className={`w-4 h-2 rounded-sm ${
-                        lBarcodeV === pos.v && lBarcodeH === pos.h ? "bg-[#8B7355]" : "bg-stone-300"
+                        lBarcodeV === pos.v && lBarcodeH === pos.h ? "bg-amber-700" : "bg-stone-300"
                       }`} />
                     </button>
                   ))}
@@ -473,7 +473,7 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
               </div>
 
               <div className="flex gap-3">
-                <button onClick={handleSaveLabel} disabled={isPending} className="flex-1 py-2.5 bg-[#8B7355] hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
+                <button onClick={handleSaveLabel} disabled={isPending} className="flex-1 py-2.5 bg-amber-700 hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
                   {isPending ? "Saving…" : "Save Label Printer"}
                 </button>
                 <button onClick={() => testPrint("label")} className="px-5 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50 transition-colors">
@@ -495,7 +495,7 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
                       type="button"
                       onClick={() => setOPaperSize(s)}
                       className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                        oPaperSize === s ? "bg-[#8B7355] text-white border-[#8B7355]" : "bg-white text-stone-600 border-stone-200 hover:border-[#8B7355]"
+                        oPaperSize === s ? "bg-amber-700 text-white border-amber-600" : "bg-white text-stone-600 border-stone-200 hover:border-amber-600"
                       }`}
                     >
                       {s}
@@ -516,7 +516,7 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
                   <div className="w-48 h-64 border border-stone-300 rounded bg-white shadow-sm p-3 flex flex-col gap-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="w-16 h-3 bg-[#8B7355] rounded" />
+                        <div className="w-16 h-3 bg-amber-700 rounded" />
                         <div className="w-10 h-1.5 bg-stone-200 rounded mt-1" />
                       </div>
                       <div className="text-right">
@@ -542,7 +542,7 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
               </div>
 
               <div className="flex gap-3">
-                <button onClick={handleSaveOffice} disabled={isPending} className="flex-1 py-2.5 bg-[#8B7355] hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
+                <button onClick={handleSaveOffice} disabled={isPending} className="flex-1 py-2.5 bg-amber-700 hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
                   {isPending ? "Saving…" : "Save Office Printer"}
                 </button>
                 <button onClick={() => testPrint("office")} className="px-5 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50 transition-colors">

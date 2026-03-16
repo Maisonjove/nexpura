@@ -9,7 +9,7 @@ import { Mail, Download, ChevronLeft, Check, Edit2, Shield, User, FileText, Cale
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-stone-100 text-stone-600",
-  in_progress: "bg-blue-50 text-blue-700",
+  in_progress: "bg-amber-50 text-amber-700",
   completed: "bg-amber-50 text-amber-700",
   issued: "bg-green-50 text-green-700",
 };
@@ -191,7 +191,7 @@ export default function AppraisalDetailClient({ appraisal: initial, tenant, user
           )}
           <button 
             onClick={() => setEditMode(!editMode)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors text-sm font-medium"
           >
             <Edit2 size={16} />
             {editMode ? "Stop Editing" : "Edit"}
@@ -219,14 +219,14 @@ export default function AppraisalDetailClient({ appraisal: initial, tenant, user
             </div>
           </div>
           <div className="text-right">
-             <p className="text-lg font-bold text-[#8B7355]">${Number(appraisedValue || appraisal.appraised_value).toLocaleString()}</p>
+             <p className="text-lg font-bold text-amber-700">${Number(appraisedValue || appraisal.appraised_value).toLocaleString()}</p>
              <p className="text-xs text-stone-400 uppercase tracking-widest font-bold">Valuation</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-stone-100">
            <div className="p-8 space-y-6">
-              <div className="flex items-center gap-2 text-[#8B7355]">
+              <div className="flex items-center gap-2 text-amber-700">
                 <User size={18} />
                 <h3 className="text-xs font-bold uppercase tracking-widest">Customer</h3>
               </div>
@@ -237,7 +237,7 @@ export default function AppraisalDetailClient({ appraisal: initial, tenant, user
               </div>
            </div>
            <div className="p-8 space-y-6">
-              <div className="flex items-center gap-2 text-[#8B7355]">
+              <div className="flex items-center gap-2 text-amber-700">
                 <FileText size={18} />
                 <h3 className="text-xs font-bold uppercase tracking-widest">Item Stats</h3>
               </div>
@@ -257,7 +257,7 @@ export default function AppraisalDetailClient({ appraisal: initial, tenant, user
               </div>
            </div>
            <div className="p-8 space-y-6">
-              <div className="flex items-center gap-2 text-[#8B7355]">
+              <div className="flex items-center gap-2 text-amber-700">
                 <Shield size={18} />
                 <h3 className="text-xs font-bold uppercase tracking-widest">Verification</h3>
               </div>
@@ -286,8 +286,8 @@ export default function AppraisalDetailClient({ appraisal: initial, tenant, user
               {['draft', 'in_progress', 'completed', 'issued'].map((s, idx) => (
                 <div key={s} className="flex items-center gap-4">
                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                    status === s ? "border-[#8B7355] bg-[#8B7355] text-white" : 
-                    idx < ['draft', 'in_progress', 'completed', 'issued'].indexOf(status) ? "border-[#8B7355] text-[#8B7355]" : "border-stone-200"
+                    status === s ? "border-amber-600 bg-amber-700 text-white" : 
+                    idx < ['draft', 'in_progress', 'completed', 'issued'].indexOf(status) ? "border-amber-600 text-amber-700" : "border-stone-200"
                   }`}>
                     <Check size={12} />
                   </div>

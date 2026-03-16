@@ -251,7 +251,7 @@ export default async function WorkflowsPage() {
     <div style={{ fontFamily: "system-ui, sans-serif", background: "#fafaf9", minHeight: "100vh", padding: "40px 24px" }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
 
-        <div style={{ marginBottom: 36, borderLeft: "4px solid #B45309", paddingLeft: 16 }}>
+        <div style={{ marginBottom: 36, borderLeft: "4px solid amber-700", paddingLeft: 16 }}>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: "#1c1917", margin: 0 }}>Nexpura — Workflow Proof Pack</h1>
           <p style={{ fontSize: 13, color: "#78716c", margin: "8px 0 0" }}>
             All 16 flows recorded from{" "}
@@ -338,9 +338,9 @@ export default async function WorkflowsPage() {
         </div>
 
         <div style={{ marginTop: 40, paddingTop: 20, borderTop: "1px solid #e7e5e4", display: "flex", gap: 20, flexWrap: "wrap" }}>
-          <a href="/verification" style={{ fontSize: 13, color: "#B45309", fontWeight: 600 }}>← Screenshot gallery</a>
-          <a href="/sandbox/status?rt=nexpura-review-2026" style={{ fontSize: 13, color: "#B45309" }}>Auth status check</a>
-          <a href="/sandbox/links?rt=nexpura-review-2026" style={{ fontSize: 13, color: "#B45309" }}>Live route index</a>
+          <a href="/verification" style={{ fontSize: 13, color: "amber-700", fontWeight: 600 }}>← Screenshot gallery</a>
+          <a href="/sandbox/status?rt=nexpura-review-2026" style={{ fontSize: 13, color: "amber-700" }}>Auth status check</a>
+          <a href="/sandbox/links?rt=nexpura-review-2026" style={{ fontSize: 13, color: "amber-700" }}>Live route index</a>
         </div>
       </div>
     </div>

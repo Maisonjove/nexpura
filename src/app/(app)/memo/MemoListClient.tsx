@@ -9,7 +9,7 @@ import { X, Search, Filter, BarChart2, MoreHorizontal, ArrowRight, User, Package
 import { format } from "date-fns";
 
 const STATUS_STYLES: Record<string, string> = {
-  active: "bg-blue-50 text-blue-700",
+  active: "bg-amber-50 text-amber-700",
   returned: "bg-stone-100 text-stone-600",
   sold: "bg-green-50 text-green-700",
   expired: "bg-amber-50 text-amber-700",
@@ -94,7 +94,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
           <button 
             onClick={() => setShowReports(!showReports)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
-              showReports ? "bg-[#8B7355] text-white border-[#8B7355]" : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+              showReports ? "bg-amber-700 text-white border-amber-600" : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
             }`}
           >
             <BarChart2 size={18} />
@@ -102,7 +102,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
           </button>
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] transition-shadow shadow-sm"
+            className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-shadow shadow-sm"
           >
             + New Entry
           </button>
@@ -117,7 +117,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
           </div>
           <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
             <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Commission Earned</p>
-            <p className="text-2xl font-bold text-[#8B7355]">${soldCommission.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-amber-700">${soldCommission.toLocaleString()}</p>
           </div>
           <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
             <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Overdue Items</p>
@@ -137,7 +137,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
             <button
               onClick={() => setTab("memo")}
               className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                tab === "memo" ? "bg-[#8B7355] text-white shadow-sm" : "text-stone-600 hover:bg-stone-50"
+                tab === "memo" ? "bg-amber-700 text-white shadow-sm" : "text-stone-600 hover:bg-stone-50"
               }`}
             >
               <span>Memo Out</span>
@@ -148,7 +148,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
             <button
               onClick={() => setTab("consignment")}
               className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                tab === "consignment" ? "bg-[#8B7355] text-white shadow-sm" : "text-stone-600 hover:bg-stone-50"
+                tab === "consignment" ? "bg-amber-700 text-white shadow-sm" : "text-stone-600 hover:bg-stone-50"
               }`}
             >
               <span>Consignment In</span>
@@ -163,7 +163,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={14} />
               <input 
                 placeholder="Search items..." 
-                className="w-full pl-9 pr-3 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#8B7355]"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-600"
               />
             </div>
             <div className="space-y-2">
@@ -217,7 +217,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
                         {i.due_back_date ? format(new Date(i.due_back_date), "dd MMM") : "—"}
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-mono text-sm text-[#8B7355] font-medium">
+                    <td className="px-6 py-4 font-mono text-sm text-amber-700 font-medium">
                       ${Number(i.retail_value).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -246,7 +246,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
             
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
               <div className="space-y-4 text-center">
-                <div className={`w-16 h-16 mx-auto rounded-2xl flex items-center justify-center text-2xl bg-[#8B7355]/10 text-[#8B7355]`}>
+                <div className={`w-16 h-16 mx-auto rounded-2xl flex items-center justify-center text-2xl bg-amber-700/10 text-amber-700`}>
                   <Package size={32} />
                 </div>
                 <div>
@@ -263,7 +263,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-stone-50 rounded-xl p-4 border border-stone-100">
                   <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Value</p>
-                  <p className="text-lg font-bold text-[#8B7355]">${Number(selectedItem.retail_value).toLocaleString()}</p>
+                  <p className="text-lg font-bold text-amber-700">${Number(selectedItem.retail_value).toLocaleString()}</p>
                 </div>
                 <div className="bg-stone-50 rounded-xl p-4 border border-stone-100">
                   <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Commission</p>
@@ -273,14 +273,14 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <User className="text-[#8B7355]" size={18} />
+                  <User className="text-amber-700" size={18} />
                   <div>
                     <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Contact</p>
                     <p className="text-sm font-medium text-stone-900">{tab === "memo" ? selectedItem.customer_name : selectedItem.supplier_name}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Calendar className="text-[#8B7355]" size={18} />
+                  <Calendar className="text-amber-700" size={18} />
                   <div>
                     <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Due Back Date</p>
                     <p className="text-sm font-medium text-stone-900">
@@ -308,7 +308,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
                 </button>
                 <button 
                   onClick={() => handleQuickStatus(selectedItem.id, "sold")}
-                  className="px-4 py-2.5 bg-[#8B7355] text-white rounded-xl text-sm font-medium hover:bg-[#7A6347] transition-colors"
+                  className="px-4 py-2.5 bg-amber-700 text-white rounded-xl text-sm font-medium hover:bg-amber-800 transition-colors"
                 >
                   Mark as Sold
                 </button>
@@ -359,7 +359,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
                 <button 
                   type="submit" 
                   disabled={isPending}
-                  className="w-full py-3 bg-[#8B7355] text-white rounded-xl font-bold hover:bg-[#7A6347] transition-all disabled:opacity-50"
+                  className="w-full py-3 bg-amber-700 text-white rounded-xl font-bold hover:bg-amber-800 transition-all disabled:opacity-50"
                 >
                   {isPending ? "Saving..." : "Create Entry"}
                 </button>

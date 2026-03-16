@@ -23,8 +23,8 @@ export default async function EmbedEnquiryPage({ params }: Props) {
           p.sub { color: #78716c; font-size: 14px; margin-bottom: 24px; }
           label { display: block; font-size: 11px; font-weight: 600; color: #78716c; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
           input, select, textarea { width: 100%; padding: 10px 14px; border: 1px solid #d6d3d1; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 16px; }
-          input:focus, select:focus, textarea:focus { outline: none; border-color: #8B7355; }
-          button { width: 100%; padding: 12px; background: #8B7355; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+          input:focus, select:focus, textarea:focus { outline: none; border-color: amber-700; }
+          button { width: 100%; padding: 12px; background: amber-700; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
           button:hover { background: #7a6349; }
           .success { padding: 20px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; text-align: center; color: #166534; }
         `}</style>

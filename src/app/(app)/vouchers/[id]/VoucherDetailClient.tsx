@@ -88,7 +88,7 @@ export default function VoucherDetailClient({ voucher, redemptions }: Props) {
             {/* Progress bar */}
             <div className="w-full bg-stone-100 rounded-full h-2">
               <div
-                className="bg-[#8B7355] h-2 rounded-full transition-all"
+                className="bg-amber-700 h-2 rounded-full transition-all"
                 style={{ width: `${Math.max(0, 100 - usedPct)}%` }}
               />
             </div>
@@ -109,7 +109,7 @@ export default function VoucherDetailClient({ voucher, redemptions }: Props) {
                     <div>
                       <p className="text-sm font-medium text-stone-900">−{fmtCurrency(r.amount_used)}</p>
                       {r.sale_id && (
-                        <Link href={`/sales/${r.sale_id}`} className="text-xs text-[#8B7355] hover:underline">
+                        <Link href={`/sales/${r.sale_id}`} className="text-xs text-amber-700 hover:underline">
                           View sale →
                         </Link>
                       )}

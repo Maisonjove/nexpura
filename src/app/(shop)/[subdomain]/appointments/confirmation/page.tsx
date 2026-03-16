@@ -84,12 +84,12 @@ export default async function AppointmentConfirmationPage({
               <div className="mt-3 pt-3 border-t border-stone-100 space-y-1">
                 {storeName && <p className="text-sm font-medium text-stone-700">{storeName}</p>}
                 {storePhone && (
-                  <a href={`tel:${storePhone}`} className="block text-sm text-[#8B7355] hover:underline">
+                  <a href={`tel:${storePhone}`} className="block text-sm text-amber-700 hover:underline">
                     📞 {storePhone}
                   </a>
                 )}
                 {storeEmail && (
-                  <a href={`mailto:${storeEmail}`} className="block text-sm text-[#8B7355] hover:underline">
+                  <a href={`mailto:${storeEmail}`} className="block text-sm text-amber-700 hover:underline">
                     ✉️ {storeEmail}
                   </a>
                 )}
@@ -100,14 +100,14 @@ export default async function AppointmentConfirmationPage({
 
         <p className="text-sm text-stone-400">
           Need to reschedule?{" "}
-          <Link href={`/${subdomain}/appointments`} className="text-[#8B7355] hover:underline">
+          <Link href={`/${subdomain}/appointments`} className="text-amber-700 hover:underline">
             Book a new appointment
           </Link>
         </p>
 
         <Link
           href={`/${subdomain}`}
-          className="inline-block px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-xl hover:bg-[#7a6447] transition-colors"
+          className="inline-block px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-xl hover:bg-[#7a6447] transition-colors"
         >
           Back to Store
         </Link>

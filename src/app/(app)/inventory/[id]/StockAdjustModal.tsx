@@ -74,7 +74,7 @@ export default function StockAdjustModal({ inventoryId, currentQty, onClose }: S
             <select
               value={movementType}
               onChange={(e) => setMovementType(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 focus:outline-none focus:border-[#8B7355] transition-colors"
+              className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 focus:outline-none focus:border-amber-600 transition-colors"
             >
               {MOVEMENT_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -89,7 +89,7 @@ export default function StockAdjustModal({ inventoryId, currentQty, onClose }: S
                 type="button"
                 onClick={() => setDirection("add")}
                 className={`flex-1 py-2.5 text-sm font-medium rounded-lg border transition-colors ${
-                  direction === "add" ? "bg-green-50 text-green-700 border-green-300" : "bg-white text-stone-500 border-stone-200 hover:border-[#8B7355]/50"
+                  direction === "add" ? "bg-green-50 text-green-700 border-green-300" : "bg-white text-stone-500 border-stone-200 hover:border-amber-600/50"
                 }`}
               >
                 + Add Stock
@@ -98,7 +98,7 @@ export default function StockAdjustModal({ inventoryId, currentQty, onClose }: S
                 type="button"
                 onClick={() => setDirection("remove")}
                 className={`flex-1 py-2.5 text-sm font-medium rounded-lg border transition-colors ${
-                  direction === "remove" ? "bg-red-50 text-red-700 border-red-300" : "bg-white text-stone-500 border-stone-200 hover:border-[#8B7355]/50"
+                  direction === "remove" ? "bg-red-50 text-red-700 border-red-300" : "bg-white text-stone-500 border-stone-200 hover:border-amber-600/50"
                 }`}
               >
                 − Remove Stock
@@ -114,14 +114,14 @@ export default function StockAdjustModal({ inventoryId, currentQty, onClose }: S
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               placeholder="Enter quantity"
-              className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8B7355] transition-colors"
+              className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-600 transition-colors"
             />
           </div>
 
           {/* Preview */}
           {quantity && parseInt(quantity) > 0 && (
             <div className={`flex items-center justify-between px-4 py-3 rounded-lg border text-sm ${
-              newQty < 0 ? "bg-red-50 border-red-200" : "bg-[#8B7355]/5 border-[#8B7355]/20"
+              newQty < 0 ? "bg-red-50 border-red-200" : "bg-amber-700/5 border-amber-600/20"
             }`}>
               <span className="text-stone-500">New stock level</span>
               <span className={`font-semibold font-semibold text-lg ${newQty < 0 ? "text-red-600" : "text-stone-900"}`}>
@@ -137,7 +137,7 @@ export default function StockAdjustModal({ inventoryId, currentQty, onClose }: S
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional notes..."
               rows={2}
-              className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8B7355] transition-colors resize-none"
+              className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-600 transition-colors resize-none"
             />
           </div>
 
@@ -152,7 +152,7 @@ export default function StockAdjustModal({ inventoryId, currentQty, onClose }: S
             <button
               type="submit"
               disabled={isPending || !quantity || parseInt(quantity) <= 0 || newQty < 0}
-              className="flex-1 py-2.5 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
             >
               {isPending ? (
                 <>

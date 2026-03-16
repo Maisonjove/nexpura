@@ -10,7 +10,7 @@ const statusBadge: Record<string, string> = {
   partial: "bg-amber-100 text-amber-700",
   partially_paid: "bg-amber-100 text-amber-700",
   unpaid: "bg-red-100 text-red-600",
-  sent: "bg-blue-100 text-blue-700",
+  sent: "bg-amber-50 text-amber-700",
   overdue: "bg-red-100 text-red-700",
   draft: "bg-stone-100 text-stone-500",
   voided: "bg-stone-100 text-stone-500",

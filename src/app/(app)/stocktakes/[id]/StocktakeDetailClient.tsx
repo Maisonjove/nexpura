@@ -124,7 +124,7 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
             {stocktake.location && <span>📍 {stocktake.location}</span>}
             <span className={`px-2 py-0.5 rounded-full font-medium capitalize ${
               stocktake.status === "completed" ? "bg-green-50 text-green-700" :
-              stocktake.status === "in_progress" ? "bg-blue-50 text-blue-700" :
+              stocktake.status === "in_progress" ? "bg-amber-50 text-amber-700" :
               "bg-stone-100 text-stone-600"
             }`}>{stocktake.status.replace("_", " ")}</span>
           </div>
@@ -134,7 +134,7 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
             <button
               onClick={handleStart}
               disabled={isPending}
-              className="px-4 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] disabled:opacity-60"
+              className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-60"
             >
               {isPending ? "Starting…" : "▶ Start Count"}
             </button>
@@ -163,7 +163,7 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
               <button
                 onClick={() => handleComplete(true)}
                 disabled={isPending}
-                className="px-4 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] disabled:opacity-60"
+                className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-60"
               >
                 ✓ Apply & Complete
               </button>
@@ -185,11 +185,11 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
             <div className="text-sm font-medium text-stone-700">
               Progress — {items.filter((i) => i.counted_qty !== null).length} of {items.length} items counted
             </div>
-            <div className="text-sm font-bold text-[#8B7355]">{progress}%</div>
+            <div className="text-sm font-bold text-amber-700">{progress}%</div>
           </div>
           <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#8B7355] rounded-full transition-all"
+              className="h-full bg-amber-700 rounded-full transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -225,14 +225,14 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search items…"
-            className="flex-1 min-w-48 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+            className="flex-1 min-w-48 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
           />
           {(["all", "uncounted", "counted", "discrepancy"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
-                filter === f ? "bg-[#8B7355] text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                filter === f ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >
               {f === "discrepancy" ? "⚠️ Discrepancies" : f.replace("_", " ")}
@@ -297,12 +297,12 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
                             onKeyDown={(e) => e.key === "Enter" && handleCountSave(item.id)}
                             min="0"
                             autoFocus
-                            className="w-20 px-2 py-1.5 border border-[#8B7355] rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                            className="w-20 px-2 py-1.5 border border-amber-600 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                           />
                           <button
                             onClick={() => handleCountSave(item.id)}
                             disabled={isPending}
-                            className="px-3 py-1.5 bg-[#8B7355] text-white rounded-lg text-xs font-medium"
+                            className="px-3 py-1.5 bg-amber-700 text-white rounded-lg text-xs font-medium"
                           >
                             ✓
                           </button>
@@ -322,7 +322,7 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                             hasCounted
                               ? "border border-stone-200 text-stone-600 hover:bg-stone-50"
-                              : "bg-[#8B7355] text-white hover:bg-[#7A6347]"
+                              : "bg-amber-700 text-white hover:bg-amber-800"
                           }`}
                         >
                           {hasCounted ? "Edit" : "Count"}
@@ -385,7 +385,7 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={() => setShowAddManual(false)} className="flex-1 px-3 py-2 border border-stone-200 text-stone-600 rounded-lg text-sm">Cancel</button>
-              <button onClick={handleAddManual} disabled={isPending || !manualName.trim()} className="flex-1 px-3 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium disabled:opacity-60">
+              <button onClick={handleAddManual} disabled={isPending || !manualName.trim()} className="flex-1 px-3 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium disabled:opacity-60">
                 {isPending ? "Adding…" : "Add"}
               </button>
             </div>

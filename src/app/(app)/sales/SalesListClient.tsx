@@ -23,7 +23,7 @@ const STATUS_COLOURS: Record<string, string> = {
   quote: "bg-stone-100 text-stone-700",
   confirmed: "bg-stone-100 text-stone-700",
   paid: "bg-green-50 text-green-700",
-  completed: "bg-stone-100 text-[#8B7355]",
+  completed: "bg-stone-100 text-amber-700",
   refunded: "bg-red-50 text-red-600",
   layby: "bg-amber-50 text-amber-700",
 };
@@ -56,7 +56,7 @@ export default function SalesListClient({ sales }: Props) {
         <h1 className="font-semibold text-2xl font-semibold text-stone-900">Sales</h1>
         <Link
           href="/sales/new"
-          className="inline-flex items-center gap-2 bg-[#8B7355] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#7A6347] transition-colors"
+          className="inline-flex items-center gap-2 bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-800 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -69,7 +69,7 @@ export default function SalesListClient({ sales }: Props) {
       {sales.length === 0 ? (
         <div className="bg-white border border-stone-200 rounded-xl p-16 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
           </div>
@@ -77,7 +77,7 @@ export default function SalesListClient({ sales }: Props) {
           <p className="text-stone-500 mt-1 text-sm">Create your first sale to get started.</p>
           <Link
             href="/sales/new"
-            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -165,7 +165,7 @@ export default function SalesListClient({ sales }: Props) {
                       ) : (
                         <Link
                           href={`/sales/${sale.id}`}
-                          className="text-xs text-[#8B7355] font-medium hover:underline"
+                          className="text-xs text-amber-700 font-medium hover:underline"
                         >
                           View →
                         </Link>

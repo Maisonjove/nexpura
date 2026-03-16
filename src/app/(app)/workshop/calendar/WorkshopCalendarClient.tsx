@@ -144,8 +144,8 @@ export default function WorkshopCalendarClient({ repairs, bespoke, staff }: Prop
             Task Templates
           </Link>
           <div className="flex rounded-lg border border-stone-200 overflow-hidden">
-            <button onClick={() => setViewMode("month")} className={`px-3 py-1.5 text-sm font-medium ${viewMode === "month" ? "bg-[#8B7355] text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}>Month</button>
-            <button onClick={() => setViewMode("week")} className={`px-3 py-1.5 text-sm font-medium ${viewMode === "week" ? "bg-[#8B7355] text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}>Week</button>
+            <button onClick={() => setViewMode("month")} className={`px-3 py-1.5 text-sm font-medium ${viewMode === "month" ? "bg-amber-700 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}>Month</button>
+            <button onClick={() => setViewMode("week")} className={`px-3 py-1.5 text-sm font-medium ${viewMode === "week" ? "bg-amber-700 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}>Week</button>
           </div>
         </div>
       </div>
@@ -158,7 +158,7 @@ export default function WorkshopCalendarClient({ repairs, bespoke, staff }: Prop
             <div className="space-y-1">
               <button
                 onClick={() => setStaffFilter("all")}
-                className={`w-full text-left px-2 py-1.5 text-sm rounded-lg ${staffFilter === "all" ? "bg-[#8B7355]/10 text-[#8B7355] font-medium" : "text-stone-600 hover:bg-stone-50"}`}
+                className={`w-full text-left px-2 py-1.5 text-sm rounded-lg ${staffFilter === "all" ? "bg-amber-700/10 text-amber-700 font-medium" : "text-stone-600 hover:bg-stone-50"}`}
               >
                 All Staff
               </button>
@@ -166,7 +166,7 @@ export default function WorkshopCalendarClient({ repairs, bespoke, staff }: Prop
                 <button
                   key={s.id}
                   onClick={() => setStaffFilter(s.id)}
-                  className={`w-full text-left px-2 py-1.5 text-sm rounded-lg truncate ${staffFilter === s.id ? "bg-[#8B7355]/10 text-[#8B7355] font-medium" : "text-stone-600 hover:bg-stone-50"}`}
+                  className={`w-full text-left px-2 py-1.5 text-sm rounded-lg truncate ${staffFilter === s.id ? "bg-amber-700/10 text-amber-700 font-medium" : "text-stone-600 hover:bg-stone-50"}`}
                 >
                   {s.full_name ?? "Staff"}
                 </button>
@@ -220,8 +220,8 @@ export default function WorkshopCalendarClient({ repairs, bespoke, staff }: Prop
                   const dayEvents = eventsForDay(day);
                   const isToday = today.getDate() === day && today.getMonth() === currentMonth && today.getFullYear() === currentYear;
                   return (
-                    <div key={day} className={`min-h-[100px] p-1 border-b border-r border-stone-100 ${isToday ? "bg-[#8B7355]/5" : ""}`}>
-                      <div className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${isToday ? "bg-[#8B7355] text-white" : "text-stone-500"}`}>
+                    <div key={day} className={`min-h-[100px] p-1 border-b border-r border-stone-100 ${isToday ? "bg-amber-700/5" : ""}`}>
+                      <div className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${isToday ? "bg-amber-700 text-white" : "text-stone-500"}`}>
                         {day}
                       </div>
                       <div className="space-y-0.5">
@@ -259,7 +259,7 @@ export default function WorkshopCalendarClient({ repairs, bespoke, staff }: Prop
                     <div key={i} className="min-h-[400px] p-2">
                       <div className={`text-center mb-2 pb-2 border-b border-stone-100`}>
                         <div className="text-xs text-stone-500">{DAY_NAMES[i]}</div>
-                        <div className={`text-sm font-semibold w-7 h-7 rounded-full mx-auto flex items-center justify-center ${isToday ? "bg-[#8B7355] text-white" : "text-stone-900"}`}>
+                        <div className={`text-sm font-semibold w-7 h-7 rounded-full mx-auto flex items-center justify-center ${isToday ? "bg-amber-700 text-white" : "text-stone-900"}`}>
                           {date.getDate()}
                         </div>
                       </div>

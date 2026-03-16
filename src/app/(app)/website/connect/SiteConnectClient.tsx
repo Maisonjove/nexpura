@@ -56,7 +56,7 @@ function ConnectionStatus({ url }: { url: string | null }) {
         <button
           onClick={check}
           disabled={checking}
-          className="text-xs text-[#8B7355] hover:underline disabled:opacity-50"
+          className="text-xs text-amber-700 hover:underline disabled:opacity-50"
         >
           {checking ? "Checking…" : "Check now"}
         </button>
@@ -93,7 +93,7 @@ function WidgetCode({ tab, tenantId }: { tab: WidgetTab; tenantId: string }) {
   data-tenant="${tenantId}"
   data-widget="enquiry"
   data-position="bottom-right"
-  data-color="#8B7355">
+  data-color="amber-700">
 </script>`,
       instructions: [
         "Add the embed code to your website's header or before </body>.",
@@ -171,7 +171,7 @@ function WidgetCode({ tab, tenantId }: { tab: WidgetTab; tenantId: string }) {
         <ol className="space-y-2">
           {c.instructions.map((step, i) => (
             <li key={i} className="flex gap-2 text-sm text-stone-600">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#8B7355]/10 text-[#8B7355] text-xs flex items-center justify-center font-semibold">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-700/10 text-amber-700 text-xs flex items-center justify-center font-semibold">
                 {i + 1}
               </span>
               {step}
@@ -260,12 +260,12 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="https://yourjewellerystore.com"
-              className="flex-1 px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355]"
+              className="flex-1 px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600"
             />
             <button
               onClick={saveUrl}
               disabled={isPending}
-              className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] disabled:opacity-50"
+              className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save"}
             </button>
@@ -278,7 +278,7 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
           </div>
         ) : siteUrl ? (
           <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
-            <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-[#8B7355] hover:underline truncate max-w-md">
+            <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-amber-700 hover:underline truncate max-w-md">
               {siteUrl}
             </a>
             <button onClick={() => { setEditingUrl(true); setUrlInput(siteUrl); }} className="text-sm text-stone-500 hover:text-stone-900 ml-3">
@@ -290,7 +290,7 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
             <p className="text-sm text-stone-500 mb-3">No site connected yet. Add your website URL to start embedding widgets.</p>
             <button
               onClick={() => setEditingUrl(true)}
-              className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347]"
+              className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800"
             >
               Add Site URL
             </button>
@@ -313,7 +313,7 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
               onClick={() => setActiveWidget(wt.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeWidget === wt.id
-                  ? "border-[#8B7355] text-[#8B7355]"
+                  ? "border-amber-600 text-amber-700"
                   : "border-transparent text-stone-500 hover:text-stone-900"
               }`}
             >
@@ -341,7 +341,7 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
               key={action.id}
               onClick={() => runAiAction(action.id, action.label)}
               disabled={aiLoading !== null}
-              className="flex items-center gap-3 p-3 border border-stone-200 rounded-lg hover:bg-stone-50 hover:border-[#8B7355]/30 text-left transition-colors disabled:opacity-50"
+              className="flex items-center gap-3 p-3 border border-stone-200 rounded-lg hover:bg-stone-50 hover:border-amber-600/30 text-left transition-colors disabled:opacity-50"
             >
               <span className="text-xl">{action.icon}</span>
               <span className="text-sm font-medium text-stone-700">

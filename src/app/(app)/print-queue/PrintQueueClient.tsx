@@ -7,7 +7,7 @@ import type { PrintJob } from "./actions";
 
 const STATUS_STYLES: Record<string, { cls: string; label: string }> = {
   queued: { cls: "bg-amber-50 text-amber-700", label: "Queued" },
-  printing: { cls: "bg-blue-50 text-blue-700", label: "Printing…" },
+  printing: { cls: "bg-amber-50 text-amber-700", label: "Printing…" },
   done: { cls: "bg-green-50 text-green-700", label: "Printed" },
   failed: { cls: "bg-red-50 text-red-600", label: "Failed" },
   cancelled: { cls: "bg-stone-100 text-stone-400", label: "Cancelled" },
@@ -77,7 +77,7 @@ export default function PrintQueueClient({ jobs: initialJobs, tenantId }: Props)
             key={s}
             onClick={() => setStatusFilter(s)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
-              statusFilter === s ? "bg-[#8B7355] text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+              statusFilter === s ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
             }`}
           >
             {s === "all" ? "All" : STATUS_STYLES[s]?.label ?? s}
@@ -132,7 +132,7 @@ export default function PrintQueueClient({ jobs: initialJobs, tenantId }: Props)
                           href={job.pdf_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-3 py-1.5 bg-[#8B7355] text-white rounded-lg text-xs font-medium hover:bg-[#7A6347]"
+                          className="px-3 py-1.5 bg-amber-700 text-white rounded-lg text-xs font-medium hover:bg-amber-800"
                         >
                           🖨️ Print
                         </a>

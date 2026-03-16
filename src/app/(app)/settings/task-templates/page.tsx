@@ -133,18 +133,18 @@ export default function TaskTemplatesPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowNew(true)}
-            className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347]"
+            className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800"
           >
             + New Template
           </button>
         </div>
       </div>
 
-      {msg && <div className="bg-[#8B7355]/10 border border-[#8B7355]/20 text-[#8B7355] text-sm rounded-lg px-4 py-3">{msg}</div>}
+      {msg && <div className="bg-amber-700/10 border border-amber-600/20 text-amber-700 text-sm rounded-lg px-4 py-3">{msg}</div>}
 
       {/* New template form */}
       {showNew && (
-        <div className="bg-white rounded-xl border border-[#8B7355]/30 p-5 space-y-4 shadow-sm">
+        <div className="bg-white rounded-xl border border-amber-600/30 p-5 space-y-4 shadow-sm">
           <h3 className="font-semibold text-stone-900">New Template</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -154,7 +154,7 @@ export default function TaskTemplatesPage() {
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="e.g. Ring Polishing"
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355]"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600"
               />
             </div>
             <div>
@@ -162,7 +162,7 @@ export default function TaskTemplatesPage() {
               <select
                 value={newDepartment}
                 onChange={(e) => setNewDepartment(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
               >
                 <option value="">None</option>
                 <option value="Workshop">Workshop</option>
@@ -177,7 +177,7 @@ export default function TaskTemplatesPage() {
               <select
                 value={newPriority}
                 onChange={(e) => setNewPriority(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -193,11 +193,11 @@ export default function TaskTemplatesPage() {
               onChange={(e) => setNewDescription(e.target.value)}
               rows={3}
               placeholder={"Detailed instructions..."}
-              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] resize-none"
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 resize-none"
             />
           </div>
           <div className="flex gap-2">
-            <button onClick={createTemplate} className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347]">
+            <button onClick={createTemplate} className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800">
               Create Template
             </button>
             <button onClick={() => setShowNew(false)} className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">
@@ -217,7 +217,7 @@ export default function TaskTemplatesPage() {
           </div>
         ) : (
           templates.map((t) => (
-            <div key={t.id} className="bg-white rounded-xl border border-stone-200 p-5 hover:border-[#8B7355]/30 transition-colors">
+            <div key={t.id} className="bg-white rounded-xl border border-stone-200 p-5 hover:border-amber-600/30 transition-colors">
               {editId === t.id ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -226,14 +226,14 @@ export default function TaskTemplatesPage() {
                         type="text"
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
-                        className="w-full px-3 py-2 text-sm font-semibold border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355]"
+                        className="w-full px-3 py-2 text-sm font-semibold border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600"
                       />
                     </div>
                     <div>
                       <select
                         value={editDepartment}
                         onChange={(e) => setEditDepartment(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                       >
                         <option value="">No Department</option>
                         <option value="Workshop">Workshop</option>
@@ -247,7 +247,7 @@ export default function TaskTemplatesPage() {
                       <select
                         value={editPriority}
                         onChange={(e) => setEditPriority(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                       >
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
@@ -260,10 +260,10 @@ export default function TaskTemplatesPage() {
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     rows={4}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] resize-none"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 resize-none"
                   />
                   <div className="flex gap-2">
-                    <button onClick={saveEdit} className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347]">Save Changes</button>
+                    <button onClick={saveEdit} className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800">Save Changes</button>
                     <button onClick={() => setEditId(null)} className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">Cancel</button>
                   </div>
                 </div>

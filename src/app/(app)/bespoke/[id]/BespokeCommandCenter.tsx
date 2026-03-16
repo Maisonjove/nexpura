@@ -132,8 +132,8 @@ const STAGE_COLORS: Record<string, { bg: string; text: string; dot: string }> = 
   quoted: { bg: "bg-amber-100", text: "text-amber-700", dot: "bg-amber-400" },
   approved: { bg: "bg-stone-100", text: "text-stone-700", dot: "bg-stone-500" },
   cad: { bg: "bg-amber-100", text: "text-amber-700", dot: "bg-amber-500" },
-  in_progress: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-[#B45309]" },
-  ready: { bg: "bg-stone-200", text: "text-stone-900", dot: "bg-[#8B7355]" },
+  in_progress: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-700" },
+  ready: { bg: "bg-stone-200", text: "text-stone-900", dot: "bg-amber-700" },
   delivered: { bg: "bg-stone-900", text: "text-white", dot: "bg-white" },
 };
 
@@ -482,7 +482,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
                   {customer.email && <p className="text-sm text-stone-500 mt-0.5">{customer.email}</p>}
                   {customer.mobile && <p className="text-sm text-stone-500">{customer.mobile}</p>}
                 </div>
-                <Link href={`/customers/${customer.id}`} className="text-xs text-[#B45309] hover:underline font-medium shrink-0">View Customer →</Link>
+                <Link href={`/customers/${customer.id}`} className="text-xs text-amber-700 hover:underline font-medium shrink-0">View Customer →</Link>
               </div>
             ) : (
               <p className="text-sm text-stone-400">No customer linked</p>
@@ -511,7 +511,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
 
             {(job.internal_notes || job.workshop_notes) && (
               <div>
-                <button onClick={() => setShowNotes(!showNotes)} className="text-xs text-[#B45309] hover:underline font-medium">
+                <button onClick={() => setShowNotes(!showNotes)} className="text-xs text-amber-700 hover:underline font-medium">
                   {showNotes ? "Hide notes ↑" : "Show notes ↓"}
                 </button>
                 {showNotes && (
@@ -540,7 +540,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
                       className={`flex items-center gap-3 px-2 py-2.5 rounded-lg relative transition-colors ${isClickable ? "cursor-pointer hover:bg-stone-50" : ""} ${isCurrent ? "bg-stone-50" : ""}`}
                       onClick={isClickable ? () => handleStageChange(s.key) : undefined}
                     >
-                      <div className={`w-7 h-7 rounded-full flex-shrink-0 z-10 flex items-center justify-center ${isPast ? "bg-[#B45309]" : isCurrent ? "bg-stone-900 ring-4 ring-stone-200" : "bg-white border-2 border-stone-200"}`}>
+                      <div className={`w-7 h-7 rounded-full flex-shrink-0 z-10 flex items-center justify-center ${isPast ? "bg-amber-700" : isCurrent ? "bg-amber-600 ring-4 ring-amber-100" : "bg-white border-2 border-stone-200"}`}>
                         {isPast && (
                           <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -549,7 +549,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
                         {isCurrent && <div className="w-2 h-2 bg-white rounded-full" />}
                       </div>
                       <span className={`text-sm ${isPast ? "text-stone-400 line-through" : isCurrent ? "text-stone-900 font-semibold" : "text-stone-500"}`}>{s.label}</span>
-                      {isCurrent && <span className="ml-auto text-xs bg-stone-900 text-white px-2 py-0.5 rounded-full">Current</span>}
+                      {isCurrent && <span className="ml-auto text-xs bg-amber-600 text-white px-2 py-0.5 rounded-full">Current</span>}
                     </div>
                   );
                 })}
@@ -703,7 +703,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
                   <p className="text-sm font-semibold text-stone-900">{invoice.invoice_number}</p>
                   <p className="text-xs text-stone-400 mt-0.5 capitalize">{invoice.status}</p>
                 </div>
-                <Link href={`/invoices/${invoice.id}`} className="text-xs font-medium text-[#B45309] hover:underline border border-amber-200 bg-amber-50 px-3 py-1.5 rounded-lg">
+                <Link href={`/invoices/${invoice.id}`} className="text-xs font-medium text-amber-700 hover:underline border border-amber-200 bg-amber-50 px-3 py-1.5 rounded-lg">
                   View Invoice →
                 </Link>
               </div>
@@ -765,8 +765,8 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
                 </div>
               ) : invoice && invoice.amount_paid > 0 ? (
                 <div className="flex justify-between text-sm font-semibold border-t border-stone-100 pt-2">
-                  <span className="text-[#B45309]">✓ Fully Paid</span>
-                  <span className="text-[#B45309]">{fmt(invoice.amount_paid, currency)}</span>
+                  <span className="text-amber-700">✓ Fully Paid</span>
+                  <span className="text-amber-700">{fmt(invoice.amount_paid, currency)}</span>
                 </div>
               ) : null}
             </div>
@@ -881,7 +881,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
               <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Workflow Actions</h2>
               <div className="space-y-2">
                 {job.stage !== "ready" && (
-                  <button onClick={() => handleStageChange("ready")} disabled={isPending} className="w-full text-sm font-medium bg-[#B45309] text-white px-4 py-2.5 rounded-lg hover:bg-[#8B7355] transition-colors text-left disabled:opacity-50">
+                  <button onClick={() => handleStageChange("ready")} disabled={isPending} className="w-full text-sm font-medium bg-amber-700 text-white px-4 py-2.5 rounded-lg hover:bg-amber-800 transition-colors text-left disabled:opacity-50">
                     ✓ Mark Ready for Collection
                   </button>
                 )}
@@ -912,23 +912,23 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-stone-700 mb-1">Description *</label>
-                <input value={manualDesc} onChange={e => setManualDesc(e.target.value)} placeholder="e.g. Custom platinum band" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309] focus:ring-1 focus:ring-[#B45309]" />
+                <input value={manualDesc} onChange={e => setManualDesc(e.target.value)} placeholder="e.g. Custom platinum band" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700] focus:ring-1 focus:ring-[amber-700]" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-stone-700 mb-1">Quantity</label>
-                  <input type="number" value={manualQty} onChange={e => setManualQty(e.target.value)} min="1" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]" />
+                  <input type="number" value={manualQty} onChange={e => setManualQty(e.target.value)} min="1" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-stone-700 mb-1">Unit Price ({currency})</label>
-                  <input type="number" value={manualPrice} onChange={e => setManualPrice(e.target.value)} placeholder="0.00" step="0.01" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]" />
+                  <input type="number" value={manualPrice} onChange={e => setManualPrice(e.target.value)} placeholder="0.00" step="0.01" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
                 </div>
               </div>
               {formError && <p className="text-sm text-red-500">{formError}</p>}
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => setShowAddManual(false)} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-              <button onClick={handleAddManual} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">{isPending ? "Adding…" : "Add Item"}</button>
+              <button onClick={handleAddManual} disabled={isPending} className="flex-1 bg-amber-700 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-amber-800 disabled:opacity-50">{isPending ? "Adding…" : "Add Item"}</button>
             </div>
           </div>
         </div>
@@ -943,7 +943,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-stone-700 mb-1">Select Item</label>
-                <select value={selectedInventoryId} onChange={e => setSelectedInventoryId(e.target.value)} className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]">
+                <select value={selectedInventoryId} onChange={e => setSelectedInventoryId(e.target.value)} className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]">
                   <option value="">— Select inventory item —</option>
                   {inventory.map(item => (
                     <option key={item.id} value={item.id}>{item.name} ({item.sku}) — {fmt(item.retail_price, currency)}</option>
@@ -954,7 +954,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => setShowAddStock(false)} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-              <button onClick={handleAddStock} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">{isPending ? "Adding…" : "Add Item"}</button>
+              <button onClick={handleAddStock} disabled={isPending} className="flex-1 bg-amber-700 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-amber-800 disabled:opacity-50">{isPending ? "Adding…" : "Add Item"}</button>
             </div>
           </div>
         </div>
@@ -969,11 +969,11 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-stone-700 mb-1">Amount ({currency}) *</label>
-                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" step="0.01" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]" />
+                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" step="0.01" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-700 mb-1">Payment Method</label>
-                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]">
+                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]">
                   {PAYMENT_METHODS.map(m => (
                     <option key={m} value={m}>{m.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</option>
                   ))}
@@ -981,13 +981,13 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-700 mb-1">Notes (optional)</label>
-                <input value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} placeholder="e.g. 50% deposit" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]" />
+                <input value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} placeholder="e.g. 50% deposit" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
               </div>
               {formError && <p className="text-sm text-red-500">{formError}</p>}
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => setShowPayment(false)} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-              <button onClick={handlePayment} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">{isPending ? "Recording…" : "Record Payment"}</button>
+              <button onClick={handlePayment} disabled={isPending} className="flex-1 bg-amber-700 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-amber-800 disabled:opacity-50">{isPending ? "Recording…" : "Record Payment"}</button>
             </div>
           </div>
         </div>
@@ -1002,7 +1002,7 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
             <p className="text-sm text-stone-500 mb-5">Move to <span className="font-semibold text-stone-900">{BESPOKE_STAGES.find(s => s.key === targetStage)?.label ?? targetStage}</span>?</p>
             <div className="flex gap-3">
               <button onClick={() => setShowStageModal(false)} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-              <button onClick={confirmStageChange} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">{isPending ? "Updating…" : "Confirm"}</button>
+              <button onClick={confirmStageChange} disabled={isPending} className="flex-1 bg-amber-700 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-amber-800 disabled:opacity-50">{isPending ? "Updating…" : "Confirm"}</button>
             </div>
           </div>
         </div>

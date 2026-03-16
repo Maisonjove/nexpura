@@ -132,11 +132,11 @@ export default async function VerificationPage() {
     <div style={{ fontFamily: "system-ui, sans-serif", background: "#fafaf9", minHeight: "100vh", padding: "40px 24px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
 
-        <div style={{ marginBottom: 36, borderLeft: "4px solid #B45309", paddingLeft: 16 }}>
+        <div style={{ marginBottom: 36, borderLeft: "4px solid amber-700", paddingLeft: 16 }}>
           <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1c1917", margin: 0 }}>Nexpura — Screenshot Verification Pack</h1>
           <p style={{ fontSize: 14, color: "#78716c", margin: "8px 0 0" }}>
             All screenshots were captured from{" "}
-            <a href={`https://${BUILD}`} style={{ color: "#B45309", fontWeight: 600 }}>{BUILD}</a>{" "}
+            <a href={`https://${BUILD}`} style={{ color: "amber-700", fontWeight: 600 }}>{BUILD}</a>{" "}
             and uploaded directly to Supabase Storage. No re-deploy after recording — build ID in overlays and gallery header are the same.
           </p>
         </div>
@@ -148,7 +148,7 @@ export default async function VerificationPage() {
           </span>
           <span style={{ fontSize: 13 }}><strong>Tenant:</strong> Marcus &amp; Co. Fine Jewellery</span>
           <span style={{ fontSize: 13 }}><strong>Screens:</strong> {REVIEW_SCREENS.length + SANDBOX_SCREENS.length}</span>
-          <a href="/verification/workflows" style={{ fontSize: 13, color: "#B45309", fontWeight: 600, marginLeft: "auto" }}>
+          <a href="/verification/workflows" style={{ fontSize: 13, color: "amber-700", fontWeight: 600, marginLeft: "auto" }}>
             Workflow video gallery →
           </a>
         </div>
@@ -157,9 +157,9 @@ export default async function VerificationPage() {
         <Section title="B — Authenticated App Routes" badge="?rt=nexpura-review-2026" build={BUILD} screens={SANDBOX_SCREENS} />
 
         <div style={{ borderTop: "1px solid #e7e5e4", paddingTop: 20, marginTop: 20, display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <a href="/review" style={{ fontSize: 13, color: "#B45309" }}>Public review surface</a>
-          <a href="/sandbox/status?rt=nexpura-review-2026" style={{ fontSize: 13, color: "#B45309" }}>Auth status check</a>
-          <a href="/sandbox/links?rt=nexpura-review-2026" style={{ fontSize: 13, color: "#B45309" }}>Live route index</a>
+          <a href="/review" style={{ fontSize: 13, color: "amber-700" }}>Public review surface</a>
+          <a href="/sandbox/status?rt=nexpura-review-2026" style={{ fontSize: 13, color: "amber-700" }}>Auth status check</a>
+          <a href="/sandbox/links?rt=nexpura-review-2026" style={{ fontSize: 13, color: "amber-700" }}>Live route index</a>
         </div>
       </div>
     </div>

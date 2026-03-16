@@ -59,7 +59,7 @@ export function MappingTableWrapper({ sessionId, mappings }: Props) {
               onClick={() => setActiveTab(i)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 i === activeTab
-                  ? 'border-[#B45309] text-[#B45309]'
+                  ? 'border-[amber-700] text-amber-700'
                   : 'border-transparent text-stone-500 hover:text-stone-700'
               }`}
             >
@@ -90,7 +90,7 @@ export function MappingTableWrapper({ sessionId, mappings }: Props) {
       <button
         onClick={handleContinue}
         disabled={saving}
-        className="w-full flex items-center justify-center gap-2 bg-[#B45309] text-white text-sm font-semibold px-6 py-3 rounded-xl hover:bg-amber-700 transition-colors disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-2 bg-amber-700 text-white text-sm font-semibold px-6 py-3 rounded-xl hover:bg-amber-700 transition-colors disabled:opacity-50"
       >
         {saving ? 'Saving...' : <><span>Continue to Preview</span> <ArrowRight className="w-4 h-4" /></>}
       </button>

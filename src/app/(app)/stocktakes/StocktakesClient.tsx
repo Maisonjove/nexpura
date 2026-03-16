@@ -8,7 +8,7 @@ import type { Stocktake } from "./actions";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-stone-100 text-stone-600",
-  in_progress: "bg-blue-50 text-blue-700",
+  in_progress: "bg-amber-50 text-amber-700",
   completed: "bg-green-50 text-green-700",
   cancelled: "bg-red-50 text-red-500",
 };
@@ -57,7 +57,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
         </div>
         <button
           onClick={() => setShowNew(true)}
-          className="px-4 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] transition-colors"
+          className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors"
         >
           + New Stocktake
         </button>
@@ -75,7 +75,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. End of Month Count – March 2026"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                 />
               </div>
               <div>
@@ -84,7 +84,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. Main Showroom, Back Office…"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                 />
               </div>
               <div>
@@ -93,7 +93,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 resize-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 resize-none"
                 />
               </div>
               {error && <p className="text-xs text-red-500">{error}</p>}
@@ -108,7 +108,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
               <button
                 onClick={handleCreate}
                 disabled={isPending || !name.trim()}
-                className="flex-1 px-3 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347] disabled:opacity-60"
+                className="flex-1 px-3 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-60"
               >
                 {isPending ? "Creating…" : "Create"}
               </button>
@@ -130,7 +130,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
             <Link
               key={st.id}
               href={`/stocktakes/${st.id}`}
-              className="block bg-white rounded-xl border border-stone-200 hover:border-[#8B7355]/40 hover:shadow-sm transition-all p-5"
+              className="block bg-white rounded-xl border border-stone-200 hover:border-amber-600/40 hover:shadow-sm transition-all p-5"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">

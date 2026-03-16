@@ -47,7 +47,7 @@ export default async function RefundsPage() {
           </div>
           <p className="font-medium text-stone-900 mb-1">No refunds yet</p>
           <p className="text-sm text-stone-500">Process refunds from individual sale records.</p>
-          <Link href="/sales" className="mt-4 inline-block text-sm text-[#8B7355] hover:underline font-medium">
+          <Link href="/sales" className="mt-4 inline-block text-sm text-amber-700 hover:underline font-medium">
             Go to Sales →
           </Link>
         </div>
@@ -77,7 +77,7 @@ export default async function RefundsPage() {
                     {new Date(r.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/refunds/${r.id}`} className="text-xs text-[#8B7355] hover:text-[#7a6447] font-medium transition-colors">
+                    <Link href={`/refunds/${r.id}`} className="text-xs text-amber-700 hover:text-[#7a6447] font-medium transition-colors">
                       View →
                     </Link>
                   </td>

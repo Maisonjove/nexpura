@@ -56,7 +56,7 @@ const STATUS_COLOURS: Record<string, string> = {
   quote: "bg-stone-100 text-stone-700",
   confirmed: "bg-stone-100 text-stone-700",
   paid: "bg-green-50 text-green-700",
-  completed: "bg-stone-100 text-[#8B7355]",
+  completed: "bg-stone-100 text-amber-700",
   refunded: "bg-red-50 text-red-600",
   layby: "bg-amber-50 text-amber-700",
 };
@@ -434,7 +434,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                     disabled={isPending || s === sale.status}
                     className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-all capitalize ${
                       s === sale.status
-                        ? "bg-stone-100 text-[#8B7355] font-medium"
+                        ? "bg-stone-100 text-amber-700 font-medium"
                         : "text-stone-500 hover:bg-stone-50 hover:text-stone-900"
                     } disabled:opacity-50`}
                   >
@@ -444,7 +444,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                 ))}
               </div>
               {statusMsg && (
-                <p className="mt-2 text-xs text-[#8B7355] font-medium">{statusMsg}</p>
+                <p className="mt-2 text-xs text-amber-700 font-medium">{statusMsg}</p>
               )}
             </div>
 
@@ -603,12 +603,12 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                   value={laybyAmount}
                   onChange={(e) => setLaybyAmount(e.target.value)}
                   placeholder="0.00"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 />
                 <button
                   type="button"
                   onClick={() => setLaybyAmount((sale.total - currentAmountPaid).toFixed(2))}
-                  className="mt-1 text-xs text-[#8B7355] hover:underline"
+                  className="mt-1 text-xs text-amber-700 hover:underline"
                 >
                   Pay in full ({fmtCurrency(Math.max(0, sale.total - currentAmountPaid))})
                 </button>
@@ -620,7 +620,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                 <select
                   value={laybyMethod}
                   onChange={(e) => setLaybyMethod(e.target.value)}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 >
                   <option value="cash">Cash</option>
                   <option value="card">Card / EFTPOS</option>
@@ -636,7 +636,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                   type="date"
                   value={laybyDate}
                   onChange={(e) => setLaybyDate(e.target.value)}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 />
               </div>
 
@@ -648,7 +648,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                   value={laybyNotes}
                   onChange={(e) => setLaybyNotes(e.target.value)}
                   placeholder="e.g. Cash payment received"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 />
               </div>
 
@@ -695,7 +695,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                         type="checkbox"
                         checked={!!refundItems[item.id]}
                         onChange={(e) => setRefundItems((prev) => ({ ...prev, [item.id]: e.target.checked }))}
-                        className="rounded border-stone-300 text-[#8B7355] focus:ring-[#8B7355]"
+                        className="rounded border-stone-300 text-amber-700 focus:ring-amber-600"
                       />
                       <span className="flex-1 text-sm text-stone-900">{item.description}</span>
                       <span className="text-sm font-medium text-stone-700">{fmtCurrency(item.line_total)}</span>
@@ -712,7 +712,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                   value={refundReason}
                   onChange={(e) => setRefundReason(e.target.value)}
                   placeholder="e.g. Faulty item, Customer changed mind"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 />
               </div>
 
@@ -722,7 +722,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                 <select
                   value={refundMethod}
                   onChange={(e) => setRefundMethod(e.target.value)}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                 >
                   <option value="card">Card / EFTPOS</option>
                   <option value="cash">Cash</option>
@@ -738,7 +738,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                   value={refundNotes}
                   onChange={(e) => setRefundNotes(e.target.value)}
                   rows={2}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355] resize-none"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 resize-none"
                 />
               </div>
 

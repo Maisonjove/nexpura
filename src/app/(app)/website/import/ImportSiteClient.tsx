@@ -111,10 +111,10 @@ export default function ImportSiteClient() {
       <div className="flex items-center gap-2">
         {[1, 2, 3].map((s) => (
           <div key={s} className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= s ? "bg-[#8B7355] text-white" : "bg-stone-100 text-stone-400"}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= s ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-400"}`}>
               {s}
             </div>
-            {s < 3 && <div className={`h-0.5 w-12 ${step > s ? "bg-[#8B7355]" : "bg-stone-200"}`} />}
+            {s < 3 && <div className={`h-0.5 w-12 ${step > s ? "bg-amber-700" : "bg-stone-200"}`} />}
           </div>
         ))}
         <div className="flex gap-8 ml-2 text-xs text-stone-400">
@@ -136,7 +136,7 @@ export default function ImportSiteClient() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://myjewelleryshop.com"
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355]"
+              className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
             />
           </div>
 
@@ -147,7 +147,7 @@ export default function ImportSiteClient() {
                 <button
                   key={p.id}
                   onClick={() => setPlatform(p.id)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${platform === p.id ? "border-[#8B7355] bg-[#8B7355]/10 text-[#8B7355]" : "border-stone-200 text-stone-600 hover:border-stone-300"}`}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${platform === p.id ? "border-amber-600 bg-amber-700/10 text-amber-700" : "border-stone-200 text-stone-600 hover:border-stone-300"}`}
                 >
                   {p.label}
                 </button>
@@ -160,7 +160,7 @@ export default function ImportSiteClient() {
           <button
             onClick={handleAnalyze}
             disabled={loading || !url.trim() || !platform}
-            className="w-full py-3 bg-[#8B7355] text-white font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
+            className="w-full py-3 bg-amber-700 text-white font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
           >
             {loading ? "Analysing…" : "Analyse Site →"}
           </button>
@@ -220,7 +220,7 @@ export default function ImportSiteClient() {
             <button
               onClick={handleRecreate}
               disabled={importing}
-              className="flex-1 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
+              className="flex-1 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
             >
               {importing ? "Creating pages…" : "Recreate in Nexpura Builder →"}
             </button>

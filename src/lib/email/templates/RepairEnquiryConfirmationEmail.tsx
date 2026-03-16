@@ -30,7 +30,7 @@ export default function RepairEnquiryConfirmationEmail({
               <table role="presentation" width="100%" style={{ maxWidth: '560px', backgroundColor: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
                 <tr>
                   <td style={{ backgroundColor: '#1c1917', padding: '32px 40px', textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 8px', color: '#8B7355', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
+                    <p style={{ margin: '0 0 8px', color: 'amber-700', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
                       {businessName}
                     </p>
                     <h1 style={{ margin: 0, color: '#ffffff', fontSize: '24px', fontFamily: 'Georgia, serif', fontWeight: 400 }}>
@@ -67,7 +67,7 @@ export default function RepairEnquiryConfirmationEmail({
                         Questions? Reach us at{' '}
                         {businessPhone && <span>📞 {businessPhone}</span>}
                         {businessEmail && (
-                          <span> · <a href={`mailto:${businessEmail}`} style={{ color: '#8B7355' }}>{businessEmail}</a></span>
+                          <span> · <a href={`mailto:${businessEmail}`} style={{ color: 'amber-700' }}>{businessEmail}</a></span>
                         )}
                       </p>
                     )}

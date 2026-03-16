@@ -17,10 +17,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  stock: "bg-blue-500",
+  stock: "bg-amber-500",
   rent: "bg-amber-500",
   utilities: "bg-teal-500",
-  marketing: "bg-purple-500",
+  marketing: "bg-stone-1000",
   staffing: "bg-rose-500",
   equipment: "bg-orange-500",
   repairs: "bg-stone-500",
@@ -102,7 +102,7 @@ export default function ExpenseReportsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 text-sm text-stone-400 mb-1">
-            <Link href="/reports" className="hover:text-[#8B7355]">Reports</Link>
+            <Link href="/reports" className="hover:text-amber-700">Reports</Link>
             <span>/</span>
             <span className="text-stone-600">Expenses</span>
           </div>
@@ -119,7 +119,7 @@ export default function ExpenseReportsPage() {
             </svg>
             Export CSV
           </button>
-          <Link href="/expenses/new" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm bg-[#8B7355] text-white hover:bg-[#7A6347] transition-colors">
+          <Link href="/expenses/new" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm bg-amber-700 text-white hover:bg-amber-800 transition-colors">
             + Add Expense
           </Link>
         </div>
@@ -130,17 +130,17 @@ export default function ExpenseReportsPage() {
         <div>
           <label className="block text-xs text-stone-500 font-medium mb-1">From</label>
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8B7355]" />
+            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-amber-600" />
         </div>
         <div>
           <label className="block text-xs text-stone-500 font-medium mb-1">To</label>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8B7355]" />
+            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-amber-600" />
         </div>
         <div>
           <label className="block text-xs text-stone-500 font-medium mb-1">Category</label>
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8B7355]">
+            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-amber-600">
             <option value="all">All Categories</option>
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
@@ -190,7 +190,7 @@ export default function ExpenseReportsPage() {
           ) : expenses.length === 0 ? (
             <div className="px-5 py-12 text-center text-sm text-stone-400">
               No expenses found for this period.{" "}
-              <Link href="/expenses/new" className="text-[#8B7355] hover:underline">Add one →</Link>
+              <Link href="/expenses/new" className="text-amber-700 hover:underline">Add one →</Link>
             </div>
           ) : (
             <div className="overflow-y-auto max-h-[480px]">

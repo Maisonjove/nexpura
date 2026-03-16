@@ -24,12 +24,12 @@ export default async function EmbedAppointmentPage({ params }: Props) {
           p.sub { color: #78716c; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
           label { display: block; font-size: 10px; font-weight: 700; color: #a8a29e; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
           input, select, textarea { width: 100%; padding: 12px 16px; border: 1px solid #e7e5e4; border-radius: 10px; font-size: 14px; font-family: inherit; margin-bottom: 20px; transition: all 0.2s; background: #fafaf9; }
-          input:focus, select:focus, textarea:focus { outline: none; border-color: #8B7355; background: white; box-shadow: 0 0 0 3px rgba(139, 115, 85, 0.1); }
+          input:focus, select:focus, textarea:focus { outline: none; border-color: amber-700; background: white; box-shadow: 0 0 0 3px rgba(139, 115, 85, 0.1); }
           button { width: 100%; padding: 14px; background: #1c1917; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; letter-spacing: 0.02em; }
-          button:hover { background: #8B7355; transform: translateY(-1px); }
+          button:hover { background: amber-700; transform: translateY(-1px); }
           button:active { transform: translateY(0); }
           .success { padding: 40px 20px; text-align: center; color: #1c1917; }
-          .success-icon { width: 64px; height: 64px; background: #f5f5f4; color: #8B7355; border-radius: 50%; display: flex; items-center; justify-center; margin: 0 auto 24px; font-size: 32px; }
+          .success-icon { width: 64px; height: 64px; background: #f5f5f4; color: amber-700; border-radius: 50%; display: flex; items-center; justify-center; margin: 0 auto 24px; font-size: 32px; }
         `}</style>
       </head>
       <body>

@@ -68,7 +68,7 @@ export default async function MigrationLogsPage() {
         </div>
         <Link
           href="/migration/new"
-          className="flex items-center gap-2 bg-[#B45309] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+          className="flex items-center gap-2 bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
         >
           New Migration
         </Link>

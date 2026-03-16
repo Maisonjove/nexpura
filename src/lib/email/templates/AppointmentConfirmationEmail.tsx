@@ -37,7 +37,7 @@ export default function AppointmentConfirmationEmail({
                 {/* Header */}
                 <tr>
                   <td style={{ backgroundColor: '#1c1917', padding: '32px 40px', textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 8px', color: '#8B7355', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
+                    <p style={{ margin: '0 0 8px', color: 'amber-700', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
                       {businessName}
                     </p>
                     <h1 style={{ margin: 0, color: '#ffffff', fontSize: '24px', fontFamily: 'Georgia, serif', fontWeight: 400 }}>
@@ -106,7 +106,7 @@ export default function AppointmentConfirmationEmail({
                         {businessPhone && <p style={{ margin: '0 0 4px', color: '#44403c', fontSize: '14px' }}>📞 {businessPhone}</p>}
                         {businessEmail && (
                           <p style={{ margin: '0 0 4px', color: '#44403c', fontSize: '14px' }}>
-                            ✉️ <a href={`mailto:${businessEmail}`} style={{ color: '#8B7355' }}>{businessEmail}</a>
+                            ✉️ <a href={`mailto:${businessEmail}`} style={{ color: 'amber-700' }}>{businessEmail}</a>
                           </p>
                         )}
                         {businessAddress && <p style={{ margin: 0, color: '#44403c', fontSize: '14px' }}>📍 {businessAddress}</p>}

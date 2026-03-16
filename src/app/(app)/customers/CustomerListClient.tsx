@@ -96,7 +96,7 @@ export default function CustomerListClient({
             {totalCount}
           </Badge>
         </div>
-        <Link href="/customers/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-10 px-4 py-2">
+        <Link href="/customers/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
           <Plus className="w-4 h-4 mr-2" /> Add Customer
         </Link>
       </div>
@@ -107,13 +107,13 @@ export default function CustomerListClient({
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
           <Input 
             placeholder="Search customers..." 
-            className="pl-9 h-10 border-stone-200 focus-visible:ring-[#8B7355] text-sm"
+            className="pl-9 h-10 border-stone-200 focus-visible:ring-[amber-700] text-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </form>
         <Select value={activeTab} onValueChange={(val) => handleTabChange(val || "all")}>
-          <SelectTrigger className="w-[180px] h-10 text-sm border-stone-200 focus:ring-[#8B7355]">
+          <SelectTrigger className="w-[180px] h-10 text-sm border-stone-200 focus:ring-amber-600">
             <SelectValue placeholder="All Tags" />
           </SelectTrigger>
           <SelectContent>
@@ -131,7 +131,7 @@ export default function CustomerListClient({
         <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
           <div className="p-16 text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
-              <svg className="w-8 h-8 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
@@ -139,7 +139,7 @@ export default function CustomerListClient({
             <p className="text-stone-500 mt-1 text-sm">Add your first customer to get started.</p>
             <Link
               href="/customers/new"
-              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add your first customer →
@@ -193,7 +193,7 @@ export default function CustomerListClient({
                         : "—"}
                     </TableCell>
                     <TableCell>
-                      <ArrowRight className="w-4 h-4 text-stone-300 hover:text-[#8B7355]" />
+                      <ArrowRight className="w-4 h-4 text-stone-300 hover:text-amber-700" />
                     </TableCell>
                   </TableRow>
                 );

@@ -191,7 +191,7 @@ export default function SettingsPage() {
 
       {/* Toast */}
       {successMsg && (
-        <div className="flex items-center gap-3 bg-stone-100 border border-[#8B7355]/30 text-[#8B7355] rounded-xl px-4 py-3 text-sm">
+        <div className="flex items-center gap-3 bg-stone-100 border border-amber-600/30 text-amber-700 rounded-xl px-4 py-3 text-sm">
           <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
           </svg>
@@ -216,7 +216,7 @@ export default function SettingsPage() {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab
-                  ? "border-[#8B7355] text-[#8B7355]"
+                  ? "border-amber-600 text-amber-700"
                   : "border-transparent text-stone-500 hover:text-stone-900 hover:border-stone-200"
               }`}
             >
@@ -258,7 +258,7 @@ export default function SettingsPage() {
                 <input
                   name="business_name"
                   defaultValue={tenant?.business_name || tenant?.name || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   placeholder="My Jewellery Studio"
                 />
               </div>
@@ -267,7 +267,7 @@ export default function SettingsPage() {
                 <select
                   name="business_type"
                   defaultValue={tenant?.business_type || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                 >
                   <option value="">Select type…</option>
                   <option value="jeweller">Jeweller</option>
@@ -284,7 +284,7 @@ export default function SettingsPage() {
                 <select
                   name="business_mode"
                   defaultValue={tenant?.business_mode || "full"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white font-medium text-[#8B7355]"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white font-medium text-amber-700"
                 >
                   <option value="full">Full (All Features)</option>
                   <option value="retail">Retail Focus (POS + Inventory)</option>
@@ -299,7 +299,7 @@ export default function SettingsPage() {
                   name="phone"
                   type="tel"
                   defaultValue={tenant?.phone || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   placeholder="+61 2 9000 0000"
                 />
               </div>
@@ -309,7 +309,7 @@ export default function SettingsPage() {
                   name="email"
                   type="email"
                   defaultValue={tenant?.email || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   placeholder="hello@mybusiness.com"
                 />
               </div>
@@ -319,7 +319,7 @@ export default function SettingsPage() {
                   name="website"
                   type="url"
                   defaultValue={tenant?.website || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   placeholder="https://mybusiness.com"
                 />
               </div>
@@ -328,7 +328,7 @@ export default function SettingsPage() {
                 <input
                   name="abn"
                   defaultValue={tenant?.abn || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   placeholder="12 345 678 901"
                 />
               </div>
@@ -344,7 +344,7 @@ export default function SettingsPage() {
                 <input
                   name="address_line1"
                   defaultValue={tenant?.address_line1 || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   placeholder="123 Main Street"
                 />
               </div>
@@ -354,7 +354,7 @@ export default function SettingsPage() {
                   <input
                     name="suburb"
                     defaultValue={tenant?.suburb || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                     placeholder="Sydney"
                   />
                 </div>
@@ -363,7 +363,7 @@ export default function SettingsPage() {
                   <select
                     name="state"
                     defaultValue={tenant?.state || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   >
                     <option value="">State</option>
                     <option value="NSW">NSW</option>
@@ -381,7 +381,7 @@ export default function SettingsPage() {
                   <input
                     name="postcode"
                     defaultValue={tenant?.postcode || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                     placeholder="2000"
                   />
                 </div>
@@ -390,7 +390,7 @@ export default function SettingsPage() {
                   <select
                     name="country"
                     defaultValue={tenant?.country || "Australia"}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   >
                     <option value="Australia">Australia</option>
                     <option value="New Zealand">New Zealand</option>
@@ -407,7 +407,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save changes"}
             </button>
@@ -426,7 +426,7 @@ export default function SettingsPage() {
                 <select
                   name="currency"
                   defaultValue={tenant?.currency || "AUD"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                 >
                   <option value="AUD">AUD — Australian Dollar</option>
                   <option value="NZD">NZD — New Zealand Dollar</option>
@@ -440,7 +440,7 @@ export default function SettingsPage() {
                 <select
                   name="timezone"
                   defaultValue={tenant?.timezone || "Australia/Sydney"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                 >
                   <option value="Australia/Sydney">Australia/Sydney (AEDT)</option>
                   <option value="Australia/Melbourne">Australia/Melbourne (AEDT)</option>
@@ -465,7 +465,7 @@ export default function SettingsPage() {
                 <select
                   name="tax_name"
                   defaultValue={tenant?.tax_name || "GST"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                 >
                   <option value="GST">GST</option>
                   <option value="VAT">VAT</option>
@@ -482,7 +482,7 @@ export default function SettingsPage() {
                   max="100"
                   step="0.01"
                   defaultValue={tenant?.tax_rate != null ? (tenant.tax_rate * 100).toFixed(0) : "10"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   placeholder="10"
                 />
               </div>
@@ -508,7 +508,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save changes"}
             </button>
@@ -522,7 +522,7 @@ export default function SettingsPage() {
           <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
             <div className="flex items-start gap-3 mb-2">
               <div className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-[#8B7355]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
               </div>
@@ -537,7 +537,7 @@ export default function SettingsPage() {
                 <input
                   name="bank_name"
                   defaultValue={tenant?.bank_name || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   placeholder="Commonwealth Bank"
                 />
               </div>
@@ -546,7 +546,7 @@ export default function SettingsPage() {
                 <input
                   name="bank_bsb"
                   defaultValue={tenant?.bank_bsb || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   placeholder="062-000"
                 />
               </div>
@@ -555,7 +555,7 @@ export default function SettingsPage() {
                 <input
                   name="bank_account"
                   defaultValue={tenant?.bank_account || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   placeholder="1234 5678"
                 />
               </div>
@@ -572,7 +572,7 @@ export default function SettingsPage() {
                 name="invoice_footer"
                 defaultValue={tenant?.invoice_footer || ""}
                 rows={3}
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white resize-none"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white resize-none"
                 placeholder="Thank you for your business. Payment due within 7 days."
               />
             </div>
@@ -582,7 +582,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save changes"}
             </button>
@@ -600,9 +600,9 @@ export default function SettingsPage() {
               <div className="flex items-center gap-3">
                 <div className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
                   subscription?.plan === "ultimate"
-                    ? "bg-[#8B7355]/10 text-[#8B7355] border border-[#8B7355]/30"
+                    ? "bg-amber-700/10 text-amber-700 border border-amber-600/30"
                     : subscription?.plan === "pro"
-                    ? "bg-stone-100 text-[#8B7355] border border-[#8B7355]/30"
+                    ? "bg-stone-100 text-amber-700 border border-amber-600/30"
                     : "bg-stone-200 text-stone-500 border border-stone-200"
                 }`}>
                   {subscription?.plan || "Free"}
@@ -616,7 +616,7 @@ export default function SettingsPage() {
                 </span>
               </div>
               {subscription?.plan !== "ultimate" && (
-                <button className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-lg hover:bg-[#7A6347] transition-colors">
+                <button className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors">
                   Upgrade plan
                 </button>
               )}
@@ -633,7 +633,7 @@ export default function SettingsPage() {
                   <input
                     name="full_name"
                     defaultValue={user?.full_name || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#8B7355] bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
                   />
                 </div>
                 <div className="sm:col-span-2 space-y-1.5">
@@ -664,7 +664,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-6 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
+                className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
               >
                 {isPending ? "Saving…" : "Save changes"}
               </button>

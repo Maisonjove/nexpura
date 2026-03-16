@@ -87,7 +87,7 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
             type="date"
             value={selectedDate}
             onChange={(e) => loadDate(e.target.value)}
-            className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355]"
+            className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
           />
           <div className="flex bg-stone-100 rounded-lg p-1">
             {(["today", "history"] as const).map((tab) => (
@@ -191,7 +191,7 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
                     value={openingFloat}
                     onChange={(e) => setOpeningFloat(e.target.value)}
                     disabled={isSubmitted}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355] disabled:bg-stone-50 disabled:text-stone-400"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-stone-50 disabled:text-stone-400"
                   />
                 </div>
                 <div>
@@ -211,7 +211,7 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
                     onChange={(e) => setCashCounted(e.target.value)}
                     disabled={isSubmitted}
                     placeholder="Count the drawer…"
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355] disabled:bg-stone-50 disabled:text-stone-400"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-stone-50 disabled:text-stone-400"
                   />
                 </div>
                 <div>
@@ -240,7 +240,7 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
                   onChange={(e) => setClosingFloat(e.target.value)}
                   disabled={isSubmitted}
                   placeholder="Amount to leave in drawer overnight"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355] disabled:bg-stone-50 disabled:text-stone-400"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-stone-50 disabled:text-stone-400"
                 />
               </div>
               <div>
@@ -251,7 +251,7 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
                   onChange={(e) => setNotes(e.target.value)}
                   disabled={isSubmitted}
                   placeholder="Any discrepancies or notes for the record…"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B7355] resize-none disabled:bg-stone-50 disabled:text-stone-400"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 resize-none disabled:bg-stone-50 disabled:text-stone-400"
                 />
               </div>
 
@@ -275,7 +275,7 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
                   <button
                     onClick={() => handleSave(true)}
                     disabled={isPending || cashCounted === ""}
-                    className="flex-1 py-2.5 bg-[#8B7355] text-white text-sm font-semibold rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                    className="flex-1 py-2.5 bg-amber-700 text-white text-sm font-semibold rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                   >
                     {isPending ? "Submitting…" : "Submit & Close Day"}
                   </button>
@@ -367,7 +367,7 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => { setActiveTab("today"); loadDate(rec.reconciliation_date); }}
-                        className="text-xs text-[#8B7355] hover:text-[#7a6447] font-medium transition-colors"
+                        className="text-xs text-amber-700 hover:text-[#7a6447] font-medium transition-colors"
                       >
                         View
                       </button>

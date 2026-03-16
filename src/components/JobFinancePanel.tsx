@@ -106,7 +106,7 @@ export function JobFinancePanel({
       <div className="px-5 py-4 bg-stone-50 border-b border-stone-200 flex items-center justify-between">
         <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider">Financials</h3>
         {invoiceId ? (
-          <span className="text-[11px] font-semibold text-[#8B7355] bg-[#8B7355]/10 px-2 py-0.5 rounded-full">
+          <span className="text-[11px] font-semibold text-amber-700 bg-amber-700/10 px-2 py-0.5 rounded-full">
             Invoiced
           </span>
         ) : (
@@ -193,7 +193,7 @@ export function JobFinancePanel({
             <Button
               onClick={handleCreateInvoice}
               disabled={isPending || !total}
-              className="w-full bg-[#8B7355] hover:bg-[#7A6347] text-white text-sm font-bold h-10 shadow-sm"
+              className="w-full bg-amber-700 hover:bg-amber-800 text-white text-sm font-bold h-10 shadow-sm"
             >
               {isPending ? "Generating…" : "Generate Invoice"}
             </Button>

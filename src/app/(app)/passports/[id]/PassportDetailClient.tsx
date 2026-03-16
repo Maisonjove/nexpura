@@ -244,7 +244,7 @@ export default function PassportDetailClient({
     <>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-sm font-bold bg-stone-100 text-[#8B7355] px-3 py-1 rounded-lg">
+          <span className="font-mono text-sm font-bold bg-stone-100 text-amber-700 px-3 py-1 rounded-lg">
             {passport.passport_uid}
           </span>
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -385,7 +385,7 @@ export default function PassportDetailClient({
                   <div key={event.id} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        event.event_type === "created" ? "bg-stone-100 text-[#8B7355]" :
+                        event.event_type === "created" ? "bg-stone-100 text-amber-700" :
                         event.event_type === "ownership_transferred" ? "bg-stone-100 text-stone-700" :
                         event.event_type === "reported_lost" || event.event_type === "reported_stolen" ? "bg-red-50 text-red-500" :
                         event.event_type === "recovered" || event.event_type === "authenticated" ? "bg-green-50 text-green-600" :
@@ -435,7 +435,7 @@ export default function PassportDetailClient({
               <a
                 href={qrDownloadUrl}
                 download={`passport-${passport.passport_uid}.png`}
-                className="w-full px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -470,7 +470,7 @@ export default function PassportDetailClient({
                   onClick={handleTogglePublic}
                   disabled={isPending}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    isPublic ? "bg-[#8B7355]" : "bg-gray-200"
+                    isPublic ? "bg-amber-700" : "bg-gray-200"
                   }`}
                 >
                   <span
@@ -480,7 +480,7 @@ export default function PassportDetailClient({
                   />
                 </button>
               ) : (
-                <div className={`relative inline-flex h-6 w-11 items-center rounded-full ${isPublic ? "bg-[#8B7355]" : "bg-gray-200"}`}>
+                <div className={`relative inline-flex h-6 w-11 items-center rounded-full ${isPublic ? "bg-amber-700" : "bg-gray-200"}`}>
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ${isPublic ? "translate-x-6" : "translate-x-1"}`} />
                 </div>
               )}
@@ -508,7 +508,7 @@ export default function PassportDetailClient({
               <>
                 <button
                   onClick={() => setEventModalOpen(true)}
-                  className="w-full px-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-4 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
@@ -528,7 +528,7 @@ export default function PassportDetailClient({
                   <button
                     onClick={handleSendPassportEmail}
                     disabled={emailSending}
-                    className="w-full px-4 py-2.5 border border-[#8B7355] text-[#8B7355] text-sm font-medium rounded-lg hover:bg-[#8B7355]/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="w-full px-4 py-2.5 border border-amber-600 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-700/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -545,7 +545,7 @@ export default function PassportDetailClient({
             <div className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 ${
               emailToast.startsWith("Failed")
                 ? "bg-red-50 text-red-600 border border-red-100"
-                : "bg-stone-100 text-[#8B7355] border border-[#8B7355]/20"
+                : "bg-stone-100 text-amber-700 border border-amber-600/20"
             }`}>
               {!emailToast.startsWith("Failed") && (
                 <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -570,7 +570,7 @@ export default function PassportDetailClient({
                 <select
                   value={eventType}
                   onChange={(e) => setEventType(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors"
                 >
                   {EVENT_TYPES.map((et) => (
                     <option key={et.value} value={et.value}>{et.label}</option>
@@ -584,7 +584,7 @@ export default function PassportDetailClient({
                   onChange={(e) => setEventNotes(e.target.value)}
                   rows={3}
                   placeholder="Add any relevant notes…"
-                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors resize-none"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors resize-none"
                 />
               </div>
               <div className="flex gap-3 pt-1">
@@ -598,7 +598,7 @@ export default function PassportDetailClient({
                 <button
                   type="submit"
                   disabled={eventLoading}
-                  className="flex-1 px-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-60"
+                  className="flex-1 px-4 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-60"
                 >
                   {eventLoading ? "Adding…" : "Add Event"}
                 </button>
@@ -622,7 +622,7 @@ export default function PassportDetailClient({
                   value={newOwnerName}
                   onChange={(e) => setNewOwnerName(e.target.value)}
                   placeholder="Full name"
-                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors"
                 />
               </div>
               <div>
@@ -632,7 +632,7 @@ export default function PassportDetailClient({
                   onChange={(e) => setNewOwnerEmail(e.target.value)}
                   type="email"
                   placeholder="email@example.com"
-                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors"
                 />
               </div>
               <div>
@@ -642,7 +642,7 @@ export default function PassportDetailClient({
                   onChange={(e) => setTransferNotes(e.target.value)}
                   rows={2}
                   placeholder="e.g. Sold at auction, gifted for birthday…"
-                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors resize-none"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors resize-none"
                 />
               </div>
               <div className="flex gap-3 pt-1">
@@ -656,7 +656,7 @@ export default function PassportDetailClient({
                 <button
                   type="submit"
                   disabled={transferLoading}
-                  className="flex-1 px-4 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-60"
+                  className="flex-1 px-4 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-60"
                 >
                   {transferLoading ? "Transferring…" : "Transfer"}
                 </button>

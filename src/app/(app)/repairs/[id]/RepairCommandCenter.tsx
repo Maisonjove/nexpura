@@ -126,13 +126,13 @@ const STAGE_COLORS: Record<string, { bg: string; text: string; dot: string }> = 
   quoted: { bg: "bg-amber-100", text: "text-amber-700", dot: "bg-amber-400" },
   approved: { bg: "bg-stone-100", text: "text-stone-700", dot: "bg-stone-500" },
   in_progress: { bg: "bg-amber-100", text: "text-amber-700", dot: "bg-amber-500" },
-  ready: { bg: "bg-stone-200", text: "text-stone-900", dot: "bg-[#8B7355]" },
+  ready: { bg: "bg-stone-200", text: "text-stone-900", dot: "bg-amber-700" },
   collected: { bg: "bg-stone-900", text: "text-white", dot: "bg-white" },
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
   low: "text-stone-400",
-  normal: "text-[#8B7355]",
+  normal: "text-amber-700",
   high: "text-amber-600",
   urgent: "text-red-600",
 };
@@ -519,7 +519,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
                   {customer.email && <p className="text-sm text-stone-500 mt-0.5">{customer.email}</p>}
                   {customer.mobile && <p className="text-sm text-stone-500">{customer.mobile}</p>}
                 </div>
-                <Link href={`/customers/${customer.id}`} className="text-xs text-[#B45309] hover:underline font-medium shrink-0">
+                <Link href={`/customers/${customer.id}`} className="text-xs text-amber-700 hover:underline font-medium shrink-0">
                   View Customer →
                 </Link>
               </div>
@@ -550,7 +550,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
               )}
               {(repair.intake_notes || repair.internal_notes || repair.workshop_notes) && (
                 <div>
-                  <button onClick={() => setShowNotes(!showNotes)} className="text-xs text-[#B45309] hover:underline font-medium">
+                  <button onClick={() => setShowNotes(!showNotes)} className="text-xs text-amber-700 hover:underline font-medium">
                     {showNotes ? "Hide notes ↑" : "Show notes ↓"}
                   </button>
                   {showNotes && (
@@ -584,7 +584,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
                       onClick={isClickable ? () => handleStageChange(s.key) : undefined}
                     >
                       <div className={`w-7 h-7 rounded-full flex-shrink-0 z-10 flex items-center justify-center ${
-                        isPast ? "bg-[#B45309]" : isCurrent ? "bg-stone-900 ring-4 ring-stone-200" : "bg-white border-2 border-stone-200"
+                        isPast ? "bg-amber-700" : isCurrent ? "bg-amber-600 ring-4 ring-amber-100" : "bg-white border-2 border-stone-200"
                       }`}>
                         {isPast && (
                           <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -596,7 +596,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
                       <span className={`text-sm ${isPast ? "text-stone-400 line-through" : isCurrent ? "text-stone-900 font-semibold" : "text-stone-500"}`}>
                         {s.label}
                       </span>
-                      {isCurrent && <span className="ml-auto text-xs bg-stone-900 text-white px-2 py-0.5 rounded-full">Current</span>}
+                      {isCurrent && <span className="ml-auto text-xs bg-amber-600 text-white px-2 py-0.5 rounded-full">Current</span>}
                       {isClickable && <span className="ml-auto text-xs text-stone-300 group-hover:text-stone-500">→</span>}
                     </div>
                   );
@@ -652,16 +652,25 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
 
           {/* Activity Timeline */}
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Activity</h2>
-            <div className="space-y-2">
-              {[...localEvents].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(ev => (
-                <div key={ev.id} className="flex items-start gap-2 text-sm">
-                  <span className="text-stone-400 text-xs whitespace-nowrap mt-0.5">{formatEventDate(ev.created_at)}</span>
-                  <span className="text-stone-600">{ev.description}</span>
+            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-4">Activity</h2>
+            {localEvents.length === 0 ? (
+              <p className="text-sm text-stone-400">No activity yet</p>
+            ) : (
+              <div className="relative pl-5">
+                <div className="absolute left-1.5 top-2 bottom-2 w-px bg-stone-100" />
+                <div className="space-y-4">
+                  {[...localEvents].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(ev => (
+                    <div key={ev.id} className="relative flex gap-3">
+                      <div className="absolute -left-5 top-1.5 w-2.5 h-2.5 rounded-full bg-stone-200 border-2 border-white flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-stone-700 leading-snug">{ev.description}</p>
+                        <p className="text-xs text-stone-400 mt-0.5">{formatEventDate(ev.created_at)}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {localEvents.length === 0 && <p className="text-sm text-stone-400">No activity yet</p>}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* 4. Line items card */}
@@ -763,7 +772,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
                   <p className="text-sm font-semibold text-stone-900">{invoice.invoice_number}</p>
                   <p className="text-xs text-stone-400 mt-0.5 capitalize">{invoice.status}</p>
                 </div>
-                <Link href={`/invoices/${invoice.id}`} className="text-xs font-medium text-[#B45309] hover:underline border border-amber-200 bg-amber-50 px-3 py-1.5 rounded-lg">
+                <Link href={`/invoices/${invoice.id}`} className="text-xs font-medium text-amber-700 hover:underline border border-amber-200 bg-amber-50 px-3 py-1.5 rounded-lg">
                   View Invoice →
                 </Link>
               </div>
@@ -784,7 +793,15 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
         <div className="lg:sticky lg:top-24 space-y-4">
           {/* Financial Summary */}
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-4">Financial Summary</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Financial Summary</h2>
+              {balanceDue === 0 && invoice && invoice.amount_paid > 0 && (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Paid</span>
+              )}
+              {balanceDue > 0 && (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Balance Due</span>
+              )}
+            </div>
             <div className="space-y-2.5">
               <div className="flex justify-between text-sm">
                 <span className="text-stone-500">Quoted</span>
@@ -825,8 +842,8 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
                 </div>
               ) : invoice && invoice.amount_paid > 0 ? (
                 <div className="flex justify-between text-sm font-semibold border-t border-stone-100 pt-2">
-                  <span className="text-[#B45309]">✓ Fully Paid</span>
-                  <span className="text-[#B45309]">{fmt(invoice.amount_paid, currency)}</span>
+                  <span className="text-amber-700">✓ Fully Paid</span>
+                  <span className="text-amber-700">{fmt(invoice.amount_paid, currency)}</span>
                 </div>
               ) : null}
             </div>
@@ -964,7 +981,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
                   <button
                     onClick={() => handleStageChange("ready")}
                     disabled={isPending}
-                    className="w-full text-sm font-medium bg-[#B45309] text-white px-4 py-2.5 rounded-lg hover:bg-[#8B7355] transition-colors text-left disabled:opacity-50"
+                    className="w-full text-sm font-medium bg-amber-700 text-white px-4 py-2.5 rounded-lg hover:bg-amber-700 transition-colors text-left disabled:opacity-50"
                   >
                     ✓ Mark Ready for Pickup
                   </button>
@@ -1004,16 +1021,16 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-stone-700 mb-1">Description *</label>
-                <input value={manualDesc} onChange={e => setManualDesc(e.target.value)} placeholder="e.g. Ring resizing labour" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309] focus:ring-1 focus:ring-[#B45309]" />
+                <input value={manualDesc} onChange={e => setManualDesc(e.target.value)} placeholder="e.g. Ring resizing labour" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700] focus:ring-1 focus:ring-[amber-700]" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-stone-700 mb-1">Quantity</label>
-                  <input type="number" value={manualQty} onChange={e => setManualQty(e.target.value)} min="1" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]" />
+                  <input type="number" value={manualQty} onChange={e => setManualQty(e.target.value)} min="1" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-stone-700 mb-1">Unit Price ({currency})</label>
-                  <input type="number" value={manualPrice} onChange={e => setManualPrice(e.target.value)} placeholder="0.00" step="0.01" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]" />
+                  <input type="number" value={manualPrice} onChange={e => setManualPrice(e.target.value)} placeholder="0.00" step="0.01" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
                 </div>
               </div>
               {formError && <p className="text-sm text-red-500">{formError}</p>}
@@ -1037,7 +1054,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-stone-700 mb-1">Select Item</label>
-                <select value={selectedInventoryId} onChange={e => setSelectedInventoryId(e.target.value)} className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]">
+                <select value={selectedInventoryId} onChange={e => setSelectedInventoryId(e.target.value)} className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]">
                   <option value="">— Select inventory item —</option>
                   {inventory.map(item => (
                     <option key={item.id} value={item.id}>
@@ -1067,11 +1084,11 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-stone-700 mb-1">Amount ({currency}) *</label>
-                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" step="0.01" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]" />
+                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" step="0.01" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-700 mb-1">Payment Method</label>
-                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]">
+                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]">
                   {PAYMENT_METHODS.map(m => (
                     <option key={m} value={m}>{m.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</option>
                   ))}
@@ -1079,7 +1096,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-700 mb-1">Notes (optional)</label>
-                <input value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} placeholder="e.g. Deposit received" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[#B45309]" />
+                <input value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} placeholder="e.g. Deposit received" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
               </div>
               {formError && <p className="text-sm text-red-500">{formError}</p>}
             </div>

@@ -26,7 +26,7 @@ export default function SuspendedPage() {
           Update Payment Method
         </Link>
         <p className="text-xs text-stone-400 mt-4">
-          Questions? Contact <a href="mailto:support@nexpura.com" className="text-[#8B7355] hover:underline">support@nexpura.com</a>
+          Questions? Contact <a href="mailto:support@nexpura.com" className="text-amber-700 hover:underline">support@nexpura.com</a>
         </p>
       </div>
     </div>

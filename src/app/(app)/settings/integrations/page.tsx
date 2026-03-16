@@ -103,7 +103,7 @@ function FieldInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] pr-9"
+          className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 pr-9"
         />
         {sensitive && (
           <button
@@ -147,7 +147,7 @@ function XeroCard({ data }: { data: IntegrationStatus["xero"] }) {
     <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm flex flex-col">
       <div className="p-6 flex-1">
         <div className="flex items-start justify-between mb-4">
-          <div className="p-2.5 rounded-lg bg-blue-500 text-white">
+          <div className="p-2.5 rounded-lg bg-amber-500 text-white">
             <Landmark size={24} />
           </div>
           <StatusBadge status={data.status} />
@@ -178,7 +178,7 @@ function XeroCard({ data }: { data: IntegrationStatus["xero"] }) {
               href="https://vercel.com/docs/projects/environment-variables"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-blue-600 underline hover:text-blue-700"
+              className="inline-flex items-center gap-1 text-amber-700 underline hover:text-amber-700"
             >
               How to add env vars on Vercel <ExternalLink size={10} />
             </a>
@@ -196,7 +196,7 @@ function XeroCard({ data }: { data: IntegrationStatus["xero"] }) {
             href="/api/integrations/xero/connect"
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
               data.configured
-                ? "bg-blue-500 text-white hover:bg-blue-600"
+                ? "bg-amber-500 text-white hover:bg-amber-700"
                 : "bg-stone-100 text-stone-400 cursor-not-allowed pointer-events-none"
             }`}
           >
@@ -206,7 +206,7 @@ function XeroCard({ data }: { data: IntegrationStatus["xero"] }) {
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="px-3 py-1.5 text-xs font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 flex items-center gap-1.5"
           >
             {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
             Sync Now
@@ -598,7 +598,7 @@ function InsuranceCard({
             className="text-stone-600 hover:text-stone-900"
           >
             {enabled ? (
-              <ToggleRight size={28} className="text-[#8B7355]" />
+              <ToggleRight size={28} className="text-amber-700" />
             ) : (
               <ToggleLeft size={28} className="text-stone-300" />
             )}
@@ -629,7 +629,7 @@ function InsuranceCard({
             <select
               value={valuationBasis}
               onChange={(e) => setValuationBasis(e.target.value)}
-              className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+              className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
             >
               <option value="replacement_value">Replacement Value</option>
               <option value="market_value">Market Value</option>
@@ -734,10 +734,10 @@ export default function IntegrationsPage() {
         <InsuranceCard data={status.insurance} onSaved={fetchStatus} />
 
         {/* API Access Card */}
-        <div className="bg-white rounded-xl border border-[#8B7355]/20 overflow-hidden shadow-sm md:col-span-2">
+        <div className="bg-white rounded-xl border border-amber-600/20 overflow-hidden shadow-sm md:col-span-2">
           <div className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-lg bg-[#8B7355] text-white">
+              <div className="p-2.5 rounded-lg bg-amber-700 text-white">
                 <Key size={24} />
               </div>
               <h3 className="text-lg font-semibold text-stone-900">API Access</h3>

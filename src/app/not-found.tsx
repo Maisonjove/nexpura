@@ -8,7 +8,7 @@ export default function NotFound() {
           <span className="font-semibold text-xl font-bold text-white">N</span>
         </div>
 
-        <p className="text-[#8B7355] text-sm font-medium uppercase tracking-widest mb-3">404</p>
+        <p className="text-amber-700 text-sm font-medium uppercase tracking-widest mb-3">404</p>
         <h1 className="font-semibold text-3xl font-semibold text-stone-900 mb-4">
           Page not found
         </h1>
@@ -18,7 +18,7 @@ export default function NotFound() {
 
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#8B7355] text-white font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-amber-700 text-white font-medium rounded-lg hover:bg-amber-800 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

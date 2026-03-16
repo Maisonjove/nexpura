@@ -77,7 +77,7 @@ export default async function ReviewTasksPage() {
             </div>
           </div>
           <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
-            task.status === "in_progress" ? "bg-blue-100 text-blue-700" : "bg-stone-100 text-stone-500"
+            task.status === "in_progress" ? "bg-amber-50 text-amber-700" : "bg-stone-100 text-stone-500"
           }`}>
             {STATUS_LABEL[task.status ?? "todo"] ?? task.status}
           </span>

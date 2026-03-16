@@ -175,7 +175,7 @@ export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
               onClick={() => setPreset(p.id)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 preset === p.id
-                  ? "bg-[#8B7355] text-white"
+                  ? "bg-amber-700 text-white"
                   : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >
@@ -199,7 +199,7 @@ export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
         <button
           onClick={handleLoad}
           disabled={isPending}
-          className="px-6 py-2.5 bg-[#8B7355] text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 bg-amber-700 text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
         >
           {isPending ? "Loading…" : "Load Reports"}
         </button>
@@ -212,7 +212,7 @@ export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
             <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold text-stone-900">Revenue</h2>
-                <button onClick={() => handleExport("revenue")} className="text-xs text-[#8B7355] hover:underline">Export CSV</button>
+                <button onClick={() => handleExport("revenue")} className="text-xs text-amber-700 hover:underline">Export CSV</button>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-stone-50 rounded-xl p-4">
@@ -227,11 +227,11 @@ export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
                   <>
                     <div className="bg-stone-50 rounded-xl p-4">
                       <p className="text-xs text-stone-500 mb-1">Gross Profit</p>
-                      <p className="text-2xl font-bold text-[#8B7355]">{fmtCurrency(revenue.total - revenue.totalCost)}</p>
+                      <p className="text-2xl font-bold text-amber-700">{fmtCurrency(revenue.total - revenue.totalCost)}</p>
                     </div>
                     <div className="bg-stone-50 rounded-xl p-4">
                       <p className="text-xs text-stone-500 mb-1">Margin %</p>
-                      <p className="text-2xl font-bold text-[#8B7355]">
+                      <p className="text-2xl font-bold text-amber-700">
                         {(((revenue.total - revenue.totalCost) / (revenue.total || 1)) * 100).toFixed(1)}%
                       </p>
                     </div>
@@ -247,7 +247,7 @@ export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
                         <span className="text-xs text-stone-500 w-16">{m.month}</span>
                         <div className="flex-1 bg-stone-100 rounded-full h-2">
                           <div
-                            className="bg-[#8B7355] h-2 rounded-full"
+                            className="bg-amber-700 h-2 rounded-full"
                             style={{ width: `${Math.min(100, (m.total / (revenue.total || 1)) * 100)}%` }}
                           />
                         </div>
@@ -265,7 +265,7 @@ export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
             <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold text-stone-900">Repair Performance</h2>
-                <button onClick={() => handleExport("repairs")} className="text-xs text-[#8B7355] hover:underline">Export CSV</button>
+                <button onClick={() => handleExport("repairs")} className="text-xs text-amber-700 hover:underline">Export CSV</button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="bg-stone-50 rounded-xl p-4">
@@ -313,7 +313,7 @@ export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
           <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-stone-900">Expense Summary</h2>
-              <button onClick={() => handleExport("expenses")} className="text-xs text-[#8B7355] hover:underline">Export CSV</button>
+              <button onClick={() => handleExport("expenses")} className="text-xs text-amber-700 hover:underline">Export CSV</button>
             </div>
             {expenses.length === 0 ? (
               <p className="text-sm text-stone-400">No expenses in this period</p>
@@ -395,7 +395,7 @@ export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
                     {paymentOverview.overdueList.map((inv) => (
                       <div key={inv.id} className="flex items-center justify-between py-2 border-b border-stone-100 last:border-0">
                         <div>
-                          <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-[#8B7355] hover:underline">
+                          <Link href={`/invoices/${inv.id}`} className="text-sm font-medium text-amber-700 hover:underline">
                             {inv.invoice_number}
                           </Link>
                           <span className="text-xs text-stone-500 ml-2">{inv.customer_name || "—"}</span>

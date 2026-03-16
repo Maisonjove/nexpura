@@ -127,14 +127,14 @@ export default async function SupplierReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm text-stone-400 mb-1">
-            <Link href="/reports" className="hover:text-[#8B7355]">Reports</Link>
+            <Link href="/reports" className="hover:text-amber-700">Reports</Link>
             <span>/</span>
             <span className="text-stone-600">Suppliers</span>
           </div>
           <h1 className="font-semibold text-2xl text-stone-900">Supplier Performance</h1>
           <p className="text-stone-500 mt-1 text-sm">Order history, spend, and delivery metrics per supplier</p>
         </div>
-        <Link href="/suppliers" className="text-sm text-[#8B7355] hover:underline font-medium">
+        <Link href="/suppliers" className="text-sm text-amber-700 hover:underline font-medium">
           Manage Suppliers →
         </Link>
       </div>
@@ -161,7 +161,7 @@ export default async function SupplierReportsPage() {
         </div>
         {supplierStats.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm text-stone-400">
-            No suppliers yet. <Link href="/suppliers/new" className="text-[#8B7355] hover:underline">Add a supplier →</Link>
+            No suppliers yet. <Link href="/suppliers/new" className="text-amber-700 hover:underline">Add a supplier →</Link>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -180,7 +180,7 @@ export default async function SupplierReportsPage() {
                 {supplierStats.map((s) => (
                   <tr key={s.id} className="hover:bg-stone-50/50">
                     <td className="px-5 py-3">
-                      <Link href={`/suppliers/${s.id}`} className="font-medium text-stone-900 hover:text-[#8B7355]">
+                      <Link href={`/suppliers/${s.id}`} className="font-medium text-stone-900 hover:text-amber-700">
                         {s.name}
                       </Link>
                       {s.email && <p className="text-xs text-stone-400">{s.email}</p>}

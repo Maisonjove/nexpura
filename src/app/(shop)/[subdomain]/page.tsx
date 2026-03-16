@@ -53,7 +53,7 @@ export default async function ShopHomePage({ params, searchParams }: Props) {
     .limit(8)
     .order("created_at", { ascending: false });
 
-  const primaryColor = config.primary_color || "#8B7355";
+  const primaryColor = config.primary_color || "amber-700";
   const secondaryColor = config.secondary_color || "#1A1A1A";
   const font = config.font || "Inter";
   const base = `/${subdomain}`;

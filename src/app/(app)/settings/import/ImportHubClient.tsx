@@ -422,7 +422,7 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
                   onClick={() => switchTab(tab.id)}
                   className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                     activeTab === tab.id
-                      ? "border-[#8B7355] text-[#8B7355]"
+                      ? "border-amber-600 text-amber-700"
                       : "border-transparent text-stone-500 hover:text-stone-900 hover:border-stone-300"
                   }`}
                 >
@@ -473,8 +473,8 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
               onClick={() => fileRef.current?.click()}
               className={`flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
                 isDragging
-                  ? "border-[#8B7355] bg-[#8B7355]/5"
-                  : "border-stone-300 hover:border-[#8B7355]/60 hover:bg-stone-50"
+                  ? "border-amber-600 bg-amber-700/5"
+                  : "border-stone-300 hover:border-amber-600/60 hover:bg-stone-50"
               }`}
             >
               <svg className="w-8 h-8 text-stone-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -484,7 +484,7 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
                 {fileName ? (
                   <><span className="font-medium text-stone-900">{fileName}</span> · click to change</>
                 ) : (
-                  <>Drag &amp; drop or <span className="text-[#8B7355] font-medium">click to upload</span></>
+                  <>Drag &amp; drop or <span className="text-amber-700 font-medium">click to upload</span></>
                 )}
               </span>
               <span className="text-xs text-stone-400 mt-1">CSV files only</span>
@@ -518,7 +518,7 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
                     <select
                       value={columnMap[sf] || ""}
                       onChange={(e) => setColumnMap((prev) => ({ ...prev, [sf]: e.target.value }))}
-                      className="w-full text-sm border border-amber-300 rounded-md px-2 py-1.5 bg-white text-stone-700 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30"
+                      className="w-full text-sm border border-amber-300 rounded-md px-2 py-1.5 bg-white text-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                     >
                       <option value="">— skip —</option>
                       {csvHeaders.map((h) => (
@@ -546,7 +546,7 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
                 <button
                   onClick={handleImport}
                   disabled={importing || isPending}
-                  className="flex items-center gap-2 px-5 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
                 >
                   {importing || isPending ? (
                     <>

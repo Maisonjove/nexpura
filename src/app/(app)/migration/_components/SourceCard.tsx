@@ -85,7 +85,7 @@ export function SourceCard({ source }: SourceCardProps) {
       <button
         onClick={handleStart}
         disabled={loading}
-        className="mt-auto flex items-center justify-center gap-2 bg-[#B45309] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+        className="mt-auto flex items-center justify-center gap-2 bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
       >
         {loading ? (
           <><Loader2 className="w-4 h-4 animate-spin" /> Starting...</>

@@ -45,7 +45,7 @@ export default function SignupPage() {
       {/* Logo */}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-2.5 mb-3">
-          <div className="w-9 h-9 rounded-lg bg-[#8B7355] flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-amber-700 flex items-center justify-center">
             <Gem size={18} color="white" />
           </div>
           <span className="text-xl font-semibold text-stone-900">Nexpura</span>
@@ -70,7 +70,7 @@ export default function SignupPage() {
               onChange={(e) => setFullName(e.target.value)}
               required
               placeholder="Jane Smith"
-              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
+              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors text-sm"
             />
           </div>
           <div>
@@ -83,7 +83,7 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="you@yourshop.com"
-              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
+              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors text-sm"
             />
           </div>
           <div>
@@ -97,7 +97,7 @@ export default function SignupPage() {
               required
               minLength={8}
               placeholder="At least 8 characters"
-              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 focus:border-[#8B7355] transition-colors text-sm"
+              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors text-sm"
             />
           </div>
 
@@ -108,7 +108,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#8B7355] hover:bg-[#7A6347] text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
+            className="w-full bg-amber-700 hover:bg-amber-800 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
           >
             {loading ? "Creating account…" : "Create account"}
           </button>
@@ -122,7 +122,7 @@ export default function SignupPage() {
 
         <p className="text-center text-sm text-stone-500 mt-4">
           Already have an account?{" "}
-          <Link href="/login" className="text-[#8B7355] hover:underline font-medium">
+          <Link href="/login" className="text-amber-700 hover:underline font-medium">
             Sign in
           </Link>
         </p>

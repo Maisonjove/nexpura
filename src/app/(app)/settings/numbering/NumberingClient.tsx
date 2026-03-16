@@ -51,7 +51,7 @@ function SequenceRow({ label, prefix, field, currentValue, currentNumber }: Sequ
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="flex items-center border border-stone-200 rounded-lg overflow-hidden focus-within:border-[#8B7355] focus-within:ring-2 focus-within:ring-[#8B7355]/20 transition-all">
+        <div className="flex items-center border border-stone-200 rounded-lg overflow-hidden focus-within:border-amber-600 focus-within:ring-2 focus-within:ring-[amber-700]/20 transition-all">
           <span className="px-3 py-2 bg-stone-50 text-stone-500 text-sm font-mono border-r border-stone-200 whitespace-nowrap">
             {prefix}
           </span>
@@ -68,7 +68,7 @@ function SequenceRow({ label, prefix, field, currentValue, currentNumber }: Sequ
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-2 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50 flex items-center gap-2"
+          className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50 flex items-center gap-2"
         >
           {saving ? (
             <>

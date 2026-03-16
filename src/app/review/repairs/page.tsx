@@ -7,11 +7,11 @@ export const revalidate = 60;
 
 const stageBadge: Record<string, string> = {
   intake: "bg-stone-100 text-stone-600",
-  assessed: "bg-blue-100 text-blue-700",
+  assessed: "bg-amber-50 text-amber-700",
   quoted: "bg-amber-100 text-amber-700",
   approved: "bg-green-100 text-green-700",
-  in_progress: "bg-blue-100 text-blue-700",
-  quality_check: "bg-purple-100 text-purple-700",
+  in_progress: "bg-amber-50 text-amber-700",
+  quality_check: "bg-stone-100 text-stone-600",
   ready: "bg-green-100 text-green-700",
   collected: "bg-stone-100 text-stone-600",
   cancelled: "bg-red-100 text-red-700",

@@ -19,7 +19,7 @@ export default async function AppointmentPage({ params }: Props) {
 
   if (!config) notFound();
 
-  const primaryColor = (config.primary_color as string) || "#8B7355";
+  const primaryColor = (config.primary_color as string) || "amber-700";
   const font = (config.font as string) || "Inter";
   const businessName = (config.business_name as string) || subdomain;
   const tenantId = config.tenant_id as string;

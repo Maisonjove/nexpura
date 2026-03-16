@@ -4,12 +4,12 @@ const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 export const revalidate = 60;
 
 const PDF_DOCUMENT_TYPES = [
-  { id: "invoice", label: "Invoice / Quote", desc: "Itemised invoice with payment summary, logo, and terms", genCount: 14, color: "#8B7355" },
-  { id: "repair_ticket", label: "Repair Ticket", desc: "Intake sheet with condition notes, quote, and customer signature line", genCount: 9, color: "#8B7355" },
-  { id: "bespoke_sheet", label: "Bespoke Work Sheet", desc: "Job specification sheet with stone, metal, and design details", genCount: 3, color: "#8B7355" },
-  { id: "passport_cert", label: "Passport Certificate", desc: "Verifiable ownership certificate with QR code for digital access", genCount: 7, color: "#8B7355" },
-  { id: "appraisal", label: "Appraisal Certificate", desc: "Formal valuation certificate with appraiser credentials and values", genCount: 5, color: "#8B7355" },
-  { id: "memo", label: "Memo / Consignment Note", desc: "Memo-out or consignment agreement with terms and item details", genCount: 2, color: "#8B7355" },
+  { id: "invoice", label: "Invoice / Quote", desc: "Itemised invoice with payment summary, logo, and terms", genCount: 14, color: "amber-700" },
+  { id: "repair_ticket", label: "Repair Ticket", desc: "Intake sheet with condition notes, quote, and customer signature line", genCount: 9, color: "amber-700" },
+  { id: "bespoke_sheet", label: "Bespoke Work Sheet", desc: "Job specification sheet with stone, metal, and design details", genCount: 3, color: "amber-700" },
+  { id: "passport_cert", label: "Passport Certificate", desc: "Verifiable ownership certificate with QR code for digital access", genCount: 7, color: "amber-700" },
+  { id: "appraisal", label: "Appraisal Certificate", desc: "Formal valuation certificate with appraiser credentials and values", genCount: 5, color: "amber-700" },
+  { id: "memo", label: "Memo / Consignment Note", desc: "Memo-out or consignment agreement with terms and item details", genCount: 2, color: "amber-700" },
 ];
 
 const LABEL_TYPES = [
@@ -155,7 +155,7 @@ export default async function ReviewSettingsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <p className="text-sm font-semibold text-stone-900">{doc.label}</p>
-                  <span className="flex-shrink-0 inline-flex px-2 py-0.5 bg-[#8B7355]/10 text-[#8B7355] text-xs font-semibold rounded-full">
+                  <span className="flex-shrink-0 inline-flex px-2 py-0.5 bg-amber-700/10 text-amber-700 text-xs font-semibold rounded-full">
                     In use
                   </span>
                 </div>
@@ -237,7 +237,7 @@ export default async function ReviewSettingsPage() {
               {RECENT_PRINT_JOBS.map((job) => (
                 <tr key={job.id} className="border-b border-stone-100 last:border-0">
                   <td className="px-4 py-3 text-sm font-medium text-stone-900">{job.type}</td>
-                  <td className="px-4 py-3 text-sm font-mono text-[#8B7355]">{job.reference}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-amber-700">{job.reference}</td>
                   <td className="px-4 py-3 text-xs text-stone-500">{job.timestamp}</td>
                   <td className="px-4 py-3 text-xs text-stone-500">{job.printedBy}</td>
                 </tr>

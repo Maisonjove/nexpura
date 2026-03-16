@@ -122,7 +122,7 @@ function CollapsibleSection({
         <div className="flex items-center gap-3">
           <span className="font-semibold text-stone-900 uppercase tracking-wider text-sm">{title}</span>
           {badge && (
-            <span className="bg-[#8B7355]/10 text-[#8B7355] text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+            <span className="bg-amber-700/10 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
               {badge}
             </span>
           )}
@@ -150,7 +150,7 @@ function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInput
   return (
     <input
       {...props}
-      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8B7355] transition-colors ${className}`}
+      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-600 transition-colors ${className}`}
     />
   );
 }
@@ -159,7 +159,7 @@ function Select({ className = "", children, ...props }: React.SelectHTMLAttribut
   return (
     <select
       {...props}
-      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 focus:outline-none focus:border-[#8B7355] transition-colors ${className}`}
+      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 focus:outline-none focus:border-amber-600 transition-colors ${className}`}
     >
       {children}
     </select>
@@ -170,7 +170,7 @@ function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTM
   return (
     <textarea
       {...props}
-      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8B7355] transition-colors resize-none ${className}`}
+      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-600 transition-colors resize-none ${className}`}
     />
   );
 }
@@ -348,13 +348,13 @@ export default function InventoryForm({ categories: initialCategories, item, mod
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCategory())}
-                  className="flex-1 px-3 py-2 text-sm border border-[#8B7355] rounded-lg focus:outline-none text-stone-900"
+                  className="flex-1 px-3 py-2 text-sm border border-amber-600 rounded-lg focus:outline-none text-stone-900"
                 />
                 <button
                   type="button"
                   onClick={handleAddCategory}
                   disabled={addingCat || !newCatName.trim()}
-                  className="px-3 py-2 bg-[#8B7355] text-white text-sm rounded-lg hover:bg-[#7A6347] disabled:opacity-50 transition-colors"
+                  className="px-3 py-2 bg-amber-700 text-white text-sm rounded-lg hover:bg-amber-800 disabled:opacity-50 transition-colors"
                 >
                   {addingCat ? "..." : "Add"}
                 </button>
@@ -406,7 +406,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
             <button
               type="button"
               onClick={() => setIsFeatured(!isFeatured)}
-              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${isFeatured ? "bg-[#8B7355]" : "bg-stone-200"}`}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${isFeatured ? "bg-amber-700" : "bg-stone-200"}`}
             >
               <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isFeatured ? "translate-x-4" : "translate-x-0.5"}`} />
             </button>
@@ -568,7 +568,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
               <button
                 type="button"
                 onClick={addSecondaryStone}
-                className="text-xs text-[#8B7355] font-bold uppercase hover:underline flex items-center gap-1"
+                className="text-xs text-amber-700 font-bold uppercase hover:underline flex items-center gap-1"
               >
                 <Plus className="w-3 h-3" /> Add Stone
               </button>
@@ -701,7 +701,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
             <button
               type="button"
               onClick={() => setTrackQuantity(!trackQuantity)}
-              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${trackQuantity ? "bg-[#8B7355]" : "bg-stone-200"}`}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${trackQuantity ? "bg-amber-700" : "bg-stone-200"}`}
             >
               <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${trackQuantity ? "translate-x-4" : "translate-x-0.5"}`} />
             </button>
@@ -821,7 +821,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
         <button
           type="submit"
           disabled={isPending}
-          className="px-8 py-2.5 bg-[#8B7355] text-white text-sm font-bold uppercase tracking-widest rounded-lg hover:bg-[#7A6347] disabled:opacity-60 transition-colors shadow-sm flex items-center gap-2"
+          className="px-8 py-2.5 bg-amber-700 text-white text-sm font-bold uppercase tracking-widest rounded-lg hover:bg-amber-800 disabled:opacity-60 transition-colors shadow-sm flex items-center gap-2"
         >
           {isPending ? "Saving..." : mode === "create" ? "Add Item" : "Save Changes"}
         </button>

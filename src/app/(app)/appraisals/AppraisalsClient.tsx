@@ -8,7 +8,7 @@ import type { Appraisal } from "./actions";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-stone-100 text-stone-600",
-  in_progress: "bg-blue-50 text-blue-700",
+  in_progress: "bg-amber-50 text-amber-700",
   completed: "bg-amber-50 text-amber-700",
   issued: "bg-green-50 text-green-700",
 };
@@ -76,7 +76,7 @@ export default function AppraisalsClient({ appraisals, customers, tenantId }: Pr
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium hover:bg-[#7A6347]"
+          className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800"
         >
           + New Appraisal
         </button>
@@ -142,7 +142,7 @@ export default function AppraisalsClient({ appraisals, customers, tenantId }: Pr
             <Link
               key={a.id}
               href={`/appraisals/${a.id}`}
-              className="block bg-white rounded-xl border border-stone-200 hover:border-[#8B7355]/40 hover:shadow-sm transition-all p-5"
+              className="block bg-white rounded-xl border border-stone-200 hover:border-amber-600/40 hover:shadow-sm transition-all p-5"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -307,7 +307,7 @@ export default function AppraisalsClient({ appraisals, customers, tenantId }: Pr
               {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
               <div className="flex gap-2 mt-5">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-3 py-2 border border-stone-200 text-stone-600 rounded-lg text-sm">Cancel</button>
-                <button type="submit" disabled={isPending} className="flex-1 px-3 py-2 bg-[#8B7355] text-white rounded-lg text-sm font-medium disabled:opacity-60">
+                <button type="submit" disabled={isPending} className="flex-1 px-3 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium disabled:opacity-60">
                   {isPending ? "Creating…" : "Create Appraisal"}
                 </button>
               </div>

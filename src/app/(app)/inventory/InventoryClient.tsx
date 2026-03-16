@@ -255,7 +255,7 @@ export default function InventoryClient({
             <Camera className="w-4 h-4" />
             Scan
           </button>
-          <Link href="/inventory/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-[#8B7355] hover:bg-[#7A6347] text-white h-9 px-4">
+          <Link href="/inventory/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-9 px-4">
             <Plus className="w-4 h-4 mr-2" /> Add Item
           </Link>
         </div>
@@ -263,8 +263,8 @@ export default function InventoryClient({
 
       {/* BULK ACTIONS BAR */}
       {selectedIds.size > 0 && (
-        <div className="bg-[#8B7355]/10 border border-[#8B7355]/20 rounded-xl px-4 py-3 flex items-center gap-4">
-          <span className="text-sm font-medium text-[#8B7355]">{selectedIds.size} item{selectedIds.size > 1 ? "s" : ""} selected</span>
+        <div className="bg-amber-700/10 border border-amber-600/20 rounded-xl px-4 py-3 flex items-center gap-4">
+          <span className="text-sm font-medium text-amber-700">{selectedIds.size} item{selectedIds.size > 1 ? "s" : ""} selected</span>
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={() => setShowBatchPrint(true)}
@@ -288,14 +288,14 @@ export default function InventoryClient({
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
           <Input 
             placeholder="Search by name or SKU..." 
-            className="pl-9 h-9 border-stone-200 text-sm focus-visible:ring-[#8B7355]"
+            className="pl-9 h-9 border-stone-200 text-sm focus-visible:ring-[amber-700]"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         
         <Select value={filterCategory} onValueChange={(val) => setFilterCategory(val || "all")}>
-          <SelectTrigger className="w-[140px] h-9 text-sm border-stone-200 focus:ring-[#8B7355]">
+          <SelectTrigger className="w-[140px] h-9 text-sm border-stone-200 focus:ring-amber-600">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -311,7 +311,7 @@ export default function InventoryClient({
         </Select>
 
         <Select value={filterMetal} onValueChange={(val) => setFilterMetal(val || "all")}>
-          <SelectTrigger className="w-[140px] h-9 text-sm border-stone-200 focus:ring-[#8B7355]">
+          <SelectTrigger className="w-[140px] h-9 text-sm border-stone-200 focus:ring-amber-600">
             <SelectValue placeholder="Metal" />
           </SelectTrigger>
           <SelectContent>
@@ -324,7 +324,7 @@ export default function InventoryClient({
         </Select>
 
         <Select value={filterStatus} onValueChange={(val) => setFilterStatus(val || "all")}>
-          <SelectTrigger className="w-[140px] h-9 text-sm border-stone-200 focus:ring-[#8B7355]">
+          <SelectTrigger className="w-[140px] h-9 text-sm border-stone-200 focus:ring-amber-600">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -345,13 +345,13 @@ export default function InventoryClient({
         <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
           <div className="p-16 text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
-              <Diamond className="w-8 h-8 text-[#8B7355]" />
+              <Diamond className="w-8 h-8 text-amber-700" />
             </div>
             <h3 className="font-semibold text-lg text-stone-900">No inventory yet</h3>
             <p className="text-stone-500 mt-1 text-sm">Add your first item to start tracking stock.</p>
             <Link
               href="/inventory/new"
-              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors"
+              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add your first item →
@@ -432,7 +432,7 @@ export default function InventoryClient({
                         <button
                           onClick={() => setPrintItem(item)}
                           title="Print Stock Tag"
-                          className="inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-amber-50 h-8 text-stone-400 hover:text-[#8B7355] px-2 text-sm"
+                          className="inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-amber-50 h-8 text-stone-400 hover:text-amber-700 px-2 text-sm"
                         >
                           <Printer className="w-4 h-4" />
                         </button>

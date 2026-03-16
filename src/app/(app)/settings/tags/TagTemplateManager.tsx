@@ -30,7 +30,7 @@ function ToggleField({ label, name, defaultChecked }: { label: string; name: str
         <button
           type="button"
           onClick={() => setChecked(c => !c)}
-          className={`w-10 h-5 rounded-full transition-colors relative ${checked ? "bg-[#8B7355]" : "bg-gray-200"}`}
+          className={`w-10 h-5 rounded-full transition-colors relative ${checked ? "bg-amber-700" : "bg-gray-200"}`}
         >
           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
         </button>
@@ -70,7 +70,7 @@ function TemplateForm({
             name="name"
             defaultValue={template?.name ?? "New Template"}
             required
-            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 text-stone-900"
+            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 text-stone-900"
           />
         </div>
         <div>
@@ -80,7 +80,7 @@ function TemplateForm({
             type="number"
             defaultValue={template?.width_mm ?? 50}
             min={20} max={100}
-            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 text-stone-900"
+            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 text-stone-900"
           />
         </div>
         <div>
@@ -90,7 +90,7 @@ function TemplateForm({
             type="number"
             defaultValue={template?.height_mm ?? 25}
             min={10} max={100}
-            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 text-stone-900"
+            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 text-stone-900"
           />
         </div>
         <div className="col-span-2">
@@ -98,7 +98,7 @@ function TemplateForm({
           <select
             name="orientation"
             defaultValue={template?.orientation ?? "landscape"}
-            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/30 text-stone-900 bg-white"
+            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 text-stone-900 bg-white"
           >
             <option value="landscape">Landscape</option>
             <option value="portrait">Portrait</option>
@@ -198,7 +198,7 @@ export default function TagTemplateManager({ templates: initialTemplates }: TagT
                 </p>
               </div>
               {template.is_default && (
-                <span className="text-xs bg-stone-100 text-[#8B7355] px-2 py-0.5 rounded-full font-medium">Default</span>
+                <span className="text-xs bg-stone-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Default</span>
               )}
             </div>
 
@@ -217,7 +217,7 @@ export default function TagTemplateManager({ templates: initialTemplates }: TagT
                   <button
                     onClick={() => handleSetDefault(template.id)}
                     disabled={loading === template.id}
-                    className="flex-1 py-2 text-xs font-medium text-[#8B7355] border border-[#8B7355]/30 rounded-lg hover:bg-[#8B7355]/5 transition-colors disabled:opacity-50"
+                    className="flex-1 py-2 text-xs font-medium text-amber-700 border border-amber-600/30 rounded-lg hover:bg-amber-700/5 transition-colors disabled:opacity-50"
                   >
                     Set Default
                   </button>
