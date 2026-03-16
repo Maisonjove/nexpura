@@ -392,20 +392,30 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
         )}
       </div>
 
-      {/* ── Website Type Selector ── */}
-      <div className="space-y-3">
-        <p className="text-sm font-medium text-stone-600">How do you want your website?</p>
+      {/* ── Website Strategy Selector ── */}
+      <div className="bg-stone-50 border border-stone-200 rounded-xl p-5 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-stone-900">Choose your website strategy</h2>
+          <p className="text-xs text-stone-500 mt-0.5">
+            You can change this at any time. Most jewellers start with Option A or B.
+          </p>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {TYPE_OPTIONS.map((opt) => {
             const Icon = opt.icon;
             const isSelected = websiteType === opt.id;
+            const STATUS = opt.id === "hosted"
+              ? { label: "Ready to use", color: "text-green-700 bg-green-50" }
+              : opt.id === "connect"
+              ? { label: "Ready to use", color: "text-green-700 bg-green-50" }
+              : { label: "Guided setup", color: "text-amber-700 bg-amber-50" };
             return (
               <button
                 key={opt.id}
                 onClick={() => handleTypeChange(opt.id)}
                 className={`text-left p-4 rounded-xl border-2 transition-all relative ${
                   isSelected
-                    ? "border-amber-600 bg-amber-700/5"
+                    ? "border-amber-600 bg-white shadow-sm"
                     : "border-stone-200 hover:border-stone-300 bg-white"
                 }`}
               >
@@ -419,11 +429,26 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                   className={`mb-2 ${isSelected ? "text-amber-700" : "text-stone-400"}`}
                 />
                 <div className="font-semibold text-stone-900 text-sm">{opt.title}</div>
-                <div className="text-xs text-stone-500 mt-1 leading-relaxed">{opt.desc}</div>
+                <div className="text-xs text-stone-500 mt-1 leading-relaxed mb-2">{opt.desc}</div>
+                <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS.color}`}>
+                  {STATUS.label}
+                </span>
+                {isSelected && (
+                  <span className="absolute bottom-3 right-3 w-4 h-4 rounded-full bg-amber-700 flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
+        <p className="text-[11px] text-stone-400 leading-relaxed">
+          <strong>Option A</strong> — We host and serve your site. Full control via the tabs below. ·{" "}
+          <strong>Option B</strong> — Keep your existing site (Shopify, Squarespace, Wix etc.) and embed our widgets. ·{" "}
+          <strong>Option C</strong> — No site yet? We'll walk you through getting a domain first.
+        </p>
       </div>
 
       {/* ── HOSTED MODE ── */}

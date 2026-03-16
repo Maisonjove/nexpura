@@ -104,7 +104,28 @@ export default function ImportSiteClient() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-stone-900">Import Existing Site</h1>
-        <p className="text-stone-500 text-sm mt-1">Analyse your current website and recreate it in the Nexpura builder.</p>
+        <p className="text-stone-500 text-sm mt-1">Analyse your current website and recreate its structure in the Nexpura builder.</p>
+      </div>
+
+      {/* What this does */}
+      <div className="bg-amber-50 border border-amber-100 rounded-xl p-5 space-y-3">
+        <h3 className="text-sm font-semibold text-stone-900">What this does</h3>
+        <ul className="space-y-1.5">
+          {[
+            { icon: "🔍", text: "Analyses your website's URL and platform to detect its likely page structure" },
+            { icon: "✨", text: "Uses AI to recreate matching pages and sections in the Nexpura builder" },
+            { icon: "🎨", text: "Detects brand colours and applies them to your new site automatically" },
+            { icon: "🔒", text: "We do not scrape or store your content — analysis is structural only" },
+          ].map(({ icon, text }) => (
+            <li key={text} className="flex items-start gap-2 text-sm text-stone-700">
+              <span className="mt-0.5">{icon}</span>
+              <span>{text}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-stone-500 pt-1 border-t border-amber-100">
+          <strong>Best for:</strong> Jewellers who already have a site on Shopify, Wix, Squarespace or a custom platform and want to migrate to the Nexpura builder.
+        </p>
       </div>
 
       {/* Step indicator */}

@@ -175,9 +175,40 @@ export default function BuilderPageListClient({ initialPages }: Props) {
       {/* Pages table */}
       <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
         {pages.length === 0 ? (
-          <div className="py-16 text-center text-stone-400">
-            <p className="text-4xl mb-3">📄</p>
-            <p>No pages yet. Add one to get started.</p>
+          <div className="py-12 px-6 text-center space-y-5">
+            <div>
+              <p className="text-4xl mb-3">🌐</p>
+              <p className="text-stone-700 font-semibold text-base">No pages yet</p>
+              <p className="text-stone-400 text-sm mt-1">Start by adding the core pages your jewellery store needs.</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto">
+              {[
+                { icon: "🏠", label: "Home", type: "home", slug: "home" },
+                { icon: "💎", label: "Collection", type: "collection", slug: "collection" },
+                { icon: "📖", label: "About", type: "about", slug: "about" },
+                { icon: "📞", label: "Contact", type: "contact", slug: "contact" },
+              ].map((suggestion) => (
+                <button
+                  key={suggestion.slug}
+                  onClick={() => {
+                    setNewTitle(suggestion.label);
+                    setNewSlug(suggestion.slug);
+                    setNewType(suggestion.type);
+                    setShowCreate(true);
+                  }}
+                  className="flex flex-col items-center gap-2 p-4 border border-stone-200 rounded-xl hover:border-amber-600/50 hover:bg-amber-50/30 transition-all"
+                >
+                  <span className="text-2xl">{suggestion.icon}</span>
+                  <span className="text-xs font-semibold text-stone-700">{suggestion.label}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="text-sm text-stone-400 hover:text-stone-700 underline underline-offset-2"
+            >
+              Or add a custom page →
+            </button>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -238,10 +269,25 @@ export default function BuilderPageListClient({ initialPages }: Props) {
       </div>
 
       {/* Info banner */}
-      <div className="bg-stone-50 border border-stone-200 rounded-xl p-4">
-        <p className="text-sm text-stone-600">
-          💡 <strong>Tip:</strong> Click &quot;Edit&quot; on any page to open the section builder. Each page can have multiple sections (hero, text, gallery, etc.).
-        </p>
+      <div className="bg-stone-50 border border-stone-200 rounded-xl p-5 space-y-3">
+        <h3 className="text-sm font-semibold text-stone-900">How it works</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { step: "1", icon: "📄", title: "Add pages", desc: "Create the pages your site needs — Home, About, Collection, Contact." },
+            { step: "2", icon: "🧩", title: "Build sections", desc: "Click Edit on any page to add hero, text, gallery, and product grid sections." },
+            { step: "3", icon: "🌐", title: "Publish", desc: "When ready, hit Publish in the Website settings to take it live." },
+          ].map((item) => (
+            <div key={item.step} className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-amber-700/10 text-amber-700 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                {item.step}
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-stone-800">{item.icon} {item.title}</p>
+                <p className="text-xs text-stone-400 mt-0.5 leading-relaxed">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
