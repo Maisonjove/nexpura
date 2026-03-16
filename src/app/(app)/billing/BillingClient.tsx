@@ -556,9 +556,9 @@ export default function BillingClient({
                   <span className="text-stone-900 font-bold normal-case text-sm">$179</span>
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-[#C9A96E] uppercase tracking-wide">
-                  Group
+                  Atelier
                   <br />
-                  <span className="text-stone-900 font-bold normal-case text-sm">Custom</span>
+                  <span className="text-stone-900 font-bold normal-case text-sm">$299</span>
                 </th>
               </tr>
             </thead>
@@ -574,13 +574,13 @@ export default function BillingClient({
                     {row.label}
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    <CheckCell value={row.boutique} />
+                    <CheckCell value={(row as any).boutique} />
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    <CheckCell value={row.studio} />
+                    <CheckCell value={(row as any).studio} />
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    <CheckCell value={row.group} />
+                    <CheckCell value={(row as any).atelier} />
                   </td>
                 </tr>
               ))}
