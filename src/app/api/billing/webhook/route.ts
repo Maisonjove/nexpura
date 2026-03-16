@@ -148,9 +148,16 @@ export async function POST(request: NextRequest) {
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
+        // In Stripe API v20+, current_period_end lives on the subscription item
+        const deletedItemPeriodEnd = (subscription.items?.data?.[0] as (Stripe.SubscriptionItem & { current_period_end?: number }) | undefined)?.current_period_end;
         await adminClient
           .from("subscriptions")
-          .update({ status: "cancelled" })
+          .update({
+            status: "cancelled",
+            current_period_end: deletedItemPeriodEnd
+              ? new Date(deletedItemPeriodEnd * 1000).toISOString()
+              : null,
+          })
           .eq("stripe_sub_id", subscription.id);
 
         // Send cancellation email
@@ -176,18 +183,16 @@ export async function POST(request: NextRequest) {
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
         const plan = subscription.metadata?.plan;
-        // In newer Stripe API versions, current_period_end is on subscription items
-        const itemPeriodEnd = subscription.items?.data?.[0]
-          ? (subscription.items.data[0] as Stripe.SubscriptionItem & { current_period_end?: number }).current_period_end
-          : undefined;
+        // In Stripe API v20+, current_period_end lives on the subscription item
+        const updatedItemPeriodEnd = (subscription.items?.data?.[0] as (Stripe.SubscriptionItem & { current_period_end?: number }) | undefined)?.current_period_end;
         await adminClient
           .from("subscriptions")
           .update({
             status: subscription.status,
             ...(plan ? { plan } : {}),
-            ...(itemPeriodEnd
-              ? { current_period_end: new Date(itemPeriodEnd * 1000).toISOString() }
-              : {}),
+            current_period_end: updatedItemPeriodEnd
+              ? new Date(updatedItemPeriodEnd * 1000).toISOString()
+              : null,
           })
           .eq("stripe_sub_id", subscription.id);
         break;

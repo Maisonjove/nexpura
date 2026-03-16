@@ -266,6 +266,22 @@ export default function BillingClient({
           </button>
         </div>
       )}
+      {subscription?.status === "cancelled" &&
+        subscription?.current_period_end &&
+        new Date(subscription.current_period_end) >= new Date() && (
+          <div className="bg-orange-50 border border-orange-300 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-orange-800">⚠️ Subscription Cancelled</p>
+              <p className="text-sm text-orange-700 mt-0.5">
+                Your subscription has been cancelled. You have full access until{" "}
+                <strong>{formatDate(subscription.current_period_end)}</strong>, after which your account will be suspended.
+              </p>
+            </div>
+            <button onClick={handleManageBilling} disabled={loadingPortal} className="flex-shrink-0 px-4 py-2 bg-orange-600 text-white text-sm font-semibold rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50">
+              {loadingPortal ? "Opening…" : "Reactivate →"}
+            </button>
+          </div>
+        )}
       {subscription?.is_free_forever && (
         <div className="bg-amber-700/10 border border-amber-600/20 rounded-xl px-5 py-4 flex items-center gap-3">
           <span className="text-2xl">🎁</span>

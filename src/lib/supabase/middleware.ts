@@ -361,14 +361,28 @@ async function _updateSessionInner(request: NextRequest) {
     if (!pathname.startsWith("/billing") && !pathname.startsWith("/suspended")) {
       const { data: sub } = await supabase
         .from("subscriptions")
-        .select("status")
+        .select("status, current_period_end, trial_ends_at")
         .eq("tenant_id", userRecord.tenant_id)
         .maybeSingle();
 
-      if (sub?.status === "suspended") {
-        const suspendedUrl = request.nextUrl.clone();
-        suspendedUrl.pathname = "/suspended";
-        return NextResponse.redirect(suspendedUrl);
+      if (sub) {
+        const now = new Date();
+        const isTrialExpired =
+          sub.status === "trialing" &&
+          sub.trial_ends_at &&
+          new Date(sub.trial_ends_at) < now;
+        const isCancelledAndExpired =
+          sub.status === "cancelled" &&
+          sub.current_period_end &&
+          new Date(sub.current_period_end) < now;
+        const isBlocked =
+          sub.status === "suspended" || isTrialExpired || isCancelledAndExpired;
+
+        if (isBlocked) {
+          const suspendedUrl = request.nextUrl.clone();
+          suspendedUrl.pathname = "/suspended";
+          return NextResponse.redirect(suspendedUrl);
+        }
       }
     }
   }
