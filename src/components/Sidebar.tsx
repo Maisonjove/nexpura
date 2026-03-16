@@ -9,7 +9,7 @@ import {
   Settings, CreditCard, Globe, Monitor, ListTodo,
   RotateCcw, Gift, ClipboardList, ArrowLeftRight, Star,
   Bell, Link as LinkIcon, TrendingUp, ArrowRightLeft,
-  ChevronDown, ChevronRight, Layers
+  ChevronDown, ChevronRight, Layers, MessageSquare
 } from 'lucide-react';
 
 /* ─── Primary nav (always visible, no group header) ─── */
@@ -68,6 +68,7 @@ const NAV_GROUPS = [
     items: [
       { name: 'Settings',   href: '/settings',  icon: Settings },
       { name: 'Documents',  href: '/documents', icon: FileText },
+      { name: 'Support',    href: '/support',   icon: MessageSquare },
       { name: 'Reminders',  href: '/settings/reminders', icon: Bell },
     ],
   },

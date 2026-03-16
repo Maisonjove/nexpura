@@ -69,15 +69,18 @@ export function canUseFeature(plan: string, feature: PlanFeatureKey): boolean {
 }
 
 export function getMaxUsers(plan: string): number | null {
-  return PLAN_FEATURES[plan as PlanName]?.maxUsers ?? 1;
+  const p = canonicalPlan(plan);
+  return (PLAN_FEATURES[p] as any).maxUsers;
 }
 
 export function getMaxLocations(plan: string): number | null {
-  return PLAN_FEATURES[plan as PlanName]?.maxLocations ?? 1;
+  const p = canonicalPlan(plan);
+  return (PLAN_FEATURES[p] as any).maxLocations;
 }
 
 export function getStorageGB(plan: string): number {
-  return PLAN_FEATURES[plan as PlanName]?.storageGB ?? 5;
+  const p = canonicalPlan(plan);
+  return (PLAN_FEATURES[p] as any).storageGB ?? 5;
 }
 
 /** Human-readable plan display name */

@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/permissions";
+import { getEntitlementContext } from "@/lib/auth/entitlements";
+import { canUseFeature, planDisplayName } from "@/lib/features";
 import ReportsDateClient from "./ReportsDateClient";
 
 export const metadata = { title: "Reports — Nexpura" };
@@ -29,6 +31,8 @@ export default async function ReportsPage() {
     .eq("id", user.id)
     .single();
 
+  const ctx = await getEntitlementContext();
+
   const tenantId = userData?.tenant_id ?? "";
 
   // Permission check
@@ -44,6 +48,30 @@ export default async function ReportsPage() {
       );
     }
     canViewMargins = await hasPermission(user.id, tenantId, "view_margins");
+  }
+
+  // Entitlement gate: Full analytics requires Studio or Atelier
+  if (!canUseFeature(ctx.plan, "analytics")) {
+    return (
+      <div className="max-w-xl mx-auto py-20 px-4 text-center space-y-6">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto">
+          <span className="text-2xl">📈</span>
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold text-stone-900">Advanced Reporting</h1>
+          <p className="text-stone-500 mt-2 text-sm leading-relaxed">
+            Your current plan <strong className="text-stone-900">{planDisplayName(ctx.plan)}</strong> includes basic dashboard metrics only.
+            Upgrade to <strong className="text-stone-900">Studio</strong> or <strong className="text-stone-900">Atelier</strong> to access detailed reports for stock, expenses, and customer trends.
+          </p>
+        </div>
+        <Link
+          href="/billing"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-amber-700 text-white rounded-xl font-medium text-sm hover:bg-amber-800 transition-colors"
+        >
+          Upgrade Plan →
+        </Link>
+      </div>
+    );
   }
 
   const admin = createAdminClient();

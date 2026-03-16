@@ -31,6 +31,9 @@ export default async function SiteConnectPage() {
         >
           Upgrade Plan →
         </Link>
+        <p className="text-xs text-stone-400">
+          Website Builder and Connect Existing Website are included in Studio ($179/mo) and Atelier ($299/mo).
+        </p>
       </div>
     );
   }
