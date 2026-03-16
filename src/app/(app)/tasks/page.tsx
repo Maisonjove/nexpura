@@ -10,7 +10,8 @@ export default async function TasksPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  const admin = createAdminClient();
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id, role")
     .eq("id", user.id)
@@ -20,11 +21,10 @@ export default async function TasksPage() {
 
   const tenantId = userData.tenant_id;
   const role = userData.role ?? "staff";
-  const admin = createAdminClient();
 
   // Fetch my tasks
   const { data: myTasks } = await admin
-    .from("staff_tasks")
+    .from("tasks")
     .select("*")
     .eq("tenant_id", tenantId)
     .eq("assigned_to", user.id)
@@ -34,7 +34,7 @@ export default async function TasksPage() {
   let allTasks = null;
   if (role === "owner" || role === "manager") {
     const { data } = await admin
-      .from("staff_tasks")
+      .from("tasks")
       .select("*")
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false });

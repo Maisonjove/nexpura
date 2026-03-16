@@ -35,15 +35,15 @@ export default async function MigrationHubPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
+  const adminClient = createAdminClient();
+
+  const { data: profile } = await adminClient
     .from('users')
     .select('tenant_id')
     .eq('id', user!.id)
     .single();
 
   const tenantId = profile?.tenant_id;
-
-  const adminClient = createAdminClient();
 
   // Get migration sessions
   const { data: sessions } = await adminClient

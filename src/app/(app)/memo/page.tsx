@@ -10,7 +10,8 @@ export default async function MemoPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  const admin = createAdminClient();
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id, role")
     .eq("id", user.id)
@@ -18,8 +19,6 @@ export default async function MemoPage() {
 
   if (!userData?.tenant_id) redirect("/login");
   const tenantId = userData.tenant_id;
-
-  const admin = createAdminClient();
   const { data: memoItems } = await admin
     .from("memo_items")
     .select("*")

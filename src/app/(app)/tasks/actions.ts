@@ -44,7 +44,7 @@ export async function getMyTasks(): Promise<{ data: StaffTask[]; error?: string 
     const admin = createAdminClient();
 
     const { data, error } = await admin
-      .from("staff_tasks")
+      .from("tasks")
       .select("*")
       .eq("tenant_id", tenantId)
       .eq("assigned_to", userId)
@@ -63,7 +63,7 @@ export async function getAllTasks(): Promise<{ data: StaffTask[]; error?: string
     const admin = createAdminClient();
 
     const { data, error } = await admin
-      .from("staff_tasks")
+      .from("tasks")
       .select("*")
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false });
@@ -81,7 +81,7 @@ export async function getWorkshopTasks(): Promise<{ data: StaffTask[]; error?: s
     const admin = createAdminClient();
 
     const { data, error } = await admin
-      .from("staff_tasks")
+      .from("tasks")
       .select("*")
       .eq("tenant_id", tenantId)
       .in("linked_type", ["repair", "bespoke"])
@@ -105,7 +105,7 @@ export async function createTask(
     if (!title) return { error: "Title is required" };
 
     const { data: task, error } = await admin
-      .from("staff_tasks")
+      .from("tasks")
       .insert({
         tenant_id: tenantId,
         title,
@@ -162,13 +162,13 @@ export async function updateTask(
 
     // Get old state for logging
     const { data: oldTask } = await admin
-      .from("staff_tasks")
+      .from("tasks")
       .select("*")
       .eq("id", taskId)
       .single();
 
     const { error } = await admin
-      .from("staff_tasks")
+      .from("tasks")
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq("id", taskId)
       .eq("tenant_id", tenantId);
@@ -212,7 +212,7 @@ export async function deleteTask(
     const admin = createAdminClient();
 
     const { error } = await admin
-      .from("staff_tasks")
+      .from("tasks")
       .delete()
       .eq("id", taskId)
       .eq("tenant_id", tenantId);
@@ -286,7 +286,7 @@ export async function getTasksForEntity(linkedType: string, linkedId: string): P
     const { tenantId } = await getAuthContext();
     const admin = createAdminClient();
     const { data, error } = await admin
-      .from("staff_tasks")
+      .from("tasks")
       .select("*")
       .eq("tenant_id", tenantId)
       .eq("linked_type", linkedType)

@@ -7,7 +7,8 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: userData } = await supabase.from("users").select("tenant_id").eq("id", user.id).single();
+  const adminForTenant = createAdminClient();
+  const { data: userData } = await adminForTenant.from("users").select("tenant_id").eq("id", user.id).single();
   const tenantId = userData?.tenant_id;
   if (!tenantId) return NextResponse.json({ error: "No tenant" }, { status: 400 });
 

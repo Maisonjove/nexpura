@@ -1,12 +1,14 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 async function getTenantId() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
-  const { data } = await supabase.from("users").select("tenant_id").eq("id", user.id).single()
+  const admin = createAdminClient()
+  const { data } = await admin.from("users").select("tenant_id").eq("id", user.id).single()
   if (!data?.tenant_id) throw new Error("No tenant")
   return { supabase, tenantId: data.tenant_id as string, userId: user.id }
 }

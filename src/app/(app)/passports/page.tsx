@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import PassportsListClient from "./PassportsListClient";
 
 export const metadata = { title: "Digital Passports — Nexpura" };
@@ -9,7 +10,8 @@ export default async function PassportsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: userData } = await supabase
+  const admin = createAdminClient();
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id")
     .eq("id", user?.id ?? "")
@@ -17,7 +19,7 @@ export default async function PassportsPage() {
 
   const tenantId = userData?.tenant_id;
 
-  const { data: passports } = await supabase
+  const { data: passports } = await admin
     .from("passports")
     .select(
       "id, passport_uid, title, jewellery_type, current_owner_name, status, is_public, verified_at, created_at"

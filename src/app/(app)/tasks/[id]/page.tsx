@@ -19,7 +19,7 @@ export default async function TaskDetailPage({
     .single();
 
   const { data: task } = await supabase
-    .from("staff_tasks")
+    .from("tasks")
     .select("*, assignee:assigned_to(full_name, avatar_url), creator:created_by(full_name)")
     .eq("id", id)
     .eq("tenant_id", userData?.tenant_id ?? "")

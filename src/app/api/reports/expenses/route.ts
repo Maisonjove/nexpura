@@ -7,7 +7,8 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: userData } = await supabase.from("users").select("tenant_id").eq("id", user.id).single();
+  const admin = createAdminClient();
+  const { data: userData } = await admin.from("users").select("tenant_id").eq("id", user.id).single();
   const tenantId = userData?.tenant_id;
   if (!tenantId) return NextResponse.json({ error: "No tenant" }, { status: 400 });
 
@@ -15,8 +16,6 @@ export async function GET(req: NextRequest) {
   const from = searchParams.get("from") ?? "";
   const to = searchParams.get("to") ?? "";
   const category = searchParams.get("category") ?? "all";
-
-  const admin = createAdminClient();
   let query = admin
     .from("expenses")
     .select("id, description, category, amount, invoice_ref, expense_date, created_at")

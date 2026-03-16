@@ -30,13 +30,13 @@ export default async function MigrationLogsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
+  const admin = createAdminClient();
+
+  const { data: profile } = await admin
     .from('users')
     .select('tenant_id')
     .eq('id', user.id)
     .single();
-
-  const admin = createAdminClient();
   const { data: sessions } = await admin
     .from('migration_sessions')
     .select('*')

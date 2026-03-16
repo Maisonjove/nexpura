@@ -58,7 +58,7 @@ export default async function DashboardPage() {
       .from("invoices")
       .select("id, invoice_number, total, amount_paid, due_date, customers(full_name)")
       .eq("tenant_id", tenantId)
-      .in("status", ["partial", "unpaid", "sent", "partially_paid", "overdue"])
+      .in("status", ["partial", "unpaid", "overdue"])
       .is("deleted_at", null)
       .order("due_date", { ascending: true })
       .limit(5),

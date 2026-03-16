@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import BillingClient from "./BillingClient";
 import { hasPermission } from "@/lib/permissions";
 
@@ -13,7 +14,8 @@ export default async function BillingPage() {
 
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  const admin = createAdminClient();
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id, full_name, email")
     .eq("id", user.id)
@@ -32,28 +34,18 @@ export default async function BillingPage() {
     );
   }
 
-  const { data: subscription } = await supabase
-    .from("subscriptions")
-    .select("*")
-    .eq("tenant_id", userData.tenant_id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [subscriptionResult, userCountResult, inventoryCountResult, customerCountResult] = await Promise.all([
+    admin.from("subscriptions").select("*").eq("tenant_id", userData.tenant_id)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    admin.from("users").select("id", { count: "exact", head: true }).eq("tenant_id", userData.tenant_id),
+    admin.from("inventory").select("id", { count: "exact", head: true }).eq("tenant_id", userData.tenant_id),
+    admin.from("customers").select("id", { count: "exact", head: true }).eq("tenant_id", userData.tenant_id),
+  ]);
 
-  const { count: userCount } = await supabase
-    .from("users")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", userData.tenant_id);
-
-  const { count: inventoryCount } = await supabase
-    .from("inventory")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", userData.tenant_id);
-
-  const { count: customerCount } = await supabase
-    .from("customers")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", userData.tenant_id);
+  const subscription = subscriptionResult.data;
+  const userCount = userCountResult.count;
+  const inventoryCount = inventoryCountResult.count;
+  const customerCount = customerCountResult.count;
 
   return (
     <BillingClient

@@ -20,7 +20,8 @@ export default async function StockMovementPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase.from("users").select("tenant_id").eq("id", user.id).single();
+  const adminForUser = createAdminClient();
+  const { data: userData } = await adminForUser.from("users").select("tenant_id").eq("id", user.id).single();
   const tenantId = userData?.tenant_id ?? "";
   if (!tenantId) redirect("/onboarding");
 

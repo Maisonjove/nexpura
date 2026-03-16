@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import PassportDetailClient from "./PassportDetailClient";
@@ -52,10 +53,11 @@ export default async function PassportDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  // Get current user's tenant_id
+  // Get current user's tenant_id — use admin to avoid RLS recursion
   const { data: { user } } = await supabase.auth.getUser();
+  const admin = createAdminClient();
   const { data: userData } = user
-    ? await supabase.from("users").select("tenant_id").eq("id", user.id).single()
+    ? await admin.from("users").select("tenant_id").eq("id", user.id).single()
     : { data: null };
   const tenantId = userData?.tenant_id ?? "";
 

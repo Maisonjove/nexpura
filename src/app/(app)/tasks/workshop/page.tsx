@@ -37,7 +37,7 @@ export default async function WorkshopTasksPage() {
 
   // Fetch workshop tasks
   const { data: tasks } = await admin
-    .from("staff_tasks")
+    .from("tasks")
     .select("*")
     .eq("tenant_id", tenantId)
     .in("linked_type", ["repair", "bespoke"])
