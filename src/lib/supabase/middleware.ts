@@ -41,16 +41,22 @@ async function getDemoSessionCookies(
     },
   });
 
-  const {
-    data: { session },
-    error,
-  } = await tmpClient.auth.signInWithPassword({
-    email: "demo@nexpura.com",
-    password: "nexpura-demo-2026",
-  });
+  // Retry up to 2 times on transient Supabase auth failures (cold-start protection)
+  let session = null;
+  let error = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await tmpClient.auth.signInWithPassword({
+      email: "demo@nexpura.com",
+      password: "nexpura-demo-2026",
+    });
+    session = result.data.session;
+    error = result.error;
+    if (session) break;
+    if (attempt < 1) await new Promise((r) => setTimeout(r, 300));
+  }
 
   if (error || !session) {
-    console.error("[sandbox] Demo session fetch failed:", error?.message);
+    console.error("[sandbox] Demo session fetch failed after retries:", error?.message);
     return [];
   }
 
@@ -84,16 +90,21 @@ async function getStaffSessionCookies(
     },
   });
 
-  const {
-    data: { session },
-    error,
-  } = await tmpClient.auth.signInWithPassword({
-    email: "staff@nexpura.com",
-    password: "nexpura-staff-2026",
-  });
+  let session = null;
+  let error = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await tmpClient.auth.signInWithPassword({
+      email: "staff@nexpura.com",
+      password: "nexpura-staff-2026",
+    });
+    session = result.data.session;
+    error = result.error;
+    if (session) break;
+    if (attempt < 1) await new Promise((r) => setTimeout(r, 300));
+  }
 
   if (error || !session) {
-    console.error("[sandbox] Staff session fetch failed:", error?.message);
+    console.error("[sandbox] Staff session fetch failed after retries:", error?.message);
     return [];
   }
 
@@ -201,6 +212,31 @@ export async function updateSession(request: NextRequest) {
       httpOnly: false,
     });
   }
+
+  // ── Persist actual Supabase session cookies to browser ────────────────────
+  // Root cause of intermittent 500s: Vercel runs multiple worker instances, each
+  // with its own module-level session cache. When a request hits a cold instance,
+  // the cache is empty and sign-in must happen again. If it fails under load,
+  // no session cookies are injected and routes crash.
+  //
+  // Fix: explicitly write the demo/staff Supabase session cookies onto the
+  // response Set-Cookie header so the BROWSER carries them. Subsequent requests
+  // from the same browser will include the valid auth cookies directly —
+  // the middleware then reads them from the request and skips the sign-in entirely.
+  if (demoCookies.length > 0) {
+    demoCookies.forEach(({ name, value }) => {
+      // Only write if not already set by supabase.auth.getUser() above
+      if (!supabaseResponse.cookies.get(name)) {
+        supabaseResponse.cookies.set(name, value, {
+          path: "/",
+          maxAge: 3600, // 1 hour — matches Supabase JWT TTL
+          sameSite: "lax",
+          httpOnly: true,
+        });
+      }
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   // ── Route authorization ───────────────────────────────────────────────────
 
