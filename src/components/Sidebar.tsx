@@ -2,96 +2,81 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Package, Wrench, Gem, ShoppingCart, Users, Truck,
-  FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
-  Settings, CreditCard, Globe, ExternalLink, Monitor, ListTodo,
-  RotateCcw, Gift, Sun, ClipboardList, ArrowLeftRight, Star,
-  Calendar, Bell, MapPin, Link as LinkIcon, Send, Zap, TrendingUp, Layers, ArrowRightLeft
+  FileText, DollarSign, BarChart2, ShieldCheck,
+  Settings, CreditCard, Globe, Monitor, ListTodo,
+  RotateCcw, Gift, ClipboardList, ArrowLeftRight, Star,
+  Bell, Link as LinkIcon, TrendingUp, ArrowRightLeft,
+  ChevronDown, ChevronRight, Layers
 } from 'lucide-react';
 
-const navGroups = [
+/* ─── Primary nav (always visible, no group header) ─── */
+const PRIMARY_ITEMS = [
+  { name: 'Dashboard',  href: '/dashboard',  icon: LayoutDashboard },
+  { name: 'Sales',      href: '/sales',       icon: ShoppingCart },
+  { name: 'Customers',  href: '/customers',   icon: Users },
+  { name: 'Inventory',  href: '/inventory',   icon: Package },
+  { name: 'Repairs',    href: '/repairs',     icon: Wrench },
+  { name: 'Bespoke',    href: '/bespoke',     icon: Gem },
+  { name: 'Invoices',   href: '/invoices',    icon: FileText },
+];
+
+/* ─── Grouped (collapsible) nav ─── */
+const NAV_GROUPS = [
   {
-    label: 'MAIN',
+    id: 'operations',
+    label: 'Operations',
     items: [
-      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Workshop',           href: '/workshop',   icon: Wrench },
+      { name: 'Tasks',              href: '/tasks',      icon: ListTodo },
+      { name: 'Suppliers',          href: '/suppliers',  icon: Truck },
+      { name: 'Quotes',             href: '/quotes',     icon: FileText },
+      { name: 'Laybys',             href: '/laybys',     icon: Layers },
+      { name: 'Appraisals',         href: '/appraisals', icon: Star },
+      { name: 'Memo & Consignment', href: '/memo',       icon: ArrowLeftRight },
+      { name: 'Passports',          href: '/passports',  icon: ShieldCheck },
+      { name: 'Stocktakes',         href: '/stocktakes', icon: ClipboardList },
     ],
   },
   {
-    label: 'OPERATIONS',
+    id: 'finance',
+    label: 'Finance',
     items: [
-      { name: 'Inventory', href: '/inventory', icon: Package },
-      { name: 'Stock Transfers', href: '/inventory/transfers', icon: ArrowLeftRight },
-      { name: 'POS', href: '/pos', icon: Monitor },
-      { name: 'Workshop', href: '/workshop', icon: Wrench },
-      { name: 'Repairs', href: '/repairs', icon: Wrench },
-      { name: 'Bespoke', href: '/bespoke', icon: Gem },
-      { name: 'Workshop Calendar', href: '/workshop/calendar', icon: Calendar },
-      { name: 'Sales', href: '/sales', icon: ShoppingCart },
-      { name: 'Customers', href: '/customers', icon: Users },
-      { name: 'Suppliers', href: '/suppliers', icon: Truck },
+      { name: 'Expenses',    href: '/expenses',   icon: DollarSign },
+      { name: 'Billing',     href: '/billing',    icon: CreditCard },
+      { name: 'Reports',     href: '/reports',    icon: BarChart2 },
+      { name: 'Financials',  href: '/financials', icon: TrendingUp },
+      { name: 'Refunds',     href: '/refunds',    icon: RotateCcw },
+      { name: 'Vouchers',    href: '/vouchers',   icon: Gift },
     ],
   },
   {
-    label: 'FINANCIAL',
+    id: 'website',
+    label: 'Website',
     items: [
-      { name: 'Invoices', href: '/invoices', icon: FileText },
-      { name: 'Quotes', href: '/quotes', icon: FileText },
-      { name: 'Expenses', href: '/expenses', icon: DollarSign },
-      { name: 'Laybys', href: '/laybys', icon: Layers },
-      { name: 'Gift Vouchers', href: '/vouchers', icon: Gift },
-      { name: 'Refunds', href: '/refunds', icon: RotateCcw },
-      { name: 'End of Day', href: '/eod', icon: Sun },
-      { name: 'Reports', href: '/reports', icon: BarChart2 },
-      { name: 'Financials', href: '/financials', icon: TrendingUp },
-      { name: 'Customer Insights', href: '/reports/customers', icon: Users },
+      { name: 'Website Builder',  href: '/website',         icon: Globe },
+      { name: 'Connect Website',  href: '/website/connect', icon: LinkIcon },
+      { name: 'Migration Hub',    href: '/migration',       icon: ArrowRightLeft },
     ],
   },
   {
-    label: 'MARKETING',
+    id: 'admin',
+    label: 'Admin',
     items: [
-      { name: 'Campaigns', href: '/customers/campaigns', icon: Send },
-      { name: 'Automation', href: '/customers/automation', icon: Zap },
-      { name: 'Service Reminders', href: '/settings/reminders', icon: Bell },
-    ],
-  },
-  {
-    label: 'TOOLS',
-    items: [
-      { name: 'Passports', href: '/passports', icon: ShieldCheck },
-      { name: 'Stocktakes', href: '/stocktakes', icon: ClipboardList },
-      { name: 'Memo & Consignment', href: '/memo', icon: ArrowLeftRight },
-      { name: 'Appraisals', href: '/appraisals', icon: Star },
-      { name: 'Tasks', href: '/tasks', icon: ListTodo },
-      { name: 'Enquiries', href: '/enquiries', icon: MessageSquare },
-      { name: 'Communications', href: '/communications', icon: MessageSquare },
-      { name: 'AI Copilot', href: '/ai', icon: Bot },
-      { name: 'Website', href: '/website', icon: Globe },
-      { name: 'Site Connect', href: '/website/connect', icon: Monitor },
-    ],
-  },
-  {
-    label: 'ADMIN',
-    items: [
-      { name: 'Settings', href: '/settings', icon: Settings },
-      { name: 'Locations', href: '/settings/locations', icon: MapPin },
-      { name: 'Integrations', href: '/settings/integrations', icon: LinkIcon },
-      { name: 'Task Templates', href: '/settings/task-templates', icon: ListTodo },
-      { name: 'Printing', href: '/settings/printing', icon: Settings },
-      { name: 'Print Queue', href: '/print-queue', icon: FileText },
-      { name: 'Documents', href: '/documents', icon: FileText },
-      { name: 'Team', href: '/settings/team', icon: Users },
-      { name: 'System Audit', href: '/admin/audit', icon: ClipboardList },
-      { name: 'Numbering', href: '/settings/numbering', icon: FileText },
-      { name: 'Import & Export', href: '/settings/import', icon: FileText },
-      { name: 'Billing', href: '/billing', icon: CreditCard },
-      { name: 'Migration Hub', href: '/migration', icon: ArrowRightLeft },
+      { name: 'Settings',   href: '/settings',  icon: Settings },
+      { name: 'Documents',  href: '/documents', icon: FileText },
+      { name: 'POS',        href: '/pos',       icon: Monitor },
+      { name: 'Reminders',  href: '/settings/reminders', icon: Bell },
     ],
   },
 ];
 
+const STORAGE_KEY = 'nexpura_nav_collapsed';
+
 interface SidebarProps {
-  user?: any;
+  user?: { full_name?: string; email?: string; role?: string } | null;
   isSuperAdmin?: boolean;
   websiteConfig?: {
     website_type?: string;
@@ -104,113 +89,185 @@ interface SidebarProps {
   readyBespokeCount?: number;
 }
 
-export default function Sidebar({ user, isSuperAdmin, websiteConfig, businessMode = 'full', readyRepairsCount = 0, readyBespokeCount = 0 }: SidebarProps) {
+export default function Sidebar({
+  user,
+  isSuperAdmin,
+  websiteConfig,
+  businessMode = 'full',
+  readyRepairsCount = 0,
+  readyBespokeCount = 0,
+}: SidebarProps) {
   const pathname = usePathname();
 
-  const filteredNavGroups = navGroups.map(group => ({
-    ...group,
-    items: group.items.filter(item => {
-      // Logic to hide/show based on business mode
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) setCollapsed(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  function toggleGroup(id: string) {
+    setCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+
+  /* filter by businessMode */
+  function filterItems(items: typeof PRIMARY_ITEMS) {
+    return items.filter((item) => {
       if (businessMode === 'retail') {
-        const hide = ['Workshop Calendar', 'Bespoke', 'Workshop'];
-        if (hide.includes(item.name)) return false;
+        if (['Bespoke', 'Workshop'].includes(item.name)) return false;
       }
       if (businessMode === 'workshop') {
-        const hide = ['POS', 'Sales', 'Bespoke'];
-        if (hide.includes(item.name)) return false;
+        if (['Sales', 'POS'].includes(item.name)) return false;
       }
       if (businessMode === 'bespoke') {
-        const hide = ['POS', 'Repairs', 'Workshop Calendar'];
-        if (hide.includes(item.name)) return false;
+        if (['Sales', 'POS', 'Repairs'].includes(item.name)) return false;
       }
       return true;
-    })
-  })).filter(group => group.items.length > 0);
+    });
+  }
 
   const initials = user?.full_name
-    ? user.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    ? user.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.slice(0, 2).toUpperCase() || 'NX';
 
+  function isActive(href: string) {
+    if (href === '/dashboard') return pathname === '/dashboard';
+    return pathname === href || pathname.startsWith(href + '/');
+  }
+
+  function NavItem({ name, href, icon: Icon, badge }: { name: string; href: string; icon: React.ElementType; badge?: number }) {
+    const active = isActive(href);
+    return (
+      <li>
+        <Link
+          href={href}
+          className={`flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[13px] cursor-pointer transition-colors relative ${
+            active
+              ? 'bg-stone-800 text-white border-l-2 border-amber-500 -ml-px pl-[11px]'
+              : 'text-stone-400 hover:bg-white/[0.05] hover:text-stone-200'
+          }`}
+        >
+          <Icon
+            size={14}
+            className={`flex-shrink-0 ${active ? 'text-amber-400' : 'text-stone-500'}`}
+          />
+          <span className="flex-1 truncate">{name}</span>
+          {badge !== undefined && badge > 0 && (
+            <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+              {badge}
+            </span>
+          )}
+        </Link>
+      </li>
+    );
+  }
+
   return (
-    <aside className="w-64 h-screen bg-[#1A1A1A] flex flex-col fixed left-0 top-0 z-30">
+    <aside className="w-60 h-screen bg-[#1A1A1A] flex flex-col fixed left-0 top-0 z-30">
       {/* Logo */}
-      <div className="px-5 py-5 flex items-center gap-2.5 border-b border-white/[0.06]">
+      <div className="px-5 py-4 flex items-center gap-2.5 border-b border-white/[0.06]">
         <div className="w-7 h-7 rounded bg-amber-600 flex items-center justify-center flex-shrink-0">
           <Gem size={14} color="white" />
         </div>
-        <span className="text-white font-semibold text-sm">Nexpura</span>
+        <span className="text-white font-semibold text-sm tracking-tight">Nexpura</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-2">
-        {filteredNavGroups.map((group) => (
-          <div key={group.label}>
-            <p className="text-[10px] uppercase tracking-widest text-stone-500 px-4 mb-1.5 mt-5 font-medium">
-              {group.label}
-            </p>
-            <ul className="space-y-0.5 px-2">
-              {group.items.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                return (
-                  <li key={item.name}>
-                    <Link
+      <nav className="flex-1 overflow-y-auto py-3 scrollbar-thin">
+        {/* Primary items — always visible, no header */}
+        <ul className="space-y-0.5 px-2 mb-4">
+          {filterItems(PRIMARY_ITEMS).map((item) => (
+            <NavItem
+              key={item.href}
+              name={item.name}
+              href={item.href}
+              icon={item.icon}
+              badge={
+                item.name === 'Repairs' ? readyRepairsCount :
+                item.name === 'Bespoke' ? readyBespokeCount :
+                undefined
+              }
+            />
+          ))}
+        </ul>
+
+        {/* Divider */}
+        <div className="mx-4 mb-3 border-t border-white/[0.05]" />
+
+        {/* Grouped collapsible sections */}
+        {NAV_GROUPS.map((group) => {
+          const groupItems = filterItems(group.items);
+          if (groupItems.length === 0) return null;
+          const isCollapsed = collapsed[group.id] ?? false;
+          const hasActiveChild = groupItems.some((item) => isActive(item.href));
+
+          return (
+            <div key={group.id} className="mb-1">
+              <button
+                onClick={() => toggleGroup(group.id)}
+                className={`w-full flex items-center justify-between px-4 py-1.5 text-left group transition-colors ${
+                  hasActiveChild ? 'text-amber-500' : 'text-stone-500 hover:text-stone-300'
+                }`}
+              >
+                <span className="text-[10px] font-bold uppercase tracking-widest">
+                  {group.label}
+                </span>
+                {isCollapsed
+                  ? <ChevronRight size={11} className="flex-shrink-0" />
+                  : <ChevronDown size={11} className="flex-shrink-0" />
+                }
+              </button>
+
+              {!isCollapsed && (
+                <ul className="space-y-0.5 px-2 mt-0.5 mb-2">
+                  {groupItems.map((item) => (
+                    <NavItem
+                      key={item.href}
+                      name={item.name}
                       href={item.href}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm cursor-pointer transition-colors relative ${
-                        isActive
-                          ? 'bg-stone-800 text-white border-l-2 border-amber-500 -ml-px pl-[11px]'
-                          : 'text-stone-400 hover:bg-white/[0.05] hover:text-stone-200'
-                      }`}
-                    >
-                      <item.icon
-                        size={15}
-                        className={`flex-shrink-0 ${isActive ? 'text-amber-500' : 'text-stone-500'}`}
-                      />
-                      <span className="flex-1">{item.name}</span>
-                      {item.name === 'Repairs' && readyRepairsCount > 0 && (
-                        <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
-                          {readyRepairsCount}
-                        </span>
-                      )}
-                      {item.name === 'Bespoke' && readyBespokeCount > 0 && (
-                        <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
-                          {readyBespokeCount}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-              {/* External website link — shown under TOOLS group */}
-              {group.label === 'TOOLS' && websiteConfig?.website_type === 'connect' && websiteConfig.external_url && (
-                <li>
-                  <a
-                    href={websiteConfig.external_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm cursor-pointer transition-colors text-stone-400 hover:bg-white/[0.05] hover:text-stone-200"
-                  >
-                    <ExternalLink
-                      size={15}
-                      className="flex-shrink-0 text-stone-500"
+                      icon={item.icon}
                     />
-                    Your Website ↗
-                  </a>
-                </li>
+                  ))}
+                  {/* External website link under WEBSITE group */}
+                  {group.id === 'website' && websiteConfig?.website_type === 'connect' && websiteConfig.external_url && (
+                    <li>
+                      <a
+                        href={websiteConfig.external_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[13px] text-stone-400 hover:bg-white/[0.05] hover:text-stone-200"
+                      >
+                        <LinkIcon size={14} className="flex-shrink-0 text-stone-500" />
+                        Your Website ↗
+                      </a>
+                    </li>
+                  )}
+                </ul>
               )}
-            </ul>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto border-t border-white/[0.06] px-4 py-4 flex items-center gap-3">
+      <div className="mt-auto border-t border-white/[0.06] px-4 py-3.5 flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-amber-700 flex items-center justify-center flex-shrink-0">
           <span className="text-[11px] font-semibold text-white">{initials}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-stone-300 truncate">{user?.full_name || user?.email?.split('@')[0] || 'User'}</p>
+          <p className="text-xs font-medium text-stone-300 truncate">
+            {user?.full_name || user?.email?.split('@')[0] || 'User'}
+          </p>
           <p className="text-[10px] text-stone-500 truncate capitalize">{user?.role || 'Staff'}</p>
         </div>
+        <Link href="/settings" className="text-stone-600 hover:text-stone-300 transition-colors">
+          <Settings size={14} />
+        </Link>
       </div>
     </aside>
   );
