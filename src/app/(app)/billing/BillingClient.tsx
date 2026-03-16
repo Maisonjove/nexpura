@@ -179,7 +179,12 @@ export default function BillingClient({
     }
   }, [subscription?.stripe_customer_id]);
 
-  const currentPlan = (subscription?.plan ?? "boutique") as Plan;
+  // Normalize legacy plan keys (basic→boutique, pro→studio, ultimate→group)
+  const PLAN_KEY_MAP: Record<string, Plan> = {
+    boutique: "boutique", studio: "studio", group: "group",
+    basic: "boutique", pro: "studio", ultimate: "group",
+  };
+  const currentPlan: Plan = PLAN_KEY_MAP[subscription?.plan ?? "boutique"] ?? "boutique";
   const currentPlanDetails = PLAN_DETAILS[currentPlan];
   const maxUsers = PLAN_FEATURES[currentPlan]?.maxUsers;
 
