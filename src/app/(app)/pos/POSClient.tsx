@@ -485,6 +485,14 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
                 🛡️ Issue Passport
               </button>
             )}
+
+            {/* Sales History */}
+            <button
+              onClick={() => router.push("/sales")}
+              className="w-full py-2.5 text-stone-400 rounded-xl font-medium hover:text-stone-700 transition-colors text-xs border border-stone-100 hover:border-stone-200 hover:bg-stone-50"
+            >
+              View Sales History →
+            </button>
           </div>
         </div>
       </div>
