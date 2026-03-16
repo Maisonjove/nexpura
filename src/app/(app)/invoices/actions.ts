@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sendInvoiceEmail } from "@/lib/email/send";
@@ -12,7 +13,7 @@ async function getAuthContext() {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)

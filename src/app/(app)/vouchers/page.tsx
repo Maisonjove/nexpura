@@ -10,7 +10,7 @@ export default async function VouchersPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)

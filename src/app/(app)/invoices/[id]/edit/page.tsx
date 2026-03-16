@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound, redirect } from "next/navigation";
 import InvoiceForm from "../../InvoiceForm";
 
@@ -14,7 +15,7 @@ export default async function EditInvoicePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)

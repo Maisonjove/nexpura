@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import FinancialsClient from "./FinancialsClient";
 
@@ -9,7 +10,7 @@ export default async function FinancialsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id, tenants(name, gst_rate, currency)")
     .eq("id", user.id)

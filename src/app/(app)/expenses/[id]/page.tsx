@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import ExpenseDetailClient from "./ExpenseDetailClient";
 
@@ -13,7 +14,7 @@ export default async function ExpenseDetailPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user?.id ?? "")

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sendPassportEmail } from "@/lib/email/send";
@@ -11,7 +12,8 @@ async function getTenantAndUser() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
-  const { data } = await supabase
+  const admin = createAdminClient();
+  const { data } = await admin
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)
@@ -300,7 +302,7 @@ export async function savePassportPrimaryImage(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users").select("tenant_id").eq("id", user.id).single();
   if (!userData?.tenant_id) return { error: "No tenant" };
 
@@ -322,7 +324,7 @@ export async function savePassportImages(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users").select("tenant_id").eq("id", user.id).single();
   if (!userData?.tenant_id) return { error: "No tenant" };
 
@@ -344,7 +346,7 @@ export async function resendPassportEmail(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users").select("tenant_id").eq("id", user.id).single();
   if (!userData?.tenant_id) return { error: "No tenant" };
 

@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
 // ── Tenant-scoped list fetch ─────────────────────────────────────────────────
@@ -9,7 +10,7 @@ export async function getQuotesList() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)
@@ -34,7 +35,7 @@ export async function convertQuoteToInvoice(quoteId: string) {
   if (!user) throw new Error("Not authenticated");
 
   // Resolve tenant from session (never trust URL params)
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)
@@ -106,7 +107,7 @@ export async function convertQuoteToBespoke(quoteId: string) {
   if (!user) throw new Error("Not authenticated");
 
   // Resolve tenant from session (never trust URL params)
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)
@@ -170,7 +171,7 @@ export async function convertQuoteToRepair(quoteId: string) {
   if (!user) throw new Error("Not authenticated");
 
   // Resolve tenant from session (never trust URL params)
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)

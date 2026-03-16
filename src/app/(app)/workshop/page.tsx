@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Wrench, ClipboardList, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
@@ -6,7 +7,8 @@ export default async function WorkshopPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: userData } = await supabase
+  const admin = createAdminClient();
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id")
     .eq("id", user?.id ?? "")
@@ -15,7 +17,7 @@ export default async function WorkshopPage() {
   const tenantId = userData?.tenant_id;
 
   // Fetch active repairs
-  const { data: activeRepairs } = await supabase
+  const { data: activeRepairs } = await admin
     .from("repairs")
     .select("id, item_description, stage, due_date, customers(full_name)")
     .eq("tenant_id", tenantId ?? "")
@@ -23,7 +25,7 @@ export default async function WorkshopPage() {
     .order("due_date", { ascending: true });
 
   // Fetch active bespoke jobs
-  const { data: activeJobs } = await supabase
+  const { data: activeJobs } = await admin
     .from("bespoke_jobs")
     .select("id, title, stage, due_date, customers(full_name)")
     .eq("tenant_id", tenantId ?? "")

@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound, redirect } from "next/navigation";
 import QuoteDetailClient from "../QuoteDetailClient";
 
@@ -13,7 +14,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   if (!user) redirect("/login");
 
   // Get tenant from authenticated user — never trust URL params
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)

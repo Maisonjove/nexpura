@@ -35,7 +35,7 @@ export async function emailQuote(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: "Not authenticated" };
 
-    const { data: userData } = await supabase
+    const { data: userData } = await createAdminClient()
       .from("users")
       .select("tenant_id")
       .eq("id", user.id)

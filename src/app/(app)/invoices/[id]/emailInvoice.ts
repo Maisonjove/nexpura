@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/lib/pdf/InvoicePDF";
 import { Resend } from "resend";
@@ -45,7 +46,7 @@ export async function emailInvoice(
 
     if (!user) return { success: false, error: "Not authenticated" };
 
-    const { data: userData } = await supabase
+    const { data: userData } = await createAdminClient()
       .from("users")
       .select("tenant_id")
       .eq("id", user.id)

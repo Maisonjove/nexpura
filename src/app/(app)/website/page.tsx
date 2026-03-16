@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import WebsiteBuilderClient from "./WebsiteBuilderClient";
 
@@ -10,7 +11,7 @@ export default async function WebsitePage() {
 
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)
