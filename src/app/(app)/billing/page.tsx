@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import BillingClient from "./BillingClient";
 import { hasPermission } from "@/lib/permissions";
+import { getEntitlementContext } from "@/lib/auth/entitlements";
 
 export const metadata = { title: "Billing — Nexpura" };
 
