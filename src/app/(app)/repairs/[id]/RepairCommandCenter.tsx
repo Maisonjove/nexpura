@@ -932,28 +932,32 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
               </button>
               {invoice?.id ? (
                 <>
-                  <button onClick={() => handleEmailInvoice()} disabled={emailSending} title="Sends invoice via email. In demo mode, external delivery requires a verified sending domain." className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 disabled:opacity-50 transition-colors">
-                    ✉️ {emailSending ? "Sending..." : "Email Invoice"}
-                  </button>
-                  {emailSuccess && (
-                    <div className={`text-xs px-3 py-2 rounded-lg ${emailSuccess.toLowerCase().includes("demo") || emailSuccess.toLowerCase().includes("logged") ? "bg-amber-50 text-amber-700" : "bg-stone-900 text-white"}`}>
-                      {emailSuccess}
-                    </div>
-                  )}
-                  {emailError && (
-                    <div className="text-xs px-3 py-2 rounded-lg bg-red-50 text-red-700">
-                      {emailError}
-                    </div>
+                  {!readOnly && (
+                    <>
+                      <button onClick={() => handleEmailInvoice()} disabled={emailSending} title="Sends invoice via email. In demo mode, external delivery requires a verified sending domain." className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 disabled:opacity-50 transition-colors">
+                        ✉️ {emailSending ? "Sending..." : "Email Invoice"}
+                      </button>
+                      {emailSuccess && (
+                        <div className={`text-xs px-3 py-2 rounded-lg ${emailSuccess.toLowerCase().includes("demo") || emailSuccess.toLowerCase().includes("logged") ? "bg-amber-50 text-amber-700" : "bg-stone-900 text-white"}`}>
+                          {emailSuccess}
+                        </div>
+                      )}
+                      {emailError && (
+                        <div className="text-xs px-3 py-2 rounded-lg bg-red-50 text-red-700">
+                          {emailError}
+                        </div>
+                      )}
+                    </>
                   )}
                   <button onClick={() => window.open(`/print/invoice/${invoice.id}`, "_blank")} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
                     🖨️ Print Invoice
                   </button>
                 </>
-              ) : (
+              ) : !readOnly ? (
                 <button onClick={() => handleGenerateInvoice()} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 flex items-center gap-2 transition-colors font-medium">
                   📄 Generate Invoice
                 </button>
-              )}
+              ) : null}
               {customer?.email ? (
                 <a href={`mailto:${customer.email}?subject=Re: Your repair — Marcus & Co.`} className="block w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
                   ✉️ Email Customer
@@ -961,7 +965,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
               ) : (
                 <div className="text-sm text-stone-400 px-3 py-2">No email on file</div>
               )}
-              {repair.stage === "ready" && customer?.email && (
+              {repair.stage === "ready" && customer?.email && !readOnly && (
                 <button onClick={() => handleEmailReady()} disabled={emailSending} className="w-full text-left text-sm px-3 py-2 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 flex items-center gap-2 transition-colors disabled:opacity-50">
                   ✉️ Email Ready for Collection
                 </button>

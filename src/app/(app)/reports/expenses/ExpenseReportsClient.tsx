@@ -19,7 +19,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 const CATEGORY_COLORS: Record<string, string> = {
   stock: "bg-amber-500",
   rent: "bg-amber-500",
-  utilities: "bg-teal-500",
+  utilities: "bg-stone-500",
   marketing: "bg-stone-1000",
   staffing: "bg-rose-500",
   equipment: "bg-orange-500",

@@ -46,7 +46,7 @@ const ROLE_COLOURS: Record<string, string> = {
   salesperson: "bg-green-50 text-green-700",
   workshop_jeweller: "bg-amber-50 text-amber-700",
   repair_technician: "bg-orange-50 text-orange-700",
-  inventory_manager: "bg-teal-50 text-teal-700",
+  inventory_manager: "bg-stone-100 text-stone-700",
   accountant: "bg-stone-100 text-stone-600",
   staff: "bg-stone-100 text-stone-700",
   technician: "bg-amber-50 text-amber-700",
