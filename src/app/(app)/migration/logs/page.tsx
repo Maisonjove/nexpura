@@ -1,8 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle, Clock, XCircle, Filter } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,22 +24,19 @@ function getStep(status: string): string {
   return map[status] || 'files';
 }
 
-export default async function MigrationLogsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+export default async function MigrationLogsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ rt?: string }>;
+}) {
+  const params = await searchParams;
+  const { tenantId, admin } = await getAuthOrReviewContext(params.rt);
+  if (!tenantId) redirect('/login');
 
-  const admin = createAdminClient();
-
-  const { data: profile } = await admin
-    .from('users')
-    .select('tenant_id')
-    .eq('id', user.id)
-    .single();
   const { data: sessions } = await admin
     .from('migration_sessions')
     .select('*')
-    .eq('tenant_id', profile?.tenant_id)
+    .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false });
 
   // Get job stats for each session

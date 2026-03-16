@@ -1,5 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Users } from 'lucide-react';
@@ -9,13 +8,15 @@ export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ sessionId: string }>;
+  searchParams: Promise<{ rt?: string }>;
 }
 
-export default async function DuplicatesPage({ params }: Props) {
+export default async function DuplicatesPage({ params, searchParams }: Props) {
   const { sessionId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const { rt } = await searchParams;
+  const { tenantId } = await getAuthOrReviewContext(rt);
+
+  if (!tenantId) redirect('/login');
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -38,7 +39,7 @@ export default async function DuplicatesPage({ params }: Props) {
         <p className="text-stone-400 text-xs mt-1">AI scan found no duplicate customers, inventory, or records in your upload.</p>
         <div className="mt-6">
           <Link
-            href={`/migration/${sessionId}/preview`}
+            href={`/migration/${sessionId}/preview${rt ? `?rt=${rt}` : ''}`}
             className="inline-flex items-center gap-2 bg-amber-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-amber-700 transition-colors"
           >
             Continue to Preview

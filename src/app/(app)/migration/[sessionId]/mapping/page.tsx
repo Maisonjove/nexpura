@@ -1,8 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { MigrationStepper } from '../../_components/MigrationStepper';
 import { MappingTableWrapper } from './MappingTableWrapper';
 
@@ -10,20 +9,21 @@ export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ sessionId: string }>;
+  searchParams: Promise<{ rt?: string }>;
 }
 
-export default async function MappingPage({ params }: Props) {
+export default async function MappingPage({ params, searchParams }: Props) {
   const { sessionId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const { rt } = await searchParams;
+  const { tenantId, admin } = await getAuthOrReviewContext(rt);
 
-  const admin = createAdminClient();
+  if (!tenantId) redirect('/login');
 
   const { data: session } = await admin
     .from('migration_sessions')
     .select('*')
     .eq('id', sessionId)
+    .eq('tenant_id', tenantId)
     .single();
 
   if (!session) redirect('/migration');

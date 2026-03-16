@@ -2,8 +2,21 @@ import { MIGRATION_SOURCES } from '@/lib/migration/adapters';
 import { SourceCard } from '../_components/SourceCard';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { getAuthOrReviewContext } from "@/lib/auth/review";
+import { redirect } from "next/navigation";
 
-export default function NewMigrationPage() {
+export default async function NewMigrationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ rt?: string }>;
+}) {
+  const params = await searchParams;
+  const { tenantId } = await getAuthOrReviewContext(params.rt);
+
+  if (!tenantId) {
+    redirect("/login");
+  }
+
   const jewellery = MIGRATION_SOURCES.filter(s => s.category === 'jewellery');
   const retail = MIGRATION_SOURCES.filter(s => s.category === 'retail');
   const accounting = MIGRATION_SOURCES.filter(s => s.category === 'accounting');

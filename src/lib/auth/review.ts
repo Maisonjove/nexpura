@@ -52,17 +52,29 @@ export async function getReviewTenantId(): Promise<string | null> {
 }
 
 /**
- * Returns { tenantId, userId, currency, admin } for any auth context.
+ * Returns { tenantId, userId, currency, admin, supabase, isReviewMode } for any auth context.
  * Falls back to review/staff sandbox if normal auth is unavailable.
  * Pages can use this instead of the manual user + users-table lookup.
  */
-export async function getAuthOrReviewContext() {
+export async function getAuthOrReviewContext(rt?: string) {
   const admin = createAdminClient();
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
 
-  // Try normal Supabase auth first
+  // 1. Check for manual review token override (highest priority)
+  if (rt === REVIEW_TOKEN || rt === STAFF_TOKEN) {
+    return {
+      tenantId: DEMO_TENANT_ID,
+      userId: DEMO_USER_ID,
+      currency: DEMO_CURRENCY,
+      admin,
+      supabase,
+      isReviewMode: true,
+    };
+  }
+
+  // 2. Try normal Supabase auth
   try {
-    const { createClient } = await import("@/lib/supabase/server");
-    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
@@ -78,7 +90,8 @@ export async function getAuthOrReviewContext() {
           userId: user.id,
           currency: (userData.tenants as { currency?: string } | null)?.currency ?? DEMO_CURRENCY,
           admin,
-          isReview: false,
+          supabase,
+          isReviewMode: false,
         };
       }
     }
@@ -86,7 +99,7 @@ export async function getAuthOrReviewContext() {
     // fall through to review mode check
   }
 
-  // Fallback: check for review/staff sandbox cookie
+  // 3. Fallback: check for review/staff sandbox cookie or header via middleware
   const reviewTenantId = await getReviewTenantId();
   if (reviewTenantId) {
     return {
@@ -94,9 +107,17 @@ export async function getAuthOrReviewContext() {
       userId: DEMO_USER_ID,
       currency: DEMO_CURRENCY,
       admin,
-      isReview: true,
+      supabase,
+      isReviewMode: true,
     };
   }
 
-  return { tenantId: null, userId: null, currency: DEMO_CURRENCY, admin, isReview: false };
+  return { 
+    tenantId: null, 
+    userId: null, 
+    currency: DEMO_CURRENCY, 
+    admin, 
+    supabase, 
+    isReviewMode: false 
+  };
 }
