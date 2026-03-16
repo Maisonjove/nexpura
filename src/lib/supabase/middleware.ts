@@ -301,6 +301,14 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/ai");
 
   if (isProtectedRoute) {
+    // ── Review / staff sandbox: session already injected above — skip DB checks ─
+    // The users table RLS policy can cause recursion when queried with the anon key.
+    // For sandbox mode we know the session is valid (we just injected it), so there
+    // is no need to re-validate via DB. Return immediately to avoid the hang.
+    if (isReviewRequest || isStaffRequest) {
+      return supabaseResponse;
+    }
+
     if (!user) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
