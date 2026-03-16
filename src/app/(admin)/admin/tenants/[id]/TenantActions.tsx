@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { changeTenantPlan, changeTenantStatus, assignFreeForever, forcePaidGracePeriod, saveTenantAdminNotes, deleteTenant } from "@/app/(admin)/actions";
+import { useState, useTransition, useMemo } from "react";
+import { changeTenantPlan, changeTenantStatus, assignFreeForever, forcePaidGracePeriod, saveTenantAdminNotes, deleteTenant, extendTrial } from "@/app/(admin)/actions";
 import { useRouter } from "next/navigation";
 
 interface TenantActionsProps {
@@ -26,17 +26,27 @@ export default function TenantActions({
   const router = useRouter();
   const [plan, setPlan] = useState(currentPlan);
   const [status, setStatus] = useState(currentStatus);
+  const [trialDays, setTrialDays] = useState(30);
   const [notes, setNotes] = useState(adminNotes ?? "");
   const [planPending, startPlanTransition] = useTransition();
   const [statusPending, startStatusTransition] = useTransition();
+  const [trialPending, startTrialTransition] = useTransition();
   const [freePending, startFreeTransition] = useTransition();
   const [forcePaidPending, startForcePaidTransition] = useTransition();
   const [notesPending, startNotesPending] = useTransition();
   const [deletePending, startDeleteTransition] = useTransition();
   const [planMsg, setPlanMsg] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
+  const [trialMsg, setTrialMsg] = useState("");
   const [freeMsg, setFreeMsg] = useState("");
   const [notesMsg, setNotesMsg] = useState("");
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+
+  const newTrialEnd = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + trialDays);
+    return d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  }, [trialDays]);
 
   function handlePlanSave() {
     startPlanTransition(async () => {
@@ -51,14 +61,32 @@ export default function TenantActions({
   }
 
   function handleStatusSave() {
+    if (status === "suspended" && currentStatus !== "suspended" && pendingAction !== "confirm_suspend") {
+      setPendingAction("confirm_suspend");
+      return;
+    }
+
     startStatusTransition(async () => {
       try {
         await changeTenantStatus(tenantId, status as "trialing" | "active" | "past_due" | "canceled" | "suspended" | "free");
         setStatusMsg("Status updated successfully");
+        setPendingAction(null);
       } catch {
         setStatusMsg("Failed to update status");
       }
       setTimeout(() => setStatusMsg(""), 3000);
+    });
+  }
+
+  function handleExtendTrial() {
+    startTrialTransition(async () => {
+      try {
+        await extendTrial(tenantId, trialDays);
+        setTrialMsg(`Trial extended by ${trialDays} days`);
+      } catch {
+        setTrialMsg("Failed to extend trial");
+      }
+      setTimeout(() => setTrialMsg(""), 3000);
     });
   }
 
@@ -175,30 +203,89 @@ export default function TenantActions({
       {/* Change Status */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-stone-900/70">Change Status</label>
-        <div className="flex gap-2">
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30"
-          >
-            <option value="trialing">Trialing</option>
-            <option value="active">Active</option>
-            <option value="past_due">Past Due</option>
-            <option value="canceled">Canceled</option>
-            <option value="suspended">Suspended</option>
-            <option value="free">Free</option>
-          </select>
-          <button
-            onClick={handleStatusSave}
-            disabled={statusPending}
-            className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors disabled:opacity-60"
-          >
-            {statusPending ? "Saving…" : "Save"}
-          </button>
-        </div>
+        {pendingAction === "confirm_suspend" ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-3">
+            <p className="text-sm text-red-800">
+              Suspend <strong>{ownerEmail || "this tenant"}</strong>? They&apos;ll lose access immediately.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setPendingAction(null);
+                  setStatus(currentStatus);
+                }}
+                className="flex-1 px-3 py-2 bg-white border border-stone-200 text-stone-600 rounded-lg text-sm font-medium hover:bg-stone-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleStatusSave}
+                disabled={statusPending}
+                className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {statusPending ? "Suspending…" : "Confirm Suspend"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+            >
+              <option value="trialing">Trialing</option>
+              <option value="active">Active</option>
+              <option value="past_due">Past Due</option>
+              <option value="canceled">Canceled</option>
+              <option value="suspended">Suspended</option>
+              <option value="free">Free</option>
+            </select>
+            <button
+              onClick={handleStatusSave}
+              disabled={statusPending}
+              className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors disabled:opacity-60"
+            >
+              {statusPending ? "Saving…" : "Save"}
+            </button>
+          </div>
+        )}
         {statusMsg && (
           <p className={`text-xs ${statusMsg.includes("Failed") ? "text-red-500" : "text-amber-700"}`}>
             {statusMsg}
+          </p>
+        )}
+      </div>
+
+      {/* Extend Trial */}
+      <div className="space-y-2 p-3 bg-stone-50 rounded-lg border border-stone-100">
+        <label className="text-sm font-medium text-stone-900/70">Extend Trial</label>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <div className="relative">
+              <input
+                type="number"
+                min="1"
+                max="365"
+                value={trialDays}
+                onChange={(e) => setTrialDays(parseInt(e.target.value) || 0)}
+                className="w-full pl-3 pr-12 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+              />
+              <span className="absolute right-3 top-2 text-xs text-stone-400">days</span>
+            </div>
+            <p className="text-[10px] text-stone-500 mt-1">New trial end: {newTrialEnd}</p>
+          </div>
+          <button
+            onClick={handleExtendTrial}
+            disabled={trialPending}
+            className="px-4 py-2 h-fit bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors disabled:opacity-60"
+          >
+            {trialPending ? "…" : "Extend"}
+          </button>
+        </div>
+        {trialMsg && (
+          <p className={`text-xs ${trialMsg.includes("Failed") ? "text-red-500" : "text-amber-700"}`}>
+            {trialMsg}
           </p>
         )}
       </div>

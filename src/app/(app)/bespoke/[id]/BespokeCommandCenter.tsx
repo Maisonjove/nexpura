@@ -620,11 +620,21 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Line Items</h2>
-              {invoice && (
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${invoice.status === "paid" ? "bg-stone-900 text-white" : invoice.status === "partial" ? "bg-amber-100 text-amber-800" : "bg-stone-100 text-stone-600"}`}>
-                  {invoice.status}
-                </span>
-              )}
+              {invoice && (() => {
+                const label = {
+                  draft: "Draft",
+                  unpaid: "Sent",
+                  partial: "Partial",
+                  paid: "Paid",
+                  voided: "Voided",
+                  overdue: "Overdue"
+                }[invoice.status] || invoice.status;
+                return (
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${invoice.status === "paid" ? "bg-stone-900 text-white" : invoice.status === "partial" ? "bg-amber-100 text-amber-800" : "bg-stone-100 text-stone-600"}`}>
+                    {label}
+                  </span>
+                );
+              })()}
             </div>
 
             {invoice && invoice.lineItems.length > 0 ? (

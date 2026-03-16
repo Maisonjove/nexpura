@@ -230,7 +230,7 @@ export default function BillingClient({
     if (!dateStr) return null;
     return new Date(dateStr).toLocaleDateString("en-AU", {
       day: "numeric",
-      month: "long",
+      month: "short",
       year: "numeric",
     });
   };

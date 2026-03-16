@@ -149,3 +149,20 @@ export async function forcePaidGracePeriod(tenantId: string) {
 
   revalidatePath(`/admin/tenants/${tenantId}`);
 }
+
+export async function extendTrial(tenantId: string, days: number) {
+  const adminClient = await assertSuperAdmin();
+  const newDate = new Date();
+  newDate.setDate(newDate.getDate() + days);
+  const { error } = await adminClient
+    .from("subscriptions")
+    .update({
+      trial_ends_at: newDate.toISOString(),
+      status: "trialing",
+    })
+    .eq("tenant_id", tenantId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/tenants/${tenantId}`);
+  revalidatePath("/admin/tenants");
+}

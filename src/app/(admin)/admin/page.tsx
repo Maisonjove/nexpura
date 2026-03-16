@@ -73,19 +73,15 @@ export default async function AdminDashboardPage() {
   const totalTenants = tenants?.length ?? 0;
 
   const activeCount = (subscriptions ?? []).filter(
-    (s) => s.status === "active" || s.status === "trialing"
+    (s) => s.status === "active"
   ).length;
 
-  const boutiqueCount = (subscriptions ?? []).filter(
-    (s) => (s.plan === "boutique" || s.plan === "basic") && (s.status === "active" || s.status === "trialing")
+  const trialCount = (subscriptions ?? []).filter(
+    (s) => s.status === "trialing"
   ).length;
 
-  const studioCount = (subscriptions ?? []).filter(
-    (s) => (s.plan === "studio" || s.plan === "pro") && (s.status === "active" || s.status === "trialing")
-  ).length;
-
-  const groupCount = (subscriptions ?? []).filter(
-    (s) => (s.plan === "group" || s.plan === "ultimate") && (s.status === "active" || s.status === "trialing")
+  const suspendedCount = (subscriptions ?? []).filter(
+    (s) => s.status === "suspended"
   ).length;
 
   const mrr = (subscriptions ?? []).reduce((sum, s) => {
@@ -99,11 +95,10 @@ export default async function AdminDashboardPage() {
 
   const stats = [
     { label: "Total Tenants", value: totalTenants, accent: false },
-    { label: "Active Subscriptions", value: activeCount, accent: true },
-    { label: "Boutique Plan", value: boutiqueCount, accent: false },
-    { label: "Studio Plan", value: studioCount, accent: false },
-    { label: "Group Plan", value: groupCount, accent: false },
-    { label: "Monthly MRR", value: `$${mrr.toLocaleString()}`, accent: true },
+    { label: "Active (Paying)", value: activeCount, accent: true },
+    { label: "Trialing", value: trialCount, accent: false },
+    { label: "Suspended", value: suspendedCount, accent: false },
+    { label: "Est. MRR", value: `$${mrr.toLocaleString()}`, accent: true },
   ];
 
   return (

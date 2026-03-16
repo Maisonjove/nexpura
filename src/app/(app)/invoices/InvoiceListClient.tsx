@@ -19,7 +19,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-stone-100 text-stone-600 border border-stone-200" },
   // Valid DB status values only
   unpaid: { label: "Sent", className: "bg-stone-100 text-stone-700 border border-stone-200" },
-  partial: { label: "Partially Paid", className: "bg-amber-50 text-amber-700 border border-amber-200" },
+  partial: { label: "Partial", className: "bg-amber-50 text-amber-700 border border-amber-200" },
   paid: { label: "Paid", className: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
   overdue: { label: "Overdue", className: "bg-red-50 text-red-700 border border-red-200" },
   voided: { label: "Voided", className: "bg-stone-100 text-stone-400 border border-stone-200" },
