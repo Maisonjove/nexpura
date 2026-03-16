@@ -119,8 +119,8 @@ function WidgetCode({ tab, tenantId }: { tab: WidgetTab; tenantId: string }) {
       ],
     },
     catalog: {
-      title: "Catalog Sync",
-      description: "Display your live inventory on your existing website, with real-time stock levels.",
+      title: "Live Catalogue Embed",
+      description: "Embed your published inventory as a live catalogue on your existing website. Updates automatically as you add or update items in Nexpura.",
       embed: `<!-- Nexpura Catalog Sync -->
 <div id="nexpura-catalog" 
   data-columns="3"
@@ -229,7 +229,7 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
     { id: "passport", label: "Passport Widget", icon: "🛡️" },
     { id: "enquiry", label: "Enquiry Widget", icon: "💬" },
     { id: "appointment", label: "Appointment Widget", icon: "📅" },
-    { id: "catalog", label: "Catalog Sync", icon: "🗂️" },
+    { id: "catalog", label: "Catalogue Embed", icon: "🗂️" },
   ];
 
   return (
@@ -377,20 +377,20 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
             <h4 className="font-semibold text-stone-900 text-xs uppercase tracking-wider mb-2">Integration Status</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span>Public API Access</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">ACTIVE</span>
-              </div>
-              <div className="flex items-center justify-between">
                 <span>Embed Widgets</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">ACTIVE</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Catalogue Sync</span>
+                <span>Live Catalogue Embed</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">ACTIVE</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Enquiry &amp; Booking API</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">ACTIVE</span>
               </div>
             </div>
             <p className="text-[11px] text-stone-400 mt-4 leading-relaxed italic">
-              Your developer can use the Public API to fetch inventory and embed live catalogue widgets into any external website.
+              Embed a live catalogue of your published inventory into any external website using the widget script. Customer enquiries and booking requests route directly into your Nexpura inbox.
             </p>
           </div>
         </div>
