@@ -1,14 +1,38 @@
-import { getAuthOrReviewContext } from "@/lib/auth/review";
-import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { redirect, notFound } from "next/navigation";
 import BespokeCommandCenter from "./BespokeCommandCenter";
+
+const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
+const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 export default async function BespokeJobDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ rt?: string }>;
 }) {
   const { id } = await params;
-  const { tenantId: _tenantId, currency: tenantCurrencyFromCtx, admin: adminClient } = await getAuthOrReviewContext();
+  const sp = searchParams ? await searchParams : {};
+  const adminClient = createAdminClient();
+
+  let tenantId: string | null = null;
+  let tenantCurrencyFromCtx = "AUD";
+  if (sp.rt && REVIEW_TOKENS.includes(sp.rt)) {
+    tenantId = DEMO_TENANT;
+  } else {
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: ud } = await adminClient.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single();
+        tenantId = ud?.tenant_id ?? null;
+        tenantCurrencyFromCtx = (ud?.tenants as { currency?: string } | null)?.currency || "AUD";
+      }
+    } catch { /* no session */ }
+    if (!tenantId) redirect("/login");
+  }
 
   // Fetch job + inventory in parallel (adminClient has no auth dependency)
   const [{ data: job }, { data: inventory }] = await Promise.all([
@@ -44,7 +68,7 @@ export default async function BespokeJobDetailPage({
       .order("created_at", { ascending: false }),
   ]);
 
-  const tenantId = _tenantId ?? "";
+  const resolvedTenantId = tenantId ?? "";
   const tenantCurrency = tenantCurrencyFromCtx;
   const customer = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
   const invoiceId = job.invoice_id ?? null;
@@ -110,7 +134,7 @@ export default async function BespokeJobDetailPage({
       customer={customer}
       invoice={invoice}
       inventory={inventory ?? []}
-      tenantId={tenantId}
+      tenantId={resolvedTenantId}
       currency={tenantCurrency}
       attachments={attachments ?? []}
       events={events ?? []}

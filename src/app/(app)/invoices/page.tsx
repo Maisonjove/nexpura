@@ -1,10 +1,15 @@
-import { getAuthOrReviewContext } from "@/lib/auth/review";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { redirect } from "next/navigation";
 import InvoiceListClient from "./InvoiceListClient";
+
+const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
+const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; page?: string; rt?: string }>;
 }) {
   const params = await searchParams;
   const q = params.q || "";
@@ -12,58 +17,53 @@ export default async function InvoicesPage({
   const page = parseInt(params.page || "1");
   const pageSize = 20;
   const offset = (page - 1) * pageSize;
+  const admin = createAdminClient();
 
-  const { tenantId, admin } = await getAuthOrReviewContext();
+  // Inline review check — URL param is the most reliable signal.
+  // Does not depend on middleware, cookies, or dynamic imports.
+  let tenantId: string | null = null;
+  if (params.rt && REVIEW_TOKENS.includes(params.rt)) {
+    tenantId = DEMO_TENANT;
+  } else {
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: ud } = await admin.from("users").select("tenant_id").eq("id", user.id).single();
+        tenantId = ud?.tenant_id ?? null;
+      }
+    } catch { /* no session */ }
+    if (!tenantId) redirect("/login");
+  }
+
   const today = new Date().toISOString().split("T")[0];
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
-  
-  // Outstanding: actual DB status values are unpaid/partial/overdue
-  const { data: outstandingData } = await admin
-    .from("invoices")
-    .select("amount_due")
-    .eq("tenant_id", tenantId ?? "")
-    .in("status", ["unpaid", "partial", "overdue"])
-    .is("deleted_at", null);
+  const [outstandingRes, overdueRes, paidThisMonthRes] = await Promise.all([
+    admin
+      .from("invoices")
+      .select("amount_due")
+      .eq("tenant_id", tenantId)
+      .in("status", ["unpaid", "partial", "overdue"])
+      .is("deleted_at", null),
+    admin
+      .from("invoices")
+      .select("amount_due")
+      .eq("tenant_id", tenantId)
+      .not("status", "in", '("paid","voided","draft","cancelled")')
+      .lt("due_date", today)
+      .is("deleted_at", null),
+    admin
+      .from("invoices")
+      .select("total")
+      .eq("tenant_id", tenantId)
+      .eq("status", "paid")
+      .gte("paid_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+      .is("deleted_at", null),
+  ]);
 
-  const totalOutstanding = (outstandingData ?? []).reduce(
-    (sum, inv) => sum + (Number(inv.amount_due) || 0),
-    0
-  );
-
-  const { data: overdueData } = await admin
-    .from("invoices")
-    .select("amount_due")
-    .eq("tenant_id", tenantId ?? "")
-    .not("status", "in", '("paid","voided","draft","cancelled")')
-    .lt("due_date", today)
-    .is("deleted_at", null);
-
-  const totalOverdue = (overdueData ?? []).reduce(
-    (sum, inv) => sum + (Number(inv.amount_due) || 0),
-    0
-  );
-
-  // Paid this month
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
-  const monthStartStr = monthStart.toISOString();
-
-  const { data: paidThisMonthData } = await admin
-    .from("invoices")
-    .select("total")
-    .eq("tenant_id", tenantId ?? "")
-    .eq("status", "paid")
-    .gte("paid_at", monthStartStr)
-    .is("deleted_at", null);
-
-  const paidThisMonth = (paidThisMonthData ?? []).reduce(
-    (sum, p) => sum + (Number(p.total) || 0),
-    0
-  );
-
-  // ── Main query ─────────────────────────────────────────────────────────────
+  const totalOutstanding = (outstandingRes.data ?? []).reduce((s, i) => s + (Number(i.amount_due) || 0), 0);
+  const totalOverdue = (overdueRes.data ?? []).reduce((s, i) => s + (Number(i.amount_due) || 0), 0);
+  const paidThisMonth = (paidThisMonthRes.data ?? []).reduce((s, i) => s + (Number(i.total) || 0), 0);
 
   let query = admin
     .from("invoices")
@@ -71,7 +71,7 @@ export default async function InvoicesPage({
       "id, invoice_number, status, invoice_date, due_date, total, amount_paid, amount_due, customers(full_name)",
       { count: "exact" }
     )
-    .eq("tenant_id", tenantId ?? "")
+    .eq("tenant_id", tenantId)
     .is("deleted_at", null);
 
   if (statusFilter !== "all") {
@@ -80,21 +80,14 @@ export default async function InvoicesPage({
         .not("status", "in", '("paid","voided","draft","cancelled")')
         .lt("due_date", today);
     } else {
-      // Map common UI filters to DB status values
       const statusMap: Record<string, string> = {
-        unpaid: "unpaid",
-        partial: "partial",
-        paid: "paid",
-        draft: "draft",
-        voided: "voided"
+        unpaid: "unpaid", partial: "partial", paid: "paid", draft: "draft", voided: "voided",
       };
       query = query.eq("status", statusMap[statusFilter] || statusFilter);
     }
   }
 
-  if (q) {
-    query = query.ilike("invoice_number", `%${q}%`);
-  }
+  if (q) query = query.ilike("invoice_number", `%${q}%`);
 
   query = query
     .order("created_at", { ascending: false })
@@ -112,9 +105,7 @@ export default async function InvoicesPage({
     total: Number(inv.total) || 0,
     amount_due: Number(inv.amount_due) || 0,
     amount_paid: Number(inv.amount_paid) || 0,
-    customers: Array.isArray(inv.customers)
-      ? (inv.customers[0] ?? null)
-      : inv.customers,
+    customers: Array.isArray(inv.customers) ? (inv.customers[0] ?? null) : inv.customers,
   }));
 
   return (
@@ -125,11 +116,7 @@ export default async function InvoicesPage({
       totalPages={totalPages}
       q={q}
       statusFilter={statusFilter}
-      stats={{
-        totalOutstanding,
-        totalOverdue,
-        paidThisMonth,
-      }}
+      stats={{ totalOutstanding, totalOverdue, paidThisMonth }}
     />
   );
 }

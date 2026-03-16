@@ -1,14 +1,36 @@
-import { getAuthOrReviewContext } from "@/lib/auth/review";
-import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { redirect, notFound } from "next/navigation";
 import InvoiceDetailClient from "./InvoiceDetailClient";
+
+const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
+const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 export default async function InvoiceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ rt?: string }>;
 }) {
   const { id } = await params;
-  const { tenantId, admin: adminClient } = await getAuthOrReviewContext();
+  const sp = searchParams ? await searchParams : {};
+  const adminClient = createAdminClient();
+
+  let tenantId: string | null = null;
+  if (sp.rt && REVIEW_TOKENS.includes(sp.rt)) {
+    tenantId = DEMO_TENANT;
+  } else {
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: ud } = await adminClient.from("users").select("tenant_id").eq("id", user.id).single();
+        tenantId = ud?.tenant_id ?? null;
+      }
+    } catch { /* no session */ }
+    if (!tenantId) redirect("/login");
+  }
 
   const [{ data: invoice }, { data: lineItems }, { data: tenant }, { data: paymentsRaw }] =
     await Promise.all([
@@ -22,7 +44,7 @@ export default async function InvoiceDetailPage({
            customers(id, full_name, email, phone, mobile, address_line1, suburb, state, postcode)`
         )
         .eq("id", id)
-        .eq("tenant_id", tenantId ?? "")
+        .eq("tenant_id", tenantId)
         .single(),
       adminClient
         .from("invoice_line_items")
