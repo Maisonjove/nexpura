@@ -93,7 +93,16 @@ const SELECTABLE_ROLES = [
   { value: "technician", label: "Technician" },
 ];
 
-export default function TeamClient({ members, tasks, currentUserRole, businessMode }: Props) {
+export default function TeamClient({
+  members,
+  tasks,
+  currentUserRole,
+  businessMode,
+  plan,
+  planName,
+  maxUsers,
+  isAtLimit,
+}: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showInvite, setShowInvite] = useState(false);
