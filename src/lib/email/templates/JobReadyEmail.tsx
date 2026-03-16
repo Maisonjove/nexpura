@@ -27,7 +27,7 @@ export default function JobReadyEmail({
 }: JobReadyEmailProps) {
   const itemLabel = jewelleryType ? jewelleryType.replace(/_/g, ' ') : 'jewellery piece'
   const passportUrl = passportUid
-    ? `https://nexpura-delta.vercel.app/verify/${passportUid}`
+    ? `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://nexpura.com'}/verify/${passportUid}`
     : null
 
   return (

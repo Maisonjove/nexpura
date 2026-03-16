@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   var widgetTheme = script ? script.getAttribute('data-theme') : '${theme}';
   if (!tenant) return;
   var iframe = document.createElement('iframe');
-  iframe.src = 'https://nexpura-delta.vercel.app/embed/' + tenant + '?mode=' + widgetMode + '&theme=' + widgetTheme;
+  iframe.src = 'https://nexpura.com/embed/' + tenant + '?mode=' + widgetMode + '&theme=' + widgetTheme;
   iframe.style.cssText = 'width:100%;min-height:600px;border:none;border-radius:8px;display:block;';
   iframe.title = 'Nexpura Jewellery Catalogue';
   iframe.setAttribute('loading', 'lazy');

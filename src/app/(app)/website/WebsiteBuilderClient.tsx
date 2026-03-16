@@ -229,14 +229,14 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
 
   const embedCode = `<!-- Nexpura Live Catalogue Widget -->
 <div id="nexpura-widget"></div>
-<script src="https://nexpura-delta.vercel.app/widget.js"
+<script src="https://nexpura.com/widget.js"
   data-tenant="${tenantId}"
   data-theme="light"
   data-mode="${config.mode || "catalogue"}"
   async>
 </script>`;
 
-  const catalogueLink = `https://nexpura-delta.vercel.app/${config.subdomain || tenantId}/catalogue`;
+  const catalogueLink = `https://nexpura.com/${config.subdomain || tenantId}/catalogue`;
 
   function update(field: keyof WebsiteConfig, value: unknown) {
     setConfig((prev) => ({ ...prev, [field]: value }));
@@ -1039,7 +1039,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
                           {[
                             ["Type", "CNAME"],
                             ["Name", "@ (or www)"],
-                            ["Value", "nexpura-delta.vercel.app"],
+                            ["Value", "cname.vercel-dns.com"],
                             ["TTL", "3600"],
                           ].map(([label, value]) => (
                             <tr key={label} className="border-b border-stone-200 last:border-0">

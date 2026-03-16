@@ -178,7 +178,7 @@ export default function PassportDetailClient({
   // (preview, staging, or production) — avoids hardcoded production domain leaking into review builds
   const appOrigin = typeof window !== "undefined"
     ? window.location.origin
-    : (process.env.NEXT_PUBLIC_APP_URL ?? "https://nexpura-delta.vercel.app");
+    : (process.env.NEXT_PUBLIC_APP_URL ?? "https://nexpura.com");
   const verifyUrl = `/verify/${passport.passport_uid}`;
   const verifyFullUrl = `${appOrigin}/verify/${passport.passport_uid}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(verifyFullUrl)}`;

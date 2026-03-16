@@ -29,7 +29,7 @@ import type { RepairReadyEmailProps } from './templates/RepairReadyEmail'
 import type { QuoteEmailProps } from './templates/QuoteEmail'
 import type { PassportEmailProps } from './templates/PassportEmail'
 
-const APP_URL = 'https://nexpura-delta.vercel.app'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nexpura.com'
 
 // Supabase can return relations as array or object depending on the query
 function first<T>(val: unknown): T | null {

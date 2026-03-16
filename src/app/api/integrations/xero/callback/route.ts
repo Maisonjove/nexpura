@@ -10,7 +10,7 @@ import { getAuthContext, upsertIntegration } from "@/lib/integrations";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura-delta.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com";
 
 export async function GET(req: NextRequest) {
   try {
@@ -87,7 +87,6 @@ export async function GET(req: NextRequest) {
     );
   } catch (err) {
     console.error("[xero/callback]", err);
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura-delta.vercel.app";
     return NextResponse.redirect(
       `${APP_URL}/settings/integrations?xero=error&reason=server_error`
     );

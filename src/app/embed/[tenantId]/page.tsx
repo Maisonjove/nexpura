@@ -50,7 +50,7 @@ export default async function EmbedCataloguePage({ params, searchParams }: Props
         </span>
         {subdomain && (
           <a
-            href={`https://nexpura-delta.vercel.app/${subdomain}/catalogue`}
+            href={`https://nexpura.com/${subdomain}/catalogue`}
             target="_blank"
             rel="noreferrer"
             className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
@@ -71,7 +71,7 @@ export default async function EmbedCataloguePage({ params, searchParams }: Props
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {items?.map((item) => {
               const href = subdomain
-                ? `https://nexpura-delta.vercel.app/${subdomain}/catalogue/${item.id}`
+                ? `https://nexpura.com/${subdomain}/catalogue/${item.id}`
                 : "#";
               return (
                 <a

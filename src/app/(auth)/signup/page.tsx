@@ -116,8 +116,8 @@ export default function SignupPage() {
 
         <p className="text-center text-xs text-stone-400 mt-4">
           By signing up you agree to our{" "}
-          <a href="#" className="underline">Terms</a> and{" "}
-          <a href="#" className="underline">Privacy Policy</a>.
+          <a href="/terms" className="underline">Terms</a> and{" "}
+          <a href="/privacy" className="underline">Privacy Policy</a>.
         </p>
 
         <p className="text-center text-sm text-stone-500 mt-4">
