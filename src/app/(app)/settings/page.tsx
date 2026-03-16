@@ -6,6 +6,7 @@
 // do NOT link to /settings — reviewers cannot access or mutate settings by design.
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import {
   saveBusinessProfile,
