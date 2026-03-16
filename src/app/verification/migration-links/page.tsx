@@ -17,7 +17,7 @@ const BES_ID    = "64cf8499-ef28-480a-b19e-f8ce23da9b07";
 const BES2_ID   = "fee5fed3-1a51-442f-bb30-d3c13291aa39";
 const BES3_ID   = "ead8e141-71e2-4615-bbaa-04641284be1a";
 const INVOICE_ID= "4f9ed582-16f1-49d4-8309-173020be976e";
-const PART_INV  = "ddc3bdfe-b2c3-4f64-a9d3-e16f6266f406";
+const PART_INV  = "d0b794d5-2c03-4198-9257-090aba7157c5";
 const SUP_ID    = "27d404df-c2b4-45f1-8dff-76c859307ffc";
 const ITEM_ID   = "af4eb6c4-22c1-4e0f-873d-a38bf9a26be4";
 

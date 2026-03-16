@@ -62,7 +62,7 @@ const BESPOKE_RECORDS = [
 const INVOICE_RECORDS = [
   { id: "4f9ed582-16f1-49d4-8309-173020be976e", num: "INV-MIG-002", status: "paid", total: 4200, paid: 4200, due: 0 },
   { id: "b5b450e9-debe-48cb-bc5c-2f063e2b4de9", num: "INV-MIG-003", status: "paid", total: 2000, paid: 2000, due: 0 },
-  { id: "ddc3bdfe-b2c3-4f64-a9d3-e16f6266f406", num: "INV-MIG-004", status: "partial", total: 450, paid: 200, due: 250 },
+  { id: "d0b794d5-2c03-4198-9257-090aba7157c5", num: "INV-MIG-004", status: "partial", total: 450, paid: 200, due: 250 },
   { id: "ac398922-0ed5-4130-b1ea-f1194133685b", num: "INV-MIG-005", status: "unpaid", total: 1800, paid: 0, due: 1800 },
   { id: "f00ca11c-e75a-441b-bd50-22705b9b5052", num: "INV-MIG-006", status: "paid", total: 3600, paid: 3600, due: 0 },
   { id: "a11cc6f3-0e8c-4f8f-a3c9-b9df4e2987e1", num: "INV-MIG-007", status: "unpaid", total: 2500, paid: 0, due: 2500 },
