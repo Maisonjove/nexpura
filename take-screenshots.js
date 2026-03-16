@@ -3,11 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const BASE_URL = 'https://nexpura-k4kdoswti-maisonjoves-projects.vercel.app';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrcGpvY25yZWZqZnB1b3Z6aW5uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzIyMTIwNywiZXhwIjoyMDg4Nzk3MjA3fQ.5M-a0_dB0xxx8dHO_X-l8ePcKhyIZ-T38IC85BTcFEo';
+const BASE_URL = 'https://nexpura-h75sngbvm-maisonjoves-projects.vercel.app';
 const SUPABASE_URL = 'https://vkpjocnrefjfpuovzinn.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrcGpvY25yZWZqZnB1b3Z6aW5uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzIyMTIwNywiZXhwIjoyMDg4Nzk3MjA3fQ.5M-a0_dB0xxx8dHO_X-l8ePcKhyIZ-T38IC85BTcFEo';
 const BUCKET = 'verification';
-const PREFIX = 'screenshots/migration/';
+const PREFIX = 'screenshots/migration';
 
 const SCREENSHOTS = [
   { filename: 'MIG-01-hub-home.png', path: '/migration?rt=nexpura-review-2026' },
@@ -32,66 +32,66 @@ const SCREENSHOTS = [
   { filename: 'MIG-20-supplier-detail.png', path: '/suppliers/27d404df-c2b4-45f1-8dff-76c859307ffc?rt=nexpura-review-2026' },
 ];
 
-const OUTDIR = '/tmp/nexpura-screenshots';
+const OUTPUT_DIR = path.join(__dirname, 'screenshots-migration');
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function uploadFile(filename, buffer) {
+async function uploadToSupabase(filePath, filename) {
   return new Promise((resolve, reject) => {
-    const uploadPath = `${PREFIX}${filename}`;
-    const url = new URL(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${uploadPath}`);
+    const fileData = fs.readFileSync(filePath);
+    const uploadPath = `${PREFIX}/${filename}`;
+    const url = `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${uploadPath}`;
+    const urlObj = new URL(url);
     
     const options = {
-      hostname: url.hostname,
-      path: url.pathname,
+      hostname: urlObj.hostname,
+      path: urlObj.pathname,
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'image/png',
         'x-upsert': 'true',
-        'Content-Length': buffer.length,
-      },
+        'Content-Length': fileData.length,
+      }
     };
 
     const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        resolve({ status: res.statusCode, body: data });
-      });
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => resolve({ status: res.statusCode, body }));
     });
-
+    
     req.on('error', reject);
-    req.write(buffer);
+    req.write(fileData);
     req.end();
   });
 }
 
-function verifyUrl(filename) {
+async function verifyUpload(filename) {
   return new Promise((resolve, reject) => {
-    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${PREFIX}${filename}`;
-    const url = new URL(publicUrl);
+    const url = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${PREFIX}/${filename}`;
+    const urlObj = new URL(url);
     
     const options = {
-      hostname: url.hostname,
-      path: url.pathname,
+      hostname: urlObj.hostname,
+      path: urlObj.pathname,
       method: 'HEAD',
     };
 
     const req = https.request(options, (res) => {
-      resolve({ status: res.statusCode, url: publicUrl });
+      resolve({ status: res.statusCode });
     });
-
+    
     req.on('error', reject);
     req.end();
   });
 }
 
 async function main() {
-  if (!fs.existsSync(OUTDIR)) {
-    fs.mkdirSync(OUTDIR, { recursive: true });
+  if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
   const browser = await chromium.launch({ headless: true });
@@ -104,32 +104,31 @@ async function main() {
 
   for (const shot of SCREENSHOTS) {
     const url = `${BASE_URL}${shot.path}`;
-    console.log(`\n📸 Taking screenshot: ${shot.filename}`);
-    console.log(`   URL: ${url}`);
-
+    const filePath = path.join(OUTPUT_DIR, shot.filename);
+    
+    console.log(`Taking screenshot: ${shot.filename}`);
+    console.log(`  URL: ${url}`);
+    
     try {
-      await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
       await sleep(2000);
-
-      const outPath = path.join(OUTDIR, shot.filename);
-      await page.screenshot({ path: outPath, fullPage: false });
+      await page.screenshot({ path: filePath, fullPage: false });
       
-      const buffer = fs.readFileSync(outPath);
-      const sizeKB = (buffer.length / 1024).toFixed(1);
-      console.log(`   ✅ Screenshot saved: ${sizeKB} KB`);
-
-      // Upload to Supabase
-      const uploadResult = await uploadFile(shot.filename, buffer);
-      console.log(`   📤 Upload status: ${uploadResult.status} - ${uploadResult.body}`);
-
+      const fileSize = fs.statSync(filePath).size;
+      console.log(`  Captured: ${fileSize} bytes`);
+      
+      console.log(`  Uploading to Supabase...`);
+      const uploadResult = await uploadToSupabase(filePath, shot.filename);
+      console.log(`  Upload status: ${uploadResult.status}`);
+      
       results.push({
         filename: shot.filename,
-        url: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${PREFIX}${shot.filename}`,
-        sizeKB,
+        fileSize,
         uploadStatus: uploadResult.status,
+        uploadBody: uploadResult.body,
       });
     } catch (err) {
-      console.error(`   ❌ Error: ${err.message}`);
+      console.error(`  ERROR for ${shot.filename}: ${err.message}`);
       results.push({
         filename: shot.filename,
         error: err.message,
@@ -139,31 +138,36 @@ async function main() {
 
   await browser.close();
 
-  // Verify all URLs
-  console.log('\n\n🔍 Verifying public URLs...');
+  console.log('\n--- VERIFYING UPLOADS ---');
   for (const result of results) {
-    if (!result.error) {
-      const verify = await verifyUrl(result.filename);
-      result.verifyStatus = verify.status;
-      console.log(`   ${verify.status === 200 ? '✅' : '❌'} ${result.filename}: ${verify.status}`);
+    if (result.error) continue;
+    try {
+      const verifyResult = await verifyUpload(result.filename);
+      result.verifyStatus = verifyResult.status;
+      console.log(`${result.filename}: verify=${verifyResult.status}`);
+    } catch (err) {
+      result.verifyError = err.message;
+      console.log(`${result.filename}: verify ERROR - ${err.message}`);
     }
   }
 
-  // Content checks using vision on saved screenshots
-  console.log('\n\n📊 RESULTS SUMMARY:');
-  console.log('==================');
+  console.log('\n=== FINAL REPORT ===');
   for (const r of results) {
     if (r.error) {
-      console.log(`❌ ${r.filename}: ERROR - ${r.error}`);
+      console.log(`FAIL ${r.filename}: ERROR - ${r.error}`);
     } else {
-      console.log(`✅ ${r.filename}: ${r.sizeKB} KB | Upload: ${r.uploadStatus} | Verify: ${r.verifyStatus}`);
-      console.log(`   URL: ${r.url}`);
+      console.log(`${r.filename}: size=${r.fileSize} upload=${r.uploadStatus} verify=${r.verifyStatus}`);
     }
   }
 
-  // Save results to JSON
-  fs.writeFileSync('/tmp/nexpura-screenshots/results.json', JSON.stringify(results, null, 2));
-  console.log('\n✅ All done! Results saved to /tmp/nexpura-screenshots/results.json');
+  console.log('\n=== CONTENT CHECKS (manual) ===');
+  console.log('Please inspect the following screenshots for content validation:');
+  console.log('MIG-15: ' + path.join(OUTPUT_DIR, 'MIG-15-bespoke-detail.png'));
+  console.log('MIG-16: ' + path.join(OUTPUT_DIR, 'MIG-16-invoices-list.png'));
+  console.log('MIG-17: ' + path.join(OUTPUT_DIR, 'MIG-17-invoice-detail-paid.png'));
+  console.log('MIG-18: ' + path.join(OUTPUT_DIR, 'MIG-18-invoice-detail-partial.png'));
+  
+  return results;
 }
 
 main().catch(console.error);
