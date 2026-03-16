@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { completeOnboarding } from "./actions";
 import { Gem } from "lucide-react";
 
-type Plan = "basic" | "pro" | "ultimate";
+type Plan = "boutique" | "studio" | "group";
 
 const BUSINESS_TYPES = [
   "Independent Jeweller",
@@ -25,11 +25,11 @@ interface PlanCard {
 
 const PLANS: PlanCard[] = [
   {
-    id: "basic",
-    name: "Basic",
-    price: "AUD $49",
+    id: "boutique",
+    name: "Boutique",
+    price: "AUD $89",
     features: [
-      "Up to 1 user",
+      "Up to 2 staff",
       "Customers & CRM",
       "Bespoke Jobs & Repairs",
       "Inventory Management",
@@ -39,12 +39,12 @@ const PLANS: PlanCard[] = [
     ],
   },
   {
-    id: "pro",
-    name: "Pro",
-    price: "AUD $99",
+    id: "studio",
+    name: "Studio",
+    price: "AUD $179",
     features: [
-      "Up to 5 users",
-      "Everything in Basic",
+      "Up to 10 staff",
+      "Everything in Boutique",
       "AI Business Copilot",
       "20GB storage",
       "Priority support",
@@ -52,14 +52,14 @@ const PLANS: PlanCard[] = [
     recommended: true,
   },
   {
-    id: "ultimate",
-    name: "Ultimate",
-    price: "AUD $199",
+    id: "group",
+    name: "Group",
+    price: "Custom",
     features: [
-      "Unlimited users",
-      "Everything in Pro",
-      "AI Website Builder",
-      "Custom domain",
+      "Unlimited staff",
+      "Everything in Studio",
+      "Multi-location",
+      "Custom branding",
       "100GB storage",
       "White-glove onboarding",
     ],
@@ -79,7 +79,7 @@ export default function OnboardingPage() {
 
   const [businessName, setBusinessName] = useState("");
   const [businessType, setBusinessType] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<Plan>("pro");
+  const [selectedPlan, setSelectedPlan] = useState<Plan>("studio");
 
   function handleContinue() {
     if (!businessName.trim()) return;

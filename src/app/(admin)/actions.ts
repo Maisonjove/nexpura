@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
-type Plan = "basic" | "pro" | "ultimate";
+type Plan = "boutique" | "studio" | "group";
 type SubStatus = "trialing" | "active" | "past_due" | "canceled" | "suspended" | "free";
 
 async function assertSuperAdmin() {

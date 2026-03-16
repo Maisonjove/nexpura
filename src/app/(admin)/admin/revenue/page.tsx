@@ -2,9 +2,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 
 const PLAN_PRICES: Record<string, number> = {
-  basic: 49,
-  pro: 99,
-  ultimate: 199,
+  boutique: 89,
+  studio: 179,
+  group: 0, // custom
+  // Legacy aliases
+  basic: 89,
+  pro: 179,
+  ultimate: 0,
 };
 
 function fmtCurrency(n: number) {
@@ -39,9 +43,11 @@ export default async function RevenueAdminPage() {
   const arr = mrr * 12;
 
   // Plan breakdown
-  const planBreakdown = { basic: 0, pro: 0, ultimate: 0 };
+  const planBreakdown = { boutique: 0, studio: 0, group: 0 };
   for (const s of activeSubs) {
-    if (s.plan in planBreakdown) planBreakdown[s.plan as keyof typeof planBreakdown]++;
+    // Normalize legacy keys to new names
+    const key = s.plan === "basic" ? "boutique" : s.plan === "pro" ? "studio" : s.plan === "ultimate" ? "group" : s.plan;
+    if (key in planBreakdown) planBreakdown[key as keyof typeof planBreakdown]++;
   }
 
   // Churn rate (cancelled / total)

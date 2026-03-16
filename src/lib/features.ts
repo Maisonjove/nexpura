@@ -1,20 +1,42 @@
 export const PLAN_FEATURES = {
+  boutique: {
+    maxUsers: 2 as number | null,
+    storageGB: 5,
+    aiCopilot: false,
+    aiWebsite: false,
+    customDomain: false,
+  },
+  studio: {
+    maxUsers: 10 as number | null,
+    storageGB: 20,
+    aiCopilot: true,
+    aiWebsite: false,
+    customDomain: false,
+  },
+  group: {
+    maxUsers: null as number | null, // unlimited
+    storageGB: 100,
+    aiCopilot: true,
+    aiWebsite: true,
+    customDomain: true,
+  },
+  // Legacy aliases — for any existing DB rows written before the plan key migration
   basic: {
-    maxUsers: 1 as number | null,
+    maxUsers: 2 as number | null,
     storageGB: 5,
     aiCopilot: false,
     aiWebsite: false,
     customDomain: false,
   },
   pro: {
-    maxUsers: 5 as number | null,
+    maxUsers: 10 as number | null,
     storageGB: 20,
     aiCopilot: true,
     aiWebsite: false,
     customDomain: false,
   },
   ultimate: {
-    maxUsers: null as number | null, // unlimited
+    maxUsers: null as number | null,
     storageGB: 100,
     aiCopilot: true,
     aiWebsite: true,
@@ -23,7 +45,7 @@ export const PLAN_FEATURES = {
 }
 
 export type PlanName = keyof typeof PLAN_FEATURES
-export type PlanFeatureKey = keyof typeof PLAN_FEATURES.basic
+export type PlanFeatureKey = keyof typeof PLAN_FEATURES.boutique
 
 export function canUseFeature(plan: string, feature: PlanFeatureKey): boolean {
   const planFeatures = PLAN_FEATURES[plan as PlanName]

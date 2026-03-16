@@ -257,15 +257,16 @@ export async function POST(req: Request) {
     } | null;
 
     // Get plan
-    let plan = "basic";
+    let plan = "boutique";
     if (tenant?.subscriptions) {
       const subs = Array.isArray(tenant.subscriptions) ? tenant.subscriptions[0] : tenant.subscriptions;
       if (subs?.plan) plan = subs.plan;
     }
 
-    // Plan gate
-    if (plan === "basic") {
-      return Response.json({ error: "AI Copilot requires Pro or Ultimate plan" }, { status: 403 });
+    // Plan gate — studio/group (and legacy pro/ultimate) can use AI
+    const aiPlans = ["studio", "group", "pro", "ultimate"];
+    if (!aiPlans.includes(plan)) {
+      return Response.json({ error: "AI Copilot requires Studio or Group plan" }, { status: 403 });
     }
 
     const body = await req.json();

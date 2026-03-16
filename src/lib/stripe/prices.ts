@@ -63,17 +63,5 @@ export const STRIPE_PRICES = {
   },
 } as const;
 
-/**
- * Legacy aliases — keep these so any existing billing code that references
- * "basic", "pro", or "ultimate" still compiles without changes.
- * The billing page and checkout flow should be migrated to use the new keys above.
- */
-export const STRIPE_PRICES_LEGACY = {
-  basic: STRIPE_PRICES.boutique,
-  pro: STRIPE_PRICES.studio,
-  ultimate: STRIPE_PRICES.group,
-} as const;
-
 export type PlanKey = keyof typeof STRIPE_PRICES;
-export type PlanKeyLegacy = keyof typeof STRIPE_PRICES_LEGACY;
 export type IntervalKey = keyof typeof STRIPE_PRICES.boutique;

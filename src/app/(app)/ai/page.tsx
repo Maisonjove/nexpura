@@ -41,7 +41,7 @@ export default async function AICopilotPage() {
     subscriptions?: { plan: string; status: string }[] | { plan: string; status: string } | null;
   } | null;
 
-  let plan = "basic";
+  let plan = "boutique";
   if (tenant?.subscriptions) {
     const subs = Array.isArray(tenant.subscriptions)
       ? tenant.subscriptions[0]
@@ -49,7 +49,8 @@ export default async function AICopilotPage() {
     if (subs?.plan) plan = subs.plan;
   }
 
-  const canUseAI = plan === "pro" || plan === "ultimate";
+  // studio/group (and legacy pro/ultimate aliases) can use AI
+  const canUseAI = plan === "studio" || plan === "group" || plan === "pro" || plan === "ultimate";
 
   // Fetch existing conversations
   let conversations: { id: string; title: string | null; updated_at: string }[] = [];

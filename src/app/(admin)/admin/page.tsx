@@ -2,9 +2,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 
 const PLAN_PRICES: Record<string, number> = {
-  basic: 49,
-  pro: 99,
-  ultimate: 199,
+  boutique: 89,
+  studio: 179,
+  group: 0, // custom / contact-sales
+  // Legacy aliases
+  basic: 89,
+  pro: 179,
+  ultimate: 0,
 };
 
 function formatDate(dateStr: string | null | undefined) {
@@ -36,9 +40,9 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
 function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
-    p === "pro"
+    p === "studio" || p === "pro"
       ? "bg-stone-100 text-amber-700"
-      : p === "ultimate"
+      : p === "group" || p === "ultimate"
       ? "bg-amber-700/15 text-amber-700"
       : "bg-stone-200 text-stone-500";
   return (
@@ -72,31 +76,33 @@ export default async function AdminDashboardPage() {
     (s) => s.status === "active" || s.status === "trialing"
   ).length;
 
-  const basicCount = (subscriptions ?? []).filter(
-    (s) => s.plan === "basic" && (s.status === "active" || s.status === "trialing")
+  const boutiqueCount = (subscriptions ?? []).filter(
+    (s) => (s.plan === "boutique" || s.plan === "basic") && (s.status === "active" || s.status === "trialing")
   ).length;
 
-  const proCount = (subscriptions ?? []).filter(
-    (s) => s.plan === "pro" && (s.status === "active" || s.status === "trialing")
+  const studioCount = (subscriptions ?? []).filter(
+    (s) => (s.plan === "studio" || s.plan === "pro") && (s.status === "active" || s.status === "trialing")
   ).length;
 
-  const ultimateCount = (subscriptions ?? []).filter(
-    (s) => s.plan === "ultimate" && (s.status === "active" || s.status === "trialing")
+  const groupCount = (subscriptions ?? []).filter(
+    (s) => (s.plan === "group" || s.plan === "ultimate") && (s.status === "active" || s.status === "trialing")
   ).length;
 
-  const mrr =
-    basicCount * PLAN_PRICES.basic +
-    proCount * PLAN_PRICES.pro +
-    ultimateCount * PLAN_PRICES.ultimate;
+  const mrr = (subscriptions ?? []).reduce((sum, s) => {
+    if (s.status === "active" || s.status === "trialing") {
+      return sum + (PLAN_PRICES[s.plan] ?? 0);
+    }
+    return sum;
+  }, 0);
 
   const recentTenants = (tenants ?? []).slice(0, 10);
 
   const stats = [
     { label: "Total Tenants", value: totalTenants, accent: false },
     { label: "Active Subscriptions", value: activeCount, accent: true },
-    { label: "Basic Plan", value: basicCount, accent: false },
-    { label: "Pro Plan", value: proCount, accent: false },
-    { label: "Ultimate Plan", value: ultimateCount, accent: false },
+    { label: "Boutique Plan", value: boutiqueCount, accent: false },
+    { label: "Studio Plan", value: studioCount, accent: false },
+    { label: "Group Plan", value: groupCount, accent: false },
     { label: "Monthly MRR", value: `$${mrr.toLocaleString()}`, accent: true },
   ];
 

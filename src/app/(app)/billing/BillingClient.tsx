@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { PLAN_FEATURES } from "@/lib/features";
 import { toast } from "sonner";
 
-type Plan = "basic" | "pro" | "ultimate";
+type Plan = "boutique" | "studio" | "group";
 type Interval = "monthly" | "annual";
 
 interface Subscription {
@@ -52,37 +52,37 @@ const PLAN_DETAILS: Record<
     badge?: string;
   }
 > = {
-  basic: {
-    name: "Basic",
-    monthlyPrice: "AUD $49",
-    annualPrice: "AUD $470",
+  boutique: {
+    name: "Boutique",
+    monthlyPrice: "AUD $89",
+    annualPrice: "AUD $890",
     color: "forest",
   },
-  pro: {
-    name: "Pro",
-    monthlyPrice: "AUD $99",
-    annualPrice: "AUD $950",
+  studio: {
+    name: "Studio",
+    monthlyPrice: "AUD $179",
+    annualPrice: "AUD $1,790",
     color: "sage",
     badge: "Most popular",
   },
-  ultimate: {
-    name: "Ultimate",
-    monthlyPrice: "AUD $199",
-    annualPrice: "AUD $1,910",
+  group: {
+    name: "Group",
+    monthlyPrice: "Custom",
+    annualPrice: "Custom",
     color: "gold",
-    badge: "Most powerful",
+    badge: "Enterprise",
   },
 };
 
 const FEATURES_TABLE = [
-  { label: "Users", basic: "1", pro: "5", ultimate: "Unlimited" },
-  { label: "Business Modes (Workshop/Retail)", basic: true, pro: true, ultimate: true },
-  { label: "Bespoke Production Manager", basic: true, pro: true, ultimate: true },
-  { label: "Storage", basic: "5GB", pro: "20GB", ultimate: "100GB" },
-  { label: "Jewellery Passports", basic: true, pro: true, ultimate: true },
-  { label: "AI Business Copilot", basic: false, pro: true, ultimate: true },
-  { label: "AI Website Builder", basic: false, pro: false, ultimate: true },
-  { label: "Custom Domain", basic: false, pro: false, ultimate: true },
+  { label: "Users", boutique: "2", studio: "10", group: "Unlimited" },
+  { label: "Business Modes (Workshop/Retail)", boutique: true, studio: true, group: true },
+  { label: "Bespoke Production Manager", boutique: true, studio: true, group: true },
+  { label: "Storage", boutique: "5GB", studio: "20GB", group: "100GB" },
+  { label: "Jewellery Passports", boutique: true, studio: true, group: true },
+  { label: "AI Business Copilot", boutique: false, studio: true, group: true },
+  { label: "AI Website Builder", boutique: false, studio: false, group: true },
+  { label: "Custom Domain", boutique: false, studio: false, group: true },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -179,7 +179,7 @@ export default function BillingClient({
     }
   }, [subscription?.stripe_customer_id]);
 
-  const currentPlan = (subscription?.plan ?? "basic") as Plan;
+  const currentPlan = (subscription?.plan ?? "boutique") as Plan;
   const currentPlanDetails = PLAN_DETAILS[currentPlan];
   const maxUsers = PLAN_FEATURES[currentPlan]?.maxUsers;
 
@@ -291,7 +291,7 @@ export default function BillingClient({
             <div className="flex items-center gap-3 mb-2">
               <h2
                 className={`font-semibold text-2xl font-semibold ${
-                  currentPlan === "ultimate"
+                  currentPlan === "group"
                     ? "text-[#C9A96E]"
                     : "text-stone-900"
                 }`}
@@ -425,11 +425,11 @@ export default function BillingClient({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {(["basic", "pro", "ultimate"] as Plan[]).map((plan) => {
+          {(["boutique", "studio", "group"] as Plan[]).map((plan) => {
             const details = PLAN_DETAILS[plan];
             const isCurrent = plan === currentPlan;
-            const isGold = plan === "ultimate";
-            const isSage = plan === "pro";
+            const isGold = plan === "group";
+            const isSage = plan === "studio";
 
             return (
               <div
@@ -495,7 +495,7 @@ export default function BillingClient({
                     </span>
                   ) : isCurrent ? (
                     "Current Plan"
-                  ) : plan === "basic" ? (
+                  ) : plan === "boutique" ? (
                     "Downgrade"
                   ) : (
                     "Upgrade"
@@ -522,19 +522,19 @@ export default function BillingClient({
                   Feature
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-stone-500 uppercase tracking-wide">
-                  Basic
+                  Boutique
                   <br />
-                  <span className="text-stone-900 font-bold normal-case text-sm">$49</span>
+                  <span className="text-stone-900 font-bold normal-case text-sm">$89</span>
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-amber-700 uppercase tracking-wide">
-                  Pro
+                  Studio
                   <br />
-                  <span className="text-stone-900 font-bold normal-case text-sm">$99</span>
+                  <span className="text-stone-900 font-bold normal-case text-sm">$179</span>
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-[#C9A96E] uppercase tracking-wide">
-                  Ultimate
+                  Group
                   <br />
-                  <span className="text-stone-900 font-bold normal-case text-sm">$199</span>
+                  <span className="text-stone-900 font-bold normal-case text-sm">Custom</span>
                 </th>
               </tr>
             </thead>
@@ -550,13 +550,13 @@ export default function BillingClient({
                     {row.label}
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    <CheckCell value={row.basic} />
+                    <CheckCell value={row.boutique} />
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    <CheckCell value={row.pro} />
+                    <CheckCell value={row.studio} />
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    <CheckCell value={row.ultimate} />
+                    <CheckCell value={row.group} />
                   </td>
                 </tr>
               ))}

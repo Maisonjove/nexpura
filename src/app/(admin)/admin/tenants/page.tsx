@@ -21,9 +21,9 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
 function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
-    p === "pro"
+    p === "studio" || p === "pro"
       ? "bg-stone-100 text-amber-700"
-      : p === "ultimate"
+      : p === "group" || p === "ultimate"
       ? "bg-amber-700/15 text-amber-700"
       : "bg-stone-200 text-stone-500";
   return (
@@ -108,7 +108,7 @@ export default async function TenantsPage({
     filtered = filtered.filter((t) => t.sub?.status === statusFilter);
   }
 
-  const PLAN_MRR: Record<string, number> = { basic: 49, pro: 99, ultimate: 199 };
+  const PLAN_MRR: Record<string, number> = { boutique: 89, studio: 179, group: 0, basic: 89, pro: 179, ultimate: 0 };
   const totalMRR = (tenants ?? []).reduce((sum, t) => {
     const sub = subMap.get(t.id);
     if (sub?.status === "active" && sub?.plan) return sum + (PLAN_MRR[sub.plan] ?? 0);
@@ -158,9 +158,9 @@ export default async function TenantsPage({
           className="px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30"
         >
           <option value="">All Plans</option>
-          <option value="basic">Basic</option>
-          <option value="pro">Pro</option>
-          <option value="ultimate">Ultimate</option>
+          <option value="boutique">Boutique</option>
+          <option value="studio">Studio</option>
+          <option value="group">Group</option>
         </select>
         <select
           name="status"
@@ -225,7 +225,7 @@ export default async function TenantsPage({
                     </td>
                     <td className="px-6 py-4 text-stone-600 font-medium">
                       {tenant.sub?.status === "active" || tenant.sub?.status === "free"
-                        ? <span className="text-green-700">${({ basic: 49, pro: 99, ultimate: 199 } as Record<string, number>)[tenant.sub?.plan ?? "basic"] ?? 49}</span>
+                        ? <span className="text-green-700">${({ boutique: 89, studio: 179, group: 0, basic: 89, pro: 179, ultimate: 0 } as Record<string, number>)[tenant.sub?.plan ?? "boutique"] ?? 0}</span>
                         : <span className="text-stone-400">—</span>
                       }
                     </td>

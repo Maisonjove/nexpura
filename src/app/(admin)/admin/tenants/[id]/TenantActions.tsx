@@ -41,7 +41,7 @@ export default function TenantActions({
   function handlePlanSave() {
     startPlanTransition(async () => {
       try {
-        await changeTenantPlan(tenantId, plan as "basic" | "pro" | "ultimate");
+        await changeTenantPlan(tenantId, plan as "boutique" | "studio" | "group");
         setPlanMsg("Plan updated successfully");
       } catch {
         setPlanMsg("Failed to update plan");
@@ -153,9 +153,9 @@ export default function TenantActions({
             onChange={(e) => setPlan(e.target.value)}
             className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30"
           >
-            <option value="basic">Basic ($49/mo)</option>
-            <option value="pro">Pro ($99/mo)</option>
-            <option value="ultimate">Ultimate ($199/mo)</option>
+            <option value="boutique">Boutique ($89/mo)</option>
+            <option value="studio">Studio ($179/mo)</option>
+            <option value="group">Group (Custom)</option>
           </select>
           <button
             onClick={handlePlanSave}
