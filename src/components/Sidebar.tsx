@@ -15,7 +15,7 @@ import {
 /* ─── Primary nav (always visible, no group header) ─── */
 const PRIMARY_ITEMS = [
   { name: 'Dashboard',  href: '/dashboard',  icon: LayoutDashboard },
-  { name: 'Sales',      href: '/sales',       icon: ShoppingCart },
+  { name: 'POS / Sales', href: '/pos',       icon: ShoppingCart },
   { name: 'Customers',  href: '/customers',   icon: Users },
   { name: 'Inventory',  href: '/inventory',   icon: Package },
   { name: 'Repairs',    href: '/repairs',     icon: Wrench },
@@ -29,6 +29,7 @@ const NAV_GROUPS = [
     id: 'operations',
     label: 'Operations',
     items: [
+      { name: 'Sales History',      href: '/sales',      icon: BarChart2 },
       { name: 'Workshop',           href: '/workshop',   icon: Wrench },
       { name: 'Tasks',              href: '/tasks',      icon: ListTodo },
       { name: 'Suppliers',          href: '/suppliers',  icon: Truck },
@@ -67,7 +68,6 @@ const NAV_GROUPS = [
     items: [
       { name: 'Settings',   href: '/settings',  icon: Settings },
       { name: 'Documents',  href: '/documents', icon: FileText },
-      { name: 'POS',        href: '/pos',       icon: Monitor },
       { name: 'Reminders',  href: '/settings/reminders', icon: Bell },
     ],
   },
