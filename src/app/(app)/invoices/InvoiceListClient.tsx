@@ -8,8 +8,8 @@ import type { InvoiceRow } from "./page";
 const STATUS_TABS = [
   { key: "all", label: "All" },
   { key: "draft", label: "Draft" },
-  { key: "sent", label: "Sent" },
-  { key: "partially_paid", label: "Partial" },
+  { key: "unpaid", label: "Sent" },
+  { key: "partial", label: "Partial" },
   { key: "paid", label: "Paid" },
   { key: "overdue", label: "Overdue" },
   { key: "voided", label: "Voided" },
@@ -17,7 +17,11 @@ const STATUS_TABS = [
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-stone-100 text-stone-600 border border-stone-200" },
+  // DB stores "unpaid" and "sent" — both map to "Sent" display
+  unpaid: { label: "Sent", className: "bg-blue-50 text-blue-700 border border-blue-200" },
   sent: { label: "Sent", className: "bg-blue-50 text-blue-700 border border-blue-200" },
+  // DB stores "partial" and "partially_paid" — both map to "Partial" display
+  partial: { label: "Partial", className: "bg-amber-50 text-amber-700 border border-amber-200" },
   partially_paid: { label: "Partial", className: "bg-amber-50 text-amber-700 border border-amber-200" },
   paid: { label: "Paid", className: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
   overdue: { label: "Overdue", className: "bg-red-50 text-red-700 border border-red-200" },
