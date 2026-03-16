@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Account Suspended — Nexpura" };
+export const metadata = { title: "Access Paused — Nexpura" };
 
 export default function SuspendedPage() {
   return (
@@ -11,10 +11,10 @@ export default function SuspendedPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.962-.833-2.732 0L3.072 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-stone-900 mb-3">Account Suspended</h1>
+        <h1 className="text-2xl font-semibold text-stone-900 mb-3">Your access has ended</h1>
         <p className="text-stone-500 mb-6 leading-relaxed">
-          Your Nexpura account has been suspended due to a payment issue. 
-          Please update your payment method to restore access.
+          This could be because your free trial ended, your subscription period concluded, or your account was suspended.
+          To restore access, choose a plan below.
         </p>
         <p className="text-stone-400 text-sm mb-6">
           Your data is safe and will be kept for 90 days.
@@ -23,7 +23,7 @@ export default function SuspendedPage() {
           href="/billing"
           className="inline-block w-full py-3 bg-[#52B788] text-white rounded-xl font-semibold hover:bg-[#3d9068] transition-colors"
         >
-          Update Payment Method
+          Restore Access
         </Link>
         <p className="text-xs text-stone-400 mt-4">
           Questions? Contact <a href="mailto:support@nexpura.com" className="text-amber-700 hover:underline">support@nexpura.com</a>
