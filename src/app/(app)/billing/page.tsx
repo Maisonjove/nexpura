@@ -47,14 +47,15 @@ export default async function BillingPage() {
   const inventoryCount = inventoryCountResult.count;
   const customerCount = customerCountResult.count;
 
-  // When subscription is null (e.g. demo tenant), BillingClient defaults:
-  // plan → "boutique", status → "trialing" (shows "Boutique | Free Trial" — honest demo state)
+  const ctx = await getEntitlementContext();
+
   return (
     <BillingClient
-      subscription={subscription}
-      userCount={userCount ?? 0}
-      inventoryCount={inventoryCount ?? 0}
-      customerCount={customerCount ?? 0}
+      tenantId={ctx.tenantId!}
+      currentPlan={ctx.plan}
+      subscriptionStatus={subscription?.status ?? "trialing"}
+      trialEndsAt={subscription?.trial_ends_at ?? new Date(Date.now() + 14 * 86400000).toISOString()}
+      currentPeriodEnd={subscription?.current_period_end ?? null}
     />
   );
 }
