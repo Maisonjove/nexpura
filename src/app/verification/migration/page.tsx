@@ -501,9 +501,114 @@ export default async function MigrationProofPage() {
           </ul>
         </div>
 
+        {/* Screenshot Gallery */}
+        <div style={{ background: "white", border: "1px solid #e7e5e4", borderRadius: 12, padding: 24, marginBottom: 24 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1c1917", margin: "0 0 4px" }}>
+            Screenshot Proof Pack — 20 Captures from This Build
+          </h2>
+          <p style={{ fontSize: 12, color: "#57534e", margin: "0 0 20px" }}>
+            All screenshots taken from <code style={{ background: "#e7e5e4", padding: "1px 4px", borderRadius: 3 }}>{BUILD}</code> via Playwright (1440×900, networkidle).
+            Build URL visible in every capture.
+          </p>
+
+          {/* Migration Engine Screens */}
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: "#78350f", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Migration Engine Flows
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
+            {[
+              { file: "MIG-01-hub-home.png", label: "Hub Home" },
+              { file: "MIG-02-source-selection.png", label: "Source Selection (12 adapters)" },
+              { file: "MIG-03-files-classified.png", label: "File Intake + Classification" },
+              { file: "MIG-04-mapping.png", label: "Column Mapping Review" },
+              { file: "MIG-05-preview.png", label: "Dry-Run Import Preview" },
+              { file: "MIG-06-results-main.png", label: "Results — Swim Customers + Inventory + Repairs" },
+              { file: "MIG-07-results-expansion.png", label: "Results — Bespoke + Suppliers + Invoices + Payments" },
+            ].map((ss) => (
+              <div key={ss.file} style={{ border: "1px solid #e7e5e4", borderRadius: 8, overflow: "hidden" }}>
+                <img
+                  src={`https://vkpjocnrefjfpuovzinn.supabase.co/storage/v1/object/public/verification/screenshots/migration/${ss.file}`}
+                  alt={ss.label}
+                  style={{ width: "100%", display: "block", borderBottom: "1px solid #e7e5e4" }}
+                />
+                <div style={{ padding: "6px 10px", fontSize: 11, color: "#57534e", fontWeight: 600 }}>{ss.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Real App Modules */}
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: "#78350f", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Real App Modules — Imported Records Visible
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
+            {[
+              { file: "MIG-08-customers-list.png", label: "Customers list (50 imported)" },
+              { file: "MIG-09-customer-detail.png", label: "Imported customer detail — Noah Davis" },
+              { file: "MIG-10-inventory-list.png", label: "Inventory list (54 imported)" },
+              { file: "MIG-11-inventory-detail.png", label: "Imported inventory detail — SKU MENS-BR-001" },
+              { file: "MIG-12-repairs-list.png", label: "Repairs list (40 imported)" },
+              { file: "MIG-13-repair-detail.png", label: "Imported repair detail — REP-001" },
+            ].map((ss) => (
+              <div key={ss.file} style={{ border: "1px solid #e7e5e4", borderRadius: 8, overflow: "hidden" }}>
+                <img
+                  src={`https://vkpjocnrefjfpuovzinn.supabase.co/storage/v1/object/public/verification/screenshots/migration/${ss.file}`}
+                  alt={ss.label}
+                  style={{ width: "100%", display: "block", borderBottom: "1px solid #e7e5e4" }}
+                />
+                <div style={{ padding: "6px 10px", fontSize: 11, color: "#57534e", fontWeight: 600 }}>{ss.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bespoke + Invoice key proof */}
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: "#78350f", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Bespoke + Invoice + Payment Proof (High Signal)
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
+            {[
+              { file: "MIG-14-bespoke-list.png", label: "Bespoke list (15 imported)" },
+              { file: "MIG-15-bespoke-detail.png", label: "BES-001 — Custom Diamond Engagement Ring ($12,500)" },
+              { file: "MIG-16-invoices-list.png", label: "Invoices list (8 imported)" },
+              { file: "MIG-17-invoice-detail-paid.png", label: "INV-MIG-002 — Paid $4,200 — card payment visible" },
+              { file: "MIG-18-invoice-detail-partial.png", label: "INV-MIG-004 — Partial $200 of $450 — balance $250 due" },
+            ].map((ss) => (
+              <div key={ss.file} style={{ border: "1px solid #e7e5e4", borderRadius: 8, overflow: "hidden" }}>
+                <img
+                  src={`https://vkpjocnrefjfpuovzinn.supabase.co/storage/v1/object/public/verification/screenshots/migration/${ss.file}`}
+                  alt={ss.label}
+                  style={{ width: "100%", display: "block", borderBottom: "1px solid #e7e5e4" }}
+                />
+                <div style={{ padding: "6px 10px", fontSize: 11, color: "#57534e", fontWeight: 600 }}>{ss.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Suppliers */}
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: "#78350f", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Suppliers
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {[
+              { file: "MIG-19-suppliers-list.png", label: "Suppliers list (10 imported)" },
+              { file: "MIG-20-supplier-detail.png", label: "Tiffany & Co. — imported supplier detail" },
+            ].map((ss) => (
+              <div key={ss.file} style={{ border: "1px solid #e7e5e4", borderRadius: 8, overflow: "hidden" }}>
+                <img
+                  src={`https://vkpjocnrefjfpuovzinn.supabase.co/storage/v1/object/public/verification/screenshots/migration/${ss.file}`}
+                  alt={ss.label}
+                  style={{ width: "100%", display: "block", borderBottom: "1px solid #e7e5e4" }}
+                />
+                <div style={{ padding: "6px 10px", fontSize: 11, color: "#57534e", fontWeight: 600 }}>{ss.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <p style={{ fontSize: 11, color: "#a8a29e", textAlign: "center" }}>
           All records verified against demo tenant 0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a ·{" "}
           <a href={`${BASE}/verification/workflows?rt=${RT}`} target="_blank" style={{ color: "#B45309" }}>→ Command Center Verification Pack</a>
+          {" · "}
+          <a href={`${BASE}/verification/migration-links?rt=${RT}`} target="_blank" style={{ color: "#B45309" }}>→ Direct Route Index</a>
         </p>
       </div>
     </div>
