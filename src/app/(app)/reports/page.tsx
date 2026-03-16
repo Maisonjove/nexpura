@@ -80,7 +80,7 @@ export default async function ReportsPage() {
         .from("invoices")
         .select("amount_due")
         .eq("tenant_id", tenantId)
-        .in("status", ["sent", "partially_paid", "overdue", "draft"])
+        .in("status", ["unpaid", "partial", "overdue", "draft"])
         .is("deleted_at", null),
     ]);
     revenueThisMonth = (thisMonth.data ?? []).reduce((s, r) => s + (r.total || 0), 0);

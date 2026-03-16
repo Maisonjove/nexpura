@@ -296,7 +296,7 @@ export async function emailInvoice(
     if (invoice.status === "draft") {
       await supabase
         .from("invoices")
-        .update({ status: "sent", sent_at: new Date().toISOString() })
+        .update({ status: "unpaid", sent_at: new Date().toISOString() })
         .eq("id", invoiceId);
 
       revalidatePath(`/invoices/${invoiceId}`);

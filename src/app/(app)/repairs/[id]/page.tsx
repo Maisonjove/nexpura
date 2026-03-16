@@ -19,7 +19,8 @@ export default async function RepairDetailPage({
 
   let tenantId: string | null = null;
   let tenantCurrencyFromCtx = "AUD";
-  if (sp.rt && REVIEW_TOKENS.includes(sp.rt)) {
+  const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+  if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
     try {
@@ -129,6 +130,7 @@ export default async function RepairDetailPage({
       inventory={inventory ?? []}
       tenantId={tenantId}
       currency={tenantCurrency}
+      readOnly={isReviewMode}
       attachments={attachments ?? []}
       events={events ?? []}
     />

@@ -12,14 +12,15 @@
 const RT = "nexpura-review-2026";
 const ST = "nexpura-staff-2026";
 
-// Real seeded record IDs — confirmed from DB
+// Real record IDs — migrated import data, confirmed from DB 2026-03
 const IDS = {
-  inventory: "67940b89-90ed-43b7-96a5-7bfc14d1ed79",     // DSR-001 Diamond Solitaire Ring
-  customer: "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a",      // David Moufarrej
-  repair: "09686ec7-0ec5-4950-ba7f-9982c9830d43",          // R-0001
-  bespoke: "ba62301b-0b26-423a-b02e-5a48bd7034b6",         // B-0001 Custom Platinum Wedding Bands
-  quote: "2c6672d1-884e-4d96-accf-b8a88ab2e27e",           // Q-0001 (draft)
-  invoice: "7af873a4-2cd5-4b12-b2aa-77fac3168e83",         // INV-0001 (paid)
+  inventory: "67940b89-90ed-43b7-96a5-7bfc14d1ed79",     // DSR-001 Diamond Solitaire Ring (seeded)
+  customer: "407dbb82-a57d-456e-a893-352171735a57",        // Noah Davis (migrated — REP-001 customer)
+  repair: "99be1bc2-a54f-4dbe-b03f-3f1fc504cb75",          // REP-001 (migrated)
+  bespoke: "64cf8499-ef28-480a-b19e-f8ce23da9b07",          // BES-001 Custom Diamond Engagement Ring (migrated)
+  quote: "2c6672d1-884e-4d96-accf-b8a88ab2e27e",           // Q-0001 (draft, seeded)
+  invoice: "4f9ed582-16f1-49d4-8309-173020be976e",          // INV-MIG-002 (paid, migrated)
+  supplier: "27d404df-c2b4-45f1-8dff-76c859307ffc",         // Tiffany & Co. (migrated)
   passport: "0f092b0f-7af3-4f42-9f9f-0ff21e9c111b",        // NXP-MC0001 Diamond Solitaire Ring
   appraisal: "86b26937-ddef-46d5-84a8-2c87fa62fe99",        // APR-0001
 };
@@ -44,7 +45,7 @@ const SECTIONS = [
     title: "Inventory",
     color: "stone",
     links: [
-      { label: "Inventory — List", path: "/inventory", note: "10 seeded items" },
+      { label: "Inventory — List", path: "/inventory", note: "54 imported inventory items" },
       { label: "Inventory — Detail (DSR-001 Diamond Solitaire Ring)", path: `/inventory/${IDS.inventory}`, note: "Real item detail with specs, stock, movements" },
     ],
   },
@@ -52,24 +53,24 @@ const SECTIONS = [
     title: "Customers",
     color: "stone",
     links: [
-      { label: "Customers — List", path: "/customers", note: "8 seeded clients" },
-      { label: "Customer — David Moufarrej", path: `/customers/${IDS.customer}`, note: "VIP client — repairs, bespoke, invoices linked" },
+      { label: "Customers — List", path: "/customers", note: "50 imported customers" },
+      { label: "Customer — Noah Davis", path: `/customers/${IDS.customer}`, note: "Migrated customer — linked to REP-001" },
     ],
   },
   {
     title: "Repairs",
     color: "stone",
     links: [
-      { label: "Repairs — List", path: "/repairs", note: "5 active repairs across all stages" },
-      { label: "Repair — R-0001 Detail", path: `/repairs/${IDS.repair}`, note: "Real repair detail — stage workflow, quotes, deposit" },
+      { label: "Repairs — List", path: "/repairs", note: "40 imported repairs across all stages" },
+      { label: "Repair — REP-001 Detail", path: `/repairs/${IDS.repair}`, note: "Migrated repair detail — stage workflow, invoice" },
     ],
   },
   {
     title: "Bespoke Jobs",
     color: "stone",
     links: [
-      { label: "Bespoke — List", path: "/bespoke", note: "3 active jobs across approval / CAD / stone sourcing" },
-      { label: "Bespoke — B-0001 Detail", path: `/bespoke/${IDS.bespoke}`, note: "Custom Platinum Wedding Bands — full job detail" },
+      { label: "Bespoke — List", path: "/bespoke", note: "15 imported bespoke jobs" },
+      { label: "Bespoke — BES-001 Detail", path: `/bespoke/${IDS.bespoke}`, note: "Custom Diamond Engagement Ring — migrated" },
     ],
   },
   {
@@ -78,8 +79,16 @@ const SECTIONS = [
     links: [
       { label: "Quotes — List", path: "/quotes", note: "Draft/quote status invoices" },
       { label: "Quote — Q-0001 Detail", path: `/quotes/${IDS.quote}`, note: "Draft quote — Lina Haddad, $3,740" },
-      { label: "Invoices — List", path: "/invoices", note: "4 invoices — paid, partial, unpaid" },
-      { label: "Invoice — INV-0001 Detail", path: `/invoices/${IDS.invoice}`, note: "Paid invoice — David Moufarrej, $20,350" },
+      { label: "Invoices — List", path: "/invoices", note: "8 imported invoices — paid, partial, unpaid" },
+      { label: "Invoice — INV-MIG-002 Detail", path: `/invoices/${IDS.invoice}`, note: "Paid migrated invoice" },
+    ],
+  },
+  {
+    title: "Suppliers",
+    color: "stone",
+    links: [
+      { label: "Suppliers — List", path: "/suppliers", note: "10 imported suppliers (Tiffany, Cartier, Palloys...)" },
+      { label: "Supplier — Tiffany & Co. Detail", path: `/suppliers/${IDS.supplier}`, note: "Migrated supplier detail" },
     ],
   },
   {

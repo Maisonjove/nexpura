@@ -19,7 +19,8 @@ export default async function BespokeJobDetailPage({
 
   let tenantId: string | null = null;
   let tenantCurrencyFromCtx = "AUD";
-  if (sp.rt && REVIEW_TOKENS.includes(sp.rt)) {
+  const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+  if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
     try {
@@ -136,6 +137,7 @@ export default async function BespokeJobDetailPage({
       inventory={inventory ?? []}
       tenantId={resolvedTenantId}
       currency={tenantCurrency}
+      readOnly={isReviewMode}
       attachments={attachments ?? []}
       events={events ?? []}
     />

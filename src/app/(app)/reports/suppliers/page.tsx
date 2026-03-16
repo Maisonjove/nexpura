@@ -56,7 +56,7 @@ export default async function SupplierReportsPage() {
     .from("invoice_items")
     .select("amount, invoices!inner(tenant_id, supplier_id, status)")
     .eq("invoices.tenant_id", tenantId)
-    .in("invoices.status", ["sent", "partially_paid", "overdue", "draft"])
+    .in("invoices.status", ["unpaid", "partial", "overdue", "draft"])
     .not("invoices.supplier_id", "is", null)
     .limit(500);
 

@@ -262,7 +262,7 @@ export async function recordPayment(
   // Update invoice amount_paid and status
   const newAmountPaid = (invoice.amount_paid || 0) + amount;
   const newStatus =
-    newAmountPaid >= invoice.total ? "paid" : "partially_paid";
+    newAmountPaid >= invoice.total ? "paid" : "partial";
   const paidAt = newAmountPaid >= invoice.total ? new Date().toISOString() : null;
 
   const { error: updateErr } = await supabase
@@ -287,7 +287,7 @@ export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: s
 
   const { error } = await supabase
     .from("invoices")
-    .update({ status: "sent" })
+    .update({ status: "unpaid" })
     .eq("id", invoiceId)
     .eq("tenant_id", tenantId)
     .eq("status", "draft");

@@ -273,7 +273,7 @@ export async function updateSaleStatus(
             tax_inclusive: saleTaxInclusive,
             tax_amount: sale.tax_amount ?? 0,
             total: sale.total,
-            status: status === "paid" ? "paid" : "sent",
+            status: status === "paid" ? "paid" : "unpaid",
             paid_at: status === "paid" ? new Date().toISOString() : null,
             notes: sale.notes ?? null,
             created_by: userId,
