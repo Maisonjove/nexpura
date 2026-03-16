@@ -71,6 +71,62 @@ export const INVENTORY_DEFAULT_MAPPINGS: PatternMap[] = [
   { sourcePatterns: ['status', 'item status', 'available'], dest: 'status' },
 ];
 
+export const BESPOKE_DEFAULT_MAPPINGS: PatternMap[] = [
+  { sourcePatterns: ['job number', 'job no', 'job id', 'id', 'bespoke id', 'reference'], dest: 'job_number' },
+  { sourcePatterns: ['customer name', 'customer', 'client', 'client name', 'full name'], dest: 'customer_name' },
+  { sourcePatterns: ['customer email', 'email', 'client email'], dest: 'customer_email' },
+  { sourcePatterns: ['title', 'job title', 'description', 'brief', 'order description'], dest: 'title' },
+  { sourcePatterns: ['jewellery type', 'type', 'category', 'item type'], dest: 'jewellery_type' },
+  { sourcePatterns: ['metal type', 'metal'], dest: 'metal_type' },
+  { sourcePatterns: ['metal colour', 'metal color', 'colour', 'color'], dest: 'metal_colour' },
+  { sourcePatterns: ['purity', 'metal purity', 'karat'], dest: 'metal_purity' },
+  { sourcePatterns: ['stone type', 'stone', 'gem'], dest: 'stone_type' },
+  { sourcePatterns: ['stone carat', 'carat', 'ct', 'stone weight'], dest: 'stone_carat' },
+  { sourcePatterns: ['ring size', 'size'], dest: 'ring_size' },
+  { sourcePatterns: ['stage', 'status', 'job status'], dest: 'stage' },
+  { sourcePatterns: ['quoted price', 'quote', 'price', 'estimated price', 'value'], dest: 'quoted_price' },
+  { sourcePatterns: ['deposit', 'deposit amount', 'deposit paid'], dest: 'deposit' },
+  { sourcePatterns: ['due date', 'completion date', 'ready date', 'promised date'], dest: 'due_date' },
+  { sourcePatterns: ['notes', 'note', 'instructions', 'specifications', 'client notes', 'spec'], dest: 'description' },
+];
+
+export const SUPPLIER_DEFAULT_MAPPINGS: PatternMap[] = [
+  { sourcePatterns: ['supplier name', 'name', 'company', 'business name', 'vendor name'], dest: 'name' },
+  { sourcePatterns: ['contact name', 'contact', 'rep', 'contact person', 'account manager'], dest: 'contact_name' },
+  { sourcePatterns: ['email', 'email address', 'contact email'], dest: 'email' },
+  { sourcePatterns: ['phone', 'mobile', 'telephone', 'contact number'], dest: 'phone' },
+  { sourcePatterns: ['website', 'url', 'web', 'site'], dest: 'website' },
+  { sourcePatterns: ['address', 'location', 'street address'], dest: 'address' },
+  { sourcePatterns: ['notes', 'note', 'comments', 'description'], dest: 'notes' },
+  { sourcePatterns: ['supplier id', 'id', 'vendor id', 'code'], dest: 'source_id' },
+];
+
+export const INVOICE_DEFAULT_MAPPINGS: PatternMap[] = [
+  { sourcePatterns: ['invoice number', 'invoice no', 'invoice id', 'id', 'ref', 'reference'], dest: 'invoice_number' },
+  { sourcePatterns: ['customer name', 'customer', 'client', 'bill to'], dest: 'customer_name' },
+  { sourcePatterns: ['customer email', 'email', 'client email'], dest: 'customer_email' },
+  { sourcePatterns: ['invoice date', 'date', 'issue date', 'issued'], dest: 'invoice_date' },
+  { sourcePatterns: ['due date', 'payment due', 'due'], dest: 'due_date' },
+  { sourcePatterns: ['status', 'invoice status', 'payment status'], dest: 'status' },
+  { sourcePatterns: ['description', 'item', 'line item', 'service'], dest: 'description' },
+  { sourcePatterns: ['quantity', 'qty'], dest: 'quantity' },
+  { sourcePatterns: ['unit price', 'price', 'amount', 'rate', 'unit cost'], dest: 'unit_price' },
+  { sourcePatterns: ['subtotal', 'sub total', 'before tax'], dest: 'subtotal' },
+  { sourcePatterns: ['tax', 'gst', 'tax amount', 'tax rate'], dest: 'tax_rate' },
+  { sourcePatterns: ['tax inclusive', 'inclusive', 'inc gst', 'inc tax'], dest: 'tax_inclusive' },
+  { sourcePatterns: ['total', 'grand total', 'invoice total'], dest: 'total' },
+  { sourcePatterns: ['notes', 'note', 'memo', 'comment'], dest: 'notes' },
+];
+
+export const PAYMENT_DEFAULT_MAPPINGS: PatternMap[] = [
+  { sourcePatterns: ['invoice number', 'invoice no', 'invoice id', 'invoice ref'], dest: 'invoice_number' },
+  { sourcePatterns: ['amount', 'payment amount', 'paid', 'value'], dest: 'amount' },
+  { sourcePatterns: ['payment method', 'method', 'type', 'paid by', 'payment type'], dest: 'payment_method' },
+  { sourcePatterns: ['payment date', 'date', 'paid date', 'received'], dest: 'payment_date' },
+  { sourcePatterns: ['reference', 'ref', 'transaction id', 'receipt no', 'txn'], dest: 'reference' },
+  { sourcePatterns: ['notes', 'note', 'comment'], dest: 'notes' },
+];
+
 export const REPAIR_DEFAULT_MAPPINGS: PatternMap[] = [
   { sourcePatterns: ['repair id', 'job id', 'id', 'ticket', 'ticket no', 'ticket number', 'repair number', 'job number'], dest: 'repair_number' },
   { sourcePatterns: ['customer', 'customer name', 'client', 'client name'], dest: 'customer_name' },
@@ -399,7 +455,7 @@ export async function importBespokeJob(
   admin: ReturnType<typeof createAdminClient>,
   ctx: ImportContext,
   row: ImportRow,
-  mappedData: Record<string, unknown>,
+  mappedData: Record<string, any>,
   customerId?: string
 ): Promise<ImportResult> {
   try {
@@ -410,20 +466,41 @@ export async function importBespokeJob(
       }
     }
 
+    if (!mappedData.title && !mappedData.description) {
+      return { status: 'error', error: 'Bespoke job missing title/description' };
+    }
+
+    const stageMap: Record<string, string> = {
+      'intake': 'intake', 'received': 'intake',
+      'assess': 'assessed', 'assessed': 'assessed',
+      'quoted': 'quoted', 'approved': 'approved',
+      'in progress': 'in_progress', 'in_progress': 'in_progress', 'inprogress': 'in_progress',
+      'ready': 'ready', 'complete': 'ready', 'collected': 'collected',
+    };
+    const rawStage = String(mappedData.stage || 'intake').toLowerCase().trim();
+    const stage = stageMap[rawStage] || 'in_progress';
+
     const { data: created, error } = await admin
       .from('bespoke_jobs')
       .insert({
         tenant_id: ctx.tenantId,
         customer_id: customerId || null,
-        title: ((mappedData.title || mappedData.description || 'Imported bespoke job') as string),
-        jewellery_type: (mappedData.jewellery_type || null) as string | null,
-        metal_type: (mappedData.metal_type || null) as string | null,
-        stage: ((mappedData.stage || 'in_progress') as string),
+        job_number: mappedData.job_number || null,
+        title: mappedData.title || 'Imported bespoke job',
+        jewellery_type: mappedData.jewellery_type || null,
+        metal_type: mappedData.metal_type || null,
+        metal_colour: mappedData.metal_colour || null,
+        metal_purity: mappedData.metal_purity || null,
+        stone_type: mappedData.stone_type || null,
+        stone_carat: mappedData.stone_carat ? parseFloat(String(mappedData.stone_carat)) : null,
+        ring_size: mappedData.ring_size || null,
+        stage,
         priority: 'normal',
         quoted_price: mappedData.quoted_price ? parseFloat(String(mappedData.quoted_price)) : null,
         deposit_amount: mappedData.deposit ? parseFloat(String(mappedData.deposit)) : null,
         deposit_paid: Boolean(parseFloat(String(mappedData.deposit || '0')) > 0),
-        due_date: (mappedData.due_date || null) as string | null,
+        due_date: mappedData.due_date || null,
+        description: mappedData.description || null,
         import_metadata: buildImportMetadata(ctx, row.sourceRowNumber, row.sourceExternalId),
       })
       .select('id')
@@ -431,7 +508,225 @@ export async function importBespokeJob(
 
     if (error) return { status: 'error', error: error.message };
     return { status: 'success', recordId: (created as { id: string }).id };
-  } catch (e: unknown) {
+  } catch (e: any) {
+    return { status: 'error', error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function importSupplier(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: ImportContext,
+  row: ImportRow,
+  mappedData: Record<string, any>
+): Promise<ImportResult> {
+  try {
+    if (!mappedData.name) {
+      return { status: 'error', error: 'Supplier missing name' };
+    }
+
+    // Duplicate check: by name exact match
+    const { data: existing } = await admin
+      .from('suppliers')
+      .select('id')
+      .eq('tenant_id', ctx.tenantId)
+      .ilike('name', mappedData.name)
+      .maybeSingle();
+    if (existing) return { status: 'duplicate', recordId: (existing as { id: string }).id };
+
+    // Also check by email if available
+    if (mappedData.email) {
+      const { data: emailMatch } = await admin
+        .from('suppliers')
+        .select('id')
+        .eq('tenant_id', ctx.tenantId)
+        .eq('email', mappedData.email)
+        .maybeSingle();
+      if (emailMatch) return { status: 'duplicate', recordId: (emailMatch as { id: string }).id };
+    }
+
+    const { data: created, error } = await admin
+      .from('suppliers')
+      .insert({
+        tenant_id: ctx.tenantId,
+        name: mappedData.name,
+        contact_name: mappedData.contact_name || null,
+        email: mappedData.email || null,
+        phone: mappedData.phone || null,
+        website: mappedData.website || null,
+        address: mappedData.address || null,
+        notes: mappedData.notes || null,
+        import_metadata: buildImportMetadata(ctx, row.sourceRowNumber, row.sourceExternalId),
+      })
+      .select('id')
+      .single();
+
+    if (error) return { status: 'error', error: error.message };
+    return { status: 'success', recordId: (created as { id: string }).id };
+  } catch (e: any) {
+    return { status: 'error', error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function importInvoice(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: ImportContext,
+  row: ImportRow,
+  mappedData: Record<string, any>,
+  customerId?: string
+): Promise<ImportResult & { invoiceNumber?: string }> {
+  try {
+    // Check for duplicate by invoice_number
+    if (mappedData.invoice_number) {
+      const { data: existing } = await admin
+        .from('invoices')
+        .select('id')
+        .eq('tenant_id', ctx.tenantId)
+        .eq('invoice_number', mappedData.invoice_number)
+        .maybeSingle();
+      if (existing) return { status: 'duplicate', recordId: (existing as { id: string }).id, invoiceNumber: mappedData.invoice_number };
+    }
+
+    // Calculate amounts
+    const unitPrice = parseFloat(String(mappedData.unit_price || mappedData.total || '0')) || 0;
+    const qty = parseFloat(String(mappedData.quantity || '1')) || 1;
+    const lineTotal = unitPrice * qty;
+    const taxRate = parseFloat(String(mappedData.tax_rate || '10')) || 10;
+    const taxInclusive = ['true', 'yes', '1', 'y'].includes(String(mappedData.tax_inclusive || 'true').toLowerCase());
+
+    let subtotal: number;
+    let taxAmount: number;
+    let total: number;
+
+    if (mappedData.subtotal) {
+      subtotal = parseFloat(String(mappedData.subtotal)) || lineTotal;
+      taxAmount = taxInclusive ? (lineTotal - subtotal) : (subtotal * taxRate / 100);
+      total = taxInclusive ? lineTotal : (subtotal + taxAmount);
+    } else if (taxInclusive) {
+      subtotal = lineTotal / (1 + taxRate / 100);
+      taxAmount = lineTotal - subtotal;
+      total = lineTotal;
+    } else {
+      subtotal = lineTotal;
+      taxAmount = lineTotal * (taxRate / 100);
+      total = lineTotal + taxAmount;
+    }
+
+    // Map status
+    const statusMap: Record<string, string> = {
+      'paid': 'paid', 'unpaid': 'unpaid', 'overdue': 'overdue',
+      'partial': 'partial', 'partially paid': 'partial',
+      'outstanding': 'unpaid', 'open': 'unpaid',
+    };
+    const rawStatus = String(mappedData.status || 'unpaid').toLowerCase().trim();
+    const status = statusMap[rawStatus] || 'unpaid';
+
+    // Always start amount_paid at 0 — payment records will drive the final value.
+    // This prevents double-counting when both invoice status and payment records exist.
+    const amountPaid = 0;
+
+    // Insert invoice — NEVER insert amount_due (it's GENERATED ALWAYS)
+    const { data: invoice, error: invoiceError } = await admin
+      .from('invoices')
+      .insert({
+        tenant_id: ctx.tenantId,
+        invoice_number: mappedData.invoice_number || null,
+        customer_id: customerId || null,
+        status,
+        invoice_date: mappedData.invoice_date || new Date().toISOString().split('T')[0],
+        due_date: mappedData.due_date || null,
+        subtotal: Math.round(subtotal * 100) / 100,
+        tax_amount: Math.round(taxAmount * 100) / 100,
+        total: Math.round(total * 100) / 100,
+        amount_paid: amountPaid,
+        tax_rate: taxRate,
+        tax_inclusive: taxInclusive,
+        notes: mappedData.notes || null,
+        import_metadata: buildImportMetadata(ctx, row.sourceRowNumber, row.sourceExternalId),
+      })
+      .select('id')
+      .single();
+
+    if (invoiceError) return { status: 'error', error: invoiceError.message };
+
+    const invoiceId = (invoice as { id: string }).id;
+
+    // Insert one line item
+    const description = mappedData.description || 'Imported line item';
+    await admin.from('invoice_line_items').insert({
+      tenant_id: ctx.tenantId,
+      invoice_id: invoiceId,
+      description,
+      quantity: qty,
+      unit_price: unitPrice,
+      discount_pct: 0,
+      total: Math.round(lineTotal * 100) / 100,
+      sort_order: 1,
+    });
+
+    return { status: 'success', recordId: invoiceId, invoiceNumber: mappedData.invoice_number };
+  } catch (e: any) {
+    return { status: 'error', error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function importPayment(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: ImportContext,
+  row: ImportRow,
+  mappedData: Record<string, any>,
+  invoiceId?: string
+): Promise<ImportResult> {
+  try {
+    if (!invoiceId) {
+      return { status: 'error', error: `Payment references unknown invoice: ${mappedData.invoice_number}` };
+    }
+
+    if (!mappedData.amount || parseFloat(String(mappedData.amount)) === 0) {
+      return { status: 'skipped' };
+    }
+
+    const amount = parseFloat(String(mappedData.amount));
+
+    // Insert payment — payments table has NO import_metadata column
+    const { data: payment, error } = await admin
+      .from('payments')
+      .insert({
+        tenant_id: ctx.tenantId,
+        invoice_id: invoiceId,
+        amount,
+        payment_method: mappedData.payment_method || 'other',
+        payment_date: mappedData.payment_date || new Date().toISOString().split('T')[0],
+        reference: mappedData.reference || null,
+        notes: mappedData.notes || null,
+      })
+      .select('id')
+      .single();
+
+    if (error) return { status: 'error', error: error.message };
+
+    // Update invoice.amount_paid by incrementing
+    const { data: currentInvoice } = await admin
+      .from('invoices')
+      .select('amount_paid, total, status')
+      .eq('id', invoiceId)
+      .single();
+
+    if (currentInvoice) {
+      const inv = currentInvoice as { amount_paid: number; total: number; status: string };
+      const newAmountPaid = (inv.amount_paid || 0) + amount;
+      const newStatus = newAmountPaid >= inv.total ? 'paid'
+        : newAmountPaid > 0 ? 'partial'
+        : inv.status;
+
+      await admin.from('invoices').update({
+        amount_paid: Math.round(newAmountPaid * 100) / 100,
+        status: newStatus,
+        ...(newStatus === 'paid' ? { paid_at: mappedData.payment_date || new Date().toISOString() } : {}),
+      }).eq('id', invoiceId);
+    }
+
+    return { status: 'success', recordId: (payment as { id: string }).id };
+  } catch (e: any) {
     return { status: 'error', error: e instanceof Error ? e.message : String(e) };
   }
 }

@@ -1,0 +1,9 @@
+Invoice Number,Customer Name,Customer Email,Invoice Date,Due Date,Status,Description,Quantity,Unit Price,Tax Rate,Tax Inclusive,Notes
+INV-MIG-001,Sarah Chen,sarah.c@email.com,2026-01-15,2026-02-15,unpaid,Custom Diamond Engagement Ring - Stage Payment,1,3000.00,10,true,Deposit invoice for BES-001
+INV-MIG-002,Michael Thompson,michael.t@email.com,2026-02-01,2026-03-01,paid,Pearl Necklace Full Payment,1,4200.00,10,true,Full payment received
+INV-MIG-003,Emma Williams,emma.w@email.com,2026-01-20,2026-02-20,partial,Eternity Band Upgrade - Deposit,1,2000.00,10,true,Partial deposit - balance due on completion
+INV-MIG-004,David Moufarrej,david.m@email.com,2025-12-10,2026-01-10,overdue,Ring Sizing x2 + Clean and Polish,1,450.00,10,true,Overdue repair invoice
+INV-MIG-005,Henry Taylor,henry.t@email.com,2026-02-10,2026-03-10,unpaid,Anniversary Bracelet Deposit,1,1800.00,10,true,Deposit for 30th anniversary bracelet
+INV-MIG-006,Charlotte Wilson,charlotte.w@email.com,2026-02-15,2026-03-15,paid,Stacking Ring Set - Full Payment,1,3600.00,10,true,Paid in full - ready for collection
+INV-MIG-007,Sophie Lee,sophie.l@email.com,2026-03-01,2026-04-01,unpaid,Heirloom Reset - Stage 2 Payment,1,2500.00,10,true,Progress payment on heirloom reset
+INV-MIG-008,William Johnson,william.j@email.com,2026-03-01,2026-03-15,paid,Monogram Cufflinks - Full Payment,1,3200.00,10,true,Collected 2026-03-05

@@ -6,15 +6,21 @@ import {
   parseXLSXFull,
   applyMappings,
   buildDefaultMappings,
-  buildImportMetadata,
   importCustomer,
   importInventory,
   importRepair,
   importBespokeJob,
+  importSupplier,
+  importInvoice,
+  importPayment,
   findDuplicateCustomer,
   CUSTOMER_DEFAULT_MAPPINGS,
   INVENTORY_DEFAULT_MAPPINGS,
   REPAIR_DEFAULT_MAPPINGS,
+  BESPOKE_DEFAULT_MAPPINGS,
+  SUPPLIER_DEFAULT_MAPPINGS,
+  INVOICE_DEFAULT_MAPPINGS,
+  PAYMENT_DEFAULT_MAPPINGS,
   type ImportContext,
   type ImportRow,
   type MappingEntry,
@@ -24,9 +30,17 @@ export const runtime = 'nodejs';
 // Allow up to 5 minutes for large imports
 export const maxDuration = 300;
 
-type EntityType = 'customers' | 'inventory' | 'repairs' | 'bespoke' | 'invoices' | 'payments' | 'unknown';
+type EntityType = 'customers' | 'inventory' | 'repairs' | 'bespoke' | 'suppliers' | 'invoices' | 'payments' | 'unknown';
 
-const ENTITY_ORDER: EntityType[] = ['customers', 'inventory', 'repairs', 'bespoke', 'invoices', 'payments'];
+// Dependency-aware order:
+// 1. customers — import first, build email→id map
+// 2. suppliers — independent
+// 3. inventory — independent
+// 4. repairs — link to customers
+// 5. bespoke — link to customers
+// 6. invoices — link to customers, build invoiceNumber→id map
+// 7. payments — link to invoices (MUST run after invoices)
+const ENTITY_ORDER: EntityType[] = ['customers', 'suppliers', 'inventory', 'repairs', 'bespoke', 'invoices', 'payments'];
 
 function entitySortKey(e: EntityType): number {
   const idx = ENTITY_ORDER.indexOf(e);
@@ -97,7 +111,10 @@ function getMappingsForFile(file: MigrationFile): MappingEntry[] {
   if (entity === 'customers') return buildDefaultMappings(headers, CUSTOMER_DEFAULT_MAPPINGS);
   if (entity === 'inventory') return buildDefaultMappings(headers, INVENTORY_DEFAULT_MAPPINGS);
   if (entity === 'repairs') return buildDefaultMappings(headers, REPAIR_DEFAULT_MAPPINGS);
-  if (entity === 'bespoke') return buildDefaultMappings(headers, REPAIR_DEFAULT_MAPPINGS);
+  if (entity === 'bespoke') return buildDefaultMappings(headers, BESPOKE_DEFAULT_MAPPINGS);
+  if (entity === 'suppliers') return buildDefaultMappings(headers, SUPPLIER_DEFAULT_MAPPINGS);
+  if (entity === 'invoices') return buildDefaultMappings(headers, INVOICE_DEFAULT_MAPPINGS);
+  if (entity === 'payments') return buildDefaultMappings(headers, PAYMENT_DEFAULT_MAPPINGS);
 
   return [];
 }
@@ -138,7 +155,7 @@ export async function POST(req: NextRequest) {
 
     const files = (rawFiles ?? []) as MigrationFile[];
 
-    // Sort by entity import order
+    // Sort by entity import order (dependency-aware)
     const sortedFiles = [...files].sort((a, b) =>
       entitySortKey(a.detected_entity ?? 'unknown') - entitySortKey(b.detected_entity ?? 'unknown')
     );
@@ -186,7 +203,13 @@ export async function POST(req: NextRequest) {
 
     const byEntity: Record<string, { success: number; error: number; skipped: number; duplicate: number }> = {};
 
-    // ─── Process each file ────────────────────────────────────────────────────
+    // ─── Cross-file state for linking ─────────────────────────────────────────
+    // email → customerId (populated during customer import, used by repairs/bespoke/invoices)
+    const emailToCustomerId = new Map<string, string>();
+    // invoiceNumber → invoiceId (populated during invoice import, used by payments)
+    const invoiceNumberToId = new Map<string, string>();
+
+    // ─── Process each file in dependency order ────────────────────────────────
 
     for (const file of sortedFiles) {
       const entity = (file.detected_entity ?? 'unknown') as EntityType;
@@ -205,7 +228,6 @@ export async function POST(req: NextRequest) {
         dataScope,
       };
 
-      // Process rows in batches to avoid timeout
       const BATCH_SIZE = 50;
       const jobRecords: Array<Record<string, unknown>> = [];
 
@@ -217,38 +239,93 @@ export async function POST(req: NextRequest) {
         const importRow: ImportRow = {
           sourceRowNumber: rowNum,
           sourceData: sourceRow,
-          sourceExternalId: String(mappedData.source_id || mappedData.sku || mappedData.repair_number || ''),
+          sourceExternalId: String(
+            mappedData.source_id || mappedData.sku || mappedData.repair_number ||
+            mappedData.job_number || mappedData.invoice_number || ''
+          ),
         };
 
-        let result: { status: string; recordId?: string; error?: string } = { status: 'skipped' };
+        let result: { status: string; recordId?: string; error?: string; invoiceNumber?: string } = { status: 'skipped' };
 
         if (entity === 'customers') {
           result = await importCustomer(admin, ctx, importRow, mappedData);
+          // Populate email→customerId map
+          if ((result.status === 'success' || result.status === 'duplicate') && result.recordId) {
+            const email = String(mappedData.email || '').toLowerCase();
+            if (email) emailToCustomerId.set(email, result.recordId);
+          }
         } else if (entity === 'inventory') {
           result = await importInventory(admin, ctx, importRow, mappedData);
+        } else if (entity === 'suppliers') {
+          result = await importSupplier(admin, ctx, importRow, mappedData);
         } else if (entity === 'repairs') {
-          // Try to link to a customer
           let customerId: string | undefined;
-          if (mappedData.customer_email || mappedData.customer_name) {
+          const email = String(mappedData.customer_email || '').toLowerCase();
+          if (email && emailToCustomerId.has(email)) {
+            customerId = emailToCustomerId.get(email);
+          } else if (mappedData.customer_email || mappedData.customer_name) {
             const found = await findDuplicateCustomer(admin, tenantId!, {
               email: mappedData.customer_email as string | undefined,
               full_name: mappedData.customer_name as string | undefined,
             });
             customerId = found ?? undefined;
+            if (customerId && email) emailToCustomerId.set(email, customerId);
           }
           result = await importRepair(admin, ctx, importRow, mappedData, customerId);
         } else if (entity === 'bespoke') {
           let customerId: string | undefined;
-          if (mappedData.customer_email || mappedData.customer_name) {
+          const email = String(mappedData.customer_email || '').toLowerCase();
+          if (email && emailToCustomerId.has(email)) {
+            customerId = emailToCustomerId.get(email);
+          } else if (mappedData.customer_email || mappedData.customer_name) {
             const found = await findDuplicateCustomer(admin, tenantId!, {
               email: mappedData.customer_email as string | undefined,
               full_name: mappedData.customer_name as string | undefined,
             });
             customerId = found ?? undefined;
+            if (customerId && email) emailToCustomerId.set(email, customerId);
           }
           result = await importBespokeJob(admin, ctx, importRow, mappedData, customerId);
+        } else if (entity === 'invoices') {
+          let customerId: string | undefined;
+          const email = String(mappedData.customer_email || '').toLowerCase();
+          if (email && emailToCustomerId.has(email)) {
+            customerId = emailToCustomerId.get(email);
+          } else if (mappedData.customer_email || mappedData.customer_name) {
+            const found = await findDuplicateCustomer(admin, tenantId!, {
+              email: mappedData.customer_email as string | undefined,
+              full_name: mappedData.customer_name as string | undefined,
+            });
+            customerId = found ?? undefined;
+            if (customerId && email) emailToCustomerId.set(email, customerId);
+          }
+          result = await importInvoice(admin, ctx, importRow, mappedData, customerId);
+          // Populate invoiceNumber→invoiceId map for payments
+          if ((result.status === 'success' || result.status === 'duplicate') && result.recordId) {
+            const invNum = result.invoiceNumber || String(mappedData.invoice_number || '');
+            if (invNum) invoiceNumberToId.set(invNum, result.recordId);
+          }
+        } else if (entity === 'payments') {
+          // Resolve invoice by invoice_number
+          let invoiceId: string | undefined;
+          const invNum = String(mappedData.invoice_number || '');
+          if (invNum && invoiceNumberToId.has(invNum)) {
+            invoiceId = invoiceNumberToId.get(invNum);
+          } else if (invNum) {
+            // Fallback: DB lookup
+            const { data: invRow } = await admin
+              .from('invoices')
+              .select('id')
+              .eq('tenant_id', tenantId!)
+              .eq('invoice_number', invNum)
+              .maybeSingle();
+            if (invRow) {
+              invoiceId = (invRow as { id: string }).id;
+              invoiceNumberToId.set(invNum, invoiceId);
+            }
+          }
+          result = await importPayment(admin, ctx, importRow, mappedData, invoiceId);
         } else {
-          // Unknown/invoices/payments: record as skipped for now
           result = { status: 'skipped' };
         }
 
@@ -257,6 +334,15 @@ export async function POST(req: NextRequest) {
         else if (result.status === 'duplicate') { duplicates++; byEntity[entity].duplicate++; success++; }
         else if (result.status === 'error') { errors++; byEntity[entity].error++; }
         else if (result.status === 'skipped') { skipped++; byEntity[entity].skipped++; }
+
+        const destinationTable =
+          entity === 'customers' ? 'customers' :
+          entity === 'inventory' ? 'inventory' :
+          entity === 'repairs' ? 'repairs' :
+          entity === 'bespoke' ? 'bespoke_jobs' :
+          entity === 'suppliers' ? 'suppliers' :
+          entity === 'invoices' ? 'invoices' :
+          entity === 'payments' ? 'payments' : null;
 
         jobRecords.push({
           tenant_id: tenantId,
@@ -267,10 +353,7 @@ export async function POST(req: NextRequest) {
           source_row_number: rowNum,
           source_external_id: importRow.sourceExternalId || null,
           destination_record_id: result.recordId || null,
-          destination_table: entity === 'customers' ? 'customers'
-            : entity === 'inventory' ? 'inventory'
-            : entity === 'repairs' ? 'repairs'
-            : entity === 'bespoke' ? 'bespoke_jobs' : null,
+          destination_table: destinationTable,
           status: result.status === 'duplicate' ? 'warning' : result.status,
           error_message: result.error || null,
           warning_message: result.status === 'duplicate' ? `Duplicate — matched existing record ${result.recordId}` : null,
@@ -290,7 +373,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Flush remaining
+      // Flush remaining records
       if (jobRecords.length > 0) {
         await admin.from('migration_job_records').insert(jobRecords);
       }

@@ -1,0 +1,7 @@
+Invoice Number,Amount,Payment Method,Payment Date,Reference,Notes
+INV-MIG-002,4200.00,card,2026-02-28,CARD-789012,Full payment by Visa
+INV-MIG-003,2000.00,eftpos,2026-01-20,EFTPOS-112233,Partial deposit
+INV-MIG-006,3600.00,card,2026-03-01,CARD-445566,Full payment Amex
+INV-MIG-008,3200.00,cash,2026-03-05,,Cash payment collected
+INV-MIG-004,200.00,card,2025-12-15,CARD-778899,Partial payment on overdue
+INV-MIG-001,3000.00,bank_transfer,2026-01-16,BSB-334455-TXN-99,Bank transfer deposit

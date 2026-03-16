@@ -1,0 +1,11 @@
+Supplier ID,Supplier Name,Contact Name,Email,Phone,Website,Address,Notes
+SUP-001,Tiffany & Co.,Mark Henderson,mark.h@tiffany.com,+61299990001,https://tiffany.com,"25 Martin Place, Sydney NSW 2000",Premium diamond supplier - preferred for GIA certified stones
+SUP-002,Cartier Australia,Jean-Pierre Blanc,jp.b@cartier.com,+61299990002,https://cartier.com,"Tower 1, 100 Barangaroo Ave, Sydney NSW 2000",High-end supplier for luxury settings and mountings
+SUP-003,Palloys,David Kim,d.kim@palloys.com.au,+61296420233,https://palloys.com.au,"15 Hume Street, Crows Nest NSW 2065",Local precious metals supplier - gold silver platinum
+SUP-004,Endeavour Group,Sarah Nguyen,s.nguyen@endeavour.com.au,+61296420234,https://endeavourgroup.com.au,"42 Waterloo Road, North Ryde NSW 2113",Diamond and gemstone wholesaler
+SUP-005,ABC Findings,Tom Wilson,t.wilson@abcfindings.com.au,+61296420235,https://abcfindings.com.au,"8 Reserve Road, Artarmon NSW 2064",Findings clasps chains and components
+SUP-006,GIA Australia,Dr Emma Lee,e.lee@gia.edu,+61299990006,https://gia.edu,"Suite 12, 150 George Street, Sydney NSW 2000",Diamond grading and certification
+SUP-007,Rolex Australia,Philippe Leclerc,p.leclerc@rolex.com,+61299990007,https://rolex.com,"37 Martin Place, Sydney NSW 2000",Watch trade-in partner
+SUP-008,Studio Lagree,Kate Burns,k.burns@studiolagree.com.au,+61296420238,,,"Custom casting and fabrication studio"
+SUP-009,Gemworld,Peter Lam,p.lam@gemworld.com.au,+61296420239,https://gemworld.com.au,"22 Pyrmont Street, Pyrmont NSW 2009",Coloured gemstone specialist
+SUP-010,Leeuwin Metals,Chris Ford,c.ford@leeuwingold.com.au,+61896420240,,,"WA gold and silver refinery - reclaimed metals"
