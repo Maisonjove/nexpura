@@ -1,6 +1,5 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthOrReviewContext } from "@/lib/auth/review";
 
-const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 export const revalidate = 60;
 
 const STORE_PAGES = [
@@ -45,13 +44,18 @@ function ToggleDisplay({ label, enabled, desc }: { label: string; enabled: boole
   );
 }
 
-export default async function ReviewWebsitePage() {
-  const admin = createAdminClient();
+export default async function ReviewWebsitePage({ searchParams }: { searchParams: Promise<{ rt?: string }> }) {
+  const { rt } = await searchParams;
+  const { admin, tenantId } = await getAuthOrReviewContext(rt);
+
+  if (!tenantId) {
+    return <div>Unauthorized</div>;
+  }
 
   const { data: config } = await admin
     .from("website_config")
     .select("id, mode, subdomain, custom_domain, published, show_prices, allow_enquiry, stripe_enabled, business_name, tagline, logo_url, hero_image_url, primary_color, secondary_color, about_text, contact_email, contact_phone, contact_address, social_instagram, meta_title, meta_description, website_type")
-    .eq("tenant_id", TENANT_ID)
+    .eq("tenant_id", tenantId)
     .maybeSingle();
 
   const modeInfo = MODE_LABELS[config?.mode ?? "B"] ?? MODE_LABELS["B"];

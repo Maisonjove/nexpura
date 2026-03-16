@@ -52,6 +52,7 @@ export default async function MappingPage({ params, searchParams }: Props) {
       <MappingTableWrapper
         sessionId={sessionId}
         mappings={mappings || []}
+        rt={rt}
       />
     </div>
   );

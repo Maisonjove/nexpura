@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { Copy } from "lucide-react";
 import { saveWebsiteConfig } from "../actions";
 
 type WidgetTab = "passport" | "enquiry" | "appointment" | "catalog";
@@ -325,6 +326,73 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
 
         <div className="p-6">
           <WidgetCode tab={activeWidget} tenantId={tenantId} />
+        </div>
+      </div>
+
+      {/* Developer Connect */}
+      <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-6">
+        <div>
+          <h2 className="text-base font-semibold text-stone-900">Developer Integration</h2>
+          <p className="text-sm text-stone-500 mt-0.5">Infrastructure for custom website integrations and developers</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1.5">
+                API Base URL
+              </label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-3 py-2 bg-stone-100 rounded-lg text-xs font-mono text-stone-600 truncate">
+                  https://nexpura.com/api
+                </code>
+                <button
+                  onClick={() => navigator.clipboard.writeText("https://nexpura.com/api")}
+                  className="p-2 text-stone-400 hover:text-amber-700 transition-colors"
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1.5">
+                Tenant ID
+              </label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-3 py-2 bg-stone-100 rounded-lg text-xs font-mono text-stone-600 truncate">
+                  {tenantId}
+                </code>
+                <button
+                  onClick={() => navigator.clipboard.writeText(tenantId)}
+                  className="p-2 text-stone-400 hover:text-amber-700 transition-colors"
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 text-sm text-stone-600 bg-stone-50 rounded-xl p-5 border border-stone-100">
+            <h4 className="font-semibold text-stone-900 text-xs uppercase tracking-wider mb-2">Integration Status</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span>Public API Access</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">ACTIVE</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Webhooks</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-stone-200 text-stone-500 rounded-full">COMING SOON</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Private API Keys</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-stone-200 text-stone-500 rounded-full">REQUEST ONLY</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-stone-400 mt-4 leading-relaxed italic">
+              Building a custom storefront? Your developer can use the Public API to fetch inventory and submit enquiry leads.
+            </p>
+          </div>
         </div>
       </div>
 

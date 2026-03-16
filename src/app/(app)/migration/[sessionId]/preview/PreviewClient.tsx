@@ -22,9 +22,10 @@ interface Props {
   totalWarnings: number;
   aiSummary: any;
   dataScope: string;
+  rt?: string;
 }
 
-export function PreviewClient({ sessionId, summary, totalErrors, totalWarnings, aiSummary, dataScope }: Props) {
+export function PreviewClient({ sessionId, summary, totalErrors, totalWarnings, aiSummary, dataScope, rt }: Props) {
   const router = useRouter();
   const [scope, setScope] = useState(dataScope || 'active');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -49,7 +50,8 @@ export function PreviewClient({ sessionId, summary, totalErrors, totalWarnings, 
       });
       const data = await res.json();
       if (data.jobId) {
-        router.push(`/migration/${sessionId}/execute?jobId=${data.jobId}`);
+        const rtSuffix = rt ? `&rt=${rt}` : '';
+        router.push(`/migration/${sessionId}/execute?jobId=${data.jobId}${rtSuffix}`);
       }
     } catch {
       setImporting(false);

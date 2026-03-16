@@ -73,6 +73,7 @@ export default async function PreviewPage({ params, searchParams }: Props) {
         totalWarnings={totalWarnings}
         aiSummary={session.ai_summary}
         dataScope={session.data_scope}
+        rt={rt}
       />
     </div>
   );

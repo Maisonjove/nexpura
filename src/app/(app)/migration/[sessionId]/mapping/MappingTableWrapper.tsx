@@ -19,9 +19,10 @@ interface MappingRecord {
 interface Props {
   sessionId: string;
   mappings: MappingRecord[];
+  rt?: string;
 }
 
-export function MappingTableWrapper({ sessionId, mappings }: Props) {
+export function MappingTableWrapper({ sessionId, mappings, rt }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -43,7 +44,8 @@ export function MappingTableWrapper({ sessionId, mappings }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId, status: 'preview' }),
     });
-    router.push(`/migration/${sessionId}/preview`);
+    const rtSuffix = rt ? `?rt=${rt}` : '';
+    router.push(`/migration/${sessionId}/preview${rtSuffix}`);
   }
 
   const current = mappings[activeTab];

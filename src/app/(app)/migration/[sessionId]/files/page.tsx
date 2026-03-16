@@ -17,5 +17,5 @@ export default async function FilesPage({
     redirect("/login");
   }
 
-  return <FilesClient sessionId={sessionId} />;
+  return <FilesClient sessionId={sessionId} rt={rt} />;
 }

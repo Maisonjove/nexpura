@@ -20,7 +20,7 @@ interface FileRecord {
   file_size: number | null;
 }
 
-export default function FilesClient({ sessionId }: { sessionId: string }) {
+export default function FilesClient({ sessionId, rt }: { sessionId: string, rt?: string }) {
   const router = useRouter();
 
   const [files, setFiles] = useState<FileRecord[]>([]);
@@ -72,7 +72,8 @@ export default function FilesClient({ sessionId }: { sessionId: string }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId, status: 'files_uploaded' }),
     });
-    router.push(`/migration/${sessionId}/mapping`);
+    const rtSuffix = rt ? `?rt=${rt}` : '';
+    router.push(`/migration/${sessionId}/mapping${rtSuffix}`);
   }
 
   return (
