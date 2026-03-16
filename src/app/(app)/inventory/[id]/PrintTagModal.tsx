@@ -121,7 +121,7 @@ export default function PrintTagModal({ item, tenantName, onClose }: PrintTagMod
                 Print
               </button>
             </div>
-            <p className="text-xs text-stone-400 text-center mt-3">Download PDF — coming soon</p>
+
           </>
         )}
       </div>

@@ -381,16 +381,16 @@ export default function SiteConnectClient({ tenantId, config }: Props) {
                 <span className="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">ACTIVE</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Webhooks</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-stone-200 text-stone-500 rounded-full">COMING SOON</span>
+                <span>Embed Widgets</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">ACTIVE</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Private API Keys</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-stone-200 text-stone-500 rounded-full">REQUEST ONLY</span>
+                <span>Catalogue Sync</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">ACTIVE</span>
               </div>
             </div>
             <p className="text-[11px] text-stone-400 mt-4 leading-relaxed italic">
-              Building a custom storefront? Your developer can use the Public API to fetch inventory and submit enquiry leads.
+              Your developer can use the Public API to fetch inventory and embed live catalogue widgets into any external website.
             </p>
           </div>
         </div>

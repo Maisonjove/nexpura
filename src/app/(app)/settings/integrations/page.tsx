@@ -743,10 +743,11 @@ export default function IntegrationsPage() {
               <h3 className="text-lg font-semibold text-stone-900">API Access</h3>
             </div>
             <p className="text-sm text-stone-500 mb-6 max-w-2xl">
-              API access for custom integrations is coming soon. Your API key will appear here once the feature is available.
+              Use the Public API to connect your inventory to external websites, custom storefronts, or third-party tools. Your Tenant ID is available in Website → Connect.
             </p>
             <div className="flex items-center gap-3 p-4 bg-stone-50 rounded-lg border border-stone-100">
-              <span className="text-xs text-stone-400">API keys — Coming Soon</span>
+              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">API Base URL</span>
+              <code className="text-xs font-mono text-stone-700 bg-white px-2 py-1 rounded border border-stone-200">https://nexpura.com/api</code>
             </div>
           </div>
         </div>

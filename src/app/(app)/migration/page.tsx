@@ -146,9 +146,9 @@ export default async function MigrationHubPage({
       <div className="bg-stone-50 border border-stone-200 rounded-xl p-4">
         <h4 className="text-xs font-semibold text-stone-700 uppercase tracking-wide mb-2">V1 Information</h4>
         <ul className="text-xs text-stone-500 space-y-1 list-disc list-inside">
-          <li>File upload supports CSV and Excel only (ZIP extraction coming in V2)</li>
+          <li>File upload supports CSV and Excel (.xlsx) formats</li>
           <li>Image import for inventory not supported in V1</li>
-          <li>Direct API sync (Shopify/Lightspeed live) deferred to V2 — file-based only</li>
+          <li>File-based import only — live API sync available on request for enterprise accounts</li>
           <li>Progress updates use 5-second polling (not real-time WebSockets)</li>
         </ul>
       </div>

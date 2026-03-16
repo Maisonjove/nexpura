@@ -399,7 +399,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
     if (result.error) {
       setEmailError(result.error);
     } else {
-      const msg = result.message ?? (result.note === "sent" ? "Email sent ✓" : "Email logged (demo mode)");
+      const msg = result.message ?? (result.note === "sent" ? "Email sent ✓" : "Email queued — delivery requires a verified sending domain.");
       setEmailSuccess(msg);
       setTimeout(() => setEmailSuccess(null), 4000);
       await logJobEvent("repair", repair.id, tenantId, "email_sent", result.message ?? "Invoice email attempted");
@@ -944,7 +944,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
                 <>
                   {!readOnly && (
                     <>
-                      <button onClick={() => handleEmailInvoice()} disabled={emailSending} title="Sends invoice via email. In demo mode, external delivery requires a verified sending domain." className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 disabled:opacity-50 transition-colors">
+                      <button onClick={() => handleEmailInvoice()} disabled={emailSending} title="Send invoice to customer via email" className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 disabled:opacity-50 transition-colors">
                         ✉️ {emailSending ? "Sending..." : "Email Invoice"}
                       </button>
                       {emailSuccess && (
@@ -980,11 +980,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
                   ✉️ Email Ready for Collection
                 </button>
               )}
-              {!readOnly && (
-                <div className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-100 text-stone-300 flex items-center gap-2 cursor-not-allowed" title="WhatsApp not connected — configure in Settings">
-                  💬 WhatsApp (not connected)
-                </div>
-              )}
+
             </div>
           </div>
 
