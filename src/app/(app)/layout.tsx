@@ -1,6 +1,7 @@
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 
 export default async function AppLayout({
@@ -18,8 +19,11 @@ export default async function AppLayout({
     return redirect('/login');
   }
 
-  // Get user profile for sidebar
-  const { data: profile } = await supabase
+  // Use admin client for users table to bypass RLS recursion.
+  // The anon-key client with RLS causes infinite policy recursion on users table,
+  // adding 1–2s latency per request and causing timeouts on complex pages.
+  const admin = createAdminClient();
+  const { data: profile } = await admin
     .from('users')
     .select('*, tenants(*)')
     .eq('id', user.id)
@@ -38,7 +42,7 @@ export default async function AppLayout({
   // Fetch website config for sidebar
   let websiteConfig = null;
   if (profile?.tenant_id) {
-    const { data: wc } = await supabase
+    const { data: wc } = await admin
       .from('website_config')
       .select('website_type, external_url, subdomain, published')
       .eq('tenant_id', profile.tenant_id)
@@ -51,8 +55,8 @@ export default async function AppLayout({
   let readyBespokeCount = 0;
   if (profile?.tenant_id) {
     const [repairsRes, bespokeRes] = await Promise.all([
-      supabase.from('repairs').select('id', { count: 'exact', head: true }).eq('tenant_id', profile.tenant_id).eq('stage', 'ready').is('deleted_at', null),
-      supabase.from('bespoke_jobs').select('id', { count: 'exact', head: true }).eq('tenant_id', profile.tenant_id).eq('stage', 'ready'),
+      admin.from('repairs').select('id', { count: 'exact', head: true }).eq('tenant_id', profile.tenant_id).eq('stage', 'ready').is('deleted_at', null),
+      admin.from('bespoke_jobs').select('id', { count: 'exact', head: true }).eq('tenant_id', profile.tenant_id).eq('stage', 'ready'),
     ]);
     readyRepairsCount = repairsRes.count ?? 0;
     readyBespokeCount = bespokeRes.count ?? 0;
