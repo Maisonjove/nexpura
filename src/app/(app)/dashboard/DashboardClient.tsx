@@ -261,15 +261,15 @@ export default function DashboardClient({
       {/* ── KPI Grid ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Sales This Month', value: fmtCurrency(salesThisMonthRevenue, currency), sub: `${salesThisMonthCount} sale${salesThisMonthCount !== 1 ? 's' : ''}` },
-          { label: 'Active Repairs', value: String(activeRepairsCount), sub: overdueRepairs.length > 0 ? `${overdueRepairs.length} overdue` : 'all on track', alert: overdueRepairs.length > 0 },
-          { label: 'Bespoke Jobs', value: String(activeJobsCount), sub: 'in production' },
-          { label: 'Outstanding', value: fmtCurrency(totalOutstanding, currency), sub: `${overdueInvoiceCount} invoice${overdueInvoiceCount !== 1 ? 's' : ''} overdue`, alert: overdueInvoiceCount > 0 },
+          { label: 'Sales This Month', value: fmtCurrency(salesThisMonthRevenue, currency), sub: `${salesThisMonthCount} sale${salesThisMonthCount !== 1 ? 's' : ''}`, valueAlert: false, subAlert: false },
+          { label: 'Active Repairs', value: String(activeRepairsCount), sub: overdueRepairs.length > 0 ? `${overdueRepairs.length} overdue` : 'all on track', valueAlert: false, subAlert: overdueRepairs.length > 0 },
+          { label: 'Bespoke Jobs', value: String(activeJobsCount), sub: 'in production', valueAlert: false, subAlert: false },
+          { label: 'Outstanding', value: fmtCurrency(totalOutstanding, currency), sub: `${overdueInvoiceCount} invoice${overdueInvoiceCount !== 1 ? 's' : ''} overdue`, valueAlert: overdueInvoiceCount > 0, subAlert: overdueInvoiceCount > 0 },
         ].map((kpi) => (
           <div key={kpi.label} className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
             <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">{kpi.label}</p>
-            <p className={`text-2xl font-semibold tracking-tight ${(kpi as { alert?: boolean }).alert ? 'text-rose-600' : 'text-stone-900'}`}>{kpi.value}</p>
-            <p className={`text-xs mt-1 ${(kpi as { alert?: boolean }).alert ? 'text-rose-400' : 'text-stone-400'}`}>{kpi.sub}</p>
+            <p className={`text-2xl font-semibold tracking-tight ${kpi.valueAlert ? 'text-rose-600' : 'text-stone-900'}`}>{kpi.value}</p>
+            <p className={`text-xs mt-1 ${kpi.subAlert ? 'text-rose-400' : 'text-stone-400'}`}>{kpi.sub}</p>
           </div>
         ))}
       </div>

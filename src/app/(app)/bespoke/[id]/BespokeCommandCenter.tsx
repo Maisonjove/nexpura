@@ -866,16 +866,18 @@ export default function BespokeCommandCenter({ job, customer, invoice, inventory
                   📄 Generate Invoice
                 </button>
               ) : null}
-              {customer?.email ? (
+              {!readOnly && customer?.email ? (
                 <a href={`mailto:${customer.email}?subject=Re: Your bespoke order — Marcus & Co.`} className="block w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
                   ✉️ Email Customer
                 </a>
-              ) : (
+              ) : !readOnly ? (
                 <div className="text-sm text-stone-400 px-3 py-2">No email on file</div>
+              ) : null}
+              {!readOnly && (
+                <div className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-100 text-stone-300 flex items-center gap-2 cursor-not-allowed" title="WhatsApp not connected — configure in Settings">
+                  💬 WhatsApp (not connected)
+                </div>
               )}
-              <div className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-100 text-stone-300 flex items-center gap-2 cursor-not-allowed" title="WhatsApp not connected — configure in Settings">
-                💬 WhatsApp (not connected)
-              </div>
             </div>
           </div>
 
