@@ -314,8 +314,9 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
                 </button>
               </div>
               <button 
-                onClick={() => {}}
-                className="w-full px-4 py-2.5 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-colors flex items-center justify-center gap-2"
+                disabled
+                title="Coming soon — conversion to owned stock in a future release"
+                className="w-full px-4 py-2.5 bg-stone-200 text-stone-400 rounded-xl text-sm font-medium cursor-not-allowed flex items-center justify-center gap-2"
               >
                 Convert to Owned Stock
                 <ArrowRight size={16} />

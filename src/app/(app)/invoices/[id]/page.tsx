@@ -18,7 +18,8 @@ export default async function InvoiceDetailPage({
   const adminClient = createAdminClient();
 
   let tenantId: string | null = null;
-  if (sp.rt && REVIEW_TOKENS.includes(sp.rt)) {
+  const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+  if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
     try {
@@ -121,6 +122,7 @@ export default async function InvoiceDetailPage({
       lineItems={lineItems || []}
       payments={payments}
       tenant={normalizedTenant}
+      readOnly={isReviewMode}
     />
   );
 }
