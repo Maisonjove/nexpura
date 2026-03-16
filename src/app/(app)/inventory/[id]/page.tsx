@@ -21,7 +21,8 @@ export default async function InventoryDetailPage({
 
   let tenantId: string | null = null;
   let userId: string | null = null;
-  if (sp.rt && REVIEW_TOKENS.includes(sp.rt)) {
+  const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+  if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
     try {
@@ -74,13 +75,14 @@ export default async function InventoryDetailPage({
 
   return (
     <>
-      <ItemDetailClient item={typedItem} movements={typedMovements} />
+      <ItemDetailClient item={typedItem} movements={typedMovements} readOnly={isReviewMode} />
       <div className="mt-6">
         <InventoryPhotos
           itemId={id}
           tenantId={tenantId}
           primaryImage={rawItem.primary_image ?? null}
           additionalImages={(rawItem.images ?? []) as string[]}
+          readOnly={isReviewMode}
         />
       </div>
     </>

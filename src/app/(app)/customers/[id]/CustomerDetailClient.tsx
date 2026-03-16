@@ -149,6 +149,7 @@ export default function CustomerDetailClient({
   communications,
   lifetimeSpend,
   lastVisit,
+  readOnly = false,
 }: {
   customer: Customer;
   creditHistory: CreditHistory[];
@@ -161,6 +162,7 @@ export default function CustomerDetailClient({
   communications: CustomerCommunication[];
   lifetimeSpend: number;
   lastVisit: string | null;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
@@ -199,10 +201,12 @@ export default function CustomerDetailClient({
           <ChevronLeft size={16} />
           Back to Customers
         </Link>
-        <div className="flex gap-3">
-          <button onClick={() => setShowArchiveModal(true)} className="px-4 py-2 text-sm font-medium border border-red-100 text-red-600 rounded-xl hover:bg-red-50 transition-colors">Archive</button>
-          <Link href={`/customers/${customer.id}/edit`} className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7A6347] transition-shadow shadow-sm">Edit Profile</Link>
-        </div>
+        {!readOnly && (
+          <div className="flex gap-3">
+            <button onClick={() => setShowArchiveModal(true)} className="px-4 py-2 text-sm font-medium border border-red-100 text-red-600 rounded-xl hover:bg-red-50 transition-colors">Archive</button>
+            <Link href={`/customers/${customer.id}/edit`} className="px-4 py-2 text-sm font-medium bg-[#8B7355] text-white rounded-xl hover:bg-[#7A6347] transition-shadow shadow-sm">Edit Profile</Link>
+          </div>
+        )}
       </div>
 
       {/* Hero Card */}
@@ -375,14 +379,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Repair History</h2>
-              <Link href={`/repairs/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Repair</Link>
+              {!readOnly && <Link href={`/repairs/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Repair</Link>}
             </div>
             {repairs.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🔧</div>
                 <p className="text-stone-500 font-medium">No repairs yet</p>
                 <p className="text-stone-400 text-sm mt-1">Repairs booked for this customer will appear here.</p>
-                <Link href={`/repairs/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Log first repair →</Link>
+                {!readOnly && <Link href={`/repairs/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Log first repair →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -408,14 +412,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Bespoke Jobs</h2>
-              <Link href={`/bespoke/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Job</Link>
+              {!readOnly && <Link href={`/bespoke/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Job</Link>}
             </div>
             {bespokeJobs.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">💎</div>
                 <p className="text-stone-500 font-medium">No bespoke jobs yet</p>
                 <p className="text-stone-400 text-sm mt-1">Custom jewellery projects for this customer will appear here.</p>
-                <Link href={`/bespoke/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Start a bespoke job →</Link>
+                {!readOnly && <Link href={`/bespoke/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Start a bespoke job →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -441,14 +445,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Quotes</h2>
-              <Link href={`/quotes/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Quote</Link>
+              {!readOnly && <Link href={`/quotes/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Quote</Link>}
             </div>
             {quotes.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📋</div>
                 <p className="text-stone-500 font-medium">No quotes yet</p>
                 <p className="text-stone-400 text-sm mt-1">Quotes sent to this customer will appear here.</p>
-                <Link href={`/quotes/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Create a quote →</Link>
+                {!readOnly && <Link href={`/quotes/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Create a quote →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -474,14 +478,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Invoices</h2>
-              <Link href={`/invoices/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Invoice</Link>
+              {!readOnly && <Link href={`/invoices/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Invoice</Link>}
             </div>
             {invoices.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🧾</div>
                 <p className="text-stone-500 font-medium">No invoices yet</p>
                 <p className="text-stone-400 text-sm mt-1">Invoices issued to this customer will appear here.</p>
-                <Link href={`/invoices/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Create an invoice →</Link>
+                {!readOnly && <Link href={`/invoices/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Create an invoice →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -513,14 +517,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Sales</h2>
-              <Link href={`/sales/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Sale</Link>
+              {!readOnly && <Link href={`/sales/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Sale</Link>}
             </div>
             {sales.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🛍️</div>
                 <p className="text-stone-500 font-medium">No sales yet</p>
                 <p className="text-stone-400 text-sm mt-1">Sales for this customer will appear here.</p>
-                <Link href={`/sales/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Create a sale →</Link>
+                {!readOnly && <Link href={`/sales/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Create a sale →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -567,14 +571,14 @@ export default function CustomerDetailClient({
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-stone-100 flex items-center justify-between">
               <h2 className="font-bold text-stone-900">Digital Passports</h2>
-              <Link href={`/passports/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Passport</Link>
+              {!readOnly && <Link href={`/passports/new?customer_id=${customer.id}`} className="text-sm font-semibold text-[#8B7355] hover:underline">+ New Passport</Link>}
             </div>
             {passports.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🔏</div>
                 <p className="text-stone-500 font-medium">No passports yet</p>
                 <p className="text-stone-400 text-sm mt-1">Digital jewellery passports for this customer will appear here.</p>
-                <Link href={`/passports/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Issue a passport →</Link>
+                {!readOnly && <Link href={`/passports/new?customer_id=${customer.id}`} className="mt-4 inline-block text-sm font-medium text-[#8B7355] hover:underline">Issue a passport →</Link>}
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
@@ -710,22 +714,24 @@ export default function CustomerDetailClient({
         {/* ── Notes ─────────────────────────────────────────────── */}
         {activeTab === "Notes" && (
           <div className="space-y-4">
-            <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-stone-900 mb-4">Add Private Note</h3>
-              <form onSubmit={handleAddNote} className="space-y-4">
-                <textarea
-                  value={newNote}
-                  onChange={e => setNewNote(e.target.value)}
-                  placeholder="Type a note about this customer..."
-                  className="w-full h-32 p-4 rounded-2xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-[#8B7355] resize-none text-sm"
-                />
-                <div className="flex justify-end">
-                  <button disabled={noteSubmitting || !newNote.trim()} className="px-6 py-2.5 bg-[#8B7355] text-white rounded-xl font-bold disabled:opacity-50 text-sm">
-                    Save Note
-                  </button>
-                </div>
-              </form>
-            </div>
+            {!readOnly && (
+              <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-stone-900 mb-4">Add Private Note</h3>
+                <form onSubmit={handleAddNote} className="space-y-4">
+                  <textarea
+                    value={newNote}
+                    onChange={e => setNewNote(e.target.value)}
+                    placeholder="Type a note about this customer..."
+                    className="w-full h-32 p-4 rounded-2xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-[#8B7355] resize-none text-sm"
+                  />
+                  <div className="flex justify-end">
+                    <button disabled={noteSubmitting || !newNote.trim()} className="px-6 py-2.5 bg-[#8B7355] text-white rounded-xl font-bold disabled:opacity-50 text-sm">
+                      Save Note
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
             {notes ? (
               <div className="space-y-3">
                 {notes.split("\n\n").filter(Boolean).reverse().map((n, idx) => (

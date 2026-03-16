@@ -6,16 +6,13 @@ import { recordPayment, markAsSent, voidInvoice } from "../actions";
 import { emailInvoice } from "./emailInvoice";
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-gray-100 text-gray-600" },
-  // DB stores "unpaid" — treat same as "sent"
+  draft: { label: "Draft", className: "bg-stone-100 text-stone-600" },
+  // Valid DB status values only
   unpaid: { label: "Sent", className: "bg-stone-100 text-stone-700" },
-  sent: { label: "Sent", className: "bg-stone-100 text-stone-700" },
-  // DB stores "partial" — treat same as "partially_paid"
   partial: { label: "Partially Paid", className: "bg-amber-50 text-amber-600" },
-  partially_paid: { label: "Partially Paid", className: "bg-amber-50 text-amber-600" },
   paid: { label: "Paid", className: "bg-stone-100 text-[#8B7355]" },
   overdue: { label: "Overdue", className: "bg-red-50 text-red-600" },
-  voided: { label: "Voided", className: "bg-gray-100 text-gray-400" },
+  voided: { label: "Voided", className: "bg-stone-100 text-stone-400" },
 };
 
 const PAYMENT_METHODS = [

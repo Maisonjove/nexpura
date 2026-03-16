@@ -138,6 +138,7 @@ export default async function ReviewCustomerDetailPage({
       communications={communications}
       lifetimeSpend={lifetimeSpend}
       lastVisit={lastVisit}
+      readOnly={true}
     />
   );
 }

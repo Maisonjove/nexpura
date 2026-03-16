@@ -47,6 +47,8 @@ export default async function BillingPage() {
   const inventoryCount = inventoryCountResult.count;
   const customerCount = customerCountResult.count;
 
+  // When subscription is null (e.g. demo tenant), BillingClient defaults:
+  // plan → "basic", status → "trialing" (shows "Basic | Free Trial" — honest demo state)
   return (
     <BillingClient
       subscription={subscription}

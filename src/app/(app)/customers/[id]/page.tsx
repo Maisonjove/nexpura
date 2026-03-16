@@ -16,9 +16,10 @@ export default async function CustomerDetailPage({
   const { id } = await params;
   const sp = searchParams ? await searchParams : {};
   const admin = createAdminClient();
+  const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
 
   let tenantId: string | null = null;
-  if (sp.rt && REVIEW_TOKENS.includes(sp.rt)) {
+  if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
     try {
@@ -142,6 +143,7 @@ export default async function CustomerDetailPage({
       communications={communications}
       lifetimeSpend={lifetimeSpend}
       lastVisit={lastVisit}
+      readOnly={isReviewMode}
     />
   );
 }

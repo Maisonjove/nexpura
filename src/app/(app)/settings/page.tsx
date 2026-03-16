@@ -1,5 +1,10 @@
 "use client";
 
+// SECURITY NOTE: This page lives inside the (app) layout which requires real Supabase
+// session auth — unauthenticated requests are redirected to /login before reaching here.
+// The review sandbox routes (/review/*) use a completely separate read-only layout and
+// do NOT link to /settings — reviewers cannot access or mutate settings by design.
+
 import { useEffect, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
