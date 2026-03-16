@@ -20,16 +20,34 @@ export const DEMO_CURRENCY = "AUD";
 
 /**
  * Returns the tenant_id for review/staff mode, or null if not in sandbox mode.
- * Call this when createClient().auth.getUser() returns null to check for
- * review sandbox as a fallback.
+ * Checks BOTH the cookie (set by middleware) AND the x-nexpura-rt header
+ * (set by middleware even when session injection fails) so pages load even
+ * when middleware threw before setting cookies.
  */
 export async function getReviewTenantId(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const reviewVal = cookieStore.get(REVIEW_COOKIE)?.value;
-  const staffVal = cookieStore.get(STAFF_COOKIE)?.value;
-  if (reviewVal === REVIEW_TOKEN || staffVal === STAFF_TOKEN) {
-    return DEMO_TENANT_ID;
+  try {
+    const { headers } = await import("next/headers");
+    const headerStore = await headers();
+    // Middleware sets this header early, before any async that could fail
+    const rtHeader = headerStore.get("x-nexpura-rt");
+    if (rtHeader === REVIEW_TOKEN || rtHeader === STAFF_TOKEN) {
+      return DEMO_TENANT_ID;
+    }
+  } catch {
+    // headers() not available in this context — fall through
   }
+
+  try {
+    const cookieStore = await cookies();
+    const reviewVal = cookieStore.get(REVIEW_COOKIE)?.value;
+    const staffVal = cookieStore.get(STAFF_COOKIE)?.value;
+    if (reviewVal === REVIEW_TOKEN || staffVal === STAFF_TOKEN) {
+      return DEMO_TENANT_ID;
+    }
+  } catch {
+    // cookies() not available — fall through
+  }
+
   return null;
 }
 

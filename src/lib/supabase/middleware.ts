@@ -27,42 +27,48 @@ async function getDemoSessionCookies(
   }
 
   // Sign in as demo user using a temporary in-memory client.
-  // Capture the cookies @supabase/ssr would set — this gives us the correct format.
-  const captured: Array<{ name: string; value: string }> = [];
+  // Wrapped in try-catch: if Supabase throws (network error, cold-start timeout, etc.)
+  // we must return [] instead of crashing the middleware with a 500.
+  try {
+    const captured: Array<{ name: string; value: string }> = [];
 
-  const tmpClient = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return [];
+    const tmpClient = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return [];
+        },
+        setAll(cs) {
+          captured.push(...cs.map((c) => ({ name: c.name, value: c.value })));
+        },
       },
-      setAll(cs) {
-        captured.push(...cs.map((c) => ({ name: c.name, value: c.value })));
-      },
-    },
-  });
-
-  // Retry up to 2 times on transient Supabase auth failures (cold-start protection)
-  let session = null;
-  let error = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const result = await tmpClient.auth.signInWithPassword({
-      email: "demo@nexpura.com",
-      password: "nexpura-demo-2026",
     });
-    session = result.data.session;
-    error = result.error;
-    if (session) break;
-    if (attempt < 1) await new Promise((r) => setTimeout(r, 300));
-  }
 
-  if (error || !session) {
-    console.error("[sandbox] Demo session fetch failed after retries:", error?.message);
+    // Retry up to 2 times on transient Supabase auth failures (cold-start protection)
+    let session = null;
+    let error = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await tmpClient.auth.signInWithPassword({
+        email: "demo@nexpura.com",
+        password: "nexpura-demo-2026",
+      });
+      session = result.data.session;
+      error = result.error;
+      if (session) break;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 300));
+    }
+
+    if (error || !session) {
+      console.error("[sandbox] Demo session fetch failed after retries:", error?.message);
+      return [];
+    }
+
+    _cachedDemoCookies = captured;
+    _cacheExpiresAt = session.expires_at ?? now + 3600;
+    return _cachedDemoCookies;
+  } catch (err) {
+    console.error("[sandbox] getDemoSessionCookies threw unexpectedly:", err);
     return [];
   }
-
-  _cachedDemoCookies = captured;
-  _cacheExpiresAt = session.expires_at ?? now + 3600;
-  return _cachedDemoCookies;
 }
 
 async function getStaffSessionCookies(
@@ -76,45 +82,62 @@ async function getStaffSessionCookies(
     return _cachedStaffCookies;
   }
 
-  // Sign in as staff user using a temporary in-memory client.
-  const captured: Array<{ name: string; value: string }> = [];
+  // Sign in as staff user — wrapped in try-catch (same reason as demo sign-in).
+  try {
+    const captured: Array<{ name: string; value: string }> = [];
 
-  const tmpClient = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return [];
+    const tmpClient = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return [];
+        },
+        setAll(cs) {
+          captured.push(...cs.map((c) => ({ name: c.name, value: c.value })));
+        },
       },
-      setAll(cs) {
-        captured.push(...cs.map((c) => ({ name: c.name, value: c.value })));
-      },
-    },
-  });
-
-  let session = null;
-  let error = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const result = await tmpClient.auth.signInWithPassword({
-      email: "staff@nexpura.com",
-      password: "nexpura-staff-2026",
     });
-    session = result.data.session;
-    error = result.error;
-    if (session) break;
-    if (attempt < 1) await new Promise((r) => setTimeout(r, 300));
-  }
 
-  if (error || !session) {
-    console.error("[sandbox] Staff session fetch failed after retries:", error?.message);
+    let session = null;
+    let error = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await tmpClient.auth.signInWithPassword({
+        email: "staff@nexpura.com",
+        password: "nexpura-staff-2026",
+      });
+      session = result.data.session;
+      error = result.error;
+      if (session) break;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 300));
+    }
+
+    if (error || !session) {
+      console.error("[sandbox] Staff session fetch failed after retries:", error?.message);
+      return [];
+    }
+
+    _cachedStaffCookies = captured;
+    _staffCacheExpiresAt = session.expires_at ?? now + 3600;
+    return _cachedStaffCookies;
+  } catch (err) {
+    console.error("[sandbox] getStaffSessionCookies threw unexpectedly:", err);
     return [];
   }
-
-  _cachedStaffCookies = captured;
-  _staffCacheExpiresAt = session.expires_at ?? now + 3600;
-  return _cachedStaffCookies;
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function updateSession(request: NextRequest) {
+  // Top-level guard: if anything in this function throws (Edge Runtime limits,
+  // Supabase network failure, etc.) return NextResponse.next() to pass the request
+  // through unmodified rather than crashing with a 500.
+  try {
+    return await _updateSessionInner(request);
+  } catch (err) {
+    console.error("[middleware] updateSession threw — passing through:", err);
+    return NextResponse.next();
+  }
+}
+
+async function _updateSessionInner(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   const pathname = request.nextUrl.pathname;
@@ -128,13 +151,21 @@ export async function updateSession(request: NextRequest) {
   const isStaffRequest =
     rtParam === STAFF_TOKEN || staffCookieValue === STAFF_TOKEN;
 
+  // ── Inject x-nexpura-rt header early (before any async) ─────────────────
+  // Pages read this via headers() as a fallback when the cookie wasn't set
+  // (e.g., when the middleware threw before setting the response cookie).
+  const earlyHeaders = new Headers(request.headers);
+  if (isReviewRequest) earlyHeaders.set("x-nexpura-rt", REVIEW_TOKEN);
+  else if (isStaffRequest) earlyHeaders.set("x-nexpura-rt", STAFF_TOKEN);
+
   // ── Build request headers — inject session if review/staff mode ────────────
   // This is the core of the cookie-free approach: we modify the Cookie header
   // on the forwarded request. Server Components read cookies via await cookies()
   // from next/headers, which reads from the forwarded request headers.
   // So injecting here makes the session visible to ALL Server Components
   // without requiring the browser to store or send any Supabase auth cookies.
-  const requestHeaders = new Headers(request.headers);
+  // Start from earlyHeaders so x-nexpura-rt is always forwarded.
+  const requestHeaders = earlyHeaders;
   let demoCookies: Array<{ name: string; value: string }> = [];
 
   if (isStaffRequest) {
@@ -343,4 +374,4 @@ export async function updateSession(request: NextRequest) {
   }
 
   return supabaseResponse;
-}
+} // end _updateSessionInner

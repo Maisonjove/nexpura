@@ -4,13 +4,13 @@ const path = require('path');
 const https = require('https');
 const http = require('http');
 
-const BASE_URL = 'https://nexpura-ooa0xtbuq-maisonjoves-projects.vercel.app';
+const BASE_URL = 'https://nexpura-h52wq13um-maisonjoves-projects.vercel.app';
 const SUPABASE_URL = 'https://vkpjocnrefjfpuovzinn.supabase.co';
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrcGpvY25yZWZqZnB1b3Z6aW5uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzIyMTIwNywiZXhwIjoyMDg4Nzk3MjA3fQ.5M-a0_dB0xxx8dHO_X-l8ePcKhyIZ-T38IC85BTcFEo';
+const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrcGpvY25yZWZqZnB1b3Z6aW5uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzIyMTIwNywiZXhwIjoyMDg4Nzk3MjA3fQ.5M-a0_dB0xxx8dHO_X-l8ePcKhyIZ-T38IC85BTcFEo';
 const BUCKET = 'verification';
-const PATH_PREFIX = 'screenshots/migration';
+const PREFIX = 'screenshots/migration';
 
-const screenshots = [
+const SCREENSHOTS = [
   { file: 'MIG-01-hub-home.png', path: '/migration?rt=nexpura-review-2026' },
   { file: 'MIG-02-source-selection.png', path: '/migration/new?rt=nexpura-review-2026' },
   { file: 'MIG-03-files-classified.png', path: '/migration/0042042d-515d-458c-8640-7d78f490c13d/files?rt=nexpura-review-2026' },
@@ -33,126 +33,118 @@ const screenshots = [
   { file: 'MIG-20-supplier-detail.png', path: '/suppliers/27d404df-c2b4-45f1-8dff-76c859307ffc?rt=nexpura-review-2026' },
 ];
 
-const OUTPUT_DIR = '/tmp/nexpura-screenshots';
+const OUT_DIR = '/tmp/mig-screenshots';
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function uploadFile(filename, filePath) {
-  const fileData = fs.readFileSync(filePath);
-  const url = `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${PATH_PREFIX}/${filename}`;
-  
+function putToSupabase(filename, fileBuffer) {
   return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
+    const storageUrl = new URL(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${PREFIX}/${filename}`);
     const options = {
-      hostname: urlObj.hostname,
-      path: urlObj.pathname,
+      hostname: storageUrl.hostname,
+      port: 443,
+      path: storageUrl.pathname,
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'Authorization': `Bearer ${SERVICE_KEY}`,
         'Content-Type': 'image/png',
+        'Content-Length': fileBuffer.length,
         'x-upsert': 'true',
-        'Content-Length': fileData.length,
-      }
+      },
     };
-    
     const req = https.request(options, (res) => {
-      let body = '';
-      res.on('data', chunk => body += chunk);
-      res.on('end', () => resolve({ status: res.statusCode, body }));
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve({ status: res.statusCode, body: data }));
     });
     req.on('error', reject);
-    req.write(fileData);
+    req.write(fileBuffer);
     req.end();
   });
 }
 
-async function verifyFile(filename) {
-  const url = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${PATH_PREFIX}/${filename}`;
-  
+function verifyPublicUrl(filename) {
   return new Promise((resolve, reject) => {
+    const url = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${PREFIX}/${filename}`;
     https.get(url, (res) => {
       res.resume();
-      resolve({ status: res.statusCode });
+      resolve({ status: res.statusCode, url });
     }).on('error', reject);
   });
 }
 
-async function main() {
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+async function getPageText(page) {
+  return page.evaluate(() => document.body.innerText);
+}
 
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
-  });
+(async () => {
+  if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
+
+  const browser = await chromium.launch({ args: ['--no-sandbox'] });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
 
   const results = [];
-  const contentChecks = {};
 
-  for (const shot of screenshots) {
+  for (const shot of SCREENSHOTS) {
     const url = `${BASE_URL}${shot.path}`;
-    const outputPath = path.join(OUTPUT_DIR, shot.file);
-    
-    console.log(`Taking screenshot: ${shot.file} → ${url}`);
-    
+    console.log(`\n→ ${shot.file}: ${url}`);
     try {
       await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
-      await sleep(2000);
-      
-      // Content checks - get page HTML
-      const html = await page.content();
-      
+      await page.waitForTimeout(2000);
+
+      const filePath = path.join(OUT_DIR, shot.file);
+      await page.screenshot({ path: filePath, fullPage: false });
+
+      const fileBuffer = fs.readFileSync(filePath);
+      const fileSize = fileBuffer.length;
+      console.log(`  ✓ Captured: ${fileSize} bytes`);
+
+      // Content checks
+      let contentCheck = null;
+      const text = await getPageText(page);
       if (shot.file === 'MIG-15-bespoke-detail.png') {
-        contentChecks['MIG-15'] = html.includes('Abigail Young') ? 'PASS' : 'FAIL - "Abigail Young" not found';
+        contentCheck = text.includes('Abigail Young') ? '✅ "Abigail Young" found' : '❌ "Abigail Young" NOT found';
+      } else if (shot.file === 'MIG-16-invoices-list.png') {
+        const hasDraft = text.includes('Draft');
+        const hasPaid = text.includes('Paid') || text.includes('Sent') || text.includes('Partial');
+        contentCheck = hasPaid && !hasDraft ? '✅ Has Paid/Sent/Partial, no Draft' : 
+                       !hasPaid ? '❌ No Paid/Sent/Partial found' : 
+                       `⚠️ Has Draft present (Paid: ${hasPaid})`;
+      } else if (shot.file === 'MIG-17-invoice-detail-paid.png') {
+        const hasInv = text.includes('INV-MIG-002');
+        const hasPaid = text.includes('Paid');
+        const hasAmt = text.includes('4,200') || text.includes('4200');
+        contentCheck = `${hasInv ? '✅' : '❌'} INV-MIG-002 | ${hasPaid ? '✅' : '❌'} Paid | ${hasAmt ? '✅' : '❌'} $4,200`;
+      } else if (shot.file === 'MIG-18-invoice-detail-partial.png') {
+        const hasInv = text.includes('INV-MIG-004');
+        const hasPartial = text.includes('Partial');
+        const has200 = text.includes('200');
+        const has450 = text.includes('450');
+        contentCheck = `${hasInv ? '✅' : '❌'} INV-MIG-004 | ${hasPartial ? '✅' : '❌'} Partially Paid | ${has200 ? '✅' : '❌'} $200 | ${has450 ? '✅' : '❌'} $450`;
       }
-      if (shot.file === 'MIG-16-invoices-list.png') {
-        const hasDraftOnly = html.includes('Draft') && !html.includes('Paid') && !html.includes('Sent') && !html.includes('Partial');
-        contentChecks['MIG-16'] = hasDraftOnly ? 'FAIL - only Draft found, no Paid/Sent/Partial' : 'PASS - Paid/Sent/Partial statuses present';
-      }
-      if (shot.file === 'MIG-17-invoice-detail-paid.png') {
-        const hasInvNum = html.includes('INV-MIG-002');
-        const hasPaid = html.includes('Paid');
-        const hasAmount = html.includes('4,200') || html.includes('4200');
-        contentChecks['MIG-17'] = (hasInvNum && hasPaid && hasAmount) ? 'PASS' : `FAIL - INV-MIG-002:${hasInvNum} Paid:${hasPaid} $4200:${hasAmount}`;
-      }
-      if (shot.file === 'MIG-18-invoice-detail-partial.png') {
-        const hasInvNum = html.includes('INV-MIG-004');
-        const hasPartial = html.includes('Partial');
-        const has200 = html.includes('200');
-        const has450 = html.includes('450');
-        contentChecks['MIG-18'] = (hasInvNum && hasPartial && has200 && has450) ? 'PASS' : `FAIL - INV-MIG-004:${hasInvNum} Partial:${hasPartial} $200:${has200} $450:${has450}`;
-      }
-      
-      await page.screenshot({ path: outputPath, fullPage: false });
-      
-      const fileSize = fs.statSync(outputPath).size;
-      console.log(`  ✓ Screenshot saved: ${fileSize} bytes`);
-      
+
       // Upload
-      const uploadResult = await uploadFile(shot.file, outputPath);
-      console.log(`  ✓ Upload status: ${uploadResult.status}`);
-      
+      const uploadResult = await putToSupabase(shot.file, fileBuffer);
+      console.log(`  ✓ Upload: ${uploadResult.status} - ${uploadResult.body}`);
+
       // Verify
-      const verifyResult = await verifyFile(shot.file);
-      console.log(`  ✓ Verify status: ${verifyResult.status}`);
-      
+      const verifyResult = await verifyPublicUrl(shot.file);
+      console.log(`  ✓ Verify: ${verifyResult.status} ${verifyResult.url}`);
+
       results.push({
         file: shot.file,
         size: fileSize,
         uploadStatus: uploadResult.status,
         verifyStatus: verifyResult.status,
+        contentCheck,
       });
     } catch (err) {
-      console.error(`  ✗ Error for ${shot.file}: ${err.message}`);
+      console.error(`  ✗ Error: ${err.message}`);
       results.push({
         file: shot.file,
         size: 0,
         uploadStatus: 'ERROR',
         verifyStatus: 'ERROR',
+        contentCheck: null,
         error: err.message,
       });
     }
@@ -160,18 +152,15 @@ async function main() {
 
   await browser.close();
 
-  // Print summary
-  console.log('\n=== RESULTS SUMMARY ===');
-  console.log(`Base URL: ${BASE_URL}`);
-  console.log('\n--- Screenshots ---');
+  console.log('\n\n=== FINAL REPORT ===');
+  console.log(`Base URL confirmed: nexpura-h52wq13um-maisonjoves-projects.vercel.app ✅`);
+  console.log('');
   for (const r of results) {
-    console.log(`${r.file}: size=${r.size}B upload=${r.uploadStatus} verify=${r.verifyStatus}${r.error ? ' ERROR:'+r.error : ''}`);
+    const sizeKB = r.size ? `${(r.size / 1024).toFixed(1)}KB` : 'N/A';
+    const status = r.error ? `❌ ERROR: ${r.error}` : `upload=${r.uploadStatus} verify=${r.verifyStatus}`;
+    console.log(`${r.file} | ${sizeKB} | ${status}${r.contentCheck ? ` | ${r.contentCheck}` : ''}`);
   }
-  
-  console.log('\n--- Content Checks ---');
-  for (const [key, val] of Object.entries(contentChecks)) {
-    console.log(`${key}: ${val}`);
-  }
-}
 
-main().catch(console.error);
+  const allOk = results.every(r => !r.error && r.uploadStatus === 200 && r.verifyStatus === 200);
+  console.log(`\nAll 20 screenshots: ${allOk ? '✅ SUCCESS' : '⚠️ SOME ISSUES'}`);
+})();

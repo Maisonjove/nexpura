@@ -3,6 +3,16 @@ import { updateSession } from "@/lib/supabase/middleware";
 import { createServerClient } from "@supabase/ssr";
 
 export async function proxy(request: NextRequest) {
+  // Top-level guard: if anything throws, pass through instead of returning 500
+  try {
+    return await _proxyInner(request);
+  } catch (err) {
+    console.error("[proxy] middleware threw — passing through:", err);
+    return NextResponse.next();
+  }
+}
+
+async function _proxyInner(request: NextRequest) {
   // Run base session update
   const response = await updateSession(request);
 
@@ -77,7 +87,7 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
-}
+} // end _proxyInner
 
 export const config = {
   matcher: [
