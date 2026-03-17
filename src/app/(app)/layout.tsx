@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import { canonicalPlan } from '@/lib/features';
+import { LocationProvider } from '@/contexts/LocationContext';
 
 export default async function AppLayout({
   children,
@@ -64,23 +65,46 @@ export default async function AppLayout({
     readyBespokeCount = bespokeRes.count ?? 0;
   }
 
+  // Fetch locations for multi-store selector
+  let locations: { id: string; name: string; type: string; is_active: boolean }[] = [];
+  let currentLocationId: string | null = null;
+  if (profile?.tenant_id) {
+    const locRes = await admin
+      .from('locations')
+      .select('id, name, type, is_active')
+      .eq('tenant_id', profile.tenant_id)
+      .eq('is_active', true)
+      .order('name');
+    locations = locRes.data ?? [];
+    
+    // Get user's current location from team_members
+    const tmRes = await admin
+      .from('team_members')
+      .select('current_location_id, default_location_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    currentLocationId = tmRes.data?.current_location_id || tmRes.data?.default_location_id || (locations.length === 1 ? locations[0].id : null);
+  }
+
   return (
-    <div className="flex min-h-screen bg-stone-50">
-      <Sidebar 
-        user={userData} 
-        isSuperAdmin={isSuperAdmin} 
-        websiteConfig={websiteConfig} 
-        businessMode={businessMode}
-        readyRepairsCount={readyRepairsCount}
-        readyBespokeCount={readyBespokeCount}
-        plan={tenantPlan}
-      />
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        <Header user={userData} />
-        <main className="flex-1 overflow-auto p-8">
-          {children}
-        </main>
+    <LocationProvider initialLocations={locations} initialCurrentLocationId={currentLocationId}>
+      <div className="flex min-h-screen bg-stone-50">
+        <Sidebar 
+          user={userData} 
+          isSuperAdmin={isSuperAdmin} 
+          websiteConfig={websiteConfig} 
+          businessMode={businessMode}
+          readyRepairsCount={readyRepairsCount}
+          readyBespokeCount={readyBespokeCount}
+          plan={tenantPlan}
+        />
+        <div className="flex-1 ml-64 flex flex-col min-h-screen">
+          <Header user={userData} />
+          <main className="flex-1 overflow-auto p-8">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </LocationProvider>
   );
 }

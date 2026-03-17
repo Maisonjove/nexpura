@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import NotificationBell from './NotificationBell';
+import LocationSelector from './LocationSelector';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 
 interface HeaderProps {
@@ -30,7 +31,10 @@ export default function Header({ user }: HeaderProps) {
 
   return (
     <header className="h-14 bg-background border-b border-border flex items-center justify-between px-8 flex-shrink-0">
-      <div />
+      {/* Left side - Location selector */}
+      <div className="flex items-center gap-4">
+        <LocationSelector />
+      </div>
       <div className="flex items-center gap-3">
         {/* Scan indicator */}
         <div

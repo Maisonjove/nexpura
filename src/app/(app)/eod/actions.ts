@@ -41,7 +41,7 @@ export interface EODSummary {
   } | null;
 }
 
-export async function getEODSummary(date?: string): Promise<{ data?: EODSummary; error?: string }> {
+export async function getEODSummary(date?: string, locationId?: string | null): Promise<{ data?: EODSummary; error?: string }> {
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, tenantId } = ctx;
@@ -50,31 +50,50 @@ export async function getEODSummary(date?: string): Promise<{ data?: EODSummary;
   const startOfDay = `${targetDate}T00:00:00.000Z`;
   const endOfDay = `${targetDate}T23:59:59.999Z`;
 
-  // Fetch all sales for the day
-  const { data: sales } = await admin
+  // Fetch all sales for the day (optionally filtered by location)
+  let salesQuery = admin
     .from("sales")
     .select("payment_method, total, status")
     .eq("tenant_id", tenantId)
     .gte("sale_date", startOfDay)
     .lte("sale_date", endOfDay)
     .in("status", ["paid", "completed"]);
+  
+  if (locationId) {
+    salesQuery = salesQuery.eq("location_id", locationId);
+  }
+  
+  const { data: sales } = await salesQuery;
 
-  // Fetch refunds for the day
-  const { data: refunds } = await admin
+  // Fetch refunds for the day (optionally filtered by location)
+  let refundsQuery = admin
     .from("refunds")
     .select("refund_method, total")
     .eq("tenant_id", tenantId)
     .gte("created_at", startOfDay)
     .lte("created_at", endOfDay)
     .eq("status", "completed");
+  
+  if (locationId) {
+    refundsQuery = refundsQuery.eq("location_id", locationId);
+  }
+  
+  const { data: refunds } = await refundsQuery;
 
-  // Check for existing reconciliation record
-  const { data: existing } = await admin
+  // Check for existing reconciliation record (location-specific if multi-store)
+  let existingQuery = admin
     .from("eod_reconciliations")
-    .select("id, cash_counted, cash_variance, opening_float, closing_float, notes, status, submitted_at")
+    .select("id, cash_counted, cash_variance, opening_float, closing_float, notes, status, submitted_at, location_id")
     .eq("tenant_id", tenantId)
-    .eq("reconciliation_date", targetDate)
-    .maybeSingle();
+    .eq("reconciliation_date", targetDate);
+  
+  if (locationId) {
+    existingQuery = existingQuery.eq("location_id", locationId);
+  } else {
+    existingQuery = existingQuery.is("location_id", null);
+  }
+  
+  const { data: existing } = await existingQuery.maybeSingle();
 
   const salesList = sales ?? [];
   const refundsList = refunds ?? [];
@@ -159,6 +178,7 @@ export async function saveEODReconciliation(params: {
   notes: string;
   summary: EODSummary;
   submit: boolean;
+  locationId?: string | null;
 }): Promise<{ id?: string; error?: string }> {
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
@@ -166,9 +186,10 @@ export async function saveEODReconciliation(params: {
 
   const cashVariance = params.cashCounted - params.summary.cashExpected;
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     tenant_id: tenantId,
     reconciliation_date: params.date,
+    location_id: params.locationId || null,
     total_sales_cash: params.summary.totalSalesCash,
     total_sales_card: params.summary.totalSalesCard,
     total_sales_transfer: params.summary.totalSalesTransfer,

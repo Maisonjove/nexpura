@@ -2,6 +2,8 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { getEODSummary, saveEODReconciliation, EODSummary } from "./actions";
+import { useLocation } from "@/contexts/LocationContext";
+import { MapPin } from "lucide-react";
 
 interface PastRecord {
   id: string;
@@ -23,6 +25,7 @@ function fmtCurrency(n: number) {
 }
 
 export default function EODClient({ todaySummary: initialSummary, pastRecords }: Props) {
+  const { currentLocationId, currentLocation, hasMultipleLocations } = useLocation();
   const [summary, setSummary] = useState<EODSummary>(initialSummary);
   const [selectedDate, setSelectedDate] = useState(initialSummary.date);
   const [openingFloat, setOpeningFloat] = useState(summary.existingReconciliation?.opening_float?.toString() ?? "0");
@@ -35,10 +38,18 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
 
   const cashVariance = cashCounted !== "" ? parseFloat(cashCounted) - summary.cashExpected : null;
 
+  // Reload summary when location changes
+  useEffect(() => {
+    if (hasMultipleLocations) {
+      loadDate(selectedDate);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLocationId]);
+
   function loadDate(date: string) {
     setSelectedDate(date);
     startTransition(async () => {
-      const result = await getEODSummary(date);
+      const result = await getEODSummary(date, currentLocationId);
       if (result.data) {
         setSummary(result.data);
         setOpeningFloat(result.data.existingReconciliation?.opening_float?.toString() ?? "0");
@@ -60,13 +71,14 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
         notes,
         summary,
         submit,
+        locationId: currentLocationId,
       });
       if (result.error) {
         setSaveMsg({ type: "err", text: result.error });
       } else {
         setSaveMsg({ type: "ok", text: submit ? "Reconciliation submitted!" : "Saved as draft" });
         // Reload summary to pick up existing record
-        const refreshed = await getEODSummary(selectedDate);
+        const refreshed = await getEODSummary(selectedDate, currentLocationId);
         if (refreshed.data) setSummary(refreshed.data);
       }
     });
@@ -80,7 +92,15 @@ export default function EODClient({ todaySummary: initialSummary, pastRecords }:
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">End of Day</h1>
-          <p className="text-stone-500 text-sm mt-1">Daily cash and sales reconciliation</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-stone-500 text-sm">Daily cash and sales reconciliation</p>
+            {hasMultipleLocations && currentLocation && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-xs font-medium rounded-full">
+                <MapPin size={10} />
+                {currentLocation.name}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <input
