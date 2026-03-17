@@ -1,8 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { redirect } from "next/navigation";
 import DashboardClient from "./DashboardClient";
+import OwnerAccessBanner from "@/components/OwnerAccessBanner";
+import OwnerViewBanner from "@/components/OwnerViewBanner";
 
-export default async function DashboardPage() {
+const OWNER_EMAIL = "germanijoey@yahoo.com";
+
+type PageProps = {
+  searchParams: Promise<{ owner_view?: string }>;
+};
+
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const ownerViewTenantId = params.owner_view;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -10,17 +22,59 @@ export default async function DashboardPage() {
 
   const admin = createAdminClient();
 
+  // Check if this is an owner view request
+  let isOwnerViewMode = false;
+  let viewingTenantName: string | null = null;
+
+  if (ownerViewTenantId && user?.email === OWNER_EMAIL) {
+    // Verify the owner has approved access to this tenant
+    const { data: accessRequest } = await admin
+      .from("owner_access_requests")
+      .select("*")
+      .eq("tenant_id", ownerViewTenantId)
+      .eq("status", "approved")
+      .single();
+
+    if (accessRequest && (!accessRequest.expires_at || new Date(accessRequest.expires_at) > new Date())) {
+      isOwnerViewMode = true;
+    } else {
+      // No valid access, redirect to owner admin
+      redirect("/owner-admin/memberships");
+    }
+  }
+
   // Use admin to bypass RLS for the user lookup to avoid recursion/timeout issues
+  // In owner view mode, we load the viewed tenant's data
+  const targetTenantId = isOwnerViewMode ? ownerViewTenantId : null;
+
   const { data: userData } = await admin
     .from("users")
     .select("full_name, tenant_id, role, tenants(name, currency, tax_rate, tax_name)")
     .eq("id", user?.id ?? "")
     .single();
 
-  const firstName = userData?.full_name?.split(" ")[0] || "there";
-  const tenantData = userData?.tenants as { name?: string; currency?: string; tax_rate?: number; tax_name?: string } | null;
+  // Get tenant data - either the user's own tenant or the viewed tenant
+  let tenantId = userData?.tenant_id ?? "";
+  let tenantData = userData?.tenants as { name?: string; currency?: string; tax_rate?: number; tax_name?: string } | null;
+  let firstName = userData?.full_name?.split(" ")[0] || "there";
+  
+  if (isOwnerViewMode && targetTenantId) {
+    // Load the viewed tenant's data
+    const { data: viewedTenant } = await admin
+      .from("tenants")
+      .select("name, currency, tax_rate, tax_name")
+      .eq("id", targetTenantId)
+      .single();
+    
+    if (viewedTenant) {
+      tenantId = targetTenantId;
+      tenantData = viewedTenant;
+      viewingTenantName = viewedTenant.name ?? "Unknown Business";
+      firstName = "Owner"; // Show "Owner" greeting in view mode
+    }
+  }
+
   const tenantName = tenantData?.name ?? null;
-  const tenantId = userData?.tenant_id ?? "";
   const currency = tenantData?.currency || "AUD";
   const userRole = (userData as { role?: string } | null)?.role ?? "staff";
   const isManager = userRole === "owner" || userRole === "manager";
@@ -28,7 +82,7 @@ export default async function DashboardPage() {
   const today = new Date().toISOString().split("T")[0];
   const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-  // ── Parallel fetch — all 13 independent queries at once ─────────────────────
+  // ── Parallel fetch — all queries at once ─────────────────────────────────────
   const [
     salesResult,
     outstandingResult,
@@ -44,6 +98,7 @@ export default async function DashboardPage() {
     recentJobsResult,
     recentRepairsResult,
     allTasksResult,
+    accessRequestResult,
   ] = await Promise.all([
     // 1. Sales this month
     admin
@@ -179,6 +234,15 @@ export default async function DashboardPage() {
       if (!isManager) q = q.eq("assigned_to", user?.id ?? "");
       return q;
     })(),
+
+    // 15. Owner access request for this tenant (pending or approved)
+    admin
+      .from("owner_access_requests")
+      .select("id, status, requested_at, expires_at")
+      .eq("tenant_id", tenantId)
+      .in("status", ["pending", "approved"])
+      .order("requested_at", { ascending: false })
+      .limit(1),
   ]);
 
   // ── Derive values ─────────────────────────────────────────────────────────────
@@ -332,10 +396,36 @@ export default async function DashboardPage() {
     }
   }
 
+  // Get the most recent pending or valid approved access request
+  const accessRequestData = accessRequestResult.data?.[0];
+  const accessRequest = accessRequestData ? {
+    id: accessRequestData.id,
+    status: accessRequestData.status as "pending" | "approved" | "denied" | "expired" | "revoked",
+    requestedAt: accessRequestData.requested_at,
+    expiresAt: accessRequestData.expires_at,
+  } : null;
+
+  // Only show tenant-side access request banner when NOT in owner view mode
+  const showAccessBanner = !isOwnerViewMode && accessRequest && (
+    accessRequest.status === "pending" ||
+    (accessRequest.status === "approved" && 
+      (!accessRequest.expiresAt || new Date(accessRequest.expiresAt) > new Date()))
+  );
+
   return (
-    <DashboardClient
-      firstName={firstName}
-      tenantName={tenantName}
+    <>
+      {/* Owner view mode banner */}
+      {isOwnerViewMode && viewingTenantName && (
+        <OwnerViewBanner tenantName={viewingTenantName} />
+      )}
+      
+      {/* Tenant-side access request banner */}
+      {showAccessBanner && <OwnerAccessBanner accessRequest={accessRequest} />}
+      
+      <DashboardClient
+        readOnly={isOwnerViewMode}
+        firstName={firstName}
+        tenantName={tenantName}
       salesThisMonthRevenue={salesThisMonthRevenue}
       salesThisMonthCount={salesThisMonthCount}
       activeRepairsCount={activeRepairsCount}
@@ -352,6 +442,7 @@ export default async function DashboardPage() {
       activeRepairs={activeRepairs}
       activeBespokeJobs={activeBespokeJobs}
       currency={currency}
-    />
+      />
+    </>
   );
 }
