@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
+import { getTenantEmailSender } from "../email/actions";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -233,11 +234,14 @@ export async function inviteTeamMember(
   // Send invite email
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com"}/invite/${inviteToken}`;
   
+  // Get the tenant's email sender (custom domain or fallback)
+  const emailSender = await getTenantEmailSender(ctx.tenantId);
+  
   try {
     await resend.emails.send({
-      from: "Nexpura <onboarding@resend.dev>",
+      from: emailSender.from,
       to: email.toLowerCase(),
-      subject: `You're invited to join ${tenant?.business_name || "a jewellery business"} on Nexpura`,
+      subject: `You're invited to join ${tenant?.business_name || "a jewellery business"}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -318,11 +322,14 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
   // Send invite email
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com"}/invite/${inviteToken}`;
   
+  // Get the tenant's email sender (custom domain or fallback)
+  const emailSender = await getTenantEmailSender(ctx.tenantId);
+  
   try {
     await resend.emails.send({
-      from: "Nexpura <onboarding@resend.dev>",
+      from: emailSender.from,
       to: member.email,
-      subject: `Reminder: You're invited to join ${tenant?.business_name || "a jewellery business"} on Nexpura`,
+      subject: `Reminder: You're invited to join ${tenant?.business_name || "a jewellery business"}`,
       html: `
         <!DOCTYPE html>
         <html>

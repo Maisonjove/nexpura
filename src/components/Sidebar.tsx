@@ -10,7 +10,7 @@ import {
   RotateCcw, Gift, ClipboardList, ArrowLeftRight, Star,
   Bell, Link as LinkIcon, TrendingUp, ArrowRightLeft,
   ChevronDown, ChevronRight, Layers, MessageSquare, Sparkles, Plug,
-  Moon, UserCog, MapPin
+  Moon, UserCog, MapPin, Mail
 } from 'lucide-react';
 
 /* ─── Primary nav (always visible, no group header) ─── */
@@ -73,6 +73,7 @@ const NAV_GROUPS = [
       { name: 'Settings',     href: '/settings',           icon: Settings },
       { name: 'Locations',    href: '/settings/locations', icon: MapPin },
       { name: 'Team & Roles', href: '/settings/roles',     icon: UserCog },
+      { name: 'Email Domain', href: '/settings/email',     icon: Mail },
       { name: 'Billing',      href: '/billing',            icon: CreditCard },
       { name: 'Documents',    href: '/documents',          icon: FileText },
       { name: 'Integrations', href: '/integrations',       icon: Plug },
