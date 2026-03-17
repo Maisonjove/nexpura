@@ -138,8 +138,9 @@ export interface CreateRepairInput {
 
 export async function createRepairFromIntake(
   input: CreateRepairInput
-): Promise<{ id?: string; repair_number?: string; error?: string }> {
+): Promise<{ id?: string; repair_number?: string; invoice_id?: string; error?: string }> {
   const { supabase, userId, tenantId } = await getAuthContext();
+  const admin = createAdminClient();
 
   // Generate repair number
   const { data: numData, error: numError } = await supabase.rpc(
@@ -183,54 +184,110 @@ export async function createRepairFromIntake(
     created_by: userId,
   });
 
-  // If payment was made, create a payment record
-  if (input.payment_received && input.payment_received > 0) {
-    await recordRepairPayment(data.id, input.payment_received, input.payment_method || "cash");
+  let invoiceId: string | undefined;
+
+  // Auto-create invoice if quoted_price OR deposit was provided
+  const quotedPrice = input.quoted_price ?? 0;
+  const paymentReceived = input.payment_received ?? 0;
+
+  if (quotedPrice > 0 || paymentReceived > 0) {
+    // Get tenant tax config
+    const { data: tenantData } = await admin
+      .from("tenants")
+      .select("tax_rate, tax_name, tax_inclusive")
+      .eq("id", tenantId)
+      .single();
+
+    const taxRate = tenantData?.tax_rate ?? 0.1;
+    const taxInclusive = tenantData?.tax_inclusive ?? true;
+
+    let subtotal: number;
+    let taxAmount: number;
+    let total: number;
+
+    if (taxInclusive) {
+      total = quotedPrice;
+      taxAmount = total - total / (1 + taxRate);
+      subtotal = total - taxAmount;
+    } else {
+      subtotal = quotedPrice;
+      taxAmount = subtotal * taxRate;
+      total = subtotal + taxAmount;
+    }
+
+    // Determine invoice status
+    const invoiceStatus = paymentReceived >= total ? "paid" : paymentReceived > 0 ? "partial" : "unpaid";
+
+    // Generate invoice number
+    const { data: invNumData } = await supabase.rpc("next_invoice_number", {
+      p_tenant_id: tenantId,
+    });
+
+    const { data: invoice, error: invError } = await admin
+      .from("invoices")
+      .insert({
+        tenant_id: tenantId,
+        invoice_number: invNumData ?? `INV-${Date.now()}`,
+        customer_id: input.customer_id || null,
+        reference_type: "repair",
+        reference_id: data.id,
+        invoice_date: new Date().toISOString().split("T")[0],
+        subtotal: Math.round(subtotal * 100) / 100,
+        discount_amount: 0,
+        tax_name: tenantData?.tax_name || "GST",
+        tax_rate: taxRate,
+        tax_inclusive: taxInclusive,
+        tax_amount: Math.round(taxAmount * 100) / 100,
+        total: Math.round(total * 100) / 100,
+        amount_paid: paymentReceived,
+        status: invoiceStatus,
+        paid_at: invoiceStatus === "paid" ? new Date().toISOString() : null,
+        created_by: userId,
+      })
+      .select("id")
+      .single();
+
+    if (!invError && invoice) {
+      invoiceId = invoice.id;
+
+      // Create invoice line item for the repair work
+      await admin.from("invoice_line_items").insert({
+        tenant_id: tenantId,
+        invoice_id: invoice.id,
+        description: `Repair: ${input.item_description}`,
+        quantity: 1,
+        unit_price: quotedPrice,
+        discount_pct: 0,
+        line_total: quotedPrice,
+        sort_order: 0,
+      });
+
+      // Link invoice to repair
+      await admin
+        .from("repairs")
+        .update({ invoice_id: invoice.id })
+        .eq("id", data.id)
+        .eq("tenant_id", tenantId);
+
+      // Record payment if made
+      if (paymentReceived > 0) {
+        await admin.from("payments").insert({
+          tenant_id: tenantId,
+          invoice_id: invoice.id,
+          amount: paymentReceived,
+          payment_method: input.payment_method || "cash",
+          payment_date: new Date().toISOString().split("T")[0],
+          notes: "Deposit at intake",
+          created_by: userId,
+        });
+      }
+    }
   }
 
   revalidatePath("/repairs");
   revalidatePath("/workshop");
-  return { id: data.id, repair_number: data.repair_number };
-}
-
-async function recordRepairPayment(repairId: string, amount: number, method: string) {
-  const { supabase, userId, tenantId } = await getAuthContext();
-  
-  // Create invoice for the repair if one doesn't exist
-  const { data: existingInvoice } = await supabase
-    .from("invoices")
-    .select("id")
-    .eq("reference_type", "repair")
-    .eq("reference_id", repairId)
-    .single();
-
-  if (existingInvoice) {
-    // Record payment against existing invoice
-    await supabase.from("payments").insert({
-      tenant_id: tenantId,
-      invoice_id: existingInvoice.id,
-      amount,
-      payment_method: method,
-      payment_date: new Date().toISOString().split("T")[0],
-      created_by: userId,
-    });
-
-    // Update invoice amount_paid
-    const { data: invoice } = await supabase
-      .from("invoices")
-      .select("amount_paid, total")
-      .eq("id", existingInvoice.id)
-      .single();
-
-    if (invoice) {
-      const newAmountPaid = (invoice.amount_paid || 0) + amount;
-      const newStatus = newAmountPaid >= invoice.total ? "paid" : "partial";
-      await supabase
-        .from("invoices")
-        .update({ amount_paid: newAmountPaid, status: newStatus })
-        .eq("id", existingInvoice.id);
-    }
-  }
+  revalidatePath("/invoices");
+  return { id: data.id, repair_number: data.repair_number, invoice_id: invoiceId };
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -261,8 +318,9 @@ export interface CreateBespokeInput {
 
 export async function createBespokeFromIntake(
   input: CreateBespokeInput
-): Promise<{ id?: string; job_number?: string; error?: string }> {
+): Promise<{ id?: string; job_number?: string; invoice_id?: string; error?: string }> {
   const { supabase, userId, tenantId } = await getAuthContext();
+  const admin = createAdminClient();
 
   // Generate job number
   const { data: numData, error: numError } = await supabase.rpc(
@@ -309,9 +367,110 @@ export async function createBespokeFromIntake(
     created_by: userId,
   });
 
+  let invoiceId: string | undefined;
+
+  // Auto-create invoice if quoted_price OR deposit was provided
+  const quotedPrice = input.quoted_price ?? 0;
+  const paymentReceived = input.payment_received ?? 0;
+
+  if (quotedPrice > 0 || paymentReceived > 0) {
+    // Get tenant tax config
+    const { data: tenantData } = await admin
+      .from("tenants")
+      .select("tax_rate, tax_name, tax_inclusive")
+      .eq("id", tenantId)
+      .single();
+
+    const taxRate = tenantData?.tax_rate ?? 0.1;
+    const taxInclusive = tenantData?.tax_inclusive ?? true;
+
+    let subtotal: number;
+    let taxAmount: number;
+    let total: number;
+
+    if (taxInclusive) {
+      total = quotedPrice;
+      taxAmount = total - total / (1 + taxRate);
+      subtotal = total - taxAmount;
+    } else {
+      subtotal = quotedPrice;
+      taxAmount = subtotal * taxRate;
+      total = subtotal + taxAmount;
+    }
+
+    // Determine invoice status
+    const invoiceStatus = paymentReceived >= total ? "paid" : paymentReceived > 0 ? "partial" : "unpaid";
+
+    // Generate invoice number
+    const { data: invNumData } = await supabase.rpc("next_invoice_number", {
+      p_tenant_id: tenantId,
+    });
+
+    const { data: invoice, error: invError } = await admin
+      .from("invoices")
+      .insert({
+        tenant_id: tenantId,
+        invoice_number: invNumData ?? `INV-${Date.now()}`,
+        customer_id: input.customer_id || null,
+        reference_type: "bespoke",
+        reference_id: data.id,
+        invoice_date: new Date().toISOString().split("T")[0],
+        subtotal: Math.round(subtotal * 100) / 100,
+        discount_amount: 0,
+        tax_name: tenantData?.tax_name || "GST",
+        tax_rate: taxRate,
+        tax_inclusive: taxInclusive,
+        tax_amount: Math.round(taxAmount * 100) / 100,
+        total: Math.round(total * 100) / 100,
+        amount_paid: paymentReceived,
+        status: invoiceStatus,
+        paid_at: invoiceStatus === "paid" ? new Date().toISOString() : null,
+        created_by: userId,
+      })
+      .select("id")
+      .single();
+
+    if (!invError && invoice) {
+      invoiceId = invoice.id;
+
+      // Create invoice line item for the bespoke work
+      await admin.from("invoice_line_items").insert({
+        tenant_id: tenantId,
+        invoice_id: invoice.id,
+        description: `Bespoke: ${input.title}`,
+        quantity: 1,
+        unit_price: quotedPrice,
+        discount_pct: 0,
+        line_total: quotedPrice,
+        sort_order: 0,
+      });
+
+      // Link invoice to bespoke job
+      await admin
+        .from("bespoke_jobs")
+        .update({ invoice_id: invoice.id })
+        .eq("id", data.id)
+        .eq("tenant_id", tenantId);
+
+      // Record payment if made
+      if (paymentReceived > 0) {
+        await admin.from("payments").insert({
+          tenant_id: tenantId,
+          invoice_id: invoice.id,
+          amount: paymentReceived,
+          payment_method: input.payment_method || "cash",
+          payment_date: new Date().toISOString().split("T")[0],
+          notes: "Deposit at intake",
+          created_by: userId,
+        });
+      }
+    }
+  }
+
   revalidatePath("/bespoke");
   revalidatePath("/workshop");
-  return { id: data.id, job_number: data.job_number };
+  revalidatePath("/invoices");
+  return { id: data.id, job_number: data.job_number, invoice_id: invoiceId };
 }
 
 // ────────────────────────────────────────────────────────────────
