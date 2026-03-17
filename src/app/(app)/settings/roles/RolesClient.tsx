@@ -6,13 +6,17 @@ import Link from "next/link";
 import { 
   Users, Shield, MapPin, ChevronRight, Check, X, 
   Building2, Eye, Edit3, ShoppingCart, Wrench, 
-  BarChart2, DollarSign, Settings, UserCog
+  BarChart2, DollarSign, Settings, UserCog, Plus,
+  Mail, Trash2, RefreshCw, Loader2
 } from "lucide-react";
 import { 
   updateMemberRole, 
   updateMemberPermissions, 
   updateMemberLocationAccess,
   updateMemberDefaultLocation,
+  inviteTeamMember,
+  resendInvite,
+  removeMember,
   DEFAULT_PERMISSIONS,
   PermissionSet 
 } from "./actions";
@@ -99,6 +103,14 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [activeTab, setActiveTab] = useState<"permissions" | "locations">("permissions");
   const [saveMsg, setSaveMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  
+  // Invite modal state
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("staff");
+  const [inviteLocations, setInviteLocations] = useState<string[] | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
 
   const hasMultipleLocations = locations.length > 1;
 
@@ -191,6 +203,61 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
     return member.allowed_location_ids.includes(locationId);
   }
 
+  async function handleInvite() {
+    if (!inviteName.trim() || !inviteEmail.trim()) {
+      setSaveMsg({ type: "err", text: "Name and email are required" });
+      return;
+    }
+    
+    startTransition(async () => {
+      const result = await inviteTeamMember(
+        inviteName.trim(),
+        inviteEmail.trim(),
+        inviteRole,
+        inviteLocations
+      );
+      if (result.error) {
+        setSaveMsg({ type: "err", text: result.error });
+      } else {
+        setInviteSuccess(true);
+        setTimeout(() => {
+          setShowInviteModal(false);
+          setInviteName("");
+          setInviteEmail("");
+          setInviteRole("staff");
+          setInviteLocations(null);
+          setInviteSuccess(false);
+          router.refresh();
+        }, 2000);
+      }
+    });
+  }
+
+  async function handleResendInvite(memberId: string) {
+    startTransition(async () => {
+      const result = await resendInvite(memberId);
+      if (result.error) {
+        setSaveMsg({ type: "err", text: result.error });
+      } else {
+        setSaveMsg({ type: "ok", text: "Invitation resent!" });
+      }
+    });
+  }
+
+  async function handleRemoveMember(memberId: string) {
+    if (!confirm("Are you sure you want to remove this team member?")) return;
+    
+    startTransition(async () => {
+      const result = await removeMember(memberId);
+      if (result.error) {
+        setSaveMsg({ type: "err", text: result.error });
+      } else {
+        setSelectedMember(null);
+        router.refresh();
+      }
+    });
+  }
+
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">
       {/* Header */}
@@ -204,6 +271,15 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
           <h1 className="text-2xl font-semibold text-stone-900">Roles & Permissions</h1>
           <p className="text-stone-500 text-sm mt-1">Control what each team member can see and do</p>
         </div>
+        {isOwnerOrManager && (
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="flex items-center gap-2 bg-stone-800 hover:bg-stone-900 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
+          >
+            <Plus size={18} />
+            Invite Team Member
+          </button>
+        )}
       </div>
 
       {saveMsg && (
@@ -265,22 +341,49 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
           {selectedMember ? (
             <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
               {/* Member Header */}
-              <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-stone-900">{selectedMember.name}</h2>
-                  <p className="text-sm text-stone-500">{selectedMember.email}</p>
+              <div className="px-6 py-4 border-b border-stone-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-stone-900">{selectedMember.name}</h2>
+                    <p className="text-sm text-stone-500">{selectedMember.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isOwnerOrManager && selectedMember.role !== "owner" && (
+                      <select
+                        value={selectedMember.role}
+                        onChange={(e) => handleRoleChange(selectedMember.id, e.target.value)}
+                        disabled={isPending}
+                        className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                      >
+                        {ROLE_OPTIONS.filter(r => r.value !== "owner").map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                 </div>
+                {/* Action buttons for pending invites or removal */}
                 {isOwnerOrManager && selectedMember.role !== "owner" && (
-                  <select
-                    value={selectedMember.role}
-                    onChange={(e) => handleRoleChange(selectedMember.id, e.target.value)}
-                    disabled={isPending}
-                    className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600"
-                  >
-                    {ROLE_OPTIONS.filter(r => r.value !== "owner").map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-stone-100">
+                    {!selectedMember.invite_accepted && (
+                      <button
+                        onClick={() => handleResendInvite(selectedMember.id)}
+                        disabled={isPending}
+                        className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium px-3 py-1.5 bg-amber-50 rounded-lg"
+                      >
+                        {isPending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                        Resend Invite
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleRemoveMember(selectedMember.id)}
+                      disabled={isPending}
+                      className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-medium px-3 py-1.5 bg-red-50 rounded-lg ml-auto"
+                    >
+                      <Trash2 size={12} />
+                      Remove
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -449,6 +552,139 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
           )}
         </div>
       </div>
+
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+            {inviteSuccess ? (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Check size={32} className="text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-stone-900 mb-2">Invitation Sent!</h3>
+                <p className="text-stone-500 text-sm">
+                  An email has been sent to {inviteEmail} with instructions to join your team.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-stone-900">Invite Team Member</h3>
+                  <button onClick={() => setShowInviteModal(false)} className="text-stone-400 hover:text-stone-600">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-6 space-y-4">
+                  {/* Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1.5">Full Name</label>
+                    <input
+                      type="text"
+                      value={inviteName}
+                      onChange={(e) => setInviteName(e.target.value)}
+                      placeholder="John Smith"
+                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    />
+                  </div>
+                  
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1.5">Email Address</label>
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="john@example.com"
+                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    />
+                  </div>
+                  
+                  {/* Role */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1.5">Role</label>
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    >
+                      {ROLE_OPTIONS.filter(r => r.value !== "owner").map(r => (
+                        <option key={r.value} value={r.value}>{r.label} — {r.desc}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Store Access (if multiple locations) */}
+                  {hasMultipleLocations && (
+                    <div>
+                      <label className="block text-sm font-medium text-stone-700 mb-1.5">Store Access</label>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 p-3 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100">
+                          <input
+                            type="radio"
+                            name="locationAccess"
+                            checked={inviteLocations === null}
+                            onChange={() => setInviteLocations(null)}
+                            className="text-amber-600 focus:ring-amber-600"
+                          />
+                          <span className="text-sm text-stone-700">All stores</span>
+                        </label>
+                        {locations.map(loc => (
+                          <label key={loc.id} className="flex items-center gap-2 p-3 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100">
+                            <input
+                              type="checkbox"
+                              checked={inviteLocations === null || inviteLocations?.includes(loc.id)}
+                              onChange={(e) => {
+                                if (inviteLocations === null) {
+                                  // Was "all", now selecting specific
+                                  setInviteLocations(e.target.checked ? [loc.id] : []);
+                                } else if (e.target.checked) {
+                                  setInviteLocations([...inviteLocations, loc.id]);
+                                } else {
+                                  setInviteLocations(inviteLocations.filter(id => id !== loc.id));
+                                }
+                              }}
+                              disabled={inviteLocations === null}
+                              className="text-amber-600 focus:ring-amber-600"
+                            />
+                            <span className="text-sm text-stone-700">{loc.name}</span>
+                            <span className="text-xs text-stone-400 capitalize">({loc.type})</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="px-6 py-4 bg-stone-50 border-t border-stone-100 flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowInviteModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleInvite}
+                    disabled={isPending || !inviteName.trim() || !inviteEmail.trim()}
+                    className="flex items-center gap-2 bg-stone-800 hover:bg-stone-900 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50"
+                  >
+                    {isPending ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail size={16} />
+                        Send Invitation
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

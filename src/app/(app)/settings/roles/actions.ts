@@ -2,6 +2,10 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -175,5 +179,218 @@ export async function updateMemberDefaultLocation(
     .eq("tenant_id", ctx.tenantId);
 
   if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function inviteTeamMember(
+  name: string,
+  email: string,
+  role: string,
+  allowedLocationIds: string[] | null
+): Promise<{ success?: boolean; error?: string; inviteToken?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+
+  const admin = createAdminClient();
+  
+  // Check if member already exists
+  const { data: existing } = await admin
+    .from("team_members")
+    .select("id")
+    .eq("tenant_id", ctx.tenantId)
+    .eq("email", email.toLowerCase())
+    .single();
+  
+  if (existing) return { error: "A team member with this email already exists" };
+
+  // Get tenant info for the email
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("business_name")
+    .eq("id", ctx.tenantId)
+    .single();
+
+  // Generate invite token
+  const inviteToken = crypto.randomUUID();
+  
+  // Get default permissions for this role
+  const defaultPerms = DEFAULT_PERMISSIONS[role] || DEFAULT_PERMISSIONS.staff;
+
+  // Create team member record
+  const { error } = await admin.from("team_members").insert({
+    tenant_id: ctx.tenantId,
+    name,
+    email: email.toLowerCase(),
+    role,
+    permissions: defaultPerms,
+    allowed_location_ids: allowedLocationIds,
+    invite_token: inviteToken,
+    invite_accepted: false,
+  });
+
+  if (error) return { error: error.message };
+
+  // Send invite email
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com"}/invite/${inviteToken}`;
+  
+  try {
+    await resend.emails.send({
+      from: "Nexpura <team@nexpura.com>",
+      to: email.toLowerCase(),
+      subject: `You're invited to join ${tenant?.business_name || "a jewellery business"} on Nexpura`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f4; margin: 0; padding: 40px 20px;">
+          <div style="max-width: 480px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <div style="background: linear-gradient(135deg, #78716c 0%, #57534e 100%); padding: 32px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Welcome to Nexpura</h1>
+            </div>
+            <div style="padding: 32px;">
+              <p style="color: #44403c; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+                Hi ${name},
+              </p>
+              <p style="color: #44403c; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+                You've been invited to join <strong>${tenant?.business_name || "a jewellery business"}</strong> as a <strong>${role.replace("_", " ")}</strong> on Nexpura.
+              </p>
+              <a href="${inviteUrl}" style="display: block; background: #78716c; color: white; text-decoration: none; padding: 14px 24px; border-radius: 8px; text-align: center; font-weight: 600; font-size: 16px;">
+                Accept Invitation
+              </a>
+              <p style="color: #a8a29e; font-size: 14px; line-height: 1.5; margin: 24px 0 0; text-align: center;">
+                This invite link will expire in 7 days.
+              </p>
+            </div>
+            <div style="background: #fafaf9; padding: 20px 32px; text-align: center; border-top: 1px solid #e7e5e4;">
+              <p style="color: #a8a29e; font-size: 12px; margin: 0;">
+                Nexpura — The Modern Jewellery Management System
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+  } catch (emailError) {
+    console.error("Failed to send invite email:", emailError);
+    // Don't fail the invite if email fails - they can still use the link
+  }
+
+  revalidatePath("/settings/roles");
+  return { success: true, inviteToken };
+}
+
+export async function resendInvite(memberId: string): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+
+  const admin = createAdminClient();
+  
+  // Get member info
+  const { data: member } = await admin
+    .from("team_members")
+    .select("name, email, role, invite_token, invite_accepted")
+    .eq("id", memberId)
+    .eq("tenant_id", ctx.tenantId)
+    .single();
+  
+  if (!member) return { error: "Team member not found" };
+  if (member.invite_accepted) return { error: "This member has already accepted their invite" };
+
+  // Get tenant info
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("business_name")
+    .eq("id", ctx.tenantId)
+    .single();
+
+  // Generate new token
+  const inviteToken = crypto.randomUUID();
+  
+  await admin
+    .from("team_members")
+    .update({ invite_token: inviteToken })
+    .eq("id", memberId);
+
+  // Send invite email
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com"}/invite/${inviteToken}`;
+  
+  try {
+    await resend.emails.send({
+      from: "Nexpura <team@nexpura.com>",
+      to: member.email,
+      subject: `Reminder: You're invited to join ${tenant?.business_name || "a jewellery business"} on Nexpura`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f4; margin: 0; padding: 40px 20px;">
+          <div style="max-width: 480px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <div style="background: linear-gradient(135deg, #78716c 0%, #57534e 100%); padding: 32px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Welcome to Nexpura</h1>
+            </div>
+            <div style="padding: 32px;">
+              <p style="color: #44403c; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+                Hi ${member.name},
+              </p>
+              <p style="color: #44403c; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+                This is a reminder that you've been invited to join <strong>${tenant?.business_name || "a jewellery business"}</strong> as a <strong>${member.role.replace("_", " ")}</strong> on Nexpura.
+              </p>
+              <a href="${inviteUrl}" style="display: block; background: #78716c; color: white; text-decoration: none; padding: 14px 24px; border-radius: 8px; text-align: center; font-weight: 600; font-size: 16px;">
+                Accept Invitation
+              </a>
+              <p style="color: #a8a29e; font-size: 14px; line-height: 1.5; margin: 24px 0 0; text-align: center;">
+                This invite link will expire in 7 days.
+              </p>
+            </div>
+            <div style="background: #fafaf9; padding: 20px 32px; text-align: center; border-top: 1px solid #e7e5e4;">
+              <p style="color: #a8a29e; font-size: 12px; margin: 0;">
+                Nexpura — The Modern Jewellery Management System
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+  } catch (emailError) {
+    console.error("Failed to send invite email:", emailError);
+    return { error: "Failed to send email" };
+  }
+
+  return { success: true };
+}
+
+export async function removeMember(memberId: string): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+
+  const admin = createAdminClient();
+  
+  // Check if trying to remove owner
+  const { data: member } = await admin
+    .from("team_members")
+    .select("role")
+    .eq("id", memberId)
+    .eq("tenant_id", ctx.tenantId)
+    .single();
+  
+  if (member?.role === "owner") return { error: "Cannot remove the owner" };
+
+  const { error } = await admin
+    .from("team_members")
+    .delete()
+    .eq("id", memberId)
+    .eq("tenant_id", ctx.tenantId);
+
+  if (error) return { error: error.message };
+  
+  revalidatePath("/settings/roles");
   return { success: true };
 }
