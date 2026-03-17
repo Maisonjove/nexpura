@@ -4,6 +4,8 @@ import { createServerClient } from "@supabase/ssr";
 import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const OWNER_EMAIL = "germanijoey@yahoo.com";
+
 export async function proxy(request: NextRequest) {
   // Top-level guard: if anything throws, pass through instead of returning 500
   try {
@@ -15,6 +17,55 @@ export async function proxy(request: NextRequest) {
 }
 
 async function _proxyInner(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // ── Owner Admin Portal Protection ────────────────────────────────────────
+  if (pathname.startsWith("/owner-admin") || pathname === "/memberships") {
+    const response = NextResponse.next({
+      request: { headers: request.headers },
+    });
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return request.cookies.getAll(); },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (pathname.startsWith("/owner-admin")) {
+      // Allow access to the login page
+      if (pathname === "/owner-admin") {
+        if (session?.user?.email === OWNER_EMAIL) {
+          return NextResponse.redirect(new URL("/owner-admin/dashboard", request.url));
+        }
+        return response;
+      }
+
+      // All other owner-admin routes require owner authentication
+      if (!session || session.user.email !== OWNER_EMAIL) {
+        return NextResponse.redirect(new URL("/owner-admin", request.url));
+      }
+    }
+
+    // Old memberships page - redirect appropriately
+    if (pathname === "/memberships") {
+      if (session?.user?.email === OWNER_EMAIL) {
+        return NextResponse.redirect(new URL("/owner-admin/memberships", request.url));
+      }
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
   // ── Subdomain tenant routing: acme.nexpura.com → inject x-subdomain-tenant-id ──
   // This runs BEFORE review/staff mode and BEFORE auth checks.
   // It only injects a header — it never overrides auth, RLS, or review mode.
@@ -111,8 +162,6 @@ async function _proxyInner(request: NextRequest) {
 
   // Run base session update
   const response = await updateSession(request);
-
-  const pathname = request.nextUrl.pathname;
 
   // ── Review / staff mode — skip ALL subscription checks ───────────────────
   // Sandbox sessions have no subscription record and must never hit the users
