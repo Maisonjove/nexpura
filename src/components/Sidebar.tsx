@@ -20,7 +20,7 @@ const PRIMARY_ITEMS = [
   { name: 'Customers',  href: '/customers',   icon: Users },
   { name: 'Inventory',  href: '/inventory',   icon: Package },
   { name: 'Invoices',   href: '/invoices',    icon: FileText },
-  { name: 'AI Copilot', href: '/support',    icon: Sparkles },
+  { name: 'AI Copilot', href: '/copilot',    icon: Sparkles },
 ];
 
 /* ─── Grouped (collapsible) nav ─── */
