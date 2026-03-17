@@ -115,9 +115,15 @@ const PRIORITIES = [
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "Cash" },
-  { value: "card", label: "Card" },
-  { value: "transfer", label: "Bank Transfer" },
-  { value: "afterpay", label: "Afterpay" },
+  { value: "eftpos", label: "Eftpos" },
+  { value: "visa", label: "Visa" },
+  { value: "mastercard", label: "Mastercard" },
+  { value: "amex", label: "American Express" },
+  { value: "discover", label: "Discover" },
+  { value: "cheque", label: "Cheque" },
+  { value: "gift_voucher", label: "Gift Voucher" },
+  { value: "customer_credit", label: "Customer Credit" },
+  { value: "website", label: "Website Payments" },
   { value: "other", label: "Other" },
 ];
 
