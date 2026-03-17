@@ -9,7 +9,7 @@ import {
   Settings, CreditCard, Globe, Monitor, ListTodo,
   RotateCcw, Gift, ClipboardList, ArrowLeftRight, Star,
   Bell, Link as LinkIcon, TrendingUp, ArrowRightLeft,
-  ChevronDown, ChevronRight, Layers, MessageSquare, Sparkles
+  ChevronDown, ChevronRight, Layers, MessageSquare, Sparkles, Plug
 } from 'lucide-react';
 
 /* ─── Primary nav (always visible, no group header) ─── */
@@ -41,6 +41,7 @@ const NAV_GROUPS = [
       { name: 'Memo & Consignment', href: '/memo',       icon: ArrowLeftRight },
       { name: 'Passports',          href: '/passports',  icon: ShieldCheck },
       { name: 'Stocktakes',         href: '/stocktakes', icon: ClipboardList },
+      { name: 'Reminders',          href: '/settings/reminders', icon: Bell },
     ],
   },
   {
@@ -48,7 +49,6 @@ const NAV_GROUPS = [
     label: 'Finance',
     items: [
       { name: 'Expenses',    href: '/expenses',   icon: DollarSign },
-      { name: 'Billing',     href: '/billing',    icon: CreditCard },
       { name: 'Reports',     href: '/reports',    icon: BarChart2 },
       { name: 'Financials',  href: '/financials', icon: TrendingUp },
       { name: 'Refunds',     href: '/refunds',    icon: RotateCcw },
@@ -68,10 +68,11 @@ const NAV_GROUPS = [
     id: 'admin',
     label: 'Admin',
     items: [
-      { name: 'Settings',   href: '/settings',  icon: Settings },
-      { name: 'Documents',  href: '/documents', icon: FileText },
-      { name: 'Support',    href: '/support',   icon: MessageSquare },
-      { name: 'Reminders',  href: '/settings/reminders', icon: Bell },
+      { name: 'Settings',     href: '/settings',      icon: Settings },
+      { name: 'Billing',      href: '/billing',       icon: CreditCard },
+      { name: 'Documents',    href: '/documents',     icon: FileText },
+      { name: 'Integrations', href: '/integrations',  icon: Plug },
+      { name: 'Support',      href: '/support',       icon: MessageSquare },
     ],
   },
 ];
