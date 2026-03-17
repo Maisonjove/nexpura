@@ -9,7 +9,7 @@ import {
   Settings, CreditCard, Globe, Monitor, ListTodo,
   RotateCcw, Gift, ClipboardList, ArrowLeftRight, Star,
   Bell, Link as LinkIcon, TrendingUp, ArrowRightLeft,
-  ChevronDown, ChevronRight, Layers, MessageSquare
+  ChevronDown, ChevronRight, Layers, MessageSquare, Sparkles
 } from 'lucide-react';
 
 /* ─── Primary nav (always visible, no group header) ─── */
@@ -21,6 +21,7 @@ const PRIMARY_ITEMS = [
   { name: 'Repairs',    href: '/repairs',     icon: Wrench },
   { name: 'Bespoke',    href: '/bespoke',     icon: Gem },
   { name: 'Invoices',   href: '/invoices',    icon: FileText },
+  { name: 'AI Co-Pilot', href: '/ai',         icon: Sparkles },
 ];
 
 /* ─── Grouped (collapsible) nav ─── */
