@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Disable turbopack for build to avoid middleware.js.nft.json issue
+  experimental: {
+    turbo: undefined,
+  },
 };
 
 export default nextConfig;
