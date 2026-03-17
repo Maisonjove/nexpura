@@ -76,8 +76,6 @@ export function LocationProvider({
     setCurrentLocationIdState(id);
     if (id) {
       localStorage.setItem(STORAGE_KEY, id);
-      // Also update team_member's current_location_id in database
-      supabase.rpc("set_current_location", { location_id: id }).catch(() => {});
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
@@ -100,10 +98,18 @@ export function LocationProvider({
   );
 }
 
-export function useLocation() {
+export function useLocation(): LocationContextType {
   const context = useContext(LocationContext);
+  // Return safe defaults if used outside provider (for static pages like /review)
   if (context === undefined) {
-    throw new Error("useLocation must be used within a LocationProvider");
+    return {
+      locations: [],
+      currentLocationId: null,
+      currentLocation: null,
+      setCurrentLocationId: () => {},
+      isLoading: false,
+      hasMultipleLocations: false,
+    };
   }
   return context;
 }
