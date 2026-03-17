@@ -19,8 +19,6 @@ const PRIMARY_ITEMS = [
   { name: 'POS / Sales', href: '/pos',       icon: ShoppingCart },
   { name: 'Customers',  href: '/customers',   icon: Users },
   { name: 'Inventory',  href: '/inventory',   icon: Package },
-  { name: 'Repairs',    href: '/repairs',     icon: Wrench },
-  { name: 'Bespoke',    href: '/bespoke',     icon: Gem },
   { name: 'Invoices',   href: '/invoices',    icon: FileText },
 ];
 
@@ -30,8 +28,10 @@ const NAV_GROUPS = [
     id: 'operations',
     label: 'Operations',
     items: [
-      { name: 'Sales History',      href: '/sales',      icon: BarChart2 },
+      { name: 'Repairs',            href: '/repairs',    icon: Wrench },
+      { name: 'Bespoke Jobs',       href: '/bespoke',    icon: Gem },
       { name: 'Workshop',           href: '/workshop',   icon: Wrench },
+      { name: 'Sales History',      href: '/sales',      icon: BarChart2 },
       { name: 'Tasks',              href: '/tasks',      icon: ListTodo },
       { name: 'Suppliers',          href: '/suppliers',  icon: Truck },
       { name: 'Quotes',             href: '/quotes',     icon: FileText },

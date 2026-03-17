@@ -240,7 +240,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   };
 
   const getBalanceRemaining = () => {
-    return Math.max(0, getQuoteAmount() - getPaymentReceived());
+    return Math.max(0, getQuoteAmount() - getDepositAmount());
   };
 
   const getPriority = () => {
@@ -942,7 +942,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
               <h2 className="text-base font-semibold text-stone-900 mb-4">Pricing & Payment</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>Quote / Repair Price</label>
+                  <label className={labelCls}>Amount</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400">$</span>
                     <input
@@ -974,19 +974,19 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
-                  <label className={labelCls}>Payment Received Now</label>
+                  <label className={labelCls}>Balance</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400">$</span>
                     <input
                       type="number"
                       step="0.01"
                       min="0"
-                      value={repairData.payment_received}
-                      onChange={(e) => setRepairData({ ...repairData, payment_received: e.target.value })}
-                      placeholder="0.00"
-                      className={`${inputCls} pl-7`}
+                      value={Math.max(0, (parseFloat(repairData.quoted_price) || 0) - (parseFloat(repairData.deposit_amount) || 0)).toFixed(2)}
+                      readOnly
+                      className={`${inputCls} pl-7 bg-stone-50 cursor-not-allowed`}
                     />
                   </div>
+                  <p className="text-xs text-stone-400 mt-1">Auto-calculated: Amount - Deposit</p>
                 </div>
                 <div>
                   <label className={labelCls}>Payment Method</label>
@@ -1184,7 +1184,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
               <h2 className="text-base font-semibold text-stone-900 mb-4">Pricing & Payment</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>Quote Amount</label>
+                  <label className={labelCls}>Amount</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400">$</span>
                     <input
@@ -1216,19 +1216,19 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
-                  <label className={labelCls}>Payment Received Now</label>
+                  <label className={labelCls}>Balance</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400">$</span>
                     <input
                       type="number"
                       step="0.01"
                       min="0"
-                      value={bespokeData.payment_received}
-                      onChange={(e) => setBespokeData({ ...bespokeData, payment_received: e.target.value })}
-                      placeholder="0.00"
-                      className={`${inputCls} pl-7`}
+                      value={Math.max(0, (parseFloat(bespokeData.quoted_price) || 0) - (parseFloat(bespokeData.deposit_amount) || 0)).toFixed(2)}
+                      readOnly
+                      className={`${inputCls} pl-7 bg-stone-50 cursor-not-allowed`}
                     />
                   </div>
+                  <p className="text-xs text-stone-400 mt-1">Auto-calculated: Amount - Deposit</p>
                 </div>
                 <div>
                   <label className={labelCls}>Payment Method</label>
@@ -1550,9 +1550,9 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
               {/* Divider */}
               <div className="border-t border-stone-100 my-4" />
 
-              {/* Quote Amount */}
+              {/* Amount */}
               <div className="flex items-center justify-between">
-                <span className="text-sm text-stone-500">Quote</span>
+                <span className="text-sm text-stone-500">Amount</span>
                 <span className="text-sm font-semibold text-stone-900">
                   {formatCurrency(getQuoteAmount())}
                 </span>
@@ -1568,17 +1568,9 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
                 </div>
               )}
 
-              {/* Payment Received */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-stone-500">Paid Now</span>
-                <span className="text-sm text-green-600 font-medium">
-                  {formatCurrency(getPaymentReceived())}
-                </span>
-              </div>
-
               {/* Balance */}
               <div className="flex items-center justify-between pt-2 border-t border-stone-100">
-                <span className="text-sm font-medium text-stone-700">Balance Due</span>
+                <span className="text-sm font-medium text-stone-700">Balance</span>
                 <span className={`text-base font-bold ${
                   getBalanceRemaining() > 0 ? "text-amber-700" : "text-green-600"
                 }`}>
