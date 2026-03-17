@@ -10,7 +10,7 @@ import {
   RotateCcw, Gift, ClipboardList, ArrowLeftRight, Star,
   Bell, Link as LinkIcon, TrendingUp, ArrowRightLeft,
   ChevronDown, ChevronRight, Layers, MessageSquare, Sparkles, Plug,
-  Moon
+  Moon, UserCog, MapPin
 } from 'lucide-react';
 
 /* ─── Primary nav (always visible, no group header) ─── */
@@ -70,11 +70,13 @@ const NAV_GROUPS = [
     id: 'admin',
     label: 'Admin',
     items: [
-      { name: 'Settings',     href: '/settings',      icon: Settings },
-      { name: 'Billing',      href: '/billing',       icon: CreditCard },
-      { name: 'Documents',    href: '/documents',     icon: FileText },
-      { name: 'Integrations', href: '/integrations',  icon: Plug },
-      { name: 'Support',      href: '/support',       icon: MessageSquare },
+      { name: 'Settings',     href: '/settings',           icon: Settings },
+      { name: 'Locations',    href: '/settings/locations', icon: MapPin },
+      { name: 'Team & Roles', href: '/settings/roles',     icon: UserCog },
+      { name: 'Billing',      href: '/billing',            icon: CreditCard },
+      { name: 'Documents',    href: '/documents',          icon: FileText },
+      { name: 'Integrations', href: '/integrations',       icon: Plug },
+      { name: 'Support',      href: '/support',            icon: MessageSquare },
     ],
   },
 ];
