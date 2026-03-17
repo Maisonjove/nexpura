@@ -1,19 +1,12 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+// Landing page - no auth check needed
 import Link from "next/link";
 import { Gem, Wrench, Package, Users, FileText, ShoppingCart, Truck, BarChart2, ArrowRight, CheckCircle, ChevronDown } from "lucide-react";
 import { NavBar } from "@/components/marketing/NavBar";
 import { Footer } from "@/components/marketing/Footer";
 
 export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect("/dashboard");
-  }
+  // Don't check auth on landing page - always show marketing content
+  // Only redirect to dashboard if user visits /login while already authenticated
 
   // Marketing landing page for unauthenticated users
   return (
