@@ -2,11 +2,17 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import DashboardClient from "./DashboardClient";
 
+// The owner email that has access to the All Memberships page
+const OWNER_EMAIL = "germanijoey@yahoo.com";
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Check if current user is the platform owner
+  const isPlatformOwner = user?.email === OWNER_EMAIL;
 
   const admin = createAdminClient();
 
@@ -352,6 +358,7 @@ export default async function DashboardPage() {
       activeRepairs={activeRepairs}
       activeBespokeJobs={activeBespokeJobs}
       currency={currency}
+      isPlatformOwner={isPlatformOwner}
     />
   );
 }

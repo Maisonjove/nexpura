@@ -85,6 +85,7 @@ interface DashboardClientProps {
   activeRepairs: ActiveRepair[];
   activeBespokeJobs: ActiveBespokeJob[];
   currency: string;
+  isPlatformOwner?: boolean;
 }
 
 function fmtCurrency(amount: number, currency: string) {
@@ -145,17 +146,37 @@ export default function DashboardClient({
   activeRepairs,
   activeBespokeJobs,
   currency,
+  isPlatformOwner = false,
 }: DashboardClientProps) {
   return (
     <div className="space-y-6">
       {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
-          Good morning, {firstName}
-        </h1>
-        <p className="text-sm text-stone-400 mt-1">
-          {tenantName || 'Your Store'} · {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+              Good morning, {firstName}
+            </h1>
+            <p className="text-sm text-stone-400 mt-1">
+              {tenantName || 'Your Store'} · {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+          </div>
+          {/* Platform Owner: All Memberships Button */}
+          {isPlatformOwner && (
+            <a
+              href="/memberships"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-700 text-white text-sm font-medium rounded-lg shadow-sm hover:from-amber-700 hover:to-amber-800 transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              All Memberships
+              <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-white/20 rounded">
+                OWNER
+              </span>
+            </a>
+          )}
+        </div>
         {/* Quick actions */}
         {!readOnly && (
           <div className="inline-flex mt-4 bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm">
