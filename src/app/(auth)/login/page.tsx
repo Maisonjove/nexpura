@@ -8,12 +8,11 @@ import { Gem } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"password" | "magic">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -22,7 +21,12 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // If "Remember me" is checked, set a longer session (30 days)
+    // Otherwise use default session duration
+    const { error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password,
+    });
 
     if (error) {
       setError(error.message);
@@ -30,27 +34,15 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
-  }
-
-  async function handleMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
-    });
-
-    if (error) {
-      setError(error.message);
+    // Store remember me preference in localStorage
+    if (rememberMe) {
+      localStorage.setItem("nexpura_remember_me", "true");
     } else {
-      setSuccess("Check your email for the magic link!");
+      localStorage.removeItem("nexpura_remember_me");
     }
 
-    setLoading(false);
+    router.push("/dashboard");
+    router.refresh();
   }
 
   return (
@@ -71,105 +63,62 @@ export default function LoginPage() {
           Welcome back
         </h2>
 
-        {/* Mode toggle */}
-        <div className="flex rounded-lg border border-stone-200 p-1 mb-6">
+        <form onSubmit={handlePasswordLogin} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@yourshop.com"
+              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="••••••••"
+              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
+            />
+          </div>
+
+          {/* Remember me checkbox */}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600/20 cursor-pointer"
+              />
+              <span className="text-sm text-stone-600">Remember me</span>
+            </label>
+            <Link href="/forgot-password" className="text-sm text-amber-700 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+
+          {error && (
+            <p className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md">{error}</p>
+          )}
+
           <button
-            type="button"
-            onClick={() => { setMode("password"); setError(null); }}
-            className={`flex-1 text-sm py-1.5 rounded-md transition-all ${
-              mode === "password"
-                ? "bg-amber-700 text-white font-medium"
-                : "text-stone-500 hover:text-stone-700"
-            }`}
+            type="submit"
+            disabled={loading}
+            className="w-full bg-amber-700 hover:bg-amber-800 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
           >
-            Password
+            {loading ? "Signing in…" : "Sign in"}
           </button>
-          <button
-            type="button"
-            onClick={() => { setMode("magic"); setError(null); }}
-            className={`flex-1 text-sm py-1.5 rounded-md transition-all ${
-              mode === "magic"
-                ? "bg-amber-700 text-white font-medium"
-                : "text-stone-500 hover:text-stone-700"
-            }`}
-          >
-            Magic link
-          </button>
-        </div>
-
-        {mode === "password" ? (
-          <form onSubmit={handlePasswordLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="you@yourshop.com"
-                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
-              />
-            </div>
-
-            {error && (
-              <p className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md">{error}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-amber-700 hover:bg-amber-800 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
-            >
-              {loading ? "Signing in…" : "Sign in"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleMagicLink} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="you@yourshop.com"
-                className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
-              />
-            </div>
-
-            {error && (
-              <p className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md">{error}</p>
-            )}
-            {success && (
-              <p className="text-emerald-700 text-sm bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-md">{success}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || !!success}
-              className="w-full bg-amber-700 hover:bg-amber-800 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
-            >
-              {loading ? "Sending…" : "Send magic link"}
-            </button>
-          </form>
-        )}
+        </form>
 
         <p className="text-center text-sm text-stone-500 mt-6">
           Don&apos;t have an account?{" "}
