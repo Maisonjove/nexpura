@@ -15,6 +15,7 @@ import {
 /* ─── Primary nav (always visible, no group header) ─── */
 const PRIMARY_ITEMS = [
   { name: 'Dashboard',  href: '/dashboard',  icon: LayoutDashboard },
+  { name: 'New Intake', href: '/intake',     icon: ClipboardList, highlight: true },
   { name: 'POS / Sales', href: '/pos',       icon: ShoppingCart },
   { name: 'Customers',  href: '/customers',   icon: Users },
   { name: 'Inventory',  href: '/inventory',   icon: Package },
@@ -144,7 +145,7 @@ export default function Sidebar({
     return pathname === href || pathname.startsWith(href + '/');
   }
 
-  function NavItem({ name, href, icon: Icon, badge }: { name: string; href: string; icon: React.ElementType; badge?: number }) {
+  function NavItem({ name, href, icon: Icon, badge, highlight }: { name: string; href: string; icon: React.ElementType; badge?: number; highlight?: boolean }) {
     const active = isActive(href);
     return (
       <li>
@@ -153,12 +154,14 @@ export default function Sidebar({
           className={`flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[13px] cursor-pointer transition-colors relative ${
             active
               ? 'bg-stone-800 text-white border-l-2 border-amber-500 -ml-px pl-[11px]'
+              : highlight
+              ? 'bg-amber-700/20 text-amber-400 hover:bg-amber-700/30 border border-amber-700/40'
               : 'text-stone-400 hover:bg-white/[0.05] hover:text-stone-200'
           }`}
         >
           <Icon
             size={14}
-            className={`flex-shrink-0 ${active ? 'text-amber-400' : 'text-stone-500'}`}
+            className={`flex-shrink-0 ${active ? 'text-amber-400' : highlight ? 'text-amber-400' : 'text-stone-500'}`}
           />
           <span className="flex-1 truncate">{name}</span>
           {badge !== undefined && badge > 0 && (
@@ -191,6 +194,7 @@ export default function Sidebar({
               name={item.name}
               href={item.href}
               icon={item.icon}
+              highlight={(item as any).highlight}
               badge={
                 item.name === 'Repairs' ? readyRepairsCount :
                 item.name === 'Bespoke' ? readyBespokeCount :
