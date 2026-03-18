@@ -27,11 +27,16 @@ export default async function NotificationsPage() {
   // Get Twilio integration status
   const twilioIntegration = await getIntegration(ctx.tenantId, "twilio");
 
-  const settings = (tenant?.notification_settings as Record<string, boolean>) || {
+  const defaultSettings = {
     whatsapp_employee_notifications: false,
     notify_on_task_assignment: true,
     notify_on_status_change: true,
     notify_on_urgent_flagged: true,
+  };
+  
+  const settings = {
+    ...defaultSettings,
+    ...(tenant?.notification_settings as Record<string, boolean> || {}),
   };
 
   return (

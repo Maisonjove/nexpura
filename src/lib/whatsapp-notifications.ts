@@ -29,7 +29,7 @@ export async function sendWhatsAppMessage(
     return { success: false, error: "WhatsApp not configured" };
   }
 
-  const config = integration.config as WhatsAppConfig;
+  const config = integration.config as unknown as WhatsAppConfig;
   
   // Clean phone number (remove spaces, dashes, plus sign for API)
   const cleanPhone = params.to.replace(/[\s\-\+]/g, "");

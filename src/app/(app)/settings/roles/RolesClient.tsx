@@ -376,7 +376,7 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
                           <Phone size={10} />
                           {selectedMember.phone_number}
                           {selectedMember.whatsapp_notifications_enabled && (
-                            <MessageSquare size={10} className="text-green-500 ml-1" title="WhatsApp notifications enabled" />
+                            <MessageSquare size={10} className="text-green-500 ml-1" />
                           )}
                         </span>
                       ) : (
