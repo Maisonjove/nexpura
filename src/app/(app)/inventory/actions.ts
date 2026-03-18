@@ -431,3 +431,251 @@ export async function generateBarcodeForItem(itemId: string): Promise<{ success?
   revalidatePath(`/inventory/${itemId}`);
   return { success: true, barcodeValue };
 }
+
+// ============================================================================
+// NEW INVENTORY SYSTEM ACTIONS
+// ============================================================================
+
+export async function getSuppliersList(): Promise<{ id: string; name: string }[]> {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+  
+  const { data } = await supabase
+    .from("suppliers")
+    .select("id, name")
+    .eq("tenant_id", tenantId)
+    .order("name");
+  
+  return data ?? [];
+}
+
+export async function createQuickSupplier(name: string): Promise<{ id?: string; error?: string }> {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+  
+  const { data, error } = await supabase
+    .from("suppliers")
+    .insert({ tenant_id: tenantId, name })
+    .select("id")
+    .single();
+  
+  if (error) return { error: error.message };
+  return { id: data.id };
+}
+
+export async function quickAddStock(formData: FormData): Promise<{ id?: string; stockNumber?: string; error?: string }> {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  const isConsignment = formData.get("is_consignment") === "true";
+  const description = formData.get("description") as string;
+  const itemType = formData.get("item_type") as string;
+  const supplierId = formData.get("supplier_id") as string || null;
+  const costPriceRaw = formData.get("cost_price") as string;
+  const retailPriceRaw = formData.get("retail_price") as string;
+  const tagsRaw = formData.get("tags") as string;
+  
+  const costPrice = costPriceRaw ? parseFloat(costPriceRaw) : null;
+  const retailPrice = retailPriceRaw ? parseFloat(retailPriceRaw) : 0;
+  const tags = tagsRaw ? tagsRaw.split(",").map(t => t.trim()).filter(Boolean) : [];
+  
+  // Get next stock number using the database function
+  const { data: stockNumberData, error: stockNumError } = await supabase
+    .rpc("get_next_stock_number", { p_tenant_id: tenantId, p_is_consignment: isConsignment });
+  
+  let stockNumber: string;
+  
+  if (stockNumError) {
+    // Fallback: manually generate stock number
+    const prefix = isConsignment ? "C" : "S";
+    const { data: tenantData } = await supabase
+      .from("tenants")
+      .select("next_stock_number, next_consignment_number")
+      .eq("id", tenantId)
+      .single();
+    
+    const nextNum = isConsignment 
+      ? ((tenantData as { next_consignment_number?: number })?.next_consignment_number ?? 1)
+      : ((tenantData as { next_stock_number?: number })?.next_stock_number ?? 1);
+    
+    // Update tenant counter
+    await supabase
+      .from("tenants")
+      .update(isConsignment 
+        ? { next_consignment_number: nextNum + 1 }
+        : { next_stock_number: nextNum + 1 }
+      )
+      .eq("id", tenantId);
+    
+    stockNumber = prefix + nextNum;
+  } else {
+    stockNumber = stockNumberData as string;
+  }
+  
+  // Generate name from description and item type
+  const name = description.slice(0, 100) || `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} ${stockNumber}`;
+  
+  // Generate SKU
+  const { data: skuData } = await supabase.rpc("next_sku", { p_tenant_id: tenantId });
+  const sku = skuData as string ?? stockNumber;
+  
+  const { data: item, error } = await supabase
+    .from("inventory")
+    .insert({
+      tenant_id: tenantId,
+      name,
+      description,
+      item_type: "finished_piece",
+      jewellery_type: itemType,
+      supplier_id: supplierId,
+      cost_price: costPrice,
+      retail_price: retailPrice,
+      quantity: 1,
+      status: "available",
+      is_consignment: isConsignment,
+      stock_number: stockNumber,
+      sku,
+      tags,
+      created_by: user?.id,
+    })
+    .select("id")
+    .single();
+  
+  if (error) return { error: error.message };
+  
+  // Generate barcode
+  try {
+    const { data: tenant } = await supabase
+      .from("tenants")
+      .select("slug, name")
+      .eq("id", tenantId)
+      .single();
+    const tenantSlug = tenant?.slug ?? tenant?.name ?? tenantId.slice(0, 6);
+    const barcodeValue = generateBarcodeValue(tenantSlug, stockNumber);
+    await supabase.from("inventory").update({ barcode_value: barcodeValue }).eq("id", item.id);
+  } catch {
+    // barcode generation is non-critical
+  }
+  
+  revalidatePath("/inventory");
+  return { id: item.id, stockNumber };
+}
+
+export async function updateStockPrices(
+  itemId: string,
+  costPrice: number | null,
+  retailPrice: number
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  const { hasPermission } = await import("@/lib/permissions");
+  const canViewCost = await hasPermission(user?.id ?? "", tenantId, "view_cost_price");
+  
+  const updates: Record<string, number | null> = { retail_price: retailPrice };
+  if (canViewCost && costPrice !== null) {
+    updates.cost_price = costPrice;
+  }
+  
+  const { error } = await supabase
+    .from("inventory")
+    .update(updates)
+    .eq("id", itemId)
+    .eq("tenant_id", tenantId);
+  
+  if (error) return { error: error.message };
+  
+  revalidatePath("/inventory");
+  revalidatePath(`/inventory/${itemId}`);
+  return { success: true };
+}
+
+export async function updateStockStatus(
+  itemId: string,
+  status: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+  
+  const updates: Record<string, string | Date | null> = { status };
+  
+  // If marking as sold, set sold_at and sold_via
+  if (status === "sold") {
+    updates.sold_at = new Date().toISOString();
+    updates.sold_via = "manual";
+  } else {
+    // Clear sold fields if changing from sold
+    updates.sold_at = null;
+    updates.sold_via = null;
+  }
+  
+  const { error } = await supabase
+    .from("inventory")
+    .update(updates)
+    .eq("id", itemId)
+    .eq("tenant_id", tenantId);
+  
+  if (error) return { error: error.message };
+  
+  revalidatePath("/inventory");
+  revalidatePath(`/inventory/${itemId}`);
+  return { success: true };
+}
+
+export async function listOnWebsite(itemId: string): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+  
+  // Check if tenant has website configured
+  const { data: websiteConfig } = await supabase
+    .from("website_config")
+    .select("website_type")
+    .eq("tenant_id", tenantId)
+    .single();
+  
+  if (!websiteConfig?.website_type) {
+    return { error: "No website configured" };
+  }
+  
+  const { error } = await supabase
+    .from("inventory")
+    .update({ listed_on_website: true })
+    .eq("id", itemId)
+    .eq("tenant_id", tenantId);
+  
+  if (error) return { error: error.message };
+  
+  // TODO: Sync to external platform (Shopify/WooCommerce) if applicable
+  
+  revalidatePath("/inventory");
+  revalidatePath(`/inventory/${itemId}`);
+  return { success: true };
+}
+
+export async function archiveStockItem(itemId: string): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+  
+  const { error } = await supabase
+    .from("inventory")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", itemId)
+    .eq("tenant_id", tenantId);
+  
+  if (error) return { error: error.message };
+  
+  revalidatePath("/inventory");
+  return { success: true };
+}
+
+export async function initializeStockNumbers(): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const tenantId = await getTenantId(supabase);
+  
+  const { error } = await supabase.rpc("initialize_stock_numbers", { p_tenant_id: tenantId });
+  
+  if (error) return { error: error.message };
+  return { success: true };
+}
