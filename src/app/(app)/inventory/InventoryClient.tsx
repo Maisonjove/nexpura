@@ -5,6 +5,7 @@ import Link from "next/link";
 import BatchPrintModal from "./BatchPrintModal";
 import AddStockModal from "./AddStockModal";
 import StockDetailModal from "./StockDetailModal";
+import ScanInvoiceModal from "./ScanInvoiceModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Search, Edit, Diamond, Printer, Camera, Eye, Globe,
   Package, Grid3X3, List, TrendingUp, AlertTriangle, DollarSign,
-  Filter, X, MoreVertical, ArrowUpDown
+  Filter, X, MoreVertical, ArrowUpDown, FileText
 } from "lucide-react";
 import QuickPrintTagModal from "@/components/QuickPrintTagModal";
 import CameraScannerModal from "@/components/CameraScannerModal";
@@ -110,6 +111,7 @@ export default function InventoryClient({
   const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showScanInvoice, setShowScanInvoice] = useState(false);
 
   // Filter items
   const filtered = useMemo(() => {
@@ -257,6 +259,14 @@ export default function InventoryClient({
         />
       )}
 
+      {showScanInvoice && (
+        <ScanInvoiceModal
+          suppliers={suppliers}
+          onClose={() => setShowScanInvoice(false)}
+          onSuccess={() => window.location.reload()}
+        />
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -270,6 +280,13 @@ export default function InventoryClient({
           >
             <Camera className="w-4 h-4" />
             <span className="hidden sm:inline">Scan</span>
+          </button>
+          <button
+            onClick={() => setShowScanInvoice(true)}
+            className="inline-flex items-center gap-2 h-10 px-4 border border-amber-200 bg-amber-50 rounded-xl text-sm text-amber-700 hover:bg-amber-100 transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            <span className="hidden sm:inline">Scan Invoice</span>
           </button>
           <button
             onClick={() => setShowAddStock(true)}
