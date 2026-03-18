@@ -31,7 +31,7 @@ export default async function EmailSettingsPage() {
   // Get tenant info
   const { data: tenant } = await admin
     .from("tenants")
-    .select("email_from_name, business_name")
+    .select("email_from_name, business_name, reply_to_email")
     .eq("id", userData.tenant_id)
     .single();
 
@@ -47,6 +47,7 @@ export default async function EmailSettingsPage() {
       } : null}
       fromName={tenant?.email_from_name || null}
       businessName={tenant?.business_name || null}
+      replyToEmail={tenant?.reply_to_email || null}
       isOwner={userData.role === "owner"}
     />
   );

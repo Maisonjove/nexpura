@@ -240,6 +240,7 @@ export async function inviteTeamMember(
   try {
     await resend.emails.send({
       from: emailSender.from,
+      replyTo: emailSender.replyTo,
       to: email.toLowerCase(),
       subject: `You're invited to join ${tenant?.business_name || "a jewellery business"}`,
       html: `
@@ -328,6 +329,7 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
   try {
     await resend.emails.send({
       from: emailSender.from,
+      replyTo: emailSender.replyTo,
       to: member.email,
       subject: `Reminder: You're invited to join ${tenant?.business_name || "a jewellery business"}`,
       html: `

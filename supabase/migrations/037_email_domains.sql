@@ -40,6 +40,13 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- Add reply_to_email to tenants for businesses without custom domain
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tenants' AND column_name='reply_to_email') THEN
+    ALTER TABLE public.tenants ADD COLUMN reply_to_email text;
+  END IF;
+END $$;
+
 -- Index for quick lookups
 CREATE INDEX IF NOT EXISTS idx_email_domains_tenant ON public.email_domains(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_email_domains_status ON public.email_domains(status);

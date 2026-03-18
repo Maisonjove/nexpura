@@ -13,6 +13,7 @@ import {
   verifyEmailDomain,
   removeEmailDomain,
   updateFromName,
+  updateReplyToEmail,
   DnsRecord,
 } from "./actions";
 
@@ -27,6 +28,7 @@ interface Props {
   } | null;
   fromName: string | null;
   businessName: string | null;
+  replyToEmail: string | null;
   isOwner: boolean;
 }
 
@@ -37,11 +39,12 @@ const STATUS_CONFIG = {
   failed: { label: "Failed", color: "bg-red-100 text-red-600", icon: AlertCircle },
 };
 
-export default function EmailDomainClient({ emailDomain, fromName, businessName, isOwner }: Props) {
+export default function EmailDomainClient({ emailDomain, fromName, businessName, replyToEmail, isOwner }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [newDomain, setNewDomain] = useState("");
   const [senderName, setSenderName] = useState(fromName || businessName || "");
+  const [replyTo, setReplyTo] = useState(replyToEmail || "");
   const [showDnsRecords, setShowDnsRecords] = useState(false);
   const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -114,6 +117,20 @@ export default function EmailDomainClient({ emailDomain, fromName, businessName,
     });
   }
 
+  async function handleUpdateReplyTo() {
+    setMessage(null);
+
+    startTransition(async () => {
+      const result = await updateReplyToEmail(replyTo);
+      if (result.error) {
+        setMessage({ type: "error", text: result.error });
+      } else {
+        setMessage({ type: "success", text: "Reply-to email updated. Customer replies will now go to this address." });
+        router.refresh();
+      }
+    });
+  }
+
   function copyToClipboard(text: string, recordId: string) {
     navigator.clipboard.writeText(text);
     setCopiedRecord(recordId);
@@ -175,10 +192,53 @@ export default function EmailDomainClient({ emailDomain, fromName, businessName,
               </button>
             </div>
             <p className="text-xs text-stone-400 mt-2">
-              Preview: <span className="font-medium">{senderName || "Your Business"} &lt;team@{emailDomain?.status === "verified" ? emailDomain.domain : "nexpura.com"}&gt;</span>
+              Preview: <span className="font-medium">{senderName || "Your Business"} &lt;{emailDomain?.status === "verified" ? `team@${emailDomain.domain}` : "notifications@nexpura.com"}&gt;</span>
             </p>
           </div>
         </div>
+
+        {/* Reply-To Email Card - Show when NO custom domain */}
+        {(!emailDomain || emailDomain.status !== "verified") && (
+          <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-stone-100 bg-stone-50">
+              <h2 className="text-sm font-semibold text-stone-700 flex items-center gap-2">
+                <Mail size={14} />
+                Reply-To Email
+                <span className="text-xs font-normal text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">No domain? Use this!</span>
+              </h2>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-stone-500 mb-4">
+                Don't have your own domain? No problem! Enter your email address here and all customer replies will go directly to your inbox.
+              </p>
+              <div className="flex gap-3">
+                <input
+                  type="email"
+                  value={replyTo}
+                  onChange={(e) => setReplyTo(e.target.value)}
+                  placeholder="youremail@gmail.com"
+                  disabled={!isOwner || isPending}
+                  className="flex-1 px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-stone-50 disabled:text-stone-400"
+                />
+                <button
+                  onClick={handleUpdateReplyTo}
+                  disabled={!isOwner || isPending || replyTo === (replyToEmail || "")}
+                  className="px-4 py-2.5 bg-stone-800 hover:bg-stone-900 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? <Loader2 size={16} className="animate-spin" /> : "Save"}
+                </button>
+              </div>
+              <div className="mt-4 p-3 bg-stone-50 rounded-lg text-xs text-stone-600">
+                <p className="font-medium mb-1">How it works:</p>
+                <ul className="list-disc list-inside space-y-1 text-stone-500">
+                  <li>Emails are sent from: <span className="font-mono">{senderName || "Your Business"} &lt;notifications@nexpura.com&gt;</span></li>
+                  <li>When customers reply, it goes to: <span className="font-mono">{replyTo || "your email"}</span></li>
+                  <li>You can use any email (Gmail, Outlook, Yahoo, etc.)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Domain Card */}
         <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">

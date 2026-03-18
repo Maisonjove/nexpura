@@ -291,6 +291,49 @@ export async function updateFromName(fromName: string): Promise<{ success?: bool
   return { success: true };
 }
 
+export async function updateReplyToEmail(email: string): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+
+  if (ctx.role !== "owner") {
+    return { error: "Only the account owner can change email settings" };
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (email && !emailRegex.test(email)) {
+    return { error: "Please enter a valid email address" };
+  }
+
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from("tenants")
+    .update({ reply_to_email: email.trim().toLowerCase() || null })
+    .eq("id", ctx.tenantId);
+
+  if (error) {
+    return { error: "Failed to update reply-to email" };
+  }
+
+  revalidatePath("/settings/email");
+  return { success: true };
+}
+
+export async function getReplyToEmail(): Promise<string | null> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return null; }
+
+  const admin = createAdminClient();
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("reply_to_email")
+    .eq("id", ctx.tenantId)
+    .single();
+
+  return tenant?.reply_to_email || null;
+}
+
 // Helper function to get the sender email for a tenant
 export async function getTenantEmailSender(tenantId: string): Promise<{ from: string; replyTo?: string }> {
   const admin = createAdminClient();
@@ -304,21 +347,24 @@ export async function getTenantEmailSender(tenantId: string): Promise<{ from: st
 
   const { data: tenant } = await admin
     .from("tenants")
-    .select("email_from_name, business_name")
+    .select("email_from_name, business_name, reply_to_email")
     .eq("id", tenantId)
     .single();
 
   const fromName = tenant?.email_from_name || tenant?.business_name || "Nexpura";
+  const replyTo = tenant?.reply_to_email;
 
   if (emailDomain?.domain) {
-    // Use custom domain
+    // Use custom domain - reply-to goes to their domain too
     return { 
       from: `${fromName} <team@${emailDomain.domain}>`,
+      replyTo: replyTo || undefined,
     };
   }
 
-  // Fall back to Resend default
+  // No custom domain - use nexpura.com with reply-to
   return { 
-    from: `${fromName} <onboarding@resend.dev>`,
+    from: `${fromName} <notifications@nexpura.com>`,
+    replyTo: replyTo || undefined,
   };
 }
