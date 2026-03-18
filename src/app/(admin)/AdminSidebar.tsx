@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const NAV_ITEMS = [
@@ -59,23 +59,15 @@ const NAV_ITEMS = [
   },
 ];
 
-interface AdminSidebarProps {
+interface SidebarContentProps {
+  pathname: string;
   userEmail: string;
+  onNavClick: () => void;
+  onSignOut: () => void;
 }
 
-export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const supabase = createClient();
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
-
-  const SidebarContent = () => (
+function SidebarContent({ pathname, userEmail, onNavClick, onSignOut }: SidebarContentProps) {
+  return (
     <div className="flex flex-col h-full bg-stone-900 text-white">
       {/* Wordmark */}
       <div className="px-5 py-5 border-b border-white/10">
@@ -104,7 +96,7 @@ export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setMobileOpen(false)}
+              onClick={onNavClick}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
                 isActive
                   ? "bg-white/15 text-white font-medium"
@@ -121,7 +113,7 @@ export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
         <div className="pt-4 mt-4 border-t border-white/10">
           <Link
             href="/dashboard"
-            onClick={() => setMobileOpen(false)}
+            onClick={onNavClick}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/40 hover:text-white hover:bg-white/8 transition-all"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +137,7 @@ export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
             <p className="text-xs text-amber-700">Super Admin</p>
           </div>
           <button
-            onClick={handleSignOut}
+            onClick={onSignOut}
             title="Sign out"
             className="text-white/40 hover:text-white transition-colors flex-shrink-0"
           >
@@ -157,12 +149,38 @@ export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
       </div>
     </div>
   );
+}
+
+interface AdminSidebarProps {
+  userEmail: string;
+}
+
+export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const supabase = createClient();
+
+  const handleSignOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }, [supabase, router]);
+
+  const handleNavClick = useCallback(() => {
+    setMobileOpen(false);
+  }, []);
 
   return (
     <>
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-60 flex-shrink-0 flex-col h-full">
-        <SidebarContent />
+        <SidebarContent 
+          pathname={pathname} 
+          userEmail={userEmail}
+          onNavClick={handleNavClick}
+          onSignOut={handleSignOut}
+        />
       </aside>
 
       {/* Mobile hamburger */}
@@ -187,7 +205,12 @@ export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <SidebarContent />
+        <SidebarContent 
+          pathname={pathname} 
+          userEmail={userEmail}
+          onNavClick={handleNavClick}
+          onSignOut={handleSignOut}
+        />
       </aside>
     </>
   );
