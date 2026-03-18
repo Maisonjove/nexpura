@@ -33,6 +33,7 @@ interface Props {
   bespoke: Bespoke[];
   staff: Staff[];
   tenantId: string;
+  googleCalendarConnected?: boolean;
 }
 
 type CalEvent = {
@@ -57,7 +58,7 @@ function getFirstDayOfMonth(year: number, month: number) {
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export default function WorkshopCalendarClient({ repairs, bespoke, staff }: Props) {
+export default function WorkshopCalendarClient({ repairs, bespoke, staff, googleCalendarConnected = false }: Props) {
   const today = new Date();
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -133,6 +134,27 @@ export default function WorkshopCalendarClient({ repairs, bespoke, staff }: Prop
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* Google Calendar Banner */}
+      {!googleCalendarConnected && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-4">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h4 className="font-medium text-stone-900">Sync to Google Calendar?</h4>
+            <p className="text-sm text-stone-600">See repairs and due dates on your personal calendar.</p>
+          </div>
+          <Link
+            href="/integrations/google-calendar"
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Connect
+          </Link>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

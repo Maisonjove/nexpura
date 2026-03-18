@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import WorkshopCalendarClient from "./WorkshopCalendarClient";
+import { getIntegration } from "@/lib/integrations";
 
 export const metadata = { title: "Workshop Calendar — Nexpura" };
 
@@ -21,11 +22,12 @@ export default async function WorkshopCalendarPage() {
   const admin = createAdminClient();
   const tenantId = userData.tenant_id;
 
-  // Fetch repairs and bespoke jobs
-  const [{ data: repairs }, { data: bespoke }, { data: staff }] = await Promise.all([
+  // Fetch repairs, bespoke jobs, and Google Calendar status
+  const [{ data: repairs }, { data: bespoke }, { data: staff }, gcalIntegration] = await Promise.all([
     admin.from("repairs").select("id, ticket_number, description, status, due_date, assigned_to, customers(full_name)").eq("tenant_id", tenantId).not("due_date", "is", null) as any,
     admin.from("bespoke_jobs").select("id, job_number, title, status, due_date, assigned_to, customers(full_name)").eq("tenant_id", tenantId).not("due_date", "is", null) as any,
     admin.from("users").select("id, full_name").eq("tenant_id", tenantId),
+    getIntegration(tenantId, "google_calendar"),
   ]);
 
   return (
@@ -34,6 +36,7 @@ export default async function WorkshopCalendarPage() {
       bespoke={bespoke ?? []}
       staff={staff ?? []}
       tenantId={tenantId}
+      googleCalendarConnected={gcalIntegration?.status === "connected"}
     />
   );
 }
