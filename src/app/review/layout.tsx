@@ -1,6 +1,9 @@
 import ReviewSidebar from "@/components/ReviewSidebar";
 import Header from "@/components/Header";
 
+// Force all review pages to be dynamic - they query Supabase at render time
+export const dynamic = "force-dynamic";
+
 const DEMO_USER = {
   id: "demo",
   full_name: "Demo Owner",
