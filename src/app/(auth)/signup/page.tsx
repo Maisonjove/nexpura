@@ -138,51 +138,60 @@ function SignupContent() {
     setLoading(true);
     setError(null);
 
-    // First create the Supabase auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    });
-
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-      return;
-    }
-
-    // Now redirect to Stripe checkout
     try {
-      const res = await fetch("/api/stripe/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan: selectedPlan,
-          subdomain,
-          email,
-          fullName,
-        }),
+      // First create the Supabase auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+        },
       });
 
-      const data = await res.json();
-
-      if (data.error) {
-        // If Stripe fails (e.g., missing prices), fall back to direct onboarding
-        console.warn("Stripe checkout failed, falling back to trial:", data.error);
-        router.push("/onboarding");
+      if (authError) {
+        // Handle error - ensure we always display a string message
+        const errorMessage = authError.message || authError.code || "Failed to create account";
+        setError(errorMessage);
+        setLoading(false);
         return;
       }
 
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
+      // Now redirect to Stripe checkout
+      try {
+        const res = await fetch("/api/stripe/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            plan: selectedPlan,
+            subdomain,
+            email,
+            fullName,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+          // If Stripe fails (e.g., missing prices), fall back to direct onboarding
+          console.warn("Stripe checkout failed, falling back to trial:", data.error);
+          router.push("/onboarding");
+          return;
+        }
+
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          router.push("/onboarding");
+        }
+      } catch {
+        // On any error, proceed to onboarding (trial mode)
         router.push("/onboarding");
       }
-    } catch {
-      // On any error, proceed to onboarding (trial mode)
-      router.push("/onboarding");
+    } catch (err) {
+      // Handle unexpected errors (network issues, etc.)
+      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+      setError(errorMessage);
+      setLoading(false);
     }
   }
 

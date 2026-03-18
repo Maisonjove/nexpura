@@ -21,28 +21,37 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    // If "Remember me" is checked, set a longer session (30 days)
-    // Otherwise use default session duration
-    const { error } = await supabase.auth.signInWithPassword({ 
-      email, 
-      password,
-    });
+    try {
+      // If "Remember me" is checked, set a longer session (30 days)
+      // Otherwise use default session duration
+      const { error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password,
+      });
 
-    if (error) {
-      setError(error.message);
+      if (error) {
+        // Handle error - ensure we always display a string message
+        const errorMessage = error.message || error.code || "Invalid login credentials";
+        setError(errorMessage);
+        setLoading(false);
+        return;
+      }
+
+      // Store remember me preference in localStorage
+      if (rememberMe) {
+        localStorage.setItem("nexpura_remember_me", "true");
+      } else {
+        localStorage.removeItem("nexpura_remember_me");
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
+      // Handle unexpected errors (network issues, etc.)
+      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+      setError(errorMessage);
       setLoading(false);
-      return;
     }
-
-    // Store remember me preference in localStorage
-    if (rememberMe) {
-      localStorage.setItem("nexpura_remember_me", "true");
-    } else {
-      localStorage.removeItem("nexpura_remember_me");
-    }
-
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
