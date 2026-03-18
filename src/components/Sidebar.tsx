@@ -10,7 +10,7 @@ import {
   RotateCcw, Gift, ClipboardList, ArrowLeftRight, Star,
   Bell, Link as LinkIcon, TrendingUp, ArrowRightLeft,
   ChevronDown, ChevronRight, Layers, MessageSquare, Sparkles, Plug,
-  Moon, UserCog, MapPin, Mail, Printer
+  Moon, UserCog, MapPin, Mail, Printer, Megaphone, Send, Zap
 } from 'lucide-react';
 
 /* ─── Primary nav (always visible, no group header) ─── */
@@ -64,6 +64,19 @@ const NAV_GROUPS = [
       { name: 'Website Builder',  href: '/website',         icon: Globe },
       { name: 'Connect Website',  href: '/website/connect', icon: LinkIcon },
       { name: 'Migration Hub',    href: '/migration',       icon: ArrowRightLeft },
+    ],
+  },
+  {
+    id: 'marketing',
+    label: 'Marketing',
+    items: [
+      { name: 'Overview',      href: '/marketing',              icon: Megaphone },
+      { name: 'Campaigns',     href: '/marketing/campaigns',    icon: Mail },
+      { name: 'Bulk Email',    href: '/marketing/bulk-email',   icon: Send },
+      { name: 'Bulk SMS',      href: '/marketing/bulk-sms',     icon: MessageSquare },
+      { name: 'Automations',   href: '/marketing/automations',  icon: Zap },
+      { name: 'Segments',      href: '/marketing/segments',     icon: Users },
+      { name: 'Templates',     href: '/marketing/templates',    icon: FileText },
     ],
   },
   {
