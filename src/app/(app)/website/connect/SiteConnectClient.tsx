@@ -194,6 +194,11 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [showWooCommerceSetup, setShowWooCommerceSetup] = useState(false);
+  const [wooStoreUrl, setWooStoreUrl] = useState("");
+  const [wooConsumerKey, setWooConsumerKey] = useState("");
+  const [wooConsumerSecret, setWooConsumerSecret] = useState("");
+  const [wooConnecting, setWooConnecting] = useState(false);
 
   if (!hasWebsite) {
     return (
@@ -281,6 +286,62 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
       {msg && (
         <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">{msg}</div>
       )}
+
+      {/* E-commerce Store Connection */}
+      <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-stone-900">Connect Online Store</h2>
+          <p className="text-sm text-stone-500 mt-0.5">Sync products from your existing e-commerce platform</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Shopify */}
+          <div className="border border-stone-200 rounded-xl p-4 hover:border-amber-300 transition-colors">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-[#95BF47] rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M15.337 3.415c-.08-.02-.16-.02-.24.02-.08.04-.14.1-.16.18l-.9 3.12-.88-2.3c-.04-.1-.12-.18-.22-.22-.1-.04-.2-.04-.3.02l-1.9.76-.54-1.08c-.08-.16-.24-.24-.42-.22-.18.02-.32.14-.36.32l-.62 2.52-1.28-.26c-.18-.04-.36.06-.44.22-.08.16-.04.36.08.48l1.62 1.58-.38 4.56c-.02.2.14.38.34.42.02 0 .06 0 .08 0 .18 0 .34-.12.38-.3l.78-3.18 1.1 2.02c.06.12.18.2.32.22.14.02.28-.04.36-.14l3.04-3.76.28 5.2c.02.2.18.36.38.36h.02c.2-.02.36-.18.36-.38l.16-8.32c.02-.2-.14-.38-.34-.42z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-medium text-stone-900">Shopify</h3>
+                <p className="text-xs text-stone-500">Sync inventory from Shopify</p>
+              </div>
+            </div>
+            <button
+              onClick={() => window.location.href = "/api/integrations/shopify/connect"}
+              className="w-full py-2 text-sm font-medium border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+            >
+              Connect Shopify
+            </button>
+          </div>
+
+          {/* WooCommerce */}
+          <div className="border border-stone-200 rounded-xl p-4 hover:border-amber-300 transition-colors">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-[#7F54B3] rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93v15.86zm2 0V4.07c3.94.49 7 3.85 7 7.93s-3.06 7.44-7 7.93z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-medium text-stone-900">WooCommerce</h3>
+                <p className="text-xs text-stone-500">Sync from WordPress store</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowWooCommerceSetup(true)}
+              className="w-full py-2 text-sm font-medium border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+            >
+              Connect WooCommerce
+            </button>
+          </div>
+        </div>
+
+        <p className="text-xs text-stone-400 text-center">
+          Products will sync automatically. You can manage inventory in either Nexpura or your store.
+        </p>
+      </div>
 
       {/* Connected Site */}
       <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
@@ -461,6 +522,112 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
           </div>
         )}
       </div>
+
+      {/* WooCommerce Setup Modal */}
+      {showWooCommerceSetup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
+            <div className="p-6 border-b border-stone-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#7F54B3] rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93v15.86zm2 0V4.07c3.94.49 7 3.85 7 7.93s-3.06 7.44-7 7.93z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-stone-900">Connect WooCommerce</h3>
+                  <p className="text-sm text-stone-500">Enter your store's API credentials</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Store URL</label>
+                <input
+                  type="url"
+                  value={wooStoreUrl}
+                  onChange={(e) => setWooStoreUrl(e.target.value)}
+                  placeholder="https://yourstore.com"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Consumer Key</label>
+                <input
+                  type="text"
+                  value={wooConsumerKey}
+                  onChange={(e) => setWooConsumerKey(e.target.value)}
+                  placeholder="ck_xxxxxxxx"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Consumer Secret</label>
+                <input
+                  type="password"
+                  value={wooConsumerSecret}
+                  onChange={(e) => setWooConsumerSecret(e.target.value)}
+                  placeholder="cs_xxxxxxxx"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-sm"
+                />
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <h4 className="text-xs font-semibold text-purple-900 mb-1">How to get API keys:</h4>
+                <ol className="text-xs text-purple-800 space-y-1 list-decimal list-inside">
+                  <li>In WooCommerce → Settings → Advanced → REST API</li>
+                  <li>Click "Add key" and set permissions to Read/Write</li>
+                  <li>Copy the Consumer Key and Secret</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-stone-100 flex justify-end gap-3">
+              <button
+                onClick={() => setShowWooCommerceSetup(false)}
+                className="px-4 py-2 text-stone-700 font-medium hover:bg-stone-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setWooConnecting(true);
+                  try {
+                    const res = await fetch("/api/integrations/woocommerce/connect", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        store_url: wooStoreUrl,
+                        consumer_key: wooConsumerKey,
+                        consumer_secret: wooConsumerSecret,
+                      }),
+                    });
+                    if (res.ok) {
+                      setShowWooCommerceSetup(false);
+                      setMsg("WooCommerce connected! Products will sync shortly.");
+                      setTimeout(() => setMsg(null), 5000);
+                    } else {
+                      const data = await res.json();
+                      alert(data.error || "Connection failed");
+                    }
+                  } catch {
+                    alert("Connection failed");
+                  } finally {
+                    setWooConnecting(false);
+                  }
+                }}
+                disabled={wooConnecting || !wooStoreUrl || !wooConsumerKey || !wooConsumerSecret}
+                className="px-4 py-2 bg-[#7F54B3] text-white font-medium rounded-lg hover:bg-[#6B4799] transition-colors disabled:opacity-50"
+              >
+                {wooConnecting ? "Connecting..." : "Connect"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
