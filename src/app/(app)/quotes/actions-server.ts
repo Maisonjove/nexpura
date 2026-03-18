@@ -4,6 +4,105 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
+// ── Types ────────────────────────────────────────────────────────────────────
+export interface QuoteItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+}
+
+export interface QuoteInput {
+  customer_id: string;
+  items: QuoteItem[];
+  total_amount: number;
+  status?: string;
+  expires_at?: string | null;
+  notes?: string | null;
+}
+
+// ── CRUD Operations ──────────────────────────────────────────────────────────
+export async function createQuote(input: QuoteInput) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: userData } = await createAdminClient()
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!userData?.tenant_id) throw new Error("No tenant found");
+
+  const { data, error } = await supabase
+    .from("quotes")
+    .insert({
+      tenant_id: userData.tenant_id,
+      customer_id: input.customer_id,
+      items: input.items,
+      total_amount: input.total_amount,
+      status: input.status || "draft",
+      expires_at: input.expires_at || null,
+      notes: input.notes || null,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  revalidatePath("/quotes");
+  return data;
+}
+
+export async function updateQuote(id: string, input: Partial<QuoteInput>) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: userData } = await createAdminClient()
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!userData?.tenant_id) throw new Error("No tenant found");
+
+  const { data, error } = await supabase
+    .from("quotes")
+    .update(input)
+    .eq("id", id)
+    .eq("tenant_id", userData.tenant_id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  revalidatePath("/quotes");
+  revalidatePath(`/quotes/${id}`);
+  return data;
+}
+
+export async function deleteQuote(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: userData } = await createAdminClient()
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!userData?.tenant_id) throw new Error("No tenant found");
+
+  const { error } = await supabase
+    .from("quotes")
+    .delete()
+    .eq("id", id)
+    .eq("tenant_id", userData.tenant_id);
+
+  if (error) throw error;
+  revalidatePath("/quotes");
+}
+
 // ── Tenant-scoped list fetch ─────────────────────────────────────────────────
 export async function getQuotesList() {
   const supabase = await createClient();

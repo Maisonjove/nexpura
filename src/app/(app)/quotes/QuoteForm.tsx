@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Save } from "lucide-react";
-import { createQuote, type QuoteItem } from "./actions";
+import { createQuote, type QuoteItem } from "./actions-server";
 import { toast } from "sonner";
 
 interface Customer {
@@ -46,16 +46,14 @@ export default function QuoteForm({ tenantId, customers }: Props) {
     if (!customerId) { toast.error("Please select a customer"); return; }
     setLoading(true);
     try {
-      const quote = {
-        tenant_id: tenantId,
+      await createQuote({
         customer_id: customerId,
         items,
         total_amount: totalAmount,
         status: "draft",
         expires_at: expiresAt || null,
         notes,
-      };
-      await createQuote(quote);
+      });
       router.push("/quotes");
       router.refresh();
     } catch (err) {

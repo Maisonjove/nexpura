@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Search, Filter, MoreVertical, FileText, Send, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
-import { type Quote } from "./actions";
 import { getQuotesList, convertQuoteToInvoice } from "./actions-server";
 import { toast } from "sonner";
 import StatusBadge from "@/components/StatusBadge";
@@ -14,6 +13,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+interface Quote {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  quote_number: string | null;
+  items: any[];
+  total_amount: number;
+  status: string;
+  expires_at: string | null;
+  notes: string | null;
+  created_at: string;
+  customers?: {
+    full_name: string | null;
+    email: string | null;
+  };
+}
 
 export default function QuoteListClient() {
   const [quotes, setQuotes] = useState<Quote[]>([]);

@@ -5,8 +5,24 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, CheckCircle, Download, Gem, Hammer } from "lucide-react";
 import { format } from "date-fns";
-import { type Quote } from "./actions";
 import { convertQuoteToInvoice, convertQuoteToBespoke, convertQuoteToRepair } from "./actions-server";
+
+interface Quote {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  quote_number: string | null;
+  items: { description: string; quantity: number; unit_price: number }[];
+  total_amount: number;
+  status: string;
+  expires_at: string | null;
+  notes: string | null;
+  created_at: string;
+  customers?: {
+    full_name: string | null;
+    email: string | null;
+  };
+}
 import { emailQuote } from "./emailQuote";
 import { toast } from "sonner";
 import StatusBadge from "@/components/StatusBadge";

@@ -13,6 +13,9 @@ interface Location {
   suburb: string | null;
   state: string | null;
   postcode: string | null;
+  country: string | null;
+  phone: string | null;
+  email: string | null;
   is_active: boolean;
 }
 
@@ -38,6 +41,9 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
     suburb: "",
     state: "",
     postcode: "",
+    country: "",
+    phone: "",
+    email: "",
   });
 
   async function handleAdd(e: React.FormEvent) {
@@ -55,7 +61,17 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
       if (result.data) {
         setLocations([...locations, result.data]);
         setShowNew(false);
-        setForm({ name: "", type: "showroom", address_line1: "", suburb: "", state: "", postcode: "" });
+        setForm({ 
+          name: "", 
+          type: "showroom", 
+          address_line1: "", 
+          suburb: "", 
+          state: "", 
+          postcode: "",
+          country: "",
+          phone: "",
+          email: "",
+        });
         router.refresh();
       }
     });
@@ -126,9 +142,11 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                 {error}
               </div>
             )}
+            
+            {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-stone-500 uppercase mb-1">Name *</label>
+                <label className="block text-xs font-medium text-stone-500 uppercase mb-1">Store Name *</label>
                 <input
                   required
                   value={form.name}
@@ -152,35 +170,83 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                 </select>
               </div>
             </div>
+
+            {/* Address */}
             <div>
-              <label className="block text-xs font-medium text-stone-500 uppercase mb-1">Address</label>
+              <label className="block text-xs font-medium text-stone-500 uppercase mb-1">Street Address</label>
               <input
                 value={form.address_line1}
                 onChange={e => setForm({ ...form, address_line1: e.target.value })}
                 className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
-                placeholder="123 Jewellery St"
+                placeholder="123 Jewellery Street"
               />
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <input
-                placeholder="Suburb"
-                value={form.suburb}
-                onChange={e => setForm({ ...form, suburb: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
-              />
-              <input
-                placeholder="State"
-                value={form.state}
-                onChange={e => setForm({ ...form, state: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
-              />
-              <input
-                placeholder="Postcode"
-                value={form.postcode}
-                onChange={e => setForm({ ...form, postcode: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
-              />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-stone-500 uppercase mb-1">City / Suburb</label>
+                <input
+                  placeholder="Sydney"
+                  value={form.suburb}
+                  onChange={e => setForm({ ...form, suburb: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-stone-500 uppercase mb-1">State / Province</label>
+                <input
+                  placeholder="NSW"
+                  value={form.state}
+                  onChange={e => setForm({ ...form, state: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                />
+              </div>
             </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-stone-500 uppercase mb-1">Postcode / ZIP</label>
+                <input
+                  placeholder="2000"
+                  value={form.postcode}
+                  onChange={e => setForm({ ...form, postcode: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-stone-500 uppercase mb-1">Country</label>
+                <input
+                  placeholder="Australia"
+                  value={form.country}
+                  onChange={e => setForm({ ...form, country: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-stone-500 uppercase mb-1">Phone</label>
+                <input
+                  placeholder="+61 2 9000 0000"
+                  value={form.phone}
+                  onChange={e => setForm({ ...form, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-stone-500 uppercase mb-1">Email</label>
+                <input
+                  type="email"
+                  placeholder="store@example.com"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                />
+              </div>
+            </div>
+
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -208,6 +274,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
               <th className="px-6 py-3 text-xs font-semibold text-stone-500 uppercase">Name</th>
               <th className="px-6 py-3 text-xs font-semibold text-stone-500 uppercase">Type</th>
               <th className="px-6 py-3 text-xs font-semibold text-stone-500 uppercase">Address</th>
+              <th className="px-6 py-3 text-xs font-semibold text-stone-500 uppercase">Contact</th>
               <th className="px-6 py-3 text-xs font-semibold text-stone-500 uppercase">Status</th>
               <th className="px-6 py-3 text-xs font-semibold text-stone-500 uppercase text-right">Actions</th>
             </tr>
@@ -216,9 +283,12 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
             {locations.map(l => (
               <tr key={l.id} className="hover:bg-stone-50/50 transition-colors">
                 <td className="px-6 py-4 font-medium text-stone-900">{l.name}</td>
-                <td className="px-6 py-4 capitalize text-stone-600">{l.type}</td>
+                <td className="px-6 py-4 capitalize text-stone-600">{l.type || "—"}</td>
                 <td className="px-6 py-4 text-stone-600 text-sm">
-                  {[l.address_line1, l.suburb, l.state].filter(Boolean).join(", ") || "—"}
+                  {[l.address_line1, l.suburb, l.state, l.postcode, l.country].filter(Boolean).join(", ") || "—"}
+                </td>
+                <td className="px-6 py-4 text-stone-600 text-sm">
+                  {l.phone || l.email || "—"}
                 </td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -240,7 +310,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
             ))}
             {locations.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-stone-400">
+                <td colSpan={6} className="px-6 py-12 text-center text-stone-400">
                   No locations added yet. Click &quot;+ Add Location&quot; to create your first store.
                 </td>
               </tr>

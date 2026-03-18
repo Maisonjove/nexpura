@@ -10,6 +10,9 @@ export async function addLocation(formData: {
   suburb: string;
   state: string;
   postcode: string;
+  country: string;
+  phone: string;
+  email: string;
 }) {
   const supabase = await createClient();
   
@@ -38,6 +41,9 @@ export async function addLocation(formData: {
       suburb: formData.suburb || null,
       state: formData.state || null,
       postcode: formData.postcode || null,
+      country: formData.country || null,
+      phone: formData.phone || null,
+      email: formData.email || null,
       is_active: true,
     })
     .select()
