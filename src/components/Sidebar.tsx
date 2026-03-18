@@ -71,6 +71,7 @@ const NAV_GROUPS = [
     label: 'Admin',
     items: [
       { name: 'Settings',     href: '/settings',           icon: Settings },
+      { name: 'Payments',     href: '/settings/payments',  icon: CreditCard },
       { name: 'Locations',    href: '/settings/locations', icon: MapPin },
       { name: 'Team & Roles', href: '/settings/roles',     icon: UserCog },
       { name: 'Email Domain', href: '/settings/email',     icon: Mail },

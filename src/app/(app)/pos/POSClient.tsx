@@ -41,6 +41,7 @@ interface Props {
   customers: Customer[];
   taxRate: number;
   businessName: string;
+  hasStripe?: boolean;
 }
 
 const CATEGORIES = ["All", "ring", "necklace", "earring", "bracelet", "loose_stone"];
@@ -56,7 +57,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 type PaymentTab = "card" | "cash" | "split" | "voucher" | "store_credit" | "layby";
 type SaleResult = { id: string; saleNumber: string; invoiceId?: string; customerEmail?: string | null; cartSnapshot?: CartItem[]; paymentMethod?: string; depositAmount?: number; totalAmount?: number };
 
-export default function POSClient({ tenantId, userId, inventoryItems, customers, taxRate, businessName }: Props) {
+export default function POSClient({ tenantId, userId, inventoryItems, customers, taxRate, businessName, hasStripe = false }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -818,13 +819,42 @@ export default function POSClient({ tenantId, userId, inventoryItems, customers,
               )}
 
               {paymentTab === "card" && (
-                <button
-                  onClick={() => handleCharge("card")}
-                  disabled={isPending}
-                  className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
-                >
-                  {isPending ? "Processing…" : "Record Card Payment"}
-                </button>
+                hasStripe ? (
+                  <button
+                    onClick={() => handleCharge("card")}
+                    disabled={isPending}
+                    className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                  >
+                    {isPending ? "Processing…" : "Record Card Payment"}
+                  </button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                      <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                      </div>
+                      <h4 className="font-semibold text-stone-900 mb-1">Connect Stripe to accept cards</h4>
+                      <p className="text-sm text-stone-600 mb-4">
+                        Accept credit cards, Apple Pay, and Google Pay in seconds.
+                      </p>
+                      <a
+                        href="/settings/payments"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors"
+                      >
+                        Connect Stripe
+                      </a>
+                    </div>
+                    <button
+                      onClick={() => handleCharge("card")}
+                      disabled={isPending}
+                      className="w-full py-3 bg-stone-200 text-stone-700 rounded-xl font-medium text-sm hover:bg-stone-300 transition-colors disabled:opacity-50"
+                    >
+                      {isPending ? "Processing…" : "Record as manual card payment"}
+                    </button>
+                  </div>
+                )
               )}
 
               {paymentTab === "cash" && (

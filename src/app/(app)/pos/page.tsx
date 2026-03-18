@@ -49,14 +49,15 @@ export default async function POSPage() {
 
   const taxRate = settings?.tax_rate ?? 0.1;
 
-  // Fetch tenant business name for receipt branding
+  // Fetch tenant business name and Stripe status for receipt branding
   const { data: tenantData } = await admin
     .from("tenants")
-    .select("name")
+    .select("name, stripe_account_id")
     .eq("id", tenantId)
     .maybeSingle();
 
   const businessName = tenantData?.name ?? "Our Store";
+  const hasStripe = !!tenantData?.stripe_account_id;
 
   return (
     <POSClient
@@ -66,6 +67,7 @@ export default async function POSPage() {
       customers={customers ?? []}
       taxRate={taxRate}
       businessName={businessName}
+      hasStripe={hasStripe}
     />
   );
 }
