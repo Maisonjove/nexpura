@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTenantEmailConfig } from "@/lib/email-sender";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -178,10 +179,16 @@ export async function emailQuote(
 </body>
 </html>`;
 
+    // Get tenant email config (custom domain or fallback to nexpura.com)
+    const emailConfig = await getTenantEmailConfig({
+      tenantId: userData.tenant_id,
+      type: "quotes",
+    });
+
     const { error: sendError } = await resend.emails.send({
-      from: `${businessName} <quotes@nexpura.com>`,
+      from: emailConfig.from,
       to: customerEmail,
-      replyTo: tenant?.email ? tenant.email : undefined,
+      replyTo: emailConfig.replyTo || (tenant?.email ? tenant.email : undefined),
       subject: `Quote ${quoteNumber} from ${businessName}`,
       html: htmlBody,
     });

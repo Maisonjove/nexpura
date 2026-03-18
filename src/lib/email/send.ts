@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import { resend } from './resend'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getFromAddress, getSystemFromAddress } from './get-from-address'
 import InvoiceEmail from './templates/InvoiceEmail'
 import JobReadyEmail from './templates/JobReadyEmail'
 import RepairReadyEmail from './templates/RepairReadyEmail'
@@ -129,10 +130,13 @@ export async function sendInvoiceEmail(invoiceId: string): Promise<EmailResult> 
 
   const subject = `Invoice ${invoice.invoice_number} from ${businessName}`
 
+  // Get proper from address (custom domain or fallback to nexpura.com)
+  const emailConfig = await getFromAddress(invoice.tenant_id, "invoices");
+
   const { data, error } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: emailConfig.from,
     to: [customer.email],
-    replyTo: tenant?.email ? [tenant.email] : undefined,
+    replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
     subject,
     react: createElement(InvoiceEmail, props),
   })
@@ -218,10 +222,12 @@ export async function sendJobReadyEmail(jobId: string): Promise<EmailResult> {
   const itemLabel = job.jewellery_type ? job.jewellery_type.replace(/_/g, ' ') : 'jewellery piece'
   const subject = `Your ${itemLabel} is ready for collection — ${businessName}`
 
+  const emailConfig = await getFromAddress(job.tenant_id, "notifications");
+
   const { data, error } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: emailConfig.from,
     to: [customer.email],
-    replyTo: tenant?.email ? [tenant.email] : undefined,
+    replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
     subject,
     react: createElement(JobReadyEmail, props),
   })
@@ -296,10 +302,12 @@ export async function sendRepairReadyEmail(repairId: string): Promise<EmailResul
 
   const subject = `Your repair is ready — ${businessName}`
 
+  const emailConfig = await getFromAddress(repair.tenant_id, "notifications");
+
   const { data, error } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: emailConfig.from,
     to: [customer.email],
-    replyTo: tenant?.email ? [tenant.email] : undefined,
+    replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
     subject,
     react: createElement(RepairReadyEmail, props),
   })
@@ -370,10 +378,12 @@ export async function sendQuoteEmail(repairId: string, quotedPrice: number): Pro
 
   const subject = `Quote for your ${repair.item_description || repair.item_type} — ${businessName}`
 
+  const emailConfig = await getFromAddress(repair.tenant_id, "quotes");
+
   const { data, error } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: emailConfig.from,
     to: [customer.email],
-    replyTo: tenant?.email ? [tenant.email] : undefined,
+    replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
     subject,
     react: createElement(QuoteEmail, props),
   })
@@ -439,10 +449,12 @@ export async function sendPassportEmail(passportId: string): Promise<EmailResult
 
   const subject = `Your Digital Jewellery Passport — ${passport.title}`
 
+  const emailConfig = await getFromAddress(passport.tenant_id, "notifications");
+
   const { data, error } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: emailConfig.from,
     to: [passport.current_owner_email],
-    replyTo: tenant?.email ? [tenant.email] : undefined,
+    replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
     subject,
     react: createElement(PassportEmail, props),
   })
@@ -492,7 +504,7 @@ export async function sendSubscriptionWelcomeEmail(tenantId: string): Promise<Em
 
   const subject = `Welcome to Nexpura, ${businessName}!`
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [tenant.email],
     subject,
     react: createElement(SubscriptionWelcomeEmail, {
@@ -516,7 +528,7 @@ export async function sendTrialEndingSoonEmail(email: string, name: string, tria
   const subject = `Your Nexpura trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`
 
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
     react: createElement(TrialEndingSoonEmail, {
@@ -542,7 +554,7 @@ export async function sendPaymentSuccessEmail(
 ): Promise<EmailResult> {
   const subject = `Payment confirmed — ${businessName}`
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
     react: createElement(PaymentSuccessEmail, { businessName, amount, planName, nextBillingDate }),
@@ -558,7 +570,7 @@ export async function sendPaymentSuccessEmail(
 export async function sendPaymentFailedEmail(email: string, name: string, amount: number, retryUrl: string): Promise<EmailResult> {
   const subject = `Payment failed — action required`
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
     react: createElement(PaymentFailedEmail, { businessName: name, amount, retryUrl }),
@@ -574,7 +586,7 @@ export async function sendPaymentFailedEmail(email: string, name: string, amount
 export async function sendGracePeriodStartedEmail(email: string, name: string, deadline: string, paymentUrl: string): Promise<EmailResult> {
   const subject = `Payment required — account suspension in 48 hours`
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
     react: createElement(GracePeriodStartedEmail, { businessName: name, hoursRemaining: 48, paymentUrl, deadline }),
@@ -590,7 +602,7 @@ export async function sendGracePeriodStartedEmail(email: string, name: string, d
 export async function sendGracePeriod24hEmail(email: string, name: string): Promise<EmailResult> {
   const subject = `🚨 24 hours remaining — pay now to avoid suspension`
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
     react: createElement(GracePeriod24hEmail, { businessName: name, paymentUrl: `${APP_URL}/billing` }),
@@ -606,7 +618,7 @@ export async function sendGracePeriod24hEmail(email: string, name: string): Prom
 export async function sendAccountSuspendedEmail(email: string, name: string): Promise<EmailResult> {
   const subject = `Your Nexpura account has been suspended`
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
     react: createElement(AccountSuspendedEmail, { businessName: name, paymentUrl: `${APP_URL}/billing` }),
@@ -622,7 +634,7 @@ export async function sendAccountSuspendedEmail(email: string, name: string): Pr
 export async function sendAccountReactivatedEmail(email: string, name: string, planName: string): Promise<EmailResult> {
   const subject = `Your Nexpura account is back! 🎉`
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
     react: createElement(AccountReactivatedEmail, { businessName: name, planName, dashboardUrl: `${APP_URL}/dashboard` }),
@@ -662,10 +674,12 @@ export async function sendRepairReceivedEmail(repairId: string): Promise<EmailRe
   const businessName = tenant?.business_name || tenant?.name || 'Your Jeweller'
   const subject = `We've received your ${repair.item_type} — ${businessName}`
 
+  const emailConfig = await getFromAddress(repair.tenant_id, "notifications");
+
   const { data, error } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: emailConfig.from,
     to: [customer.email],
-    replyTo: tenant?.email ? [tenant.email] : undefined,
+    replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
     subject,
     react: createElement(RepairReceivedEmail, {
       customerName: customer.full_name || 'Valued Customer',
@@ -696,7 +710,7 @@ export async function sendUserInvitedEmail(
 ): Promise<EmailResult> {
   const subject = `You've been invited to join ${businessName} on Nexpura`
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
     react: createElement(UserInvitedEmail, { inviteeName, businessName, inviterName, role, acceptUrl }),
@@ -716,7 +730,7 @@ export async function sendUserInvitedEmail(
 export async function sendFreeToPaidConversionEmail(email: string, name: string, deadline: string): Promise<EmailResult> {
   const subject = `Payment required for your Nexpura account`
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
     react: createElement(FreeToPaidConversionEmail, {
@@ -736,7 +750,7 @@ export async function sendFreeToPaidConversionEmail(email: string, name: string,
 export async function sendCancellationEmail(email: string, name: string): Promise<EmailResult> {
   const subject = `Your Nexpura subscription has been cancelled`
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
     react: createElement(CancellationEmail, {
@@ -752,11 +766,17 @@ export async function sendLowStockAlertEmail(
   email: string,
   businessName: string,
   items: Array<{ name: string; sku: string; quantity: number }>,
-  inventoryUrl: string
+  inventoryUrl: string,
+  tenantId?: string
 ): Promise<EmailResult> {
   const subject = `Low stock alert — ${items.length} item${items.length === 1 ? '' : 's'} need attention`
+  
+  const fromAddress = tenantId 
+    ? await getFromAddress(tenantId, "notifications")
+    : { from: `${businessName} <notifications@nexpura.com>` };
+  
   const { data, error } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: fromAddress.from,
     to: [email],
     subject,
     react: createElement(LowStockAlertEmail, { businessName, items, inventoryUrl }),
@@ -790,10 +810,12 @@ export async function sendPassportVerificationEmail(passportId: string): Promise
   const verificationUrl = `${APP_URL}/verify/${passport.passport_uid}`
   const subject = `Your Jewellery Passport — ${passport.title}`
 
+  const emailConfig = await getFromAddress(passport.tenant_id, "notifications");
+
   const { data, error } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: emailConfig.from,
     to: [passport.current_owner_email],
-    replyTo: tenant?.email ? [tenant.email] : undefined,
+    replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
     subject,
     react: createElement(PassportVerificationEmail, {
       ownerName: passport.current_owner_name || 'Valued Customer',
@@ -835,10 +857,13 @@ export async function sendAppointmentConfirmationEmail(params: {
     : null
 
   const subject = `Appointment Request Confirmed — ${businessName}`
+  
+  const emailConfig = await getFromAddress(params.tenantId, "notifications");
+  
   const { data, error } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: emailConfig.from,
     to: [params.customerEmail],
-    replyTo: tenant?.email ? [tenant.email] : undefined,
+    replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
     subject,
     react: createElement(AppointmentConfirmationEmail, {
       customerName: params.customerName,
@@ -877,10 +902,13 @@ export async function sendRepairEnquiryConfirmationEmail(params: {
 
   const businessName = tenant?.business_name || tenant?.name || 'Your Jeweller'
   const subject = `Repair Enquiry Received — ${businessName}`
+  
+  const emailConfig = await getFromAddress(params.tenantId, "notifications");
+  
   const { data, error } = await resend.emails.send({
-    from: `${businessName} <onboarding@resend.dev>`,
+    from: emailConfig.from,
     to: [params.customerEmail],
-    replyTo: tenant?.email ? [tenant.email] : undefined,
+    replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
     subject,
     react: createElement(RepairEnquiryConfirmationEmail, {
       customerName: params.customerName,
@@ -920,7 +948,7 @@ export async function sendNewEnquiryNotificationEmail(params: {
   const subject = `New ${params.enquiryType} enquiry from ${params.customerName}`
 
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [tenant.email],
     subject,
     react: createElement(NewEnquiryNotificationEmail, {
@@ -954,7 +982,7 @@ export async function sendSupportAccessRequestEmail(params: {
   const subject = `Nexpura Support Access Request`
 
   const { data, error } = await resend.emails.send({
-    from: `Nexpura Support <onboarding@resend.dev>`,
+    from: getSystemFromAddress('support'),
     to: [params.tenantEmail],
     subject,
     react: createElement(SupportAccessRequestEmail, {
@@ -990,7 +1018,7 @@ export async function sendSupportAccessApprovedEmail(params: {
   const subject = `Support Access Approved — ${params.businessName}`
 
   const { data, error } = await resend.emails.send({
-    from: `Nexpura <onboarding@resend.dev>`,
+    from: getSystemFromAddress('nexpura'),
     to: [params.superAdminEmail],
     subject,
     react: createElement(SupportAccessApprovedEmail, {

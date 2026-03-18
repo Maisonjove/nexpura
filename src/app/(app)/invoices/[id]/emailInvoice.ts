@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/lib/pdf/InvoicePDF";
+import { getTenantEmailConfig } from "@/lib/email-sender";
 import { Resend } from "resend";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { revalidatePath } from "next/cache";
@@ -273,11 +274,17 @@ export async function emailInvoice(
 </body>
 </html>`;
 
-    // 6. Send via Resend with PDF attachment
+    // 6. Get tenant email config (custom domain or fallback to nexpura.com)
+    const emailConfig = await getTenantEmailConfig({
+      tenantId: userData.tenant_id,
+      type: "invoices",
+    });
+
+    // 7. Send via Resend with PDF attachment
     const { error: sendError } = await resend.emails.send({
-      from: `${businessName} <invoices@nexpura.com>`,
+      from: emailConfig.from,
       to: customerEmail,
-      replyTo: tenant?.email ? tenant.email : undefined,
+      replyTo: emailConfig.replyTo || (tenant?.email ? tenant.email : undefined),
       subject: `Tax Invoice ${invoice.invoice_number} from ${businessName}`,
       html: htmlBody,
       attachments: [
@@ -292,7 +299,7 @@ export async function emailInvoice(
       return { success: false, error: sendError.message };
     }
 
-    // 7. Update invoice status to 'sent' if was draft
+    // 8. Update invoice status to 'sent' if was draft
     if (invoice.status === "draft") {
       await supabase
         .from("invoices")
@@ -303,7 +310,7 @@ export async function emailInvoice(
       revalidatePath("/invoices");
     }
 
-    // 8. Log to customer_communications
+    // 9. Log to customer_communications
     if ((invoice as Record<string, unknown>).customer_id) {
       await supabase.from("customer_communications").insert({
         tenant_id: userData.tenant_id,
