@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { X, ChevronDown, Plus, Package, Upload, Loader2 } from "lucide-react";
+import { X, ChevronDown, Plus, Package, Upload, Loader2, Circle, Link2, Watch, Gem, Sparkles, Star } from "lucide-react";
 import { quickAddStock, createQuickSupplier, getSuppliersList } from "./actions";
 
 interface Supplier {
@@ -16,13 +16,13 @@ interface AddStockModalProps {
 }
 
 const ITEM_TYPES = [
-  { value: "ring", label: "Ring", icon: "💍" },
-  { value: "necklace", label: "Necklace", icon: "📿" },
-  { value: "bracelet", label: "Bracelet", icon: "⌚" },
-  { value: "watch", label: "Watch", icon: "⏱️" },
-  { value: "earrings", label: "Earrings", icon: "💎" },
-  { value: "pendant", label: "Pendant", icon: "🔮" },
-  { value: "other", label: "Other", icon: "✨" },
+  { value: "ring", label: "Ring", Icon: Circle },
+  { value: "necklace", label: "Necklace", Icon: Link2 },
+  { value: "bracelet", label: "Bracelet", Icon: Circle },
+  { value: "watch", label: "Watch", Icon: Watch },
+  { value: "earrings", label: "Earrings", Icon: Gem },
+  { value: "pendant", label: "Pendant", Icon: Sparkles },
+  { value: "other", label: "Other", Icon: Star },
 ];
 
 export default function AddStockModal({ onClose, onSuccess, suppliers: initialSuppliers }: AddStockModalProps) {
@@ -161,7 +161,7 @@ export default function AddStockModal({ onClose, onSuccess, suppliers: initialSu
                       : "border-stone-200 hover:border-stone-300 hover:bg-stone-50"
                   }`}
                 >
-                  <span className="text-xl">{type.icon}</span>
+                  <type.Icon className={`w-6 h-6 ${formData.itemType === type.value ? "text-amber-600" : "text-stone-400"}`} strokeWidth={1.5} />
                   <span className="text-xs font-medium text-stone-700">{type.label}</span>
                 </button>
               ))}
