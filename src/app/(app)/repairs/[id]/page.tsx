@@ -55,8 +55,8 @@ export default async function RepairDetailPage({
 
   if (!repair) notFound();
 
-  // Attachments + events in parallel
-  const [{ data: attachments }, { data: events }] = await Promise.all([
+  // Attachments + events + tenant settings + twilio in parallel
+  const [{ data: attachments }, { data: events }, { data: tenant }, { data: twilioIntegration }] = await Promise.all([
     adminClient
       .from("job_attachments")
       .select("*")
@@ -69,7 +69,24 @@ export default async function RepairDetailPage({
       .eq("job_type", "repair")
       .eq("job_id", id)
       .order("created_at", { ascending: false }),
+    adminClient
+      .from("tenants")
+      .select("name, business_name, sms_templates")
+      .eq("id", tenantId)
+      .single(),
+    adminClient
+      .from("tenant_integrations")
+      .select("enabled")
+      .eq("tenant_id", tenantId)
+      .eq("integration_type", "twilio")
+      .single(),
   ]);
+
+  const businessName = tenant?.business_name || tenant?.name || "";
+  const smsTemplates = (tenant?.sms_templates as { job_ready?: string } | null) || {};
+  const defaultSmsTemplate = smsTemplates.job_ready || 
+    "Hi {{customer_name}}, great news! Your {{job_type}} is ready for pickup at {{business_name}}. See you soon!";
+  const twilioConnected = !!twilioIntegration?.enabled;
 
   const tenantCurrency = tenantCurrencyFromCtx;
   const customer = Array.isArray(repair.customers) ? repair.customers[0] ?? null : repair.customers;
@@ -133,6 +150,9 @@ export default async function RepairDetailPage({
       readOnly={isReviewMode}
       attachments={attachments ?? []}
       events={events ?? []}
+      twilioConnected={twilioConnected}
+      businessName={businessName}
+      defaultSmsTemplate={defaultSmsTemplate}
     />
   );
 }

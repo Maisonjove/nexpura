@@ -396,3 +396,108 @@ export async function emailJobReady(
   revalidatePath(`/repairs/${jobId}`);
   return { success: true };
 }
+
+export async function sendJobReadySms(params: {
+  repairId: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  jobType: string;
+  message: string;
+}): Promise<{ success: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { success: false, error: "Not authenticated" }; }
+  const { admin, tenantId, userId } = ctx;
+
+  // Get Twilio credentials
+  const { data: integration } = await admin
+    .from("tenant_integrations")
+    .select("settings")
+    .eq("tenant_id", tenantId)
+    .eq("integration_type", "twilio")
+    .eq("enabled", true)
+    .single();
+
+  const settings = integration?.settings as {
+    account_sid?: string;
+    auth_token?: string;
+    phone_number?: string;
+  } | null;
+
+  if (!settings?.account_sid || !settings?.auth_token || !settings?.phone_number) {
+    return { success: false, error: "Twilio not configured" };
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${settings.account_sid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${settings.account_sid}:${settings.auth_token}`).toString("base64")}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          From: settings.phone_number,
+          To: params.customerPhone,
+          Body: params.message,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Log failed send
+      await admin.from("sms_sends").insert({
+        tenant_id: tenantId,
+        customer_id: params.customerId,
+        phone: params.customerPhone,
+        message: params.message,
+        status: "failed",
+        error_message: data.message || "Failed to send",
+        context: { job_id: params.repairId, type: "job_ready" },
+      });
+
+      return { success: false, error: data.message || "Failed to send SMS" };
+    }
+
+    // Log successful send
+    await admin.from("sms_sends").insert({
+      tenant_id: tenantId,
+      customer_id: params.customerId,
+      phone: params.customerPhone,
+      message: params.message,
+      status: "sent",
+      twilio_sid: data.sid,
+      context: { job_id: params.repairId, type: "job_ready" },
+    });
+
+    // Log to job_events
+    await admin.from("job_events").insert({
+      tenant_id: tenantId,
+      job_type: "repair",
+      job_id: params.repairId,
+      event_type: "sms_sent",
+      description: `Ready for collection SMS sent to ${params.customerPhone}`,
+      actor: userId,
+    });
+
+    revalidatePath(`/repairs/${params.repairId}`);
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    await admin.from("sms_sends").insert({
+      tenant_id: tenantId,
+      customer_id: params.customerId,
+      phone: params.customerPhone,
+      message: params.message,
+      status: "failed",
+      error_message: errorMessage,
+      context: { job_id: params.repairId, type: "job_ready" },
+    });
+
+    return { success: false, error: errorMessage };
+  }
+}

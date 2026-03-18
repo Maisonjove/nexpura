@@ -13,7 +13,9 @@ import {
   updateRepairStage,
   emailRepairInvoice,
   emailJobReady,
+  sendJobReadySms,
 } from "./actions";
+import JobReadySMSModal from "@/components/JobReadySMSModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,6 +108,9 @@ interface Props {
   readOnly?: boolean;
   attachments?: JobAttachment[];
   events?: JobEvent[];
+  twilioConnected?: boolean;
+  businessName?: string;
+  defaultSmsTemplate?: string;
 }
 
 // ─── Stage Config ─────────────────────────────────────────────────────────────
@@ -182,7 +187,7 @@ function statusChip(invoice: Invoice | null, repair: Repair, currency: string) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function RepairCommandCenter({ repair, customer, invoice, inventory, tenantId, currency, readOnly = false, attachments = [], events = [] }: Props) {
+export default function RepairCommandCenter({ repair, customer, invoice, inventory, tenantId, currency, readOnly = false, attachments = [], events = [], twilioConnected = false, businessName = "", defaultSmsTemplate = "" }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [localAttachments, setLocalAttachments] = useState(attachments);
@@ -201,6 +206,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
   const [showNotes, setShowNotes] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [emailSending, setEmailSending] = useState(false);
+  const [showReadySmsModal, setShowReadySmsModal] = useState(false);
 
   // Escape key closes any open modal — prevents stuck backdrop
   useEffect(() => {
@@ -365,8 +371,48 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
   }
 
   async function handleStageChange(stage: string) {
+    // For "ready" stage, show the SMS modal instead of simple confirmation
+    if (stage === "ready") {
+      setShowReadySmsModal(true);
+      return;
+    }
     setTargetStage(stage);
     setShowStageModal(true);
+  }
+
+  async function handleMarkReadyWithSms(sendSms: boolean, message: string) {
+    setShowReadySmsModal(false);
+
+    startTransition(async () => {
+      // First update the stage
+      const stageResult = await updateRepairStage(repair.id, tenantId, "ready");
+      if (stageResult.error) {
+        showToast(`Error: ${stageResult.error}`);
+        return;
+      }
+
+      // Then send SMS if requested
+      if (sendSms && customer?.mobile) {
+        const smsResult = await sendJobReadySms({
+          repairId: repair.id,
+          customerId: customer.id,
+          customerName: customer.full_name,
+          customerPhone: customer.mobile,
+          jobType: repair.item_description || repair.item_type,
+          message,
+        });
+
+        if (smsResult.error) {
+          showToast(`Stage updated, but SMS failed: ${smsResult.error}`);
+        } else {
+          showToast("✓ Marked ready & SMS sent");
+        }
+      } else {
+        showToast("✓ Stage updated to Ready");
+      }
+
+      refresh();
+    });
   }
 
   async function confirmStageChange() {
@@ -1140,6 +1186,19 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
           </div>
         </div>
       )}
+
+      {/* Job Ready SMS Modal */}
+      <JobReadySMSModal
+        isOpen={showReadySmsModal}
+        onClose={() => setShowReadySmsModal(false)}
+        onConfirm={handleMarkReadyWithSms}
+        customerName={customer?.full_name || ""}
+        customerPhone={customer?.mobile || null}
+        jobType={repair.item_description || repair.item_type}
+        businessName={businessName}
+        defaultTemplate={defaultSmsTemplate || "Hi {{customer_name}}, great news! Your {{job_type}} is ready for pickup at {{business_name}}. See you soon!"}
+        twilioConnected={twilioConnected}
+      />
     </div>
   );
 }
