@@ -1,6 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import TenantsClient from "./TenantsClient";
 
+// Force dynamic rendering - don't pre-render at build time
+export const dynamic = "force-dynamic";
+
 interface SearchParams {
   q?: string;
   plan?: string;

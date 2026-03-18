@@ -3,6 +3,9 @@ import { getTenantAccessStatuses } from "@/lib/support-access";
 import Link from "next/link";
 import AdminTenantsClient from "./AdminTenantsClient";
 
+// Force dynamic rendering - don't pre-render at build time
+export const dynamic = "force-dynamic";
+
 const PLAN_PRICES: Record<string, number> = {
   boutique: 89,
   studio: 179,
