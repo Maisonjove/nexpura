@@ -3,7 +3,9 @@ import PassportsListClient from "@/app/(app)/passports/PassportsListClient";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function ReviewPassportsPage() {
   const admin = createAdminClient();

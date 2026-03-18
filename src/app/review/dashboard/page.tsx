@@ -4,7 +4,9 @@ import DashboardClient from "@/app/(app)/dashboard/DashboardClient";
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const DEMO_USER_ID = "bd7d2c20-5727-4f80-a449-818429abecc9";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function ReviewDashboardPage() {
   const admin = createAdminClient();

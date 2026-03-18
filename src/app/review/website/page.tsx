@@ -1,6 +1,8 @@
 import { getAuthOrReviewContext } from "@/lib/auth/review";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 const STORE_PAGES = [
   { slug: "/", name: "Home", desc: "Hero banner, featured products, about blurb", status: "published" },

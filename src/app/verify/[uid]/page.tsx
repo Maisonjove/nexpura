@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/public";
 import { notFound } from "next/navigation";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 interface Passport {
   id: string;

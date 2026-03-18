@@ -3,7 +3,9 @@ import Link from "next/link";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 const statusBadge: Record<string, string> = {
   active: "bg-green-100 text-green-700",
