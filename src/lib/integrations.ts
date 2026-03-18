@@ -5,7 +5,15 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type IntegrationType = "xero" | "whatsapp" | "shopify" | "insurance";
+export type IntegrationType = 
+  | "xero" 
+  | "whatsapp" 
+  | "shopify" 
+  | "insurance"
+  | "google_calendar"
+  | "twilio"
+  | "square"
+  | "woocommerce";
 
 export interface Integration {
   id: string;

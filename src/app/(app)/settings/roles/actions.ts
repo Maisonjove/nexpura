@@ -187,7 +187,8 @@ export async function inviteTeamMember(
   name: string,
   email: string,
   role: string,
-  allowedLocationIds: string[] | null
+  allowedLocationIds: string[] | null,
+  phoneNumber?: string | null
 ): Promise<{ success?: boolean; error?: string; inviteToken?: string }> {
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
@@ -227,6 +228,8 @@ export async function inviteTeamMember(
     allowed_location_ids: allowedLocationIds,
     invite_token: inviteToken,
     invite_accepted: false,
+    phone_number: phoneNumber || null,
+    whatsapp_notifications_enabled: true, // Default to enabled
   });
 
   if (error) return { error: error.message };
@@ -395,6 +398,54 @@ export async function removeMember(memberId: string): Promise<{ success?: boolea
   const { error } = await admin
     .from("team_members")
     .delete()
+    .eq("id", memberId)
+    .eq("tenant_id", ctx.tenantId);
+
+  if (error) return { error: error.message };
+  
+  revalidatePath("/settings/roles");
+  return { success: true };
+}
+
+export async function updateMemberPhone(
+  memberId: string, 
+  phoneNumber: string | null
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+
+  const admin = createAdminClient();
+  
+  const { error } = await admin
+    .from("team_members")
+    .update({ 
+      phone_number: phoneNumber,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", memberId)
+    .eq("tenant_id", ctx.tenantId);
+
+  if (error) return { error: error.message };
+  
+  revalidatePath("/settings/roles");
+  return { success: true };
+}
+
+export async function updateMemberWhatsAppEnabled(
+  memberId: string, 
+  enabled: boolean
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+
+  const admin = createAdminClient();
+  
+  const { error } = await admin
+    .from("team_members")
+    .update({ 
+      whatsapp_notifications_enabled: enabled,
+      updated_at: new Date().toISOString()
+    })
     .eq("id", memberId)
     .eq("tenant_id", ctx.tenantId);
 

@@ -1,0 +1,59 @@
+/**
+ * PUT /api/settings/notifications
+ * 
+ * Update tenant notification settings
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export async function PUT(req: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user's tenant
+    const admin = createAdminClient();
+    const { data: userData } = await admin
+      .from("users")
+      .select("tenant_id, role")
+      .eq("id", user.id)
+      .single();
+
+    if (!userData?.tenant_id) {
+      return NextResponse.json({ error: "No tenant" }, { status: 400 });
+    }
+
+    // Only owners/managers can change settings
+    if (!["owner", "manager"].includes(userData.role)) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { notification_settings } = body;
+
+    if (!notification_settings) {
+      return NextResponse.json({ error: "Missing notification_settings" }, { status: 400 });
+    }
+
+    // Update tenant settings
+    const { error } = await admin
+      .from("tenants")
+      .update({ notification_settings })
+      .eq("id", userData.tenant_id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[settings/notifications PUT]", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}

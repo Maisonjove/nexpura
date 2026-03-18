@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
+import { notifyTaskAssignment } from "@/lib/whatsapp-notifications";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -136,6 +137,27 @@ export async function createTask(
       description: `Task created by ${userEmail}`,
     });
 
+    // Send WhatsApp notification if assigned
+    const assignedTo = (formData.get("assigned_to") as string) || null;
+    if (assignedTo) {
+      // Get team member ID from user ID
+      const { data: teamMember } = await admin
+        .from("team_members")
+        .select("id")
+        .eq("tenant_id", tenantId)
+        .eq("user_id", assignedTo)
+        .single();
+      
+      if (teamMember) {
+        notifyTaskAssignment(tenantId, teamMember.id, {
+          description: title,
+          dueDate: (formData.get("due_date") as string) || undefined,
+          notes: (formData.get("notes") as string) || undefined,
+          type: "task",
+        }).catch(console.error); // Fire and forget
+      }
+    }
+
     revalidatePath("/tasks");
     return { id: task?.id };
   } catch (e) {
@@ -195,6 +217,23 @@ export async function updateTask(
         activity_type: "assigned",
         description: `Task assigned to a new user`,
       });
+
+      // Send WhatsApp notification to new assignee
+      const { data: teamMember } = await admin
+        .from("team_members")
+        .select("id")
+        .eq("tenant_id", tenantId)
+        .eq("user_id", updates.assigned_to)
+        .single();
+      
+      if (teamMember) {
+        notifyTaskAssignment(tenantId, teamMember.id, {
+          description: oldTask?.title || "Task",
+          dueDate: oldTask?.due_date || undefined,
+          notes: oldTask?.notes || undefined,
+          type: "task",
+        }).catch(console.error);
+      }
     }
 
     revalidatePath("/tasks");

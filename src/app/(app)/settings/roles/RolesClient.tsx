@@ -7,7 +7,7 @@ import {
   Users, Shield, MapPin, ChevronRight, Check, X, 
   Building2, Eye, Edit3, ShoppingCart, Wrench, 
   BarChart2, DollarSign, Settings, UserCog, Plus,
-  Mail, Trash2, RefreshCw, Loader2
+  Mail, Trash2, RefreshCw, Loader2, Phone, MessageSquare
 } from "lucide-react";
 import { 
   updateMemberRole, 
@@ -17,6 +17,7 @@ import {
   inviteTeamMember,
   resendInvite,
   removeMember,
+  updateMemberPhone,
   DEFAULT_PERMISSIONS,
   PermissionSet 
 } from "./actions";
@@ -31,6 +32,8 @@ interface TeamMember {
   allowed_location_ids: string[] | null;
   default_location_id: string | null;
   invite_accepted: boolean;
+  phone_number: string | null;
+  whatsapp_notifications_enabled: boolean;
 }
 
 interface Location {
@@ -108,9 +111,14 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
+  const [invitePhone, setInvitePhone] = useState("");
   const [inviteRole, setInviteRole] = useState("staff");
   const [inviteLocations, setInviteLocations] = useState<string[] | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+  
+  // Edit phone modal state
+  const [editingPhoneMember, setEditingPhoneMember] = useState<TeamMember | null>(null);
+  const [editPhone, setEditPhone] = useState("");
 
   const hasMultipleLocations = locations.length > 1;
 
@@ -214,7 +222,8 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
         inviteName.trim(),
         inviteEmail.trim(),
         inviteRole,
-        inviteLocations
+        inviteLocations,
+        invitePhone.trim() || null
       );
       if (result.error) {
         setSaveMsg({ type: "err", text: result.error });
@@ -224,11 +233,26 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
           setShowInviteModal(false);
           setInviteName("");
           setInviteEmail("");
+          setInvitePhone("");
           setInviteRole("staff");
           setInviteLocations(null);
           setInviteSuccess(false);
           router.refresh();
         }, 2000);
+      }
+    });
+  }
+
+  async function handleUpdatePhone(memberId: string) {
+    startTransition(async () => {
+      const result = await updateMemberPhone(memberId, editPhone.trim() || null);
+      if (result.error) {
+        setSaveMsg({ type: "err", text: result.error });
+      } else {
+        setSaveMsg({ type: "ok", text: "Phone number updated" });
+        setEditingPhoneMember(null);
+        setEditPhone("");
+        router.refresh();
       }
     });
   }
@@ -346,6 +370,39 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
                   <div>
                     <h2 className="text-lg font-semibold text-stone-900">{selectedMember.name}</h2>
                     <p className="text-sm text-stone-500">{selectedMember.email}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {selectedMember.phone_number ? (
+                        <span className="text-xs text-stone-500 flex items-center gap-1">
+                          <Phone size={10} />
+                          {selectedMember.phone_number}
+                          {selectedMember.whatsapp_notifications_enabled && (
+                            <MessageSquare size={10} className="text-green-500 ml-1" title="WhatsApp notifications enabled" />
+                          )}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingPhoneMember(selectedMember);
+                            setEditPhone("");
+                          }}
+                          className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1"
+                        >
+                          <Phone size={10} />
+                          Add phone for WhatsApp
+                        </button>
+                      )}
+                      {selectedMember.phone_number && isOwnerOrManager && (
+                        <button
+                          onClick={() => {
+                            setEditingPhoneMember(selectedMember);
+                            setEditPhone(selectedMember.phone_number || "");
+                          }}
+                          className="text-xs text-stone-400 hover:text-stone-600"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {isOwnerOrManager && selectedMember.role !== "owner" && (
@@ -599,6 +656,21 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
                       className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
                     />
                   </div>
+
+                  {/* Phone (optional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                      Phone Number <span className="text-stone-400 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={invitePhone}
+                      onChange={(e) => setInvitePhone(e.target.value)}
+                      placeholder="+44 7700 900000"
+                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    />
+                    <p className="text-xs text-stone-400 mt-1">For WhatsApp task notifications</p>
+                  </div>
                   
                   {/* Role */}
                   <div>
@@ -682,6 +754,73 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Phone Modal */}
+      {editingPhoneMember && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full overflow-hidden">
+            <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-stone-900">
+                {editingPhoneMember.phone_number ? "Edit Phone Number" : "Add Phone Number"}
+              </h3>
+              <button onClick={() => setEditingPhoneMember(null)} className="text-stone-400 hover:text-stone-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  Phone Number for {editingPhoneMember.name}
+                </label>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="+44 7700 900000"
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  Include country code for WhatsApp notifications
+                </p>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-stone-50 border-t border-stone-100 flex justify-between gap-3">
+              {editingPhoneMember.phone_number && (
+                <button
+                  onClick={() => {
+                    handleUpdatePhone(editingPhoneMember.id);
+                    setEditPhone("");
+                  }}
+                  disabled={isPending}
+                  className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700"
+                >
+                  Remove Number
+                </button>
+              )}
+              <div className="flex gap-3 ml-auto">
+                <button
+                  onClick={() => setEditingPhoneMember(null)}
+                  className="px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleUpdatePhone(editingPhoneMember.id)}
+                  disabled={isPending || !editPhone.trim()}
+                  className="flex items-center gap-2 bg-stone-800 hover:bg-stone-900 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50"
+                >
+                  {isPending ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Phone size={16} />
+                  )}
+                  Save
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

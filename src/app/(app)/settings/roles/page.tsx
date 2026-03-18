@@ -19,7 +19,7 @@ export default async function RolesPage() {
   // Fetch team members with their permissions
   const { data: members } = await admin
     .from("team_members")
-    .select("id, user_id, name, email, role, permissions, allowed_location_ids, default_location_id, invite_accepted")
+    .select("id, user_id, name, email, role, permissions, allowed_location_ids, default_location_id, invite_accepted, phone_number, whatsapp_notifications_enabled")
     .eq("tenant_id", ctx.tenantId)
     .order("name");
 
