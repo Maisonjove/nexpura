@@ -4,12 +4,21 @@ import { createServerClient } from "@supabase/ssr";
 import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// Timeout wrapper to prevent middleware from hanging when Supabase is slow
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("MIDDLEWARE_TIMEOUT")), ms)
+  );
+  return Promise.race([promise, timeout]);
+}
+
 export async function middleware(request: NextRequest) {
-  // Top-level guard: if anything throws, pass through instead of returning 500
+  // Top-level guard: if anything throws or times out, pass through
   try {
-    return await _proxyInner(request);
+    // 5 second timeout - if Supabase is slow, just let the request through
+    return await withTimeout(_proxyInner(request), 5000);
   } catch (err) {
-    console.error("[middleware] threw — passing through:", err);
+    console.error("[middleware] threw or timed out — passing through:", err);
     return NextResponse.next();
   }
 }
