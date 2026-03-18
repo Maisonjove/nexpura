@@ -1,9 +1,11 @@
 /**
- * WhatsApp Business API (Meta Cloud API) integration for employee notifications
+ * WhatsApp Business API integration for employee notifications
+ * Supports both Meta Cloud API and Twilio WhatsApp as fallback
  */
 
 import { getIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
 
 interface WhatsAppConfig {
   phone_number_id: string;
@@ -19,18 +21,10 @@ interface SendMessageParams {
 /**
  * Send a WhatsApp text message using Meta Cloud API
  */
-export async function sendWhatsAppMessage(
-  tenantId: string,
+async function sendViaMetaAPI(
+  config: WhatsAppConfig,
   params: SendMessageParams
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const integration = await getIntegration(tenantId, "whatsapp");
-  
-  if (!integration || integration.status !== "connected") {
-    return { success: false, error: "WhatsApp not configured" };
-  }
-
-  const config = integration.config as unknown as WhatsAppConfig;
-  
   // Clean phone number (remove spaces, dashes, plus sign for API)
   const cleanPhone = params.to.replace(/[\s\-\+]/g, "");
   
@@ -58,7 +52,7 @@ export async function sendWhatsAppMessage(
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("[whatsapp] Send failed:", errorData);
+      console.error("[whatsapp-meta] Send failed:", errorData);
       return { 
         success: false, 
         error: errorData.error?.message || "Failed to send message" 
@@ -71,12 +65,47 @@ export async function sendWhatsAppMessage(
       messageId: data.messages?.[0]?.id 
     };
   } catch (err) {
-    console.error("[whatsapp] Send error:", err);
+    console.error("[whatsapp-meta] Send error:", err);
     return { 
       success: false, 
       error: err instanceof Error ? err.message : "Network error" 
     };
   }
+}
+
+/**
+ * Send a WhatsApp text message - tries Meta API first, then Twilio as fallback
+ */
+export async function sendWhatsAppMessage(
+  tenantId: string,
+  params: SendMessageParams
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  // Try Meta WhatsApp first
+  const integration = await getIntegration(tenantId, "whatsapp");
+  
+  if (integration && integration.status === "connected") {
+    const config = integration.config as unknown as WhatsAppConfig;
+    const result = await sendViaMetaAPI(config, params);
+    if (result.success) {
+      return result;
+    }
+    console.log("[whatsapp] Meta API failed, trying Twilio fallback...");
+  }
+
+  // Fall back to Twilio if Meta isn't connected or fails
+  // Twilio uses global env vars (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER)
+  const twilioResult = await sendTwilioWhatsApp(params.to, params.message);
+  
+  if (twilioResult.success) {
+    console.log("[whatsapp] Sent via Twilio");
+    return twilioResult;
+  }
+
+  // Both failed
+  return { 
+    success: false, 
+    error: integration ? "Both Meta and Twilio failed" : (twilioResult.error || "WhatsApp not configured") 
+  };
 }
 
 /**
