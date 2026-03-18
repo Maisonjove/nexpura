@@ -1,20 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-
-type Template = { 
-  id: string; 
-  title: string; 
-  description: string | null; 
-  department: string | null;
-  priority: string;
-};
+import {
+  getTaskTemplates,
+  createTaskTemplate,
+  updateTaskTemplate,
+  deleteTaskTemplate,
+  type TaskTemplate
+} from "./actions";
 
 export default function TaskTemplatesPage() {
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -28,52 +25,48 @@ export default function TaskTemplatesPage() {
   const [editPriority, setEditPriority] = useState("medium");
   const [msg, setMsg] = useState<string | null>(null);
 
-  const supabase = createClient();
-
   useEffect(() => {
     fetchTemplates();
   }, []);
 
   async function fetchTemplates() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("task_templates")
-      .select("*")
-      .order("created_at", { ascending: false });
-    
-    if (data) setTemplates(data);
-    setLoading(false);
+    try {
+      const data = await getTaskTemplates();
+      setTemplates(data);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load templates");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function createTemplate() {
+  async function handleCreateTemplate() {
     if (!newTitle.trim()) return;
     
-    const { data, error } = await supabase
-      .from("task_templates")
-      .insert({
-        title: newTitle.trim(),
-        description: newDescription.trim(),
-        department: newDepartment.trim() || null,
+    try {
+      const data = await createTaskTemplate({
+        title: newTitle,
+        description: newDescription,
+        department: newDepartment || null,
         priority: newPriority,
-      })
-      .select()
-      .single();
+      });
 
-    if (error) {
-      toast.error(error.message);
-      return;
+      setTemplates((prev) => [data, ...prev]);
+      setNewTitle("");
+      setNewDescription("");
+      setNewDepartment("");
+      setShowNew(false);
+      setMsg("Template created.");
+      setTimeout(() => setMsg(null), 2000);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create template");
     }
-
-    setTemplates((prev) => [data, ...prev]);
-    setNewTitle("");
-    setNewDescription("");
-    setNewDepartment("");
-    setShowNew(false);
-    setMsg("Template created.");
-    setTimeout(() => setMsg(null), 2000);
   }
 
-  async function startEdit(t: Template) {
+  function startEdit(t: TaskTemplate) {
     setEditId(t.id);
     setEditTitle(t.title);
     setEditDescription(t.description || "");
@@ -82,45 +75,42 @@ export default function TaskTemplatesPage() {
   }
 
   async function saveEdit() {
-    if (!editTitle.trim()) return;
+    if (!editTitle.trim() || !editId) return;
 
-    const { error } = await supabase
-      .from("task_templates")
-      .update({
-        title: editTitle.trim(),
-        description: editDescription.trim(),
-        department: editDepartment.trim() || null,
+    try {
+      await updateTaskTemplate(editId, {
+        title: editTitle,
+        description: editDescription,
+        department: editDepartment || null,
         priority: editPriority,
-      })
-      .eq("id", editId);
+      });
 
-    if (error) {
-      toast.error(error.message);
-      return;
+      setTemplates((prev) => prev.map((t) => t.id === editId ? { 
+        ...t, 
+        title: editTitle, 
+        description: editDescription,
+        department: editDepartment || null,
+        priority: editPriority 
+      } : t));
+      setEditId(null);
+      setMsg("Template saved.");
+      setTimeout(() => setMsg(null), 2000);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save template");
     }
-
-    setTemplates((prev) => prev.map((t) => t.id === editId ? { 
-      ...t, 
-      title: editTitle, 
-      description: editDescription,
-      department: editDepartment || null,
-      priority: editPriority 
-    } : t));
-    setEditId(null);
-    setMsg("Template saved.");
-    setTimeout(() => setMsg(null), 2000);
   }
 
-  async function deleteTemplate(id: string) {
+  async function handleDeleteTemplate(id: string) {
     if (!confirm("Delete this template?")) return;
     
-    const { error } = await supabase.from("task_templates").delete().eq("id", id);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      await deleteTaskTemplate(id);
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete template");
     }
-
-    setTemplates((prev) => prev.filter((t) => t.id !== id));
   }
 
   return (
@@ -197,7 +187,7 @@ export default function TaskTemplatesPage() {
             />
           </div>
           <div className="flex gap-2">
-            <button onClick={createTemplate} className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800">
+            <button onClick={handleCreateTemplate} className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800">
               Create Template
             </button>
             <button onClick={() => setShowNew(false)} className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">
@@ -287,7 +277,7 @@ export default function TaskTemplatesPage() {
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <button onClick={() => startEdit(t)} className="text-xs text-stone-400 hover:text-stone-900 px-2 py-1 rounded border border-stone-100 hover:bg-stone-50">Edit</button>
-                    <button onClick={() => deleteTemplate(t.id)} className="text-xs text-stone-300 hover:text-red-500 px-2 py-1">Delete</button>
+                    <button onClick={() => handleDeleteTemplate(t.id)} className="text-xs text-stone-300 hover:text-red-500 px-2 py-1">Delete</button>
                   </div>
                 </div>
               )}
@@ -298,4 +288,3 @@ export default function TaskTemplatesPage() {
     </div>
   );
 }
-
