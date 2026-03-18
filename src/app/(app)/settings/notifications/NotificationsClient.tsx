@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { 
   MessageSquare, 
   Bell, 
@@ -10,8 +11,15 @@ import {
   AlertTriangle,
   Smartphone,
   Users,
-  Zap
+  Zap,
+  Phone,
+  Settings,
+  Trash2,
+  HelpCircle,
+  Info,
 } from "lucide-react";
+import TwilioSetupWizard from "./TwilioSetupWizard";
+import { disconnectTwilio, saveSmsTemplates } from "./actions";
 
 interface NotificationsClientProps {
   settings: {
@@ -19,21 +27,50 @@ interface NotificationsClientProps {
     notify_on_task_assignment: boolean;
     notify_on_status_change: boolean;
     notify_on_urgent_flagged: boolean;
+    sms_job_ready_enabled: boolean;
+    sms_appointment_reminder_enabled: boolean;
+  };
+  smsTemplates: {
+    job_ready: string;
+    appointment_reminder: string;
+    custom_1: string;
+    custom_2: string;
   };
   whatsappConnected: boolean;
   twilioConnected: boolean;
+  twilioPhoneNumber: string | null;
+  businessName: string;
 }
+
+const SMS_VARIABLES = [
+  { key: "customer_name", desc: "Customer's full name" },
+  { key: "job_type", desc: "Type of repair/job (e.g., Ring Sizing)" },
+  { key: "business_name", desc: "Your business name" },
+  { key: "date", desc: "Date of appointment/pickup" },
+  { key: "time", desc: "Time of appointment" },
+];
 
 export default function NotificationsClient({
   settings: initialSettings,
+  smsTemplates: initialSmsTemplates,
   whatsappConnected,
-  twilioConnected,
+  twilioConnected: initialTwilioConnected,
+  twilioPhoneNumber: initialTwilioPhoneNumber,
+  businessName,
 }: NotificationsClientProps) {
+  const router = useRouter();
   const [settings, setSettings] = useState(initialSettings);
+  const [smsTemplates, setSmsTemplates] = useState(initialSmsTemplates);
+  const [twilioConnected, setTwilioConnected] = useState(initialTwilioConnected);
+  const [twilioPhoneNumber, setTwilioPhoneNumber] = useState(initialTwilioPhoneNumber);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showWhatsAppSetup, setShowWhatsAppSetup] = useState(false);
+  const [showTwilioSetup, setShowTwilioSetup] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [savingTemplates, setSavingTemplates] = useState(false);
+  const [templatesSaved, setTemplatesSaved] = useState(false);
   const [whatsAppCredentials, setWhatsAppCredentials] = useState({
     phone_number_id: "",
     access_token: "",
@@ -74,7 +111,6 @@ export default function NotificationsClient({
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
-      // Revert
       setSettings(initialSettings);
     } finally {
       setSaving(false);
@@ -102,7 +138,6 @@ export default function NotificationsClient({
         throw new Error(data.error || "Failed to connect");
       }
 
-      // Success - enable notifications and reload
       setShowWhatsAppSetup(false);
       window.location.reload();
     } catch (err) {
@@ -112,8 +147,253 @@ export default function NotificationsClient({
     }
   };
 
+  const handleDisconnectTwilio = async () => {
+    if (!confirm("Disconnect Twilio? You'll need to set it up again to send SMS messages.")) {
+      return;
+    }
+
+    setDisconnecting(true);
+    const result = await disconnectTwilio();
+    
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setTwilioConnected(false);
+      setTwilioPhoneNumber(null);
+      router.refresh();
+    }
+    
+    setDisconnecting(false);
+  };
+
+  const handleSaveTemplates = async () => {
+    setSavingTemplates(true);
+    setTemplatesSaved(false);
+
+    const result = await saveSmsTemplates(smsTemplates);
+    
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setTemplatesSaved(true);
+      setTimeout(() => setTemplatesSaved(false), 2000);
+    }
+    
+    setSavingTemplates(false);
+  };
+
+  const handleTwilioSetupComplete = () => {
+    setShowTwilioSetup(false);
+    setTwilioConnected(true);
+    router.refresh();
+  };
+
   return (
     <div className="space-y-6">
+      {/* SMS Notifications (Twilio) */}
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+        <div className="p-5 border-b border-stone-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-stone-900">SMS Notifications</h3>
+              <p className="text-sm text-stone-500">Send SMS to customers via Twilio</p>
+            </div>
+            {twilioConnected ? (
+              <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full">
+                <CheckCircle2 className="w-3 h-3" />
+                Connected
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs text-stone-500 bg-stone-100 px-2 py-1 rounded-full">
+                <XCircle className="w-3 h-3" />
+                Not connected
+              </span>
+            )}
+          </div>
+        </div>
+
+        {twilioConnected ? (
+          <div className="p-5 space-y-6">
+            {/* Connected Status */}
+            <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Phone className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">Twilio Connected</p>
+                  <p className="text-xs text-green-700">
+                    Sending from: <span className="font-mono">{twilioPhoneNumber || "Unknown"}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleDisconnectTwilio}
+                disabled={disconnecting}
+                className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1"
+              >
+                {disconnecting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                Disconnect
+              </button>
+            </div>
+
+            {/* SMS Templates */}
+            <div>
+              <h4 className="font-medium text-stone-900 mb-3">SMS Templates</h4>
+              <p className="text-sm text-stone-500 mb-4">
+                Customize the messages sent to your customers. These templates will be used when 
+                you notify customers about job status changes.
+              </p>
+
+              {/* Available Variables */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900 mb-2">Available Variables</p>
+                    <div className="flex flex-wrap gap-2">
+                      {SMS_VARIABLES.map((v) => (
+                        <span
+                          key={v.key}
+                          className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-mono"
+                          title={v.desc}
+                        >
+                          {`{{${v.key}}}`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Job Ready Template */}
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    Job Ready Notification
+                  </label>
+                  <textarea
+                    value={smsTemplates.job_ready}
+                    onChange={(e) => setSmsTemplates({ ...smsTemplates, job_ready: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+                    placeholder="Hi {{customer_name}}, your {{job_type}} is ready..."
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    {smsTemplates.job_ready.length}/160 characters
+                    {smsTemplates.job_ready.length > 160 && (
+                      <span className="text-amber-600 ml-2">
+                        (Will be sent as {Math.ceil(smsTemplates.job_ready.length / 153)} messages)
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Appointment Reminder Template */}
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    Appointment Reminder
+                  </label>
+                  <textarea
+                    value={smsTemplates.appointment_reminder}
+                    onChange={(e) => setSmsTemplates({ ...smsTemplates, appointment_reminder: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+                    placeholder="Hi {{customer_name}}, reminder: You have an appointment..."
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    {smsTemplates.appointment_reminder.length}/160 characters
+                  </p>
+                </div>
+
+                {/* Custom Template 1 */}
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    Custom Template 1 <span className="text-stone-400 font-normal">(optional)</span>
+                  </label>
+                  <textarea
+                    value={smsTemplates.custom_1}
+                    onChange={(e) => setSmsTemplates({ ...smsTemplates, custom_1: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+                    placeholder="Create your own template..."
+                  />
+                </div>
+
+                {/* Custom Template 2 */}
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    Custom Template 2 <span className="text-stone-400 font-normal">(optional)</span>
+                  </label>
+                  <textarea
+                    value={smsTemplates.custom_2}
+                    onChange={(e) => setSmsTemplates({ ...smsTemplates, custom_2: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+                    placeholder="Create your own template..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-4">
+                {templatesSaved && (
+                  <span className="text-sm text-green-600 flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Saved
+                  </span>
+                )}
+                <button
+                  onClick={handleSaveTemplates}
+                  disabled={savingTemplates}
+                  className="px-4 py-2 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {savingTemplates ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Templates"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-5">
+            {showTwilioSetup ? (
+              <TwilioSetupWizard onComplete={handleTwilioSetupComplete} />
+            ) : (
+              <div className="text-center py-6">
+                <Phone className="w-12 h-12 text-stone-300 mx-auto mb-4" />
+                <h4 className="font-medium text-stone-900 mb-2">
+                  Connect Twilio to Send SMS
+                </h4>
+                <p className="text-sm text-stone-500 mb-6 max-w-md mx-auto">
+                  Send automated SMS notifications when jobs are ready, appointment reminders, 
+                  and marketing messages. You pay Twilio directly — typically ~$1/month for a 
+                  number and $0.01-0.05 per SMS.
+                </p>
+                <button
+                  onClick={() => setShowTwilioSetup(true)}
+                  className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Set Up Twilio
+                </button>
+                <p className="text-xs text-stone-400 mt-3">
+                  Takes about 5 minutes
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* WhatsApp Employee Notifications */}
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="p-5 border-b border-stone-100">
@@ -320,20 +600,6 @@ export default function NotificationsClient({
         </div>
       )}
 
-      {/* SMS Notifications (Twilio) */}
-      <div className="bg-white rounded-xl border border-stone-200 p-5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-            <Smartphone className="w-5 h-5" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-stone-900">SMS Notifications</h3>
-            <p className="text-sm text-stone-500">Send SMS via Twilio (coming soon)</p>
-          </div>
-          <span className="text-xs text-stone-400 bg-stone-100 px-2 py-1 rounded">Coming soon</span>
-        </div>
-      </div>
-
       {/* Employee Phone Numbers Note */}
       <div className="bg-stone-50 border border-stone-200 rounded-xl p-5 flex items-start gap-3">
         <Users className="w-5 h-5 text-stone-500 flex-shrink-0 mt-0.5" />
@@ -342,6 +608,18 @@ export default function NotificationsClient({
           <p className="text-sm text-stone-600 mt-1">
             To receive WhatsApp notifications, team members need a phone number on their profile. 
             Go to <a href="/settings/roles" className="text-amber-600 hover:underline">Team & Roles</a> to add phone numbers.
+          </p>
+        </div>
+      </div>
+
+      {/* Need Help */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex items-start gap-3">
+        <HelpCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <h4 className="font-medium text-amber-900">Need Help Setting Up?</h4>
+          <p className="text-sm text-amber-800 mt-1">
+            Our support team can help you configure Twilio or WhatsApp. 
+            <a href="/support" className="text-amber-700 hover:underline font-medium ml-1">Contact Support</a>
           </p>
         </div>
       </div>
