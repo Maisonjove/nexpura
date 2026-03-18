@@ -23,6 +23,8 @@ import PassportVerificationEmail from './templates/PassportVerificationEmail'
 import AppointmentConfirmationEmail from './templates/AppointmentConfirmationEmail'
 import RepairEnquiryConfirmationEmail from './templates/RepairEnquiryConfirmationEmail'
 import NewEnquiryNotificationEmail from './templates/NewEnquiryNotificationEmail'
+import SupportAccessRequestEmail from './templates/SupportAccessRequestEmail'
+import SupportAccessApprovedEmail from './templates/SupportAccessApprovedEmail'
 import type { InvoiceEmailProps } from './templates/InvoiceEmail'
 import type { JobReadyEmailProps } from './templates/JobReadyEmail'
 import type { RepairReadyEmailProps } from './templates/RepairReadyEmail'
@@ -933,5 +935,71 @@ export async function sendNewEnquiryNotificationEmail(params: {
   })
   if (error) return { success: false, error: error.message }
   await logEmail({ tenantId: params.tenantId, emailType: 'new_enquiry_notification', recipient: tenant.email, subject, resendId: data?.id })
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Support Access Request Email
+// ─────────────────────────────────────────────────────────────
+
+export async function sendSupportAccessRequestEmail(params: {
+  tenantId: string
+  tenantEmail: string
+  businessName: string
+  reason: string | null
+  token: string
+}): Promise<EmailResult> {
+  const approveUrl = `${APP_URL}/support-access/approve/${params.token}`
+  const denyUrl = `${APP_URL}/support-access/deny/${params.token}`
+  const subject = `Nexpura Support Access Request`
+
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura Support <onboarding@resend.dev>`,
+    to: [params.tenantEmail],
+    subject,
+    react: createElement(SupportAccessRequestEmail, {
+      businessName: params.businessName,
+      reason: params.reason,
+      approveUrl,
+      denyUrl,
+    }),
+  })
+
+  if (error) return { success: false, error: error.message }
+  await logEmail({
+    tenantId: params.tenantId,
+    emailType: 'support_access_request',
+    recipient: params.tenantEmail,
+    subject,
+    resendId: data?.id,
+  })
+  return { success: true, emailId: data?.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Support Access Approved Email (to super admin)
+// ─────────────────────────────────────────────────────────────
+
+export async function sendSupportAccessApprovedEmail(params: {
+  superAdminEmail: string
+  businessName: string
+  expiresAt: string
+  tenantId: string
+}): Promise<EmailResult> {
+  const dashboardUrl = `${APP_URL}/admin`
+  const subject = `Support Access Approved — ${params.businessName}`
+
+  const { data, error } = await resend.emails.send({
+    from: `Nexpura <onboarding@resend.dev>`,
+    to: [params.superAdminEmail],
+    subject,
+    react: createElement(SupportAccessApprovedEmail, {
+      businessName: params.businessName,
+      expiresAt: params.expiresAt,
+      dashboardUrl,
+    }),
+  })
+
+  if (error) return { success: false, error: error.message }
   return { success: true, emailId: data?.id }
 }

@@ -15,6 +15,7 @@ import {
   saveAccount,
 } from "./actions";
 import LogoUpload from "./LogoUpload";
+import SecurityTab from "./SecurityTab";
 
 type Tenant = {
   id: string;
@@ -58,7 +59,7 @@ type Subscription = {
   current_period_end: string | null;
 };
 
-const TABS = ["Business Profile", "Tax & Currency", "Banking", "Account"] as const;
+const TABS = ["Business Profile", "Tax & Currency", "Banking", "Account", "Security"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function SettingsPage() {
@@ -673,6 +674,11 @@ export default function SettingsPage() {
             </div>
           </form>
         </div>
+      )}
+
+      {/* Security Tab */}
+      {activeTab === "Security" && tenant && (
+        <SecurityTab tenantId={tenant.id} />
       )}
     </div>
   );

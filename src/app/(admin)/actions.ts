@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { createSupportAccessRequest } from "@/lib/support-access";
+import { sendSupportAccessRequestEmail } from "@/lib/email/send";
 
 type Plan = "boutique" | "studio" | "atelier";
 type SubStatus = "trialing" | "active" | "past_due" | "canceled" | "suspended" | "free";
@@ -165,4 +167,72 @@ export async function extendTrial(tenantId: string, days: number) {
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/tenants/${tenantId}`);
   revalidatePath("/admin/tenants");
+}
+
+export async function requestSupportAccess(
+  tenantId: string,
+  reason?: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "Unauthenticated" };
+
+  // Verify super admin
+  const adminClient = createAdminClient();
+  const { data: superAdmin } = await adminClient
+    .from("super_admins")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!superAdmin) return { success: false, error: "Unauthorized" };
+
+  // Get tenant info and owner email
+  const { data: tenant } = await adminClient
+    .from("tenants")
+    .select("id, name, business_name, email")
+    .eq("id", tenantId)
+    .single();
+
+  if (!tenant) return { success: false, error: "Tenant not found" };
+
+  // Get owner user email
+  const { data: owner } = await adminClient
+    .from("users")
+    .select("email")
+    .eq("tenant_id", tenantId)
+    .eq("role", "owner")
+    .single();
+
+  const recipientEmail = tenant.email || owner?.email;
+  if (!recipientEmail) {
+    return { success: false, error: "Tenant has no email address" };
+  }
+
+  // Create the request
+  const result = await createSupportAccessRequest({
+    tenantId,
+    requestedBy: user.id,
+    requestedByEmail: user.email || "support@nexpura.com",
+    reason,
+  });
+
+  if (!result.success) return result;
+
+  // Send email
+  const emailResult = await sendSupportAccessRequestEmail({
+    tenantId,
+    tenantEmail: recipientEmail,
+    businessName: tenant.business_name || tenant.name || "Your Business",
+    reason: reason || null,
+    token: result.token!,
+  });
+
+  if (!emailResult.success) {
+    return { success: false, error: `Failed to send email: ${emailResult.error}` };
+  }
+
+  revalidatePath("/admin");
+  return { success: true };
 }

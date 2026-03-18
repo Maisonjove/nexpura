@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTenantAccessStatuses } from "@/lib/support-access";
 import Link from "next/link";
+import AdminTenantsClient from "./AdminTenantsClient";
 
 const PLAN_PRICES: Record<string, number> = {
   boutique: 89,
@@ -11,47 +13,6 @@ const PLAN_PRICES: Record<string, number> = {
   pro: 179,
   ultimate: 299,
 };
-
-function formatDate(dateStr: string | null | undefined) {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function StatusBadge({ status }: { status: string | null | undefined }) {
-  const s = (status ?? "").toLowerCase();
-  const cls =
-    s === "active"
-      ? "bg-stone-100 text-amber-700"
-      : s === "trialing"
-      ? "bg-amber-700/10 text-amber-700"
-      : s === "past_due"
-      ? "bg-yellow-500/10 text-yellow-700"
-      : "bg-red-500/10 text-red-600";
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
-      {s.replace("_", " ") || "—"}
-    </span>
-  );
-}
-
-function PlanBadge({ plan }: { plan: string | null | undefined }) {
-  const p = (plan ?? "").toLowerCase();
-  const cls =
-    p === "studio" || p === "pro"
-      ? "bg-stone-100 text-amber-700"
-      : p === "atelier" || p === "group" || p === "ultimate"
-      ? "bg-amber-700/15 text-amber-700"
-      : "bg-stone-200 text-stone-500";
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
-      {p || "—"}
-    </span>
-  );
-}
 
 export default async function AdminDashboardPage() {
   const adminClient = createAdminClient();
@@ -70,6 +31,17 @@ export default async function AdminDashboardPage() {
   const subMap = new Map(
     (subscriptions ?? []).map((s) => [s.tenant_id, s])
   );
+
+  // Fetch support access statuses
+  const tenantIds = (tenants ?? []).map((t) => t.id);
+  const accessStatusMap = await getTenantAccessStatuses(tenantIds);
+  const accessStatuses: Record<string, { status: "pending" | "approved"; expiresAt?: string }> = {};
+  accessStatusMap.forEach((value, key) => {
+    accessStatuses[key] = {
+      status: value.status as "pending" | "approved",
+      expiresAt: value.expiresAt,
+    };
+  });
 
   const totalTenants = tenants?.length ?? 0;
 
@@ -106,7 +78,7 @@ export default async function AdminDashboardPage() {
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold font-semibold text-stone-900">Admin Dashboard</h1>
+        <h1 className="text-2xl font-semibold text-stone-900">Admin Dashboard</h1>
         <p className="text-sm text-stone-500 mt-1">Platform overview and key metrics</p>
       </div>
 
@@ -120,7 +92,7 @@ export default async function AdminDashboardPage() {
             }`}
           >
             <p className="text-xs text-stone-500 font-medium uppercase tracking-wide">{stat.label}</p>
-            <p className={`text-2xl font-semibold font-semibold mt-1 ${stat.accent ? "text-amber-700" : "text-stone-900"}`}>
+            <p className={`text-2xl font-semibold mt-1 ${stat.accent ? "text-amber-700" : "text-stone-900"}`}>
               {stat.value}
             </p>
           </div>
@@ -130,56 +102,16 @@ export default async function AdminDashboardPage() {
       {/* Recent Signups */}
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-stone-900 font-semibold">Recent Signups</h2>
+          <h2 className="text-base font-semibold text-stone-900">Recent Signups</h2>
           <Link href="/admin/tenants" className="text-sm text-amber-700 hover:underline">
             View all →
           </Link>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-stone-200 bg-stone-50/50">
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Business</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Plan</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Status</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Trial / Period End</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Signed Up</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-platinum">
-              {recentTenants.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-stone-400">
-                    No tenants yet
-                  </td>
-                </tr>
-              ) : (
-                recentTenants.map((tenant) => {
-                  const sub = subMap.get(tenant.id);
-                  return (
-                    <tr key={tenant.id} className="hover:bg-stone-50/40 transition-colors">
-                      <td className="px-6 py-4 font-medium text-stone-900">
-                        <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-amber-700">
-                          {tenant.name}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4">
-                        <PlanBadge plan={sub?.plan} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={sub?.status} />
-                      </td>
-                      <td className="px-6 py-4 text-stone-500">
-                        {formatDate(sub?.trial_ends_at || sub?.current_period_end)}
-                      </td>
-                      <td className="px-6 py-4 text-stone-500">{formatDate(tenant.created_at)}</td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <AdminTenantsClient
+          tenants={recentTenants}
+          subscriptions={subscriptions ?? []}
+          accessStatuses={accessStatuses}
+        />
       </div>
     </div>
   );

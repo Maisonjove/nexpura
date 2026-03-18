@@ -52,6 +52,7 @@ async function _updateSessionInner(request: NextRequest) {
     pathname.startsWith("/verify") ||
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/reset-password") ||
+    pathname.startsWith("/support-access") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.includes(".");
