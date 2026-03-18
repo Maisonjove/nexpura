@@ -32,30 +32,36 @@ export default async function NewWhatsAppCampaignPage() {
     .eq("tenant_id", tenantId)
     .order("name");
 
-  // Fetch customers with phone numbers
+  // Fetch customers with phone numbers (check both phone and mobile columns)
   const { data: customers } = await admin
     .from("customers")
-    .select("id, full_name, phone, tags")
+    .select("id, full_name, phone, mobile, tags")
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
-    .not("phone", "is", null)
+    .or("phone.not.is.null,mobile.not.is.null")
     .order("full_name")
     .limit(500);
 
-  const allTags = [...new Set((customers || []).flatMap((c) => c.tags || []))].sort();
+  // Map customers to use mobile as fallback for phone
+  const customersWithPhone = (customers || []).map(c => ({
+    ...c,
+    phone: c.phone || c.mobile // Use mobile if phone is null
+  }));
 
-  // Count total customers with phone
+  const allTags = [...new Set((customersWithPhone).flatMap((c) => c.tags || []))].sort();
+
+  // Count total customers with phone (either phone or mobile)
   const { count: totalCustomersWithPhone } = await admin
     .from("customers")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
-    .not("phone", "is", null);
+    .or("phone.not.is.null,mobile.not.is.null");
 
   return (
     <NewWhatsAppCampaignClient
       segments={segments || []}
-      customers={customers || []}
+      customers={customersWithPhone || []}
       tags={allTags}
       businessName={businessName}
       totalCustomersWithPhone={totalCustomersWithPhone || 0}
