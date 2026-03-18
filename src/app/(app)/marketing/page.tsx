@@ -33,8 +33,9 @@ export default async function MarketingPage() {
     templatesResult,
     automationsResult,
     recentCampaignsResult,
+    whatsappCampaignsResult,
   ] = await Promise.all([
-    // Total campaigns
+    // Total email campaigns
     admin
       .from("email_campaigns")
       .select("id, status", { count: "exact" })
@@ -72,6 +73,13 @@ export default async function MarketingPage() {
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false })
       .limit(5),
+
+    // WhatsApp campaigns sent
+    admin
+      .from("whatsapp_campaigns")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("status", "sent"),
   ]);
 
   // Calculate stats
@@ -91,17 +99,20 @@ export default async function MarketingPage() {
   const enabledAutomations = (automationsResult.data || []).filter(a => a.enabled).length;
   const totalAutomations = (automationsResult.data || []).length;
 
+  const whatsappCampaigns = whatsappCampaignsResult.count || 0;
+
   const stats = {
     emailsSentThisMonth,
     openRate,
     clickRate,
-    smsSentThisMonth: 0, // Will implement when SMS is added
+    smsSentThisMonth: 0,
     totalCampaigns,
     activeCampaigns,
     totalSegments,
     totalTemplates,
     enabledAutomations,
     totalAutomations,
+    whatsappCampaigns,
   };
 
   const recentCampaigns = (recentCampaignsResult.data || []).map(c => ({

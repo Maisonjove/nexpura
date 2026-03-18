@@ -19,7 +19,7 @@ interface Integration {
   name: string;
   description: string;
   icon: React.ReactNode;
-  status: "available" | "connected" | "coming_soon";
+  status: "available" | "connected" | "coming_soon" | "platform";
   category: "payments" | "communication" | "ecommerce" | "productivity";
   setupUrl?: string;
   docsUrl?: string;
@@ -27,7 +27,7 @@ interface Integration {
 
 interface IntegrationsClientProps {
   tenantId: string;
-  currentIntegrations: Record<string, any>;
+  currentIntegrations: Record<string, unknown>;
   hasStripe: boolean;
 }
 
@@ -63,20 +63,13 @@ const INTEGRATIONS: Integration[] = [
     docsUrl: "https://resend.com/docs",
   },
   {
-    id: "twilio",
-    name: "Twilio SMS",
-    description: "Send SMS notifications for repair ready, appointment reminders, and promotions.",
-    icon: <MessageSquare className="w-6 h-6" />,
-    status: "coming_soon",
-    category: "communication",
-  },
-  {
     id: "whatsapp",
-    name: "WhatsApp Business",
-    description: "Send repair updates and communicate with customers via WhatsApp.",
+    name: "WhatsApp Notifications",
+    description: "Automated customer and employee notifications via WhatsApp. Powered by Nexpura — no setup needed.",
     icon: <MessageSquare className="w-6 h-6" />,
-    status: "coming_soon",
+    status: "platform",
     category: "communication",
+    setupUrl: "/settings/notifications",
   },
   
   // E-commerce
@@ -123,8 +116,9 @@ export default function IntegrationsClient({
   const [connecting, setConnecting] = useState<string | null>(null);
 
   // Update status based on actual connections
-  const getIntegrationStatus = (integration: Integration): "available" | "connected" | "coming_soon" => {
+  const getIntegrationStatus = (integration: Integration): "available" | "connected" | "coming_soon" | "platform" => {
     if (integration.status === "coming_soon") return "coming_soon";
+    if (integration.status === "platform") return "platform";
     if (integration.id === "stripe" && hasStripe) return "connected";
     if (integration.id === "resend") return "connected"; // Resend is always configured
     if (currentIntegrations[integration.id]) return "connected";
@@ -171,14 +165,14 @@ export default function IntegrationsClient({
                   className={`bg-white border rounded-xl p-5 ${
                     status === "coming_soon" 
                       ? "border-stone-200 opacity-60" 
-                      : status === "connected"
+                      : status === "connected" || status === "platform"
                       ? "border-green-200 bg-green-50/30"
                       : "border-stone-200 hover:border-amber-300 hover:shadow-sm transition-all"
                   }`}
                 >
                   <div className="flex items-start gap-4">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      status === "connected" 
+                      status === "connected" || status === "platform"
                         ? "bg-green-100 text-green-600" 
                         : status === "coming_soon"
                         ? "bg-stone-100 text-stone-400"
@@ -193,6 +187,12 @@ export default function IntegrationsClient({
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                             <CheckCircle2 className="w-3 h-3" />
                             Connected
+                          </span>
+                        )}
+                        {status === "platform" && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Included
                           </span>
                         )}
                         {status === "coming_soon" && (
@@ -220,12 +220,12 @@ export default function IntegrationsClient({
                             )}
                           </button>
                         )}
-                        {status === "connected" && integration.setupUrl && (
+                        {(status === "connected" || status === "platform") && integration.setupUrl && (
                           <a
                             href={integration.setupUrl}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-200 transition-colors"
                           >
-                            Manage
+                            {status === "platform" ? "Configure" : "Manage"}
                           </a>
                         )}
                         {integration.docsUrl && status !== "coming_soon" && (

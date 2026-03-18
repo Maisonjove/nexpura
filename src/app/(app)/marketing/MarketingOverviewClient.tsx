@@ -15,6 +15,7 @@ import {
   Eye,
   MousePointer,
   CheckCircle2,
+  DollarSign,
 } from "lucide-react";
 
 interface Stats {
@@ -28,6 +29,7 @@ interface Stats {
   totalTemplates: number;
   enabledAutomations: number;
   totalAutomations: number;
+  whatsappCampaigns: number;
 }
 
 interface Campaign {
@@ -49,7 +51,15 @@ interface Props {
 
 const quickActions = [
   {
-    name: "Create Campaign",
+    name: "WhatsApp Campaign",
+    description: "Send marketing messages via WhatsApp",
+    href: "/marketing/whatsapp-campaigns/new",
+    icon: MessageSquare,
+    color: "bg-green-500/10 text-green-400 border-green-500/20",
+    badge: "$0.16/msg",
+  },
+  {
+    name: "Email Campaign",
     description: "Design and send an email campaign",
     href: "/marketing/campaigns/new",
     icon: Mail,
@@ -60,13 +70,6 @@ const quickActions = [
     description: "Quick one-off email to customers",
     href: "/marketing/bulk-email",
     icon: Send,
-    color: "bg-green-500/10 text-green-400 border-green-500/20",
-  },
-  {
-    name: "Send Bulk SMS",
-    description: "Text message to customers",
-    href: "/marketing/bulk-sms",
-    icon: MessageSquare,
     color: "bg-purple-500/10 text-purple-400 border-purple-500/20",
   },
   {
@@ -98,7 +101,7 @@ export default function MarketingOverviewClient({ stats, recentCampaigns, busine
           <div>
             <h1 className="text-2xl font-bold text-white">Marketing</h1>
             <p className="text-stone-400 text-sm">
-              Engage your customers with email campaigns and automations
+              Engage your customers with email and WhatsApp campaigns
             </p>
           </div>
         </div>
@@ -133,14 +136,12 @@ export default function MarketingOverviewClient({ stats, recentCampaigns, busine
         <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-stone-400 text-xs font-medium uppercase tracking-wide">
-              Click Rate
+              WhatsApp Campaigns
             </span>
-            <MousePointer className="w-4 h-4 text-stone-500" />
+            <MessageSquare className="w-4 h-4 text-stone-500" />
           </div>
-          <p className="text-2xl font-bold text-white">{stats.clickRate}%</p>
-          <p className="text-xs text-stone-500 mt-1">
-            {stats.clickRate >= 5 ? "Good" : stats.clickRate >= 2 ? "Average" : "Needs work"}
-          </p>
+          <p className="text-2xl font-bold text-white">{stats.whatsappCampaigns || 0}</p>
+          <p className="text-xs text-stone-500 mt-1">Total sent</p>
         </div>
 
         <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-lg p-4">
@@ -167,8 +168,13 @@ export default function MarketingOverviewClient({ stats, recentCampaigns, busine
             <Link
               key={action.name}
               href={action.href}
-              className={`p-4 rounded-lg border ${action.color} hover:bg-opacity-20 transition-colors group`}
+              className={`p-4 rounded-lg border ${action.color} hover:bg-opacity-20 transition-colors group relative`}
             >
+              {action.badge && (
+                <span className="absolute top-2 right-2 px-2 py-0.5 bg-green-500/20 text-green-400 text-xs font-medium rounded-full">
+                  {action.badge}
+                </span>
+              )}
               <action.icon className="w-6 h-6 mb-3" />
               <h3 className="font-semibold text-white mb-1">{action.name}</h3>
               <p className="text-xs text-stone-400">{action.description}</p>
@@ -241,6 +247,22 @@ export default function MarketingOverviewClient({ stats, recentCampaigns, busine
           </div>
           <div className="divide-y divide-white/[0.06]">
             <Link
+              href="/marketing/whatsapp-campaigns"
+              className="p-4 hover:bg-white/[0.02] transition-colors flex items-center gap-4"
+            >
+              <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-green-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-white">WhatsApp Campaigns</h3>
+                <p className="text-xs text-stone-400">
+                  Send marketing messages • $0.16/message
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-stone-500" />
+            </Link>
+
+            <Link
               href="/marketing/segments"
               className="p-4 hover:bg-white/[0.02] transition-colors flex items-center gap-4"
             >
@@ -287,22 +309,6 @@ export default function MarketingOverviewClient({ stats, recentCampaigns, busine
               </div>
               <ArrowRight className="w-4 h-4 text-stone-500" />
             </Link>
-
-            <Link
-              href="/marketing/campaigns"
-              className="p-4 hover:bg-white/[0.02] transition-colors flex items-center gap-4"
-            >
-              <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <BarChart2 className="w-5 h-5 text-green-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-white">All Campaigns</h3>
-                <p className="text-xs text-stone-400">
-                  {stats.totalCampaigns} campaigns total
-                </p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-stone-500" />
-            </Link>
           </div>
         </div>
       </div>
@@ -317,16 +323,16 @@ export default function MarketingOverviewClient({ stats, recentCampaigns, busine
             <h3 className="font-semibold text-white mb-1">Marketing Tips</h3>
             <ul className="text-sm text-stone-300 space-y-1">
               <li>
-                • <strong>Birthday emails</strong> have 3x higher open rates — enable birthday automations!
+                • <strong>WhatsApp messages</strong> have 98% open rates — much higher than email!
               </li>
               <li>
-                • Send emails <strong>Tuesday-Thursday</strong> at 10am for best engagement
+                • <strong>Birthday messages</strong> have 3x higher engagement — enable birthday automations!
               </li>
               <li>
                 • Use <strong>customer segments</strong> to send targeted, relevant messages
               </li>
               <li>
-                • <strong>Re-engagement</strong> emails can bring back 10% of lapsed customers
+                • <strong>Re-engagement</strong> campaigns can bring back 10% of lapsed customers
               </li>
             </ul>
           </div>

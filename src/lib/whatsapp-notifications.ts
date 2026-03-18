@@ -1,117 +1,51 @@
 /**
- * WhatsApp Business API integration for employee notifications
- * Supports both Meta Cloud API and Twilio WhatsApp as fallback
+ * WhatsApp Notifications - Powered by Nexpura Platform
+ * Uses platform Twilio account for all notifications (free for jewellers)
+ * No per-tenant Twilio setup needed
  */
 
-import { getIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
 
-interface WhatsAppConfig {
-  phone_number_id: string;
-  access_token: string;
-  business_account_id?: string;
-}
-
 interface SendMessageParams {
-  to: string; // Phone number with country code, e.g., "1234567890"
+  to: string; // Phone number with country code, e.g., "+61412345678"
   message: string;
 }
 
 /**
- * Send a WhatsApp text message using Meta Cloud API
- */
-async function sendViaMetaAPI(
-  config: WhatsAppConfig,
-  params: SendMessageParams
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  // Clean phone number (remove spaces, dashes, plus sign for API)
-  const cleanPhone = params.to.replace(/[\s\-\+]/g, "");
-  
-  try {
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/${config.phone_number_id}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${config.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to: cleanPhone,
-          type: "text",
-          text: {
-            preview_url: false,
-            body: params.message,
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("[whatsapp-meta] Send failed:", errorData);
-      return { 
-        success: false, 
-        error: errorData.error?.message || "Failed to send message" 
-      };
-    }
-
-    const data = await response.json();
-    return { 
-      success: true, 
-      messageId: data.messages?.[0]?.id 
-    };
-  } catch (err) {
-    console.error("[whatsapp-meta] Send error:", err);
-    return { 
-      success: false, 
-      error: err instanceof Error ? err.message : "Network error" 
-    };
-  }
-}
-
-/**
- * Send a WhatsApp text message - tries Meta API first, then Twilio as fallback
+ * Send a WhatsApp message via platform Twilio account
  */
 export async function sendWhatsAppMessage(
   tenantId: string,
   params: SendMessageParams
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  // Try Meta WhatsApp first
-  const integration = await getIntegration(tenantId, "whatsapp");
+  // Use platform Twilio directly (env vars: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER)
+  const result = await sendTwilioWhatsApp(params.to, params.message);
   
-  if (integration && integration.status === "connected") {
-    const config = integration.config as unknown as WhatsAppConfig;
-    const result = await sendViaMetaAPI(config, params);
-    if (result.success) {
-      return result;
+  if (result.success) {
+    // Log the notification send
+    const admin = createAdminClient();
+    try {
+      await admin.from("whatsapp_sends").insert({
+        tenant_id: tenantId,
+        phone: params.to,
+        message: params.message,
+        message_type: "notification",
+        status: "sent",
+        twilio_sid: result.messageId,
+      });
+    } catch (err) {
+      console.warn("[whatsapp-notifications] Failed to log send:", err);
     }
-    console.log("[whatsapp] Meta API failed, trying Twilio fallback...");
   }
 
-  // Fall back to Twilio if Meta isn't connected or fails
-  // Twilio uses global env vars (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER)
-  const twilioResult = await sendTwilioWhatsApp(params.to, params.message);
-  
-  if (twilioResult.success) {
-    console.log("[whatsapp] Sent via Twilio");
-    return twilioResult;
-  }
-
-  // Both failed
-  return { 
-    success: false, 
-    error: integration ? "Both Meta and Twilio failed" : (twilioResult.error || "WhatsApp not configured") 
-  };
+  return result;
 }
 
 /**
- * Check if employee WhatsApp notifications are enabled for a tenant
+ * Check if job ready notifications are enabled for a tenant
  */
-export async function isWhatsAppNotificationsEnabled(tenantId: string): Promise<boolean> {
+export async function isJobReadyNotificationsEnabled(tenantId: string): Promise<boolean> {
   const admin = createAdminClient();
   
   const { data: tenant } = await admin
@@ -121,7 +55,23 @@ export async function isWhatsAppNotificationsEnabled(tenantId: string): Promise<
     .single();
 
   const settings = tenant?.notification_settings as Record<string, boolean> | null;
-  return settings?.whatsapp_employee_notifications ?? false;
+  return settings?.whatsapp_job_ready_enabled ?? true; // Default to enabled
+}
+
+/**
+ * Check if task assignment notifications are enabled for a tenant
+ */
+export async function isTaskNotificationsEnabled(tenantId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("notification_settings")
+    .eq("id", tenantId)
+    .single();
+
+  const settings = tenant?.notification_settings as Record<string, boolean> | null;
+  return settings?.whatsapp_task_assignment_enabled ?? false; // Default to disabled
 }
 
 /**
@@ -144,6 +94,57 @@ export async function getTeamMemberWithPhone(
 }
 
 /**
+ * Send job ready notification to customer
+ */
+export async function notifyCustomerJobReady(
+  tenantId: string,
+  customer: {
+    id: string;
+    phone: string;
+    name: string;
+  },
+  job: {
+    id: string;
+    description: string;
+    type: "repair" | "bespoke";
+  },
+  businessName: string
+): Promise<{ sent: boolean; error?: string }> {
+  // Check if job ready notifications are enabled
+  if (!(await isJobReadyNotificationsEnabled(tenantId))) {
+    return { sent: false, error: "Job ready notifications disabled" };
+  }
+
+  if (!customer.phone) {
+    return { sent: false, error: "Customer has no phone number" };
+  }
+
+  // Build message
+  const jobType = job.type === "repair" ? "repair" : "order";
+  const message = `Hi ${customer.name}! 🎉\n\nGreat news — your ${jobType} is ready for pickup at ${businessName}!\n\n${job.description}\n\nSee you soon!`;
+
+  const result = await sendWhatsAppMessage(tenantId, {
+    to: customer.phone,
+    message,
+  });
+
+  // Log the notification
+  const admin = createAdminClient();
+  await admin.from("whatsapp_sends").upsert({
+    tenant_id: tenantId,
+    customer_id: customer.id,
+    phone: customer.phone,
+    message,
+    message_type: "job_ready",
+    status: result.success ? "sent" : "failed",
+    twilio_sid: result.messageId,
+    error_message: result.error,
+  });
+
+  return { sent: result.success, error: result.error };
+}
+
+/**
  * Notify employee of new task assignment
  */
 export async function notifyTaskAssignment(
@@ -158,8 +159,8 @@ export async function notifyTaskAssignment(
   }
 ): Promise<{ sent: boolean; error?: string }> {
   // Check if notifications enabled
-  if (!(await isWhatsAppNotificationsEnabled(tenantId))) {
-    return { sent: false, error: "WhatsApp notifications disabled" };
+  if (!(await isTaskNotificationsEnabled(tenantId))) {
+    return { sent: false, error: "Task notifications disabled" };
   }
 
   // Get assignee
@@ -215,8 +216,21 @@ export async function notifyStatusChange(
     type: "repair" | "bespoke";
   }
 ): Promise<{ sent: boolean; error?: string }> {
-  if (!(await isWhatsAppNotificationsEnabled(tenantId))) {
-    return { sent: false, error: "WhatsApp notifications disabled" };
+  if (!(await isTaskNotificationsEnabled(tenantId))) {
+    return { sent: false, error: "Task notifications disabled" };
+  }
+
+  // Check if status change notifications are enabled
+  const admin = createAdminClient();
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("notification_settings")
+    .eq("id", tenantId)
+    .single();
+
+  const settings = tenant?.notification_settings as Record<string, boolean> | null;
+  if (!(settings?.notify_on_status_change ?? true)) {
+    return { sent: false, error: "Status change notifications disabled" };
   }
 
   const member = await getTeamMemberWithPhone(tenantId, assigneeId);
@@ -246,8 +260,21 @@ export async function notifyUrgentFlagged(
     reason?: string;
   }
 ): Promise<{ sent: boolean; error?: string }> {
-  if (!(await isWhatsAppNotificationsEnabled(tenantId))) {
-    return { sent: false, error: "WhatsApp notifications disabled" };
+  if (!(await isTaskNotificationsEnabled(tenantId))) {
+    return { sent: false, error: "Task notifications disabled" };
+  }
+
+  // Check if urgent notifications are enabled
+  const admin = createAdminClient();
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("notification_settings")
+    .eq("id", tenantId)
+    .single();
+
+  const settings = tenant?.notification_settings as Record<string, boolean> | null;
+  if (!(settings?.notify_on_urgent_flagged ?? true)) {
+    return { sent: false, error: "Urgent notifications disabled" };
   }
 
   const member = await getTeamMemberWithPhone(tenantId, assigneeId);
