@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { X, ChevronDown, Plus, Package, Upload, Loader2, Circle, Link2, Watch, Gem, Sparkles, Star } from "lucide-react";
+import { X, ChevronDown, Plus, Package, Upload, Loader2 } from "lucide-react";
+import { RingIcon, NecklaceIcon, BraceletIcon, WatchIcon, EarringsIcon, PendantIcon, OtherJewelleryIcon } from "@/components/icons/JewelleryIcons";
 import { quickAddStock, createQuickSupplier, getSuppliersList } from "./actions";
 
 interface Supplier {
@@ -16,13 +17,13 @@ interface AddStockModalProps {
 }
 
 const ITEM_TYPES = [
-  { value: "ring", label: "Ring", Icon: Circle },
-  { value: "necklace", label: "Necklace", Icon: Link2 },
-  { value: "bracelet", label: "Bracelet", Icon: Circle },
-  { value: "watch", label: "Watch", Icon: Watch },
-  { value: "earrings", label: "Earrings", Icon: Gem },
-  { value: "pendant", label: "Pendant", Icon: Sparkles },
-  { value: "other", label: "Other", Icon: Star },
+  { value: "ring", label: "Ring", Icon: RingIcon },
+  { value: "necklace", label: "Necklace", Icon: NecklaceIcon },
+  { value: "bracelet", label: "Bracelet", Icon: BraceletIcon },
+  { value: "watch", label: "Watch", Icon: WatchIcon },
+  { value: "earrings", label: "Earrings", Icon: EarringsIcon },
+  { value: "pendant", label: "Pendant", Icon: PendantIcon },
+  { value: "other", label: "Other", Icon: OtherJewelleryIcon },
 ];
 
 export default function AddStockModal({ onClose, onSuccess, suppliers: initialSuppliers }: AddStockModalProps) {
@@ -146,23 +147,33 @@ export default function AddStockModal({ onClose, onSuccess, suppliers: initialSu
 
           {/* Item Type Selection */}
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-2">
+            <label className="block text-sm font-medium text-stone-700 mb-3">
               Item Type
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-3">
               {ITEM_TYPES.map((type) => (
                 <button
                   key={type.value}
                   type="button"
                   onClick={() => setFormData({ ...formData, itemType: type.value })}
-                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200 ${
                     formData.itemType === type.value
-                      ? "border-amber-500 bg-amber-50 shadow-sm"
-                      : "border-stone-200 hover:border-stone-300 hover:bg-stone-50"
+                      ? "border-amber-400 bg-amber-50/80 shadow-md shadow-amber-100"
+                      : "border-stone-200 hover:border-stone-300 hover:bg-stone-50 hover:shadow-sm"
                   }`}
                 >
-                  <type.Icon className={`w-6 h-6 ${formData.itemType === type.value ? "text-amber-600" : "text-stone-400"}`} strokeWidth={1.5} />
-                  <span className="text-xs font-medium text-stone-700">{type.label}</span>
+                  <type.Icon 
+                    className={`w-10 h-10 transition-colors ${
+                      formData.itemType === type.value 
+                        ? "text-amber-600" 
+                        : "text-stone-500"
+                    }`} 
+                  />
+                  <span className={`text-sm font-medium ${
+                    formData.itemType === type.value 
+                      ? "text-amber-700" 
+                      : "text-stone-600"
+                  }`}>{type.label}</span>
                 </button>
               ))}
             </div>
