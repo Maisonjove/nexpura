@@ -7,6 +7,8 @@ import DashboardClient from "@/app/(app)/dashboard/DashboardClient";
 
 const DEMO_TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
+// Force dynamic rendering - don't pre-render at build time
+export const dynamic = "force-dynamic";
 export const revalidate = 60; // Cache for 60s — reduce DB load
 
 export default async function DemoPage() {

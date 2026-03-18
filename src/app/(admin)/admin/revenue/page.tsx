@@ -3,6 +3,8 @@ import Link from "next/link";
 
 // Force dynamic rendering - don't pre-render at build time
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 const PLAN_PRICES: Record<string, number> = {
   boutique: 89,
@@ -25,15 +27,26 @@ function fmtDate(d: string) {
 export const metadata = { title: "Revenue — Nexpura Admin" };
 
 export default async function RevenueAdminPage() {
-  const admin = createAdminClient();
+  let subs: { tenant_id: string; plan: string; status: string; trial_ends_at: string | null; current_period_end: string | null; created_at: string }[] | null = null;
+  let tenants: { id: string; name: string; created_at: string; is_free_forever: boolean | null }[] | null = null;
 
-  const { data: subs } = await admin
-    .from("subscriptions")
-    .select("tenant_id, plan, status, trial_ends_at, current_period_end, created_at");
+  try {
+    const admin = createAdminClient();
 
-  const { data: tenants } = await admin
-    .from("tenants")
-    .select("id, name, created_at, is_free_forever");
+    const subsRes = await admin
+      .from("subscriptions")
+      .select("tenant_id, plan, status, trial_ends_at, current_period_end, created_at");
+    subs = subsRes.data;
+
+    const tenantsRes = await admin
+      .from("tenants")
+      .select("id, name, created_at, is_free_forever");
+    tenants = tenantsRes.data;
+  } catch (error) {
+    console.error("Failed to fetch revenue data:", error);
+    subs = [];
+    tenants = [];
+  }
 
   const tenantMap = new Map((tenants ?? []).map((t) => [t.id, t]));
 

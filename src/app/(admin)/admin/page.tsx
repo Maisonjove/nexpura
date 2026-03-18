@@ -5,6 +5,8 @@ import AdminTenantsClient from "./AdminTenantsClient";
 
 // Force dynamic rendering - don't pre-render at build time
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 const PLAN_PRICES: Record<string, number> = {
   boutique: 89,
@@ -18,18 +20,31 @@ const PLAN_PRICES: Record<string, number> = {
 };
 
 export default async function AdminDashboardPage() {
-  const adminClient = createAdminClient();
+  // Handle build-time or when Supabase is down
+  let tenants: { id: string; name: string; created_at: string }[] | null = null;
+  let subscriptions: { tenant_id: string; plan: string; status: string; trial_ends_at: string | null; current_period_end: string | null }[] | null = null;
+  
+  try {
+    const adminClient = createAdminClient();
 
-  // Fetch all tenants
-  const { data: tenants } = await adminClient
-    .from("tenants")
-    .select("id, name, created_at")
-    .order("created_at", { ascending: false });
+    // Fetch all tenants
+    const tenantsRes = await adminClient
+      .from("tenants")
+      .select("id, name, created_at")
+      .order("created_at", { ascending: false });
+    tenants = tenantsRes.data;
 
-  // Fetch all subscriptions
-  const { data: subscriptions } = await adminClient
-    .from("subscriptions")
-    .select("tenant_id, plan, status, trial_ends_at, current_period_end");
+    // Fetch all subscriptions
+    const subsRes = await adminClient
+      .from("subscriptions")
+      .select("tenant_id, plan, status, trial_ends_at, current_period_end");
+    subscriptions = subsRes.data;
+  } catch (error) {
+    console.error("Failed to fetch admin data:", error);
+    // Return empty state if Supabase is unavailable
+    tenants = [];
+    subscriptions = [];
+  }
 
   const subMap = new Map(
     (subscriptions ?? []).map((s) => [s.tenant_id, s])
@@ -37,14 +52,18 @@ export default async function AdminDashboardPage() {
 
   // Fetch support access statuses
   const tenantIds = (tenants ?? []).map((t) => t.id);
-  const accessStatusMap = await getTenantAccessStatuses(tenantIds);
-  const accessStatuses: Record<string, { status: "pending" | "approved"; expiresAt?: string }> = {};
-  accessStatusMap.forEach((value, key) => {
-    accessStatuses[key] = {
-      status: value.status as "pending" | "approved",
-      expiresAt: value.expiresAt,
-    };
-  });
+  let accessStatuses: Record<string, { status: "pending" | "approved"; expiresAt?: string }> = {};
+  try {
+    const accessStatusMap = await getTenantAccessStatuses(tenantIds);
+    accessStatusMap.forEach((value, key) => {
+      accessStatuses[key] = {
+        status: value.status as "pending" | "approved",
+        expiresAt: value.expiresAt,
+      };
+    });
+  } catch {
+    // Ignore if support access check fails
+  }
 
   const totalTenants = tenants?.length ?? 0;
 
