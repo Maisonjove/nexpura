@@ -41,13 +41,13 @@ export default async function WhatsAppCampaignsPage({
     .eq("tenant_id", tenantId)
     .order("name");
 
-  // Get customer count with phone numbers
+  // Get customer count with phone numbers (check both phone and mobile columns)
   const { count: totalCustomersWithPhone } = await admin
     .from("customers")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
-    .not("phone", "is", null);
+    .or("phone.not.is.null,mobile.not.is.null");
 
   // Format campaigns with proper typing
   const formattedCampaigns = (campaigns || []).map(c => ({

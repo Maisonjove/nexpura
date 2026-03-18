@@ -41,7 +41,7 @@ export async function createWhatsAppCampaign(data: {
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", userData.tenant_id)
       .is("deleted_at", null)
-      .not("phone", "is", null);
+      .or("phone.not.is.null,mobile.not.is.null");
     recipientCount = count || 0;
   } else if (data.recipient_type === "segment" && data.recipient_filter.segment_id) {
     const { data: segment } = await admin
@@ -56,7 +56,7 @@ export async function createWhatsAppCampaign(data: {
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", userData.tenant_id)
       .is("deleted_at", null)
-      .not("phone", "is", null)
+      .or("phone.not.is.null,mobile.not.is.null")
       .overlaps("tags", data.recipient_filter.tags as string[]);
     recipientCount = count || 0;
   } else if (data.recipient_type === "manual" && Array.isArray(data.recipient_filter.customer_ids)) {
