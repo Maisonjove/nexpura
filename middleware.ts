@@ -4,12 +4,12 @@ import { createServerClient } from "@supabase/ssr";
 import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Top-level guard: if anything throws, pass through instead of returning 500
   try {
     return await _proxyInner(request);
   } catch (err) {
-    console.error("[proxy] middleware threw — passing through:", err);
+    console.error("[middleware] threw — passing through:", err);
     return NextResponse.next();
   }
 }
@@ -207,4 +207,4 @@ export const config = {
 };
 
 // Next.js middleware entry point — must have a default export
-export default proxy;
+export default middleware;
