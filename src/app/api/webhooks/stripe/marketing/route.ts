@@ -131,44 +131,44 @@ async function sendWhatsAppCampaign(
   const businessName = tenant?.business_name || tenant?.name || "";
 
   // Get recipients based on campaign settings
-  let recipients: Array<{ id: string; phone: string; full_name: string | null }> = [];
+  let recipients: Array<{ id: string; phone: string | null; mobile: string | null; full_name: string | null }> = [];
 
   const filter = campaign.recipient_filter as Record<string, unknown>;
 
   if (campaign.recipient_type === "all") {
     const { data } = await admin
       .from("customers")
-      .select("id, phone, full_name")
+      .select("id, phone, mobile, full_name")
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .not("phone", "is", null);
+      .or("phone.not.is.null,mobile.not.is.null");
     recipients = data || [];
   } else if (campaign.recipient_type === "segment" && filter.segment_id) {
     // For segments, we'd need to evaluate segment rules
     // For now, just get all customers (simplified)
     const { data } = await admin
       .from("customers")
-      .select("id, phone, full_name")
+      .select("id, phone, mobile, full_name")
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .not("phone", "is", null);
+      .or("phone.not.is.null,mobile.not.is.null");
     recipients = data || [];
   } else if (campaign.recipient_type === "tags" && Array.isArray(filter.tags)) {
     const { data } = await admin
       .from("customers")
-      .select("id, phone, full_name")
+      .select("id, phone, mobile, full_name")
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .not("phone", "is", null)
+      .or("phone.not.is.null,mobile.not.is.null")
       .overlaps("tags", filter.tags as string[]);
     recipients = data || [];
   } else if (campaign.recipient_type === "manual" && Array.isArray(filter.customer_ids)) {
     const { data } = await admin
       .from("customers")
-      .select("id, phone, full_name")
+      .select("id, phone, mobile, full_name")
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .not("phone", "is", null)
+      .or("phone.not.is.null,mobile.not.is.null")
       .in("id", filter.customer_ids as string[]);
     recipients = data || [];
   }
@@ -185,20 +185,24 @@ async function sendWhatsAppCampaign(
     const batch = recipients.slice(i, i + BATCH_SIZE);
 
     const promises = batch.map(async (recipient) => {
+      // Get phone number (prefer mobile, fallback to phone)
+      const phoneNumber = recipient.mobile || recipient.phone;
+      if (!phoneNumber) return; // Skip if no phone number
+      
       // Personalize message
       let message = campaign.message;
       message = message.replace(/\{\{\s*customer_name\s*\}\}/gi, recipient.full_name || "there");
       message = message.replace(/\{\{\s*business_name\s*\}\}/gi, businessName);
 
       try {
-        const result = await sendTwilioWhatsApp(recipient.phone!, message);
+        const result = await sendTwilioWhatsApp(phoneNumber, message);
 
         // Log the send
         await admin.from("whatsapp_sends").insert({
           tenant_id: tenantId,
           campaign_id: campaignId,
           customer_id: recipient.id,
-          phone: recipient.phone!,
+          phone: phoneNumber,
           message,
           message_type: "marketing",
           status: result.success ? "sent" : "failed",
@@ -213,13 +217,13 @@ async function sendWhatsAppCampaign(
           failed++;
         }
       } catch (err) {
-        console.error(`[sendWhatsAppCampaign] Error sending to ${recipient.phone}:`, err);
+        console.error(`[sendWhatsAppCampaign] Error sending to ${phoneNumber}:`, err);
         
         await admin.from("whatsapp_sends").insert({
           tenant_id: tenantId,
           campaign_id: campaignId,
           customer_id: recipient.id,
-          phone: recipient.phone!,
+          phone: phoneNumber,
           message,
           message_type: "marketing",
           status: "failed",

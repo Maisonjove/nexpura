@@ -8,8 +8,10 @@ export const dynamic = "force-dynamic";
 export default async function CampaignDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
+  
   const supabase = await createClient();
   const {
     data: { user },
@@ -30,7 +32,7 @@ export default async function CampaignDetailPage({
   const { data: campaign } = await admin
     .from("whatsapp_campaigns")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .eq("tenant_id", tenantId)
     .single();
 
