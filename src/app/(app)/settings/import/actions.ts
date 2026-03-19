@@ -390,7 +390,7 @@ export async function importBespokeJobs(rows: BespokeJobRow[]): Promise<ImportRe
         metal_type: r.metal_type?.trim() || null,
         stone_type: r.stone_type?.trim() || null,
         estimated_cost: r.estimated_cost ? parseFloat(String(r.estimated_cost)) : null,
-        deposit_paid: r.deposit_paid ? parseFloat(String(r.deposit_paid)) : null,
+        deposit_paid: r.deposit_paid === true || r.deposit_paid === "true" || r.deposit_paid === "yes" || r.deposit_paid === "1" || r.deposit_paid === 1,
         due_date: r.due_date?.trim() || null,
         notes: r.notes?.trim() || null,
       });
