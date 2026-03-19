@@ -223,6 +223,8 @@ export async function createRepairFromIntake(
       p_tenant_id: tenantId,
     });
 
+    const amountDue = Math.max(0, Math.round((total - paymentReceived) * 100) / 100);
+    
     const { data: invoice, error: invError } = await admin
       .from("invoices")
       .insert({
@@ -240,6 +242,7 @@ export async function createRepairFromIntake(
         tax_amount: Math.round(taxAmount * 100) / 100,
         total: Math.round(total * 100) / 100,
         amount_paid: paymentReceived,
+        amount_due: amountDue,
         status: invoiceStatus,
         paid_at: invoiceStatus === "paid" ? new Date().toISOString() : null,
         created_by: userId,
@@ -406,6 +409,8 @@ export async function createBespokeFromIntake(
       p_tenant_id: tenantId,
     });
 
+    const amountDue = Math.max(0, Math.round((total - paymentReceived) * 100) / 100);
+    
     const { data: invoice, error: invError } = await admin
       .from("invoices")
       .insert({
@@ -423,6 +428,7 @@ export async function createBespokeFromIntake(
         tax_amount: Math.round(taxAmount * 100) / 100,
         total: Math.round(total * 100) / 100,
         amount_paid: paymentReceived,
+        amount_due: amountDue,
         status: invoiceStatus,
         paid_at: invoiceStatus === "paid" ? new Date().toISOString() : null,
         created_by: userId,
@@ -617,6 +623,8 @@ export async function createStockSaleFromIntake(
       p_tenant_id: tenantId,
     });
 
+    const amountDue = Math.max(0, Math.round((total - paymentReceived) * 100) / 100);
+    
     const { data: invoice, error: invError } = await supabase
       .from("invoices")
       .insert({
@@ -633,6 +641,7 @@ export async function createStockSaleFromIntake(
         tax_amount: Math.round(taxAmount * 100) / 100,
         total: Math.round(total * 100) / 100,
         amount_paid: paymentReceived,
+        amount_due: amountDue,
         status: paymentReceived >= total ? "paid" : paymentReceived > 0 ? "partial" : "unpaid",
         paid_at: paymentReceived >= total ? new Date().toISOString() : null,
         created_by: userId,
