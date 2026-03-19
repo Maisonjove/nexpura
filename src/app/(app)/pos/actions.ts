@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { executeWithSafety } from "@/lib/transaction-safety";
+import { executeWithSafety, TransactionStep } from "@/lib/transaction-safety";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 
 interface CartItem {
@@ -35,272 +35,404 @@ interface CreatePOSSaleParams {
 
 export async function createPOSSale(
   params: CreatePOSSaleParams
-): Promise<{ id?: string; saleNumber?: string; invoiceId?: string; error?: string }> {
+): Promise<{ id?: string; saleNumber?: string; invoiceId?: string; error?: string; auditId?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
   const admin = createAdminClient();
-
-  // If using store credit, verify and deduct ATOMICALLY
-  let storeCreditNewBalance: number | null = null;
-  if (params.storeCreditAmount && params.storeCreditAmount > 0) {
-    if (!params.customerId) return { error: "Customer required for store credit" };
-    
-    // Atomic deduction: only update if balance is sufficient
-    // Using .gte filter ensures we don't go negative
-    const { data: customer } = await admin
-      .from("customers")
-      .select("store_credit")
-      .eq("id", params.customerId)
-      .eq("tenant_id", params.tenantId)
-      .gte("store_credit", params.storeCreditAmount)
-      .single();
-    
-    if (!customer) {
-      return { error: "Insufficient store credit balance" };
-    }
-
-    // Calculate new balance and update with conditional check
-    storeCreditNewBalance = (customer.store_credit || 0) - params.storeCreditAmount;
-    
-    const { error: creditErr, count: creditCount } = await admin
-      .from("customers")
-      .update({ store_credit: storeCreditNewBalance })
-      .eq("id", params.customerId)
-      .eq("tenant_id", params.tenantId)
-      .gte("store_credit", params.storeCreditAmount); // Double-check: only if still sufficient
-    
-    if (creditErr || creditCount === 0) {
-      return { error: "Store credit balance changed — please try again" };
-    }
-  }
-
-  // If using voucher, verify and reserve balance atomically
-  let voucherOriginalBalance: number | null = null;
-  if (params.voucherId && params.voucherAmount && params.voucherAmount > 0) {
-    const { data: voucher } = await admin
-      .from("gift_vouchers")
-      .select("id, balance, status")
-      .eq("id", params.voucherId)
-      .eq("tenant_id", params.tenantId)
-      .eq("status", "active") // Must be active
-      .gte("balance", params.voucherAmount) // Must have sufficient balance
-      .single();
-
-    if (!voucher) {
-      return { error: "Voucher not found, already used, or insufficient balance" };
-    }
-    voucherOriginalBalance = voucher.balance;
-  }
-
-  // Generate sale number
+  
+  // Generate sale number first
   const { count } = await admin
     .from("sales")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", params.tenantId);
-
   const saleNumber = `S-${String((count ?? 0) + 1).padStart(4, "0")}`;
+  
+  // Track state for rollback
+  let saleId: string | null = null;
+  let storeCreditDeducted = false;
+  let storeCreditOriginal: number | null = null;
+  let voucherDeducted = false;
+  let voucherOriginalBalance: number | null = null;
+  let invoiceId: string | undefined;
+  const stockDeductions: { inventoryId: string; quantity: number; originalQty: number }[] = [];
 
-  // Create sale
-  const { data: sale, error: saleErr } = await admin
-    .from("sales")
-    .insert({
-      tenant_id: params.tenantId,
-      sale_number: saleNumber,
-      customer_id: params.customerId,
-      customer_name: params.customerName,
-      customer_email: params.customerEmail,
-      subtotal: params.subtotal,
-      discount_amount: params.discountAmount,
-      tax_amount: params.taxAmount,
-      total: params.total,
-      payment_method: params.paymentMethod,
-      store_credit_amount: params.storeCreditAmount || 0,
-      status: "paid",
-      sold_by: params.userId,
-      sale_date: new Date().toISOString().split("T")[0],
-    })
-    .select("id")
-    .single();
-
-  if (saleErr || !sale) return { error: saleErr?.message ?? "Failed to create sale" };
-
-  // Handle voucher redemption ATOMICALLY with conditional update
-  if (params.voucherId && params.voucherAmount && params.voucherAmount > 0 && voucherOriginalBalance !== null) {
-    const newBalance = Math.max(0, voucherOriginalBalance - params.voucherAmount);
-    const newStatus = newBalance === 0 ? "redeemed" : "active";
-
-    // Atomic update: only if balance hasn't changed (prevents double-redemption race)
-    const { error: voucherErr, count: voucherCount } = await admin
-      .from("gift_vouchers")
-      .update({ balance: newBalance, status: newStatus })
-      .eq("id", params.voucherId)
-      .eq("tenant_id", params.tenantId)
-      .eq("balance", voucherOriginalBalance) // Only if balance unchanged
-      .eq("status", "active"); // Only if still active
-
-    if (voucherErr || voucherCount === 0) {
-      // Voucher was used by another session — but sale already created
-      // Log the issue but don't fail the sale (it's already committed)
-      console.error(`[POS] Voucher race condition: ${params.voucherId} balance changed during sale ${sale.id}`);
-    } else {
-      // Record redemption history
-      await admin.from("gift_voucher_redemptions").insert({
-        voucher_id: params.voucherId,
-        sale_id: sale.id,
-        amount_used: params.voucherAmount,
-        tenant_id: params.tenantId,
-        redeemed_at: new Date().toISOString(),
-      });
-    }
-  }
-
-  // Record store credit history AFTER sale is created (ties to sale record)
-  if (params.storeCreditAmount && params.storeCreditAmount > 0 && storeCreditNewBalance !== null) {
-    await admin.from("customer_store_credit_history").insert({
-      tenant_id: params.tenantId,
-      customer_id: params.customerId,
-      amount: -params.storeCreditAmount,
-      balance_after: storeCreditNewBalance,
-      reason: "POS Purchase",
-      reference_type: "sale",
-      reference_id: sale.id,
-      created_by: params.userId,
-    });
-  }
-
-  // Create sale items
-  if (params.cart.length > 0) {
-    await admin.from("sale_items").insert(
-      params.cart.map((item) => ({
-        tenant_id: params.tenantId,
-        sale_id: sale.id,
-        description: item.name,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        line_total: item.unitPrice * item.quantity,
-      }))
-    );
-  }
-
-  // Deduct stock for each item with race-safe pattern and HARD FAIL on insufficient
-  for (const item of params.cart) {
-    // Get current quantity
-    const { data: inv } = await admin
-      .from("inventory")
-      .select("quantity, name")
-      .eq("id", item.inventoryId)
-      .eq("tenant_id", params.tenantId)
-      .single();
-
-    if (inv) {
-      const oldQty = inv.quantity;
-      const newQty = oldQty - item.quantity;
-      
-      // HARD FAIL: Do not allow sale if insufficient stock
-      if (newQty < 0) {
-        // Sale already created — mark it as failed/voided
-        await admin.from("sales").update({ status: "voided" }).eq("id", sale.id);
-        return { error: `Insufficient stock for "${inv.name || item.name}". Available: ${oldQty}, Requested: ${item.quantity}` };
-      }
-      
-      // Conditional update: only if quantity hasn't changed (prevents overselling race)
-      const { count: updateCount } = await admin
-        .from("inventory")
-        .update({ quantity: newQty })
-        .eq("id", item.inventoryId)
-        .eq("tenant_id", params.tenantId)
-        .eq("quantity", oldQty); // Only update if quantity unchanged
-      
-      // If race occurred, re-fetch and HARD FAIL if insufficient
-      let finalQty = newQty;
-      if (updateCount === 0) {
-        const { data: invRetry } = await admin
-          .from("inventory")
-          .select("quantity")
-          .eq("id", item.inventoryId)
+  // Define transaction steps
+  const steps: TransactionStep[] = [
+    // Step 1: Deduct store credit if used
+    {
+      name: "deduct_store_credit",
+      execute: async () => {
+        if (!params.storeCreditAmount || params.storeCreditAmount <= 0) {
+          return { success: true, data: { skipped: true } };
+        }
+        if (!params.customerId) {
+          return { success: false, error: "Customer required for store credit" };
+        }
+        
+        const { data: customer } = await admin
+          .from("customers")
+          .select("store_credit")
+          .eq("id", params.customerId)
           .eq("tenant_id", params.tenantId)
+          .gte("store_credit", params.storeCreditAmount)
           .single();
-        if (invRetry) {
-          finalQty = invRetry.quantity - item.quantity;
-          if (finalQty < 0) {
-            await admin.from("sales").update({ status: "voided" }).eq("id", sale.id);
-            return { error: `Item "${inv.name || item.name}" just sold out. Please remove it and try again.` };
-          }
+        
+        if (!customer) {
+          return { success: false, error: "Insufficient store credit balance" };
+        }
+        
+        storeCreditOriginal = customer.store_credit;
+        const newBalance = storeCreditOriginal - params.storeCreditAmount;
+        
+        const { error, count: updateCount } = await admin
+          .from("customers")
+          .update({ store_credit: newBalance })
+          .eq("id", params.customerId)
+          .eq("tenant_id", params.tenantId)
+          .eq("store_credit", storeCreditOriginal);
+        
+        if (error || updateCount === 0) {
+          return { success: false, error: "Store credit balance changed — please try again" };
+        }
+        
+        storeCreditDeducted = true;
+        return { success: true, data: { newBalance } };
+      },
+      compensate: async () => {
+        if (storeCreditDeducted && params.customerId && storeCreditOriginal !== null) {
           await admin
-            .from("inventory")
-            .update({ quantity: finalQty })
-            .eq("id", item.inventoryId)
+            .from("customers")
+            .update({ store_credit: storeCreditOriginal })
+            .eq("id", params.customerId)
             .eq("tenant_id", params.tenantId);
         }
-      }
-
-      // Log stock movement with accurate final quantity
-      await admin.from("stock_movements").insert({
-        tenant_id: params.tenantId,
-        inventory_id: item.inventoryId,
-        movement_type: "sale",
-        quantity_change: -item.quantity,
-        quantity_after: finalQty,
-        notes: `POS Sale ${saleNumber}`,
-        created_by: params.userId,
-      });
-    }
-  }
-
-  // Auto-create invoice
-  let invoiceId: string | undefined;
-  try {
-    const { data: invoiceNumberData } = await admin.rpc("next_invoice_number", {
-      p_tenant_id: params.tenantId,
-    });
-
-    const { data: newInvoice } = await admin
-      .from("invoices")
-      .insert({
-        tenant_id: params.tenantId,
-        invoice_number: invoiceNumberData ?? `INV-${Date.now()}`,
-        customer_id: params.customerId,
-        customer_name: params.customerName,
-        customer_email: params.customerEmail,
-        sale_id: sale.id,
-        invoice_date: new Date().toISOString().split("T")[0],
-        subtotal: params.subtotal,
-        discount_amount: params.discountAmount,
-        tax_name: params.taxName || "GST",
-        tax_rate: params.taxRate ?? 0.1,
-        tax_inclusive: true,
-        tax_amount: params.taxAmount,
-        total: params.total,
-        status: "paid",
-        paid_at: new Date().toISOString(),
-        created_by: params.userId,
-      })
-      .select("id")
-      .single();
-
-    if (newInvoice) {
-      invoiceId = newInvoice.id;
-      // Insert invoice line items
-      await admin.from("invoice_line_items").insert(
-        params.cart.map((item, idx) => ({
+      },
+    },
+    
+    // Step 2: Deduct voucher if used
+    {
+      name: "deduct_voucher",
+      execute: async () => {
+        if (!params.voucherId || !params.voucherAmount || params.voucherAmount <= 0) {
+          return { success: true, data: { skipped: true } };
+        }
+        
+        const { data: voucher } = await admin
+          .from("gift_vouchers")
+          .select("id, balance, status")
+          .eq("id", params.voucherId)
+          .eq("tenant_id", params.tenantId)
+          .eq("status", "active")
+          .gte("balance", params.voucherAmount)
+          .single();
+        
+        if (!voucher) {
+          return { success: false, error: "Voucher not found, already used, or insufficient balance" };
+        }
+        
+        voucherOriginalBalance = voucher.balance;
+        const newBalance = Math.max(0, voucherOriginalBalance - params.voucherAmount);
+        const newStatus = newBalance === 0 ? "redeemed" : "active";
+        
+        const { error, count: updateCount } = await admin
+          .from("gift_vouchers")
+          .update({ balance: newBalance, status: newStatus })
+          .eq("id", params.voucherId)
+          .eq("tenant_id", params.tenantId)
+          .eq("balance", voucherOriginalBalance)
+          .eq("status", "active");
+        
+        if (error || updateCount === 0) {
+          return { success: false, error: "Voucher was used by another transaction" };
+        }
+        
+        voucherDeducted = true;
+        return { success: true, data: { newBalance } };
+      },
+      compensate: async () => {
+        if (voucherDeducted && params.voucherId && voucherOriginalBalance !== null) {
+          await admin
+            .from("gift_vouchers")
+            .update({ balance: voucherOriginalBalance, status: "active" })
+            .eq("id", params.voucherId)
+            .eq("tenant_id", params.tenantId);
+        }
+      },
+    },
+    
+    // Step 3: Create sale record
+    {
+      name: "create_sale",
+      execute: async () => {
+        const { data: sale, error } = await admin
+          .from("sales")
+          .insert({
+            tenant_id: params.tenantId,
+            sale_number: saleNumber,
+            customer_id: params.customerId,
+            customer_name: params.customerName,
+            customer_email: params.customerEmail,
+            subtotal: params.subtotal,
+            discount_amount: params.discountAmount,
+            tax_amount: params.taxAmount,
+            total: params.total,
+            amount_paid: params.total,
+            payment_method: params.paymentMethod,
+            store_credit_amount: params.storeCreditAmount || 0,
+            status: "paid",
+            sold_by: params.userId,
+            sale_date: new Date().toISOString().split("T")[0],
+          })
+          .select("id")
+          .single();
+        
+        if (error || !sale) {
+          return { success: false, error: error?.message ?? "Failed to create sale" };
+        }
+        
+        saleId = sale.id;
+        return { success: true, data: { saleId: sale.id } };
+      },
+      compensate: async () => {
+        if (saleId) {
+          await admin.from("sales").update({ status: "voided" }).eq("id", saleId);
+        }
+      },
+    },
+    
+    // Step 4: Create sale items
+    {
+      name: "create_sale_items",
+      execute: async () => {
+        if (!saleId || params.cart.length === 0) {
+          return { success: true, data: { skipped: true } };
+        }
+        
+        const { error } = await admin.from("sale_items").insert(
+          params.cart.map((item) => ({
+            tenant_id: params.tenantId,
+            sale_id: saleId,
+            inventory_id: item.inventoryId,
+            description: item.name,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            line_total: item.unitPrice * item.quantity,
+          }))
+        );
+        
+        if (error) {
+          return { success: false, error: error.message };
+        }
+        return { success: true };
+      },
+    },
+    
+    // Step 5: Deduct stock for each item
+    {
+      name: "deduct_stock",
+      execute: async () => {
+        for (const item of params.cart) {
+          const { data: inv } = await admin
+            .from("inventory")
+            .select("quantity, name")
+            .eq("id", item.inventoryId)
+            .eq("tenant_id", params.tenantId)
+            .single();
+          
+          if (!inv) continue;
+          
+          const oldQty = inv.quantity;
+          const newQty = oldQty - item.quantity;
+          
+          if (newQty < 0) {
+            return { 
+              success: false, 
+              error: `Insufficient stock for "${inv.name || item.name}". Available: ${oldQty}, Requested: ${item.quantity}` 
+            };
+          }
+          
+          const { count: updateCount } = await admin
+            .from("inventory")
+            .update({ quantity: newQty })
+            .eq("id", item.inventoryId)
+            .eq("tenant_id", params.tenantId)
+            .eq("quantity", oldQty);
+          
+          if (updateCount === 0) {
+            // Race occurred — retry with current value
+            const { data: invRetry } = await admin
+              .from("inventory")
+              .select("quantity")
+              .eq("id", item.inventoryId)
+              .eq("tenant_id", params.tenantId)
+              .single();
+            
+            if (invRetry) {
+              const retryQty = invRetry.quantity - item.quantity;
+              if (retryQty < 0) {
+                return { 
+                  success: false, 
+                  error: `Item "${inv.name || item.name}" just sold out. Please remove it and try again.` 
+                };
+              }
+              await admin
+                .from("inventory")
+                .update({ quantity: retryQty })
+                .eq("id", item.inventoryId)
+                .eq("tenant_id", params.tenantId);
+              stockDeductions.push({ inventoryId: item.inventoryId, quantity: item.quantity, originalQty: invRetry.quantity });
+            }
+          } else {
+            stockDeductions.push({ inventoryId: item.inventoryId, quantity: item.quantity, originalQty: oldQty });
+          }
+          
+          // Log stock movement
+          await admin.from("stock_movements").insert({
+            tenant_id: params.tenantId,
+            inventory_id: item.inventoryId,
+            movement_type: "sale",
+            quantity_change: -item.quantity,
+            quantity_after: newQty >= 0 ? newQty : 0,
+            notes: `POS Sale ${saleNumber}`,
+            created_by: params.userId,
+          });
+        }
+        
+        return { success: true };
+      },
+      compensate: async () => {
+        // Restore stock for all deducted items
+        for (const deduction of stockDeductions) {
+          await admin
+            .from("inventory")
+            .update({ quantity: deduction.originalQty })
+            .eq("id", deduction.inventoryId)
+            .eq("tenant_id", params.tenantId);
+        }
+      },
+    },
+    
+    // Step 6: Create invoice (optional, non-critical)
+    {
+      name: "create_invoice",
+      execute: async () => {
+        if (!saleId) return { success: true, data: { skipped: true } };
+        
+        try {
+          const { data: invoiceNumberData } = await admin.rpc("next_invoice_number", {
+            p_tenant_id: params.tenantId,
+          });
+          
+          const { data: newInvoice } = await admin
+            .from("invoices")
+            .insert({
+              tenant_id: params.tenantId,
+              invoice_number: invoiceNumberData ?? `INV-${Date.now()}`,
+              customer_id: params.customerId,
+              customer_name: params.customerName,
+              customer_email: params.customerEmail,
+              sale_id: saleId,
+              invoice_date: new Date().toISOString().split("T")[0],
+              subtotal: params.subtotal,
+              discount_amount: params.discountAmount,
+              tax_name: params.taxName || "GST",
+              tax_rate: params.taxRate ?? 0.1,
+              tax_inclusive: true,
+              tax_amount: params.taxAmount,
+              total: params.total,
+              amount_paid: params.total,
+              status: "paid",
+              paid_at: new Date().toISOString(),
+              created_by: params.userId,
+            })
+            .select("id")
+            .single();
+          
+          if (newInvoice) {
+            invoiceId = newInvoice.id;
+            await admin.from("invoice_line_items").insert(
+              params.cart.map((item, idx) => ({
+                tenant_id: params.tenantId,
+                invoice_id: newInvoice.id,
+                description: item.name,
+                quantity: item.quantity,
+                unit_price: item.unitPrice,
+                discount_pct: 0,
+                line_total: item.unitPrice * item.quantity,
+                sort_order: idx,
+              }))
+            );
+          }
+        } catch {
+          // Invoice creation is non-critical — don't fail the sale
+        }
+        
+        return { success: true, data: { invoiceId } };
+      },
+    },
+    
+    // Step 7: Record store credit history
+    {
+      name: "record_credit_history",
+      execute: async () => {
+        if (!storeCreditDeducted || !params.customerId || !saleId) {
+          return { success: true, data: { skipped: true } };
+        }
+        
+        const newBalance = (storeCreditOriginal || 0) - (params.storeCreditAmount || 0);
+        await admin.from("customer_store_credit_history").insert({
           tenant_id: params.tenantId,
-          invoice_id: newInvoice.id,
-          description: item.name,
-          quantity: item.quantity,
-          unit_price: item.unitPrice,
-          discount_pct: 0,
-          line_total: item.unitPrice * item.quantity,
-          sort_order: idx,
-        }))
-      );
-    }
-  } catch {
-    // Invoice creation is non-critical
+          customer_id: params.customerId,
+          amount: -(params.storeCreditAmount || 0),
+          balance_after: newBalance,
+          reason: "POS Purchase",
+          reference_type: "sale",
+          reference_id: saleId,
+          created_by: params.userId,
+        });
+        
+        return { success: true };
+      },
+    },
+    
+    // Step 8: Record voucher redemption history
+    {
+      name: "record_voucher_history",
+      execute: async () => {
+        if (!voucherDeducted || !params.voucherId || !saleId) {
+          return { success: true, data: { skipped: true } };
+        }
+        
+        await admin.from("gift_voucher_redemptions").insert({
+          voucher_id: params.voucherId,
+          sale_id: saleId,
+          amount_used: params.voucherAmount,
+          tenant_id: params.tenantId,
+          redeemed_at: new Date().toISOString(),
+        });
+        
+        return { success: true };
+      },
+    },
+  ];
+
+  // Execute with safety wrapper
+  const result = await executeWithSafety(
+    admin,
+    "pos_sale",
+    saleNumber,
+    params.tenantId,
+    params.userId,
+    steps
+  );
+
+  if (!result.success) {
+    return { error: result.error || `Failed at step: ${result.failedStep}`, auditId: result.auditId };
   }
 
-  return { id: sale.id, saleNumber, invoiceId };
+  return { id: saleId!, saleNumber, invoiceId, auditId: result.auditId };
 }
 
 // ─── Layby Sale ───────────────────────────────────────────────────────────────
@@ -360,20 +492,13 @@ export async function createLaybySale(
       status: "layby",
       sold_by: params.userId,
       sale_date: new Date().toISOString().split("T")[0],
+      deposit_amount: params.depositAmount,
+      amount_paid: params.depositAmount,
     })
     .select("id")
     .single();
 
   if (saleErr || !sale) return { error: saleErr?.message ?? "Failed to create layby" };
-
-  // Store deposit amount and amount_paid
-  await admin
-    .from("sales")
-    .update({
-      deposit_amount: params.depositAmount,
-      amount_paid: params.depositAmount,
-    })
-    .eq("id", sale.id);
 
   // Record initial deposit payment
   await admin.from("layby_payments").insert({
