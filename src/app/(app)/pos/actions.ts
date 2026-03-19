@@ -83,15 +83,16 @@ export async function createPOSSale(
           return { success: false, error: "Insufficient store credit balance" };
         }
         
-        storeCreditOriginal = customer.store_credit;
-        const newBalance = storeCreditOriginal - params.storeCreditAmount;
+        const currentBalance = customer.store_credit || 0;
+        storeCreditOriginal = currentBalance;
+        const newBalance = currentBalance - (params.storeCreditAmount || 0);
         
         const { error, count: updateCount } = await admin
           .from("customers")
           .update({ store_credit: newBalance })
           .eq("id", params.customerId)
           .eq("tenant_id", params.tenantId)
-          .eq("store_credit", storeCreditOriginal);
+          .eq("store_credit", currentBalance);
         
         if (error || updateCount === 0) {
           return { success: false, error: "Store credit balance changed — please try again" };
@@ -132,8 +133,9 @@ export async function createPOSSale(
           return { success: false, error: "Voucher not found, already used, or insufficient balance" };
         }
         
-        voucherOriginalBalance = voucher.balance;
-        const newBalance = Math.max(0, voucherOriginalBalance - params.voucherAmount);
+        const currentBalance = voucher.balance || 0;
+        voucherOriginalBalance = currentBalance;
+        const newBalance = Math.max(0, currentBalance - (params.voucherAmount || 0));
         const newStatus = newBalance === 0 ? "redeemed" : "active";
         
         const { error, count: updateCount } = await admin
@@ -141,7 +143,7 @@ export async function createPOSSale(
           .update({ balance: newBalance, status: newStatus })
           .eq("id", params.voucherId)
           .eq("tenant_id", params.tenantId)
-          .eq("balance", voucherOriginalBalance)
+          .eq("balance", currentBalance)
           .eq("status", "active");
         
         if (error || updateCount === 0) {
