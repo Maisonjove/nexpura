@@ -562,7 +562,15 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
           {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <button
-              onClick={() => window.print()}
+              onClick={() => {
+                if (successResult.invoiceId) {
+                  window.open(`/invoices/${successResult.invoiceId}/print`, '_blank');
+                } else if (successResult.type === "repair") {
+                  window.open(`/repairs/${successResult.id}/print`, '_blank');
+                } else {
+                  window.print();
+                }
+              }}
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors text-sm font-medium"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -572,8 +580,33 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
             </button>
             
             <button
-              onClick={() => {/* TODO: email action */}}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors text-sm font-medium"
+              onClick={async () => {
+                if (!selectedCustomer?.email) {
+                  alert("Customer has no email address");
+                  return;
+                }
+                if (successResult.invoiceId) {
+                  try {
+                    const res = await fetch(`/api/invoices/${successResult.invoiceId}/email`, { method: "POST" });
+                    const data = await res.json();
+                    if (data.error) {
+                      alert(`Failed to send: ${data.error}`);
+                    } else {
+                      alert("Invoice emailed successfully!");
+                    }
+                  } catch {
+                    alert("Failed to send email");
+                  }
+                } else {
+                  alert("No invoice to email");
+                }
+              }}
+              disabled={!selectedCustomer?.email}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium ${
+                selectedCustomer?.email 
+                  ? "bg-stone-100 text-stone-700 hover:bg-stone-200" 
+                  : "bg-stone-50 text-stone-400 cursor-not-allowed"
+              }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
