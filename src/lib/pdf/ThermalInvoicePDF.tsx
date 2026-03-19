@@ -8,8 +8,19 @@ import {
 } from "@react-pdf/renderer";
 import type { InvoicePDFProps } from "./InvoicePDF";
 
-// 80mm thermal — 204pt wide, auto height
-const PAGE_WIDTH = 204;
+// Paper width mappings (mm to points, 1mm ≈ 2.83pt)
+const PAPER_WIDTHS: Record<string, number> = {
+  "58mm": 164,  // 58mm thermal
+  "80mm": 204,  // 80mm thermal (standard)
+  "57mm": 162,  // Alternative 57mm
+  "76mm": 215,  // 76mm thermal
+};
+
+function getPageWidth(paperWidth?: string): number {
+  if (!paperWidth) return 204; // default 80mm
+  return PAPER_WIDTHS[paperWidth] || 204;
+}
+
 const H_PAD = 8;
 
 const styles = StyleSheet.create({
@@ -132,10 +143,21 @@ function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
 
-const THICK = "--------------------------------";
-const THIN  = "- - - - - - - - - - - - - - - -";
+function getDividers(width: number) {
+  // Adjust divider length based on paper width
+  const charCount = Math.floor(width / 6); // roughly 6pt per char in Courier
+  const thick = "-".repeat(charCount);
+  const thin = "- ".repeat(Math.floor(charCount / 2)).trim();
+  return { thick, thin };
+}
 
-export function ThermalInvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProps) {
+export interface ThermalInvoicePDFProps extends InvoicePDFProps {
+  paperWidth?: string;
+}
+
+export function ThermalInvoicePDF({ invoice, lineItems, tenant, paperWidth }: ThermalInvoicePDFProps) {
+  const PAGE_WIDTH = getPageWidth(paperWidth);
+  const { thick: THICK, thin: THIN } = getDividers(PAGE_WIDTH);
   const businessName = tenant?.business_name || tenant?.name || "Your Business";
 
   const businessAddress = [
@@ -258,6 +280,27 @@ export function ThermalInvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProp
           <Text style={styles.grandTotalLabel}>TOTAL</Text>
           <Text style={styles.grandTotal}>{fmt(invoice.total)}</Text>
         </View>
+
+        {/* 14b. Amount Paid */}
+        {invoice.amount_paid > 0 && (
+          <View style={styles.row}>
+            <Text style={styles.col}>Amount Paid</Text>
+            <Text style={[styles.col, { fontFamily: "Courier-Bold" }]}>-{fmt(invoice.amount_paid)}</Text>
+          </View>
+        )}
+
+        {/* 14c. Balance Due */}
+        {invoice.amount_due > 0 && (
+          <View style={styles.totalRow}>
+            <Text style={[styles.grandTotalLabel, { fontSize: 10 }]}>BALANCE DUE</Text>
+            <Text style={[styles.grandTotal, { fontSize: 10 }]}>{fmt(invoice.amount_due)}</Text>
+          </View>
+        )}
+
+        {/* 14d. Paid in full indicator */}
+        {invoice.amount_due === 0 && invoice.status === "paid" && (
+          <Text style={[styles.centred, styles.bold, { marginVertical: 4 }]}>*** PAID IN FULL ***</Text>
+        )}
 
         {/* 15. Thick divider */}
         <Text style={styles.thickDivider}>{THICK}</Text>

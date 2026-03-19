@@ -81,6 +81,16 @@ export async function GET(
     .eq("id", userData.tenant_id)
     .single();
 
+  // Fetch printer settings for thermal format
+  const { data: printerConfig } = await adminClient
+    .from("printer_configs")
+    .select("paper_width")
+    .eq("tenant_id", userData.tenant_id)
+    .eq("printer_type", "receipt")
+    .single();
+
+  const paperWidth = (printerConfig?.paper_width as string) || "80mm";
+
   // Build typed invoice data
   const customerRaw = Array.isArray(invoice.customers)
     ? (invoice.customers[0] ?? null)
@@ -144,9 +154,11 @@ export async function GET(
 
   // Render PDF
   const Component = format === "thermal" ? ThermalInvoicePDF : InvoicePDF;
+  const props = format === "thermal" 
+    ? { invoice: invoiceData, lineItems, tenant: tenantData, paperWidth }
+    : { invoice: invoiceData, lineItems, tenant: tenantData };
   const element = React.createElement(Component, {
-    invoice: invoiceData,
-    lineItems,
+    ...props,
     tenant: tenantData,
   });
 
