@@ -54,11 +54,6 @@ export async function GET(
     return new NextResponse("Invoice not found", { status: 404 });
   }
 
-  // Compute amount_paid from actual payments
-  const paymentsTotal = (paymentsRaw ?? []).reduce((sum, p) => sum + (p.amount || 0), 0);
-  const amount_paid = paymentsTotal > 0 ? paymentsTotal : (invoice.amount_paid ?? 0);
-  const amount_due = Math.max(0, (invoice.total ?? 0) - amount_paid);
-
   // Fetch line items
   const { data: lineItemsRaw } = await adminClient
     .from("invoice_line_items")
@@ -71,6 +66,11 @@ export async function GET(
     .from("payments")
     .select("amount")
     .eq("invoice_id", id);
+
+  // Compute amount_paid from actual payments
+  const paymentsTotal = (paymentsRaw ?? []).reduce((sum, p) => sum + (p.amount || 0), 0);
+  const amount_paid = paymentsTotal > 0 ? paymentsTotal : (invoice.amount_paid ?? 0);
+  const amount_due = Math.max(0, (invoice.total ?? 0) - amount_paid);
 
   // Fetch tenant info
   const { data: tenant } = await adminClient

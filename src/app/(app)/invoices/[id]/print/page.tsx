@@ -154,7 +154,14 @@ export default async function InvoicePrintPage({
         `}</style>
       </head>
       <body>
-        <button className="print-btn" onClick="window.print()">Print Invoice</button>
+        <script dangerouslySetInnerHTML={{ __html: `
+          document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('.print-btn').addEventListener('click', function() {
+              window.print();
+            });
+          });
+        `}} />
+        <button className="print-btn">Print Invoice</button>
 
         <div className="header">
           <div className="logo-section">

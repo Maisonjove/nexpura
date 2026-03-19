@@ -43,8 +43,11 @@ export async function POST(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // Get customer email
-    const customer = invoice.customers as { email: string | null } | null;
+    // Get customer email (can be array or single object from Supabase join)
+    const rawCustomer = invoice.customers;
+    const customer = Array.isArray(rawCustomer) 
+      ? (rawCustomer[0] as { email: string | null } | undefined) 
+      : (rawCustomer as { email: string | null } | null);
     if (!customer?.email) {
       return NextResponse.json(
         { error: "Customer has no email address" },

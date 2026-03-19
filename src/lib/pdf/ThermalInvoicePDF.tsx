@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: H_PAD,
     fontSize: 8,
     color: "#000000",
-    width: PAGE_WIDTH,
+    // width is set dynamically on Page component
   },
   centred: {
     textAlign: "center",
