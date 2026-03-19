@@ -103,14 +103,20 @@ export default function CustomerListClient({
 
       {/* FILTER BAR */}
       <div className="flex items-center gap-3">
-        <form onSubmit={handleSearch} className="relative max-w-sm flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
-          <Input 
-            placeholder="Search customers..." 
-            className="pl-9 h-10 border-stone-200 focus-visible:ring-[amber-700] text-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <form onSubmit={handleSearch} className="relative max-w-sm flex-1 flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
+            <Input 
+              placeholder="Search customers..." 
+              className="pl-9 h-10 border-stone-200 focus-visible:ring-[amber-700] text-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+            />
+          </div>
+          <Button type="submit" variant="outline" size="icon" className="h-10 w-10 shrink-0">
+            <Search className="h-4 w-4" />
+          </Button>
         </form>
         <Select value={activeTab} onValueChange={(val) => handleTabChange(val || "all")}>
           <SelectTrigger className="w-[180px] h-10 text-sm border-stone-200 focus:ring-amber-600">

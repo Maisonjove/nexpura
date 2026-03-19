@@ -19,14 +19,14 @@ const PLANS = [
   {
     id: "boutique",
     name: "Boutique",
-    price: "$89",
+    monthlyPrice: 89,
     description: "For independent jewellers.",
     features: ["1 User", "1 Store", "Unlimited Invoices", "AI Business Copilot", "Core Operations", "Jewellery Passports"],
   },
   {
     id: "studio",
     name: "Studio",
-    price: "$179",
+    monthlyPrice: 179,
     description: "For growing jewellery studios.",
     features: ["Up to 5 Users", "Up to 3 Stores", "Advanced Analytics", "Website Builder", "Connect Website", "Migration Hub"],
     popular: true,
@@ -34,11 +34,20 @@ const PLANS = [
   {
     id: "atelier",
     name: "Atelier",
-    price: "$299",
+    monthlyPrice: 299,
     description: "For high-volume jewellery groups.",
     features: ["Unlimited Users", "Unlimited Stores", "All Features Included", "Priority Support", "Custom Domain", "White-glove Migration"],
   },
 ];
+
+// Calculate annual price (20% off): monthly × 12 × 0.8
+function getDisplayPrice(monthlyPrice: number, interval: "monthly" | "annual"): string {
+  if (interval === "monthly") {
+    return `$${monthlyPrice}`;
+  }
+  const annualPrice = Math.round(monthlyPrice * 12 * 0.8);
+  return `$${annualPrice.toLocaleString()}`;
+}
 
 const COMPARISON = [
   { label: "Users", boutique: "1", studio: "5", atelier: "Unlimited" },
@@ -157,9 +166,14 @@ export default function BillingClient({
             <div className="mb-8">
               <h3 className="text-xl font-bold text-stone-900">{plan.name}</h3>
               <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold tracking-tight text-stone-900">{plan.price}</span>
+                <span className="text-4xl font-bold tracking-tight text-stone-900">{getDisplayPrice(plan.monthlyPrice, interval)}</span>
                 <span className="text-stone-500 text-sm font-medium">/{interval === "monthly" ? "mo" : "yr"}</span>
               </div>
+              {interval === "annual" && (
+                <p className="text-xs text-emerald-600 mt-1">
+                  Save ${Math.round(plan.monthlyPrice * 12 * 0.2).toLocaleString()}/year
+                </p>
+              )}
               <p className="mt-4 text-sm text-stone-500 leading-relaxed">{plan.description}</p>
             </div>
 

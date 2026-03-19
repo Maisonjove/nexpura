@@ -10,17 +10,17 @@
  *    Product 1: "Nexpura Boutique"
  *      - Add metadata: plan=boutique
  *      - Price 1: AUD $89/month recurring  → copy price ID → STRIPE_PRICE_BOUTIQUE_MONTHLY
- *      - Price 2: AUD $890/year recurring   → copy price ID → STRIPE_PRICE_BOUTIQUE_ANNUAL
+ *      - Price 2: AUD $854/year recurring (89×12×0.8=$854.40 rounded)  → copy price ID → STRIPE_PRICE_BOUTIQUE_ANNUAL
  *
  *    Product 2: "Nexpura Studio"
  *      - Add metadata: plan=studio
  *      - Price 1: AUD $179/month recurring → copy price ID → STRIPE_PRICE_STUDIO_MONTHLY
- *      - Price 2: AUD $1790/year recurring  → copy price ID → STRIPE_PRICE_STUDIO_ANNUAL
+ *      - Price 2: AUD $1,718/year recurring (179×12×0.8=$1718.40 rounded) → copy price ID → STRIPE_PRICE_STUDIO_ANNUAL
  *
  *    Product 3: "Nexpura Atelier"
  *      - Add metadata: plan=atelier
  *      - Price 1: AUD $299/month recurring → copy price ID → STRIPE_PRICE_ATELIER_MONTHLY
- *      - Price 2: AUD $2990/year recurring  → copy price ID → STRIPE_PRICE_ATELIER_ANNUAL
+ *      - Price 2: AUD $2,870/year recurring (299×12×0.8=$2870.40 rounded) → copy price ID → STRIPE_PRICE_ATELIER_ANNUAL
  *
  * 3. Add the 6 price IDs as environment variables in Vercel:
  *    Vercel → Project → Settings → Environment Variables
