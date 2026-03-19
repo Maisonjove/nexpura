@@ -31,7 +31,29 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient();
 
-    // Get the transfer
+    // ATOMIC STATUS GUARD: Update status first with conditional check
+    // Only succeeds if status is still 'in_transit' — prevents double receive
+    const { error: statusError, count: statusCount } = await admin
+      .from("stock_transfers")
+      .update({
+        status: "completed",
+        received_at: new Date().toISOString(),
+        received_by: user.id,
+      })
+      .eq("id", transferId)
+      .eq("tenant_id", userData.tenant_id)
+      .eq("status", "in_transit"); // Only if still in_transit
+
+    if (statusError) {
+      console.error("Receive status update error:", statusError);
+      return NextResponse.json({ error: "Failed to complete transfer" }, { status: 500 });
+    }
+
+    if (statusCount === 0) {
+      return NextResponse.json({ error: "Transfer already received or not in transit" }, { status: 400 });
+    }
+
+    // Now get transfer details (status is already updated, we own this receive)
     const { data: transfer, error: fetchError } = await admin
       .from("stock_transfers")
       .select("*, transfer_items:stock_transfer_items(*, inventory:inventory_id(*))")
@@ -43,19 +65,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Transfer not found" }, { status: 404 });
     }
 
-    if (transfer.status !== "in_transit") {
-      return NextResponse.json({ error: "Transfer is not in transit" }, { status: 400 });
-    }
-
     // Verify user has access to destination location
     const allowedIds = await getUserLocationIds(user.id, userData.tenant_id);
     if (allowedIds !== null && !allowedIds.includes(transfer.to_location_id)) {
+      // Rollback status since user doesn't have permission
+      await admin
+        .from("stock_transfers")
+        .update({ status: "in_transit", received_at: null, received_by: null })
+        .eq("id", transferId);
       return NextResponse.json({ error: "You don't have access to receive at this location" }, { status: 403 });
     }
 
-    // Process each item - update received quantities and move stock
+    // Process each item with conditional updates
     for (const transferItem of transfer.transfer_items) {
-      // Find received quantity from request (defaults to full quantity)
       const itemUpdate = items?.find((i: { itemId: string; receivedQty: number }) => i.itemId === transferItem.id);
       const receivedQty = itemUpdate?.receivedQty ?? transferItem.quantity;
 
@@ -75,14 +97,33 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (existingItem) {
-        // Update existing inventory quantity at destination
-        await admin
+        // Conditional update for existing item at destination
+        const oldQty = existingItem.quantity || 0;
+        const newQty = oldQty + receivedQty;
+
+        const { count: updateCount } = await admin
           .from("inventory")
-          .update({ quantity: existingItem.quantity + receivedQty })
-          .eq("id", existingItem.id);
+          .update({ quantity: newQty })
+          .eq("id", existingItem.id)
+          .eq("quantity", oldQty);
+
+        if (updateCount === 0) {
+          // Race — retry with fresh value
+          const { data: retryItem } = await admin
+            .from("inventory")
+            .select("quantity")
+            .eq("id", existingItem.id)
+            .single();
+
+          if (retryItem) {
+            await admin
+              .from("inventory")
+              .update({ quantity: (retryItem.quantity || 0) + receivedQty })
+              .eq("id", existingItem.id);
+          }
+        }
       } else {
-        // Update the inventory item's location (simple move)
-        // For unique items, just change the location
+        // Move item to destination location
         await admin
           .from("inventory")
           .update({ 
@@ -91,21 +132,6 @@ export async function POST(request: Request) {
           })
           .eq("id", transferItem.inventory_id);
       }
-    }
-
-    // Update transfer status to completed
-    const { error: updateError } = await admin
-      .from("stock_transfers")
-      .update({
-        status: "completed",
-        received_at: new Date().toISOString(),
-        received_by: user.id,
-      })
-      .eq("id", transferId);
-
-    if (updateError) {
-      console.error("Receive update error:", updateError);
-      return NextResponse.json({ error: "Failed to complete transfer" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

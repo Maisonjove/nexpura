@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { withIdempotency } from "@/lib/idempotency";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -38,16 +39,27 @@ export async function processRefund(params: {
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, userId, tenantId } = ctx;
 
-  // Validate original sale belongs to tenant
-  const { data: sale } = await admin
-    .from("sales")
-    .select("*")
-    .eq("id", params.originalSaleId)
-    .eq("tenant_id", tenantId)
-    .single();
+  // IDEMPOTENCY: Prevent duplicate refund processing
+  // Fingerprint based on sale + items being refunded
+  const itemFingerprint = params.items.map(i => `${i.original_sale_item_id}:${i.quantity}`).sort().join(",");
+  const fingerprint = `${params.originalSaleId}:${params.refundMethod}:${itemFingerprint}`;
+  
+  const result = await withIdempotency(
+    "refund",
+    tenantId,
+    params.originalSaleId,
+    fingerprint,
+    async () => {
+      // Validate original sale belongs to tenant
+      const { data: sale } = await admin
+        .from("sales")
+        .select("*")
+        .eq("id", params.originalSaleId)
+        .eq("tenant_id", tenantId)
+        .single();
 
-  if (!sale) return { error: "Original sale not found" };
-  if (params.items.length === 0) return { error: "Select at least one item to refund" };
+      if (!sale) return { error: "Original sale not found" };
+      if (params.items.length === 0) return { error: "Select at least one item to refund" };
 
   // Generate refund number
   const { count } = await admin
@@ -215,14 +227,27 @@ export async function processRefund(params: {
     }
   }
 
-  // Update original sale status to refunded
-  await admin
-    .from("sales")
-    .update({ status: "refunded" })
-    .eq("id", params.originalSaleId)
-    .eq("tenant_id", tenantId);
+      // Update original sale status to refunded
+      await admin
+        .from("sales")
+        .update({ status: "refunded" })
+        .eq("id", params.originalSaleId)
+        .eq("tenant_id", tenantId);
 
-  redirect(`/refunds/${refund.id}`);
+      return { id: refund.id, refundNumber };
+    }
+  );
+
+  if ("duplicate" in result && result.duplicate) {
+    return { error: result.error };
+  }
+
+  const refundResult = result as { id?: string; refundNumber?: string; error?: string };
+  if (refundResult.error) {
+    return { error: refundResult.error };
+  }
+
+  redirect(`/refunds/${refundResult.id}`);
 }
 
 export async function getRefunds() {

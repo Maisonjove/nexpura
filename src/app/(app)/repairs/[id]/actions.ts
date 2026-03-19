@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -124,36 +125,53 @@ export async function recordRepairPayment(
   const { admin } = ctx;
   if (ctx.tenantId !== tenantId) return { error: "Unauthorized" };
 
-  // Check invoice status before inserting payment
-  const { data: invCheck } = await admin.from("invoices").select("status, total").eq("id", invoiceId).single();
-  if (!invCheck) return { error: "Invoice not found" };
-  if (invCheck.status === "voided") return { error: "Cannot record payment on voided invoice" };
+  // IDEMPOTENCY: Prevent duplicate payment submissions
+  const paymentDate = new Date().toISOString().split("T")[0];
+  const fingerprint = createPaymentFingerprint(amount, method, paymentDate);
+  const result = await withIdempotency(
+    "repair_payment",
+    tenantId,
+    invoiceId,
+    fingerprint,
+    async () => {
+      // Check invoice status before inserting payment
+      const { data: invCheck } = await admin.from("invoices").select("status, total").eq("id", invoiceId).single();
+      if (!invCheck) return { error: "Invoice not found" };
+      if (invCheck.status === "voided") return { error: "Cannot record payment on voided invoice" };
 
-  const { error: payErr } = await admin.from("payments").insert({
-    tenant_id: tenantId,
-    invoice_id: invoiceId,
-    amount,
-    payment_method: method,
-    payment_date: new Date().toISOString().split("T")[0],
-    notes: notes || null,
-  });
-  if (payErr) return { error: payErr.message };
+      const { error: payErr } = await admin.from("payments").insert({
+        tenant_id: tenantId,
+        invoice_id: invoiceId,
+        amount,
+        payment_method: method,
+        payment_date: paymentDate,
+        notes: notes || null,
+      });
+      if (payErr) return { error: payErr.message };
 
-  // ATOMIC: recalculate from all payments (race-safe)
-  const { data: payments } = await admin.from("payments").select("amount").eq("invoice_id", invoiceId);
-  const totalPaid = (payments ?? []).reduce((s, p) => s + (p.amount ?? 0), 0);
-  const invTotal = invCheck.total ?? 0;
+      // ATOMIC: recalculate from all payments (race-safe)
+      const { data: payments } = await admin.from("payments").select("amount").eq("invoice_id", invoiceId);
+      const totalPaid = (payments ?? []).reduce((s, p) => s + (p.amount ?? 0), 0);
+      const invTotal = invCheck.total ?? 0;
 
-  const newStatus = totalPaid >= invTotal ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
-  await admin.from("invoices").update({
-    amount_paid: totalPaid,
-    status: newStatus,
-    ...(newStatus === "paid" ? { paid_at: new Date().toISOString() } : {}),
-  }).eq("id", invoiceId);
+      const newStatus = totalPaid >= invTotal ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
+      await admin.from("invoices").update({
+        amount_paid: totalPaid,
+        status: newStatus,
+        ...(newStatus === "paid" ? { paid_at: new Date().toISOString() } : {}),
+      }).eq("id", invoiceId);
+
+      return { success: true };
+    }
+  );
+
+  if ("duplicate" in result && result.duplicate) {
+    return { error: result.error };
+  }
 
   revalidatePath(`/repairs/${repairId}`);
   revalidatePath("/dashboard");
-  return { success: true };
+  return result as { success?: boolean; error?: string };
 }
 
 export async function generateRepairInvoice(

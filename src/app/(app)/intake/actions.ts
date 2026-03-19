@@ -592,16 +592,23 @@ export async function createStockSaleFromIntake(
     line_total: input.price,
   });
 
-  // Deduct inventory quantity (race-safe)
+  // Deduct inventory quantity (race-safe with HARD FAIL)
   const { data: item } = await supabase
     .from("inventory")
-    .select("quantity")
+    .select("quantity, name")
     .eq("id", input.inventory_id)
     .single();
 
   if (item) {
     const oldQty = item.quantity;
-    const newQty = Math.max(0, oldQty - 1);
+    const newQty = oldQty - 1;
+    
+    // HARD FAIL: Do not allow sale if out of stock
+    if (newQty < 0) {
+      // Void the sale we just created
+      await supabase.from("sales").update({ status: "voided" }).eq("id", sale.id);
+      return { error: `Item "${item.name || input.item_name}" is out of stock` };
+    }
     
     // Conditional update to prevent race
     const { count } = await supabase
@@ -610,7 +617,7 @@ export async function createStockSaleFromIntake(
       .eq("id", input.inventory_id)
       .eq("quantity", oldQty);
     
-    // If race occurred, retry
+    // If race occurred, retry with HARD FAIL
     let finalQty = newQty;
     if (count === 0) {
       const { data: itemRetry } = await supabase
@@ -619,7 +626,11 @@ export async function createStockSaleFromIntake(
         .eq("id", input.inventory_id)
         .single();
       if (itemRetry) {
-        finalQty = Math.max(0, itemRetry.quantity - 1);
+        finalQty = itemRetry.quantity - 1;
+        if (finalQty < 0) {
+          await supabase.from("sales").update({ status: "voided" }).eq("id", sale.id);
+          return { error: `Item "${item.name || input.item_name}" just sold out` };
+        }
         await supabase
           .from("inventory")
           .update({ quantity: finalQty })

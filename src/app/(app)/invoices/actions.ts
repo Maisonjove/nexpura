@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sendInvoiceEmail } from "@/lib/email/send";
+import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -235,53 +236,69 @@ export async function recordPayment(
   const { supabase, userId, tenantId } = await getAuthContext();
   const admin = createAdminClient();
 
-  // Get current invoice status (just for voided check)
-  const { data: invoice, error: invErr } = await supabase
-    .from("invoices")
-    .select("id, total, status")
-    .eq("id", invoiceId)
-    .eq("tenant_id", tenantId)
-    .single();
+  // IDEMPOTENCY: Prevent duplicate payment submissions
+  const fingerprint = createPaymentFingerprint(amount, paymentMethod, paymentDate);
+  const result = await withIdempotency(
+    "invoice_payment",
+    tenantId,
+    invoiceId,
+    fingerprint,
+    async () => {
+      // Get current invoice status (just for voided check)
+      const { data: invoice, error: invErr } = await supabase
+        .from("invoices")
+        .select("id, total, status")
+        .eq("id", invoiceId)
+        .eq("tenant_id", tenantId)
+        .single();
 
-  if (invErr || !invoice) throw new Error("Invoice not found");
-  if (invoice.status === "voided") throw new Error("Cannot record payment on voided invoice");
+      if (invErr || !invoice) throw new Error("Invoice not found");
+      if (invoice.status === "voided") throw new Error("Cannot record payment on voided invoice");
 
-  // INSERT payment (immutable)
-  const { error: payErr } = await supabase.from("payments").insert({
-    tenant_id: tenantId,
-    invoice_id: invoiceId,
-    amount,
-    payment_method: paymentMethod,
-    payment_date: paymentDate,
-    reference: reference || null,
-    notes: notes || null,
-    created_by: userId,
-  });
+      // INSERT payment (immutable)
+      const { error: payErr } = await supabase.from("payments").insert({
+        tenant_id: tenantId,
+        invoice_id: invoiceId,
+        amount,
+        payment_method: paymentMethod,
+        payment_date: paymentDate,
+        reference: reference || null,
+        notes: notes || null,
+        created_by: userId,
+      });
 
-  if (payErr) throw new Error(`Failed to record payment: ${payErr.message}`);
+      if (payErr) throw new Error(`Failed to record payment: ${payErr.message}`);
 
-  // ATOMIC: recalculate amount_paid from all payments (race-safe)
-  const { data: allPayments } = await admin
-    .from("payments")
-    .select("amount")
-    .eq("invoice_id", invoiceId)
-    .eq("tenant_id", tenantId);
+      // ATOMIC: recalculate amount_paid from all payments (race-safe)
+      const { data: allPayments } = await admin
+        .from("payments")
+        .select("amount")
+        .eq("invoice_id", invoiceId)
+        .eq("tenant_id", tenantId);
 
-  const totalPaid = (allPayments ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0);
-  const newStatus = totalPaid >= invoice.total ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
-  const paidAt = totalPaid >= invoice.total ? new Date().toISOString() : null;
+      const totalPaid = (allPayments ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0);
+      const newStatus = totalPaid >= invoice.total ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
+      const paidAt = totalPaid >= invoice.total ? new Date().toISOString() : null;
 
-  const { error: updateErr } = await admin
-    .from("invoices")
-    .update({
-      amount_paid: totalPaid,
-      status: newStatus,
-      ...(paidAt ? { paid_at: paidAt } : {}),
-    })
-    .eq("id", invoiceId)
-    .eq("tenant_id", tenantId);
+      const { error: updateErr } = await admin
+        .from("invoices")
+        .update({
+          amount_paid: totalPaid,
+          status: newStatus,
+          ...(paidAt ? { paid_at: paidAt } : {}),
+        })
+        .eq("id", invoiceId)
+        .eq("tenant_id", tenantId);
 
-  if (updateErr) throw new Error(`Failed to update invoice: ${updateErr.message}`);
+      if (updateErr) throw new Error(`Failed to update invoice: ${updateErr.message}`);
+
+      return { success: true };
+    }
+  );
+
+  if ("duplicate" in result && result.duplicate) {
+    throw new Error(result.error);
+  }
 
   revalidatePath(`/invoices/${invoiceId}`);
   revalidatePath("/invoices");

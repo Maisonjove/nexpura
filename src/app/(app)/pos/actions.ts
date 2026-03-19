@@ -182,19 +182,26 @@ export async function createPOSSale(
     );
   }
 
-  // Deduct stock for each item with race-safe pattern
+  // Deduct stock for each item with race-safe pattern and HARD FAIL on insufficient
   for (const item of params.cart) {
     // Get current quantity
     const { data: inv } = await admin
       .from("inventory")
-      .select("quantity")
+      .select("quantity, name")
       .eq("id", item.inventoryId)
       .eq("tenant_id", params.tenantId)
       .single();
 
     if (inv) {
       const oldQty = inv.quantity;
-      const newQty = Math.max(0, oldQty - item.quantity);
+      const newQty = oldQty - item.quantity;
+      
+      // HARD FAIL: Do not allow sale if insufficient stock
+      if (newQty < 0) {
+        // Sale already created — mark it as failed/voided
+        await admin.from("sales").update({ status: "voided" }).eq("id", sale.id);
+        return { error: `Insufficient stock for "${inv.name || item.name}". Available: ${oldQty}, Requested: ${item.quantity}` };
+      }
       
       // Conditional update: only if quantity hasn't changed (prevents overselling race)
       const { count: updateCount } = await admin
@@ -204,7 +211,7 @@ export async function createPOSSale(
         .eq("tenant_id", params.tenantId)
         .eq("quantity", oldQty); // Only update if quantity unchanged
       
-      // If race occurred, re-fetch and retry with whatever is current
+      // If race occurred, re-fetch and HARD FAIL if insufficient
       let finalQty = newQty;
       if (updateCount === 0) {
         const { data: invRetry } = await admin
@@ -214,7 +221,11 @@ export async function createPOSSale(
           .eq("tenant_id", params.tenantId)
           .single();
         if (invRetry) {
-          finalQty = Math.max(0, invRetry.quantity - item.quantity);
+          finalQty = invRetry.quantity - item.quantity;
+          if (finalQty < 0) {
+            await admin.from("sales").update({ status: "voided" }).eq("id", sale.id);
+            return { error: `Item "${inv.name || item.name}" just sold out. Please remove it and try again.` };
+          }
           await admin
             .from("inventory")
             .update({ quantity: finalQty })
