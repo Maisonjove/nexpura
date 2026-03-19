@@ -36,17 +36,24 @@ export async function GET() {
   // Test Redis connectivity
   if (checks.redis.configured) {
     try {
+      const url = process.env.UPSTASH_REDIS_REST_URL;
       const response = await fetch(
-        `${process.env.UPSTASH_REDIS_REST_URL}/ping`,
+        `${url}/ping`,
         {
           headers: {
             Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
           },
         }
       );
-      const data = await response.json();
-      (checks.redis as Record<string, unknown>).connected = data.result === "PONG";
-      (checks.redis as Record<string, unknown>).response = data.result;
+      if (!response.ok) {
+        (checks.redis as Record<string, unknown>).connected = false;
+        (checks.redis as Record<string, unknown>).status = response.status;
+        (checks.redis as Record<string, unknown>).statusText = response.statusText;
+      } else {
+        const data = await response.json();
+        (checks.redis as Record<string, unknown>).connected = data.result === "PONG";
+        (checks.redis as Record<string, unknown>).response = data.result;
+      }
     } catch (e) {
       (checks.redis as Record<string, unknown>).connected = false;
       (checks.redis as Record<string, unknown>).error = String(e);
