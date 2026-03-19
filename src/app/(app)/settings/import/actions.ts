@@ -348,7 +348,7 @@ export interface BespokeJobRow {
   metal_type?: string;
   stone_type?: string;
   estimated_cost?: string | number;
-  deposit_paid?: string | number;
+  deposit_paid?: string | number | boolean;
   due_date?: string;
   notes?: string;
 }
