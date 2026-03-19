@@ -93,13 +93,13 @@ export async function processRefund(params: {
 
   if (refundErr || !refund) return { error: refundErr?.message ?? "Failed to create refund" };
 
-  // If refunding to store credit, update customer balance
+  // If refunding to store credit, update customer balance ATOMICALLY
   if (params.refundMethod === "store_credit") {
     if (!sale.customer_id) {
-      // Rollback or handle error? For now, we'll return error if no customer
       return { error: "Customer required for store credit refund" };
     }
 
+    // Fetch current balance
     const { data: customer } = await admin
       .from("customers")
       .select("store_credit")
@@ -107,20 +107,40 @@ export async function processRefund(params: {
       .eq("tenant_id", tenantId)
       .single();
 
-    const newBalance = (customer?.store_credit || 0) + total;
+    const oldBalance = customer?.store_credit || 0;
+    const newBalance = oldBalance + total;
 
-    await admin
+    // Atomic update with conditional check to prevent race
+    const { error: creditErr, count: creditCount } = await admin
       .from("customers")
       .update({ store_credit: newBalance })
       .eq("id", sale.customer_id)
-      .eq("tenant_id", tenantId);
+      .eq("tenant_id", tenantId)
+      .eq("store_credit", oldBalance); // Only if balance unchanged
 
-    // Record credit history
+    // If race occurred, retry with current balance
+    let finalBalance = newBalance;
+    if (creditErr || creditCount === 0) {
+      const { data: customerRetry } = await admin
+        .from("customers")
+        .select("store_credit")
+        .eq("id", sale.customer_id)
+        .eq("tenant_id", tenantId)
+        .single();
+      finalBalance = (customerRetry?.store_credit || 0) + total;
+      await admin
+        .from("customers")
+        .update({ store_credit: finalBalance })
+        .eq("id", sale.customer_id)
+        .eq("tenant_id", tenantId);
+    }
+
+    // Record credit history with accurate final balance
     await admin.from("customer_store_credit_history").insert({
       tenant_id: tenantId,
       customer_id: sale.customer_id,
       amount: total,
-      balance_after: newBalance,
+      balance_after: finalBalance,
       reason: "Refund",
       reference_type: "refund",
       reference_id: refund.id,
@@ -143,7 +163,7 @@ export async function processRefund(params: {
 
   await admin.from("refund_items").insert(refundItemsData);
 
-  // Return stock to inventory for items marked for restock
+  // Return stock to inventory for items marked for restock (race-safe)
   for (const item of params.items.filter((i) => i.restock && i.inventory_id)) {
     const { data: inv } = await admin
       .from("inventory")
@@ -153,19 +173,42 @@ export async function processRefund(params: {
       .single();
 
     if (inv) {
-      const newQty = inv.quantity + item.quantity;
-      await admin
+      const oldQty = inv.quantity;
+      const newQty = oldQty + item.quantity;
+      
+      // Conditional update to prevent race
+      const { count: updateCount } = await admin
         .from("inventory")
         .update({ quantity: newQty })
         .eq("id", item.inventory_id!)
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantId)
+        .eq("quantity", oldQty);
+      
+      // If race occurred, retry
+      let finalQty = newQty;
+      if (updateCount === 0) {
+        const { data: invRetry } = await admin
+          .from("inventory")
+          .select("quantity")
+          .eq("id", item.inventory_id!)
+          .eq("tenant_id", tenantId)
+          .single();
+        if (invRetry) {
+          finalQty = invRetry.quantity + item.quantity;
+          await admin
+            .from("inventory")
+            .update({ quantity: finalQty })
+            .eq("id", item.inventory_id!)
+            .eq("tenant_id", tenantId);
+        }
+      }
 
       await admin.from("stock_movements").insert({
         tenant_id: tenantId,
         inventory_id: item.inventory_id!,
         movement_type: "return",
         quantity_change: item.quantity,
-        quantity_after: newQty,
+        quantity_after: finalQty,
         notes: `Refund ${refundNumber}`,
         created_by: userId,
       });

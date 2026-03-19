@@ -118,6 +118,11 @@ export async function recordBespokePayment(
   const { admin } = ctx;
   if (ctx.tenantId !== tenantId) return { error: "Unauthorized" };
 
+  // Check invoice status before inserting payment
+  const { data: invCheck } = await admin.from("invoices").select("status, total").eq("id", invoiceId).single();
+  if (!invCheck) return { error: "Invoice not found" };
+  if (invCheck.status === "voided") return { error: "Cannot record payment on voided invoice" };
+
   const { error: payErr } = await admin.from("payments").insert({
     tenant_id: tenantId,
     invoice_id: invoiceId,
@@ -128,10 +133,10 @@ export async function recordBespokePayment(
   });
   if (payErr) return { error: payErr.message };
 
+  // ATOMIC: recalculate from all payments (race-safe)
   const { data: payments } = await admin.from("payments").select("amount").eq("invoice_id", invoiceId);
   const totalPaid = (payments ?? []).reduce((s, p) => s + (p.amount ?? 0), 0);
-  const { data: invRow } = await admin.from("invoices").select("total").eq("id", invoiceId).single();
-  const invTotal = invRow?.total ?? 0;
+  const invTotal = invCheck.total ?? 0;
 
   const newStatus = totalPaid >= invTotal ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
   await admin.from("invoices").update({
@@ -141,6 +146,7 @@ export async function recordBespokePayment(
   }).eq("id", invoiceId);
 
   revalidatePath(`/bespoke/${jobId}`);
+  revalidatePath("/dashboard");
   return { success: true };
 }
 

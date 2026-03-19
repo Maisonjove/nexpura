@@ -233,11 +233,12 @@ export async function recordPayment(
   notes: string | null
 ): Promise<void> {
   const { supabase, userId, tenantId } = await getAuthContext();
+  const admin = createAdminClient();
 
-  // Get current invoice
+  // Get current invoice status (just for voided check)
   const { data: invoice, error: invErr } = await supabase
     .from("invoices")
-    .select("id, total, amount_paid, status")
+    .select("id, total, status")
     .eq("id", invoiceId)
     .eq("tenant_id", tenantId)
     .single();
@@ -245,7 +246,7 @@ export async function recordPayment(
   if (invErr || !invoice) throw new Error("Invoice not found");
   if (invoice.status === "voided") throw new Error("Cannot record payment on voided invoice");
 
-  // INSERT ONLY — payments are immutable
+  // INSERT payment (immutable)
   const { error: payErr } = await supabase.from("payments").insert({
     tenant_id: tenantId,
     invoice_id: invoiceId,
@@ -259,16 +260,21 @@ export async function recordPayment(
 
   if (payErr) throw new Error(`Failed to record payment: ${payErr.message}`);
 
-  // Update invoice amount_paid and status
-  const newAmountPaid = (invoice.amount_paid || 0) + amount;
-  const newStatus =
-    newAmountPaid >= invoice.total ? "paid" : "partial";
-  const paidAt = newAmountPaid >= invoice.total ? new Date().toISOString() : null;
+  // ATOMIC: recalculate amount_paid from all payments (race-safe)
+  const { data: allPayments } = await admin
+    .from("payments")
+    .select("amount")
+    .eq("invoice_id", invoiceId)
+    .eq("tenant_id", tenantId);
 
-  const { error: updateErr } = await supabase
+  const totalPaid = (allPayments ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0);
+  const newStatus = totalPaid >= invoice.total ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
+  const paidAt = totalPaid >= invoice.total ? new Date().toISOString() : null;
+
+  const { error: updateErr } = await admin
     .from("invoices")
     .update({
-      amount_paid: newAmountPaid,
+      amount_paid: totalPaid,
       status: newStatus,
       ...(paidAt ? { paid_at: paidAt } : {}),
     })

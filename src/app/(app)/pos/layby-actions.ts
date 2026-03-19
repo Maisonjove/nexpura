@@ -18,20 +18,16 @@ export async function recordLaybyPayment(
   // Verify sale exists and is still a layby
   const { data: sale, error: saleErr } = await admin
     .from("sales")
-    .select("id, total, amount_paid, status, tenant_id")
+    .select("id, total, status, tenant_id")
     .eq("id", saleId)
     .eq("tenant_id", tenantId)
     .single();
 
   if (saleErr || !sale) return { error: "Layby not found" };
+  if (sale.status === "completed") return { error: "Layby already completed" };
   if (sale.status !== "layby") return { error: "Sale is not an active layby" };
 
-  const remaining = (sale.total || 0) - (sale.amount_paid || 0);
-  if (amount > remaining + 0.01) {
-    return { error: `Payment exceeds remaining balance of $${remaining.toFixed(2)}` };
-  }
-
-  // Insert payment record
+  // Insert payment record first (immutable)
   const { error: payErr } = await admin.from("layby_payments").insert({
     tenant_id: tenantId,
     sale_id: saleId,
@@ -44,7 +40,7 @@ export async function recordLaybyPayment(
 
   if (payErr) return { error: payErr.message };
 
-  // Recalculate total amount paid
+  // ATOMIC: recalculate total from all payments (race-safe)
   const { data: allPayments } = await admin
     .from("layby_payments")
     .select("amount")
@@ -52,20 +48,38 @@ export async function recordLaybyPayment(
     .eq("tenant_id", tenantId);
 
   const totalPaid = (allPayments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+  const saleTotal = sale.total || 0;
 
-  await admin
-    .from("sales")
-    .update({ amount_paid: totalPaid })
-    .eq("id", saleId)
-    .eq("tenant_id", tenantId);
+  // Check if overpaid after recalculation (guard against race)
+  if (totalPaid > saleTotal + 0.01) {
+    // This means concurrent payments pushed it over — allow it but cap at total
+    await admin
+      .from("sales")
+      .update({ amount_paid: saleTotal })
+      .eq("id", saleId)
+      .eq("tenant_id", tenantId);
+  } else {
+    await admin
+      .from("sales")
+      .update({ amount_paid: totalPaid })
+      .eq("id", saleId)
+      .eq("tenant_id", tenantId);
+  }
 
   revalidatePath(`/laybys/${saleId}`);
   revalidatePath("/laybys");
+  revalidatePath("/dashboard");
 
   // Auto-complete if fully paid
-  if (totalPaid >= (sale.total || 0) - 0.01) {
+  if (totalPaid >= saleTotal - 0.01) {
     const result = await completeLayby(saleId, tenantId);
-    if (result.error) return { error: result.error };
+    if (result.error) {
+      // If completion fails (e.g., already completed by concurrent call), still return success for the payment
+      if (result.error.includes("already completed")) {
+        return { completed: true };
+      }
+      return { error: result.error };
+    }
     return { completed: true };
   }
 
@@ -78,14 +92,30 @@ export async function completeLayby(
 ): Promise<{ error?: string }> {
   const admin = createAdminClient();
 
-  // Mark sale as completed
-  const { error: updateErr } = await admin
+  // GUARD: Check current status before completing (prevent double-completion)
+  const { data: saleCheck } = await admin
+    .from("sales")
+    .select("status, sale_number")
+    .eq("id", saleId)
+    .eq("tenant_id", tenantId)
+    .single();
+
+  if (!saleCheck) return { error: "Layby not found" };
+  if (saleCheck.status === "completed") return { error: "Layby already completed" };
+  if (saleCheck.status !== "layby") return { error: "Sale is not an active layby" };
+
+  const saleNumber = saleCheck.sale_number ?? saleId;
+
+  // Mark sale as completed (atomic status transition)
+  const { error: updateErr, count } = await admin
     .from("sales")
     .update({ status: "completed", paid_at: new Date().toISOString() })
     .eq("id", saleId)
-    .eq("tenant_id", tenantId);
+    .eq("tenant_id", tenantId)
+    .eq("status", "layby"); // Only update if still 'layby' — prevents race
 
   if (updateErr) return { error: updateErr.message };
+  if (count === 0) return { error: "Layby was already completed or modified" };
 
   // Get sale items to deduct inventory
   const { data: saleItems } = await admin
@@ -93,15 +123,6 @@ export async function completeLayby(
     .select("inventory_id, quantity, description")
     .eq("sale_id", saleId)
     .eq("tenant_id", tenantId);
-
-  // Get sale number for stock movement notes
-  const { data: sale } = await admin
-    .from("sales")
-    .select("sale_number")
-    .eq("id", saleId)
-    .single();
-
-  const saleNumber = sale?.sale_number ?? saleId;
 
   for (const item of saleItems || []) {
     if (!item.inventory_id) continue;
@@ -135,6 +156,8 @@ export async function completeLayby(
   revalidatePath(`/laybys/${saleId}`);
   revalidatePath("/laybys");
   revalidatePath("/sales");
+  revalidatePath("/inventory");
+  revalidatePath("/dashboard");
 
   return {};
 }

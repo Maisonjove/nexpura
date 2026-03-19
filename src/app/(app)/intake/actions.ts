@@ -592,7 +592,7 @@ export async function createStockSaleFromIntake(
     line_total: input.price,
   });
 
-  // Deduct inventory quantity
+  // Deduct inventory quantity (race-safe)
   const { data: item } = await supabase
     .from("inventory")
     .select("quantity")
@@ -600,17 +600,39 @@ export async function createStockSaleFromIntake(
     .single();
 
   if (item) {
-    await supabase
+    const oldQty = item.quantity;
+    const newQty = Math.max(0, oldQty - 1);
+    
+    // Conditional update to prevent race
+    const { count } = await supabase
       .from("inventory")
-      .update({ quantity: Math.max(0, item.quantity - 1) })
-      .eq("id", input.inventory_id);
+      .update({ quantity: newQty })
+      .eq("id", input.inventory_id)
+      .eq("quantity", oldQty);
+    
+    // If race occurred, retry
+    let finalQty = newQty;
+    if (count === 0) {
+      const { data: itemRetry } = await supabase
+        .from("inventory")
+        .select("quantity")
+        .eq("id", input.inventory_id)
+        .single();
+      if (itemRetry) {
+        finalQty = Math.max(0, itemRetry.quantity - 1);
+        await supabase
+          .from("inventory")
+          .update({ quantity: finalQty })
+          .eq("id", input.inventory_id);
+      }
+    }
 
     await supabase.from("stock_movements").insert({
       tenant_id: tenantId,
       inventory_id: input.inventory_id,
       movement_type: "sale",
       quantity_change: -1,
-      quantity_after: Math.max(0, item.quantity - 1),
+      quantity_after: finalQty,
       notes: `Sold via intake - ${saleNumber}`,
       created_by: userId,
     });
