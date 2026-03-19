@@ -232,6 +232,31 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     color: BRONZE,
   },
+  amountPaidLabel: {
+    fontSize: 9,
+    color: GREEN,
+  },
+  amountPaidValue: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: GREEN,
+  },
+  balanceDueRow: {
+    backgroundColor: "#FEF3C7",
+    borderRadius: 4,
+    padding: 6,
+    marginTop: 4,
+  },
+  balanceDueLabel: {
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: BRONZE,
+  },
+  balanceDueValue: {
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: BRONZE,
+  },
   // Paid stamp
   paidStamp: {
     backgroundColor: "#E8F5EC",
@@ -526,6 +551,18 @@ export function InvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProps) {
               <Text style={styles.grandTotalLabel}>TOTAL</Text>
               <Text style={styles.grandTotalValue}>{fmt(invoice.total)}</Text>
             </View>
+            {invoice.amount_paid > 0 && (
+              <View style={styles.totalsRow}>
+                <Text style={styles.amountPaidLabel}>Amount Paid</Text>
+                <Text style={styles.amountPaidValue}>−{fmt(invoice.amount_paid)}</Text>
+              </View>
+            )}
+            {invoice.amount_due > 0 && (
+              <View style={[styles.totalsRow, styles.balanceDueRow]}>
+                <Text style={styles.balanceDueLabel}>BALANCE DUE</Text>
+                <Text style={styles.balanceDueValue}>{fmt(invoice.amount_due)}</Text>
+              </View>
+            )}
           </View>
         </View>
 
