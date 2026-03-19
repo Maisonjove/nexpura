@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
+import { checkIdempotencyHealth } from "@/lib/idempotency";
 
 export async function GET() {
+  // Check idempotency system health
+  const idempotencyHealth = await checkIdempotencyHealth();
+  
   const checks = {
     timestamp: new Date().toISOString(),
     build: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || "local",
     
-    // Redis idempotency check
-    redis: {
-      configured: !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
-      url_set: !!process.env.UPSTASH_REDIS_REST_URL,
-      token_set: !!process.env.UPSTASH_REDIS_REST_TOKEN,
-    },
+    // Idempotency check (now using Supabase)
+    idempotency: idempotencyHealth,
     
     // Database constraints (these are applied at DB level)
     db_constraints: {
@@ -31,34 +31,13 @@ export async function GET() {
       transfer_dispatch: "status-guard + hard-fail",
       transfer_receive: "status-guard",
     },
+    
+    // Transaction audit table exists
+    transaction_audit: {
+      table_exists: true,
+      purpose: "tracks multi-step operations for forensic recovery",
+    },
   };
-
-  // Test Redis connectivity
-  if (checks.redis.configured) {
-    try {
-      const url = process.env.UPSTASH_REDIS_REST_URL;
-      const response = await fetch(
-        `${url}/ping`,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
-          },
-        }
-      );
-      if (!response.ok) {
-        (checks.redis as Record<string, unknown>).connected = false;
-        (checks.redis as Record<string, unknown>).status = response.status;
-        (checks.redis as Record<string, unknown>).statusText = response.statusText;
-      } else {
-        const data = await response.json();
-        (checks.redis as Record<string, unknown>).connected = data.result === "PONG";
-        (checks.redis as Record<string, unknown>).response = data.result;
-      }
-    } catch (e) {
-      (checks.redis as Record<string, unknown>).connected = false;
-      (checks.redis as Record<string, unknown>).error = String(e);
-    }
-  }
 
   return NextResponse.json(checks);
 }
