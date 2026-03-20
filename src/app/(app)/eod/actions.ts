@@ -7,12 +7,15 @@ async function getAuthContext() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+
   const { data: userData } = await createAdminClient()
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)
     .single();
+
   if (!userData?.tenant_id) throw new Error("No tenant found");
+
   return { supabase, admin: createAdminClient(), userId: user.id, tenantId: userData.tenant_id };
 }
 
@@ -43,10 +46,34 @@ export interface EODSummary {
 
 export async function getEODSummary(date?: string, locationId?: string | null): Promise<{ data?: EODSummary; error?: string }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+
   const { admin, tenantId } = ctx;
 
-  const targetDate = date ?? new Date().toISOString().split("T")[0];
+  // FIX: Resolve "today" in the tenant's local timezone rather than UTC.
+  // Without this, users in AEST (UTC+11) see "yesterday" during the early
+  // morning hours because UTC is still on the previous calendar day.
+  let targetDate = date;
+  if (!targetDate) {
+    try {
+      const { data: tenantData } = await admin
+        .from("tenants")
+        .select("timezone")
+        .eq("id", tenantId)
+        .single();
+      const tz = tenantData?.timezone ?? "Australia/Sydney";
+      // en-CA locale formats date as YYYY-MM-DD, matching our DB date format
+      targetDate = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+    } catch {
+      // Fallback to UTC if tenant lookup fails
+      targetDate = new Date().toISOString().split("T")[0];
+    }
+  }
+
   const startOfDay = `${targetDate}T00:00:00.000Z`;
   const endOfDay = `${targetDate}T23:59:59.999Z`;
 
@@ -58,11 +85,7 @@ export async function getEODSummary(date?: string, locationId?: string | null): 
     .gte("sale_date", startOfDay)
     .lte("sale_date", endOfDay)
     .in("status", ["paid", "completed"]);
-  
-  if (locationId) {
-    salesQuery = salesQuery.eq("location_id", locationId);
-  }
-  
+  if (locationId) { salesQuery = salesQuery.eq("location_id", locationId); }
   const { data: sales } = await salesQuery;
 
   // Fetch refunds for the day (optionally filtered by location)
@@ -73,11 +96,7 @@ export async function getEODSummary(date?: string, locationId?: string | null): 
     .gte("created_at", startOfDay)
     .lte("created_at", endOfDay)
     .eq("status", "completed");
-  
-  if (locationId) {
-    refundsQuery = refundsQuery.eq("location_id", locationId);
-  }
-  
+  if (locationId) { refundsQuery = refundsQuery.eq("location_id", locationId); }
   const { data: refunds } = await refundsQuery;
 
   // Check for existing reconciliation record (location-specific if multi-store)
@@ -86,20 +105,18 @@ export async function getEODSummary(date?: string, locationId?: string | null): 
     .select("id, cash_counted, cash_variance, opening_float, closing_float, notes, status, submitted_at, location_id")
     .eq("tenant_id", tenantId)
     .eq("reconciliation_date", targetDate);
-  
   if (locationId) {
     existingQuery = existingQuery.eq("location_id", locationId);
   } else {
     existingQuery = existingQuery.is("location_id", null);
   }
-  
   const { data: existing } = await existingQuery.maybeSingle();
 
   const salesList = sales ?? [];
   const refundsList = refunds ?? [];
 
   let totalSalesCash = 0, totalSalesCard = 0, totalSalesTransfer = 0,
-    totalSalesVoucher = 0, totalSalesLayby = 0, totalSalesMixed = 0;
+      totalSalesVoucher = 0, totalSalesLayby = 0, totalSalesMixed = 0;
 
   for (const sale of salesList) {
     const total = sale.total ?? 0;
@@ -144,7 +161,8 @@ export async function getEODSummary(date?: string, locationId?: string | null): 
     else totalRefundsCard += refund.total ?? 0;
   }
 
-  const totalRevenue = totalSalesCash + totalSalesCard + totalSalesTransfer +
+  const totalRevenue =
+    totalSalesCash + totalSalesCard + totalSalesTransfer +
     totalSalesVoucher + totalSalesLayby + totalSalesMixed -
     totalRefundsCash - totalRefundsCard;
 
@@ -181,7 +199,12 @@ export async function saveEODReconciliation(params: {
   locationId?: string | null;
 }): Promise<{ id?: string; error?: string }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+
   const { admin, userId, tenantId } = ctx;
 
   const cashVariance = params.cashCounted - params.summary.cashExpected;
@@ -244,7 +267,12 @@ export async function getPastReconciliations(): Promise<{
   error?: string;
 }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+
   const { admin, tenantId } = ctx;
 
   const { data, error } = await admin
