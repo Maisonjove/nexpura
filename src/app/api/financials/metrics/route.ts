@@ -4,10 +4,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function GET() {
   try {
     const supabase = await createClient();
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data: userData } = await supabase
+    // FIX: create admin client BEFORE querying the users table.
+    // Using the anon (RLS) client to query users triggers infinite policy
+    // recursion → 500 error → "Failed to load metrics." in the UI.
+    const admin = createAdminClient();
+
+    const { data: userData } = await admin
       .from("users")
       .select("tenant_id, tenants(gst_rate)")
       .eq("id", user.id)
@@ -19,7 +25,6 @@ export async function GET() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const gstRate: number = (userData.tenants as any)?.gst_rate ?? 0.1;
 
-    const admin = createAdminClient();
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
@@ -52,18 +57,13 @@ export async function GET() {
     const salesRevLastMonth = (lastMonthSales.data ?? []).reduce((s, r) => s + (r.total || 0), 0);
     const invoiceRevThisMonth = (thisMonthInvoices.data ?? []).reduce((s, r) => s + (r.total || 0), 0);
     const invoiceRevLastMonth = (lastMonthInvoices.data ?? []).reduce((s, r) => s + (r.total || 0), 0);
-
     const revenueThisMonth = salesRevThisMonth + invoiceRevThisMonth;
     const revenueLastMonth = salesRevLastMonth + invoiceRevLastMonth;
-
     const refundsThisMonth = (thisMonthRefunds.data ?? []).reduce((s, r) => s + (r.total || 0), 0);
     const refundCount = thisMonthRefunds.data?.length ?? 0;
-
     const outstanding = (outstandingInvoices.data ?? []).reduce((s, r) => s + (r.amount_due || 0), 0);
     const outstandingCount = outstandingInvoices.data?.length ?? 0;
-
     const gstCollected = revenueThisMonth * gstRate / (1 + gstRate);
-
     const salesAll = thisMonthSales.data ?? [];
     const avgSaleValue = salesAll.length > 0 ? salesRevThisMonth / salesAll.length : 0;
 
@@ -83,15 +83,11 @@ export async function GET() {
     }
     for (const s of dailySalesRaw.data ?? []) {
       const key = s.sale_date?.split("T")[0] ?? "";
-      if (dailyMap.has(key)) {
-        dailyMap.get(key)!.revenue += s.total || 0;
-      }
+      if (dailyMap.has(key)) { dailyMap.get(key)!.revenue += s.total || 0; }
     }
     for (const r of dailyRefundsRaw.data ?? []) {
       const key = r.created_at?.split("T")[0] ?? "";
-      if (dailyMap.has(key)) {
-        dailyMap.get(key)!.refunds += r.total || 0;
-      }
+      if (dailyMap.has(key)) { dailyMap.get(key)!.refunds += r.total || 0; }
     }
     const chartData = Array.from(dailyMap.entries()).map(([date, vals]) => ({
       date,
