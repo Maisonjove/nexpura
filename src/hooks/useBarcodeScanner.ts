@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-interface UseBarcodeSccannerOptions {
+interface UseBarcodeScannerOptions {
   onScan: (barcode: string) => void;
   minLength?: number;
   maxIntervalMs?: number;
@@ -18,7 +18,7 @@ export function useBarcodeScanner({
   minLength = 6,
   maxIntervalMs = 300,
   enabled = true,
-}: UseBarcodeSccannerOptions) {
+}: UseBarcodeScannerOptions) {
   const bufferRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastKeyTimeRef = useRef<number>(0);
@@ -79,6 +79,7 @@ export function useBarcodeScanner({
 
   useEffect(() => {
     if (!enabled) return;
+
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
