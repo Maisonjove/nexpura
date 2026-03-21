@@ -23,8 +23,11 @@ export async function GET(
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  // Use admin client to avoid RLS recursion on users table
+  const adminClient = createAdminClient();
+
   // Get user's tenant
-  const { data: userData } = await supabase
+  const { data: userData } = await adminClient
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)
@@ -33,9 +36,6 @@ export async function GET(
   if (!userData?.tenant_id) {
     return new NextResponse("Forbidden", { status: 403 });
   }
-
-  // Use admin client for data fetch to bypass RLS
-  const adminClient = createAdminClient();
 
   // Fetch invoice — validate ownership via tenant_id filter
   const { data: invoice, error: invoiceError } = await adminClient
@@ -163,7 +163,13 @@ export async function GET(
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const buffer = await renderToBuffer(element as unknown as ReactElement<DocumentProps, JSXElementConstructor<DocumentProps>>);
+  let buffer: Buffer;
+  try {
+    buffer = await renderToBuffer(element as unknown as ReactElement<DocumentProps, JSXElementConstructor<DocumentProps>>);
+  } catch (err) {
+    console.error('[invoice/pdf] renderToBuffer failed:', err);
+    return new NextResponse("Failed to generate PDF", { status: 500 });
+  }
 
   const suffix = format === "thermal" ? "-thermal" : "";
   const filename = `${invoice.invoice_number.replace(/\//g, "-")}${suffix}.pdf`;
