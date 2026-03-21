@@ -19,6 +19,7 @@ export async function saveBusinessProfile(tenantId: string, formData: FormData) 
       state: formData.get("state") as string || null,
       postcode: formData.get("postcode") as string || null,
       country: formData.get("country") as string || null,
+      invoice_accent_color: formData.get("invoice_accent_color") as string || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", tenantId);
