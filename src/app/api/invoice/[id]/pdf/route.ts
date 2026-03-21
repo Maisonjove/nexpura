@@ -149,6 +149,7 @@ export async function GET(
         bank_bsb: tenant.bank_bsb ?? null,
         bank_account: tenant.bank_account ?? null,
         invoice_footer: tenant.invoice_footer ?? null,
+      invoice_accent_color: tenant.invoice_accent_color ?? null,
       }
     : null;
 
