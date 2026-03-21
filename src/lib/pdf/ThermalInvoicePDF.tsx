@@ -174,7 +174,7 @@ export function ThermalInvoicePDF({ invoice, lineItems, tenant, paperWidth }: Th
   return (
     <Document>
       <Page
-        size={{ width: PAGE_WIDTH, height: "auto" as unknown as number }}
+        size={{ width: PAGE_WIDTH, height: 2000 }}
         style={styles.page}
       >
         {/* 1. Business name */}
