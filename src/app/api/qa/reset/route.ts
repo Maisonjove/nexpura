@@ -1,0 +1,65 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+// POST /api/qa/reset - Reset all or category test results
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { categoryId } = body;
+
+    const adminClient = createAdminClient();
+
+    if (categoryId) {
+      // Reset only items in specific category
+      const { data: items } = await adminClient
+        .from("qa_checklist_items")
+        .select("id")
+        .eq("category_id", categoryId);
+
+      if (items && items.length > 0) {
+        const itemIds = items.map(i => i.id);
+        
+        const { error } = await adminClient
+          .from("qa_test_results")
+          .update({
+            status: "pending",
+            notes: null,
+            screenshot_url: null,
+            tester_name: null,
+            tester_email: null,
+            tested_at: null,
+            updated_at: new Date().toISOString(),
+          })
+          .in("checklist_item_id", itemIds);
+
+        if (error) throw error;
+      }
+    } else {
+      // Reset all
+      const { error } = await adminClient
+        .from("qa_test_results")
+        .update({
+          status: "pending",
+          notes: null,
+          screenshot_url: null,
+          tester_name: null,
+          tester_email: null,
+          tested_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .neq("id", "00000000-0000-0000-0000-000000000000"); // Match all
+
+      if (error) throw error;
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("QA reset error:", error);
+    return NextResponse.json(
+      { error: "Failed to reset test results" },
+      { status: 500 }
+    );
+  }
+}
