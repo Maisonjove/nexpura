@@ -172,7 +172,6 @@ export function ThermalInvoicePDF({ invoice, lineItems, tenant, paperWidth }: Th
 
   const hasBankDetails = !!(tenant?.bank_bsb || tenant?.bank_account);
 
-  const accentColor = tenant?.invoice_accent_color || '#1e3a5f';
   return (
     <Document>
       <Page
