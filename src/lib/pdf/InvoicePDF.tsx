@@ -15,7 +15,7 @@ const PLATINUM = "#E5E2DE";
 const MUTED = "#888";
 const GREEN = "#2D7A4A";
 
-const styles = StyleSheet.create({
+const getStyles = (accentColor: string) => StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     backgroundColor: "#FFFFFF",
@@ -424,7 +424,8 @@ export function InvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProps) {
     .join(", ");
 
   const footerText = invoice.footer_text || tenant?.invoice_footer || null;
-  const accentColor = tenant?.invoice_accent_color || accentColor;
+  const accentColor = tenant?.invoice_accent_color || BRONZE;
+  const styles = getStyles(accentColor);
 
   return (
     <Document>
