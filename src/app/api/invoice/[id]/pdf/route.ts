@@ -76,7 +76,7 @@ export async function GET(
   const { data: tenant } = await adminClient
     .from("tenants")
     .select(
-      "name, business_name, abn, logo_url, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer, tax_name, tax_rate, tax_inclusive"
+      "name, business_name, abn, logo_url, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer, invoice_accent_color, tax_name, tax_rate, tax_inclusive"
     )
     .eq("id", userData.tenant_id)
     .single();
