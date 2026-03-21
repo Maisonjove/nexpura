@@ -42,6 +42,7 @@ type Tenant = {
   bank_bsb: string | null;
   bank_account: string | null;
   invoice_footer: string | null;
+  invoice_accent_color: string | null;
 };
 
 type User = {
@@ -401,6 +402,25 @@ export default function SettingsPage() {
                     <option value="Canada">Canada</option>
                   </select>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Invoice Customization */}
+          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-stone-900">Invoice Customization</h2>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">
+                Accent Colour
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  name="invoice_accent_color"
+                  defaultValue={tenant?.invoice_accent_color || '#1e3a5f'}
+                  className="w-10 h-10 rounded cursor-pointer border border-stone-200"
+                />
+                <span className="text-xs text-stone-500">Used on invoice titles and totals</span>
               </div>
             </div>
           </div>
