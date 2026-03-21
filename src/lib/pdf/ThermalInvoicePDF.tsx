@@ -5,6 +5,7 @@ import {
   Text,
   View,
   StyleSheet,
+  Image,
 } from "@react-pdf/renderer";
 import type { InvoicePDFProps } from "./InvoicePDF";
 
@@ -171,6 +172,7 @@ export function ThermalInvoicePDF({ invoice, lineItems, tenant, paperWidth }: Th
 
   const hasBankDetails = !!(tenant?.bank_bsb || tenant?.bank_account);
 
+  const accentColor = tenant?.invoice_accent_color || '#1e3a5f';
   return (
     <Document>
       <Page
@@ -178,6 +180,12 @@ export function ThermalInvoicePDF({ invoice, lineItems, tenant, paperWidth }: Th
         style={styles.page}
       >
         {/* 1. Business name */}
+        {tenant?.logo_url && (
+                  <Image
+                    src={tenant.logo_url}
+                    style={{ width: 120, height: 48, objectFit: 'contain', alignSelf: 'center', marginBottom: 4 }}
+                  />
+                )}
         <Text style={styles.businessName}>{businessName}</Text>
 
         {/* 2. ABN / address / phone / email */}
