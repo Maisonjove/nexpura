@@ -43,6 +43,7 @@ interface ExistingInvoice {
   notes: string | null;
   footer_text: string | null;
   status: string;
+  layout: string | null;
   line_items: {
     id: string;
     description: string;
@@ -132,6 +133,9 @@ export default function InvoiceForm({
     if (tenantSettings.bank_account) parts.push(`Account: ${tenantSettings.bank_account}`);
     return parts.join("\n");
   });
+  const [layout, setLayout] = useState<'classic' | 'modern' | 'minimal'>(
+    (existing?.layout as 'classic' | 'modern' | 'minimal') || 'classic'
+  );
 
   const [lineItems, setLineItems] = useState<LineItemRow[]>(() => {
     if (existing?.line_items?.length) {
@@ -251,6 +255,7 @@ export default function InvoiceForm({
           inventory_id: li.inventory_id,
         })) as LineItemInput[],
       status,
+      layout,
     };
 
     startTransition(async () => {
@@ -651,6 +656,104 @@ export default function InvoiceForm({
           </div>
         </div>
       </div>
+
+      {/* PDF Layout */}
+      {!isSentEdit && (
+        <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6 space-y-4">
+          <h2 className="text-base font-semibold text-stone-900">PDF Layout</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {(
+              [
+                { value: "classic", label: "Classic", desc: "Logo left · accent header · shaded rows" },
+                { value: "modern",  label: "Modern",  desc: "Dark header band · bold accent accents" },
+                { value: "minimal", label: "Minimal", desc: "Editorial · spacious · no fills" },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setLayout(opt.value)}
+                className={`relative p-3 rounded-lg border-2 text-left transition-all ${
+                  layout === opt.value
+                    ? "border-amber-600 bg-amber-50"
+                    : "border-stone-200 hover:border-stone-300"
+                }`}
+              >
+                {/* Mini preview */}
+                <div className="mb-2.5 rounded overflow-hidden border border-stone-100 bg-white h-16">
+                  {opt.value === "classic" && (
+                    <div className="h-full p-1.5">
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="space-y-0.5">
+                          <div className="w-6 h-1 bg-stone-400 rounded" />
+                          <div className="w-10 h-0.5 bg-stone-200 rounded" />
+                        </div>
+                        <div className="space-y-0.5 items-end flex flex-col">
+                          <div className="w-8 h-1.5 bg-amber-600 rounded" />
+                          <div className="w-5 h-0.5 bg-stone-300 rounded" />
+                        </div>
+                      </div>
+                      <div className="h-px bg-amber-600 rounded mb-1" />
+                      <div className="space-y-0.5">
+                        <div className="w-full h-0.5 bg-stone-200 rounded" />
+                        <div className="w-full h-0.5 bg-stone-100 rounded" />
+                        <div className="w-3/4 h-0.5 bg-stone-200 rounded" />
+                      </div>
+                    </div>
+                  )}
+                  {opt.value === "modern" && (
+                    <div className="h-full">
+                      <div className="bg-stone-800 px-1.5 py-1.5 flex justify-between items-center">
+                        <div className="space-y-0.5">
+                          <div className="w-8 h-1 bg-white rounded opacity-80" />
+                          <div className="w-5 h-0.5 bg-stone-500 rounded" />
+                        </div>
+                        <div className="space-y-0.5 items-end flex flex-col">
+                          <div className="w-6 h-1.5 bg-amber-500 rounded" />
+                          <div className="w-4 h-0.5 bg-stone-500 rounded" />
+                        </div>
+                      </div>
+                      <div className="p-1.5 space-y-0.5">
+                        <div className="w-full h-0.5 bg-stone-200 rounded" />
+                        <div className="w-full h-0.5 bg-stone-100 rounded" />
+                        <div className="w-3/4 h-0.5 bg-stone-200 rounded" />
+                      </div>
+                    </div>
+                  )}
+                  {opt.value === "minimal" && (
+                    <div className="h-full p-1.5">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="space-y-0.5">
+                          <div className="w-8 h-0.5 bg-stone-300 rounded" />
+                          <div className="w-5 h-0.5 bg-stone-200 rounded" />
+                        </div>
+                        <div className="space-y-1 items-end flex flex-col">
+                          <div className="w-4 h-0.5 bg-amber-500 rounded" />
+                          <div className="w-10 h-1.5 bg-stone-800 rounded" />
+                        </div>
+                      </div>
+                      <div className="h-px bg-stone-200 mb-1" />
+                      <div className="space-y-0.5">
+                        <div className="w-full h-0.5 bg-stone-100 rounded" />
+                        <div className="w-3/4 h-0.5 bg-stone-100 rounded" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs font-semibold text-stone-900">{opt.label}</p>
+                <p className="text-[10px] text-stone-400 leading-tight mt-0.5">{opt.desc}</p>
+                {layout === opt.value && (
+                  <div className="absolute top-2 right-2 w-4 h-4 bg-amber-600 rounded-full flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       {!isSentEdit && (
