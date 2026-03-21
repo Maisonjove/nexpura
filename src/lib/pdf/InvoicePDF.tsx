@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   invoiceTitle: {
     fontSize: 24,
     fontFamily: "Helvetica-Bold",
-    color: BRONZE,
+    color: accentColor,
     letterSpacing: 1,
     marginBottom: 4,
   },
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   },
   dividerBronze: {
     height: 1.5,
-    backgroundColor: BRONZE,
+    backgroundColor: accentColor,
     marginBottom: 16,
     marginTop: 0,
   },
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   grandTotalValue: {
     fontSize: 12,
     fontFamily: "Helvetica-Bold",
-    color: BRONZE,
+    color: accentColor,
   },
   amountPaidLabel: {
     fontSize: 9,
@@ -250,12 +250,12 @@ const styles = StyleSheet.create({
   balanceDueLabel: {
     fontSize: 11,
     fontFamily: "Helvetica-Bold",
-    color: BRONZE,
+    color: accentColor,
   },
   balanceDueValue: {
     fontSize: 11,
     fontFamily: "Helvetica-Bold",
-    color: BRONZE,
+    color: accentColor,
   },
   // Paid stamp
   paidStamp: {
@@ -396,6 +396,7 @@ export interface InvoicePDFProps {
     business_name: string | null;
     abn: string | null;
     logo_url: string | null;
+    invoice_accent_color: string | null;
     phone: string | null;
     email: string | null;
     address_line1: string | null;
@@ -423,6 +424,7 @@ export function InvoicePDF({ invoice, lineItems, tenant }: InvoicePDFProps) {
     .join(", ");
 
   const footerText = invoice.footer_text || tenant?.invoice_footer || null;
+  const accentColor = tenant?.invoice_accent_color || accentColor;
 
   return (
     <Document>
