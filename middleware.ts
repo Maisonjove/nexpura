@@ -4,13 +4,14 @@ import { createServerClient } from "@supabase/ssr";
 import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// ── Review / staff bypass tokens ──────────────────────────────────────────
-// Set REVIEW_BYPASS_TOKEN and STAFF_BYPASS_TOKEN in your .env.local and Vercel env settings.
-// The fallback strings below are for local dev only — remove them before going to production.
-const REVIEW_TOKEN = process.env.REVIEW_BYPASS_TOKEN ?? "nexpura-review-2026";
-const STAFF_TOKEN = process.env.STAFF_BYPASS_TOKEN ?? "nexpura-staff-2026";
+// ── Review / staff bypass tokens ─────────────────────────────────────────
+// SECURITY: No hardcoded fallback. Both tokens MUST be set as env vars.
+// If they are not set the bypass feature is simply disabled — no one can
+// accidentally bypass subscription gates using a publicly-visible string.
+// Set REVIEW_BYPASS_TOKEN and STAFF_BYPASS_TOKEN in Vercel / .env.local.
+const REVIEW_TOKEN = process.env.REVIEW_BYPASS_TOKEN ?? "";
+const STAFF_TOKEN  = process.env.STAFF_BYPASS_TOKEN  ?? "";
 
-// Timeout wrapper to prevent middleware from hanging when Supabase is slow
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("MIDDLEWARE_TIMEOUT")), ms)
@@ -19,42 +20,42 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 // ── Shared subscription check ─────────────────────────────────────────────
-// Extracted so both the subdomain path and the standard path share one implementation.
 async function checkSubscriptionAndRedirect(
   req: NextRequest,
   response: NextResponse
 ): Promise<NextResponse> {
   try {
+    // Auth check — use SSR client so session cookies are honoured
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() {
-            return req.cookies.getAll();
-          },
+          getAll() { return req.cookies.getAll(); },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              req.cookies.set(name, value)
-            );
+            cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
           },
         },
       }
     );
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return response;
 
-    const { data: userData } = await supabase
+    // SECURITY FIX: use admin client for users table lookup.
+    // The anon/RLS client causes infinite policy recursion on the users table,
+    // adding 1-2 s of latency to every single page request (it fires on every
+    // non-exempt path). Switch to the service-role client to avoid this.
+    const admin = createAdminClient();
+    const { data: userData } = await admin
       .from("users")
       .select("tenant_id")
       .eq("id", user.id)
       .single();
+
     if (!userData?.tenant_id) return response;
 
-    const { data: subscription } = await supabase
+    const { data: subscription } = await admin
       .from("subscriptions")
       .select("status")
       .eq("tenant_id", userData.tenant_id)
@@ -74,7 +75,6 @@ async function checkSubscriptionAndRedirect(
   return response;
 }
 
-// ── Helper: is this path exempt from subscription checks? ────────────────
 function isExemptPath(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -94,25 +94,23 @@ function isExemptPath(pathname: string): boolean {
   );
 }
 
-// ── Helper: is this a review/staff bypass request? ────────────────────────
 function isBypassRequest(req: NextRequest): boolean {
+  // If env vars are not set, bypass is completely disabled (tokens are empty strings)
+  if (!REVIEW_TOKEN && !STAFF_TOKEN) return false;
   const rtParam = req.nextUrl.searchParams.get("rt");
   const reviewCookie = req.cookies.get("nexpura-review")?.value;
-  const staffCookie = req.cookies.get("nexpura-staff")?.value;
+  const staffCookie  = req.cookies.get("nexpura-staff")?.value;
   return (
-    rtParam === REVIEW_TOKEN ||
-    reviewCookie === REVIEW_TOKEN ||
-    rtParam === STAFF_TOKEN ||
-    staffCookie === STAFF_TOKEN
-  );
+    (REVIEW_TOKEN && (rtParam === REVIEW_TOKEN || reviewCookie === REVIEW_TOKEN)) ||
+    (STAFF_TOKEN  && (rtParam === STAFF_TOKEN  || staffCookie  === STAFF_TOKEN))
+  ) as boolean;
 }
 
 export async function middleware(request: NextRequest) {
   try {
     return await withTimeout(_proxyInner(request), 5000);
   } catch (err) {
-    const isTimeout =
-      err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
+    const isTimeout = err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
     if (!isTimeout) {
       console.error("[middleware] unexpected error — passing through:", err);
     }
@@ -121,7 +119,6 @@ export async function middleware(request: NextRequest) {
 }
 
 async function _proxyInner(request: NextRequest) {
-  // ── Subdomain tenant routing: acme.nexpura.com → inject x-subdomain-tenant-id ──
   const host = request.headers.get("host") ?? "";
   const subdomain = getSubdomain(host);
 
@@ -132,16 +129,13 @@ async function _proxyInner(request: NextRequest) {
         const subdomainHeaders = new Headers(request.headers);
         subdomainHeaders.set("x-subdomain-tenant-id", tenantId);
         subdomainHeaders.set("x-subdomain-slug", subdomain);
-
         const enrichedRequest = new NextRequest(request.url, {
           headers: subdomainHeaders,
           method: request.method,
           body: request.body,
         });
-
         const response = await updateSession(enrichedRequest);
         const pathname = enrichedRequest.nextUrl.pathname;
-
         if (isBypassRequest(enrichedRequest)) return response;
         if (isExemptPath(pathname)) return response;
         return await checkSubscriptionAndRedirect(enrichedRequest, response);
@@ -151,13 +145,10 @@ async function _proxyInner(request: NextRequest) {
     }
   }
 
-  // ── Standard (non-subdomain) path ────────────────────────────────────────
   const response = await updateSession(request);
   const pathname = request.nextUrl.pathname;
-
   if (isBypassRequest(request)) return response;
   if (isExemptPath(pathname)) return response;
-
   return await checkSubscriptionAndRedirect(request, response);
 }
 
