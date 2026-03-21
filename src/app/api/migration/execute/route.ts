@@ -2,46 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
-  parseCSVFull,
-  parseXLSXFull,
-  applyMappings,
-  buildDefaultMappings,
-  importCustomer,
-  importInventory,
-  importRepair,
-  importBespokeJob,
-  importSupplier,
-  importInvoice,
-  importPayment,
+  parseCSVFull, parseXLSXFull, applyMappings, buildDefaultMappings,
+  importCustomer, importInventory, importRepair, importBespokeJob,
+  importSupplier, importInvoice, importPayment,
   findDuplicateCustomer,
-  CUSTOMER_DEFAULT_MAPPINGS,
-  INVENTORY_DEFAULT_MAPPINGS,
-  REPAIR_DEFAULT_MAPPINGS,
-  BESPOKE_DEFAULT_MAPPINGS,
-  SUPPLIER_DEFAULT_MAPPINGS,
-  INVOICE_DEFAULT_MAPPINGS,
-  PAYMENT_DEFAULT_MAPPINGS,
-  type ImportContext,
-  type ImportRow,
-  type MappingEntry,
+  CUSTOMER_DEFAULT_MAPPINGS, INVENTORY_DEFAULT_MAPPINGS,
+  REPAIR_DEFAULT_MAPPINGS, BESPOKE_DEFAULT_MAPPINGS,
+  SUPPLIER_DEFAULT_MAPPINGS, INVOICE_DEFAULT_MAPPINGS, PAYMENT_DEFAULT_MAPPINGS,
+  type ImportContext, type ImportRow, type MappingEntry,
 } from '@/lib/migration/engine';
 
 export const runtime = 'nodejs';
-// Allow up to 5 minutes for large imports
 export const maxDuration = 300;
 
 type EntityType = 'customers' | 'inventory' | 'repairs' | 'bespoke' | 'suppliers' | 'invoices' | 'payments' | 'unknown';
 
-// Dependency-aware order:
-// 1. customers — import first, build email→id map
-// 2. suppliers — independent
-// 3. inventory — independent
-// 4. repairs — link to customers
-// 5. bespoke — link to customers
-// 6. invoices — link to customers, build invoiceNumber→id map
-// 7. payments — link to invoices (MUST run after invoices)
 const ENTITY_ORDER: EntityType[] = ['customers', 'suppliers', 'inventory', 'repairs', 'bespoke', 'invoices', 'payments'];
-
 function entitySortKey(e: EntityType): number {
   const idx = ENTITY_ORDER.indexOf(e);
   return idx === -1 ? 99 : idx;
@@ -86,7 +62,6 @@ async function parseFileFromStorage(
 ): Promise<Array<Record<string, unknown>>> {
   const bytes = await downloadFile(admin, file.storage_path);
   if (!bytes) return [];
-
   const name = file.original_name.toLowerCase();
   if (name.endsWith('.csv')) {
     const text = new TextDecoder('utf-8').decode(bytes);
@@ -100,14 +75,10 @@ async function parseFileFromStorage(
 }
 
 function getMappingsForFile(file: MigrationFile): MappingEntry[] {
-  // If we have stored AI mappings, use them
   const storedMappings = file.migration_mappings?.[0]?.mappings;
   if (storedMappings && storedMappings.length > 0) return storedMappings;
-
-  // Fall back to default pattern matching
   const headers = file.column_headers ?? [];
   const entity = (file.detected_entity ?? 'unknown') as EntityType;
-
   if (entity === 'customers') return buildDefaultMappings(headers, CUSTOMER_DEFAULT_MAPPINGS);
   if (entity === 'inventory') return buildDefaultMappings(headers, INVENTORY_DEFAULT_MAPPINGS);
   if (entity === 'repairs') return buildDefaultMappings(headers, REPAIR_DEFAULT_MAPPINGS);
@@ -115,38 +86,47 @@ function getMappingsForFile(file: MigrationFile): MappingEntry[] {
   if (entity === 'suppliers') return buildDefaultMappings(headers, SUPPLIER_DEFAULT_MAPPINGS);
   if (entity === 'invoices') return buildDefaultMappings(headers, INVOICE_DEFAULT_MAPPINGS);
   if (entity === 'payments') return buildDefaultMappings(headers, PAYMENT_DEFAULT_MAPPINGS);
-
   return [];
 }
 
 export async function POST(req: NextRequest) {
   const admin = createAdminClient();
-
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { data: profile } = await supabase
+    // SECURITY: use admin client — anon client triggers RLS recursion on users
+    // table, which can return null and leave tenantId undefined, causing all
+    // subsequent inserts to run without a tenant_id.
+    const { data: profile } = await admin
       .from('users')
       .select('tenant_id')
       .eq('id', user.id)
       .single();
 
     const tenantId = (profile as { tenant_id: string } | null)?.tenant_id;
+
+    // Hard-fail if tenant cannot be resolved — never proceed with undefined tenantId
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 403 });
+    }
+
     const { sessionId } = await req.json() as { sessionId: string };
 
-    // Get session
+    // SECURITY: enforce tenant ownership on session lookup.
+    // Without .eq('tenant_id', tenantId), an authenticated user from Tenant A
+    // could supply Tenant B's sessionId and read/execute their migration files.
     const { data: sessionData } = await admin
       .from('migration_sessions')
       .select('*')
       .eq('id', sessionId)
+      .eq('tenant_id', tenantId)
       .single();
 
     const session = sessionData as MigrationSession | null;
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
 
-    // Get files with their stored mappings
     const { data: rawFiles } = await admin
       .from('migration_files')
       .select('*, migration_mappings(*)')
@@ -154,15 +134,11 @@ export async function POST(req: NextRequest) {
       .in('status', ['classified', 'ready', 'pending']);
 
     const files = (rawFiles ?? []) as MigrationFile[];
-
-    // Sort by entity import order (dependency-aware)
     const sortedFiles = [...files].sort((a, b) =>
       entitySortKey(a.detected_entity ?? 'unknown') - entitySortKey(b.detected_entity ?? 'unknown')
     );
-
     const totalRecords = sortedFiles.reduce((sum, f) => sum + (f.row_count || 0), 0);
 
-    // Create migration job record
     const { data: jobData, error: jobError } = await admin
       .from('migration_jobs')
       .insert({
@@ -183,7 +159,6 @@ export async function POST(req: NextRequest) {
     if (jobError) throw jobError;
     const job = jobData as { id: string };
 
-    // Log start
     await admin.from('migration_logs').insert({
       tenant_id: tenantId,
       session_id: sessionId,
@@ -194,32 +169,18 @@ export async function POST(req: NextRequest) {
     });
 
     const dataScope = session.data_scope ?? 'active_and_recent';
-    let processed = 0;
-    let success = 0;
-    let warnings = 0;
-    let errors = 0;
-    let skipped = 0;
-    let duplicates = 0;
-
+    let processed = 0, success = 0, warnings = 0, errors = 0, skipped = 0, duplicates = 0;
     const byEntity: Record<string, { success: number; error: number; skipped: number; duplicate: number }> = {};
-
-    // ─── Cross-file state for linking ─────────────────────────────────────────
-    // email → customerId (populated during customer import, used by repairs/bespoke/invoices)
     const emailToCustomerId = new Map<string, string>();
-    // invoiceNumber → invoiceId (populated during invoice import, used by payments)
     const invoiceNumberToId = new Map<string, string>();
-
-    // ─── Process each file in dependency order ────────────────────────────────
 
     for (const file of sortedFiles) {
       const entity = (file.detected_entity ?? 'unknown') as EntityType;
       if (!byEntity[entity]) byEntity[entity] = { success: 0, error: 0, skipped: 0, duplicate: 0 };
-
       const mappings = getMappingsForFile(file);
       const rows = await parseFileFromStorage(admin, file);
-
       const ctx: ImportContext = {
-        tenantId: tenantId!,
+        tenantId: tenantId,
         jobId: job.id,
         sessionId,
         sourcePlatform: session.source_platform,
@@ -235,7 +196,6 @@ export async function POST(req: NextRequest) {
         const sourceRow = rows[i];
         const rowNum = i + 1;
         const mappedData = applyMappings(sourceRow, mappings);
-
         const importRow: ImportRow = {
           sourceRowNumber: rowNum,
           sourceData: sourceRow,
@@ -249,7 +209,6 @@ export async function POST(req: NextRequest) {
 
         if (entity === 'customers') {
           result = await importCustomer(admin, ctx, importRow, mappedData);
-          // Populate email→customerId map
           if ((result.status === 'success' || result.status === 'duplicate') && result.recordId) {
             const email = String(mappedData.email || '').toLowerCase();
             if (email) emailToCustomerId.set(email, result.recordId);
@@ -264,7 +223,7 @@ export async function POST(req: NextRequest) {
           if (email && emailToCustomerId.has(email)) {
             customerId = emailToCustomerId.get(email);
           } else if (mappedData.customer_email || mappedData.customer_name) {
-            const found = await findDuplicateCustomer(admin, tenantId!, {
+            const found = await findDuplicateCustomer(admin, tenantId, {
               email: mappedData.customer_email as string | undefined,
               full_name: mappedData.customer_name as string | undefined,
             });
@@ -278,7 +237,7 @@ export async function POST(req: NextRequest) {
           if (email && emailToCustomerId.has(email)) {
             customerId = emailToCustomerId.get(email);
           } else if (mappedData.customer_email || mappedData.customer_name) {
-            const found = await findDuplicateCustomer(admin, tenantId!, {
+            const found = await findDuplicateCustomer(admin, tenantId, {
               email: mappedData.customer_email as string | undefined,
               full_name: mappedData.customer_name as string | undefined,
             });
@@ -292,7 +251,7 @@ export async function POST(req: NextRequest) {
           if (email && emailToCustomerId.has(email)) {
             customerId = emailToCustomerId.get(email);
           } else if (mappedData.customer_email || mappedData.customer_name) {
-            const found = await findDuplicateCustomer(admin, tenantId!, {
+            const found = await findDuplicateCustomer(admin, tenantId, {
               email: mappedData.customer_email as string | undefined,
               full_name: mappedData.customer_name as string | undefined,
             });
@@ -300,23 +259,20 @@ export async function POST(req: NextRequest) {
             if (customerId && email) emailToCustomerId.set(email, customerId);
           }
           result = await importInvoice(admin, ctx, importRow, mappedData, customerId);
-          // Populate invoiceNumber→invoiceId map for payments
           if ((result.status === 'success' || result.status === 'duplicate') && result.recordId) {
             const invNum = result.invoiceNumber || String(mappedData.invoice_number || '');
             if (invNum) invoiceNumberToId.set(invNum, result.recordId);
           }
         } else if (entity === 'payments') {
-          // Resolve invoice by invoice_number
           let invoiceId: string | undefined;
           const invNum = String(mappedData.invoice_number || '');
           if (invNum && invoiceNumberToId.has(invNum)) {
             invoiceId = invoiceNumberToId.get(invNum);
           } else if (invNum) {
-            // Fallback: DB lookup
             const { data: invRow } = await admin
               .from('invoices')
               .select('id')
-              .eq('tenant_id', tenantId!)
+              .eq('tenant_id', tenantId)
               .eq('invoice_number', invNum)
               .maybeSingle();
             if (invRow) {
@@ -335,14 +291,14 @@ export async function POST(req: NextRequest) {
         else if (result.status === 'error') { errors++; byEntity[entity].error++; }
         else if (result.status === 'skipped') { skipped++; byEntity[entity].skipped++; }
 
-        const destinationTable =
-          entity === 'customers' ? 'customers' :
-          entity === 'inventory' ? 'inventory' :
-          entity === 'repairs' ? 'repairs' :
-          entity === 'bespoke' ? 'bespoke_jobs' :
-          entity === 'suppliers' ? 'suppliers' :
-          entity === 'invoices' ? 'invoices' :
-          entity === 'payments' ? 'payments' : null;
+        const destinationTable = entity === 'customers' ? 'customers'
+          : entity === 'inventory' ? 'inventory'
+          : entity === 'repairs' ? 'repairs'
+          : entity === 'bespoke' ? 'bespoke_jobs'
+          : entity === 'suppliers' ? 'suppliers'
+          : entity === 'invoices' ? 'invoices'
+          : entity === 'payments' ? 'payments'
+          : null;
 
         jobRecords.push({
           tenant_id: tenantId,
@@ -360,10 +316,8 @@ export async function POST(req: NextRequest) {
           source_data: { ...sourceRow, _mapped: mappedData },
         });
 
-        // Flush job records in batches
         if (jobRecords.length >= BATCH_SIZE) {
           await admin.from('migration_job_records').insert(jobRecords.splice(0, BATCH_SIZE));
-          // Update progress
           await admin.from('migration_jobs').update({
             processed_records: processed,
             success_count: success,
@@ -373,17 +327,16 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Flush remaining records
       if (jobRecords.length > 0) {
         await admin.from('migration_job_records').insert(jobRecords);
       }
-
-      // Mark file as imported
       await admin.from('migration_files').update({ status: 'imported' }).eq('id', file.id);
     }
 
-    // Final job update
-    const finalStatus = errors > 0 && success === 0 ? 'failed' : errors > 0 ? 'complete_with_errors' : 'complete';
+    const finalStatus = errors > 0 && success === 0 ? 'failed'
+      : errors > 0 ? 'complete_with_errors'
+      : 'complete';
+
     await admin.from('migration_jobs').update({
       status: finalStatus,
       processed_records: processed,
@@ -402,27 +355,18 @@ export async function POST(req: NextRequest) {
       },
     }).eq('id', job.id);
 
-    // Update session
     await admin.from('migration_sessions').update({
       status: 'complete',
       updated_at: new Date().toISOString(),
     }).eq('id', sessionId);
 
-    // Log completion
     await admin.from('migration_logs').insert({
       tenant_id: tenantId,
       session_id: sessionId,
       job_id: job.id,
       actor_id: user.id,
       action: 'job_complete',
-      details: {
-        success_count: success,
-        warning_count: warnings,
-        error_count: errors,
-        skipped_count: skipped,
-        duplicate_count: duplicates,
-        by_entity: byEntity,
-      },
+      details: { success_count: success, warning_count: warnings, error_count: errors, skipped_count: skipped, duplicate_count: duplicates, by_entity: byEntity },
     });
 
     return NextResponse.json({
@@ -430,7 +374,6 @@ export async function POST(req: NextRequest) {
       success: true,
       summary: { processed, success, errors, skipped, duplicates, byEntity },
     });
-
   } catch (err: unknown) {
     console.error('Execute error:', err);
     return NextResponse.json(
