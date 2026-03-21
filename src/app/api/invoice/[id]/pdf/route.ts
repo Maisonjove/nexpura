@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
-import { InvoicePDF } from "@/lib/pdf/InvoicePDF";
+import { InvoicePDF, type InvoiceLayout } from "@/lib/pdf/InvoicePDF";
 import { ThermalInvoicePDF } from "@/lib/pdf/ThermalInvoicePDF";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 
@@ -44,6 +44,7 @@ export async function GET(
       `id, invoice_number, status, invoice_date, due_date,
        subtotal, tax_amount, discount_amount, total, paid_at, amount_paid,
        tax_name, tax_rate, tax_inclusive, notes, footer_text,
+        layout,
        customers(full_name, email, phone, address)`
     )
     .eq("id", id)
@@ -114,6 +115,7 @@ export async function GET(
     tax_inclusive: invoice.tax_inclusive ?? true,
     notes: invoice.notes ?? null,
     footer_text: invoice.footer_text ?? null,
+    layout: (invoice.layout as string) ?? 'classic',
     customers: customerRaw
       ? {
           full_name: customerRaw.full_name ?? null,
@@ -157,7 +159,7 @@ export async function GET(
   const Component = format === "thermal" ? ThermalInvoicePDF : InvoicePDF;
   const props = format === "thermal" 
     ? { invoice: invoiceData, lineItems, tenant: tenantData, paperWidth }
-    : { invoice: invoiceData, lineItems, tenant: tenantData };
+    : { invoice: invoiceData, lineItems, tenant: tenantData, layout: (invoiceData.layout as InvoiceLayout) || "classic" };
   const element = React.createElement(Component, {
     ...props,
     tenant: tenantData,
