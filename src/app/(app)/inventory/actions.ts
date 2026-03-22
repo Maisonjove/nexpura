@@ -671,7 +671,6 @@ export async function listOnWebsite(itemId: string): Promise<{ success?: boolean
   
   if (error) return { error: error.message };
   
-  // TODO: Sync to external platform (Shopify/WooCommerce) if applicable
   
   revalidatePath("/inventory");
   revalidatePath(`/inventory/${itemId}`);
