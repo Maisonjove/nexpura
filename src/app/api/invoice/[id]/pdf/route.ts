@@ -169,9 +169,8 @@ export async function GET(
   try {
     buffer = await renderToBuffer(element as unknown as ReactElement<DocumentProps, JSXElementConstructor<DocumentProps>>);
   } catch (err) {
-    const errMsg = err instanceof Error ? err.message + ' | ' + (err.stack?.split('\n')[1] ?? '') : String(err);
     console.error('[invoice/pdf] renderToBuffer failed:', err);
-    return new NextResponse("PDF Error: " + errMsg, { status: 500 });
+    return new NextResponse("Failed to generate PDF", { status: 500 });
   }
 
   const suffix = format === "thermal" ? "-thermal" : "";
