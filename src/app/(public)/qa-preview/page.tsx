@@ -161,6 +161,7 @@ export default async function QAPreviewPage() {
     })
     .map(item => ({
       ...item,
+      priority: item.priority as "critical" | "high" | "medium" | "low",
       categoryName: categories.find(c => c.id === item.category_id)?.name,
       result: item.qa_test_results[0],
     }));
