@@ -29,14 +29,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  console.log(`[stripe-marketing-webhook] Event: ${event.type}`);
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
     // Check if this is a WhatsApp campaign payment
     if (session.metadata?.type !== "whatsapp_campaign") {
-      console.log("[stripe-marketing-webhook] Not a whatsapp_campaign, skipping");
       return NextResponse.json({ received: true });
     }
 
@@ -76,7 +74,6 @@ export async function POST(req: NextRequest) {
       // Trigger campaign send
       await sendWhatsAppCampaign(campaignId, tenantId, admin);
 
-      console.log(`[stripe-marketing-webhook] Campaign ${campaignId} processed successfully`);
     } catch (err) {
       console.error("[stripe-marketing-webhook] Error processing:", err);
       
@@ -264,5 +261,4 @@ async function sendWhatsAppCampaign(
     })
     .eq("id", campaignId);
 
-  console.log(`[sendWhatsAppCampaign] Campaign ${campaignId} completed: ${sent} sent, ${failed} failed`);
 }
