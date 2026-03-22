@@ -121,6 +121,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
       tax_inclusive: input.tax_inclusive,
       notes: input.notes || null,
       footer_text: input.footer_text || null,
+      layout: input.layout || 'classic',
       created_by: userId,
     })
     .select("id")
@@ -194,6 +195,7 @@ export async function updateInvoice(
       tax_inclusive: input.tax_inclusive,
       notes: input.notes || null,
       footer_text: input.footer_text || null,
+      layout: input.layout || 'classic',
     })
     .eq("id", id)
     .eq("tenant_id", tenantId);
