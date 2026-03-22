@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendSystemEmail } from "@/lib/email-sender";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -264,7 +265,23 @@ async function handlePaymentFailed(
       .update({ status: "past_due" })
       .eq("stripe_sub_id", subscriptionId);
 
-    // TODO: Send email notification about failed payment
+// Send email notification about failed payment
+    try {
+      const { data: tenantContact } = await supabase
+        .from("tenants")
+        .select("email, name")
+        .eq("stripe_customer_id", stripeCustomerId)
+        .single();
+      if (tenantContact?.email) {
+        await sendSystemEmail({
+          to: tenantContact.email,
+          subject: "Payment Failed – Action Required",
+          html: `<p>Hi ${tenantContact.name ?? "there"},</p><p>We were unable to process your recent subscription payment. Please update your payment method to prevent service interruption.</p><p>— The Nexpura Team</p>`,
+        });
+      }
+    } catch (emailErr) {
+      console.error("Payment failure email error:", emailErr);
+    }
   }
 }
 
