@@ -61,7 +61,6 @@ export async function sendTwilioWhatsApp(
       };
     }
 
-    console.log("[twilio-whatsapp] Message sent:", data.sid);
     return {
       success: true,
       messageId: data.sid,
