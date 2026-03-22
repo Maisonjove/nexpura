@@ -64,17 +64,20 @@ export async function completeOnboarding(
   }
 
   // 2. Insert user record
-  const { error: userErr } = await adminClient.from("users").insert({
-    id: user.id,
-    tenant_id: tenant.id,
-    email: user.email ?? "",
-    full_name:
-      user.user_metadata?.full_name ??
-      user.user_metadata?.name ??
-      user.email ??
-      "Owner",
-    role: "owner",
-  });
+  const { error: userErr } = await adminClient.from("users").upsert(
+    {
+      id: user.id,
+      tenant_id: tenant.id,
+      email: user.email ?? "",
+      full_name:
+        user.user_metadata?.full_name ??
+        user.user_metadata?.name ??
+        user.email ??
+        "Owner",
+      role: "owner",
+    },
+    { onConflict: "id" }
+  );
 
   if (userErr) {
     console.error("User creation error:", userErr);
