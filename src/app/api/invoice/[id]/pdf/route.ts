@@ -43,7 +43,7 @@ export async function GET(
     .select(
       `id, invoice_number, status, invoice_date, due_date,
        subtotal, tax_amount, discount_amount, total, paid_at, amount_paid,
-       tax_name, tax_rate, tax_inclusive, notes, footer_text,
+       tax_name, tax_rate, tax_inclusive, notes, footer_text, layout,
        customers(full_name, email, phone, address)`
     )
     .eq("id", id)
@@ -114,7 +114,7 @@ export async function GET(
     tax_inclusive: invoice.tax_inclusive ?? true,
     notes: invoice.notes ?? null,
     footer_text: invoice.footer_text ?? null,
-    layout: 'classic',
+    layout: invoice.layout ?? 'classic',
     customers: customerRaw
       ? {
           full_name: customerRaw.full_name ?? null,
