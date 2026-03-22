@@ -136,6 +136,7 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
       flexDirection: "row",
       borderBottomWidth: layout === "modern" ? 2 : 0.5,
       borderBottomColor: layout === "modern" ? accent : layout === "minimal" ? "#AAAAAA" : DARK,
+      borderRadius: 0,
       paddingBottom: 5,
       backgroundColor: layout === "classic" ? LIGHT_BG : "transparent",
       paddingHorizontal: layout === "classic" ? 4 : 0,
@@ -146,6 +147,7 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
       paddingVertical: layout === "minimal" ? 7 : 5,
       borderBottomWidth: 0.5,
       borderBottomColor: layout === "minimal" ? "#EEEEEE" : PLATINUM,
+      borderRadius: 0,
       paddingHorizontal: layout === "classic" ? 4 : 0,
     },
     tableRowAlt: { backgroundColor: layout === "classic" ? LIGHT_BG : "transparent" },
@@ -250,6 +252,7 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
       right: layout === "minimal" ? 52 : 44,
       borderTopWidth: 0.5,
       borderTopColor: layout === "minimal" ? "#EEEEEE" : PLATINUM,
+      borderRadius: 0,
       paddingTop: 8,
     },
     footerText: {
