@@ -17,7 +17,7 @@ const MUTED = "#888";
 const GREEN = "#2D7A4A";
 
 const getStyles = (accent: string, layout: InvoiceLayout) =>
-  StyleSheet.create({
+  ({
     page: {
       fontFamily: "Helvetica",
       backgroundColor: "#FFFFFF",
@@ -380,7 +380,7 @@ export function InvoicePDF({ invoice, lineItems, tenant, layout = "classic" }: I
       )}
       {isPaid && (
         <View style={styles.paidBadge}>
-          <Text style={styles.paidBadgeText}>✓ PAID</Text>
+          <Text style={styles.paidBadgeText}>PAID</Text>
         </View>
       )}
     </View>
@@ -486,7 +486,7 @@ export function InvoicePDF({ invoice, lineItems, tenant, layout = "classic" }: I
           {/* Paid stamp */}
           {isPaid && invoice.paid_at ? (
             <View style={styles.paidStamp}>
-              <Text style={styles.paidStampText}>✓ PAID on {fmtDate(invoice.paid_at)}</Text>
+              <Text style={styles.paidStampText}>PAID on {fmtDate(invoice.paid_at)}</Text>
             </View>
           ) : null}
 
