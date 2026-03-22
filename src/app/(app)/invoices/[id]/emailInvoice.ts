@@ -81,7 +81,7 @@ export async function emailInvoice(
       supabase
         .from("tenants")
         .select(
-          "name, business_name, abn, logo_url, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer, tax_name, tax_rate, tax_inclusive"
+          "name, business_name, abn, logo_url, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer, tax_name, tax_rate, tax_inclusive, invoice_accent_color"
         )
         .eq("id", userData.tenant_id)
         .single(),
@@ -167,6 +167,7 @@ export async function emailInvoice(
           bank_bsb: tenant.bank_bsb ?? null,
           bank_account: tenant.bank_account ?? null,
           invoice_footer: tenant.invoice_footer ?? null,
+          invoice_accent_color: tenant.invoice_accent_color ?? null,
         }
       : null;
 
