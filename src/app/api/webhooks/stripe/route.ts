@@ -59,7 +59,6 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
@@ -89,7 +88,6 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  console.log(`Creating tenant for ${subdomain} (${customerEmail}) on ${plan} plan`);
 
   // Check if tenant already exists (idempotency)
   const { data: existingTenant } = await supabase
@@ -99,7 +97,6 @@ async function handleCheckoutCompleted(
     .maybeSingle();
 
   if (existingTenant) {
-    console.log(`Tenant ${subdomain} already exists, updating Stripe info`);
     await supabase
       .from("tenants")
       .update({
@@ -144,7 +141,6 @@ async function handleCheckoutCompleted(
     trial_ends_at: trialEndsAt.toISOString(),
   });
 
-  console.log(`Tenant ${subdomain} created successfully`);
 }
 
 async function handleSubscriptionUpdated(
@@ -215,7 +211,6 @@ async function handleSubscriptionUpdated(
     }
   }
 
-  console.log(`Subscription ${stripeSubId} updated to status: ${status}, plan: ${plan}`);
 }
 
 async function handleSubscriptionDeleted(
@@ -242,7 +237,6 @@ async function handleSubscriptionDeleted(
       .eq("id", sub.tenant_id);
   }
 
-  console.log(`Subscription ${stripeSubId} cancelled`);
 }
 
 async function handlePaymentFailed(
@@ -271,7 +265,6 @@ async function handlePaymentFailed(
       .eq("stripe_sub_id", subscriptionId);
 
     // TODO: Send email notification about failed payment
-    console.log(`Payment failed for tenant ${tenant.name}`);
   }
 }
 
@@ -301,7 +294,6 @@ async function handlePaymentSucceeded(
       .update({ status: "active" })
       .eq("stripe_sub_id", subscriptionId);
 
-    console.log(`Payment succeeded, tenant ${tenant.id} reactivated`);
   }
 }
 
