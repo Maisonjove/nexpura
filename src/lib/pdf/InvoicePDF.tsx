@@ -91,8 +91,7 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
     },
     paidBadge: {
       backgroundColor: layout === "minimal" ? "transparent" : GREEN,
-      borderWidth: layout === "minimal" ? 1 : 0,
-      borderColor: GREEN,
+      ...(layout === "minimal" ? { borderWidth: 1, borderColor: GREEN } : {}),
       borderRadius: 4,
       paddingHorizontal: 8,
       paddingVertical: 3,
@@ -120,10 +119,8 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
     },
     billToBox: {
       backgroundColor: layout === "classic" ? LIGHT_BG : "transparent",
-      borderRadius: layout === "classic" ? 5 : 0,
+      ...(layout === "classic" ? { borderRadius: 5, borderWidth: 0.5, borderColor: PLATINUM } : {}),
       padding: layout === "classic" ? 10 : 0,
-      borderWidth: layout === "classic" ? 0.5 : 0,
-      borderColor: PLATINUM,
     },
     billToName: {
       fontSize: layout === "classic" ? 11 : 12,
@@ -136,7 +133,6 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
       flexDirection: "row",
       borderBottomWidth: layout === "modern" ? 2 : 0.5,
       borderBottomColor: layout === "modern" ? accent : layout === "minimal" ? "#AAAAAA" : DARK,
-      borderRadius: 0,
       paddingBottom: 5,
       backgroundColor: layout === "classic" ? LIGHT_BG : "transparent",
       paddingHorizontal: layout === "classic" ? 4 : 0,
@@ -147,7 +143,6 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
       paddingVertical: layout === "minimal" ? 7 : 5,
       borderBottomWidth: 0.5,
       borderBottomColor: layout === "minimal" ? "#EEEEEE" : PLATINUM,
-      borderRadius: 0,
       paddingHorizontal: layout === "classic" ? 4 : 0,
     },
     tableRowAlt: { backgroundColor: layout === "classic" ? LIGHT_BG : "transparent" },
@@ -176,7 +171,7 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
     },
     grandTotalRow: {
       backgroundColor: layout === "modern" ? DARK : "transparent",
-      borderRadius: layout === "modern" ? 4 : 0,
+      ...(layout === "modern" ? { borderRadius: 4 } : {}),
       paddingHorizontal: layout === "modern" ? 8 : 0,
       paddingVertical: layout === "modern" ? 8 : 2.5,
       marginTop: layout === "modern" ? 8 : 0,
@@ -197,9 +192,7 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
     amountPaidValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: GREEN },
     balanceDueRow: {
       backgroundColor: layout === "minimal" ? "transparent" : layout === "modern" ? DARK : "#FEF3C7",
-      borderTopWidth: layout === "minimal" ? 1 : 0,
-      borderTopColor: accent,
-      borderRadius: layout === "minimal" ? 0 : 4,
+      ...(layout === "minimal" ? { borderTopWidth: 1, borderTopColor: accent } : { borderRadius: 4 }),
       padding: layout === "minimal" ? 0 : 6,
       paddingTop: 6,
       marginTop: 4,
@@ -222,10 +215,8 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
     paidStampText: { fontSize: layout === "minimal" ? 9 : 10, fontFamily: "Helvetica-Bold", color: GREEN },
     bankSection: {
       backgroundColor: layout === "minimal" ? "transparent" : LIGHT_BG,
-      borderRadius: layout === "minimal" ? 0 : 5,
+      ...(layout !== "minimal" ? { borderRadius: 5, borderWidth: 0.5, borderColor: PLATINUM } : {}),
       padding: layout === "minimal" ? 0 : 10,
-      borderWidth: layout === "minimal" ? 0 : 0.5,
-      borderColor: PLATINUM,
       marginBottom: 12,
     },
     sectionLabel: {
@@ -252,7 +243,6 @@ const getStyles = (accent: string, layout: InvoiceLayout) =>
       right: layout === "minimal" ? 52 : 44,
       borderTopWidth: 0.5,
       borderTopColor: layout === "minimal" ? "#EEEEEE" : PLATINUM,
-      borderRadius: 0,
       paddingTop: 8,
     },
     footerText: {
