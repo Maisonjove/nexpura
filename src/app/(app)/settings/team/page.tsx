@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getEntitlementContext } from "@/lib/auth/entitlements";
-import { getMaxUsers, planDisplayName } from "@/lib/features";
+import { PLAN_FEATURES, PLAN_NAMES, PlanId } from "@/lib/plans";
 import TeamClient from "./TeamClient";
 
 export const metadata = { title: "Team — Nexpura" };
@@ -38,7 +38,7 @@ export default async function TeamPage() {
       .order("created_at", { ascending: false }),
   ]);
 
-  const maxUsers = getMaxUsers(ctx.plan);
+  const maxUsers = PLAN_FEATURES[ctx.plan as PlanId]?.staffLimit ?? null;
   const currentUsers = members?.length ?? 0;
   const isAtLimit = maxUsers !== null && currentUsers >= maxUsers;
 
@@ -49,7 +49,7 @@ export default async function TeamPage() {
       currentUserRole={currentUserRole}
       businessMode={businessMode}
       plan={ctx.plan}
-      planName={planDisplayName(ctx.plan)}
+      planName={PLAN_NAMES[ctx.plan as PlanId]}
       maxUsers={maxUsers}
       isAtLimit={isAtLimit}
     />
