@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
+import { isAustralianNumber, normalizePhoneNumber } from "@/lib/twilio-sms";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -445,11 +446,29 @@ export async function sendJobReadySms(params: {
     account_sid?: string;
     auth_token?: string;
     phone_number?: string;
+    phone_number_au?: string;
+    phone_number_us?: string;
   } | null;
 
-  if (!settings?.account_sid || !settings?.auth_token || !settings?.phone_number) {
+  if (!settings?.account_sid || !settings?.auth_token) {
     return { success: false, error: "Twilio not configured" };
   }
+
+  // Smart number selection: AU number for Australian recipients, US number for international
+  const isAuRecipient = isAustralianNumber(params.customerPhone);
+  const fromNumber = isAuRecipient
+    ? (settings.phone_number_au || process.env.TWILIO_SMS_NUMBER_AU || settings.phone_number)
+    : (settings.phone_number_us || process.env.TWILIO_SMS_NUMBER || settings.phone_number);
+
+  if (!fromNumber) {
+    return { success: false, error: "No SMS number configured" };
+  }
+
+  // Normalize recipient phone to E.164
+  const toNormalized = normalizePhoneNumber(params.customerPhone);
+  const fromNormalized = fromNumber.startsWith("+") ? fromNumber : `+${fromNumber}`;
+
+  console.log(`[sendJobReadySms] Sending to ${toNormalized} from ${fromNormalized} (AU: ${isAuRecipient})`);
 
   try {
     const response = await fetch(
@@ -461,8 +480,8 @@ export async function sendJobReadySms(params: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: new URLSearchParams({
-          From: settings.phone_number,
-          To: params.customerPhone,
+          From: fromNormalized,
+          To: toNormalized,
           Body: params.message,
         }),
       }
