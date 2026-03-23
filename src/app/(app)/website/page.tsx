@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getEntitlementContext } from "@/lib/auth/entitlements";
-import { canUseFeature, planDisplayName } from "@/lib/features";
+import { planIncludes, PLAN_NAMES, PlanId } from "@/lib/plans";
 import Link from "next/link";
 import WebsiteBuilderClient from "./WebsiteBuilderClient";
 
@@ -15,7 +15,7 @@ export default async function WebsitePage() {
   if (!ctx.tenantId) redirect("/login");
 
   // Entitlement gate: Website Builder requires Studio or Atelier
-  if (!canUseFeature(ctx.plan, "websiteBuilder")) {
+  if (!planIncludes(ctx.plan as PlanId, 'websiteBuilder')) {
     return (
       <div className="max-w-xl mx-auto py-20 px-4 text-center space-y-6">
         <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto">
@@ -24,7 +24,7 @@ export default async function WebsitePage() {
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">Website Builder</h1>
           <p className="text-stone-500 mt-2 text-sm leading-relaxed">
-            Your current plan <strong className="text-stone-900">{planDisplayName(ctx.plan)}</strong> does not include the Website Builder.
+            Your current plan <strong className="text-stone-900">{PLAN_NAMES[ctx.plan as PlanId]}</strong> does not include the Website Builder.
             Upgrade to <strong className="text-stone-900">Studio</strong> or <strong className="text-stone-900">Atelier</strong> to build and publish your jewellery website directly from Nexpura.
           </p>
         </div>
