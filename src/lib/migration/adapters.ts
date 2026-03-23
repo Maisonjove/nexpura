@@ -14,6 +14,10 @@ export const MIGRATION_SOURCES = [
   // Generic
   { id: 'csv_excel', name: 'CSV / Excel Files', category: 'generic', logo: '📄', difficulty: 'easy', description: 'Import any data via structured CSV or Excel spreadsheet with field mapping', entities: ['any'], notes: 'Supports .csv, .xls, .xlsx' },
   { id: 'other', name: 'Other System', category: 'generic', logo: '🔧', difficulty: 'variable', description: 'Migrate from any other system using AI-powered field mapping and data cleanup', entities: ['any'], notes: 'AI-assisted mapping with manual review' },
+  // Custom & agency-built sites
+  { id: 'custom_website', name: 'Custom / Agency-Built Website', category: 'custom', logo: '🌐', difficulty: 'medium', description: 'Migrate from a website built by a web agency or developer. Ask your agency or developer to export customers, products, and orders as CSV or Excel files.', entities: ['customers','inventory','invoices','bespoke'], notes: 'Request a data export (CSV/Excel) from your web developer or agency — covers customers, products, and order history' },
+  { id: 'wordpress', name: 'WordPress (Custom)', category: 'custom', logo: '📝', difficulty: 'medium', description: 'Import data from a custom WordPress site (without WooCommerce). Use a WordPress export plugin or ask your developer for a database export.', entities: ['customers','inventory','invoices'], notes: 'Use WP All Export plugin or ask your developer to export the relevant tables as CSV' },
+  { id: 'magento', name: 'Magento / Adobe Commerce', category: 'custom', logo: '🛒', difficulty: 'hard', description: 'Migrate your full product catalogue, customer base, and order history from Magento or Adobe Commerce.', entities: ['customers','inventory','invoices','payments'], notes: 'Export from Magento Admin > System > Data Transfer > Export' },
 ];
 
 export const NEXPURA_FIELDS: Record<string, Array<{ field: string; label: string; required: boolean; description?: string }>> = {
