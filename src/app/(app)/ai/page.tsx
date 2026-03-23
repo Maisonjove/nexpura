@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getEntitlementContext } from "@/lib/auth/entitlements";
-import { canUseFeature, planDisplayName } from "@/lib/features";
+import { planIncludes, PLAN_NAMES, PlanId } from "@/lib/plans";
 import Link from "next/link";
 import AICopilotClient from "./AICopilotClient";
 
@@ -17,7 +17,7 @@ export default async function AIPage() {
   if (!ctx.tenantId) redirect("/onboarding");
 
   // Entitlement gate: AI Copilot is on all plans, but let's be explicit
-  if (!canUseFeature(ctx.plan, "aiCopilot")) {
+  if (!planIncludes(ctx.plan as PlanId, 'aiCopilot')) {
     return (
        <div className="max-w-xl mx-auto py-20 px-4 text-center space-y-6">
         <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto">
@@ -48,7 +48,7 @@ export default async function AIPage() {
   return (
     <AICopilotClient 
       conversations={conversations ?? []} 
-      plan={planDisplayName(ctx.plan)} 
+      plan={PLAN_NAMES[ctx.plan as PlanId]} 
     />
   );
 }
