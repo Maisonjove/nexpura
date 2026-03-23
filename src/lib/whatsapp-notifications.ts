@@ -1,11 +1,14 @@
 /**
- * WhatsApp Notifications - Powered by Nexpura Platform
+ * Notifications - Powered by Nexpura Platform
  * Uses platform Twilio account for all notifications (free for jewellers)
+ * - Customer notifications: WhatsApp (when available)
+ * - Employee notifications: SMS (smart number selection AU/US)
  * No per-tenant Twilio setup needed
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
+import { sendTwilioSms } from "@/lib/twilio-sms";
 
 interface SendMessageParams {
   to: string; // Phone number with country code, e.g., "+61412345678"
@@ -145,7 +148,7 @@ export async function notifyCustomerJobReady(
 }
 
 /**
- * Notify employee of new task assignment
+ * Notify employee of new task assignment via SMS
  */
 export async function notifyTaskAssignment(
   tenantId: string,
@@ -177,33 +180,43 @@ export async function notifyTaskAssignment(
     return { sent: false, error: "Employee opted out of notifications" };
   }
 
-  // Build message
+  // Build message (keep concise for SMS)
   const taskType = task.type === "repair" ? "Repair" : task.type === "bespoke" ? "Bespoke job" : "Task";
-  let message = `🔔 New ${taskType.toLowerCase()} assigned: ${task.description}`;
+  let message = `New ${taskType.toLowerCase()}: ${task.description}`;
   
   if (task.customerName) {
-    message += ` for ${task.customerName}`;
+    message += ` - ${task.customerName}`;
   }
   
   if (task.dueDate) {
     const date = new Date(task.dueDate);
-    message += `\n📅 Due: ${date.toLocaleDateString()}`;
-  }
-  
-  if (task.notes) {
-    message += `\n📝 Notes: ${task.notes}`;
+    message += ` Due: ${date.toLocaleDateString()}`;
   }
 
-  const result = await sendWhatsAppMessage(tenantId, {
-    to: member.phone_number,
-    message,
-  });
+  // Use SMS instead of WhatsApp for employees
+  const result = await sendTwilioSms(member.phone_number, message);
+
+  // Log the send
+  const admin = createAdminClient();
+  try {
+    await admin.from("sms_sends").insert({
+      tenant_id: tenantId,
+      phone: member.phone_number,
+      message,
+      status: result.success ? "sent" : "failed",
+      twilio_sid: result.messageId,
+      error_message: result.error,
+      context: { type: "task_assignment", assignee_id: assigneeId },
+    });
+  } catch (err) {
+    console.warn("[notifyTaskAssignment] Failed to log send:", err);
+  }
 
   return { sent: result.success, error: result.error };
 }
 
 /**
- * Notify employee of status change on their assigned item
+ * Notify employee of status change on their assigned item via SMS
  */
 export async function notifyStatusChange(
   tenantId: string,
@@ -238,18 +251,32 @@ export async function notifyStatusChange(
     return { sent: false, error: "Cannot notify member" };
   }
 
-  const message = `📋 Status updated: ${item.description}${item.customerName ? ` (${item.customerName})` : ""}\n${item.oldStatus} → ${item.newStatus}`;
+  // Keep message concise for SMS
+  const message = `Status update: ${item.description}${item.customerName ? ` (${item.customerName})` : ""} - ${item.oldStatus} > ${item.newStatus}`;
 
-  const result = await sendWhatsAppMessage(tenantId, {
-    to: member.phone_number,
-    message,
-  });
+  // Use SMS instead of WhatsApp for employees
+  const result = await sendTwilioSms(member.phone_number, message);
+
+  // Log the send
+  try {
+    await admin.from("sms_sends").insert({
+      tenant_id: tenantId,
+      phone: member.phone_number,
+      message,
+      status: result.success ? "sent" : "failed",
+      twilio_sid: result.messageId,
+      error_message: result.error,
+      context: { type: "status_change", assignee_id: assigneeId },
+    });
+  } catch (err) {
+    console.warn("[notifyStatusChange] Failed to log send:", err);
+  }
 
   return { sent: result.success, error: result.error };
 }
 
 /**
- * Notify employee when an item is flagged urgent
+ * Notify employee when an item is flagged urgent via SMS
  */
 export async function notifyUrgentFlagged(
   tenantId: string,
@@ -282,19 +309,33 @@ export async function notifyUrgentFlagged(
     return { sent: false, error: "Cannot notify member" };
   }
 
-  let message = `🚨 URGENT: ${item.description}`;
+  // Keep message concise for SMS
+  let message = `URGENT: ${item.description}`;
   if (item.customerName) {
-    message += ` for ${item.customerName}`;
+    message += ` - ${item.customerName}`;
   }
   if (item.reason) {
-    message += `\nReason: ${item.reason}`;
+    message += ` (${item.reason})`;
   }
-  message += "\n\nPlease prioritize this item.";
+  message += " - Please prioritize!";
 
-  const result = await sendWhatsAppMessage(tenantId, {
-    to: member.phone_number,
-    message,
-  });
+  // Use SMS instead of WhatsApp for employees
+  const result = await sendTwilioSms(member.phone_number, message);
+
+  // Log the send
+  try {
+    await admin.from("sms_sends").insert({
+      tenant_id: tenantId,
+      phone: member.phone_number,
+      message,
+      status: result.success ? "sent" : "failed",
+      twilio_sid: result.messageId,
+      error_message: result.error,
+      context: { type: "urgent_flagged", assignee_id: assigneeId },
+    });
+  } catch (err) {
+    console.warn("[notifyUrgentFlagged] Failed to log send:", err);
+  }
 
   return { sent: result.success, error: result.error };
 }
