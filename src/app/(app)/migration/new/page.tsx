@@ -12,7 +12,6 @@ export default async function NewMigrationPage({
 }) {
   const params = await searchParams;
   const { tenantId } = await getAuthOrReviewContext(params.rt);
-
   if (!tenantId) {
     redirect("/login");
   }
@@ -21,6 +20,7 @@ export default async function NewMigrationPage({
   const retail = MIGRATION_SOURCES.filter(s => s.category === 'retail');
   const accounting = MIGRATION_SOURCES.filter(s => s.category === 'accounting');
   const generic = MIGRATION_SOURCES.filter(s => s.category === 'generic');
+  const custom = MIGRATION_SOURCES.filter(s => s.category === 'custom');
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
@@ -49,7 +49,7 @@ export default async function NewMigrationPage({
       {/* Retail */}
       <div>
         <h2 className="text-sm font-semibold text-stone-600 uppercase tracking-wide mb-3 flex items-center gap-2">
-          <span>🛍️</span> Retail & eCommerce
+          <span>🛍️</span> Retail &amp; eCommerce
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {retail.map((source) => (
@@ -81,6 +81,23 @@ export default async function NewMigrationPage({
           ))}
         </div>
       </div>
+
+      {/* Custom & Agency-Built Sites */}
+      {custom.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-stone-600 uppercase tracking-wide mb-3 flex items-center gap-2">
+            <span>🌐</span> Custom &amp; Agency-Built Sites
+          </h2>
+          <p className="text-xs text-stone-400 -mt-2 mb-3">
+            For websites built by developers or agencies — ask your developer to export your data as CSV or Excel files first.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {custom.map((source) => (
+              <SourceCard key={source.id} source={source} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
