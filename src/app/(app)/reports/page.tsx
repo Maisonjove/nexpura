@@ -4,7 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/permissions";
 import { getEntitlementContext } from "@/lib/auth/entitlements";
-import { canUseFeature, planDisplayName } from "@/lib/features";
+import { planIncludes, PLAN_NAMES, PlanId } from "@/lib/plans";
 import ReportsDateClient from "./ReportsDateClient";
 
 export const metadata = { title: "Reports — Nexpura" };
@@ -51,7 +51,7 @@ export default async function ReportsPage() {
   }
 
   // Entitlement gate: Full analytics requires Studio or Atelier
-  if (!canUseFeature(ctx.plan, "analytics")) {
+  if (!planIncludes(ctx.plan as PlanId, 'fullAnalytics')) {
     return (
       <div className="max-w-xl mx-auto py-20 px-4 text-center space-y-6">
         <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto">
@@ -60,7 +60,7 @@ export default async function ReportsPage() {
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">Advanced Reporting</h1>
           <p className="text-stone-500 mt-2 text-sm leading-relaxed">
-            Your current plan <strong className="text-stone-900">{planDisplayName(ctx.plan)}</strong> includes basic dashboard metrics only.
+            Your current plan <strong className="text-stone-900">{PLAN_NAMES[ctx.plan as PlanId]}</strong> includes basic dashboard metrics only.
             Upgrade to <strong className="text-stone-900">Studio</strong> or <strong className="text-stone-900">Atelier</strong> to access detailed reports for stock, expenses, and customer trends.
           </p>
         </div>
