@@ -74,7 +74,7 @@ export default function BillingClient({
     setLoading(planId);
     try {
       const priceId = (STRIPE_PRICES as any)[planId][interval];
-      const res = await fetch("/api/stripe/checkout", {
+      const res = await fetch("/api/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ priceId, plan: planId }),
