@@ -21,7 +21,7 @@ const PLANS = [
     name: "Boutique",
     monthlyPrice: 89,
     description: "For independent jewellers.",
-    features: ["1 User", "1 Store", "Unlimited Invoices", "AI Business Copilot", "Core Operations", "Jewellery Passports"],
+    features: ["1 User", "1 Store", "Unlimited Invoices", "Core Operations", "Jewellery Passports"],
   },
   {
     id: "studio",
