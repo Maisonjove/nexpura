@@ -13,6 +13,8 @@ interface BillingClientProps {
   subscriptionStatus: string | null;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
+  subdomain: string;
+  email: string;
 }
 
 const PLANS = [
@@ -65,6 +67,8 @@ export default function BillingClient({
   subscriptionStatus,
   trialEndsAt,
   currentPeriodEnd,
+  subdomain,
+  email,
 }: BillingClientProps) {
   const [interval, setInterval] = useState<"monthly" | "annual">("monthly");
   const [loading, setLoading] = useState<string | null>(null);
@@ -77,7 +81,7 @@ export default function BillingClient({
       const res = await fetch("/api/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId, plan: planId }),
+        body: JSON.stringify({ plan: planId, subdomain, email }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;

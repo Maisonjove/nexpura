@@ -50,6 +50,12 @@ export default async function BillingPage() {
 
   const ctx = await getEntitlementContext();
 
+  const { data: tenantData } = await admin
+    .from("tenants")
+    .select("subdomain")
+    .eq("id", userData!.tenant_id)
+    .single();
+
   return (
     <BillingClient
       tenantId={ctx.tenantId!}
@@ -57,6 +63,8 @@ export default async function BillingPage() {
       subscriptionStatus={subscription?.status ?? "trialing"}
       trialEndsAt={subscription?.trial_ends_at ?? new Date(Date.now() + 14 * 86400000).toISOString()}
       currentPeriodEnd={subscription?.current_period_end ?? null}
+      subdomain={tenantData?.subdomain ?? ""}
+      email={userData!.email ?? ""}
     />
   );
 }
