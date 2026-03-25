@@ -1,6 +1,6 @@
 "use client";
 
-import type { WebsiteConfig, BusinessHours } from "../types";
+import type { WebsiteConfig, BusinessHours, SocialLinks } from "../types";
 import BusinessHoursEditor from "./BusinessHoursEditor";
 
 interface AdvancedTabProps {
@@ -34,6 +34,10 @@ interface AdvancedTabProps {
   setCatalogueColumns: (value: number) => void;
   businessHours: BusinessHours | null | undefined;
   setBusinessHours: (value: BusinessHours) => void;
+  customCss: string;
+  setCustomCss: (value: string) => void;
+  socialLinks: SocialLinks;
+  setSocialLinks: (value: SocialLinks) => void;
   onSave: () => void;
   saving: boolean;
   saved: boolean;
@@ -69,6 +73,10 @@ export default function AdvancedTab({
   setCatalogueColumns,
   businessHours,
   setBusinessHours,
+  customCss,
+  setCustomCss,
+  socialLinks,
+  setSocialLinks,
   onSave,
   saving,
   saved,
@@ -211,6 +219,54 @@ export default function AdvancedTab({
             update("business_hours", hours);
           }}
         />
+      </div>
+
+      {/* Social Links */}
+      <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-stone-900 mb-1">Social Media Links</h2>
+        <p className="text-sm text-stone-500 mb-4">Add your social media profiles so customers can follow you.</p>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { label: "Instagram", key: "instagram" as keyof SocialLinks, placeholder: "https://instagram.com/yourbrand" },
+            { label: "Facebook", key: "facebook" as keyof SocialLinks, placeholder: "https://facebook.com/yourbrand" },
+            { label: "TikTok", key: "tiktok" as keyof SocialLinks, placeholder: "https://tiktok.com/@yourbrand" },
+            { label: "YouTube", key: "youtube" as keyof SocialLinks, placeholder: "https://youtube.com/@yourbrand" },
+            { label: "Pinterest", key: "pinterest" as keyof SocialLinks, placeholder: "https://pinterest.com/yourbrand" },
+            { label: "X / Twitter", key: "twitter" as keyof SocialLinks, placeholder: "https://twitter.com/yourbrand" },
+          ].map(({ label, key, placeholder }) => (
+            <div key={key}>
+              <label className="text-sm font-medium text-stone-700 block mb-1">{label}</label>
+              <input
+                value={socialLinks[key] ?? ""}
+                onChange={(e) => {
+                  const updated = { ...socialLinks, [key]: e.target.value };
+                  setSocialLinks(updated);
+                  update("social_links", updated);
+                }}
+                placeholder={placeholder}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Custom CSS */}
+      <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-stone-900 mb-1">Custom CSS</h2>
+        <p className="text-sm text-stone-500 mb-4">Add custom styles to override the default appearance of your website. Advanced users only.</p>
+        <textarea
+          value={customCss}
+          onChange={(e) => {
+            setCustomCss(e.target.value);
+            update("custom_css", e.target.value);
+          }}
+          placeholder={`/* Example: change button colour */\n.btn-primary { background-color: #c0392b; }`}
+          rows={8}
+          className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm font-mono resize-y"
+          spellCheck={false}
+        />
+        <p className="text-xs text-stone-400 mt-2">⚠️ Invalid CSS can break your website layout. Test carefully after saving.</p>
       </div>
 
       <div className="flex justify-end">

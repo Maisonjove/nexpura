@@ -88,8 +88,32 @@ export async function POST(req: NextRequest) {
         logger.error('XLSX parse error:', e);
         return NextResponse.json({ error: 'Failed to parse Excel file' }, { status: 400 });
       }
+    } else if (fileName.endsWith('.json')) {
+      try {
+        const text = new TextDecoder('utf-8').decode(uint8);
+        const parsed = JSON.parse(text);
+        let items: Record<string, unknown>[] = [];
+        if (Array.isArray(parsed)) {
+          items = parsed.map((item) => (typeof item === 'object' && item !== null ? item as Record<string, unknown> : {}));
+        } else if (typeof parsed === 'object' && parsed !== null) {
+          const arrayProp = Object.values(parsed as Record<string, unknown>).find(Array.isArray);
+          if (Array.isArray(arrayProp)) {
+            items = arrayProp.map((item) => (typeof item === 'object' && item !== null ? item as Record<string, unknown> : {}));
+          } else {
+            items = [parsed as Record<string, unknown>];
+          }
+        }
+        const headerSet = new Set<string>();
+        items.forEach((row) => Object.keys(row).forEach((k) => headerSet.add(k)));
+        headers = Array.from(headerSet);
+        sampleRows = items.slice(0, 10).map((row) => headers.map((h) => row[h] ?? ''));
+        rowCount = items.length;
+      } catch (e) {
+        logger.error('JSON parse error:', e);
+        return NextResponse.json({ error: 'Failed to parse JSON file. Ensure it contains an array of objects or an object with an array property.' }, { status: 400 });
+      }
     } else {
-      return NextResponse.json({ error: 'Unsupported file type. Please upload CSV or Excel (.xlsx/.xls)' }, { status: 400 });
+      return NextResponse.json({ error: 'Unsupported file type. Please upload CSV, Excel (.xlsx/.xls), or JSON (.json)' }, { status: 400 });
     }
 
     // Upload to Supabase Storage

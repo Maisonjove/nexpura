@@ -7,7 +7,7 @@ import {
   checkSubdomainAvailable,
   type WebsiteConfigData,
 } from "./actions";
-import type { WebsiteType, Tab, AISuggestions, WebsiteConfig, WebsiteBuilderProps as Props, BusinessHours } from "./types";
+import type { WebsiteType, Tab, AISuggestions, WebsiteConfig, WebsiteBuilderProps as Props, BusinessHours, SocialLinks } from "./types";
 import {
   SetupTab,
   BrandingTab,
@@ -79,6 +79,8 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
   const [catalogueShowStone, setCatalogueShowStone] = useState(initial?.catalogue_show_stone ?? true);
   const [catalogueColumns, setCatalogueColumns] = useState(initial?.catalogue_grid_columns ?? 3);
   const [businessHours, setBusinessHours] = useState<BusinessHours | null>(initial?.business_hours as BusinessHours | null ?? null);
+  const [customCss, setCustomCss] = useState<string>(initial?.custom_css ?? "");
+  const [socialLinks, setSocialLinks] = useState<SocialLinks>(initial?.social_links as SocialLinks ?? { instagram: "", facebook: "", tiktok: "", youtube: "", pinterest: "" });
 
   const previewUrl = config.subdomain
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/${config.subdomain}?preview=true`
@@ -384,6 +386,10 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
               setCatalogueColumns={setCatalogueColumns}
               businessHours={businessHours}
               setBusinessHours={setBusinessHours}
+              customCss={customCss}
+              setCustomCss={setCustomCss}
+              socialLinks={socialLinks}
+              setSocialLinks={setSocialLinks}
               onSave={handleSave}
               saving={saving}
               saved={saved}

@@ -772,6 +772,52 @@ export function parseCSVFull(text: string): ParsedFile {
   return { headers, rows, rowCount: rows.length };
 }
 
+/**
+ * Parse a JSON file into a ParsedFile structure.
+ * Supports:
+ *   - Array of objects: [{"name":"foo",...}, ...]
+ *   - Object with a single array property: {"items":[...]} — the first array found is used
+ */
+export function parseJSONFull(text: string): ParsedFile {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`Invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  let rows: Record<string, unknown>[] = [];
+
+  if (Array.isArray(parsed)) {
+    rows = parsed.map((item) => (typeof item === 'object' && item !== null ? item as Record<string, unknown> : {}));
+  } else if (typeof parsed === 'object' && parsed !== null) {
+    // Find the first array-valued property
+    const arrayProp = Object.values(parsed as Record<string, unknown>).find(Array.isArray);
+    if (Array.isArray(arrayProp)) {
+      rows = arrayProp.map((item) => (typeof item === 'object' && item !== null ? item as Record<string, unknown> : {}));
+    } else {
+      // Treat the whole object as a single row
+      rows = [parsed as Record<string, unknown>];
+    }
+  }
+
+  if (rows.length === 0) return { headers: [], rows: [], rowCount: 0 };
+
+  // Derive headers from all keys across all rows (union)
+  const headerSet = new Set<string>();
+  rows.forEach((row) => Object.keys(row).forEach((k) => headerSet.add(k)));
+  const headers = Array.from(headerSet);
+
+  // Normalise rows to have all headers
+  const normalisedRows = rows.map((row) => {
+    const out: Record<string, unknown> = {};
+    headers.forEach((h) => { out[h] = row[h] ?? ''; });
+    return out;
+  });
+
+  return { headers, rows: normalisedRows, rowCount: normalisedRows.length };
+}
+
 export async function parseXLSXFull(buffer: Uint8Array): Promise<ParsedFile> {
   // Dynamic import to avoid bundling issues in edge runtime
   const XLSX = await import('xlsx');

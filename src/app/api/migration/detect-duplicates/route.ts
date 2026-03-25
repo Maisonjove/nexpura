@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import {
   parseCSVFull,
   parseXLSXFull,
+  parseJSONFull,
   applyMappings,
   buildDefaultMappings,
   CUSTOMER_DEFAULT_MAPPINGS,
@@ -50,6 +51,13 @@ async function parseFile(admin: ReturnType<typeof createAdminClient>, file: Migr
   const name = file.original_name.toLowerCase();
   if (name.endsWith('.csv')) return parseCSVFull(new TextDecoder('utf-8').decode(bytes)).rows;
   if (name.endsWith('.xlsx') || name.endsWith('.xls')) return (await parseXLSXFull(bytes)).rows;
+  if (name.endsWith('.json')) {
+    try {
+      return parseJSONFull(new TextDecoder('utf-8').decode(bytes)).rows;
+    } catch {
+      return [];
+    }
+  }
   return [];
 }
 

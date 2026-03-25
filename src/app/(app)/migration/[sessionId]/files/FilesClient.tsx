@@ -106,7 +106,7 @@ export default function FilesClient({ sessionId, rt }: { sessionId: string, rt?:
           >
             <Upload className="w-10 h-10 text-stone-400 mx-auto mb-4" />
             <h3 className="font-semibold text-stone-900 mb-1">Drop your files here</h3>
-            <p className="text-sm text-stone-500 mb-4">Supports CSV and Excel (.csv, .xls, .xlsx)</p>
+            <p className="text-sm text-stone-500 mb-4">Supports CSV, Excel (.csv, .xls, .xlsx), and JSON (.json)</p>
             <label className="cursor-pointer inline-flex items-center gap-2 bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors">
               <Upload className="w-4 h-4" />
               {uploading ? 'Uploading...' : 'Browse Files'}
@@ -114,7 +114,7 @@ export default function FilesClient({ sessionId, rt }: { sessionId: string, rt?:
                 type="file"
                 className="hidden"
                 multiple
-                accept=".csv,.xls,.xlsx"
+                accept=".csv,.xls,.xlsx,.json"
                 onChange={(e) => e.target.files && handleFiles(e.target.files)}
                 disabled={uploading}
               />
