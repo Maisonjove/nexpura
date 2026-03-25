@@ -54,3 +54,14 @@ export interface VoucherData {
   code: string;
   balance: number;
 }
+
+export interface SaleResult {
+  id: string;
+  saleNumber: string;
+  invoiceId?: string;
+  customerEmail?: string | null;
+  cartSnapshot?: CartItem[];
+  paymentMethod?: string;
+  depositAmount?: number;
+  totalAmount?: number;
+}
