@@ -252,7 +252,6 @@ export async function updateSaleStatus(
           quantity: item.quantity,
           unit_price: item.unit_price,
           discount_pct: item.discount_percent ?? 0,
-          line_total: item.line_total,
           sort_order: idx,
         }));
 

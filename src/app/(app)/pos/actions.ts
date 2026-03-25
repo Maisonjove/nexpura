@@ -364,7 +364,6 @@ export async function createPOSSale(
                 quantity: item.quantity,
                 unit_price: item.unitPrice,
                 discount_pct: 0,
-                line_total: item.unitPrice * item.quantity,
                 sort_order: idx,
               }))
             );

@@ -659,7 +659,6 @@ export async function importInvoice(
       quantity: qty,
       unit_price: unitPrice,
       discount_pct: 0,
-      total: Math.round(lineTotal * 100) / 100,
       sort_order: 1,
     });
 

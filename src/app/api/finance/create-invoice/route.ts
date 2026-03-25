@@ -109,7 +109,6 @@ export async function POST(req: Request) {
       description,
       quantity: 1,
       unit_price: total,
-      line_total: total,
     });
 
     return NextResponse.json({ success: true, invoiceId: newInvoice.id });

@@ -208,7 +208,6 @@ export async function convertQuoteToInvoice(quoteId: string) {
     description: item.description,
     quantity: item.quantity,
     unit_price: item.unit_price,
-    line_total: item.quantity * item.unit_price
   }));
 
   const { error: itemsError } = await supabase

@@ -283,7 +283,6 @@ export async function createRepairFromIntake(
         quantity: 1,
         unit_price: quotedPrice,
         discount_pct: 0,
-        line_total: quotedPrice,
         sort_order: 0,
       });
 
@@ -474,7 +473,6 @@ export async function createBespokeFromIntake(
         quantity: 1,
         unit_price: quotedPrice,
         discount_pct: 0,
-        line_total: quotedPrice,
         sort_order: 0,
       });
 

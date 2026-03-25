@@ -75,7 +75,7 @@ export async function emailInvoice(
 
       supabase
         .from("invoice_line_items")
-        .select("description, quantity, unit_price, discount_pct, line_total")
+        .select("description, quantity, unit_price, discount_pct, total")
         .eq("invoice_id", invoiceId)
         .order("sort_order", { ascending: true }),
 
@@ -146,8 +146,7 @@ export async function emailInvoice(
       unit_price: Number(item.unit_price),
       discount_pct: Number(item.discount_pct ?? 0),
       total: Number(
-        (item as Record<string, unknown>).line_total ??
-          (item as Record<string, unknown>).total ??
+        (item as Record<string, unknown>).total ??
           0
       ),
     }));
