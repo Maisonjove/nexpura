@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// Edge runtime — no Node.js APIs needed, just Supabase fetch calls
+export const runtime = 'edge';
+
 // Reserved subdomains that cannot be used
 const RESERVED = [
   "www", "app", "api", "admin", "demo", "staging", "test",

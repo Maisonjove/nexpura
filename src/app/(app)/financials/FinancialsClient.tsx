@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { Sparkles, Calendar, DollarSign, ReceiptText, AlertCircle, TrendingDown, BarChart3 } from 'lucide-react';
-import RevenueChart from './RevenueChart';
+// Lazy-load heavy chart library (recharts ~400KB) — only loaded when financials page is visited
+const RevenueChart = dynamic(() => import('./RevenueChart'), { ssr: false });
 import {
   StatCard,
   Skeleton,

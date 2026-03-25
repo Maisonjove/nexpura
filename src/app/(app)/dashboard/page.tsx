@@ -100,14 +100,16 @@ export default async function DashboardPage() {
       .order("due_date", { ascending: true })
       .limit(5),
 
-    // 7. Low stock
+    // 7. Low stock — fetch only items with quantity under threshold (max 50)
     admin
       .from("inventory")
       .select("id, name, sku, quantity, low_stock_threshold, track_quantity")
       .eq("tenant_id", tenantId)
       .eq("status", "active")
       .is("deleted_at", null)
-      .eq("track_quantity", true),
+      .eq("track_quantity", true)
+      .order("quantity", { ascending: true })
+      .limit(50),
 
     // 8. Ready repairs
     admin

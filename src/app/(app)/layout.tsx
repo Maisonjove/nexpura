@@ -51,66 +51,37 @@ export default async function AppLayout({
   const businessMode = (tenant?.business_mode as string) || 'full';
   const isSuperAdmin = profile?.role === 'super_admin';
 
-  // --- Website config + subscription plan (non-critical: safe defaults used) ---
+  // --- All non-critical data in a single parallel fetch (reduces DB round-trips) ---
   let websiteConfig = null;
   let tenantPlan = "boutique";
-  if (profile?.tenant_id) {
-    try {
-      const [wcRes, subRes] = await Promise.all([
-        admin.from('website_config').select('website_type, external_url, subdomain, published').eq('tenant_id', profile.tenant_id as string).maybeSingle(),
-        admin.from('subscriptions').select('plan').eq('tenant_id', profile.tenant_id as string).maybeSingle(),
-      ]);
-      websiteConfig = wcRes.data ?? null;
-      tenantPlan = canonicalPlan(subRes.data?.plan ?? 'boutique');
-    } catch (err) {
-      console.error('[AppLayout] Failed to fetch website config / subscription:', err);
-      // Keep defaults: websiteConfig = null, tenantPlan = "boutique"
-    }
-  }
-
-  // --- Ready-pickup counts (non-critical: default to 0) ---
   let readyRepairsCount = 0;
   let readyBespokeCount = 0;
-  if (profile?.tenant_id) {
-    try {
-      const [repairsRes, bespokeRes] = await Promise.all([
-        admin.from('repairs').select('id', { count: 'exact', head: true }).eq('tenant_id', profile.tenant_id as string).eq('stage', 'ready').is('deleted_at', null),
-        admin.from('bespoke_jobs').select('id', { count: 'exact', head: true }).eq('tenant_id', profile.tenant_id as string).eq('stage', 'ready'),
-      ]);
-      readyRepairsCount = repairsRes.count ?? 0;
-      readyBespokeCount = bespokeRes.count ?? 0;
-    } catch (err) {
-      console.error('[AppLayout] Failed to fetch ready-pickup counts:', err);
-      // Keep defaults: 0 / 0
-    }
-  }
-
-  // --- Locations + current location (non-critical: defaults to empty array) ---
   let locations: { id: string; name: string; type: string; is_active: boolean }[] = [];
   let currentLocationId: string | null = null;
+
   if (profile?.tenant_id) {
     try {
-      const locRes = await admin
-        .from('locations')
-        .select('id, name, type, is_active')
-        .eq('tenant_id', profile.tenant_id as string)
-        .eq('is_active', true)
-        .order('name');
-      locations = locRes.data ?? [];
+      const [wcRes, subRes, repairsRes, bespokeRes, locRes, tmRes] = await Promise.all([
+        admin.from('website_config').select('website_type, external_url, subdomain, published').eq('tenant_id', profile.tenant_id as string).maybeSingle(),
+        admin.from('subscriptions').select('plan').eq('tenant_id', profile.tenant_id as string).maybeSingle(),
+        admin.from('repairs').select('id', { count: 'exact', head: true }).eq('tenant_id', profile.tenant_id as string).eq('stage', 'ready').is('deleted_at', null),
+        admin.from('bespoke_jobs').select('id', { count: 'exact', head: true }).eq('tenant_id', profile.tenant_id as string).eq('stage', 'ready'),
+        admin.from('locations').select('id, name, type, is_active').eq('tenant_id', profile.tenant_id as string).eq('is_active', true).order('name'),
+        admin.from('team_members').select('current_location_id, default_location_id').eq('user_id', user.id).maybeSingle(),
+      ]);
 
-      // Get user's current location from team_members
-      const tmRes = await admin
-        .from('team_members')
-        .select('current_location_id, default_location_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      websiteConfig = wcRes.data ?? null;
+      tenantPlan = canonicalPlan(subRes.data?.plan ?? 'boutique');
+      readyRepairsCount = repairsRes.count ?? 0;
+      readyBespokeCount = bespokeRes.count ?? 0;
+      locations = locRes.data ?? [];
       currentLocationId =
         tmRes.data?.current_location_id ||
         tmRes.data?.default_location_id ||
         (locations.length === 1 ? locations[0].id : null);
     } catch (err) {
-      console.error('[AppLayout] Failed to fetch locations:', err);
-      // Keep defaults: [] / null — LocationContext handles empty state gracefully
+      console.error('[AppLayout] Failed to fetch layout data:', err);
+      // Keep all defaults on error
     }
   }
 

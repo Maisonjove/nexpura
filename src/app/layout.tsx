@@ -23,6 +23,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn("font-sans", geist.variable)}>
+      <head>
+        {/* Preconnect to Supabase to reduce connection latency */}
+        <link rel="preconnect" href="https://vkpjocnrefjfpuovzinn.supabase.co" />
+        <link rel="dns-prefetch" href="https://vkpjocnrefjfpuovzinn.supabase.co" />
+      </head>
       <body className={cn(
         "min-h-screen bg-background font-sans antialiased",
         inter.variable

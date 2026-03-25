@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { Sparkles, Printer, TrendingUp, DollarSign, ReceiptText, CreditCard } from 'lucide-react';
-import RevenueChart from '../RevenueChart';
+// Lazy-load heavy chart library (recharts) — only loaded when report tab is active
+const RevenueChart = dynamic(() => import('../RevenueChart'), { ssr: false });
 import StatCard from './StatCard';
 import Skeleton from './Skeleton';
 import { fmt, fmtFull, todayStr, monthStartStr, PRESETS } from './helpers';

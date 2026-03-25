@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { checkIdempotencyHealth } from "@/lib/idempotency";
 
+export const runtime = 'edge';
+
 export async function GET() {
   // Check idempotency system health
   const idempotencyHealth = await checkIdempotencyHealth();
@@ -39,5 +41,9 @@ export async function GET() {
     },
   };
 
-  return NextResponse.json(checks);
+  return NextResponse.json(checks, {
+    headers: {
+      'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+    },
+  });
 }
