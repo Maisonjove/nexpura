@@ -2,10 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSystemEmail } from "@/lib/email-sender";
+// Validate required environment variables at module load time
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+if (!stripeSecretKey) {
+  throw new Error("[stripe/route] STRIPE_SECRET_KEY is not set - payments will not work");
+}
+const webhookSecret =
+  process.env.STRIPE_WEBHOOK_SECRET_LIVE || process.env.STRIPE_WEBHOOK_SECRET;
+if (!webhookSecret) {
+  throw new Error(
+    "[stripe/route] STRIPE_WEBHOOK_SECRET (or STRIPE_WEBHOOK_SECRET_LIVE) is not set - webhooks will be rejected"
+  );
+}
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_LIVE || process.env.STRIPE_WEBHOOK_SECRET!;
+const stripe = new Stripe(stripeSecretKey);
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -26,6 +36,27 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // Idempotency: skip duplicate Stripe events
+  const eventKey = `stripe_event:${event.id}`;
+  const { data: seenEvent } = await supabase
+    .from("idempotency_locks")
+    .select("key")
+    .eq("key", eventKey)
+    .maybeSingle();
+  if (seenEvent) {
+    console.log(`[stripe/route] Skipping duplicate event: ${event.id} (${event.type})`);
+    return NextResponse.json({ received: true, duplicate: true });
+  }
+  const { error: lockError } = await supabase.from("idempotency_locks").insert({
+    key: eventKey,
+    expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date().toISOString(),
+  });
+  if (lockError && lockError.code !== "23505") {
+    console.error("[stripe/route] Failed to acquire idempotency lock:", lockError);
+  } else if (lockError?.code === "23505") {
+    return NextResponse.json({ received: true, duplicate: true });
+  }
   try {
     switch (event.type) {
       case "checkout.session.completed": {
@@ -65,6 +96,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("Webhook processing error:", error);
+    // Roll back idempotency lock so Stripe can retry
+    await supabase.from("idempotency_locks").delete().eq("key", eventKey);fix: add env var guard + idempotency to Stripe webhook route
+
     return NextResponse.json(
       { error: "Webhook processing failed" },
       { status: 500 }
