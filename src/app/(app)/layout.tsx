@@ -6,6 +6,9 @@ import { redirect } from 'next/navigation';
 import { canonicalPlan } from '@/lib/features';
 import { LocationProvider } from '@/contexts/LocationContext';
 
+// Prevent caching so plan changes take effect immediately
+export const dynamic = 'force-dynamic';
+
 export default async function AppLayout({
   children,
 }: {

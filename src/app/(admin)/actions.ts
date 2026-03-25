@@ -30,10 +30,12 @@ async function assertSuperAdmin() {
 
 export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
   const adminClient = await assertSuperAdmin();
-    // Normalise legacy "group" to "atelier" so the DB constraint is never violated
-    const normalisedPlan: "boutique" | "studio" | "atelier" =
-          newPlan === "group" ? "atelier" : newPlan;
+  
+  // Normalise legacy "group" to "atelier" so the DB constraint is never violated
+  const normalisedPlan: "boutique" | "studio" | "atelier" =
+        newPlan === "group" ? "atelier" : newPlan;
 
+  // Update subscriptions table
   const { error } = await adminClient
     .from("subscriptions")
     .update({ plan: normalisedPlan })
@@ -43,9 +45,23 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
     console.error("[changeTenantPlan] Supabase error:", error.message, "| tenantId:", tenantId, "| plan:", normalisedPlan);
     throw new Error(error.message);
   }
+
+  // Also update tenants table if it has a plan column
+  await adminClient
+    .from("tenants")
+    .update({ plan: normalisedPlan })
+    .eq("id", tenantId);
+
+  // Revalidate admin paths
   revalidatePath(`/admin/tenants/${tenantId}`);
   revalidatePath("/admin/tenants");
   revalidatePath("/admin");
+  
+  // Revalidate user-facing paths so changes take effect immediately
+  revalidatePath("/dashboard");
+  revalidatePath("/billing");
+  revalidatePath("/settings");
+  revalidatePath("/website");
 }
 
 export async function changeTenantStatus(tenantId: string, newStatus: SubStatus) {
