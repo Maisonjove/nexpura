@@ -1,6 +1,7 @@
 "use client";
 
-import type { WebsiteConfig } from "../types";
+import type { WebsiteConfig, BusinessHours } from "../types";
+import BusinessHoursEditor from "./BusinessHoursEditor";
 
 interface AdvancedTabProps {
   config: WebsiteConfig;
@@ -31,6 +32,8 @@ interface AdvancedTabProps {
   setCatalogueShowStone: (value: boolean) => void;
   catalogueColumns: number;
   setCatalogueColumns: (value: number) => void;
+  businessHours: BusinessHours | null | undefined;
+  setBusinessHours: (value: BusinessHours) => void;
   onSave: () => void;
   saving: boolean;
   saved: boolean;
@@ -64,6 +67,8 @@ export default function AdvancedTab({
   setCatalogueShowStone,
   catalogueColumns,
   setCatalogueColumns,
+  businessHours,
+  setBusinessHours,
   onSave,
   saving,
   saved,
@@ -193,6 +198,19 @@ export default function AdvancedTab({
             />
           </div>
         </div>
+      </div>
+
+      {/* Business Hours */}
+      <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-stone-900 mb-1">Business Hours</h2>
+        <p className="text-sm text-stone-500 mb-4">Display your opening hours on your website so customers know when you&apos;re available.</p>
+        <BusinessHoursEditor
+          value={businessHours}
+          onChange={(hours) => {
+            setBusinessHours(hours);
+            update("business_hours", hours);
+          }}
+        />
       </div>
 
       <div className="flex justify-end">

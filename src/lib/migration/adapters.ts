@@ -12,6 +12,7 @@ export const MIGRATION_SOURCES = [
   { id: 'vend', name: 'Vend / Lightspeed X', category: 'retail', logo: '🏪', difficulty: 'medium', description: 'Import inventory, customers, and sales data from your Vend (Lightspeed X) store', entities: ['customers','inventory','invoices'], notes: 'Export from Reporting' },
   { id: 'quickbooks', name: 'QuickBooks', category: 'accounting', logo: '📊', difficulty: 'medium', description: 'Import customer contacts, invoices, and payment history from QuickBooks accounting', entities: ['customers','invoices','payments'], notes: 'Export customers and transactions from QuickBooks Reports' },
   // Generic
+  { id: 'edge_pos', name: 'Edge POS', category: 'retail', logo: '🏬', difficulty: 'easy', description: 'Import customers, inventory, and repair tickets from Edge POS', entities: ['customers','inventory','repairs','invoices'], notes: 'Export from Edge POS Reports > Data Export. Supports CSV and Excel formats.' },
   { id: 'csv_excel', name: 'CSV / Excel Files', category: 'generic', logo: '📄', difficulty: 'easy', description: 'Import any data via structured CSV or Excel spreadsheet with field mapping', entities: ['any'], notes: 'Supports .csv, .xls, .xlsx' },
   { id: 'other', name: 'Other System', category: 'generic', logo: '🔧', difficulty: 'variable', description: 'Migrate from any other system using AI-powered field mapping and data cleanup', entities: ['any'], notes: 'AI-assisted mapping with manual review' },
   // Custom & agency-built sites

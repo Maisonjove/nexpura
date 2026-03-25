@@ -264,6 +264,69 @@ export async function completeStocktake(stocktakeId: string, applyAdjustments: b
   }
 }
 
+export async function createStocktakeWithInventory(
+  name: string,
+  location?: string,
+  notes?: string
+): Promise<{ id?: string; error?: string }> {
+  try {
+    const { userId, tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+
+    // Generate reference number
+    const { count } = await admin
+      .from("stocktakes")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId);
+    const refNum = `ST-${String((count ?? 0) + 1).padStart(4, "0")}`;
+
+    // Create the stocktake
+    const { data, error } = await admin
+      .from("stocktakes")
+      .insert({
+        tenant_id: tenantId,
+        reference_number: refNum,
+        name,
+        location: location || null,
+        notes: notes || null,
+        status: "in_progress",
+        started_at: new Date().toISOString(),
+        created_by: userId,
+      })
+      .select("id")
+      .single();
+
+    if (error) return { error: error.message };
+
+    // Pre-populate from entire inventory
+    const { data: inventory } = await admin
+      .from("inventory")
+      .select("id, name, sku, quantity, barcode_value")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null);
+
+    if (inventory && inventory.length > 0) {
+      const items = inventory.map((inv) => ({
+        stocktake_id: data.id,
+        tenant_id: tenantId,
+        inventory_id: inv.id,
+        sku: inv.sku,
+        item_name: inv.name,
+        expected_qty: inv.quantity ?? 0,
+        barcode_value: inv.barcode_value ?? null,
+        counted_qty: null,
+      }));
+      await admin.from("stocktake_items").insert(items);
+    }
+
+    await logActivity(tenantId, userId, "created_stocktake", "stocktake", data?.id, `${name} (imported from inventory)`);
+    revalidatePath("/stocktakes");
+    return { id: data?.id };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
 export async function addManualStocktakeItem(
   stocktakeId: string,
   itemName: string,

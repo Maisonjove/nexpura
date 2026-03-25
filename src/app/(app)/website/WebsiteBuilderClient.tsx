@@ -7,7 +7,7 @@ import {
   checkSubdomainAvailable,
   type WebsiteConfigData,
 } from "./actions";
-import type { WebsiteType, Tab, AISuggestions, WebsiteConfig, WebsiteBuilderProps as Props } from "./types";
+import type { WebsiteType, Tab, AISuggestions, WebsiteConfig, WebsiteBuilderProps as Props, BusinessHours } from "./types";
 import {
   SetupTab,
   BrandingTab,
@@ -78,6 +78,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
   const [catalogueShowMetal, setCatalogueShowMetal] = useState(initial?.catalogue_show_metal ?? true);
   const [catalogueShowStone, setCatalogueShowStone] = useState(initial?.catalogue_show_stone ?? true);
   const [catalogueColumns, setCatalogueColumns] = useState(initial?.catalogue_grid_columns ?? 3);
+  const [businessHours, setBusinessHours] = useState<BusinessHours | null>(initial?.business_hours as BusinessHours | null ?? null);
 
   const previewUrl = config.subdomain
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/${config.subdomain}?preview=true`
@@ -381,6 +382,8 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
               setCatalogueShowStone={setCatalogueShowStone}
               catalogueColumns={catalogueColumns}
               setCatalogueColumns={setCatalogueColumns}
+              businessHours={businessHours}
+              setBusinessHours={setBusinessHours}
               onSave={handleSave}
               saving={saving}
               saved={saved}

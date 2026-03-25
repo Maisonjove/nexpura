@@ -52,6 +52,35 @@ export interface WebsiteConfig {
   catalogue_show_metal?: boolean;
   catalogue_show_stone?: boolean;
   catalogue_grid_columns?: number;
+  // Business hours & custom styling
+  business_hours?: BusinessHours | null;
+  custom_css?: string;
+  social_links?: SocialLinks | null;
+}
+
+export interface BusinessHourEntry {
+  open: string;  // e.g. "09:00"
+  close: string; // e.g. "17:00"
+  closed: boolean;
+}
+
+export interface BusinessHours {
+  monday: BusinessHourEntry;
+  tuesday: BusinessHourEntry;
+  wednesday: BusinessHourEntry;
+  thursday: BusinessHourEntry;
+  friday: BusinessHourEntry;
+  saturday: BusinessHourEntry;
+  sunday: BusinessHourEntry;
+}
+
+export interface SocialLinks {
+  instagram?: string;
+  facebook?: string;
+  twitter?: string;
+  pinterest?: string;
+  tiktok?: string;
+  youtube?: string;
 }
 
 export interface WebsiteBuilderProps {

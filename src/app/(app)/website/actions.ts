@@ -64,6 +64,10 @@ export interface WebsiteConfigData {
   catalogue_show_metal?: boolean;
   catalogue_show_stone?: boolean;
   catalogue_grid_columns?: number;
+  // Business hours & custom styling
+  business_hours?: Record<string, { open: string; close: string; closed: boolean }> | null;
+  custom_css?: string;
+  social_links?: Record<string, string> | null;
 }
 
 export async function getWebsiteConfig(): Promise<{ data?: any; error?: string }> {

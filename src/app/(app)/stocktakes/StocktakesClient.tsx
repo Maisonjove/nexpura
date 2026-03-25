@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createStocktake } from "./actions";
+import { createStocktake, createStocktakeWithInventory } from "./actions";
 import type { Stocktake } from "./actions";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -39,6 +39,18 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
     if (!name.trim()) return;
     startTransition(async () => {
       const result = await createStocktake(name.trim(), location, notes);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      router.push(`/stocktakes/${result.id}`);
+    });
+  }
+
+  function handleCreateWithInventory() {
+    const autoName = name.trim() || `Stocktake ${new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}`;
+    startTransition(async () => {
+      const result = await createStocktakeWithInventory(autoName, location, notes);
       if (result.error) {
         setError(result.error);
         return;
@@ -98,20 +110,31 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
               </div>
               {error && <p className="text-xs text-red-500">{error}</p>}
             </div>
-            <div className="flex gap-2 mt-5">
+            <div className="flex flex-col gap-2 mt-5">
               <button
-                onClick={() => { setShowNew(false); setError(null); }}
-                className="flex-1 px-3 py-2 border border-stone-200 text-stone-600 rounded-lg text-sm hover:bg-stone-50"
+                onClick={handleCreateWithInventory}
+                disabled={isPending}
+                className="w-full px-3 py-2 bg-stone-800 text-white rounded-lg text-sm font-medium hover:bg-stone-900 disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                Cancel
+                <span>📦</span>
+                {isPending ? "Creating…" : "Import from Inventory"}
               </button>
-              <button
-                onClick={handleCreate}
-                disabled={isPending || !name.trim()}
-                className="flex-1 px-3 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-60"
-              >
-                {isPending ? "Creating…" : "Create"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowNew(false); setError(null); }}
+                  className="flex-1 px-3 py-2 border border-stone-200 text-stone-600 rounded-lg text-sm hover:bg-stone-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreate}
+                  disabled={isPending || !name.trim()}
+                  className="flex-1 px-3 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-60"
+                >
+                  {isPending ? "Creating…" : "Create Empty"}
+                </button>
+              </div>
+              <p className="text-xs text-stone-400 text-center">&ldquo;Import from Inventory&rdquo; pre-populates all your stock items for counting</p>
             </div>
           </div>
         </div>
