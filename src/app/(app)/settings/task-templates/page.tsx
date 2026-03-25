@@ -32,8 +32,12 @@ export default function TaskTemplatesPage() {
   async function fetchTemplates() {
     setLoading(true);
     try {
-      const data = await getTaskTemplates();
-      setTemplates(data);
+      const result = await getTaskTemplates();
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setTemplates(result.data ?? []);
+      }
     } catch (err) {
       console.error(err);
       toast.error("Failed to load templates");
@@ -46,14 +50,21 @@ export default function TaskTemplatesPage() {
     if (!newTitle.trim()) return;
     
     try {
-      const data = await createTaskTemplate({
+      const result = await createTaskTemplate({
         title: newTitle,
         description: newDescription,
         department: newDepartment || null,
         priority: newPriority,
       });
 
-      setTemplates((prev) => [data, ...prev]);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (result.data) {
+        setTemplates((prev) => [result.data!, ...prev]);
+      }
       setNewTitle("");
       setNewDescription("");
       setNewDepartment("");
@@ -78,12 +89,17 @@ export default function TaskTemplatesPage() {
     if (!editTitle.trim() || !editId) return;
 
     try {
-      await updateTaskTemplate(editId, {
+      const result = await updateTaskTemplate(editId, {
         title: editTitle,
         description: editDescription,
         department: editDepartment || null,
         priority: editPriority,
       });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
 
       setTemplates((prev) => prev.map((t) => t.id === editId ? { 
         ...t, 
@@ -105,7 +121,11 @@ export default function TaskTemplatesPage() {
     if (!confirm("Delete this template?")) return;
     
     try {
-      await deleteTaskTemplate(id);
+      const result = await deleteTaskTemplate(id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
       setTemplates((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
       console.error(err);
