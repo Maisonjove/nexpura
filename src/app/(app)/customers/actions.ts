@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { logger } from "@/lib/logger";
 
 async function getTenantId(): Promise<string> {
   const supabase = await createClient();
@@ -55,100 +56,120 @@ function buildCustomerData(formData: FormData, tenantId?: string, userId?: strin
 }
 
 export async function createCustomer(formData: FormData): Promise<{ id?: string; error?: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
 
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
+    const { data: userData } = await supabase
+      .from("users")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
 
-  if (!userData?.tenant_id) return { error: "No tenant found" };
+    if (!userData?.tenant_id) return { error: "No tenant found" };
 
-  const customerData = buildCustomerData(formData, userData.tenant_id, user.id);
+    const customerData = buildCustomerData(formData, userData.tenant_id, user.id);
 
-  const { data, error } = await supabase
-    .from("customers")
-    .insert(customerData)
-    .select("id")
-    .single();
+    const { data, error } = await supabase
+      .from("customers")
+      .insert(customerData)
+      .select("id")
+      .single();
 
-  if (error) return { error: error.message };
-  return { id: data.id };
+    if (error) return { error: error.message };
+    return { id: data.id };
+  } catch (error) {
+    logger.error("createCustomer failed", { error });
+    return { error: "Operation failed" };
+  }
 }
 
 export async function updateCustomer(
   id: string,
   formData: FormData
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  // Verify ownership
-  const tenantId = await getTenantId().catch(() => null);
-  if (!tenantId) return { error: "Not authenticated" };
+    // Verify ownership
+    const tenantId = await getTenantId().catch(() => null);
+    if (!tenantId) return { error: "Not authenticated" };
 
-  const customerData = {
-    ...buildCustomerData(formData),
-    updated_at: new Date().toISOString(),
-  };
+    const customerData = {
+      ...buildCustomerData(formData),
+      updated_at: new Date().toISOString(),
+    };
 
-  const { error } = await supabase
-    .from("customers")
-    .update(customerData)
-    .eq("id", id)
-    .eq("tenant_id", tenantId);
+    const { error } = await supabase
+      .from("customers")
+      .update(customerData)
+      .eq("id", id)
+      .eq("tenant_id", tenantId);
 
-  if (error) return { error: error.message };
-  return { success: true };
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (error) {
+    logger.error("updateCustomer failed", { error });
+    return { error: "Operation failed" };
+  }
 }
 
 export async function archiveCustomer(id: string): Promise<{ success?: boolean; error?: string }> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const tenantId = await getTenantId().catch(() => null);
-  if (!tenantId) return { error: "Not authenticated" };
+    const tenantId = await getTenantId().catch(() => null);
+    if (!tenantId) return { error: "Not authenticated" };
 
-  const { error } = await supabase
-    .from("customers")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("tenant_id", tenantId);
+    const { error } = await supabase
+      .from("customers")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("tenant_id", tenantId);
 
-  if (error) return { error: error.message };
-  redirect("/customers");
+    if (error) return { error: error.message };
+    redirect("/customers");
+  } catch (error) {
+    logger.error("archiveCustomer failed", { error });
+    return { error: "Operation failed" };
+  }
 }
 
 export async function addCustomerNote(
   customerId: string,
   note: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const tenantId = await getTenantId().catch(() => null);
-  if (!tenantId) return { error: "Not authenticated" };
+    const tenantId = await getTenantId().catch(() => null);
+    if (!tenantId) return { error: "Not authenticated" };
 
-  // Fetch existing notes
-  const { data: existing } = await supabase
-    .from("customers")
-    .select("notes")
-    .eq("id", customerId)
-    .eq("tenant_id", tenantId)
-    .single();
+    // Fetch existing notes
+    const { data: existing } = await supabase
+      .from("customers")
+      .select("notes")
+      .eq("id", customerId)
+      .eq("tenant_id", tenantId)
+      .single();
 
-  const timestamp = new Date().toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" });
-  const newNote = `[${timestamp}] ${note}`;
-  const updatedNotes = existing?.notes
-    ? `${existing.notes}\n\n${newNote}`
-    : newNote;
+    const timestamp = new Date().toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" });
+    const newNote = `[${timestamp}] ${note}`;
+    const updatedNotes = existing?.notes
+      ? `${existing.notes}\n\n${newNote}`
+      : newNote;
 
-  const { error } = await supabase
-    .from("customers")
-    .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
-    .eq("id", customerId)
-    .eq("tenant_id", tenantId);
+    const { error } = await supabase
+      .from("customers")
+      .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
+      .eq("id", customerId)
+      .eq("tenant_id", tenantId);
 
-  if (error) return { error: error.message };
-  return { success: true };
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (error) {
+    logger.error("addCustomerNote failed", { error });
+    return { error: "Operation failed" };
+  }
 }

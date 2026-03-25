@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { logger } from "@/lib/logger";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -19,120 +20,155 @@ async function getAuthContext() {
 }
 
 export async function getTeamMembers() {
-  const { supabase, tenantId } = await getAuthContext();
-  const { data, error } = await supabase
-    .from("team_members")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .order("created_at", { ascending: true });
-  return { data: data ?? [], error: error?.message };
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+    const { data, error } = await supabase
+      .from("team_members")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: true });
+    return { data: data ?? [], error: error?.message };
+  } catch (error) {
+    logger.error("getTeamMembers failed", { error });
+    return { error: "Operation failed" };
+  }
 }
 
 export async function inviteTeamMember(formData: FormData) {
-  const { supabase, tenantId } = await getAuthContext();
+  try {
+    const { supabase, tenantId } = await getAuthContext();
 
-  const name = (formData.get("name") as string).trim();
-  const email = (formData.get("email") as string).trim().toLowerCase();
-  const role = (formData.get("role") as string) || "staff";
+    const name = (formData.get("name") as string).trim();
+    const email = (formData.get("email") as string).trim().toLowerCase();
+    const role = (formData.get("role") as string) || "staff";
 
-  if (!name || !email) return { error: "Name and email are required" };
+    if (!name || !email) return { error: "Name and email are required" };
 
-  // Generate invite token
-  const inviteToken = crypto.randomUUID();
+    // Generate invite token
+    const inviteToken = crypto.randomUUID();
 
-  const { error } = await supabase.from("team_members").insert({
-    tenant_id: tenantId,
-    name,
-    email,
-    role,
-    invite_token: inviteToken,
-    invite_accepted: false,
-  });
+    const { error } = await supabase.from("team_members").insert({
+      tenant_id: tenantId,
+      name,
+      email,
+      role,
+      invite_token: inviteToken,
+      invite_accepted: false,
+    });
 
-  if (error) return { error: error.message };
+    if (error) return { error: error.message };
 
-  revalidatePath("/settings/team");
-  return { success: true, inviteToken };
+    revalidatePath("/settings/team");
+    return { success: true, inviteToken };
+  } catch (error) {
+    logger.error("inviteTeamMember failed", { error });
+    return { error: "Operation failed" };
+  }
 }
 
 export async function updateTeamMemberRole(memberId: string, role: string) {
-  const { supabase, tenantId } = await getAuthContext();
+  try {
+    const { supabase, tenantId } = await getAuthContext();
 
-  const { error } = await supabase
-    .from("team_members")
-    .update({ role, updated_at: new Date().toISOString() })
-    .eq("id", memberId)
-    .eq("tenant_id", tenantId);
+    const { error } = await supabase
+      .from("team_members")
+      .update({ role, updated_at: new Date().toISOString() })
+      .eq("id", memberId)
+      .eq("tenant_id", tenantId);
 
-  if (error) return { error: error.message };
-  revalidatePath("/settings/team");
-  return { success: true };
+    if (error) return { error: error.message };
+    revalidatePath("/settings/team");
+    return { success: true };
+  } catch (error) {
+    logger.error("updateTeamMemberRole failed", { error });
+    return { error: "Operation failed" };
+  }
 }
 
 export async function removeTeamMember(memberId: string) {
-  const { supabase, tenantId } = await getAuthContext();
+  try {
+    const { supabase, tenantId } = await getAuthContext();
 
-  const { error } = await supabase
-    .from("team_members")
-    .delete()
-    .eq("id", memberId)
-    .eq("tenant_id", tenantId);
+    const { error } = await supabase
+      .from("team_members")
+      .delete()
+      .eq("id", memberId)
+      .eq("tenant_id", tenantId);
 
-  if (error) return { error: error.message };
-  revalidatePath("/settings/team");
-  return { success: true };
+    if (error) return { error: error.message };
+    revalidatePath("/settings/team");
+    return { success: true };
+  } catch (error) {
+    logger.error("removeTeamMember failed", { error });
+    return { error: "Operation failed" };
+  }
 }
 
 export async function getTasks() {
-  const { supabase, tenantId } = await getAuthContext();
-  const { data, error } = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .order("created_at", { ascending: false });
-  return { data: data ?? [], error: error?.message };
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false });
+    return { data: data ?? [], error: error?.message };
+  } catch (error) {
+    logger.error("getTasks failed", { error });
+    return { error: "Operation failed" };
+  }
 }
 
 export async function createTask(formData: FormData) {
-  const { supabase, userId, tenantId } = await getAuthContext();
+  try {
+    const { supabase, userId, tenantId } = await getAuthContext();
 
-  const title = (formData.get("title") as string).trim();
-  const description = (formData.get("description") as string) || null;
-  const assignedTo = (formData.get("assigned_to") as string) || null;
-  const priority = (formData.get("priority") as string) || "normal";
-  const dueDate = (formData.get("due_date") as string) || null;
+    const title = (formData.get("title") as string).trim();
+    const description = (formData.get("description") as string) || null;
+    const assignedTo = (formData.get("assigned_to") as string) || null;
+    const priority = (formData.get("priority") as string) || "normal";
+    const dueDate = (formData.get("due_date") as string) || null;
 
-  if (!title) return { error: "Title is required" };
+    if (!title) return { error: "Title is required" };
 
-  const { error } = await supabase.from("tasks").insert({
-    tenant_id: tenantId,
-    created_by: userId,
-    assigned_to: assignedTo || null,
-    title,
-    description,
-    priority,
-    due_date: dueDate || null,
-    status: "todo",
-  });
+    const { error } = await supabase.from("tasks").insert({
+      tenant_id: tenantId,
+      created_by: userId,
+      assigned_to: assignedTo || null,
+      title,
+      description,
+      priority,
+      due_date: dueDate || null,
+      status: "todo",
+    });
 
-  if (error) return { error: error.message };
-  revalidatePath("/settings/team");
-  return { success: true };
+    if (error) return { error: error.message };
+    revalidatePath("/settings/team");
+    return { success: true };
+  } catch (error) {
+    logger.error("createTask failed", { error });
+    return { error: "Operation failed" };
+  }
 }
 
 export async function updateTaskStatus(taskId: string, status: string) {
-  const { supabase, tenantId } = await getAuthContext();
+  try {
+    const { supabase, tenantId } = await getAuthContext();
 
-  const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-  if (status === "done") updates.completed_at = new Date().toISOString();
+    const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+    if (status === "done") updates.completed_at = new Date().toISOString();
 
-  const { error } = await supabase
-    .from("tasks")
-    .update(updates)
-    .eq("id", taskId)
-    .eq("tenant_id", tenantId);
+    const { error } = await supabase
+      .from("tasks")
+      .update(updates)
+      .eq("id", taskId)
+      .eq("tenant_id", tenantId);
 
-  if (error) return { error: error.message };
-  revalidatePath("/settings/team");
-  return { success: true };
+    if (error) return { error: error.message };
+    revalidatePath("/settings/team");
+    return { success: true };
+  } catch (error) {
+    logger.error("updateTaskStatus failed", { error });
+    return { error: "Operation failed" };
+  }
 }
