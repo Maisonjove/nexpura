@@ -47,13 +47,14 @@ export async function completeOnboarding(
     slug = `${slug}-${randomSuffix()}`;
   }
 
-  // 1. Insert tenant
+  // 1. Insert tenant (with plan to keep tenants.plan in sync with subscriptions.plan)
   const { data: tenant, error: tenantErr } = await adminClient
     .from("tenants")
     .insert({
       name: businessName,
       slug,
       business_type: businessType,
+      plan, // Keep in sync with subscriptions.plan
     })
     .select()
     .single();
@@ -64,16 +65,15 @@ export async function completeOnboarding(
   }
 
   // 2. Insert user record
+  // Note: We intentionally do NOT use OAuth metadata for full_name
+  // Users don't expect their Google profile name to appear without consent
+  // They can set their name in Settings if desired
   const { error: userErr } = await adminClient.from("users").upsert(
     {
       id: user.id,
       tenant_id: tenant.id,
       email: user.email ?? "",
-      full_name:
-        user.user_metadata?.full_name ??
-        user.user_metadata?.name ??
-        user.email ??
-        "Owner",
+      full_name: "Owner", // Default - user can change in settings
       role: "owner",
     },
     { onConflict: "id" }
