@@ -13,8 +13,9 @@ import { revalidatePath } from "next/cache";
 export async function approveAccess(
   token: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
   // Get the request to verify the user is the tenant owner
   const request = await getSupportAccessByToken(token);
@@ -57,20 +58,29 @@ export async function approveAccess(
   }
 
   revalidatePath("/admin");
-  revalidatePath("/settings");
-  return { success: true };
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (err) {
+    console.error("[approveAccess] Error:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Failed to approve access" };
+  }
 }
 
 export async function denyAccess(
   token: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  const result = await denySupportAccess(token, user?.id);
-  
-  if (!result.success) return result;
+    const result = await denySupportAccess(token, user?.id);
+    
+    if (!result.success) return result;
 
-  revalidatePath("/admin");
-  return { success: true };
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (err) {
+    console.error("[denyAccess] Error:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Failed to deny access" };
+  }
 }

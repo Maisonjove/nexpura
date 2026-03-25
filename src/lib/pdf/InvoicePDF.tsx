@@ -17,7 +17,7 @@ const MUTED = "#888";
 const GREEN = "#2D7A4A";
 
 const getStyles = (accent: string, layout: InvoiceLayout) =>
-  ({
+  StyleSheet.create({
     page: {
       fontFamily: "Helvetica",
       backgroundColor: "#FFFFFF",

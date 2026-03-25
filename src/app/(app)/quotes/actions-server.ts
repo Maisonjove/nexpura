@@ -21,86 +21,111 @@ export interface QuoteInput {
 }
 
 // ── CRUD Operations ──────────────────────────────────────────────────────────
-export async function createQuote(input: QuoteInput) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+export async function createQuote(input: QuoteInput): Promise<{ data?: any; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
 
-  const { data: userData } = await createAdminClient()
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
+    const { data: userData } = await createAdminClient()
+      .from("users")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
 
-  if (!userData?.tenant_id) throw new Error("No tenant found");
+    if (!userData?.tenant_id) return { error: "No tenant found" };
 
-  const { data, error } = await supabase
-    .from("quotes")
-    .insert({
-      tenant_id: userData.tenant_id,
-      customer_id: input.customer_id,
-      items: input.items,
-      total_amount: input.total_amount,
-      status: input.status || "draft",
-      expires_at: input.expires_at || null,
-      notes: input.notes || null,
-    })
-    .select()
-    .single();
+    const { data, error } = await supabase
+      .from("quotes")
+      .insert({
+        tenant_id: userData.tenant_id,
+        customer_id: input.customer_id,
+        items: input.items,
+        total_amount: input.total_amount,
+        status: input.status || "draft",
+        expires_at: input.expires_at || null,
+        notes: input.notes || null,
+      })
+      .select()
+      .single();
 
-  if (error) throw error;
-  revalidatePath("/quotes");
-  return data;
+    if (error) {
+      console.error("[createQuote] Error:", error);
+      return { error: error.message };
+    }
+    revalidatePath("/quotes");
+    return { data };
+  } catch (err) {
+    console.error("[createQuote] Unexpected error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to create quote" };
+  }
 }
 
-export async function updateQuote(id: string, input: Partial<QuoteInput>) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+export async function updateQuote(id: string, input: Partial<QuoteInput>): Promise<{ data?: any; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
 
-  const { data: userData } = await createAdminClient()
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
+    const { data: userData } = await createAdminClient()
+      .from("users")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
 
-  if (!userData?.tenant_id) throw new Error("No tenant found");
+    if (!userData?.tenant_id) return { error: "No tenant found" };
 
-  const { data, error } = await supabase
-    .from("quotes")
-    .update(input)
-    .eq("id", id)
-    .eq("tenant_id", userData.tenant_id)
-    .select()
-    .single();
+    const { data, error } = await supabase
+      .from("quotes")
+      .update(input)
+      .eq("id", id)
+      .eq("tenant_id", userData.tenant_id)
+      .select()
+      .single();
 
-  if (error) throw error;
-  revalidatePath("/quotes");
-  revalidatePath(`/quotes/${id}`);
-  return data;
+    if (error) {
+      console.error("[updateQuote] Error:", error);
+      return { error: error.message };
+    }
+    revalidatePath("/quotes");
+    revalidatePath(`/quotes/${id}`);
+    return { data };
+  } catch (err) {
+    console.error("[updateQuote] Unexpected error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to update quote" };
+  }
 }
 
-export async function deleteQuote(id: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+export async function deleteQuote(id: string): Promise<{ error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
 
-  const { data: userData } = await createAdminClient()
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
+    const { data: userData } = await createAdminClient()
+      .from("users")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
 
-  if (!userData?.tenant_id) throw new Error("No tenant found");
+    if (!userData?.tenant_id) return { error: "No tenant found" };
 
-  const { error } = await supabase
-    .from("quotes")
-    .delete()
-    .eq("id", id)
-    .eq("tenant_id", userData.tenant_id);
+    const { error } = await supabase
+      .from("quotes")
+      .delete()
+      .eq("id", id)
+      .eq("tenant_id", userData.tenant_id);
 
-  if (error) throw error;
-  revalidatePath("/quotes");
+    if (error) {
+      console.error("[deleteQuote] Error:", error);
+      return { error: error.message };
+    }
+    revalidatePath("/quotes");
+    return {};
+  } catch (err) {
+    console.error("[deleteQuote] Unexpected error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to delete quote" };
+  }
 }
 
 // ── Tenant-scoped list fetch ─────────────────────────────────────────────────

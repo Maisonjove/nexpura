@@ -168,10 +168,10 @@ export default async function QAPreviewPage() {
 
   return (
     <QAPreviewClient
-      categories={categorizedData}
+      categories={categorizedData as any}
       stats={{ ...stats, passRate }}
       categoryStats={categoryStats}
-      launchBlockers={launchBlockers}
+      launchBlockers={launchBlockers as any}
     />
   );
 }

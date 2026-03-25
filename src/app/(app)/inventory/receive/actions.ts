@@ -20,59 +20,91 @@ interface BatchReceiveParams {
 export async function batchReceiveStock(
   params: BatchReceiveParams
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
 
-  const admin = createAdminClient();
+    const admin = createAdminClient();
 
-  for (const line of params.lines) {
-    if (line.receiveQty <= 0) continue;
+    // Validate params
+    if (!params.tenantId) return { error: "Missing tenant ID" };
+    if (!params.userId) return { error: "Missing user ID" };
+    if (!params.lines || params.lines.length === 0) return { error: "No items to receive" };
 
-    // Get current quantity
-    const { data: item } = await admin
-      .from("inventory")
-      .select("quantity")
-      .eq("id", line.inventoryId)
-      .eq("tenant_id", params.tenantId)
-      .single();
+    let receivedCount = 0;
 
-    if (!item) continue;
+    for (const line of params.lines) {
+      if (line.receiveQty <= 0) continue;
 
-    const newQty = (item.quantity ?? 0) + line.receiveQty;
+      // Get current quantity
+      const { data: item, error: fetchError } = await admin
+        .from("inventory")
+        .select("quantity")
+        .eq("id", line.inventoryId)
+        .eq("tenant_id", params.tenantId)
+        .single();
 
-    // Update inventory
-    await admin
-      .from("inventory")
-      .update({
-        quantity: newQty,
-        supplier_invoice_ref: params.invoiceRef ?? undefined,
-      })
-      .eq("id", line.inventoryId)
-      .eq("tenant_id", params.tenantId);
+      if (fetchError) {
+        console.error(`[batchReceiveStock] Failed to fetch item ${line.inventoryId}:`, fetchError);
+        continue;
+      }
 
-    // Log stock movement
-    await admin.from("inventory_stock_movements").insert({
-      tenant_id: params.tenantId,
-      inventory_item_id: line.inventoryId,
-      moved_by: params.userId,
-      from_location: null,
-      to_location: "display",
-      notes: `Received from supplier${params.invoiceRef ? ` (Inv: ${params.invoiceRef})` : ""}`,
-    });
+      if (!item) continue;
 
-    // Also log in stock_movements table (for stock history)
-    await admin.from("stock_movements").insert({
-      tenant_id: params.tenantId,
-      inventory_id: line.inventoryId,
-      movement_type: "purchase",
-      quantity_change: line.receiveQty,
-      quantity_after: newQty,
-      notes: `Batch receive${params.invoiceRef ? ` - ${params.invoiceRef}` : ""}`,
-      created_by: params.userId,
-    });
+      const newQty = (item.quantity ?? 0) + line.receiveQty;
+
+      // Update inventory
+      const { error: updateError } = await admin
+        .from("inventory")
+        .update({
+          quantity: newQty,
+          supplier_invoice_ref: params.invoiceRef ?? undefined,
+        })
+        .eq("id", line.inventoryId)
+        .eq("tenant_id", params.tenantId);
+
+      if (updateError) {
+        console.error(`[batchReceiveStock] Failed to update item ${line.inventoryId}:`, updateError);
+        continue;
+      }
+
+      // Log stock movement
+      const { error: movementError } = await admin.from("inventory_stock_movements").insert({
+        tenant_id: params.tenantId,
+        inventory_item_id: line.inventoryId,
+        moved_by: params.userId,
+        from_location: null,
+        to_location: "display",
+        notes: `Received from supplier${params.invoiceRef ? ` (Inv: ${params.invoiceRef})` : ""}`,
+      });
+
+      if (movementError) {
+        console.error(`[batchReceiveStock] Failed to log movement for ${line.inventoryId}:`, movementError);
+      }
+
+      // Also log in stock_movements table (for stock history)
+      const { error: historyError } = await admin.from("stock_movements").insert({
+        tenant_id: params.tenantId,
+        inventory_id: line.inventoryId,
+        movement_type: "purchase",
+        quantity_change: line.receiveQty,
+        quantity_after: newQty,
+        notes: `Batch receive${params.invoiceRef ? ` - ${params.invoiceRef}` : ""}`,
+        created_by: params.userId,
+      });
+
+      if (historyError) {
+        console.error(`[batchReceiveStock] Failed to log history for ${line.inventoryId}:`, historyError);
+      }
+
+      receivedCount++;
+    }
+
+    revalidatePath("/inventory");
+    return { success: true };
+  } catch (err) {
+    console.error("[batchReceiveStock] Unexpected error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to receive stock" };
   }
-
-  revalidatePath("/inventory");
-  return { success: true };
 }

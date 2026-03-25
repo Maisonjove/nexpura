@@ -83,8 +83,9 @@ function calcTotals(
   };
 }
 
-export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: string }> {
-  const { supabase, userId, tenantId } = await getAuthContext();
+export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: string; error?: string }> {
+  try {
+    const { supabase, userId, tenantId } = await getAuthContext();
 
   // Generate invoice number via RPC
   const { data: invoiceNumberData, error: numErr } = await supabase.rpc(
@@ -151,14 +152,19 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
   }
 
   revalidatePath("/invoices");
-  return { id: invoice.id };
+    return { id: invoice.id };
+  } catch (err) {
+    console.error("[createInvoice] Error:", err);
+    return { id: "", error: err instanceof Error ? err.message : "Failed to create invoice" };
+  }
 }
 
 export async function updateInvoice(
   id: string,
   input: CreateInvoiceInput
-): Promise<void> {
-  const { supabase, tenantId } = await getAuthContext();
+): Promise<{ error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
 
   // Check invoice is draft
   const { data: existing } = await supabase
@@ -225,7 +231,12 @@ export async function updateInvoice(
   }
 
   revalidatePath(`/invoices/${id}`);
-  revalidatePath("/invoices");
+    revalidatePath("/invoices");
+    return {};
+  } catch (err) {
+    console.error("[updateInvoice] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to update invoice" };
+  }
 }
 
 export async function recordPayment(

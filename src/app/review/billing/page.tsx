@@ -42,6 +42,8 @@ export default async function ReviewBillingPage() {
         subscriptionStatus={subscription?.status ?? "trialing"}
         trialEndsAt={subscription?.trial_ends_at ?? new Date(Date.now() + 14 * 86400000).toISOString()}
         currentPeriodEnd={subscription?.current_period_end ?? null}
+        subdomain=""
+        email="review@nexpura.com"
       />
     </div>
   );
