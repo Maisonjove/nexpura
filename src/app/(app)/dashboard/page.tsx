@@ -17,9 +17,10 @@ export default async function DashboardPage() {
     .eq("id", user?.id ?? "")
     .single();
 
-  const firstName = userData?.full_name?.split(" ")[0] || "there";
   const tenantData = userData?.tenants as { name?: string; currency?: string; tax_rate?: number; tax_name?: string } | null;
   const tenantName = tenantData?.name ?? null;
+  // Use business name for greeting, not personal name
+  const firstName = tenantName || "there";
   const tenantId = userData?.tenant_id ?? "";
   const currency = tenantData?.currency || "AUD";
   const userRole = (userData as { role?: string } | null)?.role ?? "staff";
