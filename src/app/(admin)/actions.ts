@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { createSupportAccessRequest } from "@/lib/support-access";
 import { sendSupportAccessRequestEmail } from "@/lib/email/send";
 
-type Plan = "boutique" | "studio" | "atelier";
+type Plan = "boutique" | "studio" | "atelier" | "group";
 type SubStatus = "trialing" | "active" | "past_due" | "canceled" | "suspended" | "free";
 
 async function assertSuperAdmin() {
@@ -30,13 +30,19 @@ async function assertSuperAdmin() {
 
 export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
   const adminClient = await assertSuperAdmin();
+    // Normalise legacy "group" to "atelier" so the DB constraint is never violated
+    const normalisedPlan: "boutique" | "studio" | "atelier" =
+          newPlan === "group" ? "atelier" : newPlan;
 
   const { error } = await adminClient
     .from("subscriptions")
-    .update({ plan: newPlan })
+    .update({ plan: normalisedPlan })
     .eq("tenant_id", tenantId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[changeTenantPlan] Supabase error:", error.message, "| tenantId:", tenantId, "| plan:", normalisedPlan);
+    throw new Error(error.message);
+  }
   revalidatePath(`/admin/tenants/${tenantId}`);
   revalidatePath("/admin/tenants");
   revalidatePath("/admin");
