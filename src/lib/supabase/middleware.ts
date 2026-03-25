@@ -3,12 +3,29 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
   // Top-level guard: if anything in this function throws (Edge Runtime limits,
-  // Supabase network failure, etc.) return NextResponse.next() to pass the request
-  // through unmodified rather than crashing with a 500.
+  // Supabase network failure, etc.) redirect to /login for protected routes
+  // rather than silently passing through unauthenticated.
   try {
     return await _updateSessionInner(request);
   } catch (err) {
-    console.error("[middleware] updateSession threw — passing through:", err);
+    console.error("[middleware] updateSession threw:", err);
+    const { pathname } = request.nextUrl;
+    const isPublicRoute =
+      pathname === "/" ||
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/signup") ||
+      pathname.startsWith("/verify") ||
+      pathname.startsWith("/forgot-password") ||
+      pathname.startsWith("/reset-password") ||
+      pathname.startsWith("/support-access") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/api") ||
+      pathname.includes(".");
+    if (!isPublicRoute) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      return NextResponse.redirect(loginUrl);
+    }
     return NextResponse.next();
   }
 }
@@ -42,8 +59,7 @@ async function _updateSessionInner(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // ── Route authorization ───────────────────────────────────────────────────
-
+  // ── Route authorization ──────────────────────────────────────────────────────────
   // Public routes — no auth required
   const isPublicRoute =
     pathname === "/" ||
@@ -63,7 +79,6 @@ async function _updateSessionInner(request: NextRequest) {
 
   // /onboarding — requires auth but NOT tenant
   const isOnboarding = pathname.startsWith("/onboarding");
-
   if (isOnboarding) {
     if (!user) {
       const loginUrl = request.nextUrl.clone();
@@ -75,7 +90,6 @@ async function _updateSessionInner(request: NextRequest) {
 
   // /admin routes — requires auth + super_admin check (handled in page)
   const isAdminRoute = pathname.startsWith("/admin");
-
   if (isAdminRoute) {
     if (!user) {
       const loginUrl = request.nextUrl.clone();
@@ -144,7 +158,6 @@ async function _updateSessionInner(request: NextRequest) {
           new Date(sub.current_period_end) < now;
         const isBlocked =
           sub.status === "suspended" || isTrialExpired || isCancelledAndExpired;
-
         if (isBlocked) {
           const suspendedUrl = request.nextUrl.clone();
           suspendedUrl.pathname = "/suspended";
