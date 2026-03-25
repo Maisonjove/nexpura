@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Enable gzip/brotli compression to reduce egress bandwidth
+  compress: true,
+  // Only bundle packages actually used on server
+  serverExternalPackages: [],
   images: {
     remotePatterns: [
       // Supabase Storage — covers all project buckets

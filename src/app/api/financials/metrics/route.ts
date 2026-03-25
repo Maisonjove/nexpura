@@ -96,25 +96,33 @@ export async function GET() {
       refunds: vals.refunds,
     }));
 
-    // Quarterly GST (last 4 quarters)
-    const quarterlyGST = [];
-    for (let i = 3; i >= 0; i--) {
+    // Quarterly GST (last 4 quarters) — run all 4 queries in parallel
+    const quarterMeta = [3, 2, 1, 0].map((i) => {
       const qDate = new Date(now.getFullYear(), now.getMonth() - i * 3, 1);
       const qStart = new Date(qDate.getFullYear(), Math.floor(qDate.getMonth() / 3) * 3, 1).toISOString();
       const qEnd = new Date(qDate.getFullYear(), Math.floor(qDate.getMonth() / 3) * 3 + 3, 0, 23, 59, 59).toISOString();
-      const { data: qSales } = await admin
-        .from("sales")
-        .select("total")
-        .eq("tenant_id", tenantId)
-        .in("status", ["paid", "completed"])
-        .gte("sale_date", qStart.split("T")[0])
-        .lte("sale_date", qEnd.split("T")[0]);
-      const qRev = (qSales ?? []).reduce((s, r) => s + (r.total || 0), 0);
       const qLabel = `Q${Math.floor(qDate.getMonth() / 3) + 1} ${qDate.getFullYear()}`;
-      quarterlyGST.push({ label: qLabel, revenue: qRev, gst: qRev * gstRate / (1 + gstRate) });
-    }
+      return { qStart, qEnd, qLabel };
+    });
 
-    return Response.json({
+    const quarterResults = await Promise.all(
+      quarterMeta.map(({ qStart, qEnd }) =>
+        admin
+          .from("sales")
+          .select("total")
+          .eq("tenant_id", tenantId)
+          .in("status", ["paid", "completed"])
+          .gte("sale_date", qStart.split("T")[0])
+          .lte("sale_date", qEnd.split("T")[0])
+      )
+    );
+
+    const quarterlyGST = quarterResults.map(({ data: qSales }, idx) => {
+      const qRev = (qSales ?? []).reduce((s, r) => s + (r.total || 0), 0);
+      return { label: quarterMeta[idx].qLabel, revenue: qRev, gst: qRev * gstRate / (1 + gstRate) };
+    });
+
+    const response = Response.json({
       revenueThisMonth,
       revenueLastMonth,
       refundsThisMonth,
@@ -129,6 +137,9 @@ export async function GET() {
       quarterlyGST,
       gstRate,
     });
+    // Cache financial metrics for 5 minutes (private — user-specific data)
+    response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=60");
+    return response;
   } catch (err) {
     console.error("Metrics error:", err);
     return Response.json({ error: "Failed to load metrics" }, { status: 500 });

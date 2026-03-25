@@ -1,6 +1,8 @@
 import { NavBar } from "@/components/marketing/NavBar";
 import { Footer } from "@/components/marketing/Footer";
 
+export const dynamic = "force-static";
+
 export const metadata = {
   title: "Privacy Policy — Nexpura",
   description: "How Nexpura collects, uses, and protects your data.",

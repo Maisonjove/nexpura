@@ -1,6 +1,8 @@
 import { NavBar } from "@/components/marketing/NavBar";
 import { Footer } from "@/components/marketing/Footer";
 
+export const dynamic = "force-static";
+
 export const metadata = {
   title: "Terms of Service — Nexpura",
   description: "Nexpura Terms of Service — your agreement when using the platform.",

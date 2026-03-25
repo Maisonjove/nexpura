@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CheckCircle, Minus } from "lucide-react";
 
+export const dynamic = "force-static";
 export const metadata = { title: "Pricing — Nexpura", description: "Simple, transparent pricing for jewellery businesses of all sizes." };
 
 const plans = [

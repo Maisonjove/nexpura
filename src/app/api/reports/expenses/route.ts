@@ -29,5 +29,8 @@ export async function GET(req: NextRequest) {
   const { data: expenses, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ expenses: expenses ?? [] });
+  const res = NextResponse.json({ expenses: expenses ?? [] });
+  // Cache expense reports for 5 minutes (private — user-specific)
+  res.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=60");
+  return res;
 }

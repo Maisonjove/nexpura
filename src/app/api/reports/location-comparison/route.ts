@@ -89,7 +89,9 @@ export async function POST(request: Request) {
 
     const stats = await Promise.all(statsPromises);
 
-    return NextResponse.json({ stats });
+    const res = NextResponse.json({ stats });
+    res.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=60");
+    return res;
   } catch (error) {
     console.error("Location comparison error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

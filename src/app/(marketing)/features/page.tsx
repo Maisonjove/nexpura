@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Wrench, Package, Users, FileText, ShoppingCart, Truck, BarChart2, Gem, CheckCircle, ArrowRight, Zap, Shield, Clock } from "lucide-react";
 
+export const dynamic = "force-static";
 export const metadata = { title: "Features — Nexpura", description: "Every feature Nexpura offers, explained for jewellers." };
 
 function FeatureSection({ id, icon: Icon, title, tagline, features, accent }: {

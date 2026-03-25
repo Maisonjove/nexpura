@@ -19,6 +19,34 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, timeout]);
 }
 
+// ── Subscription cache cookie ─────────────────────────────────────────────
+// Cache the subscription OK status for 5 minutes per user to avoid
+// two DB round-trips on every page request (the biggest middleware cost).
+const SUB_CACHE_COOKIE = "nexpura-sub-ok";
+const SUB_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function getSubCacheUserId(req: NextRequest): string | null {
+  const cookie = req.cookies.get(SUB_CACHE_COOKIE)?.value;
+  if (!cookie) return null;
+  try {
+    const [userId, ts] = cookie.split("|");
+    if (!userId || !ts) return null;
+    if (Date.now() - parseInt(ts, 10) < SUB_CACHE_TTL_MS) return userId;
+  } catch {
+    // invalid cookie format
+  }
+  return null;
+}
+
+function setSubCacheCookie(response: NextResponse, userId: string): void {
+  response.cookies.set(SUB_CACHE_COOKIE, `${userId}|${Date.now()}`, {
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: Math.floor(SUB_CACHE_TTL_MS / 1000),
+    path: "/",
+  });
+}
+
 // ── Shared subscription check ─────────────────────────────────────────────
 async function checkSubscriptionAndRedirect(
   req: NextRequest,
@@ -41,6 +69,17 @@ async function checkSubscriptionAndRedirect(
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return response;
+
+    // ── Subscription cache: skip DB queries if we recently confirmed OK ──
+    // Cookie stores "{userId}|{timestamp}". If it's fresh and matches the
+    // current user, we know the subscription was good recently — skip the
+    // two extra DB round-trips (users + subscriptions lookups).
+    const cachedUserId = getSubCacheUserId(req);
+    if (cachedUserId === user.id) {
+      // Still valid — no DB queries needed, refresh the cache window
+      setSubCacheCookie(response, user.id);
+      return response;
+    }
 
     // SECURITY FIX: use admin client for users table lookup.
     // The anon/RLS client causes infinite policy recursion on the users table,
@@ -69,6 +108,9 @@ async function checkSubscriptionAndRedirect(
       billingUrl.pathname = "/billing";
       return NextResponse.redirect(billingUrl);
     }
+
+    // Subscription is good — cache result to skip DB checks for 5 minutes
+    setSubCacheCookie(response, user.id);
   } catch (err) {
     console.error("[middleware] subscription check failed — passing through:", err);
   }

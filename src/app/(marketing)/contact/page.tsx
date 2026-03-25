@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Mail, MessageSquare, Clock } from "lucide-react";
 
+export const dynamic = "force-static";
 export const metadata = { title: "Contact & Book a Demo — Nexpura", description: "Get in touch with the Nexpura team or book a demo for your jewellery business." };
 
 export default function ContactPage() {

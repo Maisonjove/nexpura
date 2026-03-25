@@ -1,0 +1,572 @@
+config:
+  target: "https://nexpura.com"
+  phases:
+    # Warm up - 50 users
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 50
+      name: "Warm up - ramp to 50 users"
+    # Ramp to 200
+    - duration: 90
+      arrivalRate: 50
+      rampTo: 200
+      name: "Ramp up to 200"
+    # Ramp to 500
+    - duration: 120
+      arrivalRate: 200
+      rampTo: 500
+      name: "Ramp up to 500"
+    # Peak load 1000
+    - duration: 180
+      arrivalRate: 500
+      rampTo: 1000
+      name: "Peak load - 1000 users"
+    # Sustained 1000
+    - duration: 300
+      arrivalRate: 1000
+      name: "Sustained 1000 users"
+    # Ramp down
+    - duration: 60
+      arrivalRate: 1000
+      rampTo: 100
+      name: "Ramp down"
+
+  defaults:
+    headers:
+      User-Agent: "NexpuraLoadTest/1.0 (JewellerSimulation)"
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+      Accept-Language: "en-AU,en;q=0.5"
+      Connection: "keep-alive"
+
+  # Cookie jar to hold session cookies per virtual user
+  http:
+    timeout: 30
+    pool: 100
+
+scenarios:
+  # ============================================================
+  # PUBLIC PAGES (unauthenticated) - 20% weight
+  # Simulates potential new customers / staff login pages
+  # ============================================================
+
+  - name: "New User - Browse Marketing Pages"
+    weight: 5
+    flow:
+      - get:
+          url: "/"
+          name: "Homepage"
+      - think: 2
+      - get:
+          url: "/pricing"
+          name: "Pricing Page"
+      - think: 3
+      - get:
+          url: "/features"
+          name: "Features Page"
+      - think: 2
+      - get:
+          url: "/contact"
+          name: "Contact Page"
+
+  - name: "Staff Login Flow"
+    weight: 5
+    flow:
+      - get:
+          url: "/"
+          name: "Homepage"
+      - think: 1
+      - get:
+          url: "/login"
+          name: "Login Page"
+      - think: 3
+      - get:
+          url: "/login"
+          name: "Login Page Return"
+
+  - name: "Demo User Experience"
+    weight: 5
+    flow:
+      - get:
+          url: "/demo"
+          name: "Demo Page"
+      - think: 2
+      - get:
+          url: "/pricing"
+          name: "Pricing from Demo"
+
+  - name: "Public Health Check"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/health/concurrency"
+          name: "Concurrency Health"
+
+  # ============================================================
+  # AUTHENTICATED FLOWS - Using Demo Session
+  # All flows start by obtaining a demo session cookie
+  # ============================================================
+
+  # STORE OWNER (20% of authenticated users)
+  - name: "Store Owner - Morning Dashboard Review"
+    weight: 8
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/dashboard"
+          name: "Dashboard - Morning Check"
+      - think: 2
+      - get:
+          url: "/notifications"
+          name: "Notifications Check"
+      - think: 1
+      - get:
+          url: "/tasks"
+          name: "Today's Tasks"
+      - think: 2
+      - get:
+          url: "/workshop/calendar"
+          name: "Workshop Calendar"
+      - think: 1
+      - get:
+          url: "/reports"
+          name: "Reports Overview"
+
+  - name: "Store Owner - Financial Review"
+    weight: 6
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/financials"
+          name: "Financials Page"
+      - think: 2
+      - get:
+          url: "/sales"
+          name: "Sales List"
+      - think: 2
+      - get:
+          url: "/invoices"
+          name: "Invoices List"
+      - think: 2
+      - get:
+          url: "/reports/stock"
+          name: "Stock Report"
+      - think: 1
+      - get:
+          url: "/reports/customers"
+          name: "Customer Report"
+      - think: 2
+      - get:
+          url: "/eod"
+          name: "End of Day Summary"
+
+  - name: "Store Owner - Team Management"
+    weight: 4
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/settings/team"
+          name: "Team Settings"
+      - think: 2
+      - get:
+          url: "/settings/roles"
+          name: "Roles & Permissions"
+      - think: 2
+      - get:
+          url: "/settings/locations"
+          name: "Store Locations"
+      - think: 1
+      - get:
+          url: "/tasks/workshop"
+          name: "Workshop Tasks"
+
+  # WORKSHOP MANAGER (25% of authenticated users)
+  - name: "Workshop Manager - Repairs Queue"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/repairs"
+          name: "Repairs Queue"
+      - think: 2
+      - get:
+          url: "/workshop"
+          name: "Workshop View"
+      - think: 2
+      - get:
+          url: "/workshop/calendar"
+          name: "Workshop Calendar"
+      - think: 2
+      - get:
+          url: "/tasks"
+          name: "Task List"
+      - think: 1
+      - get:
+          url: "/tasks/workshop"
+          name: "Workshop Tasks"
+      - think: 2
+      - get:
+          url: "/print-queue"
+          name: "Print Queue"
+
+  - name: "Workshop Manager - Bespoke Jobs"
+    weight: 8
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/bespoke"
+          name: "Bespoke Jobs List"
+      - think: 2
+      - get:
+          url: "/bespoke/new"
+          name: "New Bespoke Job Form"
+      - think: 3
+      - get:
+          url: "/repairs"
+          name: "Repairs List"
+      - think: 2
+      - get:
+          url: "/repairs/new"
+          name: "New Repair Form"
+
+  - name: "Workshop Manager - Intake & Quotes"
+    weight: 7
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/intake"
+          name: "Customer Intake"
+      - think: 2
+      - get:
+          url: "/quotes"
+          name: "Quotes List"
+      - think: 2
+      - get:
+          url: "/quotes/new"
+          name: "New Quote"
+      - think: 2
+      - get:
+          url: "/customers"
+          name: "Customer Search"
+
+  # SALES ASSOCIATE (30% of authenticated users)
+  - name: "Sales Associate - POS Operations"
+    weight: 12
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/pos"
+          name: "POS Terminal"
+      - think: 3
+      - get:
+          url: "/inventory"
+          name: "Inventory Browse"
+      - think: 2
+      - get:
+          url: "/customers"
+          name: "Customer Lookup"
+      - think: 2
+      - get:
+          url: "/pos"
+          name: "POS - Next Sale"
+
+  - name: "Sales Associate - Customer Management"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/customers"
+          name: "Customers List"
+      - think: 2
+      - get:
+          url: "/customers/new"
+          name: "New Customer Form"
+      - think: 3
+      - get:
+          url: "/customers"
+          name: "Customer Search Return"
+      - think: 2
+      - get:
+          url: "/repairs/new"
+          name: "Lodge New Repair"
+
+  - name: "Sales Associate - Inventory Lookup"
+    weight: 8
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/inventory"
+          name: "Inventory List"
+      - think: 2
+      - get:
+          url: "/inventory/new"
+          name: "Add New Stock"
+      - think: 2
+      - get:
+          url: "/inventory/transfers"
+          name: "Stock Transfers"
+      - think: 2
+      - get:
+          url: "/passports"
+          name: "Jewellery Passports"
+
+  # ADMIN STAFF (15% of authenticated users)
+  - name: "Admin Staff - Invoice Processing"
+    weight: 6
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/invoices"
+          name: "Invoices List"
+      - think: 2
+      - get:
+          url: "/invoices/new"
+          name: "New Invoice"
+      - think: 2
+      - get:
+          url: "/quotes"
+          name: "Quotes to Invoice"
+      - think: 2
+      - get:
+          url: "/financials"
+          name: "Financials Dashboard"
+      - think: 1
+      - get:
+          url: "/laybys"
+          name: "Layby Accounts"
+
+  - name: "Admin Staff - Financial Tasks"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/expenses"
+          name: "Expenses List"
+      - think: 2
+      - get:
+          url: "/expenses/new"
+          name: "New Expense"
+      - think: 2
+      - get:
+          url: "/refunds"
+          name: "Refunds List"
+      - think: 2
+      - get:
+          url: "/memo"
+          name: "Memo Items"
+      - think: 2
+      - get:
+          url: "/vouchers"
+          name: "Gift Vouchers"
+
+  - name: "Admin Staff - Communications"
+    weight: 4
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/communications"
+          name: "Communications"
+      - think: 2
+      - get:
+          url: "/marketing"
+          name: "Marketing Overview"
+      - think: 2
+      - get:
+          url: "/marketing/campaigns"
+          name: "Campaigns"
+      - think: 2
+      - get:
+          url: "/marketing/analytics"
+          name: "Marketing Analytics"
+
+  # STOCKTAKER (10% of authenticated users)
+  - name: "Stocktaker - Full Stocktake Flow"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/stocktakes"
+          name: "Stocktakes List"
+      - think: 2
+      - get:
+          url: "/inventory"
+          name: "Inventory Check"
+      - think: 3
+      - get:
+          url: "/inventory/receive"
+          name: "Receive Inventory"
+      - think: 2
+      - get:
+          url: "/reports/stock"
+          name: "Stock Report"
+      - think: 2
+      - get:
+          url: "/settings/locations"
+          name: "Check Locations"
+
+  - name: "Stocktaker - Supplier Orders"
+    weight: 3
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/suppliers"
+          name: "Suppliers List"
+      - think: 2
+      - get:
+          url: "/suppliers/new"
+          name: "New Supplier"
+      - think: 2
+      - get:
+          url: "/inventory/transfers"
+          name: "Transfer Between Locations"
+      - think: 2
+      - get:
+          url: "/inventory"
+          name: "Check Low Stock"
+
+  - name: "Stocktaker - Appraisals & Documents"
+    weight: 2
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/appraisals"
+          name: "Appraisals List"
+      - think: 2
+      - get:
+          url: "/documents"
+          name: "Documents"
+      - think: 2
+      - get:
+          url: "/passports"
+          name: "Jewellery Passports"
+
+  # ============================================================
+  # PASSPORT CREATION (special flow - all roles)
+  # ============================================================
+  - name: "Passport Creation Workflow"
+    weight: 3
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/passports"
+          name: "Passports List"
+      - think: 2
+      - get:
+          url: "/passports/new"
+          name: "New Passport"
+      - think: 3
+      - get:
+          url: "/customers"
+          name: "Find Customer for Passport"
+
+  # ============================================================
+  # SETTINGS & CONFIG (store owner / admin)
+  # ============================================================
+  - name: "Settings Configuration"
+    weight: 3
+    flow:
+      - get:
+          url: "/api/demo/session"
+          name: "Auth - Get Demo Session"
+          followRedirect: true
+      - think: 1
+      - get:
+          url: "/settings"
+          name: "Settings Home"
+      - think: 2
+      - get:
+          url: "/settings/payments"
+          name: "Payment Settings"
+      - think: 2
+      - get:
+          url: "/settings/notifications"
+          name: "Notification Settings"
+      - think: 1
+      - get:
+          url: "/settings/printing"
+          name: "Printing Settings"
+      - think: 2
+      - get:
+          url: "/integrations"
+          name: "Integrations"
+
+  # ============================================================
+  # API ENDPOINT TESTING
+  # ============================================================
+  - name: "API Health & Metrics"
+    weight: 3
+    flow:
+      - get:
+          url: "/api/health/concurrency"
+          name: "API Concurrency Health"
+      - think: 1
+      - get:
+          url: "/api/locations/health"
+          name: "Locations Health"
+      - think: 1
+      - get:
+          url: "/api/integrations/status"
+          name: "Integration Status"
