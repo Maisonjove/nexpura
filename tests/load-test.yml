@@ -1,0 +1,91 @@
+config:
+  target: "https://nexpura-delta.vercel.app"
+  phases:
+    # Ramp up to 100 users over 30 seconds
+    - duration: 30
+      arrivalRate: 3
+      rampTo: 100
+      name: "Ramp up"
+    # Sustain 100 users for 60 seconds
+    - duration: 60
+      arrivalRate: 100
+      name: "Sustained load"
+    # Ramp down
+    - duration: 30
+      arrivalRate: 100
+      rampTo: 10
+      name: "Ramp down"
+  defaults:
+    headers:
+      User-Agent: "Artillery/LoadTest"
+  plugins:
+    expect: {}
+
+scenarios:
+  # Public pages (no auth required)
+  - name: "Public Homepage"
+    weight: 20
+    flow:
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+            - contentType: text/html
+
+  - name: "Auth Pages"
+    weight: 15
+    flow:
+      - get:
+          url: "/login"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/signup"
+          expect:
+            - statusCode: 200
+
+  # API Health Checks
+  - name: "API Endpoints"
+    weight: 25
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode:
+                - 200
+                - 404
+      - get:
+          url: "/api/widget/config"
+          expect:
+            - statusCode:
+                - 200
+                - 401
+                - 404
+
+  # Static Assets
+  - name: "Static Assets"
+    weight: 20
+    flow:
+      - get:
+          url: "/favicon.ico"
+          expect:
+            - statusCode:
+                - 200
+                - 404
+      - get:
+          url: "/_next/static/css/app/layout.css"
+          expect:
+            - statusCode:
+                - 200
+                - 404
+
+  # Embed Endpoints (public)
+  - name: "Embed Endpoints"
+    weight: 20
+    flow:
+      - get:
+          url: "/widget.js"
+          expect:
+            - statusCode:
+                - 200
+                - 404
