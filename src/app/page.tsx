@@ -1,6 +1,6 @@
 // Landing page - no auth check needed
 import Link from "next/link";
-import { Gem, Wrench, Package, Users, FileText, ShoppingCart, Truck, BarChart2, ArrowRight, CheckCircle, ChevronDown } from "lucide-react";
+import { Gem, Wrench, Package, Users, FileText, ShoppingCart, Truck, BarChart2, ArrowRight, CheckCircle, ChevronDown, Globe, MessageCircle, CreditCard, ClipboardList, Zap } from "lucide-react";
 import { NavBar } from "@/components/marketing/NavBar";
 import { Footer } from "@/components/marketing/Footer";
 
@@ -75,7 +75,7 @@ export default async function HomePage() {
               <h2 className="text-3xl font-semibold text-stone-900 mb-3">Everything your store needs</h2>
               <p className="text-stone-500 max-w-xl mx-auto">Eight core modules, deeply integrated, designed for the daily reality of running a jewellery business.</p>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
               {[
                 { icon: ShoppingCart, name: "Point of Sale", desc: "Fast, flexible POS for the shop floor." },
                 { icon: Package, name: "Inventory", desc: "Full stock control with SKU and provenance." },
@@ -84,7 +84,12 @@ export default async function HomePage() {
                 { icon: Users, name: "Customers", desc: "CRM built for jewellers, not generic retail." },
                 { icon: FileText, name: "Invoicing", desc: "Professional invoices and payment tracking." },
                 { icon: Truck, name: "Suppliers", desc: "Manage suppliers, purchase orders, receiving." },
-                { icon: BarChart2, name: "Analytics", desc: "Sales, workshop, and customer insights." },
+                { icon: BarChart2, name: "Reports & Analytics", desc: "Sales, workshop, and customer insights." },
+                { icon: ClipboardList, name: "Tasks", desc: "Team task management with workshop workflows." },
+                { icon: Globe, name: "Website Builder", desc: "Build your jewellery store's website visually." },
+                { icon: Zap, name: "Integrations", desc: "Stripe, WhatsApp, Google Calendar, Shopify and more." },
+                { icon: MessageCircle, name: "WhatsApp & Marketing", desc: "Automated customer communications via WhatsApp." },
+                { icon: CreditCard, name: "Stripe Payments", desc: "Accept online payments with secure Stripe Connect." },
               ].map((mod) => (
                 <div key={mod.name} className="bg-white border border-stone-200 rounded-xl p-5 hover:shadow-md transition-shadow">
                   <div className="w-8 h-8 bg-stone-50 rounded-lg flex items-center justify-center mb-3">
