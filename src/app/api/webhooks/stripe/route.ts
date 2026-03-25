@@ -2,20 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSystemEmail } from "@/lib/email-sender";
-// Validate required environment variables at module load time
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-if (!stripeSecretKey) {
-  throw new Error("[stripe/route] STRIPE_SECRET_KEY is not set - payments will not work");
-}
-const webhookSecret =
-  process.env.STRIPE_WEBHOOK_SECRET_LIVE || process.env.STRIPE_WEBHOOK_SECRET;
-if (!webhookSecret) {
-  throw new Error(
-    "[stripe/route] STRIPE_WEBHOOK_SECRET (or STRIPE_WEBHOOK_SECRET_LIVE) is not set - webhooks will be rejected"
-  );
+
+// Lazy initialization to avoid build-time errors when env vars are not available
+function getStripe() {
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeSecretKey) {
+    throw new Error("[stripe/route] STRIPE_SECRET_KEY is not set");
+  }
+  return new Stripe(stripeSecretKey);
 }
 
-const stripe = new Stripe(stripeSecretKey);
+function getWebhookSecret() {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_LIVE || process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    throw new Error("[stripe/route] STRIPE_WEBHOOK_SECRET is not set");
+  }
+  return webhookSecret;
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -27,6 +30,9 @@ export async function POST(request: NextRequest) {
 
   let event: Stripe.Event;
 
+  const stripe = getStripe();
+  const webhookSecret = getWebhookSecret();
+  
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
@@ -97,7 +103,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Webhook processing error:", error);
     // Roll back idempotency lock so Stripe can retry
-    await supabase.from("idempotency_locks").delete().eq("key", eventKey);fix: add env var guard + idempotency to Stripe webhook route
+    await supabase.from("idempotency_locks").delete().eq("key", eventKey);
 
     return NextResponse.json(
       { error: "Webhook processing failed" },
