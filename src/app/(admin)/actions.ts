@@ -35,15 +35,42 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
   const normalisedPlan: "boutique" | "studio" | "atelier" =
         newPlan === "group" ? "atelier" : newPlan;
 
-  // Update subscriptions table
-  const { error } = await adminClient
+  // Check if subscription exists
+  const { data: existingSub } = await adminClient
     .from("subscriptions")
-    .update({ plan: normalisedPlan })
-    .eq("tenant_id", tenantId);
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
 
-  if (error) {
-    console.error("[changeTenantPlan] Supabase error:", error.message, "| tenantId:", tenantId, "| plan:", normalisedPlan);
-    throw new Error(error.message);
+  if (existingSub) {
+    // Update existing subscription
+    const { error } = await adminClient
+      .from("subscriptions")
+      .update({ plan: normalisedPlan })
+      .eq("tenant_id", tenantId);
+
+    if (error) {
+      console.error("[changeTenantPlan] Supabase error:", error.message, "| tenantId:", tenantId, "| plan:", normalisedPlan);
+      throw new Error(error.message);
+    }
+  } else {
+    // Create subscription if it doesn't exist
+    const trialEnds = new Date();
+    trialEnds.setDate(trialEnds.getDate() + 14);
+    
+    const { error } = await adminClient
+      .from("subscriptions")
+      .insert({
+        tenant_id: tenantId,
+        plan: normalisedPlan,
+        status: "trialing",
+        trial_ends_at: trialEnds.toISOString(),
+      });
+
+    if (error) {
+      console.error("[changeTenantPlan] Failed to create subscription:", error.message);
+      throw new Error(error.message);
+    }
   }
 
   // Also update tenants table if it has a plan column
