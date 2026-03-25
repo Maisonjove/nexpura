@@ -14,26 +14,40 @@ async function assertSuperAdmin() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) throw new Error("Unauthenticated");
-
   const adminClient = createAdminClient();
   const { data } = await adminClient
     .from("super_admins")
     .select("id")
     .eq("user_id", user.id)
     .single();
-
   if (!data) throw new Error("Unauthorized");
-  return adminClient;
+  return { adminClient, adminUserId: user.id };
+}
+
+async function logActivity(
+  adminClient: ReturnType<typeof createAdminClient>,
+  adminUserId: string,
+  action: string,
+  metadata: Record<string, unknown>
+) {
+  try {
+    await adminClient.from("admin_audit_logs").insert({
+      admin_user_id: adminUserId,
+      action,
+      metadata,
+      created_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("[admin] Failed to log activity:", err);
+  }
 }
 
 export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
-  const adminClient = await assertSuperAdmin();
-  
+  const { adminClient, adminUserId } = await assertSuperAdmin();
   // Normalise legacy "group" to "atelier" so the DB constraint is never violated
   const normalisedPlan: "boutique" | "studio" | "atelier" =
-        newPlan === "group" ? "atelier" : newPlan;
+    newPlan === "group" ? "atelier" : newPlan;
 
   // Check if subscription exists
   const { data: existingSub } = await adminClient
@@ -48,25 +62,27 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
       .from("subscriptions")
       .update({ plan: normalisedPlan })
       .eq("tenant_id", tenantId);
-
     if (error) {
-      console.error("[changeTenantPlan] Supabase error:", error.message, "| tenantId:", tenantId, "| plan:", normalisedPlan);
+      console.error(
+        "[changeTenantPlan] Supabase error:",
+        error.message,
+        "| tenantId:",
+        tenantId,
+        "| plan:",
+        normalisedPlan
+      );
       throw new Error(error.message);
     }
   } else {
     // Create subscription if it doesn't exist
     const trialEnds = new Date();
     trialEnds.setDate(trialEnds.getDate() + 14);
-    
-    const { error } = await adminClient
-      .from("subscriptions")
-      .insert({
-        tenant_id: tenantId,
-        plan: normalisedPlan,
-        status: "trialing",
-        trial_ends_at: trialEnds.toISOString(),
-      });
-
+    const { error } = await adminClient.from("subscriptions").insert({
+      tenant_id: tenantId,
+      plan: normalisedPlan,
+      status: "trialing",
+      trial_ends_at: trialEnds.toISOString(),
+    });
     if (error) {
       console.error("[changeTenantPlan] Failed to create subscription:", error.message);
       throw new Error(error.message);
@@ -74,16 +90,18 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
   }
 
   // Also update tenants table if it has a plan column
-  await adminClient
-    .from("tenants")
-    .update({ plan: normalisedPlan })
-    .eq("id", tenantId);
+  await adminClient.from("tenants").update({ plan: normalisedPlan }).eq("id", tenantId);
+
+  await logActivity(adminClient, adminUserId, "change_tenant_plan", {
+    tenantId,
+    newPlan: normalisedPlan,
+    requestedPlan: newPlan,
+  });
 
   // Revalidate admin paths
   revalidatePath(`/admin/tenants/${tenantId}`);
   revalidatePath("/admin/tenants");
   revalidatePath("/admin");
-  
   // Revalidate user-facing paths so changes take effect immediately
   revalidatePath("/dashboard");
   revalidatePath("/billing");
@@ -92,57 +110,57 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
 }
 
 export async function changeTenantStatus(tenantId: string, newStatus: SubStatus) {
-  const adminClient = await assertSuperAdmin();
-
+  const { adminClient, adminUserId } = await assertSuperAdmin();
   const { error } = await adminClient
     .from("subscriptions")
     .update({ status: newStatus })
     .eq("tenant_id", tenantId);
-
   if (error) throw new Error(error.message);
+
+  await logActivity(adminClient, adminUserId, "change_tenant_status", {
+    tenantId,
+    newStatus,
+  });
+
   revalidatePath(`/admin/tenants/${tenantId}`);
   revalidatePath("/admin/tenants");
   revalidatePath("/admin");
 }
 
 export async function assignFreeForever(tenantId: string) {
-  const adminClient = await assertSuperAdmin();
-
+  const { adminClient, adminUserId } = await assertSuperAdmin();
   await adminClient
     .from("tenants")
     .update({ is_free_forever: true, subscription_status: "free" })
     .eq("id", tenantId);
-
   await adminClient
     .from("subscriptions")
     .update({ status: "active" })
     .eq("tenant_id", tenantId);
+
+  await logActivity(adminClient, adminUserId, "assign_free_forever", { tenantId });
 
   revalidatePath(`/admin/tenants/${tenantId}`);
   revalidatePath("/admin/tenants");
 }
 
 export async function saveTenantAdminNotes(tenantId: string, notes: string) {
-  const adminClient = await assertSuperAdmin();
-
+  const { adminClient } = await assertSuperAdmin();
   const { error } = await adminClient
     .from("tenants")
     .update({ admin_notes: notes })
     .eq("id", tenantId);
-
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/tenants/${tenantId}`);
 }
 
 export async function deleteTenant(tenantId: string) {
-  const adminClient = await assertSuperAdmin();
-
-  // Soft delete — mark tenant as deleted
+  const { adminClient, adminUserId } = await assertSuperAdmin();
+  // Soft delete - mark tenant as deleted
   const { error } = await adminClient
     .from("tenants")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", tenantId);
-
   if (error) throw new Error(error.message);
 
   // Also cancel subscription
@@ -151,16 +169,16 @@ export async function deleteTenant(tenantId: string) {
     .update({ status: "canceled" })
     .eq("tenant_id", tenantId);
 
+  await logActivity(adminClient, adminUserId, "delete_tenant", { tenantId });
+
   revalidatePath("/admin/tenants");
   revalidatePath("/admin");
 }
 
 export async function forcePaidGracePeriod(tenantId: string) {
-  const adminClient = await assertSuperAdmin();
-
+  const { adminClient, adminUserId } = await assertSuperAdmin();
   // Trigger via the cron route handler logic inline
   const graceEnd = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-
   await adminClient
     .from("subscriptions")
     .update({
@@ -169,7 +187,6 @@ export async function forcePaidGracePeriod(tenantId: string) {
       grace_24h_sent: false,
     })
     .eq("tenant_id", tenantId);
-
   await adminClient
     .from("tenants")
     .update({
@@ -188,7 +205,6 @@ export async function forcePaidGracePeriod(tenantId: string) {
     .eq("tenant_id", tenantId)
     .eq("role", "owner")
     .single();
-
   if (owner?.email) {
     const deadline = new Date(graceEnd).toLocaleString("en-AU", {
       dateStyle: "medium",
@@ -198,11 +214,16 @@ export async function forcePaidGracePeriod(tenantId: string) {
     await sendFreeToPaidConversionEmail(owner.email, owner.full_name ?? "there", deadline);
   }
 
+  await logActivity(adminClient, adminUserId, "force_paid_grace_period", {
+    tenantId,
+    graceEnd,
+  });
+
   revalidatePath(`/admin/tenants/${tenantId}`);
 }
 
 export async function extendTrial(tenantId: string, days: number) {
-  const adminClient = await assertSuperAdmin();
+  const { adminClient, adminUserId } = await assertSuperAdmin();
   const newDate = new Date();
   newDate.setDate(newDate.getDate() + days);
   const { error } = await adminClient
@@ -212,8 +233,10 @@ export async function extendTrial(tenantId: string, days: number) {
       status: "trialing",
     })
     .eq("tenant_id", tenantId);
-
   if (error) throw new Error(error.message);
+
+  await logActivity(adminClient, adminUserId, "extend_trial", { tenantId, days });
+
   revalidatePath(`/admin/tenants/${tenantId}`);
   revalidatePath("/admin/tenants");
 }
@@ -223,8 +246,9 @@ export async function requestSupportAccess(
   reason?: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Unauthenticated" };
 
   // Verify super admin
@@ -234,7 +258,6 @@ export async function requestSupportAccess(
     .select("id")
     .eq("user_id", user.id)
     .single();
-
   if (!superAdmin) return { success: false, error: "Unauthorized" };
 
   // Get tenant info and owner email
@@ -243,7 +266,6 @@ export async function requestSupportAccess(
     .select("id, name, business_name, email")
     .eq("id", tenantId)
     .single();
-
   if (!tenant) return { success: false, error: "Tenant not found" };
 
   // Get owner user email
@@ -253,7 +275,6 @@ export async function requestSupportAccess(
     .eq("tenant_id", tenantId)
     .eq("role", "owner")
     .single();
-
   const recipientEmail = tenant.email || owner?.email;
   if (!recipientEmail) {
     return { success: false, error: "Tenant has no email address" };
@@ -266,7 +287,6 @@ export async function requestSupportAccess(
     requestedByEmail: user.email || "support@nexpura.com",
     reason,
   });
-
   if (!result.success) return result;
 
   // Send email
@@ -277,7 +297,6 @@ export async function requestSupportAccess(
     reason: reason || null,
     token: result.token!,
   });
-
   if (!emailResult.success) {
     return { success: false, error: `Failed to send email: ${emailResult.error}` };
   }
