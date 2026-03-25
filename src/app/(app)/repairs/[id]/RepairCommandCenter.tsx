@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/format-currency";
 import JobPhotoUpload from "./JobPhotoUpload";
+import JobReadySMSModal from "@/components/JobReadySMSModal";
 import {
   addRepairLineItem,
   removeRepairLineItem,
@@ -15,88 +16,32 @@ import {
   emailJobReady,
   sendJobReadySms,
 } from "./actions";
-import JobReadySMSModal from "@/components/JobReadySMSModal";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Customer {
-  id: string;
-  full_name: string;
-  email: string | null;
-  mobile: string | null;
-}
-
-interface LineItem {
-  id: string;
-  description: string;
-  quantity: number;
-  unit_price: number;
-  total: number;
-}
-
-interface Payment {
-  id: string;
-  amount: number;
-  payment_method: string;
-  payment_date: string | null;
-  notes: string | null;
-}
-
-interface Invoice {
-  id: string;
-  invoice_number: string;
-  status: string;
-  subtotal: number;
-  tax_amount: number;
-  tax_rate: number;
-  total: number;
-  amount_paid: number;
-  lineItems: LineItem[];
-  payments: Payment[];
-}
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  sku: string;
-  retail_price: number | null;
-}
-
-interface JobAttachment {
-  id: string;
-  file_name: string;
-  file_url: string;
-  caption: string | null;
-  created_at: string;
-}
-
-interface JobEvent {
-  id: string;
-  event_type: string;
-  description: string;
-  actor: string | null;
-  created_at: string;
-}
-
-interface Repair {
-  id: string;
-  repair_number: string;
-  item_type: string;
-  item_description: string;
-  repair_type: string;
-  work_description: string | null;
-  intake_notes: string | null;
-  internal_notes: string | null;
-  workshop_notes: string | null;
-  stage: string;
-  priority: string;
-  quoted_price: number | null;
-  final_price: number | null;
-  deposit_amount: number | null;
-  deposit_paid: boolean;
-  due_date: string | null;
-  invoice_id: string | null;
-}
+import {
+  StatusStrip,
+  CustomerCard,
+  ItemRepairCard,
+  StageTimeline,
+  PhotosCard,
+  ActivityTimeline,
+  FinancialSummaryCard,
+  QuickActionsCard,
+  DocumentsCard,
+  WorkflowActionsCard,
+  AddManualItemModal,
+  AddStockItemModal,
+  RecordPaymentModal,
+  StageChangeModal,
+  REPAIR_STAGES,
+} from "./components";
+import type {
+  Customer,
+  Invoice,
+  InventoryItem,
+  JobAttachment,
+  JobEvent,
+  Repair,
+  LineItem,
+} from "./components/types";
 
 interface Props {
   repair: Repair;
@@ -113,81 +58,25 @@ interface Props {
   defaultSmsTemplate?: string;
 }
 
-// ─── Stage Config ─────────────────────────────────────────────────────────────
-
-const REPAIR_STAGES = [
-  { key: "intake", label: "Intake" },
-  { key: "assessed", label: "Assessed" },
-  { key: "quoted", label: "Quoted" },
-  { key: "approved", label: "Approved" },
-  { key: "in_progress", label: "In Progress" },
-  { key: "ready", label: "Ready" },
-  { key: "collected", label: "Collected" },
-];
-
-const STAGE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  intake: { bg: "bg-stone-100", text: "text-stone-700", dot: "bg-stone-400" },
-  assessed: { bg: "bg-stone-100", text: "text-stone-700", dot: "bg-stone-400" },
-  quoted: { bg: "bg-amber-100", text: "text-amber-700", dot: "bg-amber-400" },
-  approved: { bg: "bg-stone-100", text: "text-stone-700", dot: "bg-stone-500" },
-  in_progress: { bg: "bg-amber-100", text: "text-amber-700", dot: "bg-amber-500" },
-  ready: { bg: "bg-stone-200", text: "text-stone-900", dot: "bg-amber-700" },
-  collected: { bg: "bg-stone-900", text: "text-white", dot: "bg-white" },
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  low: "text-stone-400",
-  normal: "text-amber-700",
-  high: "text-amber-600",
-  urgent: "text-red-600",
-};
-
-const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "cheque", "store_credit"];
-
 function fmt(n: number | null | undefined, currency: string) {
   if (n == null) return "—";
   return formatCurrency(n, currency);
 }
 
-function statusChip(invoice: Invoice | null, repair: Repair, currency: string) {
-  if (!invoice) {
-    return (
-      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">
-        Unpaid
-      </span>
-    );
-  }
-  if (invoice.amount_paid >= invoice.total && invoice.total > 0) {
-    return (
-      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-stone-900 text-white">
-        Fully Paid
-      </span>
-    );
-  }
-  if (repair.deposit_paid && invoice.amount_paid > 0 && invoice.amount_paid < invoice.total) {
-    return (
-      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
-        Partially Paid ({fmt(invoice.amount_paid, currency)})
-      </span>
-    );
-  }
-  if (repair.deposit_paid && invoice.amount_paid === 0) {
-    return (
-      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
-        Deposit Paid
-      </span>
-    );
-  }
-  return (
-    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">
-      Unpaid
-    </span>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-
-export default function RepairCommandCenter({ repair, customer, invoice, inventory, tenantId, currency, readOnly = false, attachments = [], events = [], twilioConnected = false, businessName = "", defaultSmsTemplate = "" }: Props) {
+export default function RepairCommandCenter({
+  repair,
+  customer,
+  invoice,
+  inventory,
+  tenantId,
+  currency,
+  readOnly = false,
+  attachments = [],
+  events = [],
+  twilioConnected = false,
+  businessName = "",
+  defaultSmsTemplate = "",
+}: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [localAttachments, setLocalAttachments] = useState(attachments);
@@ -200,15 +89,23 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
   const [showAddManual, setShowAddManual] = useState(false);
   const [showAddStock, setShowAddStock] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
-  const [paymentPrefill, setPaymentPrefill] = useState<number | null>(null);
   const [showStageModal, setShowStageModal] = useState(false);
   const [targetStage, setTargetStage] = useState<string>("");
-  const [showNotes, setShowNotes] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [emailSending, setEmailSending] = useState(false);
   const [showReadySmsModal, setShowReadySmsModal] = useState(false);
 
-  // Escape key closes any open modal — prevents stuck backdrop
+  // Form state
+  const [manualDesc, setManualDesc] = useState("");
+  const [manualQty, setManualQty] = useState("1");
+  const [manualPrice, setManualPrice] = useState("");
+  const [selectedInventoryId, setSelectedInventoryId] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [paymentNotes, setPaymentNotes] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Escape key closes any open modal
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -223,22 +120,8 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  // Form state
-  const [manualDesc, setManualDesc] = useState("");
-  const [manualQty, setManualQty] = useState("1");
-  const [manualPrice, setManualPrice] = useState("");
-  const [selectedInventoryId, setSelectedInventoryId] = useState("");
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("card");
-  const [paymentNotes, setPaymentNotes] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
-
   const isTerminal = ["collected", "cancelled"].includes(repair.stage);
-  const currentStageIndex = REPAIR_STAGES.findIndex(s => s.key === repair.stage);
-  const sc = STAGE_COLORS[repair.stage] ?? STAGE_COLORS.intake;
-
-  const isOverdue = repair.due_date && new Date(repair.due_date) < new Date(new Date().toDateString()) && !isTerminal;
-
+  const currentStageIndex = REPAIR_STAGES.findIndex((s) => s.key === repair.stage);
   const balanceDue = invoice
     ? Math.max(0, invoice.total - invoice.amount_paid)
     : (repair.quoted_price ?? 0) - (repair.deposit_paid ? (repair.deposit_amount ?? 0) : 0);
@@ -259,7 +142,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
       body: JSON.stringify({ tenantId: tId, jobType, jobId, eventType, description }),
     });
     if (res.ok) {
-      setLocalEvents(prev => [
+      setLocalEvents((prev) => [
         {
           id: Date.now().toString(),
           created_at: new Date().toISOString(),
@@ -282,7 +165,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
         body: JSON.stringify({ attachmentId: a.id, tenantId, fileUrl: a.file_url }),
       });
       if (res.ok) {
-        setLocalAttachments(prev => prev.filter(x => x.id !== a.id));
+        setLocalAttachments((prev) => prev.filter((x) => x.id !== a.id));
         await logJobEvent("repair", repair.id, tenantId, "photo_removed", `Photo removed: ${a.caption ?? a.file_name}`);
       }
     } finally {
@@ -295,23 +178,32 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
     const qty = parseInt(manualQty) || 1;
     const price = parseFloat(manualPrice) || 0;
     const desc = manualDesc.trim();
-    if (!desc) { setFormError("Description is required"); return; }
-    // Close modal immediately — before async work, so backdrop never lingers
+    if (!desc) {
+      setFormError("Description is required");
+      return;
+    }
     setShowAddManual(false);
-    setManualDesc(""); setManualQty("1"); setManualPrice("");
+    setManualDesc("");
+    setManualQty("1");
+    setManualPrice("");
     startTransition(async () => {
       const result = await addRepairLineItem(repair.id, tenantId, { description: desc, qty, unitPrice: price });
-      if (result.error) { showToast(`Error: ${result.error}`); return; }
+      if (result.error) {
+        showToast(`Error: ${result.error}`);
+        return;
+      }
       refresh();
     });
   }
 
   async function handleAddStock() {
     setFormError(null);
-    if (!selectedInventoryId) { setFormError("Select an item"); return; }
-    const item = inventory.find(i => i.id === selectedInventoryId);
+    if (!selectedInventoryId) {
+      setFormError("Select an item");
+      return;
+    }
+    const item = inventory.find((i) => i.id === selectedInventoryId);
     if (!item) return;
-    // Close modal immediately
     setShowAddStock(false);
     setSelectedInventoryId("");
     startTransition(async () => {
@@ -321,7 +213,10 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
         unitPrice: item.retail_price ?? 0,
         inventoryId: item.id,
       });
-      if (result.error) { showToast(`Error: ${result.error}`); return; }
+      if (result.error) {
+        showToast(`Error: ${result.error}`);
+        return;
+      }
       refresh();
     });
   }
@@ -337,28 +232,46 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
   async function handlePayment() {
     setFormError(null);
     const amount = parseFloat(paymentAmount);
-    if (!amount || amount <= 0) { setFormError("Enter a valid amount"); return; }
-    if (!invoice) { setFormError("No invoice linked. Add a line item first."); return; }
+    if (!amount || amount <= 0) {
+      setFormError("Enter a valid amount");
+      return;
+    }
+    if (!invoice) {
+      setFormError("No invoice linked. Add a line item first.");
+      return;
+    }
     const method = paymentMethod;
     const notes = paymentNotes;
-    // Close modal immediately
     setShowPayment(false);
-    setPaymentAmount(""); setPaymentNotes(""); setPaymentPrefill(null);
+    setPaymentAmount("");
+    setPaymentNotes("");
     startTransition(async () => {
       const result = await recordRepairPayment(repair.id, invoice.id, tenantId, amount, method, notes);
-      if (result.error) { showToast(`Error: ${result.error}`); return; }
+      if (result.error) {
+        showToast(`Error: ${result.error}`);
+        return;
+      }
       refresh();
     });
   }
 
   async function handleMarkFullyPaid() {
-    if (!invoice) { showToast("No invoice — add a line item first"); return; }
+    if (!invoice) {
+      showToast("No invoice — add a line item first");
+      return;
+    }
     const remaining = invoice.total - invoice.amount_paid;
-    if (remaining <= 0) { showToast("Invoice is already fully paid"); return; }
+    if (remaining <= 0) {
+      showToast("Invoice is already fully paid");
+      return;
+    }
     startTransition(async () => {
       const result = await recordRepairPayment(repair.id, invoice.id, tenantId, remaining, "card", "Marked fully paid");
       if (result.error) showToast(`Error: ${result.error}`);
-      else { showToast("✓ Marked as fully paid"); refresh(); }
+      else {
+        showToast("✓ Marked as fully paid");
+        refresh();
+      }
     });
   }
 
@@ -366,12 +279,14 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
     startTransition(async () => {
       const result = await generateRepairInvoice(repair.id, tenantId);
       if (result.error) showToast(`Error: ${result.error}`);
-      else { showToast("✓ Invoice generated"); refresh(); }
+      else {
+        showToast("✓ Invoice generated");
+        refresh();
+      }
     });
   }
 
-  async function handleStageChange(stage: string) {
-    // For "ready" stage, show the SMS modal instead of simple confirmation
+  function handleStageChange(stage: string) {
     if (stage === "ready") {
       setShowReadySmsModal(true);
       return;
@@ -382,16 +297,12 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
 
   async function handleMarkReadyWithSms(sendSms: boolean, message: string) {
     setShowReadySmsModal(false);
-
     startTransition(async () => {
-      // First update the stage
       const stageResult = await updateRepairStage(repair.id, tenantId, "ready");
       if (stageResult.error) {
         showToast(`Error: ${stageResult.error}`);
         return;
       }
-
-      // Then send SMS if requested
       if (sendSms && customer?.mobile) {
         const smsResult = await sendJobReadySms({
           repairId: repair.id,
@@ -401,7 +312,6 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
           jobType: repair.item_description || repair.item_type,
           message,
         });
-
         if (smsResult.error) {
           showToast(`Stage updated, but SMS failed: ${smsResult.error}`);
         } else {
@@ -410,24 +320,24 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
       } else {
         showToast("✓ Stage updated to Ready");
       }
-
       refresh();
     });
   }
 
   async function confirmStageChange() {
     const stage = targetStage;
-    // Close modal immediately
     setShowStageModal(false);
     startTransition(async () => {
       const result = await updateRepairStage(repair.id, tenantId, stage);
       if (result.error) showToast(`Error: ${result.error}`);
-      else { showToast(`✓ Stage updated to ${stage}`); refresh(); }
+      else {
+        showToast(`✓ Stage updated to ${stage}`);
+        refresh();
+      }
     });
   }
 
   function openPaymentModal(prefill?: number) {
-    setPaymentPrefill(prefill ?? null);
     setPaymentAmount(prefill ? String(prefill) : "");
     setPaymentMethod("card");
     setPaymentNotes("");
@@ -465,29 +375,6 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
     }
   }
 
-  function formatDate(d: string | null | undefined) {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  }
-
-  function formatEventDate(d: string | null | undefined) {
-    if (!d) return "—";
-    const date = new Date(d);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const isToday = date.toDateString() === today.toDateString();
-    const isYesterday = date.toDateString() === yesterday.toDateString();
-    const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-    if (isToday) return `Today at ${time}`;
-    if (isYesterday) return `Yesterday at ${time}`;
-    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  }
-
-  // unused variable suppression
-  void PRIORITY_COLORS;
-  void paymentPrefill;
-
   return (
     <div className="max-w-7xl mx-auto px-4 pb-16">
       {/* Toast */}
@@ -499,245 +386,50 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
 
       {/* Breadcrumb */}
       <div className="py-4">
-        <Link href="/repairs" className="text-sm text-stone-400 hover:text-stone-700 transition-colors">← Repairs</Link>
+        <Link href="/repairs" className="text-sm text-stone-400 hover:text-stone-700 transition-colors">
+          ← Repairs
+        </Link>
       </div>
 
-      {/* ── TOP STATUS STRIP ───────────────────────────────────────── */}
-      <div className="bg-white border border-stone-200 rounded-xl px-5 py-4 mb-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="font-mono text-base font-semibold text-stone-900">{repair.repair_number}</span>
-          <span className="text-stone-300">·</span>
-          <span className="text-sm text-stone-700 font-medium">{customer?.full_name ?? "—"}</span>
-          <span className="text-stone-300">·</span>
-          <span className="text-sm text-stone-500 truncate max-w-xs">{repair.item_description || repair.item_type}</span>
-          <span className="text-stone-300">·</span>
-          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${sc.bg} ${sc.text}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
-            {REPAIR_STAGES.find(s => s.key === repair.stage)?.label ?? repair.stage}
-          </span>
-          {statusChip(invoice, repair, currency)}
-          {repair.due_date && (
-            <span className={`text-xs font-medium ${isOverdue ? "text-red-600" : "text-stone-500"}`}>
-              {isOverdue ? "⚠ Overdue · " : "Due: "}
-              {new Date(repair.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-            </span>
-          )}
-          {!readOnly && (
-            <Link href={`/repairs/${repair.id}/edit`} className="ml-auto text-xs text-stone-400 hover:text-stone-700 border border-stone-200 px-3 py-1.5 rounded-lg transition-colors">
-              Edit
-            </Link>
-          )}
-        </div>
+      {/* Status Strip */}
+      <StatusStrip repair={repair} customer={customer} invoice={invoice} currency={currency} readOnly={readOnly} />
 
-        {/* Alert banners */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {isOverdue && (
-            <span className="text-xs bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-full font-medium">⚠ Overdue</span>
-          )}
-          {!customer?.email && !customer?.mobile && (
-            <span className="text-xs bg-stone-50 text-stone-600 border border-stone-200 px-3 py-1 rounded-full">📵 No contact info</span>
-          )}
-          {!invoice && !isTerminal && (
-            <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full">📄 No invoice yet</span>
-          )}
-          {repair.stage === "ready" && (
-            <span className="text-xs bg-stone-100 text-stone-800 border border-stone-300 px-3 py-1 rounded-full font-semibold">✅ Ready for pickup</span>
-          )}
-          {balanceDue > 0 && !isTerminal && (
-            <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full font-medium">
-              Balance due: {fmt(balanceDue, currency)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* ── TWO-COLUMN LAYOUT ─────────────────────────────────────── */}
+      {/* Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-5 items-start">
-        {/* ── LEFT COLUMN ───────────────────────────────────────────── */}
+        {/* Left Column */}
         <div className="space-y-5">
-          {/* 1. Customer card */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Customer</h2>
-            {customer ? (
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-base font-semibold text-stone-900">{customer.full_name}</p>
-                  {customer.email && <p className="text-sm text-stone-500 mt-0.5">{customer.email}</p>}
-                  {customer.mobile && <p className="text-sm text-stone-500">{customer.mobile}</p>}
-                </div>
-                <Link href={`/customers/${customer.id}`} className="text-xs text-amber-700 hover:underline font-medium shrink-0">
-                  View Customer →
-                </Link>
-              </div>
-            ) : (
-              <p className="text-sm text-stone-400">No customer linked</p>
-            )}
-          </div>
+          <CustomerCard customer={customer} />
+          <ItemRepairCard repair={repair} />
+          <StageTimeline
+            currentStage={repair.stage}
+            onStageChange={handleStageChange}
+            readOnly={readOnly}
+            isTerminal={isTerminal}
+          />
+          <PhotosCard
+            attachments={localAttachments}
+            readOnly={readOnly}
+            repairId={repair.id}
+            tenantId={tenantId}
+            deletingPhotoId={deletingPhotoId}
+            onDeletePhoto={handleDeletePhoto}
+            onPhotoUploaded={(att) => {
+              setLocalAttachments((prev) => [...prev, att]);
+              logJobEvent("repair", repair.id, tenantId, "photo_uploaded", `Photo uploaded: ${att.caption ?? att.file_name}`);
+            }}
+          />
+          <ActivityTimeline events={localEvents} />
 
-          {/* 2. Item & Repair card */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Item &amp; Repair</h2>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <span className="text-xs font-semibold bg-stone-100 text-stone-700 px-2.5 py-1 rounded-full capitalize">
-                  {repair.item_type}
-                </span>
-                <p className="text-sm font-medium text-stone-900">{repair.item_description}</p>
-              </div>
-              <div>
-                <p className="text-xs text-stone-400 uppercase tracking-wider mb-0.5">Repair Type</p>
-                <p className="text-sm text-stone-700">{repair.repair_type}</p>
-              </div>
-              {repair.work_description && (
-                <div>
-                  <p className="text-xs text-stone-400 uppercase tracking-wider mb-0.5">Work Description</p>
-                  <p className="text-sm text-stone-700 leading-relaxed">{repair.work_description}</p>
-                </div>
-              )}
-              {(repair.intake_notes || repair.internal_notes || repair.workshop_notes) && (
-                <div>
-                  <button onClick={() => setShowNotes(!showNotes)} className="text-xs text-amber-700 hover:underline font-medium">
-                    {showNotes ? "Hide notes ↑" : "Show notes ↓"}
-                  </button>
-                  {showNotes && (
-                    <div className="mt-2 space-y-2">
-                      {repair.intake_notes && <p className="text-xs text-stone-600 bg-stone-50 rounded-lg p-3"><span className="font-semibold">Intake:</span> {repair.intake_notes}</p>}
-                      {repair.internal_notes && <p className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3"><span className="font-semibold">Internal:</span> {repair.internal_notes}</p>}
-                      {repair.workshop_notes && <p className="text-xs text-stone-600 bg-stone-50 rounded-lg p-3"><span className="font-semibold">Workshop:</span> {repair.workshop_notes}</p>}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 3. Stage timeline */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-4">Stage Timeline</h2>
-            <div className="relative">
-              <div className="absolute left-3.5 top-4 bottom-4 w-0.5 bg-stone-100" />
-              <div className="space-y-1">
-                {REPAIR_STAGES.map((s, idx) => {
-                  const isPast = idx < currentStageIndex;
-                  const isCurrent = idx === currentStageIndex;
-                  const isClickable = !readOnly && !isTerminal && idx > currentStageIndex;
-                  return (
-                    <div
-                      key={s.key}
-                      className={`flex items-center gap-3 px-2 py-2.5 rounded-lg relative transition-colors ${
-                        isClickable ? "cursor-pointer hover:bg-stone-50" : ""
-                      } ${isCurrent ? "bg-stone-50" : ""}`}
-                      onClick={isClickable ? () => handleStageChange(s.key) : undefined}
-                    >
-                      <div className={`w-7 h-7 rounded-full flex-shrink-0 z-10 flex items-center justify-center ${
-                        isPast ? "bg-amber-700" : isCurrent ? "bg-amber-600 ring-4 ring-amber-100" : "bg-white border-2 border-stone-200"
-                      }`}>
-                        {isPast && (
-                          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                        {isCurrent && <div className="w-2 h-2 bg-white rounded-full" />}
-                      </div>
-                      <span className={`text-sm ${isPast ? "text-stone-400 line-through" : isCurrent ? "text-stone-900 font-semibold" : "text-stone-500"}`}>
-                        {s.label}
-                      </span>
-                      {isCurrent && <span className="ml-auto text-xs bg-amber-600 text-white px-2 py-0.5 rounded-full">Current</span>}
-                      {isClickable && <span className="ml-auto text-xs text-stone-300 group-hover:text-stone-500">→</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Photos & Attachments */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Photos &amp; Attachments</h2>
-            {localAttachments.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                {localAttachments.map(a => (
-                  <div key={a.id} className="relative group">
-                    <img
-                      src={a.file_url}
-                      alt={a.caption ?? a.file_name}
-                      className="w-full aspect-square object-cover rounded-lg cursor-pointer"
-                      onClick={() => window.open(a.file_url, "_blank")}
-                    />
-                    {!readOnly && (
-                      <button
-                        onClick={() => handleDeletePhoto(a)}
-                        disabled={deletingPhotoId === a.id}
-                        className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 disabled:opacity-50"
-                        title="Remove photo"
-                      >
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    )}
-                    {a.caption && <p className="text-xs text-stone-500 mt-1 truncate">{a.caption}</p>}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-stone-400 mb-3">No photos yet</p>
-            )}
-            {!readOnly && (
-              <JobPhotoUpload
-                jobType="repair"
-                jobId={repair.id}
-                tenantId={tenantId}
-                onUploaded={(att) => {
-                  setLocalAttachments(prev => [...prev, att]);
-                  logJobEvent("repair", repair.id, tenantId, "photo_uploaded", `Photo uploaded: ${att.caption ?? att.file_name}`);
-                }}
-              />
-            )}
-          </div>
-
-          {/* Activity Timeline */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-4">Activity</h2>
-            {localEvents.length === 0 ? (
-              <p className="text-sm text-stone-400">No activity yet</p>
-            ) : (
-              <div className="relative pl-5">
-                <div className="absolute left-1.5 top-2 bottom-2 w-px bg-stone-100" />
-                <div className="space-y-4">
-                  {[...localEvents].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(ev => (
-                    <div key={ev.id} className="relative flex gap-3">
-                      <div className="absolute -left-5 top-1.5 w-2.5 h-2.5 rounded-full bg-stone-200 border-2 border-white flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-stone-700 leading-snug">{ev.description}</p>
-                        <p className="text-xs text-stone-400 mt-0.5">{formatEventDate(ev.created_at)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 4. Line items card */}
+          {/* Line Items Card */}
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Line Items</h2>
               {invoice && (() => {
-                const label = {
-                  draft: "Draft",
-                  unpaid: "Sent",
-                  partial: "Partial",
-                  paid: "Paid",
-                  voided: "Voided",
-                  overdue: "Overdue"
-                }[invoice.status] || invoice.status;
+                const label = { draft: "Draft", unpaid: "Sent", partial: "Partial", paid: "Paid", voided: "Voided", overdue: "Overdue" }[invoice.status] || invoice.status;
                 return (
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                    invoice.status === "paid" ? "bg-stone-900 text-white" :
-                    invoice.status === "partial" ? "bg-amber-100 text-amber-800" :
-                    "bg-stone-100 text-stone-600"
-                  }`}>{label}</span>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${invoice.status === "paid" ? "bg-stone-900 text-white" : invoice.status === "partial" ? "bg-amber-100 text-amber-800" : "bg-stone-100 text-stone-600"}`}>
+                    {label}
+                  </span>
                 );
               })()}
             </div>
@@ -755,7 +447,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {invoice.lineItems.map(li => (
+                    {invoice.lineItems.map((li: LineItem) => (
                       <tr key={li.id}>
                         <td className="py-2.5 text-stone-800">{li.description}</td>
                         <td className="py-2.5 text-right text-stone-600">{li.quantity}</td>
@@ -795,20 +487,14 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
 
             {!readOnly && (
               <div className="flex gap-2">
-                <button
-                  onClick={() => { setFormError(null); setShowAddManual(true); }}
-                  className="flex items-center gap-1.5 text-xs font-medium text-stone-600 border border-stone-200 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors"
-                >
+                <button onClick={() => { setFormError(null); setShowAddManual(true); }} className="flex items-center gap-1.5 text-xs font-medium text-stone-600 border border-stone-200 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   Add Manual Item
                 </button>
                 {inventory.length > 0 && (
-                  <button
-                    onClick={() => { setFormError(null); setShowAddStock(true); }}
-                    className="flex items-center gap-1.5 text-xs font-medium text-stone-600 border border-stone-200 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors"
-                  >
+                  <button onClick={() => { setFormError(null); setShowAddStock(true); }} className="flex items-center gap-1.5 text-xs font-medium text-stone-600 border border-stone-200 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
@@ -819,7 +505,7 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
             )}
           </div>
 
-          {/* 5. Linked invoice card */}
+          {/* Linked Invoice Card */}
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
             <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Invoice</h2>
             {invoice ? (
@@ -845,349 +531,86 @@ export default function RepairCommandCenter({ repair, customer, invoice, invento
           </div>
         </div>
 
-        {/* ── RIGHT STICKY SIDEBAR ──────────────────────────────────── */}
+        {/* Right Sticky Sidebar */}
         <div className="lg:sticky lg:top-24 space-y-4">
-          {/* Financial Summary */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Financial Summary</h2>
-              {balanceDue === 0 && invoice && invoice.amount_paid > 0 && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Paid</span>
-              )}
-              {balanceDue > 0 && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Balance Due</span>
-              )}
-            </div>
-            <div className="space-y-2.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-stone-500">Quoted</span>
-                <span className="text-stone-700">{fmt(repair.quoted_price, currency)}</span>
-              </div>
-              {invoice && (
-                <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-stone-500">Subtotal</span>
-                    <span className="text-stone-700">{fmt(invoice.subtotal, currency)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-stone-500">GST</span>
-                    <span className="text-stone-700">{fmt(invoice.tax_amount, currency)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm font-semibold border-t border-stone-100 pt-2">
-                    <span className="text-stone-900">Total</span>
-                    <span className="text-stone-900">{fmt(invoice.total, currency)}</span>
-                  </div>
-                </>
-              )}
-              {repair.deposit_amount != null && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-stone-500">Deposit {repair.deposit_paid ? "(paid)" : "(pending)"}</span>
-                  <span className={repair.deposit_paid ? "text-stone-700" : "text-stone-400"}>{fmt(repair.deposit_amount, currency)}</span>
-                </div>
-              )}
-              {invoice && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-stone-500">Total Paid</span>
-                  <span className="text-stone-700">{fmt(invoice.amount_paid, currency)}</span>
-                </div>
-              )}
-              {balanceDue > 0 ? (
-                <div className="flex justify-between text-sm font-bold border-t border-amber-200 pt-2 mt-2">
-                  <span className="text-amber-700">Balance Due</span>
-                  <span className="text-amber-700">{fmt(balanceDue, currency)}</span>
-                </div>
-              ) : invoice && invoice.amount_paid > 0 ? (
-                <div className="flex justify-between text-sm font-semibold border-t border-stone-100 pt-2">
-                  <span className="text-amber-700">✓ Fully Paid</span>
-                  <span className="text-amber-700">{fmt(invoice.amount_paid, currency)}</span>
-                </div>
-              ) : null}
-            </div>
-
-            {/* Release nudge when balance clear */}
-            {balanceDue === 0 && !isTerminal && (
-              <div className="mt-3 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs text-stone-600 flex items-center gap-2">
-                <span className="text-green-600">✓</span> Balance clear — ready to release
-              </div>
-            )}
-
-            {/* Payment history */}
-            {invoice && invoice.payments.length > 0 && (
-              <div className="mt-4 border-t border-stone-100 pt-4">
-                <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Payment History</p>
-                <div className="space-y-2">
-                  {invoice.payments.map(p => (
-                    <div key={p.id} className="flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-stone-700 font-medium capitalize">{p.payment_method.replace(/_/g, " ")}</span>
-                        {p.payment_date && <span className="text-stone-400 ml-1.5">{new Date(p.payment_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
-                        {p.notes && <span className="text-stone-400 block">{p.notes}</span>}
-                      </div>
-                      <span className="font-semibold text-stone-800">{fmt(p.amount, currency)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Actions */}
+          <FinancialSummaryCard repair={repair} invoice={invoice} currency={currency} balanceDue={balanceDue} />
           {!readOnly && (
-            <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-              <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Quick Actions</h2>
-              <div className="space-y-2">
-                {repair.deposit_amount && !repair.deposit_paid && (
-                  <button
-                    onClick={() => openPaymentModal(repair.deposit_amount ?? undefined)}
-                    className="w-full text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200 px-4 py-2.5 rounded-lg hover:bg-amber-100 transition-colors text-left"
-                  >
-                    💰 Take Deposit ({fmt(repair.deposit_amount, currency)})
-                  </button>
-                )}
-                <button
-                  onClick={() => openPaymentModal()}
-                  className="w-full text-sm font-medium bg-stone-50 text-stone-700 border border-stone-200 px-4 py-2.5 rounded-lg hover:bg-stone-100 transition-colors text-left"
-                >
-                  📥 Record Payment
-                </button>
-                {balanceDue > 0 && invoice && (
-                  <button
-                    onClick={handleMarkFullyPaid}
-                    disabled={isPending}
-                    className="w-full text-sm font-medium bg-stone-900 text-white px-4 py-2.5 rounded-lg hover:bg-stone-800 transition-colors text-left disabled:opacity-50"
-                  >
-                    ✓ Mark Fully Paid ({fmt(balanceDue, currency)})
-                  </button>
-                )}
-                {invoice ? (
-                  <Link href={`/invoices/${invoice.id}`} className="block w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2.5 rounded-lg hover:bg-stone-50 transition-colors">
-                    📄 View Invoice
-                  </Link>
-                ) : (
-                  <button
-                    onClick={handleGenerateInvoice}
-                    disabled={isPending}
-                    className="w-full text-sm font-medium bg-amber-600 text-white px-4 py-2.5 rounded-lg hover:bg-amber-700 transition-colors text-left disabled:opacity-50"
-                  >
-                    📄 Generate Invoice
-                  </button>
-                )}
-              </div>
-            </div>
+            <QuickActionsCard
+              repair={repair}
+              invoice={invoice}
+              currency={currency}
+              balanceDue={balanceDue}
+              isPending={isPending}
+              onOpenPaymentModal={openPaymentModal}
+              onMarkFullyPaid={handleMarkFullyPaid}
+              onGenerateInvoice={handleGenerateInvoice}
+            />
           )}
-
-          {/* Documents */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Documents</h2>
-            <div className="space-y-2">
-              <button onClick={() => window.open(`/print/repair/${repair.id}`, "_blank")} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
-                🖨️ Print Repair Ticket
-              </button>
-              <button onClick={() => window.open(`/print/receipt/repair/${repair.id}`, "_blank")} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
-                🧾 Print Receipt
-              </button>
-              {invoice?.id ? (
-                <>
-                  {!readOnly && (
-                    <>
-                      <button onClick={() => handleEmailInvoice()} disabled={emailSending} title="Send invoice to customer via email" className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 disabled:opacity-50 transition-colors">
-                        ✉️ {emailSending ? "Sending..." : "Email Invoice"}
-                      </button>
-                      {emailSuccess && (
-                        <div className={`text-xs px-3 py-2 rounded-lg ${emailSuccess.toLowerCase().includes("demo") || emailSuccess.toLowerCase().includes("logged") ? "bg-amber-50 text-amber-700" : "bg-stone-900 text-white"}`}>
-                          {emailSuccess}
-                        </div>
-                      )}
-                      {emailError && (
-                        <div className="text-xs px-3 py-2 rounded-lg bg-red-50 text-red-700">
-                          {emailError}
-                        </div>
-                      )}
-                    </>
-                  )}
-                  <button onClick={() => window.open(`/print/invoice/${invoice.id}`, "_blank")} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
-                    🖨️ Print Invoice
-                  </button>
-                </>
-              ) : !readOnly ? (
-                <button onClick={() => handleGenerateInvoice()} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 flex items-center gap-2 transition-colors font-medium">
-                  📄 Generate Invoice
-                </button>
-              ) : null}
-              {!readOnly && customer?.email ? (
-                <a href={`mailto:${customer.email}?subject=Re: Your repair — Marcus & Co.`} className="block w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
-                  ✉️ Email Customer
-                </a>
-              ) : !readOnly ? (
-                <div className="text-sm text-stone-400 px-3 py-2">No email on file</div>
-              ) : null}
-              {repair.stage === "ready" && customer?.email && !readOnly && (
-                <button onClick={() => handleEmailReady()} disabled={emailSending} className="w-full text-left text-sm px-3 py-2 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 flex items-center gap-2 transition-colors disabled:opacity-50">
-                  ✉️ Email Ready for Collection
-                </button>
-              )}
-
-            </div>
-          </div>
-
-          {/* Workflow Actions */}
+          <DocumentsCard
+            repair={repair}
+            invoice={invoice}
+            customer={customer}
+            readOnly={readOnly}
+            emailSending={emailSending}
+            emailSuccess={emailSuccess}
+            emailError={emailError}
+            onEmailInvoice={handleEmailInvoice}
+            onEmailReady={handleEmailReady}
+            onGenerateInvoice={handleGenerateInvoice}
+          />
           {!readOnly && !isTerminal && (
-            <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-              <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Workflow Actions</h2>
-              <div className="space-y-2">
-                {repair.stage !== "ready" && (
-                  <button
-                    onClick={() => handleStageChange("ready")}
-                    disabled={isPending}
-                    className="w-full text-sm font-medium bg-amber-700 text-white px-4 py-2.5 rounded-lg hover:bg-amber-700 transition-colors text-left disabled:opacity-50"
-                  >
-                    ✓ Mark Ready for Pickup
-                  </button>
-                )}
-                {repair.stage === "ready" && (
-                  <button
-                    onClick={() => handleStageChange("collected")}
-                    disabled={isPending}
-                    className="w-full text-sm font-medium bg-stone-900 text-white px-4 py-2.5 rounded-lg hover:bg-stone-800 transition-colors text-left disabled:opacity-50"
-                  >
-                    ✓ Mark Collected
-                  </button>
-                )}
-                {repair.stage !== "in_progress" && repair.stage !== "ready" && (
-                  <button
-                    onClick={() => handleStageChange("in_progress")}
-                    disabled={isPending}
-                    className="w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2.5 rounded-lg hover:bg-stone-50 transition-colors text-left disabled:opacity-50"
-                  >
-                    🔧 Mark In Progress
-                  </button>
-                )}
-              </div>
-            </div>
+            <WorkflowActionsCard repair={repair} isPending={isPending} onStageChange={handleStageChange} />
           )}
         </div>
       </div>
 
-      {/* ── MODALS ────────────────────────────────────────────────── */}
-
-      {/* Add Manual Line Item Modal */}
-      {showAddManual && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowAddManual(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="font-semibold text-lg text-stone-900 mb-4">Add Manual Line Item</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-stone-700 mb-1">Description *</label>
-                <input value={manualDesc} onChange={e => setManualDesc(e.target.value)} placeholder="e.g. Ring resizing labour" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700] focus:ring-1 focus:ring-[amber-700]" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-stone-700 mb-1">Quantity</label>
-                  <input type="number" value={manualQty} onChange={e => setManualQty(e.target.value)} min="1" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-stone-700 mb-1">Unit Price ({currency})</label>
-                  <input type="number" value={manualPrice} onChange={e => setManualPrice(e.target.value)} placeholder="0.00" step="0.01" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
-                </div>
-              </div>
-              {formError && <p className="text-sm text-red-500">{formError}</p>}
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setShowAddManual(false)} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-              <button onClick={handleAddManual} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">
-                {isPending ? "Adding…" : "Add Item"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Stock Item Modal */}
-      {showAddStock && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowAddStock(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="font-semibold text-lg text-stone-900 mb-4">Add Stock Item</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-stone-700 mb-1">Select Item</label>
-                <select value={selectedInventoryId} onChange={e => setSelectedInventoryId(e.target.value)} className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]">
-                  <option value="">— Select inventory item —</option>
-                  {inventory.map(item => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} ({item.sku}) — {fmt(item.retail_price, currency)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {formError && <p className="text-sm text-red-500">{formError}</p>}
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setShowAddStock(false)} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-              <button onClick={handleAddStock} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">
-                {isPending ? "Adding…" : "Add Item"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Record Payment Modal */}
-      {showPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowPayment(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="font-semibold text-lg text-stone-900 mb-4">Record Payment</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-stone-700 mb-1">Amount ({currency}) *</label>
-                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" step="0.01" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-stone-700 mb-1">Payment Method</label>
-                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]">
-                  {PAYMENT_METHODS.map(m => (
-                    <option key={m} value={m}>{m.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-stone-700 mb-1">Notes (optional)</label>
-                <input value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} placeholder="e.g. Deposit received" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-[amber-700]" />
-              </div>
-              {formError && <p className="text-sm text-red-500">{formError}</p>}
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setShowPayment(false)} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-              <button onClick={handlePayment} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">
-                {isPending ? "Recording…" : "Record Payment"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Stage Change Confirmation Modal */}
-      {showStageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowStageModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="font-semibold text-lg text-stone-900 mb-2">Advance Stage</h3>
-            <p className="text-sm text-stone-500 mb-5">
-              Move to <span className="font-semibold text-stone-900">{REPAIR_STAGES.find(s => s.key === targetStage)?.label ?? targetStage}</span>?
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowStageModal(false)} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-              <button onClick={confirmStageChange} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">
-                {isPending ? "Updating…" : "Confirm"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Job Ready SMS Modal */}
+      {/* Modals */}
+      <AddManualItemModal
+        show={showAddManual}
+        onClose={() => setShowAddManual(false)}
+        onSubmit={handleAddManual}
+        isPending={isPending}
+        formError={formError}
+        manualDesc={manualDesc}
+        setManualDesc={setManualDesc}
+        manualQty={manualQty}
+        setManualQty={setManualQty}
+        manualPrice={manualPrice}
+        setManualPrice={setManualPrice}
+        currency={currency}
+      />
+      <AddStockItemModal
+        show={showAddStock}
+        onClose={() => setShowAddStock(false)}
+        onSubmit={handleAddStock}
+        isPending={isPending}
+        formError={formError}
+        selectedInventoryId={selectedInventoryId}
+        setSelectedInventoryId={setSelectedInventoryId}
+        inventory={inventory}
+        currency={currency}
+      />
+      <RecordPaymentModal
+        show={showPayment}
+        onClose={() => setShowPayment(false)}
+        onSubmit={handlePayment}
+        isPending={isPending}
+        formError={formError}
+        paymentAmount={paymentAmount}
+        setPaymentAmount={setPaymentAmount}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
+        paymentNotes={paymentNotes}
+        setPaymentNotes={setPaymentNotes}
+        currency={currency}
+      />
+      <StageChangeModal
+        show={showStageModal}
+        targetStage={targetStage}
+        onClose={() => setShowStageModal(false)}
+        onConfirm={confirmStageChange}
+        isPending={isPending}
+      />
       <JobReadySMSModal
         isOpen={showReadySmsModal}
         onClose={() => setShowReadySmsModal(false)}
