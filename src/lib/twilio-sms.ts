@@ -1,5 +1,6 @@
-/**
 import debug from "@/lib/debug";
+
+/**
  * Twilio SMS integration with smart number selection
  * Uses Australian number for AU recipients, US number for international
  */
