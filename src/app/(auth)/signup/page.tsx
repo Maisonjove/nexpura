@@ -156,37 +156,9 @@ function SignupContent() {
         return;
       }
 
-      // Now redirect to Stripe checkout
-      try {
-        const res = await fetch("/api/stripe/create-checkout-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            plan: selectedPlan,
-            subdomain,
-            email,
-            fullName,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (data.error) {
-          // If Stripe fails (e.g., missing prices), fall back to direct onboarding
-          console.warn("Stripe checkout failed, falling back to trial:", data.error);
-          router.push("/onboarding");
-          return;
-        }
-
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
-          router.push("/onboarding");
-        }
-      } catch {
-        // On any error, proceed to onboarding (trial mode)
-        router.push("/onboarding");
-      }
+      // Go straight to onboarding - NO card required for 14-day trial
+      // Payment will be requested after trial ends (with 48h grace period)
+      router.push("/onboarding");
     } catch (err) {
       // Handle unexpected errors (network issues, etc.)
       const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";

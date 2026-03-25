@@ -45,21 +45,57 @@ export async function GET(request: NextRequest) {
     })
   }
 
-  // Expired trials → suspend
+  // Expired trials → start 48h grace period (NOT immediate suspend)
   const { data: expired } = await admin
     .from("subscriptions")
     .select("id, tenant_id")
     .eq("status", "trialing")
     .lt("trial_ends_at", now.toISOString())
 
+  const graceEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000) // 48 hours from now
+
   for (const sub of expired ?? []) {
-    await admin.from("subscriptions").update({ status: "suspended" }).eq("id", sub.id)
+    // Start grace period instead of suspending
+    await admin.from("subscriptions").update({ 
+      status: "payment_required",
+      grace_period_ends_at: graceEnd.toISOString(),
+    }).eq("id", sub.id)
+
+    // Also update tenant record
+    await admin.from("tenants").update({
+      subscription_status: "grace_period",
+      grace_period_ends_at: graceEnd.toISOString(),
+    }).eq("id", sub.tenant_id)
+
+    // Get owner for email
+    const { data: owner } = await admin
+      .from("users")
+      .select("email, full_name")
+      .eq("tenant_id", sub.tenant_id)
+      .eq("role", "owner")
+      .single()
+
+    // Send payment required email
+    if (owner?.email) {
+      const { sendGracePeriodStartedEmail } = await import("@/lib/email/send")
+      const deadline = graceEnd.toLocaleString("en-AU", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Australia/Sydney",
+      })
+      await sendGracePeriodStartedEmail(
+        owner.email, 
+        owner.full_name ?? "there",
+        deadline,
+        `${process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com"}/billing`
+      )
+    }
 
     await admin.from("notifications").insert({
       tenant_id: sub.tenant_id,
       type: "trial_expired",
-      title: "Your trial has ended",
-      body: "Your account has been suspended. Choose a plan to continue.",
+      title: "Your trial has ended — 48h to upgrade",
+      body: "Add payment details within 48 hours to keep your account. After that, your account will be suspended.",
       link: "/billing",
     })
   }
