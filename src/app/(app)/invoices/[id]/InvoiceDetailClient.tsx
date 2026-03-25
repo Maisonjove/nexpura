@@ -3,122 +3,22 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { recordPayment, markAsSent, voidInvoice } from "../actions";
-import { emailInvoice } from "./emailInvoice";
 
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-stone-100 text-stone-600" },
-  // Valid DB status values only
-  unpaid: { label: "Sent", className: "bg-stone-100 text-stone-700" },
-  partial: { label: "Partially Paid", className: "bg-amber-50 text-amber-600" },
-  paid: { label: "Paid", className: "bg-stone-100 text-amber-700" },
-  overdue: { label: "Overdue", className: "bg-red-50 text-red-600" },
-  voided: { label: "Voided", className: "bg-stone-100 text-stone-400" },
-};
+import {
+  STATUS_BADGE,
+  fmtDate,
+  fmt,
+  LineItemsTable,
+  PaymentHistory,
+  InvoiceSummaryCard,
+  InvoiceNotesCard,
+  PreviewView,
+  PaymentModal,
+  VoidConfirmModal,
+  EmailInvoiceButton,
+} from "./components";
 
-const PAYMENT_METHODS = [
-  "Cash",
-  "Card (EFTPOS)",
-  "Bank Transfer",
-  "Afterpay",
-  "Zip",
-  "Cheque",
-  "Other",
-];
-
-function fmt(amount: number) {
-  return new Intl.NumberFormat("en-AU", {
-    style: "currency",
-    currency: "AUD",
-    minimumFractionDigits: 2,
-  }).format(amount);
-}
-
-function fmtDate(dateStr: string | null) {
-  if (!dateStr) return "—";
-  return new Date(dateStr.includes("T") ? dateStr : dateStr + "T00:00:00").toLocaleDateString(
-    "en-AU",
-    { day: "2-digit", month: "short", year: "numeric" }
-  );
-}
-
-type Customer = {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  phone: string | null;
-  mobile: string | null;
-  address_line1: string | null;
-  suburb: string | null;
-  state: string | null;
-  postcode: string | null;
-} | null;
-
-type LineItem = {
-  id: string;
-  description: string;
-  quantity: number;
-  unit_price: number;
-  discount_pct: number;
-  total: number;
-  sort_order: number;
-};
-
-type Payment = {
-  id: string;
-  amount: number;
-  payment_method: string;
-  payment_date: string;
-  reference: string | null;
-  notes: string | null;
-  created_at: string;
-};
-
-type Tenant = {
-  name: string | null;
-  business_name: string | null;
-  abn: string | null;
-  logo_url: string | null;
-  bank_name: string | null;
-  bank_bsb: string | null;
-  bank_account: string | null;
-  address_line1: string | null;
-  suburb: string | null;
-  state: string | null;
-  postcode: string | null;
-  phone: string | null;
-  email: string | null;
-} | null;
-
-type Invoice = {
-  id: string;
-  invoice_number: string;
-  status: string;
-  invoice_date: string;
-  due_date: string | null;
-  paid_at: string | null;
-  subtotal: number;
-  tax_amount: number;
-  discount_amount: number;
-  total: number;
-  amount_paid: number;
-  amount_due: number;
-  tax_name: string;
-  tax_rate: number;
-  tax_inclusive: boolean;
-  notes: string | null;
-  footer_text: string | null;
-  reference_type: string | null;
-  created_at: string;
-  customers: Customer;
-};
-
-interface Props {
-  invoice: Invoice;
-  lineItems: LineItem[];
-  payments: Payment[];
-  tenant: Tenant;
-  readOnly?: boolean;
-}
+import type { InvoiceDetailClientProps } from "./components/types";
 
 export default function InvoiceDetailClient({
   invoice,
@@ -126,20 +26,13 @@ export default function InvoiceDetailClient({
   payments,
   tenant,
   readOnly = false,
-}: Props) {
+}: InvoiceDetailClientProps) {
   const [view, setView] = useState<"manage" | "preview">(readOnly ? "preview" : "manage");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showVoidConfirm, setShowVoidConfirm] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  // Payment form state
-  const [payAmount, setPayAmount] = useState(String(invoice.amount_due || 0));
-  const [payMethod, setPayMethod] = useState("Cash");
-  const [payDate, setPayDate] = useState(new Date().toISOString().split("T")[0]);
-  const [payRef, setPayRef] = useState("");
-  const [payNotes, setPayNotes] = useState("");
 
   const badge = STATUS_BADGE[invoice.status] ?? STATUS_BADGE.draft;
   const canEdit = invoice.status === "draft";
@@ -180,16 +73,21 @@ export default function InvoiceDetailClient({
     });
   }
 
-  function handleRecordPayment() {
-    const amt = parseFloat(payAmount);
-    if (!amt || amt <= 0) {
+  function handleRecordPayment(data: {
+    amount: number;
+    method: string;
+    date: string;
+    reference: string | null;
+    notes: string | null;
+  }) {
+    if (!data.amount || data.amount <= 0) {
       setError("Please enter a valid amount");
       return;
     }
     setError(null);
     startTransition(async () => {
       try {
-        await recordPayment(invoice.id, amt, payMethod, payDate, payRef || null, payNotes || null);
+        await recordPayment(invoice.id, data.amount, data.method, data.date, data.reference, data.notes);
         setShowPaymentModal(false);
         showToast("Payment recorded successfully");
       } catch (e) {
@@ -271,10 +169,7 @@ export default function InvoiceDetailClient({
           )}
           {!readOnly && canRecordPayment && (
             <button
-              onClick={() => {
-                setPayAmount(String(invoice.amount_due));
-                setShowPaymentModal(true);
-              }}
+              onClick={() => setShowPaymentModal(true)}
               className="px-3 py-1.5 text-xs bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors"
             >
               Record Payment
@@ -330,11 +225,12 @@ export default function InvoiceDetailClient({
       )}
 
       {view === "manage" ? (
-        <ManagementView
-          invoice={invoice}
-          lineItems={lineItems}
-          payments={payments}
-        />
+        <div className="space-y-5">
+          <InvoiceSummaryCard invoice={invoice} />
+          <LineItemsTable invoice={invoice} lineItems={lineItems} />
+          <PaymentHistory payments={payments} />
+          <InvoiceNotesCard invoice={invoice} />
+        </div>
       ) : (
         <PreviewView
           invoice={invoice}
@@ -345,530 +241,29 @@ export default function InvoiceDetailClient({
       )}
 
       {/* Payment Modal */}
-      {!readOnly && showPaymentModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-stone-200">
-              <h2 className="font-semibold text-lg font-semibold text-stone-900">Record Payment</h2>
-              <p className="text-sm text-stone-500 mt-0.5">Amount due: {fmt(invoice.amount_due)}</p>
-            </div>
-            <div className="p-6 space-y-4">
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
-                  {error}
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-medium text-stone-500 mb-1.5">Amount</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 text-sm">$</span>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={payAmount}
-                    onChange={(e) => setPayAmount(e.target.value)}
-                    className="w-full pl-6 pr-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-stone-500 mb-1.5">Payment Method</label>
-                <select
-                  value={payMethod}
-                  onChange={(e) => setPayMethod(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
-                >
-                  {PAYMENT_METHODS.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-stone-500 mb-1.5">Payment Date</label>
-                <input
-                  type="date"
-                  value={payDate}
-                  onChange={(e) => setPayDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-stone-500 mb-1.5">Reference</label>
-                <input
-                  type="text"
-                  value={payRef}
-                  onChange={(e) => setPayRef(e.target.value)}
-                  placeholder="Transaction ID, receipt number…"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-stone-500 mb-1.5">Notes</label>
-                <textarea
-                  value={payNotes}
-                  onChange={(e) => setPayNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Optional notes…"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none"
-                />
-              </div>
-            </div>
-            <div className="p-6 border-t border-stone-200 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowPaymentModal(false);
-                  setError(null);
-                }}
-                className="px-4 py-2 text-sm border border-stone-900 text-stone-900 rounded-lg hover:bg-stone-900/5 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                disabled={isPending}
-                onClick={handleRecordPayment}
-                className="px-4 py-2 text-sm bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
-              >
-                {isPending ? "Recording…" : "Record Payment"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {!readOnly && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          amountDue={invoice.amount_due}
+          isPending={isPending}
+          error={error}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setError(null);
+          }}
+          onSubmit={handleRecordPayment}
+        />
       )}
 
       {/* Void Confirm Modal */}
-      {!readOnly && showVoidConfirm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h2 className="font-semibold text-lg font-semibold text-stone-900 mb-2">Void Invoice?</h2>
-            <p className="text-sm text-stone-500 mb-6">
-              This will mark the invoice as voided. This action cannot be undone. The invoice record will be preserved.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowVoidConfirm(false)}
-                className="px-4 py-2 text-sm border border-stone-900 text-stone-900 rounded-lg hover:bg-stone-900/5 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                disabled={isPending}
-                onClick={handleVoid}
-                className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
-              >
-                {isPending ? "Voiding…" : "Void Invoice"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {!readOnly && (
+        <VoidConfirmModal
+          isOpen={showVoidConfirm}
+          isPending={isPending}
+          onClose={() => setShowVoidConfirm(false)}
+          onConfirm={handleVoid}
+        />
       )}
-    </div>
-  );
-}
-
-function EmailInvoiceButton({
-  invoiceId,
-  customerEmail,
-  onToast,
-}: {
-  invoiceId: string;
-  customerEmail: string | null;
-  onToast: (msg: string) => void;
-}) {
-  const [sending, setSending] = useState(false);
-
-  async function handleSend() {
-    if (!customerEmail) {
-      onToast("No customer email on file");
-      return;
-    }
-    setSending(true);
-    try {
-      const result = await emailInvoice(invoiceId);
-      if (result.success) {
-        onToast(`Invoice emailed to ${customerEmail}`);
-      } else {
-        onToast(`Failed: ${result.error ?? "Unknown error"}`);
-      }
-    } finally {
-      setSending(false);
-    }
-  }
-
-  return (
-    <button
-      onClick={handleSend}
-      disabled={sending || !customerEmail}
-      title={!customerEmail ? "No customer email on file" : "Email invoice to customer"}
-      className="px-3 py-1.5 text-xs border border-stone-200 text-stone-500 rounded-lg hover:border-amber-600/40 hover:text-stone-900 transition-colors inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-    >
-      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
-      {sending ? "Sending…" : "Email"}
-    </button>
-  );
-}
-
-function ManagementView({
-  invoice,
-  lineItems,
-  payments,
-}: {
-  invoice: Invoice;
-  lineItems: LineItem[];
-  payments: Payment[];
-}) {
-  return (
-    <div className="space-y-5">
-      {/* Invoice summary card */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div>
-            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Customer</p>
-            <p className="font-medium text-stone-900">{invoice.customers?.full_name || "—"}</p>
-            {invoice.customers?.email && (
-              <p className="text-sm text-stone-500">{invoice.customers.email}</p>
-            )}
-            {(invoice.customers?.phone || invoice.customers?.mobile) && (
-              <p className="text-sm text-stone-500">{invoice.customers.phone || invoice.customers.mobile}</p>
-            )}
-          </div>
-          <div>
-            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Dates</p>
-            <p className="text-sm text-stone-900">
-              <span className="text-stone-500">Issued:</span> {fmtDate(invoice.invoice_date)}
-            </p>
-            <p className="text-sm text-stone-900 mt-0.5">
-              <span className="text-stone-500">Due:</span>{" "}
-              <span className={invoice.due_date && new Date(invoice.due_date) < new Date() && !["paid", "voided"].includes(invoice.status) ? "text-red-500 font-medium" : ""}>
-                {fmtDate(invoice.due_date)}
-              </span>
-            </p>
-            {invoice.paid_at && (
-              <p className="text-sm text-amber-700 mt-0.5">
-                <span className="text-stone-500">Paid:</span> {fmtDate(invoice.paid_at)}
-              </p>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Amount Due</p>
-            <p className="font-semibold text-2xl font-semibold text-stone-900">{fmt(invoice.amount_due)}</p>
-            <p className="text-xs text-stone-400 mt-0.5">Total: {fmt(invoice.total)}</p>
-            {invoice.amount_paid > 0 && (
-              <p className="text-xs text-amber-700 mt-0.5">Paid: {fmt(invoice.amount_paid)}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Line items */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-stone-200">
-          <h2 className="text-base font-semibold text-stone-900">Line Items</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-stone-200 bg-stone-900/2">
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">
-                  Qty
-                </th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">
-                  Unit Price
-                </th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">
-                  Disc
-                </th>
-                <th className="text-right px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">
-                  Total
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-platinum">
-              {lineItems.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-6 py-3 text-stone-900">{item.description}</td>
-                  <td className="px-4 py-3 text-right text-stone-900/70">{item.quantity}</td>
-                  <td className="px-4 py-3 text-right text-stone-900/70">{fmt(item.unit_price)}</td>
-                  <td className="px-4 py-3 text-right text-stone-500 text-xs">
-                    {item.discount_pct ? `${item.discount_pct}%` : "—"}
-                  </td>
-                  <td className="px-6 py-3 text-right font-medium text-stone-900">{fmt(item.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {/* Totals */}
-        <div className="px-6 py-4 border-t border-stone-200">
-          <div className="ml-auto max-w-xs space-y-1.5">
-            <div className="flex justify-between text-sm text-stone-900/70">
-              <span>Subtotal</span>
-              <span>{fmt(invoice.subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm text-stone-900/70">
-              <span>{invoice.tax_name} ({(invoice.tax_rate * 100).toFixed(0)}%{invoice.tax_inclusive ? " incl." : ""})</span>
-              <span>{fmt(invoice.tax_amount)}</span>
-            </div>
-            {invoice.discount_amount > 0 && (
-              <div className="flex justify-between text-sm text-stone-900/70">
-                <span>Discount</span>
-                <span>−{fmt(invoice.discount_amount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-semibold text-stone-900 border-t border-stone-200 pt-2">
-              <span className="font-semibold">Total</span>
-              <span className="font-semibold">{fmt(invoice.total)}</span>
-            </div>
-            {invoice.amount_paid > 0 && (
-              <div className="flex justify-between text-sm text-amber-700">
-                <span>Amount Paid</span>
-                <span>{fmt(invoice.amount_paid)}</span>
-              </div>
-            )}
-            {invoice.amount_due > 0 && (
-              <div className="flex justify-between font-bold text-stone-900 border-t border-stone-200 pt-2">
-                <span>Amount Due</span>
-                <span>{fmt(invoice.amount_due)}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Payment History */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-stone-200">
-          <h2 className="text-base font-semibold text-stone-900">Payment History</h2>
-        </div>
-        {payments.length === 0 ? (
-          <div className="py-10 text-center">
-            <p className="text-sm text-stone-400">No payments recorded yet</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-platinum">
-            {payments.map((p) => (
-              <div key={p.id} className="px-6 py-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-stone-900">{p.payment_method}</p>
-                  <p className="text-xs text-stone-500 mt-0.5">
-                    {fmtDate(p.payment_date)}
-                    {p.reference && <span className="ml-2">· Ref: {p.reference}</span>}
-                  </p>
-                  {p.notes && <p className="text-xs text-stone-400 mt-0.5">{p.notes}</p>}
-                </div>
-                <p className="text-base font-semibold text-amber-700">{fmt(p.amount)}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Notes */}
-      {(invoice.notes || invoice.footer_text) && (
-        <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
-          {invoice.notes && (
-            <div className="mb-4">
-              <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">Notes</p>
-              <p className="text-sm text-stone-900/70 whitespace-pre-wrap">{invoice.notes}</p>
-            </div>
-          )}
-          {invoice.footer_text && (
-            <div>
-              <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">Footer</p>
-              <p className="text-sm text-stone-900/70 whitespace-pre-wrap">{invoice.footer_text}</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PreviewView({
-  invoice,
-  lineItems,
-  payments,
-  tenant,
-}: {
-  invoice: Invoice;
-  lineItems: LineItem[];
-  payments: Payment[];
-  tenant: Tenant;
-}) {
-  const businessName = tenant?.business_name || tenant?.name || "Your Business";
-  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
-
-  return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-sm">
-      {/* Invoice paper */}
-      <div className="p-10 max-w-3xl mx-auto font-inter">
-        {/* Top header */}
-        <div className="flex items-start justify-between mb-10">
-          <div>
-            {tenant?.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={tenant.logo_url} alt="Logo" className="h-14 object-contain mb-3" />
-            ) : (
-              <div className="w-14 h-14 rounded-xl bg-stone-900 flex items-center justify-center mb-3">
-                <span className="text-white font-semibold text-xl font-bold">
-                  {businessName[0].toUpperCase()}
-                </span>
-              </div>
-            )}
-            <p className="font-semibold text-stone-900 text-lg">{businessName}</p>
-            {tenant?.abn && (
-              <p className="text-sm text-stone-500 mt-0.5">ABN: {tenant.abn}</p>
-            )}
-            {(tenant?.address_line1 || tenant?.suburb) && (
-              <p className="text-sm text-stone-500 mt-0.5">
-                {[tenant.address_line1, tenant.suburb, tenant.state, tenant.postcode]
-                  .filter(Boolean)
-                  .join(", ")}
-              </p>
-            )}
-            {tenant?.phone && <p className="text-sm text-stone-500">{tenant.phone}</p>}
-            {tenant?.email && <p className="text-sm text-stone-500">{tenant.email}</p>}
-          </div>
-
-          <div className="text-right">
-            <p className="font-semibold text-4xl font-bold text-stone-900 tracking-tight">INVOICE</p>
-            <p className="text-lg font-semibold text-stone-900/70 mt-1">{invoice.invoice_number}</p>
-            <div className="mt-3 space-y-1 text-sm text-stone-500">
-              <p><span className="font-medium text-stone-900/80">Issued:</span> {fmtDate(invoice.invoice_date)}</p>
-              {invoice.due_date && (
-                <p><span className="font-medium text-stone-900/80">Due:</span> {fmtDate(invoice.due_date)}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Bill To */}
-        <div className="mb-8">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest mb-2">Bill To</p>
-          <div className="bg-stone-900/3 rounded-xl p-4 border border-stone-200">
-            <p className="font-semibold text-stone-900 text-base">{invoice.customers?.full_name || "—"}</p>
-            {invoice.customers?.email && (
-              <p className="text-sm text-stone-500 mt-0.5">{invoice.customers.email}</p>
-            )}
-            {(invoice.customers?.phone || invoice.customers?.mobile) && (
-              <p className="text-sm text-stone-500">{invoice.customers.phone || invoice.customers.mobile}</p>
-            )}
-            {invoice.customers?.address_line1 && (
-              <p className="text-sm text-stone-500 mt-0.5">
-                {[
-                  invoice.customers.address_line1,
-                  invoice.customers.suburb,
-                  invoice.customers.state,
-                  invoice.customers.postcode,
-                ]
-                  .filter(Boolean)
-                  .join(", ")}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Line Items Table */}
-        <div className="mb-6">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b-2 border-stone-900">
-                <th className="text-left pb-3 font-semibold text-stone-900 text-xs uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="text-right pb-3 pr-4 font-semibold text-stone-900 text-xs uppercase tracking-wider w-16">
-                  Qty
-                </th>
-                <th className="text-right pb-3 pr-4 font-semibold text-stone-900 text-xs uppercase tracking-wider w-28">
-                  Unit Price
-                </th>
-                <th className="text-right pb-3 font-semibold text-stone-900 text-xs uppercase tracking-wider w-28">
-                  Amount
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {lineItems.map((item, idx) => (
-                <tr key={item.id} className={idx % 2 === 0 ? "" : "bg-stone-900/2"}>
-                  <td className="py-3 pr-4 text-stone-900/80">
-                    {item.description}
-                    {item.discount_pct > 0 && (
-                      <span className="ml-2 text-xs text-stone-400">({item.discount_pct}% off)</span>
-                    )}
-                  </td>
-                  <td className="py-3 pr-4 text-right text-stone-500">{item.quantity}</td>
-                  <td className="py-3 pr-4 text-right text-stone-500">{fmt(item.unit_price)}</td>
-                  <td className="py-3 text-right font-medium text-stone-900">{fmt(item.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Totals */}
-        <div className="flex justify-end mb-8">
-          <div className="w-64 space-y-2">
-            <div className="flex justify-between text-sm text-stone-500">
-              <span>Subtotal</span>
-              <span>{fmt(invoice.subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm text-stone-500">
-              <span>{invoice.tax_name} ({(invoice.tax_rate * 100).toFixed(0)}%{invoice.tax_inclusive ? " incl." : ""})</span>
-              <span>{fmt(invoice.tax_amount)}</span>
-            </div>
-            {invoice.discount_amount > 0 && (
-              <div className="flex justify-between text-sm text-stone-500">
-                <span>Discount</span>
-                <span>−{fmt(invoice.discount_amount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold text-stone-900 border-t-2 border-stone-900 pt-2">
-              <span>Total</span>
-              <span>{fmt(invoice.total)}</span>
-            </div>
-            {totalPaid > 0 && (
-              <>
-                <div className="flex justify-between text-sm text-amber-700">
-                  <span>Amount Paid</span>
-                  <span>{fmt(totalPaid)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-stone-900 border-t border-stone-200 pt-2 text-lg">
-                  <span>Amount Due</span>
-                  <span>{fmt(invoice.amount_due)}</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        {(invoice.footer_text || invoice.notes) && (
-          <div className="border-t border-stone-200 pt-6 space-y-4">
-            {invoice.notes && (
-              <div>
-                <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest mb-1">Notes</p>
-                <p className="text-sm text-stone-500 whitespace-pre-wrap">{invoice.notes}</p>
-              </div>
-            )}
-            {invoice.footer_text && (
-              <div>
-                <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest mb-1">Payment Instructions</p>
-                <p className="text-sm text-stone-500 whitespace-pre-wrap">{invoice.footer_text}</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Thank you */}
-        <div className="mt-8 pt-6 border-t border-stone-200 text-center">
-          <p className="font-semibold text-sm text-stone-400 italic">Thank you for your business</p>
-        </div>
-      </div>
     </div>
   );
 }
