@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { saveSections, deleteSection } from "../actions";
 import type { SitePage, SiteSection } from "../actions";
 
@@ -357,9 +358,31 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
 
   async function handleSave() {
     setSaving(true);
-    const result = await saveSections(page.id, sections);
+    const saveToast = toast.loading("Saving page…");
+    let lastError: string | null = null;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await saveSections(page.id, sections);
+        if (!result.error) {
+          setSaved(true);
+          toast.success("Page saved", { id: saveToast });
+          setSaving(false);
+          return;
+        }
+        // Application-level error — don't retry
+        lastError = result.error;
+        break;
+      } catch {
+        lastError = "Network error — please check your connection";
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      }
+    }
+
+    toast.error(lastError ?? "Save failed. Please try again.", { id: saveToast });
     setSaving(false);
-    if (!result.error) setSaved(true);
   }
 
   return (
