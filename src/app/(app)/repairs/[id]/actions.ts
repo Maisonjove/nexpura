@@ -1,4 +1,5 @@
 "use server";
+import debug from "@/lib/debug";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -468,7 +469,7 @@ export async function sendJobReadySms(params: {
   const toNormalized = normalizePhoneNumber(params.customerPhone);
   const fromNormalized = fromNumber.startsWith("+") ? fromNumber : `+${fromNumber}`;
 
-  console.log(`[sendJobReadySms] Sending to ${toNormalized} from ${fromNormalized} (AU: ${isAuRecipient})`);
+  debug.log(`[sendJobReadySms] Sending to ${toNormalized} from ${fromNormalized} (AU: ${isAuRecipient})`);
 
   try {
     const response = await fetch(

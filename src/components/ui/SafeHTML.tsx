@@ -1,11 +1,12 @@
 "use client";
 
 import DOMPurify from "isomorphic-dompurify";
+import React from "react";
 
 interface SafeHTMLProps {
   html: string;
   className?: string;
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
 }
 
 /**
@@ -22,8 +23,10 @@ export function SafeHTML({ html, className, as: Tag = "div" }: SafeHTMLProps) {
     ALLOW_DATA_ATTR: false,
   });
 
+  const Component = Tag as React.ElementType;
+
   return (
-    <Tag
+    <Component
       className={className}
       dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
     />

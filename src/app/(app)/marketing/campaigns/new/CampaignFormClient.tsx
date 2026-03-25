@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import DOMPurify from "isomorphic-dompurify";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -251,7 +252,7 @@ export default function CampaignFormClient({
               {showPreview ? (
                 <div
                   className="w-full min-h-[300px] p-4 bg-white text-black rounded-lg prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: getPreviewHtml() }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getPreviewHtml()) }}
                 />
               ) : (
                 <textarea

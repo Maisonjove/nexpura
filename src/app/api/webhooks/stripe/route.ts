@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import debug from "@/lib/debug";
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSystemEmail } from "@/lib/email-sender";
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
     .eq("key", eventKey)
     .maybeSingle();
   if (seenEvent) {
-    console.log(`[stripe/route] Skipping duplicate event: ${event.id} (${event.type})`);
+    debug.log(`[stripe/route] Skipping duplicate event: ${event.id} (${event.type})`);
     return NextResponse.json({ received: true, duplicate: true });
   }
   const { error: lockError } = await supabase.from("idempotency_locks").insert({

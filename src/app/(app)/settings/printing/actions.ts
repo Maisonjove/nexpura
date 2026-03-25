@@ -12,6 +12,16 @@ export async function savePrinterConfig(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.tenant_id !== tenantId) {
+    return { error: "Unauthorized" };
+  }
+
   const admin = createAdminClient();
   const { error } = await admin
     .from("printer_configs")

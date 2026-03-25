@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import DOMPurify from "isomorphic-dompurify";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -414,7 +415,7 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
               {showPreview ? (
                 <div
                   className="w-full min-h-[200px] p-4 bg-white text-black rounded-lg prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: getPreviewHtml() }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getPreviewHtml()) }}
                 />
               ) : (
                 <textarea

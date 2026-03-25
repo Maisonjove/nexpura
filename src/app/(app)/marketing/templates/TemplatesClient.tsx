@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import DOMPurify from "isomorphic-dompurify";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -430,7 +431,7 @@ export default function TemplatesClient({ templates, tenantId, businessName }: P
               </div>
               <div
                 className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: getPreviewHtml(previewTemplate.body) }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getPreviewHtml(previewTemplate.body)) }}
               />
             </div>
           </div>

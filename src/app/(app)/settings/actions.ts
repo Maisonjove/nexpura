@@ -2,8 +2,29 @@
 
 import { createClient } from "@/lib/supabase/server";
 
+async function verifyTenantOwnership(supabase: Awaited<ReturnType<typeof createClient>>, tenantId: string): Promise<{ error?: string }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.tenant_id !== tenantId) {
+    return { error: "Unauthorized" };
+  }
+
+  return {};
+}
+
 export async function saveBusinessProfile(tenantId: string, formData: FormData) {
   const supabase = await createClient();
+
+  const authCheck = await verifyTenantOwnership(supabase, tenantId);
+  if (authCheck.error) return { error: authCheck.error };
+
   const { error } = await supabase
     .from("tenants")
     .update({
@@ -30,6 +51,10 @@ export async function saveBusinessProfile(tenantId: string, formData: FormData) 
 
 export async function saveTaxCurrency(tenantId: string, formData: FormData) {
   const supabase = await createClient();
+
+  const authCheck = await verifyTenantOwnership(supabase, tenantId);
+  if (authCheck.error) return { error: authCheck.error };
+
   const taxRatePercent = parseFloat(formData.get("tax_rate") as string) || 10;
   const { error } = await supabase
     .from("tenants")
@@ -49,6 +74,10 @@ export async function saveTaxCurrency(tenantId: string, formData: FormData) {
 
 export async function saveBanking(tenantId: string, formData: FormData) {
   const supabase = await createClient();
+
+  const authCheck = await verifyTenantOwnership(supabase, tenantId);
+  if (authCheck.error) return { error: authCheck.error };
+
   const { error } = await supabase
     .from("tenants")
     .update({

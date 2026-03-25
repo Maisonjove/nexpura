@@ -1,4 +1,5 @@
 /**
+import debug from "@/lib/debug";
  * Twilio SMS integration with smart number selection
  * Uses Australian number for AU recipients, US number for international
  */
@@ -133,7 +134,7 @@ export async function sendTwilioSms(
 
   const fromNormalized = fromNumber.startsWith("+") ? fromNumber : `+${fromNumber}`;
 
-  console.log(`[twilio-sms] Sending to ${toNormalized} from ${fromNormalized} (AU recipient: ${isAustralianNumber(to)})`);
+  debug.log(`[twilio-sms] Sending to ${toNormalized} from ${fromNormalized} (AU recipient: ${isAustralianNumber(to)})`);
 
   try {
     const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
@@ -161,7 +162,7 @@ export async function sendTwilioSms(
       };
     }
 
-    console.log("[twilio-sms] Message sent:", data.sid);
+    debug.log("[twilio-sms] Message sent:", data.sid);
     return {
       success: true,
       messageId: data.sid,
