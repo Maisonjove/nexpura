@@ -31,85 +31,105 @@ async function getAuthContext() {
 // Customer Actions
 // ────────────────────────────────────────────────────────────────
 
-export async function searchCustomers(query: string) {
-  const { supabase, tenantId } = await getAuthContext();
-  
-  const { data, error } = await supabase
-    .from("customers")
-    .select("id, full_name, first_name, last_name, email, mobile, phone, notes")
-    .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
-    .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,mobile.ilike.%${query}%,phone.ilike.%${query}%`)
-    .order("full_name")
-    .limit(10);
+export async function searchCustomers(query: string): Promise<{ data?: any[]; error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+    
+    const { data, error } = await supabase
+      .from("customers")
+      .select("id, full_name, first_name, last_name, email, mobile, phone, notes")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,mobile.ilike.%${query}%,phone.ilike.%${query}%`)
+      .order("full_name")
+      .limit(10);
 
-  if (error) return { error: error.message };
-  return { data };
+    if (error) return { error: error.message };
+    return { data: data ?? [] };
+  } catch (err) {
+    console.error("[searchCustomers] Error:", err);
+    return { error: err instanceof Error ? err.message : "Search failed" };
+  }
 }
 
-export async function createCustomerInline(data: {
+export async function createCustomerInline(input: {
   first_name: string;
   last_name: string;
   email?: string;
   phone?: string;
 }): Promise<{ id?: string; full_name?: string; error?: string }> {
-  const { supabase, userId, tenantId } = await getAuthContext();
+  try {
+    const { supabase, userId, tenantId } = await getAuthContext();
 
-  const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ");
+    const fullName = [input.first_name, input.last_name].filter(Boolean).join(" ");
 
-  const { data: customer, error } = await supabase
-    .from("customers")
-    .insert({
-      tenant_id: tenantId,
-      created_by: userId,
-      first_name: data.first_name || null,
-      last_name: data.last_name || null,
-      full_name: fullName || null,
-      email: data.email || null,
-      phone: data.phone || null,
-      mobile: data.phone || null,
-    })
-    .select("id, full_name")
-    .single();
+    const { data: customer, error } = await supabase
+      .from("customers")
+      .insert({
+        tenant_id: tenantId,
+        created_by: userId,
+        first_name: input.first_name || null,
+        last_name: input.last_name || null,
+        full_name: fullName || null,
+        email: input.email || null,
+        phone: input.phone || null,
+        mobile: input.phone || null,
+      })
+      .select("id, full_name")
+      .single();
 
-  if (error) return { error: error.message };
-  return { id: customer.id, full_name: customer.full_name };
+    if (error) return { error: error.message };
+    return { id: customer.id, full_name: customer.full_name };
+  } catch (err) {
+    console.error("[createCustomerInline] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to create customer" };
+  }
 }
 
 // ────────────────────────────────────────────────────────────────
 // Inventory/Stock Search
 // ────────────────────────────────────────────────────────────────
 
-export async function searchInventory(query: string) {
-  const { supabase, tenantId } = await getAuthContext();
-  
-  const { data, error } = await supabase
-    .from("inventory")
-    .select("id, name, sku, barcode_value, jewellery_type, metal_type, metal_purity, stone_type, stone_carat, retail_price, quantity, primary_image")
-    .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
-    .eq("status", "active")
-    .or(`name.ilike.%${query}%,sku.ilike.%${query}%,barcode_value.ilike.%${query}%`)
-    .order("name")
-    .limit(10);
+export async function searchInventory(query: string): Promise<{ data?: any[]; error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+    
+    const { data, error } = await supabase
+      .from("inventory")
+      .select("id, name, sku, barcode_value, jewellery_type, metal_type, metal_purity, stone_type, stone_carat, retail_price, quantity, primary_image")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .eq("status", "active")
+      .or(`name.ilike.%${query}%,sku.ilike.%${query}%,barcode_value.ilike.%${query}%`)
+      .order("name")
+      .limit(10);
 
-  if (error) return { error: error.message };
-  return { data };
+    if (error) return { error: error.message };
+    return { data: data ?? [] };
+  } catch (err) {
+    console.error("[searchInventory] Error:", err);
+    return { error: err instanceof Error ? err.message : "Search failed" };
+  }
 }
 
-export async function getInventoryByBarcode(barcode: string) {
-  const { supabase, tenantId } = await getAuthContext();
-  
-  const { data, error } = await supabase
-    .from("inventory")
-    .select("id, name, sku, barcode_value, jewellery_type, metal_type, metal_purity, stone_type, stone_carat, retail_price, quantity, primary_image")
-    .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
-    .or(`barcode_value.eq.${barcode},sku.eq.${barcode}`)
-    .single();
+export async function getInventoryByBarcode(barcode: string): Promise<{ data?: any; error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+    
+    const { data, error } = await supabase
+      .from("inventory")
+      .select("id, name, sku, barcode_value, jewellery_type, metal_type, metal_purity, stone_type, stone_carat, retail_price, quantity, primary_image")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .or(`barcode_value.eq.${barcode},sku.eq.${barcode}`)
+      .single();
 
-  if (error) return { error: "Item not found" };
-  return { data };
+    if (error) return { error: "Item not found" };
+    return { data };
+  } catch (err) {
+    console.error("[getInventoryByBarcode] Error:", err);
+    return { error: err instanceof Error ? err.message : "Lookup failed" };
+  }
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -139,8 +159,9 @@ export interface CreateRepairInput {
 export async function createRepairFromIntake(
   input: CreateRepairInput
 ): Promise<{ id?: string; repair_number?: string; invoice_id?: string; error?: string }> {
-  const { supabase, userId, tenantId } = await getAuthContext();
-  const admin = createAdminClient();
+  try {
+    const { supabase, userId, tenantId } = await getAuthContext();
+    const admin = createAdminClient();
 
   // Generate repair number
   const { data: numData, error: numError } = await supabase.rpc(
@@ -288,9 +309,13 @@ export async function createRepairFromIntake(
   }
 
   revalidatePath("/repairs");
-  revalidatePath("/workshop");
-  revalidatePath("/invoices");
-  return { id: data.id, repair_number: data.repair_number, invoice_id: invoiceId };
+    revalidatePath("/workshop");
+    revalidatePath("/invoices");
+    return { id: data.id, repair_number: data.repair_number, invoice_id: invoiceId };
+  } catch (err) {
+    console.error("[createRepairFromIntake] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to create repair" };
+  }
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -322,12 +347,13 @@ export interface CreateBespokeInput {
 export async function createBespokeFromIntake(
   input: CreateBespokeInput
 ): Promise<{ id?: string; job_number?: string; invoice_id?: string; error?: string }> {
-  const { supabase, userId, tenantId } = await getAuthContext();
-  const admin = createAdminClient();
+  try {
+    const { supabase, userId, tenantId } = await getAuthContext();
+    const admin = createAdminClient();
 
-  // Generate job number
-  const { data: numData, error: numError } = await supabase.rpc(
-    "next_job_number",
+    // Generate job number
+    const { data: numData, error: numError } = await supabase.rpc(
+      "next_job_number",
     { p_tenant_id: tenantId }
   );
   if (numError) return { error: numError.message };
@@ -474,9 +500,13 @@ export async function createBespokeFromIntake(
   }
 
   revalidatePath("/bespoke");
-  revalidatePath("/workshop");
-  revalidatePath("/invoices");
-  return { id: data.id, job_number: data.job_number, invoice_id: invoiceId };
+    revalidatePath("/workshop");
+    revalidatePath("/invoices");
+    return { id: data.id, job_number: data.job_number, invoice_id: invoiceId };
+  } catch (err) {
+    console.error("[createBespokeFromIntake] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to create bespoke job" };
+  }
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -498,7 +528,8 @@ export interface CreateStockSaleInput {
 export async function createStockSaleFromIntake(
   input: CreateStockSaleInput
 ): Promise<{ id?: string; sale_number?: string; invoice_id?: string; error?: string }> {
-  const { supabase, userId, tenantId } = await getAuthContext();
+  try {
+    const { supabase, userId, tenantId } = await getAuthContext();
 
   // Generate sale number
   const { data: saleNumberData, error: saleNumErr } = await supabase.rpc(
@@ -712,17 +743,27 @@ export async function createStockSaleFromIntake(
   }
 
   revalidatePath("/sales");
-  revalidatePath("/inventory");
-  revalidatePath("/invoices");
-  return { id: sale.id, sale_number: saleNumber, invoice_id: invoiceId };
+    revalidatePath("/inventory");
+    revalidatePath("/invoices");
+    return { id: sale.id, sale_number: saleNumber, invoice_id: invoiceId };
+  } catch (err) {
+    console.error("[createStockSaleFromIntake] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to create sale" };
+  }
 }
 
 // ────────────────────────────────────────────────────────────────
 // Get Data for Page Load
 // ────────────────────────────────────────────────────────────────
 
-export async function getIntakePageData() {
-  const { admin, tenantId } = await getAuthContext();
+export async function getIntakePageData(): Promise<{
+  customers?: any[];
+  categories?: any[];
+  taxConfig?: any;
+  error?: string;
+}> {
+  try {
+    const { admin, tenantId } = await getAuthContext();
 
   const [customersRes, categoriesRes, taxRes] = await Promise.all([
     admin
@@ -744,9 +785,13 @@ export async function getIntakePageData() {
       .single(),
   ]);
 
-  return {
-    customers: customersRes.data ?? [],
-    categories: categoriesRes.data ?? [],
-    taxConfig: taxRes.data ?? { tax_rate: 0.1, tax_name: "GST", tax_inclusive: true, currency: "AUD" },
-  };
+    return {
+      customers: customersRes.data ?? [],
+      categories: categoriesRes.data ?? [],
+      taxConfig: taxRes.data ?? { tax_rate: 0.1, tax_name: "GST", tax_inclusive: true, currency: "AUD" },
+    };
+  } catch (err) {
+    console.error("[getIntakePageData] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to load intake data" };
+  }
 }

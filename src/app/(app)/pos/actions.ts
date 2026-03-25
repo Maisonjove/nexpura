@@ -36,11 +36,12 @@ interface CreatePOSSaleParams {
 export async function createPOSSale(
   params: CreatePOSSaleParams
 ): Promise<{ id?: string; saleNumber?: string; invoiceId?: string; error?: string; auditId?: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
 
-  const admin = createAdminClient();
+    const admin = createAdminClient();
   
   // Generate sale number first
   const { count } = await admin
@@ -431,10 +432,14 @@ export async function createPOSSale(
   );
 
   if (!result.success) {
-    return { error: result.error || `Failed at step: ${result.failedStep}`, auditId: result.auditId };
-  }
+      return { error: result.error || `Failed at step: ${result.failedStep}`, auditId: result.auditId };
+    }
 
-  return { id: saleId!, saleNumber, invoiceId, auditId: result.auditId };
+    return { id: saleId!, saleNumber, invoiceId, auditId: result.auditId };
+  } catch (err) {
+    console.error("[createPOSSale] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to create sale" };
+  }
 }
 
 // ─── Layby Sale ───────────────────────────────────────────────────────────────
@@ -458,15 +463,16 @@ interface CreateLaybySaleParams {
 export async function createLaybySale(
   params: CreateLaybySaleParams
 ): Promise<{ id?: string; saleNumber?: string; error?: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
 
-  if (!params.customerId) return { error: "Customer is required for layby" };
-  if (params.depositAmount <= 0) return { error: "Deposit must be greater than zero" };
-  if (params.depositAmount >= params.total) return { error: "Deposit must be less than total — use regular sale instead" };
+    if (!params.customerId) return { error: "Customer is required for layby" };
+    if (params.depositAmount <= 0) return { error: "Deposit must be greater than zero" };
+    if (params.depositAmount >= params.total) return { error: "Deposit must be less than total — use regular sale instead" };
 
-  const admin = createAdminClient();
+    const admin = createAdminClient();
 
   // Generate sale number
   const { count } = await admin
@@ -528,5 +534,9 @@ export async function createLaybySale(
     );
   }
 
-  return { id: sale.id, saleNumber };
+    return { id: sale.id, saleNumber };
+  } catch (err) {
+    console.error("[createLaybySale] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to create layby sale" };
+  }
 }

@@ -246,9 +246,10 @@ export async function recordPayment(
   paymentDate: string,
   reference: string | null,
   notes: string | null
-): Promise<void> {
-  const { supabase, userId, tenantId } = await getAuthContext();
-  const admin = createAdminClient();
+): Promise<{ error?: string }> {
+  try {
+    const { supabase, userId, tenantId } = await getAuthContext();
+    const admin = createAdminClient();
 
   // IDEMPOTENCY: Prevent duplicate payment submissions
   const fingerprint = createPaymentFingerprint(amount, paymentMethod, paymentDate);
@@ -311,16 +312,22 @@ export async function recordPayment(
   );
 
   if ("duplicate" in result && result.duplicate) {
-    throw new Error(result.error);
-  }
+      return { error: result.error };
+    }
 
-  revalidatePath(`/invoices/${invoiceId}`);
-  revalidatePath("/invoices");
-  revalidatePath("/dashboard");
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/invoices");
+    revalidatePath("/dashboard");
+    return {};
+  } catch (err) {
+    console.error("[recordPayment] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to record payment" };
+  }
 }
 
-export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: string | null }> {
-  const { supabase, tenantId } = await getAuthContext();
+export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: string | null; error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
 
   const { error } = await supabase
     .from("invoices")
@@ -347,12 +354,17 @@ export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: s
   }
 
   revalidatePath(`/invoices/${invoiceId}`);
-  revalidatePath("/invoices");
-  
-  return { customerEmail };
+    revalidatePath("/invoices");
+    
+    return { customerEmail };
+  } catch (err) {
+    console.error("[markAsSent] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to mark as sent" };
+  }
 }
 
-export async function voidInvoice(invoiceId: string): Promise<void> {
+export async function voidInvoice(invoiceId: string): Promise<{ error?: string }> {
+  try {
   const { supabase, tenantId } = await getAuthContext();
 
   const { data: invoice } = await supabase
@@ -372,10 +384,15 @@ export async function voidInvoice(invoiceId: string): Promise<void> {
     .eq("id", invoiceId)
     .eq("tenant_id", tenantId);
 
-  if (error) throw new Error(`Failed to void invoice: ${error.message}`);
+  if (error) return { error: `Failed to void invoice: ${error.message}` };
 
-  revalidatePath(`/invoices/${invoiceId}`);
-  revalidatePath("/invoices");
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/invoices");
+    return {};
+  } catch (err) {
+    console.error("[voidInvoice] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to void invoice" };
+  }
 }
 
 export async function createInvoiceAndRedirect(input: CreateInvoiceInput): Promise<void> {

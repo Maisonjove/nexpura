@@ -19,8 +19,9 @@ async function getAuthContext() {
   return { supabase, userId: user.id, tenantId: userData.tenant_id };
 }
 
-export async function createPurchaseOrder(formData: FormData) {
-  const { supabase, userId, tenantId } = await getAuthContext();
+export async function createPurchaseOrder(formData: FormData): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const { supabase, userId, tenantId } = await getAuthContext();
 
   const supplierId = formData.get("supplier_id") as string;
   const notes = formData.get("notes") as string || null;
@@ -55,16 +56,21 @@ export async function createPurchaseOrder(formData: FormData) {
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/suppliers/${supplierId}/orders`);
-  return { success: true };
+    revalidatePath(`/suppliers/${supplierId}/orders`);
+    return { success: true };
+  } catch (err) {
+    console.error("[createPurchaseOrder] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to create purchase order" };
+  }
 }
 
 export async function updatePurchaseOrderStatus(
   id: string,
   status: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const { supabase, userId, tenantId } = await getAuthContext();
-  const admin = createAdminClient();
+  try {
+    const { supabase, userId, tenantId } = await getAuthContext();
+    const admin = createAdminClient();
 
   const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === "received") updates.received_date = new Date().toISOString().split("T")[0];
@@ -131,16 +137,25 @@ export async function updatePurchaseOrderStatus(
   }
 
   revalidatePath("/suppliers");
-  return { success: true };
+    return { success: true };
+  } catch (err) {
+    console.error("[updatePurchaseOrderStatus] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to update purchase order" };
+  }
 }
 
-export async function getPurchaseOrders(supplierId: string) {
-  const { supabase, tenantId } = await getAuthContext();
-  const { data, error } = await supabase
-    .from("purchase_orders")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .eq("supplier_id", supplierId)
-    .order("created_at", { ascending: false });
-  return { data: data ?? [], error: error?.message };
+export async function getPurchaseOrders(supplierId: string): Promise<{ data?: any[]; error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+    const { data, error } = await supabase
+      .from("purchase_orders")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .eq("supplier_id", supplierId)
+      .order("created_at", { ascending: false });
+    return { data: data ?? [], error: error?.message };
+  } catch (err) {
+    console.error("[getPurchaseOrders] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to get purchase orders" };
+  }
 }

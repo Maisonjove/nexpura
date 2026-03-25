@@ -45,14 +45,15 @@ export interface EODSummary {
 }
 
 export async function getEODSummary(date?: string, locationId?: string | null): Promise<{ data?: EODSummary; error?: string }> {
-  let ctx;
   try {
-    ctx = await getAuthContext();
-  } catch {
-    return { error: "Not authenticated" };
-  }
+    let ctx;
+    try {
+      ctx = await getAuthContext();
+    } catch {
+      return { error: "Not authenticated" };
+    }
 
-  const { admin, tenantId } = ctx;
+    const { admin, tenantId } = ctx;
 
   // FIX: Resolve "today" in the tenant's local timezone rather than UTC.
   // Without this, users in AEST (UTC+11) see "yesterday" during the early
@@ -186,6 +187,10 @@ export async function getEODSummary(date?: string, locationId?: string | null): 
       existingReconciliation: existing ?? null,
     },
   };
+  } catch (err) {
+    console.error("[getEODSummary] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to load EOD summary" };
+  }
 }
 
 export async function saveEODReconciliation(params: {
@@ -198,14 +203,15 @@ export async function saveEODReconciliation(params: {
   submit: boolean;
   locationId?: string | null;
 }): Promise<{ id?: string; error?: string }> {
-  let ctx;
   try {
-    ctx = await getAuthContext();
-  } catch {
-    return { error: "Not authenticated" };
-  }
+    let ctx;
+    try {
+      ctx = await getAuthContext();
+    } catch {
+      return { error: "Not authenticated" };
+    }
 
-  const { admin, userId, tenantId } = ctx;
+    const { admin, userId, tenantId } = ctx;
 
   const cashVariance = params.cashCounted - params.summary.cashExpected;
 
@@ -251,6 +257,10 @@ export async function saveEODReconciliation(params: {
       .single();
     if (error) return { error: error.message };
     return { id: data?.id };
+    }
+  } catch (err) {
+    console.error("[saveEODReconciliation] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to save reconciliation" };
   }
 }
 
@@ -266,21 +276,26 @@ export async function getPastReconciliations(): Promise<{
   }>;
   error?: string;
 }> {
-  let ctx;
   try {
-    ctx = await getAuthContext();
-  } catch {
-    return { error: "Not authenticated" };
+    let ctx;
+    try {
+      ctx = await getAuthContext();
+    } catch {
+      return { error: "Not authenticated" };
+    }
+
+    const { admin, tenantId } = ctx;
+
+    const { data, error } = await admin
+      .from("eod_reconciliations")
+      .select("id, reconciliation_date, total_revenue, transaction_count, cash_variance, status, submitted_at")
+      .eq("tenant_id", tenantId)
+      .order("reconciliation_date", { ascending: false })
+      .limit(30);
+
+    return { data: data ?? [], error: error?.message };
+  } catch (err) {
+    console.error("[getPastReconciliations] Error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to load past reconciliations" };
   }
-
-  const { admin, tenantId } = ctx;
-
-  const { data, error } = await admin
-    .from("eod_reconciliations")
-    .select("id, reconciliation_date, total_revenue, transaction_count, cash_variance, status, submitted_at")
-    .eq("tenant_id", tenantId)
-    .order("reconciliation_date", { ascending: false })
-    .limit(30);
-
-  return { data: data ?? [], error: error?.message };
 }
