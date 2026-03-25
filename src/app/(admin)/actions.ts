@@ -64,14 +64,11 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
       .update({ plan: normalisedPlan })
       .eq("tenant_id", tenantId);
     if (error) {
-      logger.error(
-        "[changeTenantPlan] Supabase error:",
-        error.message,
-        "| tenantId:",
+      logger.error("[changeTenantPlan] Supabase error", {
+        error: error.message,
         tenantId,
-        "| plan:",
-        normalisedPlan
-      );
+        plan: normalisedPlan,
+      });
       throw new Error(error.message);
     }
   } else {

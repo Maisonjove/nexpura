@@ -230,7 +230,7 @@ export default function ScanInvoiceModal({ onClose, onSuccess, suppliers: initia
           successCount++;
         }
       } catch (err) {
-        logger.error("Failed to import item:", item.description, err);
+        logger.error("Failed to import item", { description: item.description, error: err });
       }
 
       setImportProgress(((i + 1) / toImport.length) * 100);

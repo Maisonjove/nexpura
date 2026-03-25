@@ -2,10 +2,13 @@ const isDev = process.env.NODE_ENV === "development";
 
 type LogLevel = "error" | "warn" | "info" | "debug";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LogContext = Record<string, any> | unknown;
+
 interface LogEntry {
   level: LogLevel;
   message: string;
-  context?: Record<string, unknown>;
+  context?: LogContext;
   timestamp: string;
 }
 
@@ -14,28 +17,37 @@ function formatLog(entry: LogEntry): string {
 }
 
 export const logger = {
-  error: (message: string, context?: Record<string, unknown>) => {
+  error: (messageOrError: string | unknown, context?: LogContext) => {
+    const message = typeof messageOrError === "string" 
+      ? messageOrError 
+      : messageOrError instanceof Error 
+        ? messageOrError.message 
+        : String(messageOrError);
     const entry: LogEntry = {
       level: "error",
       message,
-      context,
+      context: typeof messageOrError === "string" ? context : { error: messageOrError, ...((context as object) || {}) },
       timestamp: new Date().toISOString(),
     };
     // Always log errors but in structured format
     console.error(formatLog(entry));
   },
-  warn: (message: string, context?: Record<string, unknown>) => {
-    if (!isDev) return;
+  warn: (messageOrError: string | unknown, context?: LogContext) => {
+    const message = typeof messageOrError === "string" 
+      ? messageOrError 
+      : messageOrError instanceof Error 
+        ? messageOrError.message 
+        : String(messageOrError);
     console.warn(
       JSON.stringify({
         level: "warn",
         message,
-        context,
+        context: typeof messageOrError === "string" ? context : { error: messageOrError },
         timestamp: new Date().toISOString(),
       })
     );
   },
-  info: (message: string, context?: Record<string, unknown>) => {
+  info: (message: string, context?: LogContext) => {
     if (!isDev) return;
     console.info(
       JSON.stringify({
@@ -46,7 +58,7 @@ export const logger = {
       })
     );
   },
-  debug: (message: string, context?: Record<string, unknown>) => {
+  debug: (message: string, context?: LogContext) => {
     if (!isDev) return;
     console.log(
       JSON.stringify({

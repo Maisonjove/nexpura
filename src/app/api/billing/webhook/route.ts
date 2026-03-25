@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
-    console.warn("STRIPE_WEBHOOK_SECRET not configured");
+    logger.warn("STRIPE_WEBHOOK_SECRET not configured");
     return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
   }
 

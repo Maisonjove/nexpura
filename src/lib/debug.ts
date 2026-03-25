@@ -13,7 +13,7 @@ export const debug = {
   },
   error: (...args: unknown[]) => {
     // Always log errors, but prefix in production
-    logger.error(...args);
+    logger.error(args[0] as string, args.length > 1 ? { details: args.slice(1) } : undefined);
   },
   info: (...args: unknown[]) => {
     if (isDev) console.info(...args);

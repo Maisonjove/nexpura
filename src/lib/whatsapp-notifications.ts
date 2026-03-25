@@ -1,3 +1,5 @@
+import logger from "@/lib/logger";
+
 /**
  * Notifications - Powered by Nexpura Platform
  * Uses platform Twilio account for all notifications (free for jewellers)
@@ -38,7 +40,7 @@ export async function sendWhatsAppMessage(
         twilio_sid: result.messageId,
       });
     } catch (err) {
-      console.warn("[whatsapp-notifications] Failed to log send:", err);
+      logger.warn("[whatsapp-notifications] Failed to log send:", err);
     }
   }
 
@@ -209,7 +211,7 @@ export async function notifyTaskAssignment(
       context: { type: "task_assignment", assignee_id: assigneeId },
     });
   } catch (err) {
-    console.warn("[notifyTaskAssignment] Failed to log send:", err);
+    logger.warn("[notifyTaskAssignment] Failed to log send:", err);
   }
 
   return { sent: result.success, error: result.error };
@@ -269,7 +271,7 @@ export async function notifyStatusChange(
       context: { type: "status_change", assignee_id: assigneeId },
     });
   } catch (err) {
-    console.warn("[notifyStatusChange] Failed to log send:", err);
+    logger.warn("[notifyStatusChange] Failed to log send:", err);
   }
 
   return { sent: result.success, error: result.error };
@@ -334,7 +336,7 @@ export async function notifyUrgentFlagged(
       context: { type: "urgent_flagged", assignee_id: assigneeId },
     });
   } catch (err) {
-    console.warn("[notifyUrgentFlagged] Failed to log send:", err);
+    logger.warn("[notifyUrgentFlagged] Failed to log send:", err);
   }
 
   return { sent: result.success, error: result.error };
