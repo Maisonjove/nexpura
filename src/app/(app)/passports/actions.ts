@@ -22,8 +22,9 @@ async function getTenantAndUser() {
   return { supabase, userId: user.id, tenantId: data.tenant_id as string };
 }
 
-export async function createPassport(formData: FormData) {
-  const { supabase, userId, tenantId } = await getTenantAndUser();
+export async function createPassport(formData: FormData): Promise<void> {
+  try {
+    const { supabase, userId, tenantId } = await getTenantAndUser();
 
   // Generate UID via postgres function
   const { data: uidData, error: uidError } = await supabase.rpc(
@@ -121,10 +122,15 @@ export async function createPassport(formData: FormData) {
   }
 
   revalidatePath("/passports");
-  redirect(`/passports/${passport.id}`);
+    redirect(`/passports/${passport.id}`);
+  } catch (err) {
+    console.error("[createPassport] Error:", err);
+    throw err; // Re-throw for redirect to work
+  }
 }
 
-export async function updatePassport(id: string, formData: FormData) {
+export async function updatePassport(id: string, formData: FormData): Promise<void> {
+  try {
   const { supabase, userId, tenantId } = await getTenantAndUser();
 
   const title = formData.get("title") as string;
@@ -208,8 +214,12 @@ export async function updatePassport(id: string, formData: FormData) {
   });
 
   revalidatePath(`/passports/${id}`);
-  revalidatePath("/passports");
-  redirect(`/passports/${id}`);
+    revalidatePath("/passports");
+    redirect(`/passports/${id}`);
+  } catch (err) {
+    console.error("[updatePassport] Error:", err);
+    throw err;
+  }
 }
 
 export async function addPassportEvent(

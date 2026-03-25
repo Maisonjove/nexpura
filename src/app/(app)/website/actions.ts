@@ -65,68 +65,98 @@ export interface WebsiteConfigData {
   catalogue_grid_columns?: number;
 }
 
-export async function getWebsiteConfig() {
-  const { supabase, tenantId } = await getAuthContext();
-  const { data, error } = await supabase
-    .from("website_config")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
+export async function getWebsiteConfig(): Promise<{ data?: any; error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+    const { data, error } = await supabase
+      .from("website_config")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
 
-  if (error) throw error;
-  return data;
+    if (error) {
+      console.error("[getWebsiteConfig] Error:", error);
+      return { error: error.message };
+    }
+    return { data };
+  } catch (err) {
+    console.error("[getWebsiteConfig] Unexpected error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to get website config" };
+  }
 }
 
-export async function saveWebsiteConfig(formData: WebsiteConfigData) {
-  const { supabase, tenantId } = await getAuthContext();
+export async function saveWebsiteConfig(formData: WebsiteConfigData): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
 
-  const { data: existing } = await supabase
-    .from("website_config")
-    .select("id")
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
+    const { data: existing } = await supabase
+      .from("website_config")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
 
-  if (existing) {
-    const { error } = await supabase
-      .from("website_config")
-      .update({ ...formData })
-      .eq("tenant_id", tenantId);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("website_config")
-      .insert({ tenant_id: tenantId, ...formData });
-    if (error) throw error;
+    if (existing) {
+      const { error } = await supabase
+        .from("website_config")
+        .update({ ...formData })
+        .eq("tenant_id", tenantId);
+      if (error) {
+        console.error("[saveWebsiteConfig] Update error:", error);
+        return { error: error.message };
+      }
+    } else {
+      const { error } = await supabase
+        .from("website_config")
+        .insert({ tenant_id: tenantId, ...formData });
+      if (error) {
+        console.error("[saveWebsiteConfig] Insert error:", error);
+        return { error: error.message };
+      }
+    }
+
+    revalidatePath("/website");
+    return { success: true };
+  } catch (err) {
+    console.error("[saveWebsiteConfig] Unexpected error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to save website config" };
   }
-
-  revalidatePath("/website");
-  return { success: true };
 }
 
-export async function publishWebsite(publish: boolean) {
-  const { supabase, tenantId } = await getAuthContext();
+export async function publishWebsite(publish: boolean): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
 
-  const { data: existing } = await supabase
-    .from("website_config")
-    .select("id")
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
+    const { data: existing } = await supabase
+      .from("website_config")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
 
-  if (existing) {
-    const { error } = await supabase
-      .from("website_config")
-      .update({ published: publish })
-      .eq("tenant_id", tenantId);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("website_config")
-      .insert({ tenant_id: tenantId, published: publish });
-    if (error) throw error;
+    if (existing) {
+      const { error } = await supabase
+        .from("website_config")
+        .update({ published: publish })
+        .eq("tenant_id", tenantId);
+      if (error) {
+        console.error("[publishWebsite] Update error:", error);
+        return { error: error.message };
+      }
+    } else {
+      const { error } = await supabase
+        .from("website_config")
+        .insert({ tenant_id: tenantId, published: publish });
+      if (error) {
+        console.error("[publishWebsite] Insert error:", error);
+        return { error: error.message };
+      }
+    }
+
+    revalidatePath("/website");
+    return { success: true };
+  } catch (err) {
+    console.error("[publishWebsite] Unexpected error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to publish website" };
   }
-
-  revalidatePath("/website");
-  return { success: true };
 }
 
 export async function checkSubdomainAvailable(subdomain: string, currentTenantId?: string) {
