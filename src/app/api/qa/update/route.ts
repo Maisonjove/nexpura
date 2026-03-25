@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/qa/update - Update a test result
 export async function POST(request: NextRequest) {
+  // Auth check
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { 
@@ -82,6 +90,13 @@ export async function POST(request: NextRequest) {
 
 // POST /api/qa/update/bulk - Bulk update test results
 export async function PUT(request: NextRequest) {
+  // Auth check
+  const supabasePut = await createClient();
+  const { data: { user: putUser } } = await supabasePut.auth.getUser();
+  if (!putUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { updates } = body;

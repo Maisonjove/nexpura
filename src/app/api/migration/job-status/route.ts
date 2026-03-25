@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
+
+async function requireAuth() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
 
 export async function GET(req: NextRequest) {
+  const user = await requireAuth();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const jobId = req.nextUrl.searchParams.get('jobId');
     if (!jobId) return NextResponse.json({ error: 'Missing jobId' }, { status: 400 });
@@ -22,6 +32,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await requireAuth();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const jobId = req.nextUrl.searchParams.get('jobId');
     const action = req.nextUrl.searchParams.get('action');
