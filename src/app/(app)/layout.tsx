@@ -120,6 +120,7 @@ export default async function AppLayout({
           readyRepairsCount={readyRepairsCount}
           readyBespokeCount={readyBespokeCount}
           plan={tenantPlan}
+          tenantName={tenant?.name as string}
         />
         <div className="flex-1 ml-64 flex flex-col min-h-screen">
           <Header user={userData} />

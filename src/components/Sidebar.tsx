@@ -114,6 +114,7 @@ interface SidebarProps {
   readyRepairsCount?: number;
   readyBespokeCount?: number;
   plan?: string; // boutique | studio | atelier
+  tenantName?: string;
 }
 
 export default function Sidebar({
@@ -124,6 +125,7 @@ export default function Sidebar({
   readyRepairsCount = 0,
   readyBespokeCount = 0,
   plan = 'boutique',
+  tenantName,
 }: SidebarProps) {
   const hasWebsite = plan === 'studio' || plan === 'atelier';
   const pathname = usePathname();
@@ -160,9 +162,9 @@ export default function Sidebar({
     });
   }
 
-  const initials = user?.full_name
-    ? user.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-    : user?.email?.slice(0, 2).toUpperCase() || 'NX';
+  const initials = tenantName
+    ? tenantName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'NX';
 
   function isActive(href: string) {
     if (href === '/dashboard') return pathname === '/dashboard';
@@ -295,9 +297,9 @@ export default function Sidebar({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-stone-300 truncate">
-            {user?.full_name || user?.email?.split('@')[0] || 'User'}
+            {tenantName || 'Business'}
           </p>
-          <p className="text-[10px] text-stone-500 truncate capitalize">{user?.role || 'Staff'}</p>
+          <p className="text-[10px] text-stone-500 truncate">{user?.full_name || user?.email?.split('@')[0] || 'User'}</p>
         </div>
         <Link href="/settings" className="text-stone-600 hover:text-stone-300 transition-colors">
           <Settings size={14} />
