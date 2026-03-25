@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 const ACTION_PROMPTS: Record<string, (cfg: Record<string, unknown>) => string> = {
   suggest_tagline: (cfg) =>
@@ -40,14 +42,16 @@ export async function POST(req: NextRequest) {
 
     const prompt = promptFn(currentConfig);
 
-    const message = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
+    const response = await getOpenAI().chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 512,
-      messages: [{ role: "user", content: prompt }],
-      system: "You are a helpful AI assistant for a jewellery business management platform. Always return valid JSON only, no markdown, no code fences.",
+      messages: [
+        { role: "system", content: "You are a helpful AI assistant for a jewellery business management platform. Always return valid JSON only, no markdown, no code fences." },
+        { role: "user", content: prompt },
+      ],
     });
 
-    const text = message.content[0].type === "text" ? message.content[0].text : "{}";
+    const text = response.choices[0]?.message?.content || "{}";
     const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
 
     let result: Record<string, unknown>;

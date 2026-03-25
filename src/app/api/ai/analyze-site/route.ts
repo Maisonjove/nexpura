@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 interface AnalyzedPage {
   title: string;
@@ -44,13 +46,13 @@ Section types available: hero, text, image_text, gallery, product_grid, collecti
 
 Include realistic pages: Home (with hero, product grid, about snippet, testimonials), About, Contact, Collections/Catalogue, Policies. Add pages based on what a ${platform} jewellery store would typically have.`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
+    const response = await getOpenAI().chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
     });
 
-    const text = message.content[0].type === "text" ? message.content[0].text : "";
+    const text = response.choices[0]?.message?.content || "";
     
     let analysis: SiteAnalysis;
     try {

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
 export const maxDuration = 60;
 
@@ -28,33 +28,26 @@ export async function POST(request: Request) {
     if (!stocktakeItems || stocktakeItems.length === 0)
       return Response.json({ error: "No items found in this stocktake" }, { status: 400 });
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const itemList = stocktakeItems.map(function(item) {
       return "- ID: " + item.id + " | Name: " + item.item_name +
         (item.sku ? " | SKU: " + item.sku : "") +
         (item.barcode_value ? " | Barcode: " + item.barcode_value : "");
     }).join("\n");
 
-    const validMimeTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
-    type ValidMimeType = (typeof validMimeTypes)[number];
-    const safeMimeType: ValidMimeType = validMimeTypes.includes(mimeType as ValidMimeType) ? (mimeType as ValidMimeType) : "image/jpeg";
-
-    const response = await anthropic.messages.create({
-      model: "claude-opus-4-5",
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
       max_tokens: 1024,
       messages: [{
         role: "user",
         content: [
-          { type: "image", source: { type: "base64", media_type: safeMimeType, data: imageBase64 } },
+          { type: "image_url", image_url: { url: `data:${mimeType || "image/jpeg"};base64,${imageBase64}` } },
           { type: "text", text: "You are a jewellery inventory assistant. Analyse this photo and identify visible items.\n\nItems:\n" + itemList + "\n\nReturn ONLY JSON: [{\"id\":\"<id>\",\"item_name\":\"<name>\",\"quantity\":<number>}]" }
         ]
       }]
     });
 
-    const content = response.content[0];
-    if (content.type !== "text") return Response.json({ matches: [] });
-
-    const text = content.text.trim();
+    const text = response.choices[0]?.message?.content?.trim() || "";
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return Response.json({ matches: [] });
 

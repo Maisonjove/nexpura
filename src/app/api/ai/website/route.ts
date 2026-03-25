@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,19 +27,16 @@ ${JSON.stringify(currentContent, null, 2)}
 
 Return ONLY valid JSON with the same structure as the current content, but with improvements based on the user's request. Do not include any explanation or markdown. Return only the raw JSON object.`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
+    const response = await getOpenAI().chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 1024,
       messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt },
       ],
-      system: systemPrompt,
     });
 
-    const text = message.content[0].type === "text" ? message.content[0].text : "";
+    const text = response.choices[0]?.message?.content || "";
     
     // Parse the JSON response
     let suggestedContent: Record<string, unknown>;
