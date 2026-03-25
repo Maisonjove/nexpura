@@ -37,8 +37,13 @@ export default async function AppLayout({
     profile = data;
   } catch (err) {
     console.error('[AppLayout] Failed to fetch user profile:', err);
-    // Profile is required — redirect to login so the user can re-authenticate
-    return redirect('/login');
+    // No user record = needs onboarding
+    return redirect('/onboarding');
+  }
+
+  // If user exists but has no tenant, redirect to onboarding
+  if (!profile?.tenant_id) {
+    return redirect('/onboarding');
   }
 
   const userData = { ...user, ...profile };
