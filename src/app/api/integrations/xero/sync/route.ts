@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_API_BASE = "https://api.xero.com";
@@ -181,7 +182,7 @@ export async function POST(_req: NextRequest) {
       details: errors,
     });
   } catch (err) {
-    console.error("[xero/sync]", err);
+    logger.error("[xero/sync]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

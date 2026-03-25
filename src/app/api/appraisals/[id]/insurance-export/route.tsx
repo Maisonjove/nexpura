@@ -12,6 +12,7 @@ import { getAuthContext, getIntegration } from "@/lib/integrations";
 import { renderToStream } from "@react-pdf/renderer";
 import React from "react";
 import { InsurancePDF } from "@/lib/pdf/InsurancePDF";
+import logger from "@/lib/logger";
 
 export async function GET(
   req: NextRequest,
@@ -71,7 +72,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error("[insurance-export]", err);
+    logger.error("[insurance-export]", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

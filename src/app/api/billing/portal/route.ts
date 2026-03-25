@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe/client";
+import logger from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error("Portal error:", error);
+    logger.error("Portal error:", error);
     const message =
       error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json({ error: message }, { status: 500 });

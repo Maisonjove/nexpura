@@ -1,4 +1,5 @@
 import debug from "@/lib/debug";
+import logger from "@/lib/logger";
 
 /**
  * Twilio SMS integration with smart number selection
@@ -113,7 +114,7 @@ export async function sendTwilioSms(
   const authToken = credentials?.authToken || process.env.TWILIO_AUTH_TOKEN;
   
   if (!accountSid || !authToken) {
-    console.error("[twilio-sms] Missing Twilio credentials");
+    logger.error("[twilio-sms] Missing Twilio credentials");
     return { success: false, error: "Twilio not configured" };
   }
 
@@ -129,7 +130,7 @@ export async function sendTwilioSms(
   const fromNumber = selectFromNumber(toNormalized, fullCredentials);
 
   if (!fromNumber) {
-    console.error("[twilio-sms] No from number available");
+    logger.error("[twilio-sms] No from number available");
     return { success: false, error: "No SMS number configured" };
   }
 
@@ -156,7 +157,7 @@ export async function sendTwilioSms(
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("[twilio-sms] Send failed:", data);
+      logger.error("[twilio-sms] Send failed:", data);
       return {
         success: false,
         error: data.message || `HTTP ${response.status}`,
@@ -169,7 +170,7 @@ export async function sendTwilioSms(
       messageId: data.sid,
     };
   } catch (err) {
-    console.error("[twilio-sms] Error:", err);
+    logger.error("[twilio-sms] Error:", err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Network error",

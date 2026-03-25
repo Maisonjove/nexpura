@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import logger from "@/lib/logger";
 
 interface Quote {
   id: string;
@@ -47,7 +48,7 @@ export default function QuoteListClient() {
       const data = await getQuotesList();
       setQuotes((data || []) as Quote[]);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ export default function QuoteListClient() {
       setConfirmConvertId(null);
       loadQuotes();
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Failed to convert quote");
     }
   }

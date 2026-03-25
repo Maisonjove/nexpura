@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("QA reset error:", error);
+    logger.error("QA reset error:", error);
     return NextResponse.json(
       { error: "Failed to reset test results" },
       { status: 500 }

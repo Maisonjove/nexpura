@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
       store_name: storeInfo.environment?.site_title,
     });
   } catch (err) {
-    console.error("[woocommerce/connect]", err);
+    logger.error("[woocommerce/connect]", err);
     return NextResponse.json(
       { error: "Failed to connect" },
       { status: 500 }

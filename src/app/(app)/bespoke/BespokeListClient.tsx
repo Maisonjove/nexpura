@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, ArrowRight, Bell } from "lucide-react";
 import { toast } from "sonner";
+import logger from "@/lib/logger";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -87,7 +88,7 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
       toast.success(`${data.notified} customer${data.notified !== 1 ? "s" : ""} notified`);
     } catch (err) {
       toast.error("Failed to send notifications");
-      console.error(err);
+      logger.error(err);
     } finally {
       setNotifying(false);
       setShowNotifyModal(false);

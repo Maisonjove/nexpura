@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[whatsapp/setup]", err);
+    logger.error("[whatsapp/setup]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

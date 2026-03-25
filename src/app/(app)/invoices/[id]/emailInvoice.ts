@@ -8,6 +8,7 @@ import { getTenantEmailConfig } from "@/lib/email-sender";
 import { Resend } from "resend";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -325,7 +326,7 @@ export async function emailInvoice(
 
     return { success: true };
   } catch (err) {
-    console.error("emailInvoice error:", err);
+    logger.error("emailInvoice error:", err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Failed to send invoice",

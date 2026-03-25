@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
 import { createClient } from "@/lib/supabase/server";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
       messageId: result.messageId,
     });
   } catch (err) {
-    console.error("[notifications/whatsapp]", err);
+    logger.error("[notifications/whatsapp]", err);
     return NextResponse.json(
       { error: "Server error" },
       { status: 500 }

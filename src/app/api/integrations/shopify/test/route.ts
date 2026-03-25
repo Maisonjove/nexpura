@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 export async function POST(_req: NextRequest) {
   try {
@@ -55,7 +56,7 @@ export async function POST(_req: NextRequest) {
       shop_domain: data?.shop?.domain ?? null,
     });
   } catch (err) {
-    console.error("[shopify/test]", err);
+    logger.error("[shopify/test]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

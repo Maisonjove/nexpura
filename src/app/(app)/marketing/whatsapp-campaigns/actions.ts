@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
+import logger from "@/lib/logger";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-02-25.clover",
@@ -184,7 +185,7 @@ export async function createCampaignCheckout(campaignId: string): Promise<{
     revalidatePath("/marketing/whatsapp-campaigns");
     return { checkoutUrl: session.url! };
   } catch (err) {
-    console.error("[createCampaignCheckout] Error:", err);
+    logger.error("[createCampaignCheckout] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to create checkout" };
   }
 }

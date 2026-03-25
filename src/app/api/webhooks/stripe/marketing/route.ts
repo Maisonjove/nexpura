@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
+import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-02-25.clover",
@@ -11,12 +13,18 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const webhookSecret = process.env.STRIPE_MARKETING_WEBHOOK_SECRET!;
 
 export async function POST(req: NextRequest) {
+  const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success: _rlSuccess } = await checkRateLimit(_ip);
+  if (!_rlSuccess) {
+    return new Response("Too many requests", { status: 429 });
+  }
+
   const body = await req.text();
   const headersList = await headers();
   const signature = headersList.get("stripe-signature");
 
   if (!signature) {
-    console.error("[stripe-marketing-webhook] No signature");
+    logger.error("[stripe-marketing-webhook] No signature");
     return NextResponse.json({ error: "No signature" }, { status: 400 });
   }
 
@@ -25,7 +33,7 @@ export async function POST(req: NextRequest) {
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
-    console.error("[stripe-marketing-webhook] Invalid signature:", err);
+    logger.error("[stripe-marketing-webhook] Invalid signature:", err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -42,7 +50,7 @@ export async function POST(req: NextRequest) {
     const tenantId = session.metadata.tenant_id;
 
     if (!campaignId || !tenantId) {
-      console.error("[stripe-marketing-webhook] Missing metadata");
+      logger.error("[stripe-marketing-webhook] Missing metadata");
       return NextResponse.json({ error: "Missing metadata" }, { status: 400 });
     }
 
@@ -75,7 +83,7 @@ export async function POST(req: NextRequest) {
       await sendWhatsAppCampaign(campaignId, tenantId, admin);
 
     } catch (err) {
-      console.error("[stripe-marketing-webhook] Error processing:", err);
+      logger.error("[stripe-marketing-webhook] Error processing:", err);
       
       // Mark campaign as failed
       await admin
@@ -214,7 +222,7 @@ async function sendWhatsAppCampaign(
           failed++;
         }
       } catch (err) {
-        console.error(`[sendWhatsAppCampaign] Error sending to ${phoneNumber}:`, err);
+        logger.error(`[sendWhatsAppCampaign] Error sending to ${phoneNumber}:`, err);
         
         await admin.from("whatsapp_sends").insert({
           tenant_id: tenantId,

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 interface ReceiveLine {
   inventoryId: string;
@@ -46,7 +47,7 @@ export async function batchReceiveStock(
         .single();
 
       if (fetchError) {
-        console.error(`[batchReceiveStock] Failed to fetch item ${line.inventoryId}:`, fetchError);
+        logger.error(`[batchReceiveStock] Failed to fetch item ${line.inventoryId}:`, fetchError);
         continue;
       }
 
@@ -65,7 +66,7 @@ export async function batchReceiveStock(
         .eq("tenant_id", params.tenantId);
 
       if (updateError) {
-        console.error(`[batchReceiveStock] Failed to update item ${line.inventoryId}:`, updateError);
+        logger.error(`[batchReceiveStock] Failed to update item ${line.inventoryId}:`, updateError);
         continue;
       }
 
@@ -80,7 +81,7 @@ export async function batchReceiveStock(
       });
 
       if (movementError) {
-        console.error(`[batchReceiveStock] Failed to log movement for ${line.inventoryId}:`, movementError);
+        logger.error(`[batchReceiveStock] Failed to log movement for ${line.inventoryId}:`, movementError);
       }
 
       // Also log in stock_movements table (for stock history)
@@ -95,7 +96,7 @@ export async function batchReceiveStock(
       });
 
       if (historyError) {
-        console.error(`[batchReceiveStock] Failed to log history for ${line.inventoryId}:`, historyError);
+        logger.error(`[batchReceiveStock] Failed to log history for ${line.inventoryId}:`, historyError);
       }
 
       receivedCount++;
@@ -104,7 +105,7 @@ export async function batchReceiveStock(
     revalidatePath("/inventory");
     return { success: true };
   } catch (err) {
-    console.error("[batchReceiveStock] Unexpected error:", err);
+    logger.error("[batchReceiveStock] Unexpected error:", err);
     return { error: err instanceof Error ? err.message : "Failed to receive stock" };
   }
 }

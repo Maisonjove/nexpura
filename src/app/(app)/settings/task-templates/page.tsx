@@ -9,6 +9,7 @@ import {
   deleteTaskTemplate,
   type TaskTemplate
 } from "./actions";
+import logger from "@/lib/logger";
 
 export default function TaskTemplatesPage() {
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
@@ -39,7 +40,7 @@ export default function TaskTemplatesPage() {
         setTemplates(result.data ?? []);
       }
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Failed to load templates");
     } finally {
       setLoading(false);
@@ -72,7 +73,7 @@ export default function TaskTemplatesPage() {
       setMsg("Template created.");
       setTimeout(() => setMsg(null), 2000);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Failed to create template");
     }
   }
@@ -112,7 +113,7 @@ export default function TaskTemplatesPage() {
       setMsg("Template saved.");
       setTimeout(() => setMsg(null), 2000);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Failed to save template");
     }
   }
@@ -128,7 +129,7 @@ export default function TaskTemplatesPage() {
       }
       setTemplates((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Failed to delete template");
     }
   }

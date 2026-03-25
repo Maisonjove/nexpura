@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -75,12 +76,12 @@ export async function getWebsiteConfig(): Promise<{ data?: any; error?: string }
       .maybeSingle();
 
     if (error) {
-      console.error("[getWebsiteConfig] Error:", error);
+      logger.error("[getWebsiteConfig] Error:", error);
       return { error: error.message };
     }
     return { data };
   } catch (err) {
-    console.error("[getWebsiteConfig] Unexpected error:", err);
+    logger.error("[getWebsiteConfig] Unexpected error:", err);
     return { error: err instanceof Error ? err.message : "Failed to get website config" };
   }
 }
@@ -101,7 +102,7 @@ export async function saveWebsiteConfig(formData: WebsiteConfigData): Promise<{ 
         .update({ ...formData })
         .eq("tenant_id", tenantId);
       if (error) {
-        console.error("[saveWebsiteConfig] Update error:", error);
+        logger.error("[saveWebsiteConfig] Update error:", error);
         return { error: error.message };
       }
     } else {
@@ -109,7 +110,7 @@ export async function saveWebsiteConfig(formData: WebsiteConfigData): Promise<{ 
         .from("website_config")
         .insert({ tenant_id: tenantId, ...formData });
       if (error) {
-        console.error("[saveWebsiteConfig] Insert error:", error);
+        logger.error("[saveWebsiteConfig] Insert error:", error);
         return { error: error.message };
       }
     }
@@ -117,7 +118,7 @@ export async function saveWebsiteConfig(formData: WebsiteConfigData): Promise<{ 
     revalidatePath("/website");
     return { success: true };
   } catch (err) {
-    console.error("[saveWebsiteConfig] Unexpected error:", err);
+    logger.error("[saveWebsiteConfig] Unexpected error:", err);
     return { error: err instanceof Error ? err.message : "Failed to save website config" };
   }
 }
@@ -138,7 +139,7 @@ export async function publishWebsite(publish: boolean): Promise<{ success?: bool
         .update({ published: publish })
         .eq("tenant_id", tenantId);
       if (error) {
-        console.error("[publishWebsite] Update error:", error);
+        logger.error("[publishWebsite] Update error:", error);
         return { error: error.message };
       }
     } else {
@@ -146,7 +147,7 @@ export async function publishWebsite(publish: boolean): Promise<{ success?: bool
         .from("website_config")
         .insert({ tenant_id: tenantId, published: publish });
       if (error) {
-        console.error("[publishWebsite] Insert error:", error);
+        logger.error("[publishWebsite] Insert error:", error);
         return { error: error.message };
       }
     }
@@ -154,7 +155,7 @@ export async function publishWebsite(publish: boolean): Promise<{ success?: bool
     revalidatePath("/website");
     return { success: true };
   } catch (err) {
-    console.error("[publishWebsite] Unexpected error:", err);
+    logger.error("[publishWebsite] Unexpected error:", err);
     return { error: err instanceof Error ? err.message : "Failed to publish website" };
   }
 }

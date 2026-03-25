@@ -1,3 +1,4 @@
+import logger from "@/lib/logger";
 /**
  * Twilio WhatsApp API integration for sending notifications
  * Uses Twilio's REST API directly (no npm package needed)
@@ -23,7 +24,7 @@ export async function sendTwilioWhatsApp(
   const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
   if (!accountSid || !authToken || !fromNumber) {
-    console.error("[twilio-whatsapp] Missing Twilio credentials in env");
+    logger.error("[twilio-whatsapp] Missing Twilio credentials in env");
     return { success: false, error: "Twilio not configured" };
   }
 
@@ -54,7 +55,7 @@ export async function sendTwilioWhatsApp(
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("[twilio-whatsapp] Send failed:", data);
+      logger.error("[twilio-whatsapp] Send failed:", data);
       return {
         success: false,
         error: data.message || `HTTP ${response.status}`,
@@ -66,7 +67,7 @@ export async function sendTwilioWhatsApp(
       messageId: data.sid,
     };
   } catch (err) {
-    console.error("[twilio-whatsapp] Error:", err);
+    logger.error("[twilio-whatsapp] Error:", err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Network error",

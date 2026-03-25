@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { getUserLocationIds } from "@/lib/locations";
+import logger from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
       .single();
 
     if (transferError || !transfer) {
-      console.error("Transfer creation error:", transferError);
+      logger.error("Transfer creation error:", transferError);
       return NextResponse.json({ error: "Failed to create transfer" }, { status: 500 });
     }
 
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
       .insert(transferItems);
 
     if (itemsError) {
-      console.error("Transfer items creation error:", itemsError);
+      logger.error("Transfer items creation error:", itemsError);
       // Rollback - delete the transfer
       await admin.from("stock_transfers").delete().eq("id", transfer.id);
       return NextResponse.json({ error: "Failed to create transfer items" }, { status: 500 });
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, transferId: transfer.id });
   } catch (error) {
-    console.error("Create transfer error:", error);
+    logger.error("Create transfer error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import logger from "@/lib/logger";
 
 // Stripe Product IDs for LIVE mode
 const STRIPE_PRICES: Record<string, string> = {
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error("Stripe checkout error:", error);
+    logger.error("Stripe checkout error:", error);
     
     if (error instanceof Stripe.errors.StripeError) {
       return NextResponse.json(

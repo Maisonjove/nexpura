@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sendInvoiceEmail } from "@/lib/email/send";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
+import logger from "@/lib/logger";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -154,7 +155,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
   revalidatePath("/invoices");
     return { id: invoice.id };
   } catch (err) {
-    console.error("[createInvoice] Error:", err);
+    logger.error("[createInvoice] Error:", err);
     return { id: "", error: err instanceof Error ? err.message : "Failed to create invoice" };
   }
 }
@@ -234,7 +235,7 @@ export async function updateInvoice(
     revalidatePath("/invoices");
     return {};
   } catch (err) {
-    console.error("[updateInvoice] Error:", err);
+    logger.error("[updateInvoice] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to update invoice" };
   }
 }
@@ -320,7 +321,7 @@ export async function recordPayment(
     revalidatePath("/dashboard");
     return {};
   } catch (err) {
-    console.error("[recordPayment] Error:", err);
+    logger.error("[recordPayment] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to record payment" };
   }
 }
@@ -358,7 +359,7 @@ export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: s
     
     return { customerEmail };
   } catch (err) {
-    console.error("[markAsSent] Error:", err);
+    logger.error("[markAsSent] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to mark as sent" };
   }
 }
@@ -390,7 +391,7 @@ export async function voidInvoice(invoiceId: string): Promise<{ error?: string }
     revalidatePath("/invoices");
     return {};
   } catch (err) {
-    console.error("[voidInvoice] Error:", err);
+    logger.error("[voidInvoice] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to void invoice" };
   }
 }

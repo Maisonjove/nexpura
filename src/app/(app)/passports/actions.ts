@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sendPassportEmail } from "@/lib/email/send";
+import logger from "@/lib/logger";
 
 async function getTenantAndUser() {
   const supabase = await createClient();
@@ -124,7 +125,7 @@ export async function createPassport(formData: FormData): Promise<void> {
   revalidatePath("/passports");
     redirect(`/passports/${passport.id}`);
   } catch (err) {
-    console.error("[createPassport] Error:", err);
+    logger.error("[createPassport] Error:", err);
     throw err; // Re-throw for redirect to work
   }
 }
@@ -217,7 +218,7 @@ export async function updatePassport(id: string, formData: FormData): Promise<vo
     revalidatePath("/passports");
     redirect(`/passports/${id}`);
   } catch (err) {
-    console.error("[updatePassport] Error:", err);
+    logger.error("[updatePassport] Error:", err);
     throw err;
   }
 }

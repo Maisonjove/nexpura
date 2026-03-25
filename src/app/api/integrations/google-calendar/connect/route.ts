@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID!;
 const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google-calendar/callback`;
@@ -37,7 +38,7 @@ export async function GET(_req: NextRequest) {
     
     return NextResponse.redirect(authUrl);
   } catch (err) {
-    console.error("[google-calendar/connect]", err);
+    logger.error("[google-calendar/connect]", err);
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=auth_failed`
     );

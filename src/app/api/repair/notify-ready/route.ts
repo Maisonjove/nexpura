@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
+import logger from "@/lib/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -149,7 +150,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ notified, skipped });
   } catch (err) {
-    console.error("[notify-ready]", err);
+    logger.error("[notify-ready]", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -141,7 +142,7 @@ export async function GET() {
     response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=60");
     return response;
   } catch (err) {
-    console.error("Metrics error:", err);
+    logger.error("Metrics error:", err);
     return Response.json({ error: "Failed to load metrics" }, { status: 500 });
   }
 }

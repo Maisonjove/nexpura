@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import BugListClient from "./BugListClient";
+import logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -39,7 +40,7 @@ export default async function BugListPage() {
         testedAt: item.qa_test_results?.[0]?.tested_at,
       }));
   } catch (error) {
-    console.error("Failed to fetch bugs:", error);
+    logger.error("Failed to fetch bugs:", error);
   }
 
   // Group by priority

@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID!;
 const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET!;
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get("error");
 
   if (error) {
-    console.error("[shopify/callback] OAuth error:", error);
+    logger.error("[shopify/callback] OAuth error:", error);
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/website/connect?error=oauth_denied`
     );
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
 
     if (!tokenResponse.ok) {
       const error = await tokenResponse.text();
-      console.error("[shopify/callback] Token exchange failed:", error);
+      logger.error("[shopify/callback] Token exchange failed:", error);
       throw new Error("Token exchange failed");
     }
 
@@ -92,7 +93,7 @@ export async function GET(req: NextRequest) {
       `${process.env.NEXT_PUBLIC_APP_URL}/website/connect?success=shopify_connected`
     );
   } catch (err) {
-    console.error("[shopify/callback]", err);
+    logger.error("[shopify/callback]", err);
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/website/connect?error=callback_failed`
     );

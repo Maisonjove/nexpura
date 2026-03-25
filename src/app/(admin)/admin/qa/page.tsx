@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import QADashboardClient from "./QADashboardClient";
+import logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -127,7 +128,7 @@ export default async function QADashboardPage() {
       items = itemData || [];
     }
   } catch (error) {
-    console.error("Failed to fetch QA data:", error);
+    logger.error("Failed to fetch QA data:", error);
     useMockData = true;
   }
 

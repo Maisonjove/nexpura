@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { STRIPE_PRICES } from "@/lib/stripe/prices";
+import logger from "@/lib/logger";
 
 type Plan = "boutique" | "studio" | "atelier";
 
@@ -86,7 +87,7 @@ export default function BillingClient({
       const data = await res.json();
       if (data.url) window.location.href = data.url;
     } catch (err) {
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(null);
     }

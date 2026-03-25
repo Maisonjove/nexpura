@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     if (!verifyResponse.ok) {
       const errorData = await verifyResponse.json();
-      console.error("[whatsapp/connect] Verification failed:", errorData);
+      logger.error("[whatsapp/connect] Verification failed:", errorData);
       return NextResponse.json(
         { error: errorData.error?.message || "Invalid credentials" },
         { status: 400 }
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
       phone: phoneData.verified_name || phoneData.display_phone_number,
     });
   } catch (err) {
-    console.error("[whatsapp/connect]", err);
+    logger.error("[whatsapp/connect]", err);
     return NextResponse.json(
       { error: "Failed to connect" },
       { status: 500 }

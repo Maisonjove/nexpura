@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { executeWithSafety, TransactionStep } from "@/lib/transaction-safety";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
+import logger from "@/lib/logger";
 
 interface CartItem {
   inventoryId: string;
@@ -437,7 +438,7 @@ export async function createPOSSale(
 
     return { id: saleId!, saleNumber, invoiceId, auditId: result.auditId };
   } catch (err) {
-    console.error("[createPOSSale] Error:", err);
+    logger.error("[createPOSSale] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to create sale" };
   }
 }
@@ -536,7 +537,7 @@ export async function createLaybySale(
 
     return { id: sale.id, saleNumber };
   } catch (err) {
-    console.error("[createLaybySale] Error:", err);
+    logger.error("[createLaybySale] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to create layby sale" };
   }
 }

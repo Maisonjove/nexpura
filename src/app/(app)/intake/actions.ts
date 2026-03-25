@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
 // Auth Helper
@@ -47,7 +48,7 @@ export async function searchCustomers(query: string): Promise<{ data?: any[]; er
     if (error) return { error: error.message };
     return { data: data ?? [] };
   } catch (err) {
-    console.error("[searchCustomers] Error:", err);
+    logger.error("[searchCustomers] Error:", err);
     return { error: err instanceof Error ? err.message : "Search failed" };
   }
 }
@@ -81,7 +82,7 @@ export async function createCustomerInline(input: {
     if (error) return { error: error.message };
     return { id: customer.id, full_name: customer.full_name };
   } catch (err) {
-    console.error("[createCustomerInline] Error:", err);
+    logger.error("[createCustomerInline] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to create customer" };
   }
 }
@@ -107,7 +108,7 @@ export async function searchInventory(query: string): Promise<{ data?: any[]; er
     if (error) return { error: error.message };
     return { data: data ?? [] };
   } catch (err) {
-    console.error("[searchInventory] Error:", err);
+    logger.error("[searchInventory] Error:", err);
     return { error: err instanceof Error ? err.message : "Search failed" };
   }
 }
@@ -127,7 +128,7 @@ export async function getInventoryByBarcode(barcode: string): Promise<{ data?: a
     if (error) return { error: "Item not found" };
     return { data };
   } catch (err) {
-    console.error("[getInventoryByBarcode] Error:", err);
+    logger.error("[getInventoryByBarcode] Error:", err);
     return { error: err instanceof Error ? err.message : "Lookup failed" };
   }
 }
@@ -313,7 +314,7 @@ export async function createRepairFromIntake(
     revalidatePath("/invoices");
     return { id: data.id, repair_number: data.repair_number, invoice_id: invoiceId };
   } catch (err) {
-    console.error("[createRepairFromIntake] Error:", err);
+    logger.error("[createRepairFromIntake] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to create repair" };
   }
 }
@@ -504,7 +505,7 @@ export async function createBespokeFromIntake(
     revalidatePath("/invoices");
     return { id: data.id, job_number: data.job_number, invoice_id: invoiceId };
   } catch (err) {
-    console.error("[createBespokeFromIntake] Error:", err);
+    logger.error("[createBespokeFromIntake] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to create bespoke job" };
   }
 }
@@ -747,7 +748,7 @@ export async function createStockSaleFromIntake(
     revalidatePath("/invoices");
     return { id: sale.id, sale_number: saleNumber, invoice_id: invoiceId };
   } catch (err) {
-    console.error("[createStockSaleFromIntake] Error:", err);
+    logger.error("[createStockSaleFromIntake] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to create sale" };
   }
 }
@@ -791,7 +792,7 @@ export async function getIntakePageData(): Promise<{
       taxConfig: taxRes.data ?? { tax_rate: 0.1, tax_name: "GST", tax_inclusive: true, currency: "AUD" },
     };
   } catch (err) {
-    console.error("[getIntakePageData] Error:", err);
+    logger.error("[getIntakePageData] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to load intake data" };
   }
 }

@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 export async function POST(_req: NextRequest) {
   try {
@@ -60,7 +61,7 @@ export async function POST(_req: NextRequest) {
       verified_name: data.verified_name ?? null,
     });
   } catch (err) {
-    console.error("[whatsapp/test]", err);
+    logger.error("[whatsapp/test]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

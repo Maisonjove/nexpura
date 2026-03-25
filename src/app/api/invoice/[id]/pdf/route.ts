@@ -5,6 +5,7 @@ import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { InvoicePDF, type InvoiceLayout } from "@/lib/pdf/InvoicePDF";
 import { ThermalInvoicePDF } from "@/lib/pdf/ThermalInvoicePDF";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
+import logger from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -170,7 +171,7 @@ export async function GET(
     buffer = await renderToBuffer(element as unknown as ReactElement<DocumentProps, JSXElementConstructor<DocumentProps>>);
   } catch (err) {
     const errMsg = err instanceof Error ? err.message + ' | ' + (err.stack?.split('\n')[1] ?? '') : String(err);
-    console.error('[invoice/pdf] renderToBuffer failed:', err);
+    logger.error('[invoice/pdf] renderToBuffer failed:', err);
     return new NextResponse("PDF Error: " + errMsg, { status: 500 });
   }
 

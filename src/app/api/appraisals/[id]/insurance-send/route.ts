@@ -12,6 +12,7 @@ import { resend } from "@/lib/email/resend";
 import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { InsurancePDF } from "@/lib/pdf/InsurancePDF";
+import logger from "@/lib/logger";
 
 export async function POST(
   _req: NextRequest,
@@ -132,7 +133,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, email_id: data?.id });
   } catch (err) {
-    console.error("[insurance-send]", err);
+    logger.error("[insurance-send]", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

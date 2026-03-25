@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { refreshGoogleToken } from "@/lib/google-calendar";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
       message: `Synced ${synced.appointments} appointments and ${synced.repairs} repairs`
     });
   } catch (err) {
-    console.error("[google-calendar/sync]", err);
+    logger.error("[google-calendar/sync]", err);
     return NextResponse.json({ error: "Sync failed" }, { status: 500 });
   }
 }
@@ -143,7 +144,7 @@ async function createCalendarEvent(
 
   if (!response.ok) {
     const error = await response.text();
-    console.error("[google-calendar] Event create failed:", error);
+    logger.error("[google-calendar] Event create failed:", error);
     return null;
   }
 

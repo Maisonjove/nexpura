@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Building2, TrendingUp, Package, Wrench, Users, DollarSign, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import logger from "@/lib/logger";
 
 interface Location {
   id: string;
@@ -73,7 +74,7 @@ export default function LocationComparisonReport({ locations, tenantId }: Props)
           setStats(data.stats || []);
         }
       } catch (error) {
-        console.error("Failed to load location stats:", error);
+        logger.error("Failed to load location stats:", error);
       }
       setLoading(false);
     }

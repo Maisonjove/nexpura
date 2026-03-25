@@ -1,3 +1,4 @@
+import logger from "@/lib/logger";
 /**
  * Debug logging utility - only logs in development
  */
@@ -12,7 +13,7 @@ export const debug = {
   },
   error: (...args: unknown[]) => {
     // Always log errors, but prefix in production
-    console.error(...args);
+    logger.error(...args);
   },
   info: (...args: unknown[]) => {
     if (isDev) console.info(...args);

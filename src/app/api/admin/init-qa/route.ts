@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -257,7 +258,7 @@ export async function POST() {
     });
 
   } catch (error) {
-    console.error("Init QA error:", error);
+    logger.error("Init QA error:", error);
     return NextResponse.json({ error: "Failed to initialize QA", details: String(error) }, { status: 500 });
   }
 }

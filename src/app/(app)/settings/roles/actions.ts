@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { getTenantEmailSender } from "../email/actions";
+import logger from "@/lib/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -283,7 +284,7 @@ export async function inviteTeamMember(
       `,
     });
   } catch (emailError) {
-    console.error("Failed to send invite email:", emailError);
+    logger.error("Failed to send invite email:", emailError);
     // Don't fail the invite if email fails - they can still use the link
   }
 
@@ -372,7 +373,7 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
       `,
     });
   } catch (emailError) {
-    console.error("Failed to send invite email:", emailError);
+    logger.error("Failed to send invite email:", emailError);
     return { error: "Failed to send email" };
   }
 

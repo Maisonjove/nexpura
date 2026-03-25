@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import logger from "@/lib/logger";
 
 const SYSTEM_PROMPT = `You are the Nexpura Product Concierge, a deeply knowledgeable and helpful support assistant for the Nexpura jewellery business management platform.
 
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     return new NextResponse(stream);
   } catch (err: any) {
-    console.error("Support chat error:", err);
+    logger.error("Support chat error:", err);
     return NextResponse.json({ error: "Failed to connect to OpenAI" }, { status: 500 });
   }
 }

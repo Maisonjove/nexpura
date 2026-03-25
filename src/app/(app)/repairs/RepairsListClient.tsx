@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, ArrowRight, Camera, Bell } from "lucide-react";
 import CameraScannerModal from "@/components/CameraScannerModal";
 import { toast } from "sonner";
+import logger from "@/lib/logger";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -93,7 +94,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
       toast.success(`${data.notified} customer${data.notified !== 1 ? "s" : ""} notified`);
     } catch (err) {
       toast.error("Failed to send notifications");
-      console.error(err);
+      logger.error(err);
     } finally {
       setNotifying(false);
       setShowNotifyModal(false);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, Save } from "lucide-react";
 import { createQuote, type QuoteItem } from "./actions-server";
 import { toast } from "sonner";
+import logger from "@/lib/logger";
 
 interface Customer {
   id: string;
@@ -57,7 +58,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
       router.push("/quotes");
       router.refresh();
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Failed to create quote");
     } finally {
       setLoading(false);

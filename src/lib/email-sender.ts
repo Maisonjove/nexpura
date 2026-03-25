@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -115,13 +116,13 @@ export async function sendTenantEmail(
     });
 
     if (error) {
-      console.error(`[sendTenantEmail] Error:`, error);
+      logger.error(`[sendTenantEmail] Error:`, error);
       return { success: false, error: error.message };
     }
 
     return { success: true, messageId: data?.id };
   } catch (err) {
-    console.error(`[sendTenantEmail] Exception:`, err);
+    logger.error(`[sendTenantEmail] Exception:`, err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error",
@@ -146,13 +147,13 @@ export async function sendSystemEmail(
     });
 
     if (error) {
-      console.error(`[sendSystemEmail] Error:`, error);
+      logger.error(`[sendSystemEmail] Error:`, error);
       return { success: false, error: error.message };
     }
 
     return { success: true, messageId: data?.id };
   } catch (err) {
-    console.error(`[sendSystemEmail] Exception:`, err);
+    logger.error(`[sendSystemEmail] Exception:`, err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error",

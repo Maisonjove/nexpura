@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
       updated: !!existingShopifyId,
     });
   } catch (err) {
-    console.error("[shopify/push-product]", err);
+    logger.error("[shopify/push-product]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ health });
   } catch (error) {
-    console.error("Location health error:", error);
+    logger.error("Location health error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

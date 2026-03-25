@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantEmailConfig } from "@/lib/email-sender";
 import { Resend } from "resend";
+import logger from "@/lib/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -197,7 +198,7 @@ export async function emailQuote(
 
     return { success: true };
   } catch (err) {
-    console.error("emailQuote error:", err);
+    logger.error("emailQuote error:", err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Failed to send quote",

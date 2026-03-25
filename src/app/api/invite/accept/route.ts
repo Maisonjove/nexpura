@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       }, { onConflict: "id" });
 
     if (userError) {
-      console.error("Failed to update user:", userError);
+      logger.error("Failed to update user:", userError);
       return NextResponse.json({ error: "Failed to link user to tenant" }, { status: 500 });
     }
 
@@ -53,13 +54,13 @@ export async function POST(request: NextRequest) {
       .eq("id", invite.id);
 
     if (updateError) {
-      console.error("Failed to update team member:", updateError);
+      logger.error("Failed to update team member:", updateError);
       return NextResponse.json({ error: "Failed to accept invitation" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Invite accept error:", error);
+    logger.error("Invite accept error:", error);
     return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
 }

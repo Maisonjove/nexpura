@@ -3,6 +3,7 @@
  */
 
 import { upsertIntegration, getIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID!;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET!;
@@ -27,7 +28,7 @@ export async function refreshGoogleToken(
 
   if (!response.ok) {
     const error = await response.text();
-    console.error("[google-calendar] Token refresh failed:", error);
+    logger.error("[google-calendar] Token refresh failed:", error);
     throw new Error("Token refresh failed");
   }
 
@@ -105,7 +106,7 @@ export async function createCalendarEvent(
 
   if (!response.ok) {
     const error = await response.text();
-    console.error("[google-calendar] Event create failed:", error);
+    logger.error("[google-calendar] Event create failed:", error);
     return null;
   }
 
@@ -162,7 +163,7 @@ export async function updateCalendarEvent(
 
   if (!response.ok) {
     const error = await response.text();
-    console.error("[google-calendar] Event update failed:", error);
+    logger.error("[google-calendar] Event update failed:", error);
     return null;
   }
 

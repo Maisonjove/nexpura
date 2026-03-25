@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 const XERO_AUTH_URL = "https://login.xero.com/identity/connect/authorize";
 const XERO_SCOPES =
@@ -48,7 +49,7 @@ export async function GET(_req: NextRequest) {
     const authUrl = `${XERO_AUTH_URL}?${params.toString()}`;
     return NextResponse.redirect(authUrl);
   } catch (err) {
-    console.error("[xero/connect]", err);
+    logger.error("[xero/connect]", err);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }

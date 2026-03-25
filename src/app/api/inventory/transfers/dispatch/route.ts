@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { getUserLocationIds } from "@/lib/locations";
+import logger from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
       .eq("status", "pending"); // Only if still pending
 
     if (statusError) {
-      console.error("Dispatch status update error:", statusError);
+      logger.error("Dispatch status update error:", statusError);
       return NextResponse.json({ error: "Failed to dispatch transfer" }, { status: 500 });
     }
 
@@ -144,7 +145,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Dispatch transfer error:", error);
+    logger.error("Dispatch transfer error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

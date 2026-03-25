@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import { canonicalPlan } from '@/lib/features';
 import { LocationProvider } from '@/contexts/LocationContext';
+import logger from "@/lib/logger";
 
 // Prevent caching so plan changes take effect immediately
 export const dynamic = 'force-dynamic';
@@ -36,7 +37,7 @@ export default async function AppLayout({
       .single();
     profile = data;
   } catch (err) {
-    console.error('[AppLayout] Failed to fetch user profile:', err);
+    logger.error('[AppLayout] Failed to fetch user profile:', err);
     // No user record = needs onboarding
     return redirect('/onboarding');
   }
@@ -80,7 +81,7 @@ export default async function AppLayout({
         tmRes.data?.default_location_id ||
         (locations.length === 1 ? locations[0].id : null);
     } catch (err) {
-      console.error('[AppLayout] Failed to fetch layout data:', err);
+      logger.error('[AppLayout] Failed to fetch layout data:', err);
       // Keep all defaults on error
     }
   }

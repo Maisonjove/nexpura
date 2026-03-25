@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     if (error) return NextResponse.json({ error }, { status: 500 });
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[insurance/setup]", err);
+    logger.error("[insurance/setup]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import logger from "@/lib/logger";
 
 const NEXPURA_SCHEMA = `
 Customers: full_name, first_name, last_name, email, phone, mobile, address_line1, city, state, postcode, country, ring_size, bracelet_size, notes, date_of_birth, anniversary, store_credit, loyalty_points, created_at
@@ -127,7 +128,7 @@ Return JSON with:
       warnings: result.warnings,
     });
   } catch (err: any) {
-    console.error('Classification error:', err);
+    logger.error('Classification error:', err);
     // Degrade gracefully
     try {
       const { fileId } = await req.json().catch(() => ({}));

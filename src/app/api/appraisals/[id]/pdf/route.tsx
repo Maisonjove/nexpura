@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { renderToStream } from "@react-pdf/renderer";
 import React from "react";
 import { AppraisalPDF } from "@/lib/pdf/AppraisalPDF";
+import logger from "@/lib/logger";
 
 export async function GET(
   req: NextRequest,
@@ -37,7 +38,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

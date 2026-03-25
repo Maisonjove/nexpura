@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { renderToStream } from "@react-pdf/renderer";
 import React from "react";
 import { QuotePDF, type QuotePDFProps } from "@/lib/pdf/QuotePDF";
+import logger from "@/lib/logger";
 
 export async function GET(
   req: NextRequest,
@@ -47,7 +48,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error("Quote PDF error:", err);
+    logger.error("Quote PDF error:", err);
     return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
   }
 }

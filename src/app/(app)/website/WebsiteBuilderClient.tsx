@@ -20,6 +20,7 @@ import {
   DomainGuideMode,
   TYPE_OPTIONS,
 } from "./components";
+import logger from "@/lib/logger";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "setup", label: "Setup" },
@@ -114,7 +115,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
       } as WebsiteConfigData);
       setSaved(true);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
     } finally {
       setSaving(false);
     }
@@ -133,7 +134,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
       update("external_platform", selectedPlatform);
       setConnectSaved(true);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
     } finally {
       setSaving(false);
     }
@@ -168,7 +169,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
         if (data.rationale) setAiResult({ rationale: data.rationale });
       }
     } catch (err) {
-      console.error(err);
+      logger.error(err);
     } finally {
       setAiLoading(false);
     }

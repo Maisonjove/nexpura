@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID!;
 const SCOPES = "read_products,write_products,read_inventory,write_inventory,read_orders";
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
     
     return NextResponse.redirect(authUrl);
   } catch (err) {
-    console.error("[shopify/connect]", err);
+    logger.error("[shopify/connect]", err);
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/website/connect?error=auth_failed`
     );

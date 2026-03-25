@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import logger from "@/lib/logger";
 
 interface TestResult {
   id: string;
@@ -209,7 +210,7 @@ export default function QADashboardClient({ categories, stats, categoryStats, la
         router.refresh();
       }
     } catch (error) {
-      console.error("Failed to update:", error);
+      logger.error("Failed to update:", error);
     } finally {
       setUpdating(null);
     }
@@ -230,7 +231,7 @@ export default function QADashboardClient({ categories, stats, categoryStats, la
         router.refresh();
       }
     } catch (error) {
-      console.error("Failed to reset:", error);
+      logger.error("Failed to reset:", error);
     }
   }, [router]);
 

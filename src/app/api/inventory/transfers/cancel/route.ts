@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -77,13 +78,13 @@ export async function POST(request: Request) {
       .eq("id", transferId);
 
     if (updateError) {
-      console.error("Cancel update error:", updateError);
+      logger.error("Cancel update error:", updateError);
       return NextResponse.json({ error: "Failed to cancel transfer" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Cancel transfer error:", error);
+    logger.error("Cancel transfer error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

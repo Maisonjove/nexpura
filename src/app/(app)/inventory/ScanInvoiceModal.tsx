@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { parseInvoiceImage, ExtractedItem } from "@/lib/ai/invoice-parser";
 import { quickAddStock, createQuickSupplier } from "./actions";
+import logger from "@/lib/logger";
 
 interface Supplier {
   id: string;
@@ -131,7 +132,7 @@ export default function ScanInvoiceModal({ onClose, onSuccess, suppliers: initia
       setItems(reviewItems);
       setStep("review");
     } catch (err) {
-      console.error("Processing error:", err);
+      logger.error("Processing error:", err);
       setError("Failed to process invoice. Please try again.");
       setStep("upload");
     }
@@ -229,7 +230,7 @@ export default function ScanInvoiceModal({ onClose, onSuccess, suppliers: initia
           successCount++;
         }
       } catch (err) {
-        console.error("Failed to import item:", item.description, err);
+        logger.error("Failed to import item:", item.description, err);
       }
 
       setImportProgress(((i + 1) / toImport.length) * 100);

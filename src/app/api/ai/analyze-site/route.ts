@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -19,6 +21,12 @@ interface SiteAnalysis {
 }
 
 export async function POST(req: NextRequest) {
+  const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success: _rlSuccess } = await checkRateLimit(_ip);
+  if (!_rlSuccess) {
+    return new Response("Too many requests", { status: 429 });
+  }
+
   try {
     const body = await req.json() as { url: string; platform: string };
     const { url, platform } = body;
@@ -74,7 +82,7 @@ Include realistic pages: Home (with hero, product grid, about snippet, testimoni
 
     return NextResponse.json({ analysis });
   } catch (err) {
-    console.error("Analyze site route error:", err);
+    logger.error("Analyze site route error:", err);
     return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
   }
 }

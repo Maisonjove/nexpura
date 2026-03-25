@@ -6,6 +6,7 @@ import { sendRepairReadyEmail, sendQuoteEmail } from "@/lib/email/send";
 import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -203,7 +204,7 @@ export async function advanceRepairStage(
         }
       }
     } catch (e) {
-      console.error("[repairs/advanceJobStage] WhatsApp notification failed:", e);
+      logger.error("[repairs/advanceJobStage] WhatsApp notification failed:", e);
     }
   }
 

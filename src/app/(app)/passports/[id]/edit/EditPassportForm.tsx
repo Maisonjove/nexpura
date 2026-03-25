@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updatePassport } from "../../actions";
+import logger from "@/lib/logger";
 
 const JEWELLERY_TYPES = [
   "ring", "necklace", "bracelet", "earrings", "brooch", "pendant", "bangle", "chain", "watch", "other",
@@ -58,7 +59,7 @@ export default function EditPassportForm({ passport }: { passport: PassportRow }
       formData.set("is_public", isPublic ? "true" : "false");
       await updatePassport(passport.id, formData);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setLoading(false);
     }
   }

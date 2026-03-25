@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export interface QuoteItem {
@@ -50,13 +51,13 @@ export async function createQuote(input: QuoteInput): Promise<{ data?: any; erro
       .single();
 
     if (error) {
-      console.error("[createQuote] Error:", error);
+      logger.error("[createQuote] Error:", error);
       return { error: error.message };
     }
     revalidatePath("/quotes");
     return { data };
   } catch (err) {
-    console.error("[createQuote] Unexpected error:", err);
+    logger.error("[createQuote] Unexpected error:", err);
     return { error: err instanceof Error ? err.message : "Failed to create quote" };
   }
 }
@@ -84,14 +85,14 @@ export async function updateQuote(id: string, input: Partial<QuoteInput>): Promi
       .single();
 
     if (error) {
-      console.error("[updateQuote] Error:", error);
+      logger.error("[updateQuote] Error:", error);
       return { error: error.message };
     }
     revalidatePath("/quotes");
     revalidatePath(`/quotes/${id}`);
     return { data };
   } catch (err) {
-    console.error("[updateQuote] Unexpected error:", err);
+    logger.error("[updateQuote] Unexpected error:", err);
     return { error: err instanceof Error ? err.message : "Failed to update quote" };
   }
 }
@@ -117,13 +118,13 @@ export async function deleteQuote(id: string): Promise<{ error?: string }> {
       .eq("tenant_id", userData.tenant_id);
 
     if (error) {
-      console.error("[deleteQuote] Error:", error);
+      logger.error("[deleteQuote] Error:", error);
       return { error: error.message };
     }
     revalidatePath("/quotes");
     return {};
   } catch (err) {
-    console.error("[deleteQuote] Unexpected error:", err);
+    logger.error("[deleteQuote] Unexpected error:", err);
     return { error: err instanceof Error ? err.message : "Failed to delete quote" };
   }
 }

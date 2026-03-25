@@ -10,6 +10,7 @@ import {
   REPAIR_DEFAULT_MAPPINGS,
   type MappingEntry,
 } from '@/lib/migration/engine';
+import logger from "@/lib/logger";
 
 export const runtime = 'nodejs';
 
@@ -193,7 +194,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (err: unknown) {
-    console.error('Detect duplicates error:', err);
+    logger.error('Detect duplicates error:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : String(err) },
       { status: 500 }

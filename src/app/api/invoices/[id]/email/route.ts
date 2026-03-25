@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendInvoiceEmail } from "@/lib/email/send";
+import logger from "@/lib/logger";
 
 export async function POST(
   request: NextRequest,
@@ -67,7 +68,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, emailId: result.emailId });
   } catch (error) {
-    console.error("Error sending invoice email:", error);
+    logger.error("Error sending invoice email:", error);
     return NextResponse.json(
       { error: "Failed to send email" },
       { status: 500 }

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -59,7 +60,7 @@ export async function createPurchaseOrder(formData: FormData): Promise<{ success
     revalidatePath(`/suppliers/${supplierId}/orders`);
     return { success: true };
   } catch (err) {
-    console.error("[createPurchaseOrder] Error:", err);
+    logger.error("[createPurchaseOrder] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to create purchase order" };
   }
 }
@@ -139,7 +140,7 @@ export async function updatePurchaseOrderStatus(
   revalidatePath("/suppliers");
     return { success: true };
   } catch (err) {
-    console.error("[updatePurchaseOrderStatus] Error:", err);
+    logger.error("[updatePurchaseOrderStatus] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to update purchase order" };
   }
 }
@@ -155,7 +156,7 @@ export async function getPurchaseOrders(supplierId: string): Promise<{ data?: an
       .order("created_at", { ascending: false });
     return { data: data ?? [], error: error?.message };
   } catch (err) {
-    console.error("[getPurchaseOrders] Error:", err);
+    logger.error("[getPurchaseOrders] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to get purchase orders" };
   }
 }

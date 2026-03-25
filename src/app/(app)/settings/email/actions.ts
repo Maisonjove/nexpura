@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
@@ -123,7 +124,7 @@ export async function addEmailDomain(domain: string): Promise<{ success?: boolea
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("Resend API error:", errorData);
+      logger.error("Resend API error:", errorData);
       return { error: errorData.message || "Failed to register domain with email provider" };
     }
 
@@ -139,7 +140,7 @@ export async function addEmailDomain(domain: string): Promise<{ success?: boolea
     });
 
     if (insertError) {
-      console.error("Database insert error:", insertError);
+      logger.error("Database insert error:", insertError);
       return { error: "Failed to save domain configuration" };
     }
 
@@ -149,7 +150,7 @@ export async function addEmailDomain(domain: string): Promise<{ success?: boolea
       dnsRecords: resendData.records || [],
     };
   } catch (error) {
-    console.error("Error adding domain:", error);
+    logger.error("Error adding domain:", error);
     return { error: "Failed to connect to email provider" };
   }
 }
@@ -213,7 +214,7 @@ export async function verifyEmailDomain(): Promise<{ success?: boolean; verified
 
     return { success: true, verified: false };
   } catch (error) {
-    console.error("Error verifying domain:", error);
+    logger.error("Error verifying domain:", error);
     return { error: "Failed to verify domain" };
   }
 }
@@ -250,7 +251,7 @@ export async function removeEmailDomain(): Promise<{ success?: boolean; error?: 
       });
     }
   } catch (error) {
-    console.error("Error removing domain from Resend:", error);
+    logger.error("Error removing domain from Resend:", error);
     // Continue anyway - we'll remove from our DB
   }
 

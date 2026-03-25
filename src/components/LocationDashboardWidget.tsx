@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Building2, Package, Wrench, Calendar, AlertTriangle, TrendingUp, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import logger from "@/lib/logger";
 
 interface Location {
   id: string;
@@ -41,7 +42,7 @@ export default function LocationDashboardWidget({ locations, tenantId }: Props) 
           setHealth(data.health || []);
         }
       } catch (error) {
-        console.error("Failed to load location health:", error);
+        logger.error("Failed to load location health:", error);
       }
       setLoading(false);
     }

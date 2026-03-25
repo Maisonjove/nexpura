@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { notifyTaskAssignment } from "@/lib/whatsapp-notifications";
+import logger from "@/lib/logger";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -154,7 +155,7 @@ export async function createTask(
           dueDate: (formData.get("due_date") as string) || undefined,
           notes: (formData.get("notes") as string) || undefined,
           type: "task",
-        }).catch(console.error); // Fire and forget
+        }).catch((err) => logger.error("Unhandled error", { error: String(err) })); // Fire and forget
       }
     }
 
@@ -232,7 +233,7 @@ export async function updateTask(
           dueDate: oldTask?.due_date || undefined,
           notes: oldTask?.notes || undefined,
           type: "task",
-        }).catch(console.error);
+        }).catch((err) => logger.error("Unhandled error", { error: String(err) }));
       }
     }
 

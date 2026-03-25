@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { initDefaultPermissions } from "@/lib/permissions";
+import logger from "@/lib/logger";
 
 function slugify(text: string): string {
   return text
@@ -60,7 +61,7 @@ export async function completeOnboarding(
     .single();
 
   if (tenantErr || !tenant) {
-    console.error("Tenant creation error:", tenantErr);
+    logger.error("Tenant creation error:", tenantErr);
     return { error: tenantErr?.message ?? "Failed to create business" };
   }
 
@@ -80,7 +81,7 @@ export async function completeOnboarding(
   );
 
   if (userErr) {
-    console.error("User creation error:", userErr);
+    logger.error("User creation error:", userErr);
     // Clean up tenant
     await adminClient.from("tenants").delete().eq("id", tenant.id);
     return { error: userErr.message };
@@ -98,7 +99,7 @@ export async function completeOnboarding(
   });
 
   if (subErr) {
-    console.error("Subscription creation error:", subErr);
+    logger.error("Subscription creation error:", subErr);
     return { error: subErr.message };
   }
 

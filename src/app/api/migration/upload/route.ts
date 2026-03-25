@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import logger from "@/lib/logger";
 
 export const runtime = 'nodejs';
 
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
         sampleRows = jsonData.slice(1, 11) as unknown[][];
         rowCount = Math.max(0, jsonData.length - 1);
       } catch (e) {
-        console.error('XLSX parse error:', e);
+        logger.error('XLSX parse error:', e);
         return NextResponse.json({ error: 'Failed to parse Excel file' }, { status: 400 });
       }
     } else {
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
       });
 
     if (storageError) {
-      console.error('Storage upload error:', storageError);
+      logger.error('Storage upload error:', storageError);
       // Non-fatal — still create the DB record
     }
 
@@ -150,7 +151,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ file: fileRecord, success: true });
   } catch (err: unknown) {
-    console.error('Upload error:', err);
+    logger.error('Upload error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export async function GET(_req: NextRequest) {
   try {
@@ -62,7 +63,7 @@ export async function DELETE(_req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[google-calendar/setup DELETE]", err);
+    logger.error("[google-calendar/setup DELETE]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

@@ -2,10 +2,18 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
 export async function GET(req: Request) {
+  const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success: _rlSuccess } = await checkRateLimit(_ip);
+  if (!_rlSuccess) {
+    return new Response("Too many requests", { status: 429 });
+  }
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -204,7 +212,7 @@ ${topProducts.map(([name, d]) => `- ${name}: $${d.revenue.toFixed(2)} (${d.qty} 
 
     return Response.json({ insights, generatedAt: new Date().toISOString() });
   } catch (err) {
-    console.error("Financial insights error:", err);
+    logger.error("Financial insights error:", err);
     return Response.json({ error: "Failed to generate insights" }, { status: 500 });
   }
 }

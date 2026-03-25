@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID!;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET!;
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get("error");
 
   if (error) {
-    console.error("[google-calendar/callback] OAuth error:", error);
+    logger.error("[google-calendar/callback] OAuth error:", error);
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=oauth_denied`
     );
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     if (!tokenResponse.ok) {
       const error = await tokenResponse.text();
-      console.error("[google-calendar/callback] Token exchange failed:", error);
+      logger.error("[google-calendar/callback] Token exchange failed:", error);
       throw new Error("Token exchange failed");
     }
 
@@ -103,7 +104,7 @@ export async function GET(req: NextRequest) {
       `${process.env.NEXT_PUBLIC_APP_URL}/integrations/google-calendar?success=connected`
     );
   } catch (err) {
-    console.error("[google-calendar/callback]", err);
+    logger.error("[google-calendar/callback]", err);
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=callback_failed`
     );

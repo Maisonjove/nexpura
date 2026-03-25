@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +83,7 @@ export async function GET() {
       launchBlockers,
     });
   } catch (error) {
-    console.error("QA fetch error:", error);
+    logger.error("QA fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch QA data" },
       { status: 500 }

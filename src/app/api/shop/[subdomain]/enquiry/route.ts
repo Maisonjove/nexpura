@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export async function POST(
   req: NextRequest,
@@ -77,7 +78,7 @@ export async function POST(
   });
 
   if (error) {
-    console.error("Enquiry insert error:", error);
+    logger.error("Enquiry insert error:", error);
     return NextResponse.json({ error: "Failed to save enquiry" }, { status: 500 });
   }
 

@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -60,14 +61,14 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       const msg = (errData as any)?.error?.message ?? `HTTP ${res.status}`;
-      console.error("[whatsapp/send] API error:", msg);
+      logger.error("[whatsapp/send] API error:", msg);
       return NextResponse.json({ success: false, error: msg }, { status: 400 });
     }
 
     const data = await res.json();
     return NextResponse.json({ success: true, message_id: (data as any)?.messages?.[0]?.id });
   } catch (err) {
-    console.error("[whatsapp/send]", err);
+    logger.error("[whatsapp/send]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

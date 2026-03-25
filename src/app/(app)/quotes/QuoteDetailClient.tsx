@@ -26,6 +26,7 @@ interface Quote {
 import { emailQuote } from "./emailQuote";
 import { toast } from "sonner";
 import StatusBadge from "@/components/StatusBadge";
+import logger from "@/lib/logger";
 
 interface Props {
   quote: Quote;
@@ -88,7 +89,7 @@ export default function QuoteDetailClient({ quote }: Props) {
       const invoiceId = await convertQuoteToInvoice(quote.id);
       router.push(`/invoices/${invoiceId}`);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Failed to convert quote");
     } finally {
       setLoading(false);
@@ -103,7 +104,7 @@ export default function QuoteDetailClient({ quote }: Props) {
       toast.success("Converted to Bespoke Job successfully!");
       router.push(`/bespoke/${jobId}`);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Failed to convert quote to bespoke job");
     } finally {
       setLoading(false);
@@ -118,7 +119,7 @@ export default function QuoteDetailClient({ quote }: Props) {
       toast.success("Converted to Repair Job successfully!");
       router.push(`/repairs/${repairId}`);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Failed to convert quote to repair job");
     } finally {
       setLoading(false);

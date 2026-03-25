@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export async function POST(_req: NextRequest) {
   try {
@@ -47,7 +48,7 @@ export async function POST(_req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[stripe/connect/disconnect]", err);
+    logger.error("[stripe/connect/disconnect]", err);
     return NextResponse.json(
       { error: "Failed to disconnect" },
       { status: 500 }

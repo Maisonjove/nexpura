@@ -3,6 +3,8 @@ import debug from "@/lib/debug";
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSystemEmail } from "@/lib/email-sender";
+import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Lazy initialization to avoid build-time errors when env vars are not available
 function getStripe() {
@@ -22,6 +24,12 @@ function getWebhookSecret() {
 }
 
 export async function POST(request: NextRequest) {
+  const _ip = request.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success: _rlSuccess } = await checkRateLimit(_ip);
+  if (!_rlSuccess) {
+    return new Response("Too many requests", { status: 429 });
+  }
+
   const body = await request.text();
   const signature = request.headers.get("stripe-signature");
 
@@ -37,7 +45,7 @@ export async function POST(request: NextRequest) {
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
-    console.error("Webhook signature verification failed:", err);
+    logger.error("Webhook signature verification failed:", err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -60,7 +68,7 @@ export async function POST(request: NextRequest) {
     created_at: new Date().toISOString(),
   });
   if (lockError && lockError.code !== "23505") {
-    console.error("[stripe/route] Failed to acquire idempotency lock:", lockError);
+    logger.error("[stripe/route] Failed to acquire idempotency lock:", lockError);
   } else if (lockError?.code === "23505") {
     return NextResponse.json({ received: true, duplicate: true });
   }
@@ -102,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Webhook processing error:", error);
+    logger.error("Webhook processing error:", error);
     // Roll back idempotency lock so Stripe can retry
     await supabase.from("idempotency_locks").delete().eq("key", eventKey);
 
@@ -126,7 +134,7 @@ async function handleCheckoutCompleted(
   const stripeSubscriptionId = session.subscription as string;
 
   if (!subdomain || !customerEmail) {
-    console.error("Missing subdomain or email in checkout session metadata");
+    logger.error("Missing subdomain or email in checkout session metadata");
     return;
   }
 
@@ -166,7 +174,7 @@ async function handleCheckoutCompleted(
     .single();
 
   if (tenantErr || !tenant) {
-    console.error("Failed to create tenant:", tenantErr);
+    logger.error("Failed to create tenant:", tenantErr);
     return;
   }
 
@@ -321,7 +329,7 @@ async function handlePaymentFailed(
         });
       }
     } catch (emailErr) {
-      console.error("Payment failure email error:", emailErr);
+      logger.error("Payment failure email error:", emailErr);
     }
   }
 }

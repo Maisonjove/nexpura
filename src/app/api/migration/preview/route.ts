@@ -12,6 +12,7 @@ import {
   REPAIR_DEFAULT_MAPPINGS,
   type MappingEntry,
 } from '@/lib/migration/engine';
+import logger from "@/lib/logger";
 
 export const runtime = 'nodejs';
 
@@ -173,7 +174,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (err: unknown) {
-    console.error('Preview error:', err);
+    logger.error('Preview error:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : String(err) },
       { status: 500 }

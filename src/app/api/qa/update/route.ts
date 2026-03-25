@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, result });
   } catch (error) {
-    console.error("QA update error:", error);
+    logger.error("QA update error:", error);
     return NextResponse.json(
       { error: "Failed to update test result" },
       { status: 500 }
@@ -116,7 +117,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, updated: results.length });
   } catch (error) {
-    console.error("QA bulk update error:", error);
+    logger.error("QA bulk update error:", error);
     return NextResponse.json(
       { error: "Failed to bulk update test results" },
       { status: 500 }

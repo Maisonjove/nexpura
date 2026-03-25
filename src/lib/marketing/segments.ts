@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { CustomerSegment, SegmentRules, CustomerForMarketing } from './types';
+import logger from "@/lib/logger";
 
 /**
  * Get customers matching a segment's rules
@@ -63,7 +64,7 @@ export async function getCustomersInSegment(
   const { data: customers, error } = await query.order('created_at', { ascending: false });
 
   if (error || !customers) {
-    console.error('Error fetching customers for segment:', error);
+    logger.error('Error fetching customers for segment:', error);
     return [];
   }
 

@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
       url: accountLink.url,
     });
   } catch (err) {
-    console.error("[stripe/connect/create-account]", err);
+    logger.error("[stripe/connect/create-account]", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to create account" },
       { status: 500 }

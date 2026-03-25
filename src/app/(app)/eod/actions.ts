@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -188,7 +189,7 @@ export async function getEODSummary(date?: string, locationId?: string | null): 
     },
   };
   } catch (err) {
-    console.error("[getEODSummary] Error:", err);
+    logger.error("[getEODSummary] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to load EOD summary" };
   }
 }
@@ -259,7 +260,7 @@ export async function saveEODReconciliation(params: {
     return { id: data?.id };
     }
   } catch (err) {
-    console.error("[saveEODReconciliation] Error:", err);
+    logger.error("[saveEODReconciliation] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to save reconciliation" };
   }
 }
@@ -295,7 +296,7 @@ export async function getPastReconciliations(): Promise<{
 
     return { data: data ?? [], error: error?.message };
   } catch (err) {
-    console.error("[getPastReconciliations] Error:", err);
+    logger.error("[getPastReconciliations] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to load past reconciliations" };
   }
 }

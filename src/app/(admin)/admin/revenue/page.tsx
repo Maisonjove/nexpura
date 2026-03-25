@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
+import logger from "@/lib/logger";
 
 // Force dynamic rendering - don't pre-render at build time
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ export default async function RevenueAdminPage() {
       .select("id, name, created_at, is_free_forever");
     tenants = tenantsRes.data;
   } catch (error) {
-    console.error("Failed to fetch revenue data:", error);
+    logger.error("Failed to fetch revenue data:", error);
     subs = [];
     tenants = [];
   }

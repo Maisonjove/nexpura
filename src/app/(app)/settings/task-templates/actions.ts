@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 export interface TaskTemplate {
   id: string;
@@ -35,7 +36,7 @@ export async function getTaskTemplates(): Promise<{ data?: TaskTemplate[]; error
     if (error) return { error: error.message };
     return { data: (data ?? []) as TaskTemplate[] };
   } catch (err) {
-    console.error("[getTaskTemplates] Error:", err);
+    logger.error("[getTaskTemplates] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to get task templates" };
   }
 }
@@ -75,7 +76,7 @@ export async function createTaskTemplate(input: {
     revalidatePath("/settings/task-templates");
     return { data: data as TaskTemplate };
   } catch (err) {
-    console.error("[createTaskTemplate] Error:", err);
+    logger.error("[createTaskTemplate] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to create task template" };
   }
 }
@@ -118,7 +119,7 @@ export async function updateTaskTemplate(
     revalidatePath("/settings/task-templates");
     return {};
   } catch (err) {
-    console.error("[updateTaskTemplate] Error:", err);
+    logger.error("[updateTaskTemplate] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to update task template" };
   }
 }
@@ -147,7 +148,7 @@ export async function deleteTaskTemplate(id: string): Promise<{ error?: string }
     revalidatePath("/settings/task-templates");
     return {};
   } catch (err) {
-    console.error("[deleteTaskTemplate] Error:", err);
+    logger.error("[deleteTaskTemplate] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to delete task template" };
   }
 }

@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
 
     if (!tokenRes.ok) {
       const text = await tokenRes.text();
-      console.error("[xero/callback] Token exchange failed:", text);
+      logger.error("[xero/callback] Token exchange failed:", text);
       return NextResponse.redirect(
         `${APP_URL}/settings/integrations?xero=error&reason=token_exchange_failed`
       );
@@ -86,7 +87,7 @@ export async function GET(req: NextRequest) {
       `${APP_URL}/settings/integrations?xero=connected&org=${encodeURIComponent(orgName ?? "Xero")}`
     );
   } catch (err) {
-    console.error("[xero/callback]", err);
+    logger.error("[xero/callback]", err);
     return NextResponse.redirect(
       `${APP_URL}/settings/integrations?xero=error&reason=server_error`
     );

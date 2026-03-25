@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { getUserLocationIds } from "@/lib/locations";
+import logger from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
       .eq("status", "in_transit"); // Only if still in_transit
 
     if (statusError) {
-      console.error("Receive status update error:", statusError);
+      logger.error("Receive status update error:", statusError);
       return NextResponse.json({ error: "Failed to complete transfer" }, { status: 500 });
     }
 
@@ -136,7 +137,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Receive transfer error:", error);
+    logger.error("Receive transfer error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

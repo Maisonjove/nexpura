@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
 export async function POST(req: NextRequest) {
+  const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success: _rlSuccess } = await checkRateLimit(_ip);
+  if (!_rlSuccess) {
+    return new Response("Too many requests", { status: 429 });
+  }
+
   try {
     const body = await req.json() as {
       sectionType: string;
@@ -50,7 +58,7 @@ Return ONLY valid JSON with the same structure as the current content, but with 
 
     return NextResponse.json({ suggestedContent });
   } catch (err) {
-    console.error("AI website route error:", err);
+    logger.error("AI website route error:", err);
     return NextResponse.json({ error: "AI request failed" }, { status: 500 });
   }
 }

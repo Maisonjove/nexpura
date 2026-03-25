@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { createSupportAccessRequest } from "@/lib/support-access";
 import { sendSupportAccessRequestEmail } from "@/lib/email/send";
+import logger from "@/lib/logger";
 
 type Plan = "boutique" | "studio" | "atelier" | "group";
 type SubStatus = "trialing" | "active" | "past_due" | "canceled" | "suspended" | "free";
@@ -39,7 +40,7 @@ async function logActivity(
       created_at: new Date().toISOString(),
     });
   } catch (err) {
-    console.error("[admin] Failed to log activity:", err);
+    logger.error("[admin] Failed to log activity:", err);
   }
 }
 
@@ -63,7 +64,7 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
       .update({ plan: normalisedPlan })
       .eq("tenant_id", tenantId);
     if (error) {
-      console.error(
+      logger.error(
         "[changeTenantPlan] Supabase error:",
         error.message,
         "| tenantId:",
@@ -84,7 +85,7 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
       trial_ends_at: trialEnds.toISOString(),
     });
     if (error) {
-      console.error("[changeTenantPlan] Failed to create subscription:", error.message);
+      logger.error("[changeTenantPlan] Failed to create subscription:", error.message);
       throw new Error(error.message);
     }
   }

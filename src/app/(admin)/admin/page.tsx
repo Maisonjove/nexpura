@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantAccessStatuses } from "@/lib/support-access";
 import Link from "next/link";
 import AdminTenantsClient from "./AdminTenantsClient";
+import logger from "@/lib/logger";
 
 // Force dynamic rendering - don't pre-render at build time
 export const dynamic = "force-dynamic";
@@ -40,7 +41,7 @@ export default async function AdminDashboardPage() {
       .select("tenant_id, plan, status, trial_ends_at, current_period_end");
     subscriptions = subsRes.data;
   } catch (error) {
-    console.error("Failed to fetch admin data:", error);
+    logger.error("Failed to fetch admin data:", error);
     // Return empty state if Supabase is unavailable
     tenants = [];
     subscriptions = [];

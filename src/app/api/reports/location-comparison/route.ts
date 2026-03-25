@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
     res.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=60");
     return res;
   } catch (error) {
-    console.error("Location comparison error:", error);
+    logger.error("Location comparison error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2 } from 'lucide-react';
+import logger from "@/lib/logger";
 
 interface SourceCardProps {
   source: {
@@ -48,7 +49,7 @@ export function SourceCard({ source }: SourceCardProps) {
         router.push(`/migration/${data.sessionId}/files`);
       }
     } catch (e) {
-      console.error(e);
+      logger.error(e);
       setLoading(false);
     }
   }

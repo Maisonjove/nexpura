@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Stripe from "stripe";
+import logger from "@/lib/logger";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2026-02-25.clover" });
 
@@ -51,7 +52,7 @@ export async function GET() {
 
     return NextResponse.json({ invoices: result });
   } catch (err) {
-    console.error("Billing invoices error:", err);
+    logger.error("Billing invoices error:", err);
     return NextResponse.json({ error: "Failed to fetch invoices" }, { status: 500 });
   }
 }

@@ -11,6 +11,7 @@ import {
   SUPPLIER_DEFAULT_MAPPINGS, INVOICE_DEFAULT_MAPPINGS, PAYMENT_DEFAULT_MAPPINGS,
   type ImportContext, type ImportRow, type MappingEntry,
 } from '@/lib/migration/engine';
+import logger from "@/lib/logger";
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -375,7 +376,7 @@ export async function POST(req: NextRequest) {
       summary: { processed, success, errors, skipped, duplicates, byEntity },
     });
   } catch (err: unknown) {
-    console.error('Execute error:', err);
+    logger.error('Execute error:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : String(err) },
       { status: 500 }

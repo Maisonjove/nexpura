@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 async function getBusinessContext(tenantId: string) {
   const admin = createAdminClient();
@@ -204,7 +205,7 @@ Example response style:
 
     return new NextResponse(stream);
   } catch (err: any) {
-    console.error("Copilot chat error:", err);
+    logger.error("Copilot chat error:", err);
     return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import logger from "@/lib/logger";
 
 export async function GET(req: Request) {
   try {
@@ -233,7 +234,7 @@ export async function GET(req: Request) {
       useWeekly,
     });
   } catch (err) {
-    console.error("Report error:", err);
+    logger.error("Report error:", err);
     return Response.json({ error: "Failed to load report" }, { status: 500 });
   }
 }
@@ -291,7 +292,7 @@ ${Object.entries(reportData.paymentBreakdown || {}).map(([m, v]) => `- ${m}: $${
 
     return Response.json({ summary: text });
   } catch (err) {
-    console.error("Report summary error:", err);
+    logger.error("Report summary error:", err);
     return Response.json({ error: "Failed to generate summary" }, { status: 500 });
   }
 }

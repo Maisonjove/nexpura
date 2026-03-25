@@ -9,6 +9,7 @@ import {
 } from "@/lib/support-access";
 import { sendSupportAccessApprovedEmail } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 export async function approveAccess(
   token: string
@@ -61,7 +62,7 @@ export async function approveAccess(
     revalidatePath("/settings");
     return { success: true };
   } catch (err) {
-    console.error("[approveAccess] Error:", err);
+    logger.error("[approveAccess] Error:", err);
     return { success: false, error: err instanceof Error ? err.message : "Failed to approve access" };
   }
 }
@@ -80,7 +81,7 @@ export async function denyAccess(
     revalidatePath("/admin");
     return { success: true };
   } catch (err) {
-    console.error("[denyAccess] Error:", err);
+    logger.error("[denyAccess] Error:", err);
     return { success: false, error: err instanceof Error ? err.message : "Failed to deny access" };
   }
 }

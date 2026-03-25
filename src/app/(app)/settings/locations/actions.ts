@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 export async function addLocation(formData: {
   name: string;
@@ -50,7 +51,7 @@ export async function addLocation(formData: {
     .single();
 
   if (error) {
-    console.error("Add location error:", error);
+    logger.error("Add location error:", error);
     return { error: error.message };
   }
 
@@ -67,7 +68,7 @@ export async function toggleLocationActive(locationId: string, isActive: boolean
     .eq("id", locationId);
 
   if (error) {
-    console.error("Toggle location error:", error);
+    logger.error("Toggle location error:", error);
     return { error: error.message };
   }
 

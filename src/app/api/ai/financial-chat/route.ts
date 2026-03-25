@@ -2,10 +2,18 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success: _rlSuccess } = await checkRateLimit(_ip);
+  if (!_rlSuccess) {
+    return new Response("Too many requests", { status: 429 });
+  }
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -134,7 +142,7 @@ Answer questions about this business's finances concisely and helpfully. Use spe
 
     return result.toTextStreamResponse();
   } catch (err) {
-    console.error("Financial chat error:", err);
+    logger.error("Financial chat error:", err);
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

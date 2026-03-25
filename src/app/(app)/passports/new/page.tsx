@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPassport } from "../actions";
+import logger from "@/lib/logger";
 
 const JEWELLERY_TYPES = [
   "ring",
@@ -40,7 +41,7 @@ export default function NewPassportPage() {
       formData.set("is_public", isPublic ? "true" : "false");
       await createPassport(formData);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setLoading(false);
     }
   }

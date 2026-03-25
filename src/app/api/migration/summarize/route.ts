@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -77,7 +78,7 @@ Write a concise migration summary. Return JSON:
 
     return NextResponse.json({ summary });
   } catch (err: any) {
-    console.error('Summarize error:', err);
+    logger.error('Summarize error:', err);
     return NextResponse.json({ error: err.message }, { status: 200 });
   }
 }

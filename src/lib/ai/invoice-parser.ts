@@ -1,6 +1,7 @@
 "use server";
 
 import OpenAI from "openai";
+import logger from "@/lib/logger";
 
 export interface ExtractedItem {
   description: string;
@@ -127,14 +128,14 @@ Return your response as valid JSON only, no markdown or explanation.`,
         },
       };
     } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
+      logger.error("Failed to parse AI response:", content);
       return {
         success: false,
         error: "Failed to parse invoice data. Please try again or enter items manually.",
       };
     }
   } catch (error) {
-    console.error("Invoice parsing error:", error);
+    logger.error("Invoice parsing error:", error);
     
     if (error instanceof Error) {
       if (error.message.includes("API key")) {

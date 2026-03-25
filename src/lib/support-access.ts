@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { randomUUID } from "crypto";
+import logger from "@/lib/logger";
 
 export interface SupportAccessRequest {
   id: string;
@@ -57,7 +58,7 @@ export async function createSupportAccessRequest(params: {
   });
 
   if (error) {
-    console.error("[support-access] Failed to create request:", error);
+    logger.error("[support-access] Failed to create request:", error);
     return { success: false, error: error.message };
   }
 
@@ -115,7 +116,7 @@ export async function approveSupportAccess(
     .eq("token", token);
 
   if (error) {
-    console.error("[support-access] Failed to approve:", error);
+    logger.error("[support-access] Failed to approve:", error);
     return { success: false, error: error.message };
   }
 
@@ -162,7 +163,7 @@ export async function denySupportAccess(
     .eq("token", token);
 
   if (error) {
-    console.error("[support-access] Failed to deny:", error);
+    logger.error("[support-access] Failed to deny:", error);
     return { success: false, error: error.message };
   }
 
@@ -215,7 +216,7 @@ export async function revokeSupportAccess(
     .eq("id", requestId);
 
   if (error) {
-    console.error("[support-access] Failed to revoke:", error);
+    logger.error("[support-access] Failed to revoke:", error);
     return { success: false, error: error.message };
   }
 
@@ -269,7 +270,7 @@ export async function getTenantAccessRequests(tenantId: string) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("[support-access] Failed to fetch requests:", error);
+    logger.error("[support-access] Failed to fetch requests:", error);
     return [];
   }
   return data || [];
@@ -343,6 +344,6 @@ export async function expireOldAccess() {
     .lt("expires_at", now);
 
   if (error) {
-    console.error("[support-access] Failed to expire old access:", error);
+    logger.error("[support-access] Failed to expire old access:", error);
   }
 }

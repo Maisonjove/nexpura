@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import logger from "@/lib/logger";
 
 export async function updateSession(request: NextRequest) {
   // Top-level guard: if anything in this function throws (Edge Runtime limits,
@@ -8,7 +9,7 @@ export async function updateSession(request: NextRequest) {
   try {
     return await _updateSessionInner(request);
   } catch (err) {
-    console.error("[middleware] updateSession threw:", err);
+    logger.error("[middleware] updateSession threw:", err);
     const { pathname } = request.nextUrl;
     const isPublicRoute =
       pathname === "/" ||

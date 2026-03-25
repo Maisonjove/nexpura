@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import OpenAI from "openai";
+import logger from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
       });
     return Response.json({ matches });
   } catch (error) {
-    console.error("Photo scan error:", error);
+    logger.error("Photo scan error:", error);
     return Response.json({ error: "Failed to analyse photo" }, { status: 500 });
   }
 }

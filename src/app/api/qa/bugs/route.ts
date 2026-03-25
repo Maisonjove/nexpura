@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("QA bugs fetch error:", error);
+    logger.error("QA bugs fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch bug list" },
       { status: 500 }

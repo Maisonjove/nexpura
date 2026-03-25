@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
+import logger from "@/lib/logger";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -312,7 +313,7 @@ export async function emailBespokeInvoice(
 
   if (!res.ok) {
     const errText = await res.text();
-    console.error("Resend error:", errText);
+    logger.error("Resend error:", errText);
     // Demo-limited: log event but don't surface as error
     try {
       await admin.from("job_events").insert({

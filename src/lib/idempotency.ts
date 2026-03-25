@@ -8,6 +8,7 @@
  */
 
 import { createAdminClient } from "./supabase/admin";
+import logger from "@/lib/logger";
 
 const LOCK_TTL_SECONDS = 30;
 
@@ -54,7 +55,7 @@ export async function acquireIdempotencyLock(key: string, ttlSeconds = LOCK_TTL_
       return false;
     }
     // Other errors - log but allow (fail open for availability)
-    console.error("Idempotency lock error:", error);
+    logger.error("Idempotency lock error:", error);
     return true;
   }
   

@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { Resend } from "resend";
+import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -228,6 +230,12 @@ async function handleEmailExport(
 // ─── Main route ───────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+  const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success: _rlSuccess } = await checkRateLimit(_ip);
+  if (!_rlSuccess) {
+    return new Response("Too many requests", { status: 429 });
+  }
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -463,7 +471,7 @@ Be concise, direct, and practical. You know jewellery.`;
     return new Response(response.body, { status: response.status, headers });
 
   } catch (err) {
-    console.error("AI chat error:", err);
+    logger.error("AI chat error:", err);
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

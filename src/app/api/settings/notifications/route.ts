@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export async function PUT(req: NextRequest) {
   try {
@@ -53,7 +54,7 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[settings/notifications PUT]", err);
+    logger.error("[settings/notifications PUT]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
