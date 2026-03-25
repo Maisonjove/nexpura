@@ -7,8 +7,8 @@ interface SetupTabProps {
   update: <K extends keyof WebsiteConfig>(key: K, value: WebsiteConfig[K]) => void;
   subdomainInput: string;
   setSubdomainInput: (value: string) => void;
-  subdomainStatus: { available: boolean; reason?: string } | null;
-  setSubdomainStatus: (status: { available: boolean; reason?: string } | null) => void;
+  subdomainStatus: { available?: boolean; reason?: string } | null;
+  setSubdomainStatus: (status: { available?: boolean; reason?: string } | null) => void;
   onCheckSubdomain: () => void;
 }
 
