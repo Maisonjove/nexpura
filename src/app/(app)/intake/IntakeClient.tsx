@@ -14,123 +14,25 @@ import {
   type CreateBespokeInput,
   type CreateStockSaleInput,
 } from "./actions";
+import {
+  JEWELLERY_TYPES,
+  METAL_TYPES,
+  METAL_PURITIES,
+  REPAIR_ISSUES,
+  PRIORITIES,
+  PAYMENT_METHODS,
+  RING_SIZES,
+} from "./constants";
+import type {
+  Customer,
+  InventoryItem,
+  TaxConfig,
+  IntakeClientProps as Props,
+  JobType,
+  SuccessResult,
+} from "./types";
 
-// ────────────────────────────────────────────────────────────────
-// Types
-// ────────────────────────────────────────────────────────────────
-
-interface Customer {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  mobile: string | null;
-  phone: string | null;
-}
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  sku: string | null;
-  barcode_value: string | null;
-  jewellery_type: string | null;
-  metal_type: string | null;
-  metal_purity: string | null;
-  stone_type: string | null;
-  stone_carat: number | null;
-  retail_price: number | null;
-  quantity: number | null;
-  primary_image: string | null;
-}
-
-interface TaxConfig {
-  tax_rate: number;
-  tax_name: string;
-  tax_inclusive: boolean;
-  currency: string;
-}
-
-interface Props {
-  initialCustomers: Customer[];
-  taxConfig: TaxConfig;
-}
-
-type JobType = "repair" | "bespoke" | "stock";
-
-interface SuccessResult {
-  type: JobType;
-  id: string;
-  number: string;
-  invoiceId?: string;
-}
-
-// ────────────────────────────────────────────────────────────────
-// Constants
-// ────────────────────────────────────────────────────────────────
-
-const JEWELLERY_TYPES = [
-  "Ring",
-  "Bracelet",
-  "Necklace",
-  "Earrings",
-  "Pendant",
-  "Watch",
-  "Brooch",
-  "Bangle",
-  "Chain",
-  "Other",
-];
-
-const METAL_TYPES = [
-  { value: "gold", label: "Gold" },
-  { value: "platinum", label: "Platinum" },
-  { value: "silver", label: "Silver" },
-  { value: "rose_gold", label: "Rose Gold" },
-  { value: "palladium", label: "Palladium" },
-  { value: "white_gold", label: "White Gold" },
-];
-
-const METAL_PURITIES = ["24K", "22K", "18K", "14K", "10K", "9K", "950", "925", "750"];
-
-const REPAIR_ISSUES = [
-  "Ring resize",
-  "Stone replacement",
-  "Clasp repair",
-  "Chain repair",
-  "Prong re-tipping",
-  "Polishing & cleaning",
-  "Rhodium plating",
-  "Engraving",
-  "Stone setting",
-  "Soldering",
-  "General repair",
-  "Other",
-];
-
-const PRIORITIES = [
-  { value: "low", label: "Low", color: "bg-stone-100 text-stone-600" },
-  { value: "normal", label: "Normal", color: "bg-blue-50 text-blue-600" },
-  { value: "high", label: "High", color: "bg-amber-50 text-amber-700" },
-  { value: "urgent", label: "Urgent", color: "bg-red-50 text-red-600" },
-];
-
-const PAYMENT_METHODS = [
-  { value: "cash", label: "Cash" },
-  { value: "eftpos", label: "Eftpos" },
-  { value: "visa", label: "Visa" },
-  { value: "mastercard", label: "Mastercard" },
-  { value: "amex", label: "American Express" },
-  { value: "discover", label: "Discover" },
-  { value: "cheque", label: "Cheque" },
-  { value: "gift_voucher", label: "Gift Voucher" },
-  { value: "customer_credit", label: "Customer Credit" },
-  { value: "website", label: "Website Payments" },
-  { value: "other", label: "Other" },
-];
-
-const RING_SIZES = [
-  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-];
+// Constants imported from ./constants.ts
 
 // ────────────────────────────────────────────────────────────────
 // Styling

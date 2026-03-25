@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import DOMPurify from "isomorphic-dompurify";
 
 type Message = {
   id: string;
@@ -32,7 +33,8 @@ function renderMarkdown(text: string) {
   text = text.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-stone-900/80">$1</li>');
   text = text.replace(/\n\n/g, '</p><p class="mb-2">');
   text = text.replace(/\n/g, '<br/>');
-  return `<p class="mb-2">${text}</p>`;
+  const html = `<p class="mb-2">${text}</p>`;
+  return DOMPurify.sanitize(html);
 }
 
 export default function CopilotClient({ firstName, tenantId }: CopilotClientProps) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import DOMPurify from "isomorphic-dompurify";
 
 type Conversation = {
   id: string;
@@ -53,7 +54,8 @@ function renderMarkdown(text: string) {
   // Line breaks
   text = text.replace(/\n\n/g, '</p><p class="mb-2">');
   text = text.replace(/\n/g, '<br/>');
-  return `<p class="mb-2">${text}</p>`;
+  const html = `<p class="mb-2">${text}</p>`;
+  return DOMPurify.sanitize(html);
 }
 
 export default function AICopilotClient({ conversations: initialConversations, plan }: Props) {
