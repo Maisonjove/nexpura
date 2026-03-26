@@ -259,7 +259,7 @@ export async function advanceRepairStage(
   await logAuditEvent({
     tenantId,
     userId,
-    action: "repair_stage_advance",
+    action: "repair_stage_change",
     entityType: "repair",
     entityId: repairId,
     newData: { stage: newStage, notes },
