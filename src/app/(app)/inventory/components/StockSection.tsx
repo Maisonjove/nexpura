@@ -1,5 +1,7 @@
 import { SectionHeader, FieldLabel, Input, Select } from "./FormElements";
 import type { InventoryItem } from "./types";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 
 interface StockSectionProps {
   item?: InventoryItem;
@@ -33,7 +35,19 @@ export default function StockSection({
           </div>
         )}
         <div>
-          <FieldLabel htmlFor="low_stock_threshold">Low Stock Threshold</FieldLabel>
+          <TooltipProvider>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <FieldLabel htmlFor="low_stock_threshold">Low Stock Threshold</FieldLabel>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="h-3.5 w-3.5 text-stone-400" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>When the quantity falls at or below this number, this item will show as &quot;Low Stock&quot; and appear in your low stock alerts.</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
           <Input id="low_stock_threshold" name="low_stock_threshold" type="number" min="0" placeholder="1" defaultValue={item?.low_stock_threshold?.toString() ?? "1"} />
         </div>
         <div className="flex items-center gap-3 pt-6">

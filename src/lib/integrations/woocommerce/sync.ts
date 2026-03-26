@@ -1,0 +1,369 @@
+/**
+ * WooCommerce Two-Way Sync
+ * 
+ * Handles bidirectional sync between Nexpura and WooCommerce:
+ * - Products ↔ Inventory
+ * - Customers ↔ Customers
+ * - Orders → Sales
+ * - Stock levels ← Inventory
+ */
+
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getIntegration, upsertIntegration } from "@/lib/integrations";
+
+interface WooConfig {
+  store_url: string;
+  consumer_key: string;
+  consumer_secret: string;
+  sync_products_import?: boolean;
+  sync_products_export?: boolean;
+  sync_customers?: boolean;
+  sync_orders?: boolean;
+  last_products_sync?: string;
+  last_orders_sync?: string;
+}
+
+interface WooProduct {
+  id: number;
+  name: string;
+  sku: string;
+  regular_price: string;
+  stock_quantity: number | null;
+  manage_stock: boolean;
+  images: Array<{ src: string }>;
+  type: string;
+}
+
+interface WooCustomer {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  billing: { phone: string };
+}
+
+interface WooOrder {
+  id: number;
+  number: string;
+  date_created: string;
+  total: string;
+  status: string;
+  payment_method: string;
+  customer_id: number;
+  billing: { first_name: string; last_name: string; email: string };
+  line_items: Array<{
+    id: number;
+    name: string;
+    quantity: number;
+    price: number;
+    sku: string;
+    product_id: number;
+  }>;
+}
+
+export interface SyncResult {
+  success: boolean;
+  imported?: number;
+  exported?: number;
+  skipped?: number;
+  errors: string[];
+}
+
+async function wooFetch(
+  storeUrl: string,
+  consumerKey: string,
+  consumerSecret: string,
+  path: string,
+  options?: RequestInit
+): Promise<any> {
+  const baseUrl = storeUrl.replace(/\/$/, "");
+  const url = `${baseUrl}/wp-json/wc/v3${path}`;
+  const credentials = Buffer.from(`${consumerKey}:${consumerSecret}`).toString("base64");
+
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`WooCommerce API error ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+/**
+ * Import products from WooCommerce into Nexpura inventory
+ */
+export async function importProductsFromWoo(tenantId: string): Promise<SyncResult> {
+  const integration = await getIntegration(tenantId, "woocommerce");
+  if (!integration) return { success: false, errors: ["WooCommerce not connected"] };
+
+  const config = integration.config as unknown as WooConfig;
+  const admin = createAdminClient();
+  let imported = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  try {
+    const products: WooProduct[] = await wooFetch(
+      config.store_url, config.consumer_key, config.consumer_secret,
+      "/products?per_page=100&status=publish"
+    );
+
+    for (const p of products) {
+      try {
+        const { error } = await admin.from("inventory").upsert(
+          {
+            tenant_id: tenantId,
+            name: p.name,
+            sku: p.sku || `woo-${p.id}`,
+            retail_price: parseFloat(p.regular_price) || 0,
+            quantity: p.stock_quantity || 0,
+            woo_product_id: String(p.id),
+            status: "active",
+          },
+          { onConflict: "tenant_id,sku", ignoreDuplicates: false }
+        );
+
+        if (error) { errors.push(`Product ${p.id}: ${error.message}`); skipped++; }
+        else imported++;
+      } catch (err) {
+        errors.push(`Product ${p.id}: ${err instanceof Error ? err.message : "Error"}`);
+        skipped++;
+      }
+    }
+
+    await upsertIntegration(tenantId, "woocommerce", {
+      ...config,
+      last_products_sync: new Date().toISOString(),
+    });
+
+    return { success: true, imported, skipped, errors };
+  } catch (err) {
+    return { success: false, errors: [err instanceof Error ? err.message : "Sync failed"] };
+  }
+}
+
+/**
+ * Export Nexpura inventory to WooCommerce products
+ */
+export async function exportInventoryToWoo(tenantId: string): Promise<SyncResult> {
+  const integration = await getIntegration(tenantId, "woocommerce");
+  if (!integration) return { success: false, errors: ["WooCommerce not connected"] };
+
+  const config = integration.config as unknown as WooConfig;
+  const admin = createAdminClient();
+  let exported = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  const { data: items } = await admin
+    .from("inventory")
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .eq("status", "active")
+    .limit(100);
+
+  for (const item of items || []) {
+    try {
+      if (item.woo_product_id) {
+        // Update existing
+        await wooFetch(
+          config.store_url, config.consumer_key, config.consumer_secret,
+          `/products/${item.woo_product_id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              regular_price: String(item.retail_price || 0),
+              stock_quantity: item.quantity || 0,
+              manage_stock: true,
+            }),
+          }
+        );
+      } else {
+        // Create new
+        const result = await wooFetch(
+          config.store_url, config.consumer_key, config.consumer_secret,
+          "/products",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              name: item.name,
+              sku: item.sku || "",
+              regular_price: String(item.retail_price || 0),
+              stock_quantity: item.quantity || 0,
+              manage_stock: true,
+              status: "publish",
+              type: "simple",
+            }),
+          }
+        );
+        // Save WooCommerce product ID
+        await admin.from("inventory").update({ woo_product_id: String(result.id) }).eq("id", item.id);
+      }
+      exported++;
+    } catch (err) {
+      errors.push(`Item ${item.id}: ${err instanceof Error ? err.message : "Error"}`);
+      skipped++;
+    }
+  }
+
+  return { success: true, exported, skipped, errors };
+}
+
+/**
+ * Import customers from WooCommerce
+ */
+export async function importCustomersFromWoo(tenantId: string): Promise<SyncResult> {
+  const integration = await getIntegration(tenantId, "woocommerce");
+  if (!integration) return { success: false, errors: ["WooCommerce not connected"] };
+
+  const config = integration.config as unknown as WooConfig;
+  const admin = createAdminClient();
+  let imported = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  try {
+    const customers: WooCustomer[] = await wooFetch(
+      config.store_url, config.consumer_key, config.consumer_secret,
+      "/customers?per_page=100"
+    );
+
+    for (const c of customers) {
+      if (!c.email) { skipped++; continue; }
+      const { error } = await admin.from("customers").upsert(
+        {
+          tenant_id: tenantId,
+          email: c.email,
+          full_name: `${c.first_name || ""} ${c.last_name || ""}`.trim(),
+          mobile: c.billing?.phone || null,
+          source: "woocommerce",
+        },
+        { onConflict: "tenant_id,email", ignoreDuplicates: false }
+      );
+      if (error) { errors.push(error.message); skipped++; }
+      else imported++;
+    }
+
+    return { success: true, imported, skipped, errors };
+  } catch (err) {
+    return { success: false, errors: [err instanceof Error ? err.message : "Failed"] };
+  }
+}
+
+/**
+ * Import orders from WooCommerce as sales
+ */
+export async function importOrdersFromWoo(tenantId: string): Promise<SyncResult> {
+  const integration = await getIntegration(tenantId, "woocommerce");
+  if (!integration) return { success: false, errors: ["WooCommerce not connected"] };
+
+  const config = integration.config as unknown as WooConfig;
+  const admin = createAdminClient();
+  let imported = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  try {
+    const afterParam = config.last_orders_sync
+      ? `&after=${config.last_orders_sync}`
+      : "";
+    const orders: WooOrder[] = await wooFetch(
+      config.store_url, config.consumer_key, config.consumer_secret,
+      `/orders?per_page=100&status=completed,processing${afterParam}`
+    );
+
+    for (const order of orders) {
+      try {
+        const { data: existing } = await admin
+          .from("sales")
+          .select("id")
+          .eq("tenant_id", tenantId)
+          .eq("external_reference", `woo_${order.id}`)
+          .single();
+
+        if (existing) { skipped++; continue; }
+
+        const total = parseFloat(order.total);
+        const { data: sale, error: saleErr } = await admin.from("sales").insert({
+          tenant_id: tenantId,
+          sale_number: `WOO-${order.number}`,
+          total,
+          subtotal: total,
+          tax_amount: 0,
+          discount_amount: 0,
+          payment_method: order.payment_method || "woocommerce",
+          customer_name: order.billing
+            ? `${order.billing.first_name} ${order.billing.last_name}`.trim()
+            : null,
+          customer_email: order.billing?.email || null,
+          external_reference: `woo_${order.id}`,
+          created_at: order.date_created,
+          status: "completed",
+        }).select("id").single();
+
+        if (saleErr) { errors.push(saleErr.message); skipped++; continue; }
+
+        for (const li of order.line_items) {
+          const { data: inventoryItem } = await admin
+            .from("inventory")
+            .select("id")
+            .eq("tenant_id", tenantId)
+            .eq("sku", li.sku)
+            .single();
+
+          await admin.from("sale_items").insert({
+            tenant_id: tenantId,
+            sale_id: sale!.id,
+            inventory_id: inventoryItem?.id || null,
+            quantity: li.quantity,
+            unit_price: li.price,
+            total: li.quantity * li.price,
+          });
+        }
+
+        imported++;
+      } catch (err) {
+        errors.push(`Order ${order.id}: ${err instanceof Error ? err.message : "Error"}`);
+        skipped++;
+      }
+    }
+
+    await upsertIntegration(tenantId, "woocommerce", {
+      ...config,
+      last_orders_sync: new Date().toISOString(),
+    });
+
+    return { success: true, imported, skipped, errors };
+  } catch (err) {
+    return { success: false, errors: [err instanceof Error ? err.message : "Failed"] };
+  }
+}
+
+/**
+ * Run full sync (all enabled directions)
+ */
+export async function runFullWooSync(tenantId: string): Promise<{
+  products: SyncResult;
+  customers: SyncResult;
+  orders: SyncResult;
+}> {
+  const [products, customers, orders] = await Promise.all([
+    importProductsFromWoo(tenantId),
+    importCustomersFromWoo(tenantId),
+    importOrdersFromWoo(tenantId),
+  ]);
+
+  await upsertIntegration(tenantId, "woocommerce", {
+    ...(await getIntegration(tenantId, "woocommerce"))?.config || {},
+    last_sync: new Date().toISOString(),
+  });
+
+  return { products, customers, orders };
+}

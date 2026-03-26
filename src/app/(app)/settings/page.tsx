@@ -16,6 +16,8 @@ import {
 } from "./actions";
 import LogoUpload from "./LogoUpload";
 import SecurityTab from "./SecurityTab";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 
 type Tenant = {
   id: string;
@@ -496,7 +498,19 @@ export default function SettingsPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Tax Rate (%)</label>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Tax Rate (%)</label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <HelpCircle className="h-3.5 w-3.5 text-stone-400" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>The tax rate applied to all sales. In Australia this is GST at 10%. Adjust for your local tax jurisdiction.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <input
                   name="tax_rate"
                   type="number"

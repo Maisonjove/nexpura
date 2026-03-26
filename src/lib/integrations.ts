@@ -13,7 +13,8 @@ export type IntegrationType =
   | "google_calendar"
   | "twilio"
   | "square"
-  | "woocommerce";
+  | "woocommerce"
+  | "mailchimp";
 
 export interface Integration {
   id: string;

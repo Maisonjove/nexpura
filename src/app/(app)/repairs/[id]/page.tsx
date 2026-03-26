@@ -55,6 +55,14 @@ export default async function RepairDetailPage({
 
   if (!repair) notFound();
 
+  // Get subdomain for public tracking links
+  const { data: websiteConfig } = await adminClient
+    .from("website_config")
+    .select("subdomain")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  const storeSubdomain = (websiteConfig?.subdomain as string) ?? null;
+
   // Attachments + events + tenant settings + twilio in parallel
   const [{ data: attachments }, { data: events }, { data: tenant }, { data: twilioIntegration }] = await Promise.all([
     adminClient
@@ -153,6 +161,7 @@ export default async function RepairDetailPage({
       twilioConnected={twilioConnected}
       businessName={businessName}
       defaultSmsTemplate={defaultSmsTemplate}
+      storeSubdomain={storeSubdomain}
     />
   );
 }

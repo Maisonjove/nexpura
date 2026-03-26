@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { completeOnboarding } from "./actions";
-import { Gem } from "lucide-react";
+import { Gem, Mail, RefreshCw } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 type Plan = "boutique" | "studio" | "atelier";
 
@@ -81,6 +82,32 @@ export default function OnboardingPage() {
   const [businessType, setBusinessType] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<Plan>("studio");
 
+  // Email verification
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      const user = data.user;
+      if (user) {
+        setUserEmail(user.email ?? null);
+        setEmailVerified(!!user.email_confirmed_at);
+      }
+    });
+  }, []);
+
+  async function handleResendVerification() {
+    if (!userEmail) return;
+    setResendLoading(true);
+    const supabase = createClient();
+    await supabase.auth.resend({ type: "signup", email: userEmail });
+    setResendLoading(false);
+    setResendSent(true);
+  }
+
   function handleContinue() {
     if (!businessName.trim()) return;
     setStep(2);
@@ -145,6 +172,33 @@ export default function OnboardingPage() {
             ))}
           </div>
         </div>
+
+        {/* Email verification banner */}
+        {emailVerified === false && (
+          <div className="w-full max-w-2xl mb-6 bg-amber-50 border border-amber-200 rounded-xl p-5 flex items-start gap-4">
+            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Mail size={18} className="text-amber-700" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">Please verify your email</p>
+              <p className="text-xs text-amber-700 mt-1">
+                We sent a verification link to <strong>{userEmail}</strong>. Click the link in the email to verify your account.
+              </p>
+              {resendSent ? (
+                <p className="text-xs text-emerald-700 mt-2 font-medium">✓ Verification email resent!</p>
+              ) : (
+                <button
+                  onClick={handleResendVerification}
+                  disabled={resendLoading}
+                  className="mt-2 flex items-center gap-1.5 text-xs font-medium text-amber-800 hover:text-amber-900 transition-colors"
+                >
+                  <RefreshCw size={12} className={resendLoading ? "animate-spin" : ""} />
+                  {resendLoading ? "Sending…" : "Resend verification email"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Step 1 — Business Info */}
         {step === 1 && (

@@ -1,6 +1,7 @@
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { CommandPalette } from "@/components/command-palette";
+import { OnboardingTour } from "@/components/onboarding/tour";
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
@@ -106,6 +107,7 @@ export default async function AppLayout({
             {children}
           </main>
           <CommandPalette />
+          <OnboardingTour />
         </div>
       </div>
     </LocationProvider>

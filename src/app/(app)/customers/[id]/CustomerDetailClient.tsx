@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { archiveCustomer, addCustomerNote } from "../actions";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 
 type Customer = {
   id: string;
@@ -667,7 +669,19 @@ export default function CustomerDetailClient({
             <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-stone-400 mb-1">Loyalty Points</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-stone-400">Loyalty Points</h3>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <HelpCircle className="h-3.5 w-3.5 text-stone-300" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>Loyalty points are earned on every purchase. 500 points = Gold tier. Points can be redeemed for discounts on future sales.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <p className="text-4xl font-bold text-stone-900">{(customer as { loyalty_points?: number }).loyalty_points ?? 0}</p>
                   <p className="text-sm text-stone-500 mt-1">pts</p>
                 </div>

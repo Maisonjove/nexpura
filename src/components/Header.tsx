@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import NotificationBell from './NotificationBell';
 import LocationPicker from './LocationPicker';
+import { LanguageSwitcher } from './language-switcher';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 
 interface HeaderProps {
@@ -48,6 +49,7 @@ export default function Header({ user }: HeaderProps) {
           <span>🔍</span>
           {scanFlash && <span>Scan detected</span>}
         </div>
+        <LanguageSwitcher compact />
         <NotificationBell />
         <div className="w-8 h-8 rounded-full bg-stone-200 text-stone-700 flex items-center justify-center text-xs font-semibold">
           {initials}

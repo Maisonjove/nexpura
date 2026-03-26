@@ -217,7 +217,7 @@ export async function updateRepairStage(
   repairId: string,
   tenantId: string,
   stage: string
-): Promise<{ success?: boolean; error?: string }> {
+): Promise<{ success?: boolean; error?: string; smsSent?: boolean }> {
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { supabase, admin, userId } = ctx;
@@ -239,8 +239,121 @@ export async function updateRepairStage(
     actor: ctx.userId,
   });
 
+  // ── Auto-SMS on stage change ────────────────────────────────────────────
+  let smsSent = false;
+  try {
+    // Check if auto-SMS is enabled for this tenant
+    const { data: smsSettings } = await admin
+      .from("tenant_integrations")
+      .select("settings")
+      .eq("tenant_id", tenantId)
+      .eq("integration_type", "twilio")
+      .eq("enabled", true)
+      .single();
+
+    const settings = smsSettings?.settings as {
+      account_sid?: string;
+      auth_token?: string;
+      phone_number?: string;
+      phone_number_au?: string;
+      phone_number_us?: string;
+      auto_sms_on_stage_change?: boolean;
+    } | null;
+
+    // Only send if auto-SMS is enabled and stage warrants notification
+    const NOTIFY_STAGES = ["quoted", "in_progress", "quality_check", "ready"];
+    if (settings?.account_sid && settings?.auth_token && NOTIFY_STAGES.includes(stage)) {
+      // Get repair + customer details
+      const { data: repairRow } = await admin
+        .from("repairs")
+        .select("repair_number, item_description, customer_id")
+        .eq("id", repairId)
+        .single();
+
+      if (repairRow?.customer_id) {
+        const { data: customer } = await admin
+          .from("customers")
+          .select("full_name, mobile, phone")
+          .eq("id", repairRow.customer_id)
+          .single();
+
+        const customerPhone = customer?.mobile || customer?.phone;
+        if (customerPhone) {
+          const repairNumber = repairRow.repair_number ?? repairId.slice(-6).toUpperCase();
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com";
+
+          // Get subdomain for tracking link
+          const { data: websiteConfig } = await admin
+            .from("website_config")
+            .select("subdomain")
+            .eq("tenant_id", tenantId)
+            .maybeSingle();
+
+          const trackingUrl = websiteConfig?.subdomain
+            ? `${appUrl}/${websiteConfig.subdomain}/track/${repairId}`
+            : null;
+
+          const STAGE_SMS_MESSAGES: Record<string, string> = {
+            quoted: `Hi ${customer?.full_name?.split(" ")[0] ?? "there"}, your repair #${repairNumber} has been assessed and a quote is ready. Please contact us to approve.`,
+            in_progress: `Hi ${customer?.full_name?.split(" ")[0] ?? "there"}, great news! Work has started on your repair #${repairNumber}.`,
+            quality_check: `Hi ${customer?.full_name?.split(" ")[0] ?? "there"}, your repair #${repairNumber} is in final quality check — almost done!`,
+            ready: `Hi ${customer?.full_name?.split(" ")[0] ?? "there"}, your repair #${repairNumber} (${repairRow.item_description || "item"}) is ready for collection! 🎉${trackingUrl ? ` Track: ${trackingUrl}` : ""}`,
+          };
+
+          const message = STAGE_SMS_MESSAGES[stage];
+          if (message) {
+            const normalizedPhone = normalizePhoneNumber(customerPhone);
+            const isAU = isAustralianNumber(customerPhone);
+            const fromNumber = isAU
+              ? (settings.phone_number_au || process.env.TWILIO_SMS_NUMBER_AU || settings.phone_number)
+              : (settings.phone_number_us || process.env.TWILIO_SMS_NUMBER || settings.phone_number);
+
+            if (fromNumber) {
+              const fromNormalized = fromNumber.startsWith("+") ? fromNumber : `+${fromNumber}`;
+              const twRes = await fetch(
+                `https://api.twilio.com/2010-04-01/Accounts/${settings.account_sid}/Messages.json`,
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Basic ${Buffer.from(`${settings.account_sid}:${settings.auth_token}`).toString("base64")}`,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                  },
+                  body: new URLSearchParams({ From: fromNormalized, To: normalizedPhone, Body: message }),
+                }
+              );
+              if (twRes.ok) {
+                const twData = await twRes.json();
+                smsSent = true;
+                await admin.from("sms_sends").insert({
+                  tenant_id: tenantId,
+                  customer_id: repairRow.customer_id,
+                  phone: customerPhone,
+                  message,
+                  status: "sent",
+                  twilio_sid: twData.sid,
+                  context: { repair_id: repairId, stage, type: "stage_change" },
+                });
+                await admin.from("job_events").insert({
+                  tenant_id: tenantId,
+                  job_type: "repair",
+                  job_id: repairId,
+                  event_type: "sms_sent",
+                  description: `Auto SMS sent for stage: ${stageLabel}`,
+                  actor: userId,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (smsErr) {
+    logger.error("Auto SMS on stage change failed:", smsErr);
+    // Non-fatal — stage was updated successfully
+  }
+
   revalidatePath(`/repairs/${repairId}`);
-  return { success: true };
+  return { success: true, smsSent };
 }
 
 export async function emailRepairInvoice(

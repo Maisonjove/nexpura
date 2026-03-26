@@ -172,12 +172,27 @@ export default function Sidebar({
     return pathname === href || pathname.startsWith(href + '/');
   }
 
+  // Map hrefs to data-tour attribute values for the onboarding tour
+  const TOUR_TARGETS: Record<string, string> = {
+    '/dashboard': 'dashboard',
+    '/pos': 'pos',
+    '/inventory': 'inventory',
+    '/repairs': 'repairs',
+    '/customers': 'customers',
+    '/invoices': 'invoices',
+    '/reports': 'reports',
+    '/settings': 'settings',
+    '/help': 'help',
+  };
+
   function NavItem({ name, href, icon: Icon, badge, highlight }: { name: string; href: string; icon: React.ElementType; badge?: number; highlight?: boolean }) {
     const active = isActive(href);
+    const tourAttr = TOUR_TARGETS[href];
     return (
       <li>
         <Link
           href={href}
+          data-tour={tourAttr}
           className={`flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[13px] cursor-pointer transition-colors relative ${
             active
               ? 'bg-stone-800 text-white border-l-2 border-amber-500 -ml-px pl-[11px]'
