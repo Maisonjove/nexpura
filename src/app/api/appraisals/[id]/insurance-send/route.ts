@@ -13,11 +13,18 @@ import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { InsurancePDF } from "@/lib/pdf/InsurancePDF";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     const { id } = await params;
     const { tenantId } = await getAuthContext();

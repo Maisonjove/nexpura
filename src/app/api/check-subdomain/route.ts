@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { checkSubdomainQuerySchema } from "@/lib/schemas";
 
 // Reserved subdomains that cannot be used
 const RESERVED = [
@@ -20,26 +21,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ available: false, error: "Too many requests" }, { status: 429 });
   }
 
-  const subdomain = request.nextUrl.searchParams.get("subdomain");
+  const parseResult = checkSubdomainQuerySchema.safeParse({
+    subdomain: request.nextUrl.searchParams.get("subdomain"),
+  });
 
-  if (!subdomain) {
+  if (!parseResult.success) {
     return NextResponse.json(
-      { available: false, error: "Subdomain parameter required" },
+      { available: false, error: parseResult.error.issues[0]?.message || "Invalid subdomain" },
       { status: 400 }
     );
   }
 
   // Normalize to lowercase
-  const normalized = subdomain.toLowerCase().trim();
-
-  // Check format: alphanumeric + hyphens, 3-63 chars, no leading/trailing hyphens
-  const subdomainRegex = /^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])?$/;
-  if (!subdomainRegex.test(normalized) || normalized.length < 3) {
-    return NextResponse.json({
-      available: false,
-      error: "Subdomain must be 3-63 characters, alphanumeric with hyphens (no leading/trailing hyphens)",
-    });
-  }
+  const normalized = parseResult.data.subdomain.toLowerCase().trim();
 
   // Check reserved list
   if (RESERVED.includes(normalized)) {

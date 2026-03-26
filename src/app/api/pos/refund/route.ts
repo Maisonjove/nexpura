@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { validateCSRFForRequest } from "@/lib/csrf";
+import { posRefundSchema } from "@/lib/schemas";
 
 export async function POST(req: NextRequest) {
   // CSRF protection
@@ -10,10 +11,11 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { tenantId, saleId, items, refundMethod, reason, notes, total } = body;
-  if (!tenantId || !saleId || !items?.length) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  const parseResult = posRefundSchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
   }
+  const { tenantId, saleId, items, refundMethod, reason, notes, total } = parseResult.data;
 
   // Rate limit refunds per tenant to prevent fraud
   const { success: rateLimitOk } = await checkRateLimit(`pos-refund:${tenantId}`);

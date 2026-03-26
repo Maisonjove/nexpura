@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { migrationCreateSessionSchema } from '@/lib/schemas';
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success } = await checkRateLimit(ip, 'heavy');
+  if (!success) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -14,7 +22,12 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    const { sourcePlatform } = await req.json();
+    const body = await req.json();
+    const parseResult = migrationCreateSessionSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
+    }
+    const { sourcePlatform } = parseResult.data;
     const admin = createAdminClient();
 
     const { data: session, error } = await admin

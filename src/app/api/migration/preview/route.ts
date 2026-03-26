@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   parseCSVFull,
   parseXLSXFull,
@@ -76,6 +77,12 @@ function getMappings(file: MigrationFile): MappingEntry[] {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success } = await checkRateLimit(ip, 'heavy');
+  if (!success) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
+
   try {
     const { sessionId, tenantId } = await req.json() as { sessionId: string; tenantId: string };
     if (!sessionId || !tenantId) {

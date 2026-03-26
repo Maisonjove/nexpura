@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { findSaleQuerySchema } from "@/lib/schemas";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   const { searchParams } = new URL(req.url);
-  const q = searchParams.get("q");
-  const tenantId = searchParams.get("tenantId");
-  if (!q || !tenantId) return NextResponse.json({ error: "Missing params" }, { status: 400 });
+  const parseResult = findSaleQuerySchema.safeParse({
+    q: searchParams.get("q"),
+    tenantId: searchParams.get("tenantId"),
+  });
+  if (!parseResult.success) {
+    return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
+  }
+  const { q, tenantId } = parseResult.data;
 
   const admin = createAdminClient();
 

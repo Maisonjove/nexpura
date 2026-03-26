@@ -4,8 +4,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPaymentSuccessEmail, sendPaymentFailedEmail, sendCancellationEmail, sendAccountReactivatedEmail } from "@/lib/email/send";
 import Stripe from "stripe";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "webhook");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   const body = await request.text();
   const sig = request.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;

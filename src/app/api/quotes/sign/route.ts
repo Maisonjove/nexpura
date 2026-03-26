@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { checkRateLimit } from '@/lib/rate-limit';
 import logger from '@/lib/logger';
+import { quoteSignSchema } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,14 +21,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { quoteId, signatureData } = body;
-
-    if (!quoteId || !signatureData) {
-      return NextResponse.json(
-        { error: 'Quote ID and signature data are required' },
-        { status: 400 }
-      );
+    const parseResult = quoteSignSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
+    const { quoteId, signatureData } = parseResult.data;
 
     const admin = createAdminClient();
 

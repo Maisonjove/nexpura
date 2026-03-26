@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyBackupCode } from '@/lib/totp';
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { sms2FAVerifyLoginSchema } from '@/lib/schemas';
 
 export async function POST(request: Request) {
   // Strict rate limiting for auth endpoints
@@ -14,11 +15,11 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { userId, code, isBackupCode } = body;
-
-    if (!userId || !code) {
-      return NextResponse.json({ error: 'User ID and code required' }, { status: 400 });
+    const parseResult = sms2FAVerifyLoginSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
+    const { userId, code, isBackupCode } = parseResult.data;
 
     const admin = createAdminClient();
     

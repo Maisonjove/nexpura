@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyTOTPToken, verifyBackupCode } from '@/lib/totp';
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { twoFAValidateSchema } from '@/lib/schemas';
 
 /**
  * Validate a 2FA code during login
@@ -17,11 +18,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { userId, code } = await request.json();
-
-    if (!userId || !code) {
-      return NextResponse.json({ error: 'Missing userId or code' }, { status: 400 });
+    const body = await request.json();
+    const parseResult = twoFAValidateSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
+    const { userId, code } = parseResult.data;
 
     const admin = createAdminClient();
     

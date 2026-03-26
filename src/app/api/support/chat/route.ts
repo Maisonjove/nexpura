@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { supportChatSchema } from "@/lib/schemas";
 
 const SYSTEM_PROMPT = `You are the Nexpura Product Concierge, a deeply knowledgeable and helpful support assistant for the Nexpura jewellery business management platform.
 
@@ -43,11 +44,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const { message } = await req.json();
-
-    if (!message) {
-      return NextResponse.json({ error: "Message is required" }, { status: 400 });
+    const body = await req.json();
+    const parseResult = supportChatSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
+    const { message } = parseResult.data;
 
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,

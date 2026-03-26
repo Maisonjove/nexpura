@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { inviteAcceptSchema } from "@/lib/schemas";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,11 +13,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const { token, userId } = await request.json();
-
-    if (!token || !userId) {
-      return NextResponse.json({ error: "Missing token or userId" }, { status: 400 });
+    const body = await request.json();
+    const parseResult = inviteAcceptSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
+    const { token, userId } = parseResult.data;
 
     const admin = createAdminClient();
 

@@ -13,6 +13,7 @@ import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { whatsappNotifySchema } from "@/lib/schemas";
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,14 +32,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { to, message } = body as { to?: string; message?: string };
-
-    if (!to || !message) {
-      return NextResponse.json(
-        { error: "to and message are required" },
-        { status: 400 }
-      );
+    const parseResult = whatsappNotifySchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
+    const { to, message } = parseResult.data;
 
     const result = await sendTwilioWhatsApp(to, message);
 

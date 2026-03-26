@@ -1,15 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import logger from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { sms2FASendLoginSchema } from '@/lib/schemas';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success } = await checkRateLimit(ip, 'auth');
+  if (!success) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
+
   try {
     const body = await request.json();
-    const { userId } = body;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    const parseResult = sms2FASendLoginSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
+    const { userId } = parseResult.data;
 
     const admin = createAdminClient();
     

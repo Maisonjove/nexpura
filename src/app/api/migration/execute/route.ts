@@ -120,7 +120,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 403 });
     }
 
-    const { sessionId } = await req.json() as { sessionId: string };
+    const body = await req.json();
+    const parseResult = (await import('@/lib/schemas')).migrationExecuteSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
+    }
+    const { sessionId } = parseResult.data;
 
     // SECURITY: enforce tenant ownership on session lookup.
     // Without .eq('tenant_id', tenantId), an authenticated user from Tenant A

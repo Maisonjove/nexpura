@@ -3,10 +3,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
 import { randomUUID } from "crypto";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   const body = await req.json();
   const { jobId, tenantId } = body;
   if (!jobId || !tenantId) return NextResponse.json({ error: "Missing params" }, { status: 400 });

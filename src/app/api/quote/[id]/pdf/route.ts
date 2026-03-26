@@ -5,11 +5,18 @@ import { renderToStream } from "@react-pdf/renderer";
 import React from "react";
 import { QuotePDF, type QuotePDFProps } from "@/lib/pdf/QuotePDF";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   // Auth check — also allow token-based access via ?token= query param for email links
   const token = req.nextUrl.searchParams.get("token");
   if (!token) {

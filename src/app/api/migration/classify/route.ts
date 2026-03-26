@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const NEXPURA_SCHEMA = `
 Customers: full_name, first_name, last_name, email, phone, mobile, address_line1, city, state, postcode, country, ring_size, bracelet_size, notes, date_of_birth, anniversary, store_credit, loyalty_points, created_at
@@ -20,6 +21,12 @@ const PLATFORM_HINTS: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success } = await checkRateLimit(ip, 'heavy');
+  if (!success) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
+
   try {
     const { fileId, fileName, headers, sampleRows, tenantId, sessionId } = await req.json();
 

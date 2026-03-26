@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration } from "@/lib/integrations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { whatsappSendSchema } from "@/lib/schemas";
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,11 +24,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
     }
     const body = await req.json();
-    const { to, message } = body as { to: string; message: string };
-
-    if (!to || !message) {
-      return NextResponse.json({ error: "to and message are required" }, { status: 400 });
+    const parseResult = whatsappSendSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
+    const { to, message } = parseResult.data;
 
     const integration = await getIntegration(tenantId, "whatsapp");
     if (!integration || integration.status !== "connected") {

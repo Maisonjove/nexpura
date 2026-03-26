@@ -1,10 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateBackupCodes, hashBackupCode } from '@/lib/totp';
 import logger from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { sms2FAVerifySchema } from '@/lib/schemas';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success } = await checkRateLimit(ip, 'auth');
+  if (!success) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -14,11 +22,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { code } = body;
-
-    if (!code || code.length !== 6) {
-      return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
+    const parseResult = sms2FAVerifySchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
+    const { code } = parseResult.data;
 
     const admin = createAdminClient();
     

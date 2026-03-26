@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { jobEventSchema } from "@/lib/schemas";
 
 export async function POST(req: NextRequest) {
   // Auth check
@@ -17,7 +18,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const { tenantId, jobType, jobId, eventType, description, actor } = await req.json();
+  const body = await req.json();
+  const parseResult = jobEventSchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
+  }
+  const { tenantId, jobType, jobId, eventType, description, actor } = parseResult.data;
   const admin = createAdminClient();
   await admin.from("job_events").insert({
     tenant_id: tenantId,

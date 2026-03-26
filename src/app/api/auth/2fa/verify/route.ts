@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyTOTPToken, generateBackupCodes, hashBackupCode } from '@/lib/totp';
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { twoFAVerifySchema } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
   // Strict rate limiting for auth endpoints
@@ -21,11 +22,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { code, secret } = await request.json();
-
-    if (!code || !secret) {
-      return NextResponse.json({ error: 'Missing code or secret' }, { status: 400 });
+    const body = await request.json();
+    const parseResult = twoFAVerifySchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
+    const { code, secret } = parseResult.data;
 
     // Verify the TOTP code
     const isValid = verifyTOTPToken(code, secret);

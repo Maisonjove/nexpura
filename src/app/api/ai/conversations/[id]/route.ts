@@ -1,11 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "ai");
+  if (!success) {
+    return Response.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   const { id } = await params;
 
   const supabase = await createClient();

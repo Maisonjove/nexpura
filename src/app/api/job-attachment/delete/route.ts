@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { jobAttachmentDeleteSchema } from "@/lib/schemas";
 
 export async function POST(req: NextRequest) {
   // Auth check
@@ -17,8 +18,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const { attachmentId, tenantId, fileUrl } = await req.json();
-  if (!attachmentId || !tenantId) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+  const body = await req.json();
+  const parseResult = jobAttachmentDeleteSchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
+  }
+  const { attachmentId, tenantId, fileUrl } = parseResult.data;
 
   const admin = createAdminClient();
 
