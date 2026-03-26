@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sendPassportEmail } from "@/lib/email/send";
 import logger from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getTenantAndUser() {
   const supabase = await createClient();
@@ -122,6 +123,15 @@ export async function createPassport(formData: FormData): Promise<void> {
     await sendPassportEmail(passport.id);
   }
 
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "passport_create",
+    entityType: "passport",
+    entityId: passport.id,
+    newData: { passportUid, title, jewelleryType, currentOwnerName },
+  });
+
   revalidatePath("/passports");
     redirect(`/passports/${passport.id}`);
   } catch (err) {
@@ -214,6 +224,15 @@ export async function updatePassport(id: string, formData: FormData): Promise<vo
     created_by: userId,
   });
 
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "passport_update",
+    entityType: "passport",
+    entityId: id,
+    newData: { title, jewelleryType, currentOwnerName },
+  });
+
   revalidatePath(`/passports/${id}`);
     revalidatePath("/passports");
     redirect(`/passports/${id}`);
@@ -283,6 +302,19 @@ export async function transferOwnership(
       new_owner_email: newOwnerEmail,
     },
     created_by: userId,
+  });
+
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "passport_transfer",
+    entityType: "passport",
+    entityId: passportId,
+    oldData: { 
+      ownerName: passport?.current_owner_name, 
+      ownerEmail: passport?.current_owner_email,
+    },
+    newData: { ownerName: newOwnerName, ownerEmail: newOwnerEmail },
   });
 
   revalidatePath(`/passports/${passportId}`);

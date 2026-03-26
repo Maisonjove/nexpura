@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -165,6 +166,21 @@ export async function createAppraisal(formData: FormData): Promise<{ id?: string
 
     if (error) return { error: error.message };
     await logActivity(tenantId, userId, "created_appraisal", "appraisal", data?.id, formData.get("item_name") as string);
+    
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "appraisal_create",
+      entityType: "appraisal",
+      entityId: data?.id,
+      newData: { 
+        appraisalNumber: appraisalNum, 
+        itemName: formData.get("item_name") as string,
+        customerName: formData.get("customer_name") as string,
+        appraisedValue: parseNum("appraised_value"),
+      },
+    });
+    
     revalidatePath("/appraisals");
     return { id: data?.id };
   } catch (e) {
@@ -177,14 +193,34 @@ export async function updateAppraisal(
   updates: Partial<Appraisal>
 ): Promise<{ error?: string }> {
   try {
-    const { tenantId } = await getAuthContext();
+    const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
+    
+    // Get old data for audit
+    const { data: oldData } = await admin
+      .from("appraisals")
+      .select("item_name, appraised_value, status")
+      .eq("id", id)
+      .eq("tenant_id", tenantId)
+      .single();
+    
     const { error } = await admin
       .from("appraisals")
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("tenant_id", tenantId);
     if (error) return { error: error.message };
+    
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "appraisal_update",
+      entityType: "appraisal",
+      entityId: id,
+      oldData: oldData || undefined,
+      newData: updates as Record<string, unknown>,
+    });
+    
     revalidatePath("/appraisals");
     revalidatePath(`/appraisals/${id}`);
     return {};
@@ -204,6 +240,16 @@ export async function issueAppraisal(id: string): Promise<{ error?: string }> {
       .eq("tenant_id", tenantId);
     if (error) return { error: error.message };
     await logActivity(tenantId, userId, "issued_appraisal", "appraisal", id, "");
+    
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "appraisal_issue",
+      entityType: "appraisal",
+      entityId: id,
+      newData: { status: "issued", issued_at: new Date().toISOString() },
+    });
+    
     revalidatePath("/appraisals");
     revalidatePath(`/appraisals/${id}`);
     return {};

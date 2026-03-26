@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { getTenantEmailSender } from "../email/actions";
 import logger from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -288,6 +289,14 @@ export async function inviteTeamMember(
     // Don't fail the invite if email fails - they can still use the link
   }
 
+  await logAuditEvent({
+    tenantId: ctx.tenantId,
+    userId: ctx.userId,
+    action: "team_member_invite",
+    entityType: "team_member",
+    newData: { name, email, role },
+  });
+
   revalidatePath("/settings/roles");
   return { success: true, inviteToken };
 }
@@ -389,7 +398,7 @@ export async function removeMember(memberId: string): Promise<{ success?: boolea
   // Check if trying to remove owner
   const { data: member } = await admin
     .from("team_members")
-    .select("role")
+    .select("role, name, email")
     .eq("id", memberId)
     .eq("tenant_id", ctx.tenantId)
     .single();
@@ -403,6 +412,15 @@ export async function removeMember(memberId: string): Promise<{ success?: boolea
     .eq("tenant_id", ctx.tenantId);
 
   if (error) return { error: error.message };
+
+  await logAuditEvent({
+    tenantId: ctx.tenantId,
+    userId: ctx.userId,
+    action: "team_member_delete",
+    entityType: "team_member",
+    entityId: memberId,
+    oldData: member || undefined,
+  });
   
   revalidatePath("/settings/roles");
   return { success: true };

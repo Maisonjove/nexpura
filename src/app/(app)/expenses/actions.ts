@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -99,6 +100,15 @@ export async function createExpense(
 
   if (error || !data) return { error: error?.message ?? "Failed to create expense" };
 
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "expense_create",
+    entityType: "expense",
+    entityId: data.id,
+    newData: { description, amount, category: str("category") || "other" },
+  });
+
   redirect(`/expenses/${data.id}`);
 }
 
@@ -113,13 +123,21 @@ export async function updateExpense(
     return { error: "Not authenticated" };
   }
 
-  const { supabase, tenantId } = ctx;
+  const { supabase, userId, tenantId } = ctx;
 
   const str = (key: string) => (formData.get(key) as string) || null;
   const description = (formData.get("description") as string)?.trim();
   const amount = parseFloat(formData.get("amount") as string);
 
   const today = new Date().toISOString().split("T")[0];
+
+  // Get old data for audit
+  const { data: oldData } = await supabase
+    .from("expenses")
+    .select("description, amount, category")
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
 
   const { error } = await supabase
     .from("expenses")
@@ -136,6 +154,17 @@ export async function updateExpense(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "expense_update",
+    entityType: "expense",
+    entityId: id,
+    oldData: oldData || undefined,
+    newData: { description, amount, category: str("category") || "other" },
+  });
+
   redirect(`/expenses/${id}`);
 }
 
@@ -149,7 +178,15 @@ export async function deleteExpense(
     return { error: "Not authenticated" };
   }
 
-  const { supabase, tenantId } = ctx;
+  const { supabase, userId, tenantId } = ctx;
+
+  // Get old data for audit
+  const { data: oldData } = await supabase
+    .from("expenses")
+    .select("description, amount, category")
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
 
   const { error } = await supabase
     .from("expenses")
@@ -158,5 +195,15 @@ export async function deleteExpense(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "expense_delete",
+    entityType: "expense",
+    entityId: id,
+    oldData: oldData || undefined,
+  });
+
   redirect("/expenses");
 }

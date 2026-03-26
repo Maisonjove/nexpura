@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -96,6 +97,16 @@ export async function createVoucher(formData: FormData): Promise<{ id?: string; 
     .single();
 
   if (error || !voucher) return { error: error?.message ?? "Failed to create voucher" };
+
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "voucher_create",
+    entityType: "voucher",
+    entityId: voucher.id,
+    newData: { code, amount, issued_to_name: (formData.get("issued_to_name") as string) || null },
+  });
+
   redirect(`/vouchers/${voucher.id}`);
 }
 
@@ -123,12 +134,32 @@ export async function lookupVoucher(code: string): Promise<{
 export async function voidVoucher(id: string): Promise<{ success?: boolean; error?: string }> {
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
-  const { admin, tenantId } = ctx;
+  const { admin, userId, tenantId } = ctx;
+
+  // Get old data for audit
+  const { data: oldData } = await admin
+    .from("gift_vouchers")
+    .select("code, balance, status")
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
+
   const { error } = await admin
     .from("gift_vouchers")
     .update({ status: "voided" })
     .eq("id", id)
     .eq("tenant_id", tenantId);
   if (error) return { error: error.message };
+
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "voucher_void",
+    entityType: "voucher",
+    entityId: id,
+    oldData: oldData || undefined,
+    newData: { status: "voided" },
+  });
+
   redirect("/vouchers");
 }

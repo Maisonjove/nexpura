@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -241,6 +242,8 @@ export async function saveEODReconciliation(params: {
     submitted_at: params.submit ? new Date().toISOString() : null,
   };
 
+  let resultId: string | undefined;
+  
   if (params.summary.existingReconciliation) {
     const { data, error } = await admin
       .from("eod_reconciliations")
@@ -249,7 +252,7 @@ export async function saveEODReconciliation(params: {
       .select("id")
       .single();
     if (error) return { error: error.message };
-    return { id: data?.id };
+    resultId = data?.id;
   } else {
     const { data, error } = await admin
       .from("eod_reconciliations")
@@ -257,8 +260,28 @@ export async function saveEODReconciliation(params: {
       .select("id")
       .single();
     if (error) return { error: error.message };
-    return { id: data?.id };
-    }
+    resultId = data?.id;
+  }
+  
+  // Log audit event if submitted
+  if (params.submit && resultId) {
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "eod_submit",
+      entityType: "eod_reconciliation",
+      entityId: resultId,
+      newData: { 
+        date: params.date,
+        totalRevenue: params.summary.totalRevenue,
+        cashCounted: params.cashCounted,
+        cashVariance,
+        transactionCount: params.summary.transactionCount,
+      },
+    });
+  }
+  
+  return { id: resultId };
   } catch (err) {
     logger.error("[saveEODReconciliation] Error:", err);
     return { error: err instanceof Error ? err.message : "Failed to save reconciliation" };

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function updateEnquiryStatus(
   enquiryId: string,
@@ -23,6 +24,15 @@ export async function updateEnquiryStatus(
     if (!userData?.tenant_id) return { error: "No tenant" };
 
     const admin = createAdminClient();
+    
+    // Get old status for audit
+    const { data: oldData } = await admin
+      .from("shop_enquiries")
+      .select("status")
+      .eq("id", enquiryId)
+      .eq("tenant_id", userData.tenant_id)
+      .single();
+    
     const { error } = await admin
       .from("shop_enquiries")
       .update({ status })
@@ -30,6 +40,17 @@ export async function updateEnquiryStatus(
       .eq("tenant_id", userData.tenant_id);
 
     if (error) return { error: error.message };
+    
+    await logAuditEvent({
+      tenantId: userData.tenant_id,
+      userId: user.id,
+      action: "enquiry_status_change",
+      entityType: "enquiry",
+      entityId: enquiryId,
+      oldData: oldData || undefined,
+      newData: { status },
+    });
+    
     revalidatePath("/enquiries");
     return { success: true };
   } catch (error) {

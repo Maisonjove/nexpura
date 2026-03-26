@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -47,16 +48,26 @@ export async function inviteTeamMember(formData: FormData) {
     // Generate invite token
     const inviteToken = crypto.randomUUID();
 
-    const { error } = await supabase.from("team_members").insert({
+    const { data: member, error } = await supabase.from("team_members").insert({
       tenant_id: tenantId,
       name,
       email,
       role,
       invite_token: inviteToken,
       invite_accepted: false,
-    });
+    }).select("id").single();
 
     if (error) return { error: error.message };
+
+    const { data: { user } } = await supabase.auth.getUser();
+    await logAuditEvent({
+      tenantId,
+      userId: user?.id,
+      action: "team_member_invite",
+      entityType: "team_member",
+      entityId: member?.id,
+      newData: { name, email, role },
+    });
 
     revalidatePath("/settings/team");
     return { success: true, inviteToken };
@@ -68,7 +79,15 @@ export async function inviteTeamMember(formData: FormData) {
 
 export async function updateTeamMemberRole(memberId: string, role: string) {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { supabase, userId, tenantId } = await getAuthContext();
+
+    // Get old role for audit
+    const { data: oldData } = await supabase
+      .from("team_members")
+      .select("role, name")
+      .eq("id", memberId)
+      .eq("tenant_id", tenantId)
+      .single();
 
     const { error } = await supabase
       .from("team_members")
@@ -77,6 +96,17 @@ export async function updateTeamMemberRole(memberId: string, role: string) {
       .eq("tenant_id", tenantId);
 
     if (error) return { error: error.message };
+
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "team_member_update",
+      entityType: "team_member",
+      entityId: memberId,
+      oldData: oldData || undefined,
+      newData: { role },
+    });
+
     revalidatePath("/settings/team");
     return { success: true };
   } catch (error) {
@@ -87,7 +117,15 @@ export async function updateTeamMemberRole(memberId: string, role: string) {
 
 export async function removeTeamMember(memberId: string) {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { supabase, userId, tenantId } = await getAuthContext();
+
+    // Get member data for audit
+    const { data: oldData } = await supabase
+      .from("team_members")
+      .select("name, email, role")
+      .eq("id", memberId)
+      .eq("tenant_id", tenantId)
+      .single();
 
     const { error } = await supabase
       .from("team_members")
@@ -96,6 +134,16 @@ export async function removeTeamMember(memberId: string) {
       .eq("tenant_id", tenantId);
 
     if (error) return { error: error.message };
+
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "team_member_delete",
+      entityType: "team_member",
+      entityId: memberId,
+      oldData: oldData || undefined,
+    });
+
     revalidatePath("/settings/team");
     return { success: true };
   } catch (error) {

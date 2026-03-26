@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function addLocation(formData: {
   name: string;
@@ -56,6 +57,15 @@ export async function addLocation(formData: {
       return { error: error.message };
     }
 
+    await logAuditEvent({
+      tenantId: userData.tenant_id,
+      userId: user.id,
+      action: "location_create",
+      entityType: "location",
+      entityId: data.id,
+      newData: { name: formData.name, type: formData.type, address: formData.address_line1 },
+    });
+
     revalidatePath("/settings/locations");
     return { data };
   } catch (error) {
@@ -68,6 +78,15 @@ export async function toggleLocationActive(locationId: string, isActive: boolean
   try {
     const supabase = await createClient();
     
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
+    
+    const { data: userData } = await supabase
+      .from("users")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
+    
     const { error } = await supabase
       .from("locations")
       .update({ is_active: !isActive })
@@ -76,6 +95,18 @@ export async function toggleLocationActive(locationId: string, isActive: boolean
     if (error) {
       logger.error("Toggle location error:", error);
       return { error: error.message };
+    }
+
+    if (userData?.tenant_id) {
+      await logAuditEvent({
+        tenantId: userData.tenant_id,
+        userId: user.id,
+        action: "location_update",
+        entityType: "location",
+        entityId: locationId,
+        oldData: { is_active: isActive },
+        newData: { is_active: !isActive },
+      });
     }
 
     revalidatePath("/settings/locations");

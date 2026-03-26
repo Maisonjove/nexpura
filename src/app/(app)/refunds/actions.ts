@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { withIdempotency } from "@/lib/idempotency";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -233,6 +234,23 @@ export async function processRefund(params: {
         .update({ status: "refunded" })
         .eq("id", params.originalSaleId)
         .eq("tenant_id", tenantId);
+
+      // Log audit event
+      await logAuditEvent({
+        tenantId,
+        userId,
+        action: "refund_create",
+        entityType: "refund",
+        entityId: refund.id,
+        newData: { 
+          refundNumber, 
+          total, 
+          reason: params.reason, 
+          refundMethod: params.refundMethod,
+          originalSaleId: params.originalSaleId,
+          itemCount: params.items.length,
+        },
+      });
 
       return { id: refund.id, refundNumber };
     }

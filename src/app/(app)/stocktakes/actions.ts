@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -134,6 +135,16 @@ export async function createStocktake(
 
     if (error) return { error: error.message };
     await logActivity(tenantId, userId, "created_stocktake", "stocktake", data?.id, name);
+    
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "stocktake_create",
+      entityType: "stocktake",
+      entityId: data?.id,
+      newData: { name, location: location || null, referenceNumber: refNum },
+    });
+    
     revalidatePath("/stocktakes");
     return { id: data?.id };
   } catch (e) {
@@ -229,6 +240,8 @@ export async function completeStocktake(stocktakeId: string, applyAdjustments: b
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
+    let itemsAdjustedCount = 0;
+    
     if (applyAdjustments) {
       // Apply counted quantities to inventory
       const { data: items } = await admin
@@ -238,6 +251,8 @@ export async function completeStocktake(stocktakeId: string, applyAdjustments: b
         .not("counted_qty", "is", null)
         .not("inventory_id", "is", null);
 
+      itemsAdjustedCount = items?.length || 0;
+      
       for (const item of items ?? []) {
         if (item.inventory_id && item.counted_qty !== null) {
           await admin
@@ -256,6 +271,16 @@ export async function completeStocktake(stocktakeId: string, applyAdjustments: b
       .eq("tenant_id", tenantId);
 
     await logActivity(tenantId, userId, "completed_stocktake", "stocktake", stocktakeId, applyAdjustments ? "with adjustments" : "without adjustments");
+    
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "stocktake_complete",
+      entityType: "stocktake",
+      entityId: stocktakeId,
+      newData: { applyAdjustments, itemsAdjusted: itemsAdjustedCount },
+    });
+    
     revalidatePath("/stocktakes");
     revalidatePath(`/stocktakes/${stocktakeId}`);
     return {};

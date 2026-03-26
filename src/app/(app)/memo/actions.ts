@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -138,6 +139,21 @@ export async function createMemoItem(formData: FormData): Promise<{ id?: string;
 
     if (error) return { error: error.message };
     await logActivity(tenantId, userId, `created_${memoType}`, "memo_item", data?.id, formData.get("item_name") as string);
+    
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "memo_create",
+      entityType: "memo",
+      entityId: data?.id,
+      newData: { 
+        memoNumber: memoNum, 
+        memoType, 
+        itemName: formData.get("item_name") as string,
+        customerName: (formData.get("customer_name") as string) || null,
+      },
+    });
+    
     revalidatePath("/memo");
     return { id: data?.id };
   } catch (e) {
@@ -153,6 +169,15 @@ export async function updateMemoStatus(
   try {
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
+    
+    // Get old status for audit
+    const { data: oldData } = await admin
+      .from("memo_items")
+      .select("status, item_name")
+      .eq("id", id)
+      .eq("tenant_id", tenantId)
+      .single();
+    
     const { error } = await admin
       .from("memo_items")
       .update({ status, ...extraFields, updated_at: new Date().toISOString() })
@@ -160,6 +185,17 @@ export async function updateMemoStatus(
       .eq("tenant_id", tenantId);
     if (error) return { error: error.message };
     await logActivity(tenantId, userId, `memo_status_${status}`, "memo_item", id, "");
+    
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "memo_status_change",
+      entityType: "memo",
+      entityId: id,
+      oldData: oldData || undefined,
+      newData: { status, ...extraFields },
+    });
+    
     revalidatePath("/memo");
     revalidatePath(`/memo/${id}`);
     return {};

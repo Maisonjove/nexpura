@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { sendBulkMarketingEmail, replaceTemplateVariables } from "@/lib/marketing/email";
 import { getRecipientsForFilter } from "@/lib/marketing/segments";
+import { logAuditEvent } from "@/lib/audit";
 
 interface CampaignData {
   name: string;
@@ -49,6 +50,15 @@ export async function createCampaign(data: CampaignData) {
   }).select().single();
 
   if (error) return { error: error.message };
+
+  await logAuditEvent({
+    tenantId: userData.tenant_id,
+    userId: user.id,
+    action: "campaign_create",
+    entityType: "campaign",
+    entityId: campaign.id,
+    newData: { name: data.name, subject: data.subject, recipientType: data.recipient_type },
+  });
 
   revalidatePath("/marketing/campaigns");
   return { success: true, campaign };
@@ -97,6 +107,15 @@ export async function updateCampaign(id: string, data: Partial<CampaignData>) {
 
   if (error) return { error: error.message };
 
+  await logAuditEvent({
+    tenantId: userData.tenant_id,
+    userId: user.id,
+    action: "campaign_update",
+    entityType: "campaign",
+    entityId: id,
+    newData: data as Record<string, unknown>,
+  });
+
   revalidatePath("/marketing/campaigns");
   revalidatePath(`/marketing/campaigns/${id}`);
   return { success: true };
@@ -138,6 +157,15 @@ export async function deleteCampaign(id: string) {
     .eq("tenant_id", userData.tenant_id);
 
   if (error) return { error: error.message };
+
+  await logAuditEvent({
+    tenantId: userData.tenant_id,
+    userId: user.id,
+    action: "campaign_delete",
+    entityType: "campaign",
+    entityId: id,
+    oldData: { name: existing.status },
+  });
 
   revalidatePath("/marketing/campaigns");
   return { success: true };
@@ -274,6 +302,20 @@ export async function sendCampaignNow(id: string) {
         },
       })
       .eq("id", id);
+
+    await logAuditEvent({
+      tenantId,
+      userId: user.id,
+      action: "campaign_send",
+      entityType: "campaign",
+      entityId: id,
+      newData: { 
+        sent: result.sent, 
+        failed: result.failed, 
+        recipientCount: recipientData.length,
+        subject: campaign.subject,
+      },
+    });
 
     revalidatePath("/marketing/campaigns");
     revalidatePath(`/marketing/campaigns/${id}`);
