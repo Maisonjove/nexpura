@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { generateBarcodeValue } from "@/lib/barcode";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getTenantId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -147,6 +148,16 @@ export async function createInventoryItem(formData: FormData) {
       created_by: user?.id,
     });
   }
+
+  // Log audit event
+  await logAuditEvent({
+    tenantId,
+    userId: user?.id,
+    action: "inventory_create",
+    entityType: "inventory",
+    entityId: item.id,
+    newData: { name, sku, retailPrice, quantity, status },
+  });
 
   revalidatePath("/inventory");
   redirect(`/inventory/${item.id}`);

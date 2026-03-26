@@ -1,21 +1,14 @@
 /**
  * TOTP (Time-based One-Time Password) utilities for 2FA
  */
-import { authenticator } from 'otplib';
+import { generateSecret as generateOTPSecret, generateURI, verifySync } from 'otplib';
 import QRCode from 'qrcode';
-
-// Configure authenticator
-authenticator.options = {
-  step: 30, // 30-second window
-  digits: 6,
-  algorithm: 'sha1',
-};
 
 /**
  * Generate a new TOTP secret for a user
  */
 export function generateTOTPSecret(): string {
-  return authenticator.generateSecret();
+  return generateOTPSecret();
 }
 
 /**
@@ -26,7 +19,15 @@ export async function generateTOTPQRCode(
   email: string,
   issuer: string = 'Nexpura'
 ): Promise<string> {
-  const otpauth = authenticator.keyuri(email, issuer, secret);
+  const otpauth = generateURI({
+    secret,
+    issuer,
+    label: `${issuer}:${email}`,
+    algorithm: 'sha1',
+    digits: 6,
+    period: 30,
+  });
+  
   return QRCode.toDataURL(otpauth, {
     width: 200,
     margin: 2,
@@ -42,7 +43,15 @@ export async function generateTOTPQRCode(
  */
 export function verifyTOTPToken(token: string, secret: string): boolean {
   try {
-    return authenticator.verify({ token, secret });
+    const result = verifySync({
+      token,
+      secret,
+      strategy: 'totp',
+      algorithm: 'sha1',
+      digits: 6,
+      period: 30,
+    });
+    return result.valid;
   } catch {
     return false;
   }

@@ -10,7 +10,7 @@ import {
   RotateCcw, Gift, ClipboardList, ArrowLeftRight, Star,
   Bell, Link as LinkIcon, TrendingUp, ArrowRightLeft,
   ChevronDown, ChevronRight, Layers, MessageSquare, Sparkles, Plug,
-  Moon, UserCog, MapPin, Mail, Printer, Megaphone, Send, Zap, HelpCircle
+  Moon, UserCog, MapPin, Mail, Printer, Megaphone, Send, Zap, HelpCircle, Activity
 } from 'lucide-react';
 
 /* ─── Primary nav (always visible, no group header) ─── */
@@ -94,6 +94,7 @@ const NAV_GROUPS = [
       { name: 'Documents',    href: '/documents',          icon: FileText },
       { name: 'Connected Services', href: '/integrations', icon: Plug },
       { name: 'Printers',     href: '/settings/printing',  icon: Printer },
+      { name: 'Activity Log', href: '/settings/activity',  icon: Activity },
       { name: 'Support',      href: '/support',            icon: MessageSquare },
       { name: 'Help & FAQ',   href: '/help',               icon: HelpCircle },
     ],
@@ -189,11 +190,14 @@ export default function Sidebar({
     const active = isActive(href);
     const tourAttr = TOUR_TARGETS[href];
     return (
-      <li>
+      <li role="none">
         <Link
           href={href}
           data-tour={tourAttr}
-          className={`flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[13px] cursor-pointer transition-colors relative ${
+          role="menuitem"
+          aria-current={active ? 'page' : undefined}
+          aria-label={badge ? `${name}, ${badge} items` : name}
+          className={`flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[13px] cursor-pointer transition-colors relative focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A1A1A] outline-none ${
             active
               ? 'bg-stone-800 text-white border-l-2 border-amber-500 -ml-px pl-[11px]'
               : highlight
@@ -204,10 +208,14 @@ export default function Sidebar({
           <Icon
             size={14}
             className={`flex-shrink-0 ${active ? 'text-amber-400' : highlight ? 'text-amber-400' : 'text-stone-500'}`}
+            aria-hidden="true"
           />
           <span className="flex-1 truncate">{name}</span>
           {badge !== undefined && badge > 0 && (
-            <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+            <span 
+              className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center"
+              aria-label={`${badge} items requiring attention`}
+            >
               {badge}
             </span>
           )}
@@ -217,17 +225,20 @@ export default function Sidebar({
   }
 
   return (
-    <aside className="w-60 h-screen bg-[#1A1A1A] flex flex-col lg:fixed left-0 top-0 z-30">
+    <aside 
+      className="w-60 h-screen bg-[#1A1A1A] flex flex-col lg:fixed left-0 top-0 z-30"
+      aria-label="Main navigation"
+    >
       {/* Logo */}
       <div className="px-5 py-4 flex items-center gap-2.5 border-b border-white/[0.06]">
-        <div className="w-7 h-7 rounded bg-amber-600 flex items-center justify-center flex-shrink-0">
+        <div className="w-7 h-7 rounded bg-amber-600 flex items-center justify-center flex-shrink-0" aria-hidden="true">
           <Gem size={14} color="white" />
         </div>
         <span className="text-white font-semibold text-sm tracking-tight">Nexpura</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 scrollbar-thin">
+      <nav className="flex-1 overflow-y-auto py-3 scrollbar-thin" role="navigation">
         {/* Primary items — always visible, no header */}
         <ul className="space-y-0.5 px-2 mb-4">
           {filterItems(PRIMARY_ITEMS).map((item) => (

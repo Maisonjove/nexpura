@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
 import { PWAProvider } from "@/components/PWAProvider";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
+import { LiveRegionProvider } from "@/components/LiveRegion";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -75,11 +76,13 @@ export default function RootLayout({
         "min-h-screen bg-background font-sans antialiased",
         inter.variable
       )}>
-        <PWAProvider>
-          {children}
-          <OfflineIndicator />
-        </PWAProvider>
-        <Toaster position="bottom-right" richColors />
+        <LiveRegionProvider>
+          <PWAProvider>
+            {children}
+            <OfflineIndicator />
+          </PWAProvider>
+          <Toaster position="bottom-right" richColors />
+        </LiveRegionProvider>
       </body>
     </html>
   );
