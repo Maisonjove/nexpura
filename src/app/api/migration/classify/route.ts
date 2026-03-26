@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     }
 
     const headerStr = headers.join(', ');
-    const sampleStr = sampleRows.slice(0, 5).map((row: any[]) => row.join(', ')).join('\n');
+    const sampleStr = sampleRows.slice(0, 5).map((row: string[]) => row.join(', ')).join('\n');
 
     const prompt = `You are a jewellery POS data migration expert. Analyse this CSV export and classify it.
 
@@ -100,7 +100,15 @@ Return JSON with:
 
     // Create mapping record
     if (result.suggestedMappings && result.suggestedMappings.length > 0) {
-      const mappings = result.suggestedMappings.map((m: any) => ({
+      interface SuggestedMapping {
+        sourceColumn: string;
+        destinationField: string;
+        confidence: number;
+        transformation: string | null;
+        warning: string | null;
+        status?: string;
+      }
+      const mappings = result.suggestedMappings.map((m: SuggestedMapping) => ({
         source_col: m.sourceColumn,
         destination_field: m.destinationField,
         confidence: m.confidence,
@@ -127,11 +135,12 @@ Return JSON with:
       missingRequiredFields: result.missingRequiredFields,
       warnings: result.warnings,
     });
-  } catch (err: any) {
+  } catch (err) {
     logger.error('Classification error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     // Degrade gracefully
     try {
-      const { fileId } = await req.json().catch(() => ({}));
+      const { fileId } = await req.json().catch(() => ({} as { fileId?: string }));
       if (fileId) {
         const admin = createAdminClient();
         await admin.from('migration_files').update({
@@ -140,6 +149,6 @@ Return JSON with:
         }).eq('id', fileId);
       }
     } catch {}
-    return NextResponse.json({ error: err.message, status: 'needs_review' }, { status: 200 });
+    return NextResponse.json({ error: errorMessage, status: 'needs_review' }, { status: 200 });
   }
 }

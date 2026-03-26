@@ -315,30 +315,31 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
     startTransition(async () => {
       try {
         let res: ImportResult;
+        // Dynamic mapping produces Record<string, string>[] which each import function accepts as a subset
+        const typedRows = mappedRows as Parameters<typeof importInventory>[0] 
+          & Parameters<typeof importCustomers>[0] 
+          & Parameters<typeof importRepairs>[0] 
+          & Parameters<typeof importBespokeJobs>[0] 
+          & Parameters<typeof importSales>[0] 
+          & Parameters<typeof importSuppliers>[0];
         switch (activeTab) {
           case "inventory":
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            res = await importInventory(mappedRows as any);
+            res = await importInventory(typedRows);
             break;
           case "customers":
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            res = await importCustomers(mappedRows as any);
+            res = await importCustomers(typedRows);
             break;
           case "repairs":
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            res = await importRepairs(mappedRows as any);
+            res = await importRepairs(typedRows);
             break;
           case "bespoke":
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            res = await importBespokeJobs(mappedRows as any);
+            res = await importBespokeJobs(typedRows);
             break;
           case "sales":
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            res = await importSales(mappedRows as any);
+            res = await importSales(typedRows);
             break;
           case "suppliers":
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            res = await importSuppliers(mappedRows as any);
+            res = await importSuppliers(typedRows);
             break;
           default:
             res = { imported: 0, errors: [] };

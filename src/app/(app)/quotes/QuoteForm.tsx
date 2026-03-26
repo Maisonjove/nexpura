@@ -38,7 +38,13 @@ export default function QuoteForm({ tenantId, customers }: Props) {
 
   function updateItem(index: number, field: keyof QuoteItem, value: string | number) {
     const newItems = [...items];
-    (newItems[index] as any)[field] = value;
+    if (field === 'description') {
+      newItems[index].description = value as string;
+    } else if (field === 'quantity') {
+      newItems[index].quantity = value as number;
+    } else if (field === 'unit_price') {
+      newItems[index].unit_price = value as number;
+    }
     setItems(newItems);
   }
 

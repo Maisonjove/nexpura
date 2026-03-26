@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     });
 
     return new NextResponse(stream);
-  } catch (err: any) {
+  } catch (err) {
     logger.error("Support chat error:", err);
     return NextResponse.json({ error: "Failed to connect to OpenAI" }, { status: 500 });
   }

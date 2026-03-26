@@ -204,7 +204,7 @@ Example response style:
     });
 
     return new NextResponse(stream);
-  } catch (err: any) {
+  } catch (err) {
     logger.error("Copilot chat error:", err);
     return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
   }

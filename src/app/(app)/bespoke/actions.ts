@@ -201,12 +201,14 @@ export async function advanceJobStage(
         .eq("id", jobId)
         .single();
       if (jobData) {
+        type CustomerInfo = { full_name?: string; phone?: string };
+        type TenantInfo = { business_name?: string; name?: string };
         const customer = Array.isArray(jobData.customers)
-          ? jobData.customers[0]
-          : (jobData.customers as any);
+          ? jobData.customers[0] as CustomerInfo
+          : (jobData.customers as CustomerInfo | null);
         const tenantInfo = Array.isArray(jobData.tenants)
-          ? jobData.tenants[0]
-          : (jobData.tenants as any);
+          ? jobData.tenants[0] as TenantInfo
+          : (jobData.tenants as TenantInfo | null);
         const phone = customer?.phone;
         if (phone) {
           const storeName = tenantInfo?.business_name || tenantInfo?.name || "our store";

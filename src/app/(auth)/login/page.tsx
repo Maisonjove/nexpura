@@ -87,38 +87,55 @@ export default function LoginPage() {
           Welcome back
         </h2>
 
-        <form onSubmit={handlePasswordLogin} className="space-y-4">
+        <form onSubmit={handlePasswordLogin} className="space-y-4" aria-label="Login form">
           <div>
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+            <label 
+              htmlFor="email"
+              className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5"
+            >
               Email
+              <span className="sr-only"> (required)</span>
             </label>
             <input
+              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              aria-required="true"
+              aria-describedby={error ? "login-error" : undefined}
               placeholder="you@yourshop.com"
+              autoComplete="email"
               className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+            <label 
+              htmlFor="password"
+              className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5"
+            >
               Password
+              <span className="sr-only"> (required)</span>
             </label>
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              aria-required="true"
+              aria-describedby={error ? "login-error" : undefined}
               placeholder="••••••••"
+              autoComplete="current-password"
               className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
             />
           </div>
 
           {/* Remember me checkbox */}
           <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label htmlFor="remember-me" className="flex items-center gap-2 cursor-pointer">
               <input
+                id="remember-me"
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
@@ -132,7 +149,14 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md">{error}</p>
+            <p 
+              id="login-error"
+              role="alert"
+              aria-live="assertive"
+              className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md"
+            >
+              {error}
+            </p>
           )}
 
           <button
@@ -166,9 +190,10 @@ export default function LoginPage() {
               },
             });
           }}
-          className="w-full flex items-center justify-center gap-3 border border-stone-200 rounded-md py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+          className="w-full flex items-center justify-center gap-3 border border-stone-200 rounded-md py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+          aria-label="Sign in with Google"
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M17.64 9.20455C17.64 8.56636 17.5827 7.95273 17.4764 7.36364H9V10.845H13.8436C13.635 11.97 13.0009 12.9232 12.0477 13.5614V15.8195H14.9564C16.6582 14.2527 17.64 11.9455 17.64 9.20455Z" fill="#4285F4"/>
             <path d="M9 18C11.43 18 13.4673 17.1941 14.9564 15.8195L12.0477 13.5614C11.2418 14.1014 10.2109 14.4205 9 14.4205C6.65591 14.4205 4.67182 12.8373 3.96409 10.71H0.957275V13.0418C2.43818 15.9832 5.48182 18 9 18Z" fill="#34A853"/>
             <path d="M3.96409 10.71C3.78409 10.17 3.68182 9.59318 3.68182 9C3.68182 8.40682 3.78409 7.83 3.96409 7.29V4.95818H0.957275C0.347727 6.17318 0 7.54773 0 9C0 10.4523 0.347727 11.8268 0.957275 13.0418L3.96409 10.71Z" fill="#FBBC05"/>

@@ -134,7 +134,7 @@ export async function resendEmailLog(logId: string) {
     await supabase.from("email_logs").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", logId);
     
     return { success: true };
-  } catch (err: any) {
+  } catch (err) {
     return { error: err.message };
   }
 }

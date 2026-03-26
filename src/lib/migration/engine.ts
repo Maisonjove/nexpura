@@ -508,7 +508,7 @@ export async function importBespokeJob(
 
     if (error) return { status: 'error', error: error.message };
     return { status: 'success', recordId: (created as { id: string }).id };
-  } catch (e: any) {
+  } catch (e) {
     return { status: 'error', error: e instanceof Error ? e.message : String(e) };
   }
 }
@@ -562,7 +562,7 @@ export async function importSupplier(
 
     if (error) return { status: 'error', error: error.message };
     return { status: 'success', recordId: (created as { id: string }).id };
-  } catch (e: any) {
+  } catch (e) {
     return { status: 'error', error: e instanceof Error ? e.message : String(e) };
   }
 }
@@ -663,7 +663,7 @@ export async function importInvoice(
     });
 
     return { status: 'success', recordId: invoiceId, invoiceNumber: mappedData.invoice_number };
-  } catch (e: any) {
+  } catch (e) {
     return { status: 'error', error: e instanceof Error ? e.message : String(e) };
   }
 }
@@ -725,7 +725,7 @@ export async function importPayment(
     }
 
     return { status: 'success', recordId: (payment as { id: string }).id };
-  } catch (e: any) {
+  } catch (e) {
     return { status: 'error', error: e instanceof Error ? e.message : String(e) };
   }
 }

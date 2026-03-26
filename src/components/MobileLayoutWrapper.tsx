@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode, useRef } from 'react';
 import { Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { useFocusTrap, useEscapeKey } from '@/hooks/useAccessibility';
 
 interface MobileLayoutWrapperProps {
   sidebar: ReactNode;
@@ -14,6 +15,10 @@ export function MobileLayoutWrapper({ sidebar, header, children }: MobileLayoutW
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
+  const sidebarRef = useFocusTrap(isSidebarOpen && isMobile);
+  
+  // Close sidebar on Escape key
+  useEscapeKey(() => setIsSidebarOpen(false), isSidebarOpen && isMobile);
 
   // Detect mobile/tablet
   useEffect(() => {
@@ -51,10 +56,12 @@ export function MobileLayoutWrapper({ sidebar, header, children }: MobileLayoutW
       {isMobile && (
         <button
           onClick={() => setIsSidebarOpen(true)}
-          className="fixed top-4 left-4 z-40 p-2 bg-white rounded-lg shadow-md border border-stone-200 lg:hidden"
-          aria-label="Open menu"
+          className="fixed top-4 left-4 z-40 p-2 bg-white rounded-lg shadow-md border border-stone-200 lg:hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+          aria-label="Open navigation menu"
+          aria-expanded={isSidebarOpen}
+          aria-controls="mobile-sidebar"
         >
-          <Menu className="w-5 h-5 text-stone-700" />
+          <Menu className="w-5 h-5 text-stone-700" aria-hidden="true" />
         </button>
       )}
 
@@ -63,11 +70,17 @@ export function MobileLayoutWrapper({ sidebar, header, children }: MobileLayoutW
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
       <div
+        ref={isMobile ? sidebarRef : undefined}
+        id="mobile-sidebar"
+        role={isMobile ? "dialog" : undefined}
+        aria-modal={isMobile && isSidebarOpen ? true : undefined}
+        aria-label={isMobile ? "Navigation menu" : undefined}
         className={`
           ${isMobile ? 'fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out' : ''}
           ${isMobile && !isSidebarOpen ? '-translate-x-full' : 'translate-x-0'}
@@ -77,10 +90,10 @@ export function MobileLayoutWrapper({ sidebar, header, children }: MobileLayoutW
         {isMobile && isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="absolute top-4 right-4 z-50 p-1.5 bg-stone-700 rounded-full text-white hover:bg-stone-600"
-            aria-label="Close menu"
+            className="absolute top-4 right-4 z-50 p-1.5 bg-stone-700 rounded-full text-white hover:bg-stone-600 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            aria-label="Close navigation menu"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         )}
         {sidebar}

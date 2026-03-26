@@ -30,26 +30,35 @@ export default function Header({ user }: HeaderProps) {
   });
 
   return (
-    <header className="h-14 bg-background border-b border-border flex items-center justify-between px-8 flex-shrink-0">
+    <header 
+      className="h-14 bg-background border-b border-border flex items-center justify-between px-8 flex-shrink-0"
+      role="banner"
+    >
       {/* Left side - Location selector */}
       <div className="flex items-center gap-4">
         <LocationPicker showAllOption={true} />
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" role="group" aria-label="Header actions">
         {/* Scan indicator */}
         <div
-          title={lastScan ? `Last scan: ${lastScan}` : 'Barcode scanner active'}
+          role="status"
+          aria-live="polite"
+          aria-label={lastScan ? `Last scan: ${lastScan}` : 'Barcode scanner active'}
           className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-300 ${
             scanFlash
               ? 'bg-green-100 text-green-700'
               : 'text-stone-400 hover:text-stone-600'
           }`}
         >
-          <span>🔍</span>
+          <span aria-hidden="true">🔍</span>
           {scanFlash && <span>Scan detected</span>}
         </div>
         <NotificationBell />
-        <div className="w-8 h-8 rounded-full bg-stone-200 text-stone-700 flex items-center justify-center text-xs font-semibold">
+        <div 
+          className="w-8 h-8 rounded-full bg-stone-200 text-stone-700 flex items-center justify-center text-xs font-semibold"
+          aria-label={`User: ${user?.full_name || user?.email || 'Unknown'}`}
+          role="img"
+        >
           {initials}
         </div>
       </div>

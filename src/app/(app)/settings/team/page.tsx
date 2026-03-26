@@ -23,7 +23,7 @@ export default async function TeamPage() {
     .single();
 
   const currentUserRole = userData?.role ?? "staff";
-  const businessMode = (userData?.tenants as any)?.business_mode || 'full';
+  const businessMode = (userData?.tenants as { business_mode?: string } | null)?.business_mode || 'full';
 
   const [{ data: members }, { data: tasks }] = await Promise.all([
     supabase

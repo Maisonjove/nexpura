@@ -22,7 +22,7 @@ export interface QuoteInput {
 }
 
 // ── CRUD Operations ──────────────────────────────────────────────────────────
-export async function createQuote(input: QuoteInput): Promise<{ data?: any; error?: string }> {
+export async function createQuote(input: QuoteInput): Promise<{ data?: unknown; error?: string }> {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -62,7 +62,7 @@ export async function createQuote(input: QuoteInput): Promise<{ data?: any; erro
   }
 }
 
-export async function updateQuote(id: string, input: Partial<QuoteInput>): Promise<{ data?: any; error?: string }> {
+export async function updateQuote(id: string, input: Partial<QuoteInput>): Promise<{ data?: unknown; error?: string }> {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -202,7 +202,7 @@ export async function convertQuoteToInvoice(quoteId: string) {
   if (invoiceError) throw invoiceError;
 
   // Add line items
-  const lineItems = quote.items.map((item: any) => ({
+  const lineItems = (quote.items as QuoteItem[]).map((item) => ({
     tenant_id: quote.tenant_id,
     invoice_id: invoice.id,
     description: item.description,
@@ -259,7 +259,7 @@ export async function convertQuoteToBespoke(quoteId: string) {
     job_number: numData,
     title: `Bespoke Job from Quote ${quote.quote_number || quoteId.slice(0, 8)}`,
     quoted_price: quote.total_amount,
-    description: quote.items.map((i: any) => `${i.description} (Qty: ${i.quantity})`).join("\n"),
+    description: (quote.items as QuoteItem[]).map((i) => `${i.description} (Qty: ${i.quantity})`).join("\n"),
     stage: "enquiry",
     created_by: user.id
   };
@@ -324,7 +324,7 @@ export async function convertQuoteToRepair(quoteId: string) {
     item_type: "Jewellery",
     item_description: `Repair from Quote ${quote.quote_number || quoteId.slice(0, 8)}`,
     repair_type: "General",
-    work_description: quote.items.map((i: any) => `${i.description} (Qty: ${i.quantity})`).join("\n"),
+    work_description: (quote.items as QuoteItem[]).map((i) => `${i.description} (Qty: ${i.quantity})`).join("\n"),
     quoted_price: quote.total_amount,
     stage: "intake",
     created_by: user.id

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from "@/app/(app)/actions/notifications"
+import { useFocusTrap, useEscapeKey } from "@/hooks/useAccessibility"
 
 interface Notification {
   id: string
@@ -78,7 +79,12 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const focusTrapRef = useFocusTrap(open)
+  
+  // Close on Escape key
+  useEscapeKey(() => setOpen(false), open)
 
   const fetchData = useCallback(async () => {
     const [notifRes, count] = await Promise.all([
@@ -121,25 +127,70 @@ export default function NotificationBell() {
 
   const displayed = notifications.slice(0, 20)
 
+  // Keyboard navigation for notification list
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!open || displayed.length === 0) return
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setSelectedIndex(prev => (prev + 1) % displayed.length)
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setSelectedIndex(prev => (prev - 1 + displayed.length) % displayed.length)
+        break
+      case 'Home':
+        e.preventDefault()
+        setSelectedIndex(0)
+        break
+      case 'End':
+        e.preventDefault()
+        setSelectedIndex(displayed.length - 1)
+        break
+      case 'Enter':
+        e.preventDefault()
+        const selected = displayed[selectedIndex]
+        if (selected?.link) {
+          if (!selected.is_read) handleMarkRead(selected.id)
+          setOpen(false)
+        }
+        break
+    }
+  }, [open, displayed, selectedIndex])
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative w-9 h-9 rounded-lg hover:bg-stone-50 border border-stone-200 flex items-center justify-center transition-colors"
-        aria-label="Notifications"
+        className="relative w-9 h-9 rounded-lg hover:bg-stone-50 border border-stone-200 flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-controls="notification-menu"
       >
-        <svg className="w-4 h-4 text-stone-900/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-stone-900/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white leading-none">
+          <span 
+            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white leading-none"
+            aria-hidden="true"
+          >
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-80 bg-white rounded-xl border border-stone-200 shadow-xl z-50 overflow-hidden">
+        <div 
+          ref={focusTrapRef}
+          id="notification-menu"
+          role="menu"
+          aria-label="Notifications"
+          className="absolute right-0 top-11 w-80 bg-white rounded-xl border border-stone-200 shadow-xl z-50 overflow-hidden"
+          onKeyDown={handleKeyDown}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200">
             <h3 className="font-semibold text-sm text-stone-900">Notifications</h3>
@@ -155,18 +206,23 @@ export default function NotificationBell() {
           </div>
 
           {/* List */}
-          <div className="overflow-y-auto max-h-[400px]">
+          <div 
+            className="overflow-y-auto max-h-[400px]"
+            role="listbox"
+            aria-label="Notification list"
+          >
             {displayed.length === 0 ? (
-              <div className="py-10 text-center text-sm text-stone-400">
+              <div className="py-10 text-center text-sm text-stone-400" role="status">
                 No notifications yet
               </div>
             ) : (
-              displayed.map((n) => {
+              displayed.map((n, index) => {
+                const isSelected = index === selectedIndex
                 const content = (
                   <div
                     className={`flex items-start gap-3 px-4 py-3 border-b border-stone-100 last:border-0 transition-colors ${
                       !n.is_read ? "bg-amber-700/5" : "hover:bg-stone-50/50"
-                    }`}
+                    } ${isSelected ? "ring-2 ring-inset ring-amber-500" : ""}`}
                     onClick={() => !n.is_read && handleMarkRead(n.id)}
                   >
                     <NotificationIcon type={n.type} />
@@ -180,7 +236,7 @@ export default function NotificationBell() {
                       <p className="text-xs text-stone-400 mt-1">{relativeTime(n.created_at)}</p>
                     </div>
                     {!n.is_read && (
-                      <div className="w-2 h-2 rounded-full bg-amber-700 flex-shrink-0 mt-1.5" />
+                      <div className="w-2 h-2 rounded-full bg-amber-700 flex-shrink-0 mt-1.5" aria-label="Unread" />
                     )}
                   </div>
                 )
@@ -192,13 +248,22 @@ export default function NotificationBell() {
                       href={n.link}
                       onClick={() => { setOpen(false); if (!n.is_read) handleMarkRead(n.id) }}
                       className="block cursor-pointer"
+                      role="option"
+                      aria-selected={isSelected}
+                      aria-label={`${n.title}${!n.is_read ? ', unread' : ''}, ${relativeTime(n.created_at)}`}
                     >
                       {content}
                     </Link>
                   )
                 }
                 return (
-                  <div key={n.id} className="cursor-default">
+                  <div 
+                    key={n.id} 
+                    className="cursor-default"
+                    role="option"
+                    aria-selected={isSelected}
+                    aria-label={`${n.title}${!n.is_read ? ', unread' : ''}, ${relativeTime(n.created_at)}`}
+                  >
                     {content}
                   </div>
                 )

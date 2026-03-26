@@ -217,7 +217,7 @@ export async function updateInventoryItem(id: string, formData: FormData) {
   const { hasPermission } = await import("@/lib/permissions");
   const canViewCost = await hasPermission(user?.id ?? "", tenantId, "view_cost_price");
 
-  const updates: any = {
+  const updates: Record<string, unknown> = {
       name,
       item_type: itemType,
       jewellery_type: jewelleryType || null,

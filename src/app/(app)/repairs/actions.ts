@@ -188,12 +188,14 @@ export async function advanceRepairStage(
         .eq("id", repairId)
         .single();
       if (repairData) {
+        type CustomerInfo = { full_name?: string; phone?: string };
+        type TenantInfo = { business_name?: string; name?: string };
         const customer = Array.isArray(repairData.customers)
-          ? repairData.customers[0]
-          : (repairData.customers as any);
+          ? repairData.customers[0] as CustomerInfo
+          : (repairData.customers as CustomerInfo | null);
         const tenantInfo = Array.isArray(repairData.tenants)
-          ? repairData.tenants[0]
-          : (repairData.tenants as any);
+          ? repairData.tenants[0] as TenantInfo
+          : (repairData.tenants as TenantInfo | null);
         const phone = customer?.phone;
         if (phone) {
           const storeName = tenantInfo?.business_name || tenantInfo?.name || "our store";

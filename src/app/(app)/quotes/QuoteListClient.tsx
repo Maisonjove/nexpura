@@ -15,12 +15,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import logger from "@/lib/logger";
 
+interface QuoteItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+}
+
 interface Quote {
   id: string;
   tenant_id: string;
   customer_id: string;
   quote_number: string | null;
-  items: any[];
+  items: QuoteItem[];
   total_amount: number;
   status: string;
   expires_at: string | null;

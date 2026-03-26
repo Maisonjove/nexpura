@@ -43,16 +43,26 @@ export async function GET(
       .single();
 
     const pdfProps: QuotePDFProps = {
-      quote: quote as any,
-      tenant: tenant as any,
+      quote: {
+        id: quote.id,
+        quote_number: quote.quote_number ?? '',
+        status: quote.status ?? 'draft',
+        created_at: quote.created_at,
+        expires_at: quote.expires_at,
+        total_amount: quote.total_amount ?? 0,
+        notes: quote.notes,
+        customers: quote.customers,
+        items: quote.items ?? [],
+      },
+      tenant: tenant,
     };
 
     // Render PDF
     const stream = await renderToStream(
-      React.createElement(QuotePDF, pdfProps as any) as any
+      React.createElement(QuotePDF, pdfProps)
     );
 
-    return new NextResponse(stream as any, {
+    return new NextResponse(stream as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `inline; filename="quote-${quote.quote_number || id.slice(0, 8)}.pdf"`,

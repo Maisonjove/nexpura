@@ -137,7 +137,7 @@ export default async function BespokeJobDetailPage({
         approved_at: job.approved_at ?? null,
         approval_notes: job.approval_notes ?? null,
         milestones: Array.isArray(job.bespoke_milestones) ? job.bespoke_milestones : [],
-      } as any}
+      }}
       customer={customer}
       invoice={invoice}
       inventory={inventory ?? []}

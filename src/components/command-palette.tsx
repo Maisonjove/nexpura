@@ -8,6 +8,8 @@ import {
   ClipboardList, Star, Bell, TrendingUp, Globe, HelpCircle, Loader2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useFocusTrap, useAnnounce } from '@/hooks/useAccessibility';
+import { useLiveRegion } from '@/components/LiveRegion';
 
 interface SearchResult {
   id: string;
@@ -67,6 +69,8 @@ export function CommandPalette() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const focusTrapRef = useFocusTrap(open);
+  const { announce } = useLiveRegion();
 
   const handleOpen = useCallback(() => {
     setOpen(true);
@@ -189,6 +193,12 @@ export function CommandPalette() {
 
         setSearchResults(results);
         setSelectedIndex(0);
+        // Announce search results to screen readers
+        if (results.length > 0) {
+          announce(`Found ${results.length} results`);
+        } else {
+          announce('No results found');
+        }
       } catch (error) {
         console.error('Search error:', error);
       } finally {
@@ -267,20 +277,34 @@ export function CommandPalette() {
   }, {});
 
   const showSearchResults = search.length >= 2 && (searchResults.length > 0 || isSearching);
+  const totalResults = showSearchResults ? searchResults.length : filtered.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
+    <div 
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Command palette"
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => setOpen(false)}
+        aria-hidden="true"
       />
 
       {/* Command dialog */}
-      <div className="relative w-full max-w-lg mx-4 bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden">
+      <div 
+        ref={focusTrapRef}
+        className="relative w-full max-w-lg mx-4 bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden"
+        role="combobox"
+        aria-expanded={true}
+        aria-haspopup="listbox"
+        aria-owns="command-palette-results"
+      >
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-stone-100">
-          <Search className="h-4 w-4 text-stone-400 shrink-0" />
+          <Search className="h-4 w-4 text-stone-400 shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
             autoFocus
@@ -289,22 +313,37 @@ export function CommandPalette() {
             onKeyDown={handleKeyDown}
             placeholder="Search inventory, customers, repairs, invoices..."
             className="flex-1 text-sm bg-transparent outline-none text-stone-900 placeholder:text-stone-400"
+            aria-label="Search"
+            aria-autocomplete="list"
+            aria-controls="command-palette-results"
+            aria-activedescendant={`command-item-${selectedIndex}`}
+            role="searchbox"
           />
           {isSearching && (
-            <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
+            <Loader2 className="h-4 w-4 text-amber-600 animate-spin" aria-label="Searching..." />
           )}
           {search && !isSearching && (
-            <button onClick={() => setSearch('')}>
-              <X className="h-4 w-4 text-stone-400 hover:text-stone-600" />
+            <button 
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
+            >
+              <X className="h-4 w-4 text-stone-400 hover:text-stone-600" aria-hidden="true" />
             </button>
           )}
-          <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-medium text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">
+          <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-medium text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200" aria-label="Press Escape to close">
             ESC
           </kbd>
         </div>
 
         {/* Results */}
-        <div ref={resultsRef} className="max-h-[400px] overflow-y-auto py-2">
+        <div 
+          ref={resultsRef} 
+          id="command-palette-results"
+          role="listbox"
+          aria-label={`${totalResults} results available`}
+          className="max-h-[400px] overflow-y-auto py-2"
+        >
           {/* Search Results */}
           {showSearchResults ? (
             <>

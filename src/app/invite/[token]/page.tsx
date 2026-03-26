@@ -50,8 +50,7 @@ export default async function InvitePage({ params }: Props) {
     redirect("/login");
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const businessName = (invite.tenants as any)?.business_name || "Unknown Business";
+  const businessName = (invite.tenants as { business_name?: string } | null)?.business_name || "Unknown Business";
 
   return (
     <InviteClient

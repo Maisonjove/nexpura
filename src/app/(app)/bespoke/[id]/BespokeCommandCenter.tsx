@@ -51,7 +51,7 @@ export default function BespokeCommandCenter({
   const [isPending, startTransition] = useTransition();
   const [localAttachments, setLocalAttachments] = useState(attachments);
   const [localEvents, setLocalEvents] = useState(events);
-  const [localMilestones, setLocalMilestones] = useState<Milestone[]>((job as any).milestones ?? []);
+  const [localMilestones, setLocalMilestones] = useState<Milestone[]>((job as BespokeCommandCenterProps['job'] & { milestones?: Milestone[] }).milestones ?? []);
 
   const [showAddManual, setShowAddManual] = useState(false);
   const [showAddStock, setShowAddStock] = useState(false);

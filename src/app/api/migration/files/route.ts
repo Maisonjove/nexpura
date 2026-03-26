@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       .single();
 
     return NextResponse.json({ files, session });
-  } catch (err: any) {
+  } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

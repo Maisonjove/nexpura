@@ -70,7 +70,7 @@ export interface WebsiteConfigData {
   social_links?: Record<string, string> | null;
 }
 
-export async function getWebsiteConfig(): Promise<{ data?: any; error?: string }> {
+export async function getWebsiteConfig(): Promise<{ data?: WebsiteConfigData | null; error?: string }> {
   try {
     const { supabase, tenantId } = await getAuthContext();
     const { data, error } = await supabase

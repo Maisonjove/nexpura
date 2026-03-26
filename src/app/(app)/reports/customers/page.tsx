@@ -40,7 +40,7 @@ export default async function CustomerReportsPage() {
 
   // Aggregate spend (manual processing since Supabase doesn't support complex joins/aggregates in simple select)
   const customersWithSpend = (topCustomers || []).map(c => {
-    const totalSpend = (c.sales as any[])?.reduce((sum, s) => sum + (Number(s.total) || 0), 0) || 0;
+    const totalSpend = (c.sales as Array<{ total: number | null }> | null)?.reduce((sum, s) => sum + (Number(s.total) || 0), 0) || 0;
     return { ...c, totalSpend };
   }).sort((a, b) => b.totalSpend - a.totalSpend);
 

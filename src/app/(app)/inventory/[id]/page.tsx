@@ -68,8 +68,17 @@ export default async function InventoryDetailPage({
     .eq("inventory_id", id)
     .order("created_at", { ascending: false });
 
-  const typedItem = item as any;
-  const typedMovements = movements as any[];
+  const typedItem = item as typeof item & { stock_categories?: { name: string } | null };
+  const typedMovements = (movements ?? []) as Array<{
+    id: string;
+    movement_type: string;
+    quantity_change: number;
+    quantity_after: number;
+    notes: string | null;
+    created_at: string;
+    created_by: string | null;
+    users: { full_name: string | null } | null;
+  }>;
 
   const rawItem = item as unknown as { primary_image?: string | null; images?: string[] | null };
 

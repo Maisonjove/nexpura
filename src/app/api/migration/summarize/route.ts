@@ -77,7 +77,7 @@ Write a concise migration summary. Return JSON:
     await admin.from('migration_sessions').update({ ai_summary: summary }).eq('id', sessionId);
 
     return NextResponse.json({ summary });
-  } catch (err: any) {
+  } catch (err) {
     logger.error('Summarize error:', err);
     return NextResponse.json({ error: err.message }, { status: 200 });
   }

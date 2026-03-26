@@ -45,7 +45,7 @@ export default async function MigrationLogsPage({
     .select('session_id, success_count, total_records, status')
     .in('session_id', (sessions || []).map(s => s.id));
 
-  const jobMap = new Map<string, { session_id: any; success_count: any; total_records: any; status: any }>();
+  const jobMap = new Map<string, { session_id: string; success_count: number | null; total_records: number | null; status: string | null }>();
   for (const j of (jobs || [])) {
     jobMap.set(j.session_id, j);
   }

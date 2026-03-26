@@ -32,7 +32,18 @@ async function getAuthContext() {
 // Customer Actions
 // ────────────────────────────────────────────────────────────────
 
-export async function searchCustomers(query: string): Promise<{ data?: any[]; error?: string }> {
+interface CustomerSearchResult {
+  id: string;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  mobile: string | null;
+  phone: string | null;
+  notes: string | null;
+}
+
+export async function searchCustomers(query: string): Promise<{ data?: CustomerSearchResult[]; error?: string }> {
   try {
     const { supabase, tenantId } = await getAuthContext();
     
@@ -91,7 +102,22 @@ export async function createCustomerInline(input: {
 // Inventory/Stock Search
 // ────────────────────────────────────────────────────────────────
 
-export async function searchInventory(query: string): Promise<{ data?: any[]; error?: string }> {
+interface InventorySearchResult {
+  id: string;
+  name: string | null;
+  sku: string | null;
+  barcode_value: string | null;
+  jewellery_type: string | null;
+  metal_type: string | null;
+  metal_purity: string | null;
+  stone_type: string | null;
+  stone_carat: number | null;
+  retail_price: number | null;
+  quantity: number | null;
+  primary_image: string | null;
+}
+
+export async function searchInventory(query: string): Promise<{ data?: InventorySearchResult[]; error?: string }> {
   try {
     const { supabase, tenantId } = await getAuthContext();
     
@@ -113,7 +139,7 @@ export async function searchInventory(query: string): Promise<{ data?: any[]; er
   }
 }
 
-export async function getInventoryByBarcode(barcode: string): Promise<{ data?: any; error?: string }> {
+export async function getInventoryByBarcode(barcode: string): Promise<{ data?: InventorySearchResult; error?: string }> {
   try {
     const { supabase, tenantId } = await getAuthContext();
     
@@ -755,10 +781,30 @@ export async function createStockSaleFromIntake(
 // Get Data for Page Load
 // ────────────────────────────────────────────────────────────────
 
+interface IntakeCustomer {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  mobile: string | null;
+  phone: string | null;
+}
+
+interface StockCategory {
+  id: string;
+  name: string;
+}
+
+interface TaxConfig {
+  tax_rate: number;
+  tax_name: string;
+  tax_inclusive: boolean;
+  currency: string;
+}
+
 export async function getIntakePageData(): Promise<{
-  customers?: any[];
-  categories?: any[];
-  taxConfig?: any;
+  customers?: IntakeCustomer[];
+  categories?: StockCategory[];
+  taxConfig?: TaxConfig;
   error?: string;
 }> {
   try {

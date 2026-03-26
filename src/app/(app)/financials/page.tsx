@@ -47,8 +47,7 @@ export default async function FinancialsPage() {
     .eq("id", user.id)
     .single();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tenant = userData?.tenants as any;
+  const tenant = userData?.tenants as { name?: string; gst_rate?: number; currency?: string } | null;
 
   return (
     <FinancialsClient

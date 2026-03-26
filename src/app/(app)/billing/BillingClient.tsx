@@ -78,7 +78,7 @@ export default function BillingClient({
   async function handleUpgrade(planId: string) {
     setLoading(planId);
     try {
-      const priceId = (STRIPE_PRICES as any)[planId][interval];
+      const priceId = STRIPE_PRICES[planId as keyof typeof STRIPE_PRICES]?.[interval as "monthly" | "annual"];
       const res = await fetch("/api/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

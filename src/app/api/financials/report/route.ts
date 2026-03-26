@@ -19,8 +19,7 @@ export async function GET(req: Request) {
     if (!userData?.tenant_id) return Response.json({ error: "No tenant" }, { status: 403 });
 
     const tenantId = userData.tenant_id;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenant = userData.tenants as any;
+    const tenant = userData.tenants as { name?: string; gst_rate?: number } | null;
     const gstRate: number = tenant?.gst_rate ?? 0.1;
 
     const url = new URL(req.url);

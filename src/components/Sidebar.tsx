@@ -240,7 +240,7 @@ export default function Sidebar({
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 scrollbar-thin" role="navigation">
         {/* Primary items — always visible, no header */}
-        <ul className="space-y-0.5 px-2 mb-4">
+        <ul className="space-y-0.5 px-2 mb-4" role="menu" aria-label="Primary navigation">
           {filterItems(PRIMARY_ITEMS).map((item) => (
             <NavItem
               key={item.href}
@@ -273,7 +273,9 @@ export default function Sidebar({
             <div key={group.id} className="mb-1">
               <button
                 onClick={() => toggleGroup(group.id)}
-                className={`w-full flex items-center justify-between px-4 py-1.5 text-left group transition-colors ${
+                aria-expanded={!isCollapsed}
+                aria-controls={`nav-group-${group.id}`}
+                className={`w-full flex items-center justify-between px-4 py-1.5 text-left group transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A1A1A] rounded ${
                   hasActiveChild ? 'text-amber-500' : 'text-stone-500 hover:text-stone-300'
                 }`}
               >
@@ -281,13 +283,18 @@ export default function Sidebar({
                   {group.label}
                 </span>
                 {isCollapsed
-                  ? <ChevronRight size={11} className="flex-shrink-0" />
-                  : <ChevronDown size={11} className="flex-shrink-0" />
+                  ? <ChevronRight size={11} className="flex-shrink-0" aria-hidden="true" />
+                  : <ChevronDown size={11} className="flex-shrink-0" aria-hidden="true" />
                 }
               </button>
 
               {!isCollapsed && (
-                <ul className="space-y-0.5 px-2 mt-0.5 mb-2">
+                <ul 
+                  id={`nav-group-${group.id}`}
+                  className="space-y-0.5 px-2 mt-0.5 mb-2"
+                  role="menu"
+                  aria-label={group.label}
+                >
                   {groupItems.map((item) => (
                     <NavItem
                       key={item.href}

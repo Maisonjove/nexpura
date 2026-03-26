@@ -23,12 +23,15 @@ export default async function WorkshopCalendarPage() {
   const tenantId = userData.tenant_id;
 
   // Fetch repairs, bespoke jobs, and Google Calendar status
-  const [{ data: repairs }, { data: bespoke }, { data: staff }, gcalIntegration] = await Promise.all([
-    admin.from("repairs").select("id, ticket_number, description, status, due_date, assigned_to, customers(full_name)").eq("tenant_id", tenantId).not("due_date", "is", null) as any,
-    admin.from("bespoke_jobs").select("id, job_number, title, status, due_date, assigned_to, customers(full_name)").eq("tenant_id", tenantId).not("due_date", "is", null) as any,
+  const [repairsResult, bespokeResult, { data: staff }, gcalIntegration] = await Promise.all([
+    admin.from("repairs").select("id, ticket_number, description, status, due_date, assigned_to, customers(full_name)").eq("tenant_id", tenantId).not("due_date", "is", null),
+    admin.from("bespoke_jobs").select("id, job_number, title, status, due_date, assigned_to, customers(full_name)").eq("tenant_id", tenantId).not("due_date", "is", null),
     admin.from("users").select("id, full_name").eq("tenant_id", tenantId),
     getIntegration(tenantId, "google_calendar"),
   ]);
+  
+  const repairs = repairsResult.data;
+  const bespoke = bespokeResult.data;
 
   return (
     <WorkshopCalendarClient

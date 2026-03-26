@@ -42,8 +42,7 @@ export async function approveAccess(
   // Send confirmation email to super admin
   const updatedRequest = await getSupportAccessByToken(token);
   if (updatedRequest) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantData = updatedRequest.tenants as any;
+    const tenantData = updatedRequest.tenants as { business_name?: string; name?: string } | null;
     const businessName = tenantData?.business_name || tenantData?.name || "Unknown Business";
     
     await sendSupportAccessApprovedEmail({
