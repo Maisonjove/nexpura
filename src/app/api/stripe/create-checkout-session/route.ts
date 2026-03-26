@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 // Stripe Product IDs for LIVE mode
@@ -20,6 +21,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
+    const { success: rlSuccess } = await checkRateLimit(`stripe-checkout:${ip}`);
+    if (!rlSuccess) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const body = await request.json();
     const { plan, subdomain, email, fullName } = body;
 

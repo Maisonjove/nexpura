@@ -6,6 +6,7 @@ import { sendRepairReadyEmail, sendQuoteEmail } from "@/lib/email/send";
 import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { logAuditEvent } from "@/lib/audit";
 import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
