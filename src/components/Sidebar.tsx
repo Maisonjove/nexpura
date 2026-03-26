@@ -10,7 +10,7 @@ import {
   RotateCcw, Gift, ClipboardList, ArrowLeftRight, Star,
   Bell, Link as LinkIcon, TrendingUp, ArrowRightLeft,
   ChevronDown, ChevronRight, Layers, MessageSquare, Sparkles, Plug,
-  Moon, UserCog, MapPin, Mail, Printer, Megaphone, Send, Zap, HelpCircle, Activity
+  Moon, UserCog, MapPin, Mail, Printer, Megaphone, Send, Zap, Activity
 } from 'lucide-react';
 
 /* ─── Primary nav (always visible, no group header) ─── */
@@ -96,7 +96,6 @@ const NAV_GROUPS = [
       { name: 'Printers',     href: '/settings/printing',  icon: Printer },
       { name: 'Activity Log', href: '/settings/activity',  icon: Activity },
       { name: 'Support',      href: '/support',            icon: MessageSquare },
-      { name: 'Help & FAQ',   href: '/help',               icon: HelpCircle },
     ],
   },
 ];
@@ -183,7 +182,6 @@ export default function Sidebar({
     '/invoices': 'invoices',
     '/reports': 'reports',
     '/settings': 'settings',
-    '/help': 'help',
   };
 
   function NavItem({ name, href, icon: Icon, badge, highlight }: { name: string; href: string; icon: React.ElementType; badge?: number; highlight?: boolean }) {

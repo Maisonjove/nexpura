@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Sentry from '@sentry/nextjs';
 
 interface PWAState {
@@ -18,28 +18,102 @@ interface BeforeInstallPromptEvent extends Event {
 
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
 
+/**
+ * Perform a real connectivity check by fetching a small resource.
+ * navigator.onLine can give false negatives, so we verify with an actual request.
+ */
+async function checkRealConnectivity(): Promise<boolean> {
+  try {
+    // Try to fetch a tiny resource with a short timeout
+    // Using HEAD request to minimize data transfer
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch('/api/health', {
+      method: 'HEAD',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch {
+    // If the health endpoint fails, try a simpler check
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      // Fall back to checking if we can reach the app itself
+      await fetch('/manifest.json', {
+        method: 'HEAD',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
 export function usePWA() {
   const [state, setState] = useState<PWAState>({
-    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+    // Start optimistically as online - we'll verify shortly
+    isOnline: true,
     isInstalled: false,
     isStandalone: false,
     canInstall: false,
     hasPendingSync: false,
   });
+  
+  const connectivityCheckRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check online status
+  // Check online status with real connectivity verification
   useEffect(() => {
-    const handleOnline = () => setState((s) => ({ ...s, isOnline: true }));
-    const handleOffline = () => setState((s) => ({ ...s, isOnline: false }));
+    // Perform real connectivity check
+    const verifyConnectivity = async () => {
+      const isReallyOnline = await checkRealConnectivity();
+      setState((s) => ({ ...s, isOnline: isReallyOnline }));
+    };
+
+    // When browser reports online, verify with a real check
+    const handleOnline = () => {
+      // Set online immediately (optimistic) but verify
+      setState((s) => ({ ...s, isOnline: true }));
+      verifyConnectivity();
+    };
+    
+    // When browser reports offline, double-check before showing indicator
+    const handleOffline = () => {
+      // Don't immediately show offline - verify first
+      // This prevents false positives from unreliable navigator.onLine
+      verifyConnectivity();
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    
+    // Initial check
+    verifyConnectivity();
+    
+    // Periodic connectivity check every 30 seconds when we think we're offline
+    // This helps recover from false offline states faster
+    connectivityCheckRef.current = setInterval(() => {
+      if (!state.isOnline) {
+        verifyConnectivity();
+      }
+    }, 30000);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      if (connectivityCheckRef.current) {
+        clearInterval(connectivityCheckRef.current);
+      }
     };
-  }, []);
+  }, [state.isOnline]);
 
   // Check if running as standalone PWA
   useEffect(() => {

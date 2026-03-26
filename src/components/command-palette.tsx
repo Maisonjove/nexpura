@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Package, Wrench, Gem, ShoppingCart, Users,
   FileText, BarChart2, Settings, Plus, Search, X, ListTodo,
-  ClipboardList, Star, Bell, TrendingUp, Globe, HelpCircle, Loader2
+  ClipboardList, Star, Bell, TrendingUp, Globe, Loader2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useFocusTrap, useAnnounce } from '@/hooks/useAccessibility';
@@ -44,7 +44,6 @@ const navItems = [
   { label: 'Financials', href: '/financials', icon: TrendingUp, group: 'Navigate' },
   { label: 'Website', href: '/website', icon: Globe, group: 'Navigate' },
   { label: 'Settings', href: '/settings', icon: Settings, group: 'Navigate' },
-  { label: 'Help', href: '/help', icon: HelpCircle, group: 'Navigate' },
 ];
 
 const TYPE_ICONS: Record<SearchResult['type'], typeof Package> = {
