@@ -22,7 +22,12 @@ export interface OfflineQueueState {
 const DB_NAME = 'nexpura-offline';
 const STORE_NAME = 'queue';
 
-function openDB(): Promise<IDBDatabase> {
+function openDB(): Promise<IDBDatabase | null> {
+  // Check if IndexedDB is available (not in SSR or unsupported browsers)
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    return Promise.resolve(null);
+  }
+  
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
     request.onerror = () => reject(request.error);
@@ -48,6 +53,10 @@ export function useOfflineQueue() {
   const loadQueue = useCallback(async () => {
     try {
       const db = await openDB();
+      if (!db) {
+        setState((s) => ({ ...s, isLoading: false, items: [] }));
+        return;
+      }
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       
@@ -79,6 +88,10 @@ export function useOfflineQueue() {
     
     try {
       const db = await openDB();
+      if (!db) {
+        setState((s) => ({ ...s, isSyncing: false }));
+        return;
+      }
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       
@@ -116,6 +129,7 @@ export function useOfflineQueue() {
       // Update retry count
       try {
         const db = await openDB();
+        if (!db) return;
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
         
@@ -158,6 +172,7 @@ export function useOfflineQueue() {
   const removeItem = useCallback(async (timestamp: number) => {
     try {
       const db = await openDB();
+      if (!db) return;
       const tx = db.transaction(STORE_NAME, 'readwrite');
       await new Promise<void>((resolve, reject) => {
         const req = tx.objectStore(STORE_NAME).delete(timestamp);
@@ -174,6 +189,7 @@ export function useOfflineQueue() {
   const clearQueue = useCallback(async () => {
     try {
       const db = await openDB();
+      if (!db) return;
       const tx = db.transaction(STORE_NAME, 'readwrite');
       await new Promise<void>((resolve, reject) => {
         const req = tx.objectStore(STORE_NAME).clear();
