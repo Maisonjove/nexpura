@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import type { Customer, PaymentTab, VoucherData } from "./types";
 
 interface PaymentModalProps {
@@ -379,6 +380,10 @@ function SplitTab({
 }) {
   return (
     <div className="space-y-3">
+      <div className="flex items-center gap-1 mb-1">
+        <span className="text-xs font-medium text-stone-500">Split the payment across multiple methods</span>
+        <HelpTooltip content="Use split payment when a customer wants to pay using more than one payment method, e.g. part cash and part card, or use a voucher with remaining balance on card." />
+      </div>
       <div className="flex gap-2 bg-stone-100 rounded-xl p-1">
         {(["cash+card", "voucher+card", "voucher+cash"] as const).map((mode) => (
           <button
@@ -585,6 +590,10 @@ function LaybyTab({
 
   return (
     <>
+      <div className="flex items-center gap-1 mb-2">
+        <span className="text-xs font-medium text-stone-500">Reserve item with a deposit</span>
+        <HelpTooltip content="Layby lets your customer pay a deposit to reserve items. The item stays in your inventory until the full balance is paid, at which point the customer collects their purchase." />
+      </div>
       <div className="bg-stone-50 border border-stone-100 rounded-xl p-4">
         <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Customer</p>
         <p className="text-sm font-semibold text-stone-800">{selectedCustomer.full_name}</p>
