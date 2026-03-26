@@ -25,7 +25,7 @@ function getWebhookSecret() {
 
 export async function POST(request: NextRequest) {
   const _ip = request.headers.get("x-forwarded-for") ?? "anonymous";
-  const { success: _rlSuccess } = await checkRateLimit(_ip);
+  const { success: _rlSuccess } = await checkRateLimit(_ip, 'webhook');
   if (!_rlSuccess) {
     return new Response("Too many requests", { status: 429 });
   }

@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyTOTPToken, verifyBackupCode } from '@/lib/totp';
 import logger from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 /**
  * Validate a 2FA code during login
  * This is called after successful password authentication
  */
 export async function POST(request: NextRequest) {
+  // Strict rate limiting for auth endpoints
+  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success: rlSuccess } = await checkRateLimit(ip, 'auth');
+  if (!rlSuccess) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   try {
     const { userId, code } = await request.json();
 

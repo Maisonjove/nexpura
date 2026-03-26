@@ -3,8 +3,16 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyTOTPToken, generateBackupCodes, hashBackupCode } from '@/lib/totp';
 import logger from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
+  // Strict rate limiting for auth endpoints
+  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success: rlSuccess } = await checkRateLimit(ip, 'auth');
+  if (!rlSuccess) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();

@@ -2,8 +2,16 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyBackupCode } from '@/lib/totp';
 import logger from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
+  // Strict rate limiting for auth endpoints
+  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success: rlSuccess } = await checkRateLimit(ip, 'auth');
+  if (!rlSuccess) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   try {
     const body = await request.json();
     const { userId, code, isBackupCode } = body;

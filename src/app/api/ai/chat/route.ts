@@ -5,6 +5,7 @@ import { openai } from "@ai-sdk/openai";
 import { Resend } from "resend";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { sanitizeText } from "@/lib/sanitize";
 
 export const maxDuration = 60;
 
@@ -231,7 +232,7 @@ async function handleEmailExport(
 
 export async function POST(req: Request) {
   const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
-  const { success: _rlSuccess } = await checkRateLimit(_ip);
+  const { success: _rlSuccess } = await checkRateLimit(_ip, 'ai');
   if (!_rlSuccess) {
     return new Response("Too many requests", { status: 429 });
   }
@@ -278,11 +279,14 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { message, conversationId } = body as { message: string; conversationId?: string };
+    const { message: rawMessage, conversationId } = body as { message: string; conversationId?: string };
 
-    if (!message?.trim()) {
+    if (!rawMessage?.trim()) {
       return Response.json({ error: "Message is required" }, { status: 400 });
     }
+
+    // Sanitize user input
+    const message = sanitizeText(rawMessage.trim());
 
     const adminClient = createAdminClient();
     const businessName = tenant?.name ?? "your business";
