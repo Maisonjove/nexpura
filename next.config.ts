@@ -88,10 +88,9 @@ export default withSentryConfig(withBundleAnalyzer(nextConfig), {
   tunnelRoute: "/monitoring",
 
   // Hides source maps from generated client bundles
-  hideSourceMaps: true,
-
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
-  disableLogger: true,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
 
   // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
   // See the following for more information:

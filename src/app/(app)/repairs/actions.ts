@@ -135,18 +135,30 @@ export async function updateRepair(
     return { error: "Not authenticated" };
   }
 
-  const { supabase, tenantId } = ctx;
+  const { supabase, tenantId, userId } = ctx;
+  const repairData = buildRepairData(formData);
 
   const { error } = await supabase
     .from("repairs")
     .update({
-      ...buildRepairData(formData),
+      ...repairData,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+
+  // Audit log
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "repair_update",
+    entityType: "repair",
+    entityId: id,
+    newData: repairData as Record<string, unknown>,
+  });
+
   redirect(`/repairs/${id}`);
 }
 
@@ -242,6 +254,16 @@ export async function advanceRepairStage(
       });
     }
   }
+
+  // Audit log stage advancement
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "repair_stage_advance",
+    entityType: "repair",
+    entityId: repairId,
+    newData: { stage: newStage, notes },
+  });
 
   return { success: true };
 }
