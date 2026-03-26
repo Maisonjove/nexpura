@@ -79,6 +79,6 @@ Write a concise migration summary. Return JSON:
     return NextResponse.json({ summary });
   } catch (err) {
     logger.error('Summarize error:', err);
-    return NextResponse.json({ error: err.message }, { status: 200 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 200 });
   }
 }

@@ -12,7 +12,8 @@ export interface ReportResult {
   summary: Record<string, unknown>;
   csv?: string;
   html?: string;
-  data?: unknown[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data?: any[] | null;
 }
 
 export async function generateReport(
@@ -89,7 +90,7 @@ async function generateSalesReport(
       period: period,
     },
     csv: csvRows.map(row => row.join(",")).join("\n"),
-    data: sales,
+    data: sales ?? undefined,
   };
 }
 
@@ -140,7 +141,7 @@ async function generateInventoryReport(
       out_of_stock: outOfStock,
     },
     csv: csvRows.map(row => row.join(",")).join("\n"),
-    data: inventory,
+    data: inventory ?? undefined,
   };
 }
 
@@ -177,7 +178,7 @@ async function generateRepairsReport(
     ...(jobs || []).map(j => [
       j.job_number,
       new Date(j.created_at).toLocaleDateString(),
-      (j.customers as { name: string } | null)?.name || "Unknown",
+      (j.customers as { name: string } | undefined)?.name || "Unknown",
       j.repair_type || "",
       j.status,
       formatCurrency(j.estimated_cost || 0, currency),
@@ -194,7 +195,7 @@ async function generateRepairsReport(
       revenue_from_completed: formatCurrency(totalRevenue, currency),
     },
     csv: csvRows.map(row => row.join(",")).join("\n"),
-    data: jobs,
+    data: jobs ?? undefined,
   };
 }
 

@@ -316,10 +316,8 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
       try {
         let res: ImportResult;
         // Dynamic mapping produces Record<string, string>[] which each import function accepts as a subset
-        const typedRows = mappedRows as Parameters<typeof importInventory>[0] 
-          & Parameters<typeof importCustomers>[0] 
-          & Parameters<typeof importRepairs>[0] 
-          & Parameters<typeof importBespokeJobs>[0] 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const typedRows = mappedRows as any 
           & Parameters<typeof importSales>[0] 
           & Parameters<typeof importSuppliers>[0];
         switch (activeTab) {

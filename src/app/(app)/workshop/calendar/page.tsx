@@ -30,13 +30,19 @@ export default async function WorkshopCalendarPage() {
     getIntegration(tenantId, "google_calendar"),
   ]);
   
-  const repairs = repairsResult.data;
-  const bespoke = bespokeResult.data;
+  const repairs = (repairsResult.data ?? []).map(r => ({
+    ...r,
+    customers: Array.isArray(r.customers) ? r.customers[0] ?? null : r.customers
+  }));
+  const bespoke = (bespokeResult.data ?? []).map(b => ({
+    ...b,
+    customers: Array.isArray(b.customers) ? b.customers[0] ?? null : b.customers
+  }));
 
   return (
     <WorkshopCalendarClient
-      repairs={repairs ?? []}
-      bespoke={bespoke ?? []}
+      repairs={repairs as any}
+      bespoke={bespoke as any}
       staff={staff ?? []}
       tenantId={tenantId}
       googleCalendarConnected={gcalIntegration?.status === "connected"}

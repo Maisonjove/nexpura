@@ -72,7 +72,7 @@ export default function StockSaleForm({
               {selectedInventory.primary_image ? (
                 <Image
                   src={selectedInventory.primary_image}
-                  alt={selectedInventory.name}
+                  alt={selectedInventory.name || "Item"}
                   width={64}
                   height={64}
                   className="w-16 h-16 object-cover rounded-lg flex-shrink-0"

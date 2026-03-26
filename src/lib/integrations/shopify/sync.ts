@@ -29,6 +29,7 @@ interface ShopifyProduct {
     price: string;
     inventory_quantity: number;
     barcode: string | null;
+    inventory_item_id?: number;
   }>;
   images: Array<{ src: string }>;
   product_type: string;

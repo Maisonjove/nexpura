@@ -57,10 +57,10 @@ export async function GET(
       tenant: tenant,
     };
 
-    // Render PDF
-    const stream = await renderToStream(
-      React.createElement(QuotePDF, pdfProps)
-    );
+    // Render PDF - type assertion needed for react-pdf compatibility
+    const element = React.createElement(QuotePDF, pdfProps);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stream = await renderToStream(element as any);
 
     return new NextResponse(stream as unknown as BodyInit, {
       headers: {

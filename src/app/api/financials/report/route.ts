@@ -2,10 +2,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 export async function GET(req: Request) {
   try {
+    const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+    const { success: rlSuccess } = await checkRateLimit(`financials-report:${ip}`);
+    if (!rlSuccess) return Response.json({ error: "Too many requests" }, { status: 429 });
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });

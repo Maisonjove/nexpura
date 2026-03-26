@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 const SYSTEM_PROMPT = `You are the Nexpura Product Concierge, a deeply knowledgeable and helpful support assistant for the Nexpura jewellery business management platform.
@@ -36,6 +37,12 @@ GUIDELINES:
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+    const { success: rlSuccess } = await checkRateLimit(`support-chat:${ip}`);
+    if (!rlSuccess) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const { message } = await req.json();
 
     if (!message) {

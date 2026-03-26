@@ -243,7 +243,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
           const input: CreateStockSaleInput = {
             customer_id: selectedCustomer?.id || null,
             inventory_id: selectedInventory.id,
-            item_name: selectedInventory.name,
+            item_name: selectedInventory.name || "Unknown Item",
             price: parseFloat(stockData.price) || selectedInventory.retail_price || 0,
             payment_received: stockData.payment_received ? parseFloat(stockData.payment_received) : null,
             payment_method: stockData.payment_method || null,

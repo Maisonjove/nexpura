@@ -1,9 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+    const { success: rlSuccess } = await checkRateLimit(`financials-metrics:${ip}`);
+    if (!rlSuccess) return Response.json({ error: "Too many requests" }, { status: 429 });
+
     const supabase = await createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
