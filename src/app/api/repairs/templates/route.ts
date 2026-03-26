@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import logger from '@/lib/logger';
 
 // GET - List repair templates
 export async function GET() {
@@ -34,13 +35,13 @@ export async function GET() {
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('Error fetching templates:', error);
+      logger.error('Error fetching templates', { error });
       return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 });
     }
 
     return NextResponse.json({ templates: templates || [] });
   } catch (error) {
-    console.error('Repair templates GET error:', error);
+    logger.error('Repair templates GET error', { error });
     return NextResponse.json(
       { error: 'Failed to fetch templates' },
       { status: 500 }
@@ -99,13 +100,13 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error('Error creating template:', error);
+      logger.error('Error creating template', { error });
       return NextResponse.json({ error: 'Failed to create template' }, { status: 500 });
     }
 
     return NextResponse.json({ template });
   } catch (error) {
-    console.error('Repair templates POST error:', error);
+    logger.error('Repair templates POST error', { error });
     return NextResponse.json(
       { error: 'Failed to create template' },
       { status: 500 }
@@ -151,13 +152,13 @@ export async function DELETE(request: Request) {
       .eq('tenant_id', userData.tenant_id);
 
     if (error) {
-      console.error('Error deleting template:', error);
+      logger.error('Error deleting template', { error, templateId });
       return NextResponse.json({ error: 'Failed to delete template' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Repair templates DELETE error:', error);
+    logger.error('Repair templates DELETE error', { error });
     return NextResponse.json(
       { error: 'Failed to delete template' },
       { status: 500 }

@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function recordLaybyPayment(
   saleId: string,
@@ -87,6 +88,15 @@ export async function recordLaybyPayment(
   if ("duplicate" in result && result.duplicate) {
     return { error: result.error };
   }
+
+  // Audit log the layby payment
+  await logAuditEvent({
+    tenantId,
+    action: 'layby_payment',
+    entityType: 'layby',
+    entityId: saleId,
+    newData: { amount, paymentMethod, notes },
+  });
 
   revalidatePath(`/laybys/${saleId}`);
   revalidatePath("/laybys");

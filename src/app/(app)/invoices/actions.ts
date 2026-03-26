@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { sendInvoiceEmail } from "@/lib/email/send";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import logger from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -188,6 +189,21 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
     if (liErr) throw new Error(`Failed to create line items: ${liErr.message}`);
   }
 
+  // Audit log
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: 'invoice_create',
+    entityType: 'invoice',
+    entityId: invoice.id,
+    newData: { 
+      invoice_number: invoiceNumberData,
+      customer_id: input.customer_id,
+      total,
+      status: input.status,
+    },
+  });
+
   revalidatePath("/invoices");
     return { id: invoice.id };
   } catch (err) {
@@ -266,6 +282,17 @@ export async function updateInvoice(
 
     if (liErr) throw new Error(`Failed to update line items: ${liErr.message}`);
   }
+
+  // Audit log
+  const { userId, tenantId: auditTenantId } = await getAuthContext();
+  await logAuditEvent({
+    tenantId: auditTenantId,
+    userId,
+    action: 'invoice_update',
+    entityType: 'invoice',
+    entityId: id,
+    newData: { total, status: input.status },
+  });
 
   revalidatePath(`/invoices/${id}`);
     revalidatePath("/invoices");

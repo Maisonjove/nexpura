@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { headers } from 'next/headers';
+import logger from '@/lib/logger';
 
 export type AuditAction =
   | 'inventory_create'
@@ -26,6 +27,15 @@ export type AuditAction =
   | 'team_member_delete'
   | 'location_create'
   | 'location_update'
+  | 'quote_create'
+  | 'quote_update'
+  | 'quote_delete'
+  | 'quote_convert'
+  | 'sale_create'
+  | 'sale_void'
+  | 'payment_create'
+  | 'layby_payment'
+  | 'layby_cancel'
   | 'login'
   | 'logout';
 
@@ -38,7 +48,11 @@ export type EntityType =
   | 'settings'
   | 'team_member'
   | 'location'
-  | 'user';
+  | 'user'
+  | 'quote'
+  | 'sale'
+  | 'payment'
+  | 'layby';
 
 interface AuditLogEntry {
   tenantId: string;
@@ -89,7 +103,7 @@ export async function logAuditEvent({
     });
   } catch (error) {
     // Log but don't throw - audit logging should not break the main flow
-    console.error('[Audit] Failed to log event:', error);
+    logger.error('Failed to log audit event', { error, action, entityType, entityId });
   }
 }
 

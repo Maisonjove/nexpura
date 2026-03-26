@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import logger from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
           .in('customer_id', secondaryIds);
       } catch (e) {
         // Table might not exist or not have customer_id - skip
-        console.log(`Skipping table ${table}:`, e);
+        logger.debug(`Skipping table ${table} during customer merge`, { error: e });
       }
     }
 
@@ -125,7 +126,7 @@ export async function POST(request: Request) {
       mergedCount: secondaryIds.length,
     });
   } catch (error) {
-    console.error('Customer merge error:', error);
+    logger.error('Customer merge error', { error });
     return NextResponse.json(
       { error: 'Failed to merge customers' },
       { status: 500 }

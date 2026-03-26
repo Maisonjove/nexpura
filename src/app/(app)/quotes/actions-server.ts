@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export interface QuoteItem {
@@ -54,6 +55,17 @@ export async function createQuote(input: QuoteInput): Promise<{ data?: unknown; 
       logger.error("[createQuote] Error:", error);
       return { error: error.message };
     }
+
+    // Audit log
+    await logAuditEvent({
+      tenantId: userData.tenant_id,
+      userId: user.id,
+      action: 'quote_create',
+      entityType: 'quote',
+      entityId: data.id,
+      newData: data as Record<string, unknown>,
+    });
+
     revalidatePath("/quotes");
     return { data };
   } catch (err) {
@@ -88,6 +100,17 @@ export async function updateQuote(id: string, input: Partial<QuoteInput>): Promi
       logger.error("[updateQuote] Error:", error);
       return { error: error.message };
     }
+
+    // Audit log
+    await logAuditEvent({
+      tenantId: userData.tenant_id,
+      userId: user.id,
+      action: 'quote_update',
+      entityType: 'quote',
+      entityId: id,
+      newData: data as Record<string, unknown>,
+    });
+
     revalidatePath("/quotes");
     revalidatePath(`/quotes/${id}`);
     return { data };
@@ -121,6 +144,16 @@ export async function deleteQuote(id: string): Promise<{ error?: string }> {
       logger.error("[deleteQuote] Error:", error);
       return { error: error.message };
     }
+
+    // Audit log
+    await logAuditEvent({
+      tenantId: userData.tenant_id,
+      userId: user.id,
+      action: 'quote_delete',
+      entityType: 'quote',
+      entityId: id,
+    });
+
     revalidatePath("/quotes");
     return {};
   } catch (err) {

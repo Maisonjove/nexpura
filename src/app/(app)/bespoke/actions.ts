@@ -7,6 +7,7 @@ import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import logger from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -123,6 +124,16 @@ export async function createBespokeJob(
     created_by: userId,
   });
 
+  // Audit log
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: 'bespoke_create',
+    entityType: 'bespoke_job',
+    entityId: data.id,
+    newData: { job_number: numData, customer_id: customerId, title: jobData.title },
+  });
+
   redirect(`/bespoke/${data.id}`);
 }
 
@@ -149,6 +160,17 @@ export async function updateBespokeJob(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+
+  // Audit log
+  await logAuditEvent({
+    tenantId,
+    userId: ctx.userId,
+    action: 'bespoke_update',
+    entityType: 'bespoke_job',
+    entityId: id,
+    newData: buildJobData(formData),
+  });
+
   redirect(`/bespoke/${id}`);
 }
 

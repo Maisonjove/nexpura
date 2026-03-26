@@ -7,6 +7,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
+import logger from "@/lib/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -102,7 +103,7 @@ export async function runOverdueAutomation(): Promise<{ sent: number; errors: nu
         }
       }
     } catch (err) {
-      console.error(`[overdue-automation] Error for invoice ${invoice.id}:`, err);
+      logger.error("Overdue automation error for invoice", { invoiceId: invoice.id, error: err });
       errors++;
     }
   }
@@ -187,7 +188,7 @@ async function sendOverdueEmail(params: {
     });
     return { success: true };
   } catch (err) {
-    console.error("[sendOverdueEmail] Failed:", err);
+    logger.error("Failed to send overdue email", { error: err });
     return { success: false };
   }
 }
