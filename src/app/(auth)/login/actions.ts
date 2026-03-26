@@ -31,10 +31,11 @@ export async function loginAction(
   email: string,
   password: string
 ): Promise<LoginResult> {
-  const clientIP = await getClientIP();
-  // Use a combination of email + IP for rate limiting
-  // This prevents account enumeration while still protecting against distributed attacks
-  const identifier = `${email.toLowerCase()}:${clientIP}`;
+  try {
+    const clientIP = await getClientIP();
+    // Use a combination of email + IP for rate limiting
+    // This prevents account enumeration while still protecting against distributed attacks
+    const identifier = `${email.toLowerCase()}:${clientIP}`;
 
   // Check if login attempts are allowed
   const loginCheck = await checkLoginAttempts(identifier);
@@ -91,4 +92,11 @@ export async function loginAction(
   return {
     success: true,
   };
+  } catch (error) {
+    console.error("[loginAction] Unexpected error:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred. Please try again.",
+    };
+  }
 }
