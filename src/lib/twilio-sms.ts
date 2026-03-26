@@ -76,7 +76,7 @@ function selectFromNumber(
  * Normalize phone number to E.164 format
  */
 function normalizePhoneNumber(phone: string): string {
-  let cleaned = phone.replace(/[\s\-\(\)]/g, "");
+  const cleaned = phone.replace(/[\s\-\(\)]/g, "");
   
   // Already has +
   if (cleaned.startsWith("+")) {

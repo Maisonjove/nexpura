@@ -178,7 +178,7 @@ export async function emailInvoice(
       tenant: tenantData,
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const pdfBuffer = await renderToBuffer(
       element as unknown as ReactElement<
         DocumentProps,

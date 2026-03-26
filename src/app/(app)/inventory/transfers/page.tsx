@@ -75,7 +75,7 @@ export default async function TransfersPage() {
   const { data: locations } = await locationsQuery;
 
   // Fetch inventory for transfer selection
-  let inventoryQuery = admin
+  const inventoryQuery = admin
     .from("inventory")
     .select("id, name, sku, quantity, location_id")
     .eq("tenant_id", userData.tenant_id)

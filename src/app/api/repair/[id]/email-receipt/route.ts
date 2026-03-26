@@ -99,7 +99,7 @@ export async function POST(
   };
 
   const element = React.createElement(RepairTicketPDF, { ticket: ticketData });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const buffer = await renderToBuffer(element as unknown as ReactElement<DocumentProps, JSXElementConstructor<DocumentProps>>);
 
   const businessName = tenant?.business_name || tenant?.name || "Jewellery Studio";

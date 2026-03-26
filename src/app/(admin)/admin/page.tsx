@@ -53,7 +53,7 @@ export default async function AdminDashboardPage() {
 
   // Fetch support access statuses
   const tenantIds = (tenants ?? []).map((t) => t.id);
-  let accessStatuses: Record<string, { status: "pending" | "approved"; expiresAt?: string }> = {};
+  const accessStatuses: Record<string, { status: "pending" | "approved"; expiresAt?: string }> = {};
   try {
     const accessStatusMap = await getTenantAccessStatuses(tenantIds);
     accessStatusMap.forEach((value, key) => {

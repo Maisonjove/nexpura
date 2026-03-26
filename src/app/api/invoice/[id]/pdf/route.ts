@@ -173,7 +173,7 @@ export async function GET(
     tenant: tenantData,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   let buffer: Buffer;
   try {
     buffer = await renderToBuffer(element as unknown as ReactElement<DocumentProps, JSXElementConstructor<DocumentProps>>);

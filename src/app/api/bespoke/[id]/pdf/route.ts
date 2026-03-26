@@ -98,7 +98,7 @@ export async function GET(
 
   const element = React.createElement(BespokeSheetPDF, { job: jobData });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const buffer = await renderToBuffer(element as unknown as ReactElement<DocumentProps, JSXElementConstructor<DocumentProps>>);
 
   const filename = `bespoke-${jobData.jobNumber.replace(/\//g, "-")}.pdf`;

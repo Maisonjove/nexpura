@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = createAdminClient();
-    let synced = { appointments: 0, repairs: 0 };
+    const synced = { appointments: 0, repairs: 0 };
 
     // Sync appointments
     if (type === "appointments" || type === "all") {

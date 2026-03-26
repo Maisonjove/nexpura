@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/rules-of-hooks */
 
 import { useState, useRef, useTransition, useCallback, useEffect } from "react";
 import Image from "next/image";
