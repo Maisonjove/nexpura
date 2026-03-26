@@ -220,3 +220,115 @@ export async function updateTaskStatus(taskId: string, status: string) {
     return { error: "Operation failed" };
   }
 }
+
+// ============================================================================
+// Team Member Location Assignment
+// ============================================================================
+
+export async function getTeamMemberLocations(memberId: string) {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+
+    // Get the team member's allowed_location_ids and junction table entries
+    const [memberRes, junctionRes] = await Promise.all([
+      supabase
+        .from("team_members")
+        .select("allowed_location_ids")
+        .eq("id", memberId)
+        .eq("tenant_id", tenantId)
+        .single(),
+      supabase
+        .from("team_member_locations")
+        .select("location_id")
+        .eq("team_member_id", memberId),
+    ]);
+
+    // Prefer junction table if it has entries, otherwise use array column
+    const locationIds = junctionRes.data?.length
+      ? junctionRes.data.map((l) => l.location_id)
+      : memberRes.data?.allowed_location_ids ?? null;
+
+    return { data: locationIds, error: null };
+  } catch (error) {
+    logger.error("getTeamMemberLocations failed", { error });
+    return { error: "Operation failed", data: null };
+  }
+}
+
+export async function updateTeamMemberLocations(
+  memberId: string,
+  locationIds: string[] | null // null means all locations
+) {
+  try {
+    const { supabase, userId, tenantId } = await getAuthContext();
+
+    // Get old data for audit
+    const { data: oldMember } = await supabase
+      .from("team_members")
+      .select("name, allowed_location_ids")
+      .eq("id", memberId)
+      .eq("tenant_id", tenantId)
+      .single();
+
+    // Update the array column on team_members
+    const { error: updateError } = await supabase
+      .from("team_members")
+      .update({
+        allowed_location_ids: locationIds,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", memberId)
+      .eq("tenant_id", tenantId);
+
+    if (updateError) return { error: updateError.message };
+
+    // Also sync the junction table
+    // First, delete existing entries
+    await supabase
+      .from("team_member_locations")
+      .delete()
+      .eq("team_member_id", memberId);
+
+    // Then insert new entries (if not "all locations")
+    if (locationIds && locationIds.length > 0) {
+      const entries = locationIds.map((locId) => ({
+        team_member_id: memberId,
+        location_id: locId,
+      }));
+      await supabase.from("team_member_locations").insert(entries);
+    }
+
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "team_member_locations_update",
+      entityType: "team_member",
+      entityId: memberId,
+      oldData: { allowed_location_ids: oldMember?.allowed_location_ids },
+      newData: { allowed_location_ids: locationIds },
+    });
+
+    revalidatePath("/settings/team");
+    return { success: true };
+  } catch (error) {
+    logger.error("updateTeamMemberLocations failed", { error });
+    return { error: "Operation failed" };
+  }
+}
+
+export async function getLocations() {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+    const { data, error } = await supabase
+      .from("locations")
+      .select("id, name, type, is_active")
+      .eq("tenant_id", tenantId)
+      .eq("is_active", true)
+      .order("name");
+
+    return { data: data ?? [], error: error?.message };
+  } catch (error) {
+    logger.error("getLocations failed", { error });
+    return { error: "Operation failed" };
+  }
+}

@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MapPin, ChevronDown, Check, Building2, Layers } from "lucide-react";
+import { MapPin, ChevronDown, Check, Building2, Layers, Info } from "lucide-react";
 import { useLocation } from "@/contexts/LocationContext";
+import Link from "next/link";
 
 interface Props {
   showAllOption?: boolean;
   compact?: boolean;
+  showDetailsLink?: boolean;
 }
 
-export default function LocationPicker({ showAllOption = true, compact = false }: Props) {
+export default function LocationPicker({ showAllOption = true, compact = false, showDetailsLink = true }: Props) {
   const { 
     locations, 
     currentLocation, 
@@ -143,6 +145,21 @@ export default function LocationPicker({ showAllOption = true, compact = false }
               );
             })}
           </div>
+
+          {/* View Details Link */}
+          {showDetailsLink && currentLocationId && viewMode === "single" && (
+            <>
+              <div className="mx-3 my-1 border-t border-stone-100" />
+              <Link
+                href={`/settings/locations/${currentLocationId}`}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-xs text-amber-700 hover:bg-amber-50 transition-colors"
+              >
+                <Info size={12} />
+                <span>View location details</span>
+              </Link>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -25,10 +25,10 @@ export default async function TeamPage() {
   const currentUserRole = userData?.role ?? "staff";
   const businessMode = (userData?.tenants as { business_mode?: string } | null)?.business_mode || 'full';
 
-  const [{ data: members }, { data: tasks }] = await Promise.all([
+  const [{ data: members }, { data: tasks }, { data: locations }] = await Promise.all([
     supabase
       .from("team_members")
-      .select("id, name, email, role, department, last_login_at, invite_accepted, created_at")
+      .select("id, name, email, role, department, last_login_at, invite_accepted, created_at, allowed_location_ids")
       .eq("tenant_id", ctx.tenantId)
       .order("created_at", { ascending: true }),
     supabase
@@ -36,6 +36,12 @@ export default async function TeamPage() {
       .select("*")
       .eq("tenant_id", ctx.tenantId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("locations")
+      .select("id, name, type, is_active")
+      .eq("tenant_id", ctx.tenantId)
+      .eq("is_active", true)
+      .order("name"),
   ]);
 
   const maxUsers = PLAN_FEATURES[ctx.plan as PlanId]?.staffLimit ?? null;
@@ -52,6 +58,7 @@ export default async function TeamPage() {
       planName={PLAN_NAMES[ctx.plan as PlanId]}
       maxUsers={maxUsers}
       isAtLimit={isAtLimit}
+      locations={locations ?? []}
     />
   );
 }

@@ -10,6 +10,8 @@ import {
   createTask,
   updateTaskStatus,
 } from "./actions";
+import TeamMemberLocationModal from "@/components/TeamMemberLocationModal";
+import { MapPin } from "lucide-react";
 
 interface TeamMember {
   id: string;
@@ -20,6 +22,14 @@ interface TeamMember {
   last_login_at: string | null;
   invite_accepted: boolean;
   created_at: string;
+  allowed_location_ids: string[] | null;
+}
+
+interface Location {
+  id: string;
+  name: string;
+  type: string;
+  is_active: boolean;
 }
 
 interface Task {
@@ -42,6 +52,7 @@ interface Props {
   planName?: string;
   maxUsers?: number | null;
   isAtLimit?: boolean;
+  locations?: Location[];
 }
 
 const ROLE_COLOURS: Record<string, string> = {
@@ -102,6 +113,7 @@ export default function TeamClient({
   planName,
   maxUsers,
   isAtLimit,
+  locations = [],
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -116,8 +128,10 @@ export default function TeamClient({
   const [taskDue, setTaskDue] = useState("");
   const [taskAssignee, setTaskAssignee] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [locationModalMember, setLocationModalMember] = useState<TeamMember | null>(null);
 
   const isOwner = currentUserRole === "owner";
+  const hasMultipleLocations = locations.length > 1;
 
   // Filter selectable roles based on business mode
   const filteredRoles = SELECTABLE_ROLES.filter((r) => {
@@ -331,7 +345,9 @@ export default function TeamClient({
                   <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-5 py-3">Name</th>
                   <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Email</th>
                   <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Role</th>
-                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Department</th>
+                  {hasMultipleLocations && (
+                    <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Locations</th>
+                  )}
                   <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Last Login</th>
                   <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Status</th>
                   <th className="px-4 py-3"></th>
@@ -361,7 +377,25 @@ export default function TeamClient({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-stone-500">{m.department || "—"}</td>
+                    {hasMultipleLocations && (
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setLocationModalMember(m)}
+                          className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-amber-700 transition-colors"
+                        >
+                          <MapPin size={12} />
+                          {m.allowed_location_ids === null ? (
+                            <span className="text-amber-600 font-medium">All locations</span>
+                          ) : m.allowed_location_ids?.length === 0 ? (
+                            <span className="text-stone-400">None</span>
+                          ) : (
+                            <span>
+                              {m.allowed_location_ids.length} location{m.allowed_location_ids.length !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </button>
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-xs text-stone-400">
                       {m.last_login_at
                         ? new Date(m.last_login_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
@@ -543,6 +577,16 @@ export default function TeamClient({
           </div>
         )}
       </div>
+
+      {/* Location Assignment Modal */}
+      {locationModalMember && (
+        <TeamMemberLocationModal
+          member={locationModalMember}
+          locations={locations}
+          onClose={() => setLocationModalMember(null)}
+          onSave={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }
