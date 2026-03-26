@@ -158,6 +158,7 @@ export async function importProductsFromShopify(tenantId: string): Promise<SyncR
 
 /**
  * Export Nexpura inventory to Shopify products
+ * Deep two-way sync: Creates new products, updates existing, syncs stock levels
  */
 export async function exportInventoryToShopify(tenantId: string): Promise<SyncResult> {
   const integration = await getIntegration(tenantId, "shopify");
@@ -171,62 +172,94 @@ export async function exportInventoryToShopify(tenantId: string): Promise<SyncRe
   let skipped = 0;
   const errors: string[] = [];
 
+  // Get all active inventory items
   const { data: items } = await admin
     .from("inventory")
     .select("*")
     .eq("tenant_id", tenantId)
     .eq("status", "active")
-    .not("shopify_variant_id", "is", null);
+    .limit(250);
 
-  if (!items?.length) {
-    // No items with Shopify IDs, try to push all
-    const { data: allItems } = await admin
-      .from("inventory")
-      .select("*")
-      .eq("tenant_id", tenantId)
-      .eq("status", "active")
-      .limit(50);
-    
-    for (const item of allItems || []) {
-      try {
-        await shopifyFetch(shop_domain, access_token, "/products.json", {
-          method: "POST",
-          body: JSON.stringify({
-            product: {
-              title: item.name,
-              variants: [{
-                sku: item.sku || "",
-                price: String(item.retail_price || 0),
-                inventory_quantity: item.quantity || 0,
-              }],
-            },
-          }),
-        });
-        exported++;
-      } catch (err) {
-        errors.push(`Item ${item.id}: ${err instanceof Error ? err.message : "Error"}`);
-        skipped++;
-      }
-    }
-  } else {
-    // Update existing Shopify variants
-    for (const item of items) {
-      try {
+  for (const item of items || []) {
+    try {
+      if (item.shopify_variant_id) {
+        // Update existing Shopify variant
         await shopifyFetch(shop_domain, access_token, `/variants/${item.shopify_variant_id}.json`, {
           method: "PUT",
           body: JSON.stringify({
             variant: {
               id: item.shopify_variant_id,
               price: String(item.retail_price || 0),
-              inventory_quantity: item.quantity || 0,
+              sku: item.sku || "",
             },
           }),
         });
+
+        // Update inventory level via Inventory API (for accurate stock)
+        try {
+          // Get inventory item ID from variant
+          const variantData = await shopifyFetch(shop_domain, access_token, `/variants/${item.shopify_variant_id}.json`);
+          const inventoryItemId = variantData.variant?.inventory_item_id;
+          if (inventoryItemId) {
+            // Get locations
+            const locData = await shopifyFetch(shop_domain, access_token, "/locations.json");
+            const locationId = locData.locations?.[0]?.id;
+            if (locationId) {
+              await shopifyFetch(shop_domain, access_token, `/inventory_levels/set.json`, {
+                method: "POST",
+                body: JSON.stringify({
+                  location_id: locationId,
+                  inventory_item_id: inventoryItemId,
+                  available: item.quantity || 0,
+                }),
+              });
+            }
+          }
+        } catch {
+          // Non-fatal: inventory level update failed
+        }
+
         exported++;
-      } catch (err) {
-        errors.push(`Item ${item.id}: ${err instanceof Error ? err.message : "Error"}`);
-        skipped++;
+      } else {
+        // Create new Shopify product
+        const result = await shopifyFetch(shop_domain, access_token, "/products.json", {
+          method: "POST",
+          body: JSON.stringify({
+            product: {
+              title: item.name,
+              body_html: item.description || "",
+              vendor: "Nexpura",
+              product_type: item.jewellery_type || "Jewelry",
+              variants: [{
+                sku: item.sku || "",
+                price: String(item.retail_price || 0),
+                inventory_management: "shopify",
+                inventory_quantity: item.quantity || 0,
+                barcode: item.barcode || "",
+              }],
+              status: "active",
+            },
+          }),
+        });
+
+        // Save Shopify IDs back to inventory
+        const variant = result.product?.variants?.[0];
+        if (variant) {
+          await admin.from("inventory").update({
+            shopify_product_id: String(result.product.id),
+            shopify_variant_id: String(variant.id),
+            last_synced_at: new Date().toISOString(),
+          }).eq("id", item.id);
+        }
+
+        exported++;
       }
+
+      // Update last_synced_at
+      await admin.from("inventory").update({ last_synced_at: new Date().toISOString() }).eq("id", item.id);
+    } catch (err) {
+      errors.push(`Item ${item.id}: ${err instanceof Error ? err.message : "Error"}`);
+      skipped++;
     }
   }
 

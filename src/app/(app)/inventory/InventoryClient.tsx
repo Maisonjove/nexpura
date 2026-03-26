@@ -18,6 +18,7 @@ import {
   Package, Grid3X3, List, TrendingUp, AlertTriangle, DollarSign,
   Filter, X, MoreVertical, ArrowUpDown, FileText
 } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import QuickPrintTagModal from "@/components/QuickPrintTagModal";
 import CameraScannerModal from "@/components/CameraScannerModal";
 
@@ -319,7 +320,10 @@ export default function InventoryClient({
             </div>
             <div>
               <p className="text-2xl font-bold text-amber-600">{lowStockCount}</p>
-              <p className="text-xs text-stone-500">Low Stock</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs text-stone-500">Low Stock</p>
+                <HelpTooltip content="Items below their low stock threshold. Set this per item to get alerts when inventory is running low." size={12} />
+              </div>
             </div>
           </div>
         </Card>
@@ -345,7 +349,10 @@ export default function InventoryClient({
               <p className="text-2xl font-bold text-stone-900">
                 {items.filter((i) => i.listed_on_website).length}
               </p>
-              <p className="text-xs text-stone-500">On Website</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs text-stone-500">On Website</p>
+                <HelpTooltip content="Items currently listed on your public website store. Toggle visibility in each item's settings." size={12} />
+              </div>
             </div>
           </div>
         </Card>

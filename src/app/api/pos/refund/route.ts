@@ -20,12 +20,18 @@ export async function POST(req: NextRequest) {
 
   if (!sale) return NextResponse.json({ error: "Sale not found" }, { status: 404 });
 
-  // Generate refund number
-  const { count } = await admin
-    .from("refunds")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId);
-  const refundNumber = `R-${String((count ?? 0) + 1).padStart(4, "0")}`;
+  // Generate refund number using function or fallback
+  let refundNumber: string;
+  const { data: numData } = await admin.rpc("next_refund_number", { p_tenant_id: tenantId });
+  if (numData) {
+    refundNumber = numData;
+  } else {
+    const { count } = await admin
+      .from("refunds")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId);
+    refundNumber = `R-${String((count ?? 0) + 1).padStart(4, "0")}`;
+  }
 
   // Create refund record
   const { data: refund, error: refundErr } = await admin
@@ -38,45 +44,59 @@ export async function POST(req: NextRequest) {
       refund_method: refundMethod,
       reason,
       notes: notes || null,
-      customer_id: sale.customer_id || null,
-      customer_name: sale.customer_name || null,
-      status: "completed",
     })
     .select("id")
     .single();
 
   if (refundErr) {
-    // If table doesn't have all columns, try simpler insert
-    const { data: r2, error: e2 } = await admin
-      .from("refunds")
-      .insert({
-        tenant_id: tenantId,
-        sale_id: saleId,
-        total: total,
-        refund_method: refundMethod,
-        reason,
-        notes: notes || null,
-        status: "completed",
-      })
-      .select("id")
-      .single();
-    
-    if (e2) return NextResponse.json({ error: e2.message }, { status: 500 });
-    
-    return NextResponse.json({ success: true, refundNumber, refundId: r2?.id });
+    return NextResponse.json({ error: refundErr.message }, { status: 500 });
   }
 
-  // Create refund items
-  const refundItems = items.map((item: { saleItemId: string; quantity: number; unitPrice: number }) => ({
-    tenant_id: tenantId,
-    refund_id: refund.id,
-    sale_item_id: item.saleItemId,
-    quantity: item.quantity,
-    unit_price: item.unitPrice,
-    total: item.quantity * item.unitPrice,
-  }));
+  // Create refund items and restore inventory
+  for (const item of items as Array<{ saleItemId: string; quantity: number; unitPrice: number }>) {
+    // Insert refund item
+    await admin.from("refund_items").insert({
+      tenant_id: tenantId,
+      refund_id: refund.id,
+      sale_item_id: item.saleItemId,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      total: item.quantity * item.unitPrice,
+    });
 
-  await admin.from("refund_items").insert(refundItems)
+    // Get the original sale item to find inventory_id
+    const { data: saleItem } = await admin
+      .from("sale_items")
+      .select("inventory_id, quantity")
+      .eq("id", item.saleItemId)
+      .single();
+
+    // Restore inventory quantity
+    if (saleItem?.inventory_id) {
+      const { data: inv } = await admin
+        .from("inventory")
+        .select("quantity")
+        .eq("id", saleItem.inventory_id)
+        .single();
+
+      if (inv) {
+        await admin
+          .from("inventory")
+          .update({ quantity: (inv.quantity || 0) + item.quantity })
+          .eq("id", saleItem.inventory_id);
+
+        // Log stock movement
+        await admin.from("stock_movements").insert({
+          tenant_id: tenantId,
+          inventory_id: saleItem.inventory_id,
+          movement_type: "return",
+          quantity_change: item.quantity,
+          quantity_after: (inv.quantity || 0) + item.quantity,
+          notes: `Refund ${refundNumber}`,
+        });
+      }
+    }
+  }
 
   // If store credit refund, add to customer balance
   if (refundMethod === "store_credit" && sale.customer_id) {

@@ -3,8 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { token, decision, notes, signature } = body;
-  if (!token || !decision) return NextResponse.json({ error: "Missing params" }, { status: 400 });
+  const { token, action, decision, notes, signature } = body;
+  // Support both "action" and "decision" for backwards compatibility
+  const finalAction = action || decision;
+  if (!token || !finalAction) return NextResponse.json({ error: "Missing params" }, { status: 400 });
 
   const admin = createAdminClient();
 
@@ -24,12 +26,12 @@ export async function POST(req: NextRequest) {
     approval_notes: notes || null,
   };
 
-  if (decision === "approve") {
+  if (finalAction === "approve") {
     updates.approval_status = "approved";
     updates.approved_at = new Date().toISOString();
-    // Store signature in notes if provided
+    // Store signature data if provided
     if (signature) {
-      updates.approval_notes = `Digitally signed by: ${signature}${notes ? ` — ${notes}` : ""}`;
+      updates.client_signature_data = signature;
     }
   } else {
     updates.approval_status = "changes_requested";
@@ -47,9 +49,9 @@ export async function POST(req: NextRequest) {
     tenant_id: job.tenant_id,
     job_type: "bespoke",
     job_id: job.id,
-    event_type: decision === "approve" ? "client_approved" : "changes_requested",
-    description: decision === "approve"
-      ? `Client approved design${signature ? ` (signed: ${signature})` : ""}`
+    event_type: finalAction === "approve" ? "client_approved" : "changes_requested",
+    description: finalAction === "approve"
+      ? `Client approved design with digital signature`
       : `Client requested changes: ${notes || "No details provided"}`,
   });
 

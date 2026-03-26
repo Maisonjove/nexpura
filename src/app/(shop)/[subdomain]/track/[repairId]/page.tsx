@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import { CheckCircle2, Clock, AlertCircle, Phone, Mail, MapPin, Wrench, Camera } from "lucide-react";
 
 interface Props {
@@ -270,13 +271,14 @@ export default async function RepairTrackingPage({ params }: Props) {
                       href={att.file_url as string}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="aspect-square bg-stone-100 rounded-xl overflow-hidden block hover:opacity-90 transition-opacity"
+                      className="relative aspect-square bg-stone-100 rounded-xl overflow-hidden block hover:opacity-90 transition-opacity"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <Image
                         src={att.file_url as string}
                         alt={att.file_name as string}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 640px) 33vw, 120px"
                       />
                     </a>
                   ))}

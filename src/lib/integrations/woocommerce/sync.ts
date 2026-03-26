@@ -151,6 +151,7 @@ export async function importProductsFromWoo(tenantId: string): Promise<SyncResul
 
 /**
  * Export Nexpura inventory to WooCommerce products
+ * Full two-way sync with stock levels and product details
  */
 export async function exportInventoryToWoo(tenantId: string): Promise<SyncResult> {
   const integration = await getIntegration(tenantId, "woocommerce");
@@ -167,49 +168,117 @@ export async function exportInventoryToWoo(tenantId: string): Promise<SyncResult
     .select("*")
     .eq("tenant_id", tenantId)
     .eq("status", "active")
-    .limit(100);
+    .limit(250);
 
   for (const item of items || []) {
     try {
+      const productData = {
+        name: item.name,
+        sku: item.sku || "",
+        regular_price: String(item.retail_price || 0),
+        stock_quantity: item.quantity || 0,
+        manage_stock: true,
+        status: "publish",
+        type: "simple",
+        description: item.description || "",
+        short_description: item.short_description || "",
+        weight: item.weight ? String(item.weight) : "",
+        categories: item.jewellery_type
+          ? [{ name: item.jewellery_type.replace(/_/g, " ") }]
+          : [],
+      };
+
       if (item.woo_product_id) {
-        // Update existing
+        // Update existing product
         await wooFetch(
           config.store_url, config.consumer_key, config.consumer_secret,
           `/products/${item.woo_product_id}`,
           {
             method: "PUT",
-            body: JSON.stringify({
-              regular_price: String(item.retail_price || 0),
-              stock_quantity: item.quantity || 0,
-              manage_stock: true,
-            }),
+            body: JSON.stringify(productData),
           }
         );
       } else {
-        // Create new
+        // Create new product
         const result = await wooFetch(
           config.store_url, config.consumer_key, config.consumer_secret,
           "/products",
           {
             method: "POST",
-            body: JSON.stringify({
-              name: item.name,
-              sku: item.sku || "",
-              regular_price: String(item.retail_price || 0),
-              stock_quantity: item.quantity || 0,
-              manage_stock: true,
-              status: "publish",
-              type: "simple",
-            }),
+            body: JSON.stringify(productData),
           }
         );
         // Save WooCommerce product ID
-        await admin.from("inventory").update({ woo_product_id: String(result.id) }).eq("id", item.id);
+        await admin.from("inventory").update({
+          woo_product_id: String(result.id),
+          last_synced_at: new Date().toISOString(),
+        }).eq("id", item.id);
       }
+
+      // Update last_synced_at
+      await admin.from("inventory").update({ last_synced_at: new Date().toISOString() }).eq("id", item.id);
       exported++;
     } catch (err) {
       errors.push(`Item ${item.id}: ${err instanceof Error ? err.message : "Error"}`);
       skipped++;
+    }
+  }
+
+  return { success: true, exported, skipped, errors };
+}
+
+/**
+ * Export customers to WooCommerce
+ */
+export async function exportCustomersToWoo(tenantId: string): Promise<SyncResult> {
+  const integration = await getIntegration(tenantId, "woocommerce");
+  if (!integration) return { success: false, errors: ["WooCommerce not connected"] };
+
+  const config = integration.config as unknown as WooConfig;
+  const admin = createAdminClient();
+  let exported = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  const { data: customers } = await admin
+    .from("customers")
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .not("email", "is", null)
+    .limit(250);
+
+  for (const c of customers || []) {
+    try {
+      const nameParts = (c.full_name || "").split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      await wooFetch(
+        config.store_url, config.consumer_key, config.consumer_secret,
+        "/customers",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: c.email,
+            first_name: firstName,
+            last_name: lastName,
+            billing: {
+              first_name: firstName,
+              last_name: lastName,
+              email: c.email,
+              phone: c.mobile || "",
+            },
+          }),
+        }
+      );
+      exported++;
+    } catch (err) {
+      // Skip duplicates (customer may already exist)
+      const msg = err instanceof Error ? err.message : "";
+      if (!msg.includes("already exists")) {
+        errors.push(`Customer ${c.email}: ${msg}`);
+        skipped++;
+      }
     }
   }
 

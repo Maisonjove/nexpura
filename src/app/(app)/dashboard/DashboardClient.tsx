@@ -1,7 +1,8 @@
 "use client";
 
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { Sparkline } from "@/components/dashboard/sparkline";
+import { HelpTooltip } from "@/components/ui/HelpTooltip";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -279,14 +280,20 @@ export default function DashboardClient({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Revenue KPI */}
         <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Sales This Month</p>
+          <div className="flex items-center gap-1 mb-1">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Sales This Month</p>
+            <HelpTooltip content="Total revenue from all completed sales this month. Click to view detailed sales reports." size={12} />
+          </div>
           <p className="text-2xl font-semibold tracking-tight text-stone-900">{fmtCurrency(salesThisMonthRevenue, currency)}</p>
           <p className="text-xs text-stone-400 mb-2">{salesThisMonthCount} sale{salesThisMonthCount !== 1 ? 's' : ''}</p>
           {revenueSparkline.length > 1 && <Sparkline data={revenueSparkline} color="#b45309" />}
         </div>
         {/* Active Repairs KPI */}
         <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Active Repairs</p>
+          <div className="flex items-center gap-1 mb-1">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Active Repairs</p>
+            <HelpTooltip content="Repairs currently in progress (not collected or cancelled). Overdue items appear in red." size={12} />
+          </div>
           <p className="text-2xl font-semibold tracking-tight text-stone-900">{activeRepairsCount}</p>
           <p className={`text-xs mb-2 ${overdueRepairs.length > 0 ? 'text-rose-400' : 'text-stone-400'}`}>
             {overdueRepairs.length > 0 ? `${overdueRepairs.length} overdue` : 'all on track'}
@@ -295,14 +302,20 @@ export default function DashboardClient({
         </div>
         {/* Bespoke Jobs KPI */}
         <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Bespoke Jobs</p>
+          <div className="flex items-center gap-1 mb-1">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Bespoke Jobs</p>
+            <HelpTooltip content="Custom jewellery commissions currently in production or awaiting collection." size={12} />
+          </div>
           <p className="text-2xl font-semibold tracking-tight text-stone-900">{activeJobsCount}</p>
           <p className="text-xs text-stone-400 mb-2">in production</p>
           {salesCountSparkline.length > 1 && <Sparkline data={salesCountSparkline} color="#7c3aed" />}
         </div>
         {/* Outstanding KPI */}
         <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Outstanding</p>
+          <div className="flex items-center gap-1 mb-1">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Outstanding</p>
+            <HelpTooltip content="Total unpaid balance across all invoices. Overdue invoices appear in red." size={12} />
+          </div>
           <p className={`text-2xl font-semibold tracking-tight ${overdueInvoiceCount > 0 ? 'text-rose-600' : 'text-stone-900'}`}>
             {fmtCurrency(totalOutstanding, currency)}
           </p>
@@ -323,7 +336,7 @@ export default function DashboardClient({
               <BarChart data={salesBarData} barSize={20}>
                 <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#78716c" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#78716c" }} axisLine={false} tickLine={false} width={30} />
-                <Tooltip
+                <RechartsTooltip
                   contentStyle={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 8, fontSize: 12 }}
                   formatter={(val, name) => [name === "revenue" ? fmtCurrency(Number(val) || 0, currency) : val, name === "revenue" ? "Revenue" : "Sales"]}
                 />
@@ -343,7 +356,7 @@ export default function DashboardClient({
                       <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 8, fontSize: 12 }} />
+                  <RechartsTooltip contentStyle={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 8, fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
