@@ -822,7 +822,8 @@ export async function parseXLSXFull(buffer: Uint8Array): Promise<ParsedFile> {
   // Dynamic import to avoid bundling issues in edge runtime
   const ExcelJS = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  // Convert to ArrayBuffer for exceljs compatibility
+  await workbook.xlsx.load(buffer.buffer as ArrayBuffer);
 
   const worksheet = workbook.worksheets[0];
   if (!worksheet || worksheet.rowCount === 0) {

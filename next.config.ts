@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
     clientTraceMetadata: ['baggage', 'sentry-trace'],
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   async headers() {
     return [
