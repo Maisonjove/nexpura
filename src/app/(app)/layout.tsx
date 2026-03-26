@@ -1,9 +1,6 @@
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
-import { CommandPalette } from "@/components/command-palette";
-import { OnboardingTour } from "@/components/onboarding/tour";
 import { SkipToContent } from "@/components/SkipToContent";
-import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
@@ -12,6 +9,7 @@ import { LocationProvider } from '@/contexts/LocationContext';
 import logger from "@/lib/logger";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MobileLayoutWrapper } from "@/components/MobileLayoutWrapper";
+import { LazyOverlays } from "@/components/LazyOverlays";
 
 // Prevent caching so plan changes take effect immediately
 export const dynamic = 'force-dynamic';
@@ -121,9 +119,8 @@ export default async function AppLayout({
             {children}
           </main>
         </ErrorBoundary>
-        <CommandPalette />
-        <OnboardingTour />
-        <SessionTimeoutWarning />
+        {/* Lazy-loaded overlays for better initial load performance */}
+        <LazyOverlays />
       </MobileLayoutWrapper>
     </LocationProvider>
   );

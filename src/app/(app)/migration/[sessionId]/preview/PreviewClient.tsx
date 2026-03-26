@@ -1,10 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { ImportPreviewPanel } from '../../_components/ImportPreviewPanel';
-import { AIConciergePanel } from '../../_components/AIConciergePanel';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
+
+// Lazy-load AI concierge panel since it's not critical for initial render
+const AIConciergePanel = dynamic(
+  () => import('../../_components/AIConciergePanel').then(m => ({ default: m.AIConciergePanel })),
+  { ssr: false }
+);
 
 interface EntitySummary {
   entity: string;

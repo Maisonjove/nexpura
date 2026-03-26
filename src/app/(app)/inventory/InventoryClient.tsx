@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
-import BatchPrintModal from "./BatchPrintModal";
-import AddStockModal from "./AddStockModal";
-import StockDetailModal from "./StockDetailModal";
-import ScanInvoiceModal from "./ScanInvoiceModal";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,8 +16,14 @@ import {
 import { ExportDropdown } from "@/components/ExportButtons";
 import { formatCurrencyForExport, formatDateForExport } from "@/lib/export";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
-import QuickPrintTagModal from "@/components/QuickPrintTagModal";
-import CameraScannerModal from "@/components/CameraScannerModal";
+
+// Lazy-load heavy modal components - only loaded when user interacts with them
+const BatchPrintModal = dynamic(() => import("./BatchPrintModal"), { ssr: false });
+const AddStockModal = dynamic(() => import("./AddStockModal"), { ssr: false });
+const StockDetailModal = dynamic(() => import("./StockDetailModal"), { ssr: false });
+const ScanInvoiceModal = dynamic(() => import("./ScanInvoiceModal"), { ssr: false });
+const QuickPrintTagModal = dynamic(() => import("@/components/QuickPrintTagModal"), { ssr: false });
+const CameraScannerModal = dynamic(() => import("@/components/CameraScannerModal"), { ssr: false });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

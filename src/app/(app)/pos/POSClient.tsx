@@ -1,16 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { createPOSSale, createLaybySale } from "./actions";
 import { lookupVoucher } from "../vouchers/actions";
-import CameraScannerModal from "@/components/CameraScannerModal";
-import RefundModal from "./components/RefundModal";
 import {
   SaleSuccessScreen,
   ProductGrid,
   CartPanel,
-  PaymentModal,
 } from "./components";
 import type {
   InventoryItem,
@@ -21,6 +19,11 @@ import type {
   VoucherData,
   POSClientProps,
 } from "./components/types";
+
+// Lazy-load modal components that aren't needed on initial render
+const CameraScannerModal = dynamic(() => import("@/components/CameraScannerModal"), { ssr: false });
+const RefundModal = dynamic(() => import("./components/RefundModal"), { ssr: false });
+const PaymentModal = dynamic(() => import("./components/PaymentModal"), { ssr: false });
 
 export default function POSClient({
   tenantId,

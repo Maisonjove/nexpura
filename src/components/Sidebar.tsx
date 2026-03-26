@@ -184,13 +184,18 @@ export default function Sidebar({
     '/settings': 'settings',
   };
 
+  // Critical routes that should be prefetched for faster navigation
+  const PREFETCH_ROUTES = ['/dashboard', '/pos', '/inventory', '/customers', '/invoices', '/repairs'];
+
   function NavItem({ name, href, icon: Icon, badge, highlight }: { name: string; href: string; icon: React.ElementType; badge?: number; highlight?: boolean }) {
     const active = isActive(href);
     const tourAttr = TOUR_TARGETS[href];
+    const shouldPrefetch = PREFETCH_ROUTES.includes(href);
     return (
       <li role="none">
         <Link
           href={href}
+          prefetch={shouldPrefetch}
           data-tour={tourAttr}
           role="menuitem"
           aria-current={active ? 'page' : undefined}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import {
   saveWebsiteConfig,
@@ -18,7 +19,6 @@ import {
   SetupTab,
   BrandingTab,
   ContentTab,
-  AITab,
   DomainTab,
   AdvancedTab,
   PreviewTab,
@@ -27,6 +27,16 @@ import {
   TYPE_OPTIONS,
 } from "./components";
 import logger from "@/lib/logger";
+
+// Lazy-load AI tab since it's not needed on initial render
+const AITab = dynamic(() => import("./components/AITab"), { 
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center py-12">
+      <div className="animate-pulse text-stone-400 text-sm">Loading AI features...</div>
+    </div>
+  ),
+});
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "setup", label: "Setup" },

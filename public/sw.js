@@ -4,7 +4,7 @@ const STATIC_CACHE = `nexpura-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `nexpura-dynamic-${CACHE_VERSION}`;
 const OFFLINE_QUEUE_KEY = 'nexpura-offline-queue';
 
-// Assets to cache immediately on install
+// Assets to cache immediately on install — critical for app shell
 const STATIC_ASSETS = [
   '/',
   '/dashboard',
@@ -12,8 +12,15 @@ const STATIC_ASSETS = [
   '/inventory',
   '/customers',
   '/repairs',
+  '/invoices',
   '/offline',
   '/manifest.json',
+];
+
+// Static assets to cache for long-term (fonts, icons)
+const STATIC_LONG_TERM = [
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
 ];
 
 // API routes to cache with network-first strategy
@@ -26,10 +33,16 @@ const CACHEABLE_API_PATTERNS = [
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      console.log('[SW] Caching static assets');
-      return cache.addAll(STATIC_ASSETS.filter(url => !url.includes('/api/')));
-    }).catch(err => {
+    Promise.all([
+      caches.open(STATIC_CACHE).then((cache) => {
+        console.log('[SW] Caching static assets');
+        return cache.addAll(STATIC_ASSETS.filter(url => !url.includes('/api/')));
+      }),
+      caches.open(STATIC_CACHE).then((cache) => {
+        // Cache long-term static assets (don't fail install if these fail)
+        return Promise.allSettled(STATIC_LONG_TERM.map(url => cache.add(url)));
+      }),
+    ]).catch(err => {
       console.warn('[SW] Some assets failed to cache:', err);
     })
   );

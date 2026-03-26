@@ -7,11 +7,18 @@ import { PWAProvider } from "@/components/PWAProvider";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { LiveRegionProvider } from "@/components/LiveRegion";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap', // Prevent FOIT (Flash of Invisible Text)
+  preload: true,
+});
 
 const inter = Inter({ 
   subsets: ["latin"],
   variable: '--font-inter',
+  display: 'swap', // Prevent FOIT (Flash of Invisible Text)
+  preload: true,
 });
 
 export const viewport: Viewport = {
