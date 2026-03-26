@@ -12,6 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { headers } from "next/headers";
 import crypto from "crypto";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 interface WooProduct {
   id: number;
@@ -50,6 +51,12 @@ interface WooCustomer {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "webhook");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     const headersList = await headers();
     const signature = headersList.get("x-wc-webhook-signature");

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import OpenAI from "openai";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -9,6 +10,12 @@ export const maxDuration = 60;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 export async function POST(request: Request) {
+  const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "heavy");
+  if (!success) {
+    return Response.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();

@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/qa/reset - Reset all or category test results
 export async function POST(request: NextRequest) {
+  // Rate limiting - heavy operation
+  const ip = request.headers.get("x-forwarded-for") || "anonymous";
+  const { success } = await checkRateLimit(ip, "heavy");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
   // Auth check
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

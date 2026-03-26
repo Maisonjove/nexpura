@@ -5,11 +5,19 @@ import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import RepairTicketPDF from "@/lib/pdf/RepairTicketPDF";
 import { Resend } from "resend";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limiting - heavy operation (sends email with PDF)
+  const ip = _req.headers.get("x-forwarded-for") || "anonymous";
+  const { success } = await checkRateLimit(ip, "heavy");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   const { id } = await params;
 
   const supabase = await createClient();

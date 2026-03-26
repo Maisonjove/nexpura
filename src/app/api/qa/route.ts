@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/qa - Fetch all QA data
 export async function GET(req: NextRequest) {
+  // Rate limiting
+  const ip = req.headers.get("x-forwarded-for") || "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
   // Auth check
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

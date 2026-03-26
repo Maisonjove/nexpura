@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 interface MailchimpCampaign {
   id: string;
@@ -67,6 +68,12 @@ async function mailchimpFetch(
 }
 
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     const { tenantId } = await getAuthContext();
     

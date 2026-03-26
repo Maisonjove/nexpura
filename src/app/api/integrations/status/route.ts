@@ -10,8 +10,15 @@ import { NextRequest, NextResponse } from "next/server";
 // Cache for 30 seconds with stale-while-revalidate — integration status rarely changes
 export const revalidate = 30;
 import { getAuthContext, getAllIntegrations } from "@/lib/integrations";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(_req: NextRequest) {
+  const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     const { tenantId } = await getAuthContext();
     const integrations = await getAllIntegrations(tenantId);

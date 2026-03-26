@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_API_BASE = "https://api.xero.com";
@@ -63,6 +64,12 @@ async function getValidAccessToken(
 }
 
 export async function POST(_req: NextRequest) {
+  const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "heavy");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     const { tenantId } = await getAuthContext();
     const integration = await getIntegration(tenantId, "xero");

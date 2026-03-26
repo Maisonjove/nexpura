@@ -3,10 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();

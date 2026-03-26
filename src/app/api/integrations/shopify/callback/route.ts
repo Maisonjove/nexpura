@@ -7,11 +7,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { upsertIntegration } from "@/lib/integrations";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID!;
 const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET!;
 
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "webhook");
+  if (!success) {
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=rate_limited`
+    );
+  }
+
   const searchParams = req.nextUrl.searchParams;
   const code = searchParams.get("code");
   const shop = searchParams.get("shop");

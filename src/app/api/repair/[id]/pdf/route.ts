@@ -4,11 +4,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import RepairTicketPDF from "@/lib/pdf/RepairTicketPDF";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limiting
+  const ip = _request.headers.get("x-forwarded-for") || "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return new NextResponse("Rate limit exceeded", { status: 429 });
+  }
+
   const { id } = await params;
 
   // Auth check via regular client (needs cookies)

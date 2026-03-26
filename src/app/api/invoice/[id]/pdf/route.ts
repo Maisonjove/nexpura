@@ -6,11 +6,19 @@ import { InvoicePDF, type InvoiceLayout } from "@/lib/pdf/InvoicePDF";
 import { ThermalInvoicePDF } from "@/lib/pdf/ThermalInvoicePDF";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limiting
+  const ip = request.headers.get("x-forwarded-for") || "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return new NextResponse("Rate limit exceeded", { status: 429 });
+  }
+
   const { id } = await params;
   const format = request.nextUrl.searchParams.get("format"); // 'thermal' or null
 

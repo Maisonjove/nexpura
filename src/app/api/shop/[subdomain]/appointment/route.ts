@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ subdomain: string }> }
 ) {
+  const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     const { subdomain } = await params;
     const body = await request.json();

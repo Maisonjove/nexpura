@@ -7,8 +7,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, upsertIntegration } from "@/lib/integrations";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     const { tenantId } = await getAuthContext();
     const body = await req.json();

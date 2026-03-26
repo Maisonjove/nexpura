@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/integrations";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 const XERO_AUTH_URL = "https://login.xero.com/identity/connect/authorize";
@@ -20,6 +21,12 @@ const XERO_SCOPES =
   "openid profile email accounting.transactions accounting.contacts offline_access";
 
 export async function GET(_req: NextRequest) {
+  const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "api");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     await getAuthContext(); // ensure user is authenticated
 

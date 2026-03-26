@@ -8,12 +8,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, upsertIntegration } from "@/lib/integrations";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com";
 
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success } = await checkRateLimit(ip, "webhook");
+  if (!success) {
+    return NextResponse.redirect(`${APP_URL}/integrations?error=rate_limited`);
+  }
+
   try {
     const { tenantId } = await getAuthContext();
 
