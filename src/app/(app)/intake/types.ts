@@ -10,7 +10,7 @@ export interface Customer {
 
 export interface InventoryItem {
   id: string;
-  name: string;
+  name: string | null;
   sku: string | null;
   barcode_value: string | null;
   jewellery_type: string | null;

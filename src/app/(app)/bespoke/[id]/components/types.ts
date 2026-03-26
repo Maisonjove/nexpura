@@ -57,6 +57,13 @@ export interface JobEvent {
   created_at: string;
 }
 
+export interface BespokeMilestone {
+  id: string;
+  name: string;
+  status: string;
+  due_date?: string | null;
+}
+
 export interface BespokeJob {
   id: string;
   job_number: string;
@@ -86,6 +93,7 @@ export interface BespokeJob {
   approval_requested_at?: string | null;
   approved_at?: string | null;
   approval_notes?: string | null;
+  milestones?: BespokeMilestone[];
 }
 
 export interface BespokeCommandCenterProps {

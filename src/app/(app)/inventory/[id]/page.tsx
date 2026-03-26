@@ -69,7 +69,10 @@ export default async function InventoryDetailPage({
     .order("created_at", { ascending: false });
 
   const typedItem = item as typeof item & { stock_categories?: { name: string } | null };
-  const typedMovements = (movements ?? []) as Array<{
+  const typedMovements = (movements ?? []).map(m => ({
+    ...m,
+    users: Array.isArray(m.users) ? m.users[0] ?? null : m.users
+  })) as Array<{
     id: string;
     movement_type: string;
     quantity_change: number;

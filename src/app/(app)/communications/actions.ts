@@ -135,6 +135,6 @@ export async function resendEmailLog(logId: string) {
     
     return { success: true };
   } catch (err) {
-    return { error: err.message };
+    return { error: err instanceof Error ? err.message : "Unknown error" };
   }
 }
