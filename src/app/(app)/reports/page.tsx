@@ -215,28 +215,45 @@ export default async function ReportsPage() {
     // ignore
   }
 
-  // ── Monthly revenue chart (last 6 months) ───────────────────
+  // ── Monthly revenue chart (last 6 months) — single query, grouped in JS ───
   type MonthData = { label: string; revenue: number };
-  const monthlyData: MonthData[] = [];
+  let monthlyData: MonthData[] = [];
 
   try {
+    // Fetch all paid invoices from last 6 months in one query
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString();
+    const { data: monthlyInvoices } = await admin
+      .from("invoices")
+      .select("total, created_at")
+      .eq("tenant_id", tenantId)
+      .eq("status", "paid")
+      .gte("created_at", sixMonthsAgo)
+      .is("deleted_at", null);
+
+    // Group by month in JS
+    const monthMap = new Map<string, number>();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const start = d.toISOString();
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString();
-      const { data } = await admin
-        .from("invoices")
-        .select("total")
-        .eq("tenant_id", tenantId)
-        .eq("status", "paid")
-        .gte("created_at", start)
-        .lte("created_at", end)
-        .is("deleted_at", null);
-      monthlyData.push({
-        label: d.toLocaleString("en-AU", { month: "short" }),
-        revenue: (data ?? []).reduce((s, r) => s + (r.total || 0), 0),
-      });
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthMap.set(key, 0);
     }
+
+    for (const inv of monthlyInvoices ?? []) {
+      if (!inv.created_at) continue;
+      const key = inv.created_at.slice(0, 7); // YYYY-MM
+      if (monthMap.has(key)) {
+        monthMap.set(key, (monthMap.get(key) ?? 0) + (inv.total || 0));
+      }
+    }
+
+    monthlyData = Array.from(monthMap.entries()).map(([key, revenue]) => {
+      const [year, month] = key.split("-");
+      const d = new Date(Number(year), Number(month) - 1, 1);
+      return {
+        label: d.toLocaleString("en-AU", { month: "short" }),
+        revenue,
+      };
+    });
   } catch {
     // ignore
   }

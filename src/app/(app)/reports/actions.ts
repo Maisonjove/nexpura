@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCached, tenantCacheKey } from "@/lib/cache";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -26,30 +27,37 @@ export async function getRevenueByDateRange(
   dateFrom: string,
   dateTo: string
 ): Promise<{ data: { total: number; totalCost: number; count: number; byMonth: { month: string; total: number }[] }; error?: string }> {
+  const cacheKey = tenantCacheKey(tenantId, "revenue", dateFrom, dateTo);
+  
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("invoices")
-      .select("total, invoice_date")
-      .eq("tenant_id", tenantId)
-      .eq("status", "paid")
-      .gte("invoice_date", dateFrom)
-      .lte("invoice_date", dateTo);
+    const result = await getCached(cacheKey, async () => {
+      const admin = createAdminClient();
+      const { data } = await admin
+        .from("invoices")
+        .select("total, invoice_date")
+        .eq("tenant_id", tenantId)
+        .eq("status", "paid")
+        .gte("invoice_date", dateFrom)
+        .lte("invoice_date", dateTo);
 
-    const total = (data ?? []).reduce((s, i) => s + (i.total ?? 0), 0);
-    const count = data?.length ?? 0;
+      const total = (data ?? []).reduce((s, i) => s + (i.total ?? 0), 0);
+      const count = data?.length ?? 0;
 
-    // Group by month
-    const monthMap: Record<string, number> = {};
-    for (const inv of data ?? []) {
-      const month = inv.invoice_date?.slice(0, 7) ?? "unknown";
-      monthMap[month] = (monthMap[month] ?? 0) + (inv.total ?? 0);
-    }
-    const byMonth = Object.entries(monthMap)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, total]) => ({ month, total }));
+      // Group by month
+      const monthMap: Record<string, number> = {};
+      for (const inv of data ?? []) {
+        const month = inv.invoice_date?.slice(0, 7) ?? "unknown";
+        monthMap[month] = (monthMap[month] ?? 0) + (inv.total ?? 0);
+      }
+      const byMonth = Object.entries(monthMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month, total]) => ({ month, total }));
 
-    const totalCost = 0; return { data: { total, totalCost, count, byMonth } };
+      const totalCost = 0;
+      return { total, totalCost, count, byMonth };
+    }, 300); // 5 min TTL
+
+    return { data: result };
   } catch (e) {
     return { data: { total: 0, totalCost: 0, count: 0, byMonth: [] }, error: e instanceof Error ? e.message : "Error" };
   }
@@ -85,34 +93,40 @@ export async function getRepairStats(
   dateFrom: string,
   dateTo: string
 ): Promise<{ data: { total: number; completed: number; revenue: number; avgDays: number }; error?: string }> {
+  const cacheKey = tenantCacheKey(tenantId, "repairs", dateFrom, dateTo);
+  
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("repairs")
-      .select("status, price, completion_date, received_date, created_at")
-      .eq("tenant_id", tenantId)
-      .gte("created_at", dateFrom)
-      .lte("created_at", dateTo + "T23:59:59");
+    const result = await getCached(cacheKey, async () => {
+      const admin = createAdminClient();
+      const { data } = await admin
+        .from("repairs")
+        .select("status, price, completion_date, received_date, created_at")
+        .eq("tenant_id", tenantId)
+        .gte("created_at", dateFrom)
+        .lte("created_at", dateTo + "T23:59:59");
 
-    const total = data?.length ?? 0;
-    const completed = (data ?? []).filter((r) => r.status === "completed").length;
-    const revenue = (data ?? []).reduce((s, r) => s + (r.price ?? 0), 0);
+      const total = data?.length ?? 0;
+      const completed = (data ?? []).filter((r) => r.status === "completed").length;
+      const revenue = (data ?? []).reduce((s, r) => s + (r.price ?? 0), 0);
 
-    const completedWithDates = (data ?? []).filter(
-      (r) => r.status === "completed" && r.completion_date && r.received_date
-    );
-    const avgDays =
-      completedWithDates.length > 0
-        ? completedWithDates.reduce((s, r) => {
-            const days = Math.floor(
-              (new Date(r.completion_date!).getTime() - new Date(r.received_date!).getTime()) /
-                (1000 * 60 * 60 * 24)
-            );
-            return s + days;
-          }, 0) / completedWithDates.length
-        : 0;
+      const completedWithDates = (data ?? []).filter(
+        (r) => r.status === "completed" && r.completion_date && r.received_date
+      );
+      const avgDays =
+        completedWithDates.length > 0
+          ? completedWithDates.reduce((s, r) => {
+              const days = Math.floor(
+                (new Date(r.completion_date!).getTime() - new Date(r.received_date!).getTime()) /
+                  (1000 * 60 * 60 * 24)
+              );
+              return s + days;
+            }, 0) / completedWithDates.length
+          : 0;
 
-    return { data: { total, completed, revenue, avgDays: Math.round(avgDays) } };
+      return { total, completed, revenue, avgDays: Math.round(avgDays) };
+    }, 300); // 5 min TTL
+
+    return { data: result };
   } catch (e) {
     return { data: { total: 0, completed: 0, revenue: 0, avgDays: 0 }, error: e instanceof Error ? e.message : "Error" };
   }
@@ -150,23 +164,28 @@ export async function getExpenseSummary(
   dateFrom: string,
   dateTo: string
 ): Promise<{ data: { category: string; total: number }[]; error?: string }> {
+  const cacheKey = tenantCacheKey(tenantId, "expenses", dateFrom, dateTo);
+  
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("expenses")
-      .select("category, amount")
-      .eq("tenant_id", tenantId)
-      .gte("expense_date", dateFrom)
-      .lte("expense_date", dateTo);
+    const result = await getCached(cacheKey, async () => {
+      const admin = createAdminClient();
+      const { data } = await admin
+        .from("expenses")
+        .select("category, amount")
+        .eq("tenant_id", tenantId)
+        .gte("expense_date", dateFrom)
+        .lte("expense_date", dateTo);
 
-    if (!data) return { data: [] };
+      if (!data) return [];
 
-    const catMap: Record<string, number> = {};
-    for (const exp of data) {
-      const cat = exp.category || "Other";
-      catMap[cat] = (catMap[cat] ?? 0) + (exp.amount ?? 0);
-    }
-    const result = Object.entries(catMap).map(([category, total]) => ({ category, total }));
+      const catMap: Record<string, number> = {};
+      for (const exp of data) {
+        const cat = exp.category || "Other";
+        catMap[cat] = (catMap[cat] ?? 0) + (exp.amount ?? 0);
+      }
+      return Object.entries(catMap).map(([category, total]) => ({ category, total }));
+    }, 300); // 5 min TTL
+
     return { data: result };
   } catch (e) {
     return { data: [], error: e instanceof Error ? e.message : "Error" };
@@ -244,28 +263,32 @@ export async function getSupplierPerformance(
   dateFrom: string,
   dateTo: string
 ): Promise<{ data: { supplier: string; total: number; orderCount: number }[]; error?: string }> {
+  const cacheKey = tenantCacheKey(tenantId, "suppliers", dateFrom, dateTo);
+  
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("purchase_orders")
-      .select("supplier_name, total_amount")
-      .eq("tenant_id", tenantId)
-      .gte("order_date", dateFrom)
-      .lte("order_date", dateTo);
+    const result = await getCached(cacheKey, async () => {
+      const admin = createAdminClient();
+      const { data } = await admin
+        .from("purchase_orders")
+        .select("supplier_name, total_amount")
+        .eq("tenant_id", tenantId)
+        .gte("order_date", dateFrom)
+        .lte("order_date", dateTo);
 
-    if (!data) return { data: [] };
+      if (!data) return [];
 
-    const map: Record<string, { total: number; count: number }> = {};
-    for (const po of data) {
-      const name = po.supplier_name || "Unknown";
-      if (!map[name]) map[name] = { total: 0, count: 0 };
-      map[name].total += po.total_amount ?? 0;
-      map[name].count += 1;
-    }
+      const map: Record<string, { total: number; count: number }> = {};
+      for (const po of data) {
+        const name = po.supplier_name || "Unknown";
+        if (!map[name]) map[name] = { total: 0, count: 0 };
+        map[name].total += po.total_amount ?? 0;
+        map[name].count += 1;
+      }
 
-    const result = Object.entries(map)
-      .map(([supplier, { total, count }]) => ({ supplier, total, orderCount: count }))
-      .sort((a, b) => b.total - a.total);
+      return Object.entries(map)
+        .map(([supplier, { total, count }]) => ({ supplier, total, orderCount: count }))
+        .sort((a, b) => b.total - a.total);
+    }, 300); // 5 min TTL
 
     return { data: result };
   } catch (e) {
@@ -293,25 +316,27 @@ export async function getPaymentStatusOverview(
   };
   error?: string;
 }> {
+  const cacheKey = tenantCacheKey(tenantId, "payments", dateFrom, dateTo);
+  
   try {
-    const admin = createAdminClient();
-    const today = new Date().toISOString().split("T")[0];
+    const result = await getCached(cacheKey, async () => {
+      const admin = createAdminClient();
+      const today = new Date().toISOString().split("T")[0];
 
-    const { data } = await admin
-      .from("invoices")
-      .select("id, invoice_number, customer_name, total, status, due_date")
-      .eq("tenant_id", tenantId)
-      .gte("invoice_date", dateFrom)
-      .lte("invoice_date", dateTo);
+      const { data } = await admin
+        .from("invoices")
+        .select("id, invoice_number, customer_name, total, status, due_date")
+        .eq("tenant_id", tenantId)
+        .gte("invoice_date", dateFrom)
+        .lte("invoice_date", dateTo);
 
-    if (!data) return { data: { totalInvoices: 0, totalAmount: 0, paid: 0, paidAmount: 0, unpaid: 0, unpaidAmount: 0, overdue: 0, overdueAmount: 0, overdueList: [] } };
+      if (!data) return { totalInvoices: 0, totalAmount: 0, paid: 0, paidAmount: 0, unpaid: 0, unpaidAmount: 0, overdue: 0, overdueAmount: 0, overdueList: [] as Array<{ id: string; invoice_number: string; customer_name: string | null; total: number; due_date: string | null; }> };
 
-    const paid = data.filter((i) => i.status === "paid");
-    const unpaid = data.filter((i) => i.status !== "paid" && i.status !== "voided");
-    const overdue = data.filter((i) => i.status !== "paid" && i.status !== "voided" && i.due_date && i.due_date < today);
+      const paid = data.filter((i) => i.status === "paid");
+      const unpaid = data.filter((i) => i.status !== "paid" && i.status !== "voided");
+      const overdue = data.filter((i) => i.status !== "paid" && i.status !== "voided" && i.due_date && i.due_date < today);
 
-    return {
-      data: {
+      return {
         totalInvoices: data.length,
         totalAmount: data.reduce((s, i) => s + (i.total ?? 0), 0),
         paid: paid.length,
@@ -327,8 +352,10 @@ export async function getPaymentStatusOverview(
           total: i.total ?? 0,
           due_date: i.due_date,
         })),
-      },
-    };
+      };
+    }, 180); // 3 min TTL (payment status changes more frequently)
+
+    return { data: result };
   } catch (e) {
     return {
       data: { totalInvoices: 0, totalAmount: 0, paid: 0, paidAmount: 0, unpaid: 0, unpaidAmount: 0, overdue: 0, overdueAmount: 0, overdueList: [] },
