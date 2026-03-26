@@ -31,6 +31,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Disable Turbopack for build due to race condition bug
+  experimental: {
+    turbo: {
+      enabled: false,
+    },
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

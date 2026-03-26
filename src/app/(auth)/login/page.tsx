@@ -29,7 +29,7 @@ export default function LoginPage() {
 
       // Check if 2FA is required
       if (result.requires2FA && result.userId && result.email) {
-        router.push(\`/verify-2fa?userId=\${result.userId}&email=\${encodeURIComponent(result.email)}\`);
+        router.push(`/verify-2fa?userId=${result.userId}&email=${encodeURIComponent(result.email)}`);
         return;
       }
 
@@ -162,7 +162,7 @@ export default function LoginPage() {
             await supabase.auth.signInWithOAuth({
               provider: "google",
               options: {
-                redirectTo: \`\${window.location.origin}/auth/callback\`,
+                redirectTo: `${window.location.origin}/auth/callback`,
               },
             });
           }}
