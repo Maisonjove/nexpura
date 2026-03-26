@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
@@ -337,6 +337,8 @@ export async function createRepairFromIntake(
   revalidatePath("/repairs");
     revalidatePath("/workshop");
     revalidatePath("/invoices");
+    // Invalidate dashboard cache
+    revalidateTag("dashboard", "default");
     return { id: data.id, repair_number: data.repair_number, invoice_id: invoiceId };
   } catch (err) {
     logger.error("[createRepairFromIntake] Error:", err);
@@ -527,6 +529,8 @@ export async function createBespokeFromIntake(
   revalidatePath("/bespoke");
     revalidatePath("/workshop");
     revalidatePath("/invoices");
+    // Invalidate dashboard cache
+    revalidateTag("dashboard", "default");
     return { id: data.id, job_number: data.job_number, invoice_id: invoiceId };
   } catch (err) {
     logger.error("[createBespokeFromIntake] Error:", err);
@@ -770,6 +774,8 @@ export async function createStockSaleFromIntake(
   revalidatePath("/sales");
     revalidatePath("/inventory");
     revalidatePath("/invoices");
+    // Invalidate dashboard cache
+    revalidateTag("dashboard", "default");
     return { id: sale.id, sale_number: saleNumber, invoice_id: invoiceId };
   } catch (err) {
     logger.error("[createStockSaleFromIntake] Error:", err);

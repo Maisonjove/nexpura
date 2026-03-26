@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { executeWithSafety, TransactionStep } from "@/lib/transaction-safety";
 import logger from "@/lib/logger";
+import { revalidateTag } from "next/cache";
 
 interface CartItem {
   inventoryId: string;
@@ -434,6 +435,8 @@ export async function createPOSSale(
       return { error: result.error || `Failed at step: ${result.failedStep}`, auditId: result.auditId };
     }
 
+    // Invalidate dashboard cache
+    revalidateTag("dashboard", "default");
     return { id: saleId!, saleNumber, invoiceId, auditId: result.auditId };
   } catch (err) {
     logger.error("[createPOSSale] Error:", err);
@@ -533,6 +536,8 @@ export async function createLaybySale(
     );
   }
 
+    // Invalidate dashboard cache
+    revalidateTag("dashboard", "default");
     return { id: sale.id, saleNumber };
   } catch (err) {
     logger.error("[createLaybySale] Error:", err);

@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { revalidateTag } from "next/cache";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -134,6 +135,9 @@ export async function createBespokeJob(
     newData: { job_number: numData, customer_id: customerId, title: jobData.title },
   });
 
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
+
   redirect(`/bespoke/${data.id}`);
 }
 
@@ -170,6 +174,9 @@ export async function updateBespokeJob(
     entityId: id,
     newData: buildJobData(formData),
   });
+
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
 
   redirect(`/bespoke/${id}`);
 }
@@ -268,6 +275,9 @@ export async function advanceJobStage(
     }
   }
 
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
+
   return { success: true };
 }
 
@@ -290,6 +300,9 @@ export async function archiveBespokeJob(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+  
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
   redirect("/bespoke");
 }
 

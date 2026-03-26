@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/lib/notifications";
+import { revalidateTag } from "next/cache";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -184,6 +185,9 @@ export async function createSale(
     if (itemsError) return { error: itemsError.message };
   }
 
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
+
   redirect(`/sales/${sale.id}`);
 }
 
@@ -287,12 +291,16 @@ export async function updateSaleStatus(
               lineItems.map((li) => ({ ...li, invoice_id: newInvoice.id }))
             );
           }
+          // Invalidate dashboard cache
+          revalidateTag("dashboard", "default");
           return { success: true, invoiceId: newInvoice.id };
         }
       }
     }
   }
 
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
   return { success: true };
 }
 
@@ -367,5 +375,8 @@ export async function deleteSale(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+  
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
   redirect("/sales");
 }

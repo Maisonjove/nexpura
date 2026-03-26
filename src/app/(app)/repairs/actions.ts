@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { logAuditEvent } from "@/lib/audit";
 import logger from "@/lib/logger";
+import { revalidateTag } from "next/cache";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -121,6 +122,9 @@ export async function createRepair(
     newData: repairData as Record<string, unknown>,
   });
 
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
+
   redirect(`/repairs/${data.id}`);
 }
 
@@ -158,6 +162,9 @@ export async function updateRepair(
     entityId: id,
     newData: repairData as Record<string, unknown>,
   });
+
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
 
   redirect(`/repairs/${id}`);
 }
@@ -265,6 +272,9 @@ export async function advanceRepairStage(
     newData: { stage: newStage, notes },
   });
 
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
+
   return { success: true };
 }
 
@@ -314,6 +324,9 @@ export async function archiveRepair(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+  
+  // Invalidate dashboard cache
+  revalidateTag("dashboard", "default");
   redirect("/repairs");
 }
 

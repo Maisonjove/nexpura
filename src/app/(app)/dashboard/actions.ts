@@ -2,8 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { unstable_cache, revalidateTag } from "next/cache";
+import { cache } from "react";
 
-async function getAuthContext() {
+// React cache to dedupe auth context within same render
+const getAuthContext = cache(async () => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
@@ -23,6 +26,11 @@ async function getAuthContext() {
     userRole,
     isManager: userRole === "owner" || userRole === "manager"
   };
+});
+
+// Revalidate dashboard cache - call this after mutations
+export async function revalidateDashboardCache() {
+  revalidateTag("dashboard", "default");
 }
 
 // Helper to apply location filter to queries
@@ -77,8 +85,15 @@ function getLast7Days(): string[] {
   return days;
 }
 
-export async function getDashboardData(locationIds: string[] | null): Promise<DashboardData> {
-  const { userId, tenantId, tenantName, currency, isManager } = await getAuthContext();
+// Internal function that does the actual data fetching - this gets cached
+async function getDashboardDataInternal(
+  userId: string,
+  tenantId: string,
+  tenantName: string | null,
+  currency: string,
+  isManager: boolean,
+  locationIds: string[] | null
+): Promise<DashboardData> {
   const admin = createAdminClient();
 
   const firstName = tenantName || "there";
@@ -661,4 +676,42 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
     salesBarData,
     repairStageData,
   };
+}
+
+// Create cached version of the internal function
+// Cache key includes tenantId, userId, and locationIds for proper isolation
+const getCachedDashboardData = (
+  tenantId: string,
+  userId: string,
+  locationKey: string
+) => {
+  return unstable_cache(
+    async (
+      uid: string,
+      tid: string,
+      tName: string | null,
+      curr: string,
+      isMgr: boolean,
+      locIds: string[] | null
+    ) => getDashboardDataInternal(uid, tid, tName, curr, isMgr, locIds),
+    ["dashboard-data", tenantId, userId, locationKey],
+    {
+      revalidate: 60, // Cache for 60 seconds
+      tags: ["dashboard", `dashboard-${tenantId}`],
+    }
+  );
+};
+
+// Public function that handles auth and calls cached internal function
+export async function getDashboardData(locationIds: string[] | null): Promise<DashboardData> {
+  const { userId, tenantId, tenantName, currency, isManager } = await getAuthContext();
+  
+  // Create a stable location key for caching
+  const locationKey = locationIds ? locationIds.sort().join(",") : "all";
+  
+  // Get the cached function for this tenant/user/location combination
+  const cachedFn = getCachedDashboardData(tenantId, userId, locationKey);
+  
+  // Call the cached function
+  return cachedFn(userId, tenantId, tenantName, currency, isManager, locationIds);
 }
