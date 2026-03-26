@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Mail, Globe, ChevronRight, Check, X, AlertCircle,
+  Mail, Globe, ChevronRight, Check, AlertCircle,
   RefreshCw, Trash2, Loader2, Copy, CheckCircle2, Clock,
   Shield, Server, ExternalLink
 } from "lucide-react";

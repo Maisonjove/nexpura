@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Building2, TrendingUp, Package, Wrench, Users, DollarSign, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Building2, TrendingUp, Package, Wrench, Users, DollarSign } from "lucide-react";
 import logger from "@/lib/logger";
 
 interface Location {

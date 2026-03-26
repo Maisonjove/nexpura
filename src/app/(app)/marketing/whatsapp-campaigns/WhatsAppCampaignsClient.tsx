@@ -8,8 +8,6 @@ import {
   MessageSquare,
   Search,
   MoreVertical,
-  Calendar,
-  Send,
   Trash2,
   Eye,
   DollarSign,

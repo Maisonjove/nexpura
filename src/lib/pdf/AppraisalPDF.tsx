@@ -5,7 +5,6 @@ import {
   Text,
   View,
   StyleSheet,
-  Image,
 } from "@react-pdf/renderer";
 
 const BRONZE = "amber-700";

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, ReactNode, useRef } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useFocusTrap, useEscapeKey } from '@/hooks/useAccessibility';

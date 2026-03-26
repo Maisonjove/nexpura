@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { format } from "date-fns";
 import { 
   Calendar, 
-  Clock, 
   User, 
   Tag, 
   MessageSquare, 
@@ -12,11 +11,10 @@ import {
   Paperclip, 
   CheckCircle2, 
   Circle,
-  MoreVertical,
   Send,
   Trash2
 } from "lucide-react";
-import { updateTask, addTaskComment, addTaskAttachment, deleteTaskAttachment } from "../actions";
+import { updateTask, addTaskComment } from "../actions";
 import Link from "next/link";
 
 export default function TaskDetailClient({ 

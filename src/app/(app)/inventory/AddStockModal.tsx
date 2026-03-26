@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import { X, ChevronDown, Plus, Package, Upload, Loader2 } from "lucide-react";
 import { RingIcon, NecklaceIcon, BraceletIcon, WatchIcon, EarringsIcon, PendantIcon, OtherJewelleryIcon } from "@/components/icons/JewelleryIcons";
-import { quickAddStock, createQuickSupplier, getSuppliersList } from "./actions";
+import { quickAddStock, createQuickSupplier } from "./actions";
 
 interface Supplier {
   id: string;

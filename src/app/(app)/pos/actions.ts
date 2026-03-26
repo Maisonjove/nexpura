@@ -3,7 +3,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { executeWithSafety, TransactionStep } from "@/lib/transaction-safety";
-import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import logger from "@/lib/logger";
 
 interface CartItem {

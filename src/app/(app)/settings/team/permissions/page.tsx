@@ -7,7 +7,6 @@ import {
   ALL_ROLES,
   PERMISSION_LABELS,
   DEFAULT_PERMISSIONS,
-  type PermissionKey,
   type PermissionMap,
 } from "@/lib/permissions";
 

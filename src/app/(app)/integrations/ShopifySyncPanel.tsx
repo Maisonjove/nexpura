@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, AlertCircle } from "lucide-react";
+import { RefreshCw, ArrowDownToLine, ArrowUpFromLine, CheckCircle2 } from "lucide-react";
 
 interface ShopifySyncPanelProps {
   isConnected: boolean;

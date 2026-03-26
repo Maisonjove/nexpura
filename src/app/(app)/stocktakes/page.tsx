@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import Link from "next/link";
 import StocktakesClient from "./StocktakesClient";
 
 export const metadata = { title: "Stocktakes — Nexpura" };

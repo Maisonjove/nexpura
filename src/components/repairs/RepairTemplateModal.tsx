@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, FileText, Plus, Trash2, Copy } from "lucide-react";
+import { useState } from "react";
+import { X, FileText, Trash2, Copy } from "lucide-react";
 
 interface RepairTemplate {
   id: string;

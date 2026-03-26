@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, MapPin, Building2, Check, Layers } from "lucide-react";
+import { X, Building2, Check, Layers } from "lucide-react";
 import { updateTeamMemberLocations, getTeamMemberLocations } from "@/app/(app)/settings/team/actions";
 
 interface Location {

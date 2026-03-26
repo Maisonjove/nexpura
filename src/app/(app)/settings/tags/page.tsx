@@ -1,4 +1,4 @@
-import { getTagTemplates, deleteTagTemplate, setDefaultTemplate } from "./actions"
+import { getTagTemplates } from "./actions"
 import TagTemplateManager from "./TagTemplateManager"
 
 export const dynamic = "force-dynamic"

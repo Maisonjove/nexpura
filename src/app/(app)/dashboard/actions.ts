@@ -87,7 +87,7 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
 
   // Fetch locations for name lookup if we're showing all locations
   const showLocationNames = !locationIds || locationIds.length > 1;
-  let locationMap: Map<string, string> = new Map();
+  const locationMap: Map<string, string> = new Map();
   if (showLocationNames) {
     const { data: locations } = await admin
       .from("locations")
@@ -101,7 +101,7 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
   // Build base queries with location filtering
   // Helper to build filtered query
   const buildQuery = (table: string, locationColumn = "location_id") => {
-    let q = admin.from(table);
+    const q = admin.from(table);
     return q;
   };
 

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createAppraisal, issueAppraisal } from "./actions";
+import { createAppraisal } from "./actions";
 import type { Appraisal } from "./actions";
 
 const STATUS_STYLES: Record<string, string> = {

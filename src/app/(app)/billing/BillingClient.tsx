@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { STRIPE_PRICES } from "@/lib/stripe/prices";
 import logger from "@/lib/logger";
 

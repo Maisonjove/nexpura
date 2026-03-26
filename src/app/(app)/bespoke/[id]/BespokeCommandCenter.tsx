@@ -34,7 +34,7 @@ import {
 } from "./components";
 import type { Milestone } from "./components/MilestoneCard";
 
-import type { BespokeCommandCenterProps, JobAttachment, JobEvent } from "./components/types";
+import type { BespokeCommandCenterProps, JobAttachment } from "./components/types";
 
 export default function BespokeCommandCenter({
   job,

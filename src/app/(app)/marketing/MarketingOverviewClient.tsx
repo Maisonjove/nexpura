@@ -9,13 +9,9 @@ import {
   Zap,
   Users,
   FileText,
-  BarChart2,
   TrendingUp,
   ArrowRight,
   Eye,
-  MousePointer,
-  CheckCircle2,
-  DollarSign,
 } from "lucide-react";
 
 interface Stats {

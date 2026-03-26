@@ -3,11 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, Package, Wrench, Gem, ShoppingCart, Users, Truck,
-  FileText, DollarSign, BarChart2, ShieldCheck, MessageSquare, Bot,
-  Settings, CreditCard, Globe, ExternalLink, Monitor, ListTodo,
-  RotateCcw, Gift, Sun, ClipboardList, ArrowLeftRight, Star,
-  Calendar, Bell, MapPin, Link as LinkIcon, Send, Zap, TrendingUp
+  LayoutDashboard, Package, Wrench, Gem, Users,
+  FileText, ShieldCheck,
+  Settings, CreditCard, Globe, Monitor, ListTodo, Sun, ArrowLeftRight, Star
 } from 'lucide-react';
 
 const navGroups = [

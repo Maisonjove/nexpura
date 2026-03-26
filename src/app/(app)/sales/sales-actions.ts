@@ -37,7 +37,7 @@ export async function getSales(locationIds: string[] | null): Promise<SaleWithLo
 
   // Determine if we need location names (when showing multiple locations)
   const showLocationNames = !locationIds || locationIds.length > 1;
-  let locationMap: Map<string, string> = new Map();
+  const locationMap: Map<string, string> = new Map();
   
   if (showLocationNames) {
     const { data: locations } = await admin

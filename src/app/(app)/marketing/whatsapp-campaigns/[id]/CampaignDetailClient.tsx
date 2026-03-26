@@ -5,12 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  MessageSquare,
   Users,
   DollarSign,
-  Clock,
   CheckCircle,
-  XCircle,
   Loader2,
   Send,
   Trash2,

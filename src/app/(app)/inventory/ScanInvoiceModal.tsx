@@ -1,7 +1,7 @@
 "use client";
-/* eslint-disable react-hooks/rules-of-hooks */
+ 
 
-import { useState, useRef, useTransition, useCallback, useEffect } from "react";
+import { useState, useRef, useTransition } from "react";
 import Image from "next/image";
 import {
   X, Camera, Upload, FileText, Loader2, Check, AlertCircle,
@@ -247,15 +247,15 @@ export default function ScanInvoiceModal({ onClose, onSuccess, suppliers: initia
     }
   };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file) handleFileSelect(file);
-  }, []);
+  };
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-  }, []);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

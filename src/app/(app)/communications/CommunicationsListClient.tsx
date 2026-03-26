@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { resendEmailLog } from "./actions";
 import { RefreshCw } from "lucide-react";

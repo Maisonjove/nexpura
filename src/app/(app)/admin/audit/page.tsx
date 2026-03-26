@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { format } from "date-fns";
-import { Shield, Search, Filter } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 
 export default async function AuditLogsPage() {
   const supabase = await createClient();

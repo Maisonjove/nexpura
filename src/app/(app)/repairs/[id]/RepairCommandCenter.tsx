@@ -4,7 +4,6 @@ import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/format-currency";
-import JobPhotoUpload from "./JobPhotoUpload";
 import JobReadySMSModal from "@/components/JobReadySMSModal";
 import {
   addRepairLineItem,

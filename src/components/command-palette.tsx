@@ -8,7 +8,7 @@ import {
   ClipboardList, Star, Bell, TrendingUp, Globe, Loader2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { useFocusTrap, useAnnounce } from '@/hooks/useAccessibility';
+import { useFocusTrap } from '@/hooks/useAccessibility';
 import { useLiveRegion } from '@/components/LiveRegion';
 import * as Sentry from '@sentry/nextjs';
 

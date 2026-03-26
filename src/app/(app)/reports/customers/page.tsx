@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/permissions";
-import { format } from "date-fns";
 import { Users, TrendingUp, Heart, ShoppingBag } from "lucide-react";
 
 export const metadata = { title: "Customer Reports — Nexpura" };

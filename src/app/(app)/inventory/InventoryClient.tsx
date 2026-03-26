@@ -7,16 +7,14 @@ import BatchPrintModal from "./BatchPrintModal";
 import AddStockModal from "./AddStockModal";
 import StockDetailModal from "./StockDetailModal";
 import ScanInvoiceModal from "./ScanInvoiceModal";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Search, Edit, Diamond, Printer, Camera, Eye, Globe,
-  Package, Grid3X3, List, TrendingUp, AlertTriangle, DollarSign,
-  Filter, X, MoreVertical, ArrowUpDown, FileText, Download
+  Package, Grid3X3, List, AlertTriangle, DollarSign,
+  Filter, X, FileText
 } from "lucide-react";
 import { ExportDropdown } from "@/components/ExportButtons";
 import { formatCurrencyForExport, formatDateForExport } from "@/lib/export";

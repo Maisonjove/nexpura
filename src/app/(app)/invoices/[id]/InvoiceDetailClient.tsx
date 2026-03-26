@@ -7,7 +7,6 @@ import { recordPayment, markAsSent, voidInvoice } from "../actions";
 import {
   STATUS_BADGE,
   fmtDate,
-  fmt,
   LineItemsTable,
   PaymentHistory,
   InvoiceSummaryCard,

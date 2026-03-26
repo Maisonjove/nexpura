@@ -2,10 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { createMemoItem, updateMemoStatus, deleteMemoItem } from "./actions";
+import { createMemoItem, updateMemoStatus } from "./actions";
 import type { MemoItem } from "./actions";
-import { X, Search, Filter, BarChart2, MoreHorizontal, ArrowRight, User, Package, Calendar, Clock, DollarSign } from "lucide-react";
+import { X, Search, BarChart2, ArrowRight, User, Package, Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 
 const STATUS_STYLES: Record<string, string> = {

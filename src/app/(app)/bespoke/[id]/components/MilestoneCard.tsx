@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle2, Circle, Plus, Pencil, Trash2, GripVertical, Calendar } from "lucide-react";
+import { CheckCircle2, Circle, Plus, Trash2, Calendar } from "lucide-react";
 
 export interface Milestone {
   id: string;

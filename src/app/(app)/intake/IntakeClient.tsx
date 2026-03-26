@@ -13,7 +13,6 @@ import {
 import type {
   Customer,
   InventoryItem,
-  TaxConfig,
   IntakeClientProps as Props,
   JobType,
   SuccessResult,

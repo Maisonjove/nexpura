@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateAppraisal, issueAppraisal } from "../actions";
 import type { Appraisal } from "../actions";
-import { Mail, Download, ChevronLeft, Check, Edit2, Shield, User, FileText, Calendar, Loader2 } from "lucide-react";
+import { Mail, Download, ChevronLeft, Check, Edit2, Shield, User, FileText, Loader2 } from "lucide-react";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-stone-100 text-stone-600",

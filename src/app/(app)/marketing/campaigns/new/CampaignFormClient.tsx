@@ -9,9 +9,7 @@ import {
   Mail,
   Users,
   Calendar,
-  Send,
   Eye,
-  FileText,
   Loader2,
   Check,
 } from "lucide-react";

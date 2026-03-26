@@ -14,7 +14,6 @@ import {
   Trash2,
   Edit,
   Eye,
-  ChevronRight,
 } from "lucide-react";
 import { deleteCampaign, duplicateCampaign, sendCampaignNow } from "./actions";
 

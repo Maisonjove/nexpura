@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   Users, Shield, MapPin, ChevronRight, Check, X, 
-  Building2, Eye, Edit3, ShoppingCart, Wrench, 
-  BarChart2, DollarSign, Settings, UserCog, Plus,
+  Building2, Eye, Edit3, Settings, UserCog, Plus,
   Mail, Trash2, RefreshCw, Loader2, Phone, MessageSquare
 } from "lucide-react";
 import { 

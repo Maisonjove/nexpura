@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { 
   Plus, Search, Package, ArrowRight, Truck, CheckCircle2, 
-  Clock, X, Filter, ChevronDown, ChevronRight, AlertCircle 
+  Clock, X, Filter, ChevronDown, ChevronRight 
 } from "lucide-react";
 import NewTransferModal from "./NewTransferModal";
 

@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { CustomerSegment, SegmentRules, CustomerForMarketing } from './types';
+import type { CustomerSegment, CustomerForMarketing } from './types';
 import logger from "@/lib/logger";
 
 /**

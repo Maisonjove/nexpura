@@ -14,7 +14,6 @@ import {
   ShoppingBag,
   Calendar,
   PartyPopper,
-  Settings,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";

@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { sendBulkMarketingEmail, replaceTemplateVariables } from "@/lib/marketing/email";
+import { sendBulkMarketingEmail } from "@/lib/marketing/email";
 import { getRecipientsForFilter } from "@/lib/marketing/segments";
 import { logAuditEvent } from "@/lib/audit";
 
