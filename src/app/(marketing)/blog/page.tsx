@@ -96,13 +96,15 @@ export default function BlogPage() {
                   </span>
                   <span className="text-xs text-stone-400">· {post.readTime}</span>
                 </div>
-                <h2 className="text-xl font-semibold text-stone-900 mb-3 group-hover:text-amber-700 transition-colors">
-                  {post.title}
-                </h2>
+                <Link href={`/blog/${post.slug}`} className="block">
+                  <h2 className="text-xl font-semibold text-stone-900 mb-3 group-hover:text-amber-700 transition-colors">
+                    {post.title}
+                  </h2>
+                </Link>
                 <p className="text-stone-500 text-sm leading-relaxed mb-4">{post.excerpt}</p>
-                <div className="flex items-center gap-1.5 text-sm font-medium text-amber-700 group-hover:gap-3 transition-all">
+                <Link href={`/blog/${post.slug}`} className="flex items-center gap-1.5 text-sm font-medium text-amber-700 group-hover:gap-3 transition-all">
                   Read article <ArrowRight size={14} />
-                </div>
+                </Link>
               </article>
             ))}
           </div>

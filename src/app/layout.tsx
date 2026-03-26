@@ -12,8 +12,28 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Nexpura",
-  description: "The operating system for modern jewellers.",
+  title: "Nexpura — The Operating System for Modern Jewellers",
+  description: "POS, repairs, bespoke design, inventory, customers, invoicing — unified in one platform built around how jewellers actually work.",
+  openGraph: {
+    title: "Nexpura — The Operating System for Modern Jewellers",
+    description: "POS, repairs, bespoke design, inventory, customers, invoicing — unified in one platform built around how jewellers actually work.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Nexpura — Jewellery Business Software",
+      },
+    ],
+    type: "website",
+    siteName: "Nexpura",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nexpura — The Operating System for Modern Jewellers",
+    description: "POS, repairs, bespoke design, inventory, customers, invoicing — unified in one platform built around how jewellers actually work.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({

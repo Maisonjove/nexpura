@@ -66,6 +66,7 @@ export type Invoice = {
   footer_text: string | null;
   reference_type: string | null;
   created_at: string;
+  stripe_payment_link: string | null;
   customers: Customer;
 };
 

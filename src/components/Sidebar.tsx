@@ -10,7 +10,7 @@ import {
   RotateCcw, Gift, ClipboardList, ArrowLeftRight, Star,
   Bell, Link as LinkIcon, TrendingUp, ArrowRightLeft,
   ChevronDown, ChevronRight, Layers, MessageSquare, Sparkles, Plug,
-  Moon, UserCog, MapPin, Mail, Printer, Megaphone, Send, Zap
+  Moon, UserCog, MapPin, Mail, Printer, Megaphone, Send, Zap, HelpCircle
 } from 'lucide-react';
 
 /* ─── Primary nav (always visible, no group header) ─── */
@@ -95,6 +95,7 @@ const NAV_GROUPS = [
       { name: 'Connected Services', href: '/integrations', icon: Plug },
       { name: 'Printers',     href: '/settings/printing',  icon: Printer },
       { name: 'Support',      href: '/support',            icon: MessageSquare },
+      { name: 'Help & FAQ',   href: '/help',               icon: HelpCircle },
     ],
   },
 ];

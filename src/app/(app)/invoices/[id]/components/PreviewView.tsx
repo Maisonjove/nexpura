@@ -172,6 +172,23 @@ export default function PreviewView({ invoice, lineItems, payments, tenant }: Pr
           </div>
         )}
 
+        {/* Pay Now button */}
+        {invoice.stripe_payment_link && !["paid", "voided"].includes(invoice.status) && (
+          <div className="mt-6 flex justify-center">
+            <a
+              href={invoice.stripe_payment_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-violet-600 text-white text-sm font-medium rounded-xl hover:bg-violet-700 transition-colors shadow-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Pay Now — {invoice.amount_due.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}
+            </a>
+          </div>
+        )}
+
         {/* Thank you */}
         <div className="mt-8 pt-6 border-t border-stone-200 text-center">
           <p className="font-semibold text-sm text-stone-400 italic">Thank you for your business</p>

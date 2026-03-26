@@ -41,7 +41,7 @@ export default async function InvoiceDetailPage({
           `id, invoice_number, status, invoice_date, due_date, paid_at,
            subtotal, tax_amount, discount_amount, total, amount_paid,
            tax_name, tax_rate, tax_inclusive, notes, footer_text, reference_type,
-           created_at,
+           created_at, stripe_payment_link,
            customers(id, full_name, email, phone, mobile, address_line1, suburb, state, postcode)`
         )
         .eq("id", id)

@@ -1,5 +1,6 @@
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import { CommandPalette } from "@/components/command-palette";
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
@@ -104,6 +105,7 @@ export default async function AppLayout({
           <main className="flex-1 overflow-auto p-8">
             {children}
           </main>
+          <CommandPalette />
         </div>
       </div>
     </LocationProvider>

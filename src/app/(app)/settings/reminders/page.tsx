@@ -1,87 +1,101 @@
-"use client";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import RemindersClient from "./RemindersClient";
 
-import { useState } from "react";
-import { Bell, Mail, Clock, ShieldCheck, Gift, Heart } from "lucide-react";
+export const metadata = { title: "Service Reminders — Nexpura" };
 
-export default function RemindersPage() {
-  const [reminders, setReminders] = useState([
-    { id: 1, name: "Birthday Greetings", type: "Annual", trigger: "On Birthday", status: "Active", icon: Gift },
-    { id: 2, name: "Anniversary Wishes", type: "Annual", trigger: "On Anniversary", status: "Active", icon: Heart },
-    { id: 3, name: "Jewellery Service Due", type: "Recurring", trigger: "12m After Purchase", status: "Inactive", icon: ShieldCheck },
-    { id: 4, name: "Layby Payment Due", type: "Event", trigger: "3 days before due", status: "Active", icon: Clock },
-  ]);
+export const DEFAULT_REMINDERS = [
+  {
+    id: "default-1",
+    name: "Birthday Greetings",
+    type: "Annual",
+    trigger_type: "birthday",
+    trigger_value: "0",
+    status: "active",
+    channel: "email",
+    subject: "Happy Birthday from {business_name}! 🎂",
+    body: "Hi {first_name}, wishing you a wonderful birthday! As a thank you for your loyalty, here's a special offer just for you.",
+  },
+  {
+    id: "default-2",
+    name: "Anniversary Wishes",
+    type: "Annual",
+    trigger_type: "anniversary",
+    trigger_value: "0",
+    status: "active",
+    channel: "email",
+    subject: "Happy Anniversary! 💍",
+    body: "Hi {first_name}, congratulations on your special anniversary! We hope the jewellery we've provided has been a treasured part of your celebrations.",
+  },
+  {
+    id: "default-3",
+    name: "Jewellery Service Due",
+    type: "Recurring",
+    trigger_type: "purchase_anniversary",
+    trigger_value: "12m",
+    status: "inactive",
+    channel: "email",
+    subject: "Time to service your jewellery",
+    body: "Hi {first_name}, it's been 12 months since your purchase. We recommend bringing your piece in for a professional clean and inspection.",
+  },
+  {
+    id: "default-4",
+    name: "Layby Payment Due",
+    type: "Event",
+    trigger_type: "layby_due",
+    trigger_value: "3d",
+    status: "active",
+    channel: "sms",
+    subject: "Layby payment reminder",
+    body: "Hi {first_name}, your layby payment of {amount} is due in 3 days. Please visit us or call to arrange payment.",
+  },
+];
+
+export default async function RemindersPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const admin = createAdminClient();
+  let tenantId: string | null = null;
+
+  if (user) {
+    const { data: userData } = await admin
+      .from("users")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
+    tenantId = userData?.tenant_id ?? null;
+  }
+
+  // Try to fetch from DB, fall back to defaults if table doesn't exist yet
+  let reminders = DEFAULT_REMINDERS;
+  let tableExists = false;
+
+  if (tenantId) {
+    try {
+      const { data, error } = await admin
+        .from("service_reminders")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("created_at");
+
+      if (!error) {
+        tableExists = true;
+        // If no reminders configured yet, show defaults
+        if (data && data.length > 0) {
+          reminders = data;
+        }
+      }
+    } catch {
+      // Table doesn't exist yet — use defaults
+    }
+  }
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4 space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-stone-900">Service Reminders</h1>
-          <p className="text-sm text-stone-500 mt-0.5">Automated notifications sent to customers based on events or dates</p>
-        </div>
-        <button className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800">
-          + Create Reminder
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        {reminders.map(rem => (
-          <div key={rem.id} className="bg-white rounded-xl border border-stone-200 p-6 flex items-center gap-6 shadow-sm hover:border-amber-600/30 transition-colors">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-              rem.status === "Active" ? "bg-amber-700/10 text-amber-700" : "bg-stone-100 text-stone-400"
-            }`}>
-              <rem.icon size={24} />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-stone-900">{rem.name}</h3>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                  rem.status === "Active" ? "bg-green-100 text-green-700" : "bg-stone-100 text-stone-400"
-                }`}>
-                  {rem.status}
-                </span>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-stone-500">
-                <span className="flex items-center gap-1"><Bell size={12} /> {rem.type}</span>
-                <span className="flex items-center gap-1"><Clock size={12} /> {rem.trigger}</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="px-3 py-1.5 text-xs font-medium border border-stone-200 rounded-lg hover:bg-stone-50">Template</button>
-              <button className="px-3 py-1.5 text-xs font-medium border border-stone-200 rounded-lg hover:bg-stone-50">Edit</button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Template Editor Preview (Visual) */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-8 space-y-6">
-        <h2 className="text-lg font-semibold text-stone-900 flex items-center gap-2">
-          <Mail size={20} className="text-amber-700" />
-          Template: Birthday Email
-        </h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-stone-500 uppercase mb-1">Subject Line</label>
-            <input 
-              readOnly 
-              value="Happy Birthday from Nexpura Jewellery! 🎂" 
-              className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-stone-50 outline-none"
-            />
-          </div>
-          <div className="aspect-video w-full bg-stone-50 rounded-xl border border-stone-200 p-6 overflow-auto">
-            <div className="max-w-md mx-auto bg-white border border-stone-100 shadow-sm p-8 text-center space-y-4">
-              <div className="text-2xl font-serif text-amber-700">Happy Birthday, {"{first_name}"}!</div>
-              <p className="text-sm text-stone-600">
-                We hope your special day is as radiant as you are. To celebrate, we've added a special gift to your account...
-              </p>
-              <div className="py-4 px-8 border-2 border-dashed border-amber-600/30 text-amber-700 font-bold tracking-widest">
-                BDAY2024
-              </div>
-              <p className="text-[10px] text-stone-400">Valid for 30 days. One use per customer.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <RemindersClient
+      initialReminders={reminders}
+      tenantId={tenantId}
+      tableExists={tableExists}
+    />
   );
 }

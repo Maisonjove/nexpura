@@ -175,6 +175,19 @@ export default function InvoiceDetailClient({
               Record Payment
             </button>
           )}
+          {invoice.stripe_payment_link && !["paid", "voided"].includes(invoice.status) && (
+            <a
+              href={invoice.stripe_payment_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 text-xs bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors inline-flex items-center gap-1"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Pay Now
+            </a>
+          )}
           {invoice.customers?.id && (
             <Link
               href={`/passports/new?invoice_id=${invoice.id}&customer_id=${invoice.customers.id}`}
