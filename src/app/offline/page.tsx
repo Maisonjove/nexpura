@@ -1,8 +1,6 @@
-import { WifiOff, RefreshCw } from 'lucide-react';
+'use client';
 
-export const metadata = {
-  title: 'Offline — Nexpura',
-};
+import { WifiOff, RefreshCw } from 'lucide-react';
 
 export default function OfflinePage() {
   return (
