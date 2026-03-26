@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkRateLimit } from '@/lib/rate-limit';
 import logger from "@/lib/logger";
 
 export const runtime = 'nodejs';
@@ -40,6 +41,12 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Rate limit file uploads per user
+    const { success: rateLimitOk } = await checkRateLimit(`migration-upload:${user.id}`);
+    if (!rateLimitOk) {
+      return NextResponse.json({ error: 'Too many uploads. Please try again later.' }, { status: 429 });
+    }
 
     const { data: profile } = await supabase
       .from('users')

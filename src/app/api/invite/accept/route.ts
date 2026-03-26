@@ -1,9 +1,17 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit by IP to prevent token brute-forcing
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "anonymous";
+    const { success } = await checkRateLimit(`invite-accept:${ip}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const { token, userId } = await request.json();
 
     if (!token || !userId) {

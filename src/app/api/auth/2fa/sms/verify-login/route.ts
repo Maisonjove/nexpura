@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyBackupCode } from '@/lib/totp';
+import logger from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('SMS 2FA verify login error:', error);
+    logger.error('SMS 2FA verify login error', { error });
     return NextResponse.json(
       { error: 'Failed to verify code' },
       { status: 500 }

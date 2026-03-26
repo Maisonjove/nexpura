@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import logger from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
 
     if (!twilioAccountSid || !twilioAuthToken || !twilioFromNumber) {
       // Fallback: log the code for development
-      console.log(`[SMS 2FA Login] Verification code for ${profile.sms_2fa_phone}: ${code}`);
+      logger.info('SMS 2FA Login - dev mode verification code', { phone: profile.sms_2fa_phone, code });
       return NextResponse.json({ 
         success: true, 
         message: 'Verification code sent (dev mode)',
@@ -68,7 +69,8 @@ export async function POST(request: Request) {
     });
 
     if (!smsResponse.ok) {
-      console.error('[SMS 2FA Login] Twilio error:', await smsResponse.json());
+      const twilioError = await smsResponse.json();
+      logger.error('SMS 2FA Login - Twilio error', { error: twilioError });
       return NextResponse.json({ error: 'Failed to send SMS' }, { status: 500 });
     }
 
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
       phoneMasked: profile.sms_2fa_phone.slice(0, 4) + '****' + profile.sms_2fa_phone.slice(-2),
     });
   } catch (error) {
-    console.error('SMS 2FA login send error:', error);
+    logger.error('SMS 2FA login send error', { error });
     return NextResponse.json(
       { error: 'Failed to send login code' },
       { status: 500 }

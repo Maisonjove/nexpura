@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateTOTPSecret, generateTOTPQRCode } from '@/lib/totp';
+import logger from '@/lib/logger';
 
 export async function POST() {
   try {
@@ -39,7 +40,7 @@ export async function POST() {
       qrCode,
     });
   } catch (error) {
-    console.error('2FA setup error:', error);
+    logger.error('2FA setup error', { error });
     return NextResponse.json(
       { error: 'Failed to setup 2FA' },
       { status: 500 }

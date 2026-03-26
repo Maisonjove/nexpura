@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-// Edge runtime — no Node.js APIs needed, just Supabase fetch calls
-export const runtime = 'edge';
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Reserved subdomains that cannot be used
 const RESERVED = [
@@ -15,6 +13,13 @@ const RESERVED = [
 ];
 
 export async function GET(request: NextRequest) {
+  // Rate limit subdomain checks to prevent enumeration
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "anonymous";
+  const { success: rateLimitOk } = await checkRateLimit(`check-subdomain:${ip}`);
+  if (!rateLimitOk) {
+    return NextResponse.json({ available: false, error: "Too many requests" }, { status: 429 });
+  }
+
   const subdomain = request.nextUrl.searchParams.get("subdomain");
 
   if (!subdomain) {

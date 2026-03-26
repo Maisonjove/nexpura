@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/integrations";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID!;
@@ -14,6 +15,14 @@ const SCOPES = "read_products,write_products,read_inventory,write_inventory,read
 export async function GET(req: NextRequest) {
   try {
     const { tenantId } = await getAuthContext();
+
+    // Rate limit OAuth initiations
+    const { success: rateLimitOk } = await checkRateLimit(`shopify-connect:${tenantId}`);
+    if (!rateLimitOk) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/website/connect?error=rate_limited`
+      );
+    }
     
     // Get shop domain from query param
     const shop = req.nextUrl.searchParams.get("shop");

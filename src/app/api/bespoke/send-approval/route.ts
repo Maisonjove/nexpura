@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
 import { randomUUID } from "crypto";
+import logger from "@/lib/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
       `,
     });
   } catch (emailErr) {
-    console.error("[send-approval] Email failed:", emailErr);
+    logger.error("Send approval email failed", { error: emailErr, jobId });
     // Don't fail the request — approval token is already set
   }
 

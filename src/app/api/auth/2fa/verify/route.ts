@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyTOTPToken, generateBackupCodes, hashBackupCode } from '@/lib/totp';
+import logger from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('Failed to enable 2FA:', updateError);
+      logger.error('Failed to enable 2FA', { error: updateError });
       return NextResponse.json({ error: 'Failed to enable 2FA' }, { status: 500 });
     }
 
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       backupCodes, // Return plain backup codes to user (only time they'll see them)
     });
   } catch (error) {
-    console.error('2FA verification error:', error);
+    logger.error('2FA verification error', { error });
     return NextResponse.json(
       { error: 'Failed to verify 2FA' },
       { status: 500 }

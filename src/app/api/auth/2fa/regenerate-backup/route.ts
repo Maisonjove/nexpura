@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateBackupCodes, hashBackupCode } from '@/lib/totp';
+import logger from '@/lib/logger';
 
 export async function POST() {
   try {
@@ -41,7 +42,7 @@ export async function POST() {
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('Failed to regenerate backup codes:', updateError);
+      logger.error('Failed to regenerate backup codes', { error: updateError });
       return NextResponse.json({ error: 'Failed to regenerate backup codes' }, { status: 500 });
     }
 
@@ -50,7 +51,7 @@ export async function POST() {
       backupCodes,
     });
   } catch (error) {
-    console.error('Backup code regeneration error:', error);
+    logger.error('Backup code regeneration error', { error });
     return NextResponse.json(
       { error: 'Failed to regenerate backup codes' },
       { status: 500 }

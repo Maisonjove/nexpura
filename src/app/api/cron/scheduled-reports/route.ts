@@ -11,13 +11,15 @@ import { sendTenantEmail } from "@/lib/email-sender";
 import { generateReport } from "@/lib/reports/generator";
 import logger from "@/lib/logger";
 
-// Vercel cron auth
-const CRON_SECRET = process.env.CRON_SECRET;
-
 export async function GET(req: NextRequest) {
-  // Verify cron secret
+  // Verify cron secret - require CRON_SECRET env var
   const authHeader = req.headers.get("authorization");
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    logger.error("[scheduled-reports] CRON_SECRET env var not configured");
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+  }
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

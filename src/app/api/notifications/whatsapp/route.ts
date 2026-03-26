@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
@@ -21,6 +22,12 @@ export async function POST(req: NextRequest) {
     
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limit WhatsApp notifications per user
+    const { success } = await checkRateLimit(`whatsapp-notify:${user.id}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
     const body = await req.json();

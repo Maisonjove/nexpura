@@ -1,12 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/admin/init-qa - Initialize QA tables and seed data
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    // Rate limit admin operations by IP
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "anonymous";
+    const { success } = await checkRateLimit(`admin-init-qa:${ip}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
     // Use pg_dump style connection via postgres protocol
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

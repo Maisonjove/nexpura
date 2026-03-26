@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkRateLimit } from '@/lib/rate-limit';
 import {
   parseCSVFull, parseXLSXFull, applyMappings, buildDefaultMappings,
   importCustomer, importInventory, importRepair, importBespokeJob,
@@ -96,6 +97,12 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Rate limit migration executions per user (stricter limit since it's a heavy operation)
+    const { success: rateLimitOk } = await checkRateLimit(`migration-execute:${user.id}`);
+    if (!rateLimitOk) {
+      return NextResponse.json({ error: 'Migration already in progress. Please wait before starting another.' }, { status: 429 });
+    }
 
     // SECURITY: use admin client — anon client triggers RLS recursion on users
     // table, which can return null and leave tenantId undefined, causing all

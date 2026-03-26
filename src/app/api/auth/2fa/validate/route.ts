@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyTOTPToken, verifyBackupCode } from '@/lib/totp';
+import logger from '@/lib/logger';
 
 /**
  * Validate a 2FA code during login
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ valid: false, error: 'Invalid code' }, { status: 400 });
   } catch (error) {
-    console.error('2FA validation error:', error);
+    logger.error('2FA validation error', { error });
     return NextResponse.json(
       { error: 'Failed to validate 2FA' },
       { status: 500 }

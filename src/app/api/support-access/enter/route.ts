@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkActiveAccess } from "@/lib/support-access";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
@@ -9,6 +10,13 @@ export async function GET(request: NextRequest) {
   
   if (!tenantId) {
     return NextResponse.json({ error: "Tenant ID required" }, { status: 400 });
+  }
+
+  // Rate limit support access attempts by IP
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "anonymous";
+  const { success: rateLimitOk } = await checkRateLimit(`support-access:${ip}`);
+  if (!rateLimitOk) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   // Verify user is a super admin

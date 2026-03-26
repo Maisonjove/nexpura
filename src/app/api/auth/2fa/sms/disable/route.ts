@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import logger from '@/lib/logger';
 
 export async function POST() {
   try {
@@ -28,7 +29,7 @@ export async function POST() {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('SMS 2FA disable error:', error);
+    logger.error('SMS 2FA disable error', { error });
     return NextResponse.json(
       { error: 'Failed to disable SMS 2FA' },
       { status: 500 }

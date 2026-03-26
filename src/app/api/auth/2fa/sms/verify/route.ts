@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateBackupCodes, hashBackupCode } from '@/lib/totp';
+import logger from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
       backupCodes,
     });
   } catch (error) {
-    console.error('SMS 2FA verify error:', error);
+    logger.error('SMS 2FA verify error', { error });
     return NextResponse.json(
       { error: 'Failed to verify SMS code' },
       { status: 500 }

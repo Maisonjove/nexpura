@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { tenantId, saleId, items, refundMethod, reason, notes, total } = body;
   if (!tenantId || !saleId || !items?.length) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  // Rate limit refunds per tenant to prevent fraud
+  const { success: rateLimitOk } = await checkRateLimit(`pos-refund:${tenantId}`);
+  if (!rateLimitOk) {
+    return NextResponse.json({ error: "Too many refund requests. Please try again later." }, { status: 429 });
   }
 
   const admin = createAdminClient();

@@ -10,11 +10,18 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration } from "@/lib/integrations";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
     const { tenantId } = await getAuthContext();
+
+    // Rate limit WhatsApp sends per tenant to prevent spam
+    const { success } = await checkRateLimit(`whatsapp-send:${tenantId}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
+    }
     const body = await req.json();
     const { to, message } = body as { to: string; message: string };
 

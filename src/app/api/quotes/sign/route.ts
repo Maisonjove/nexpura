@@ -1,14 +1,22 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkRateLimit } from '@/lib/rate-limit';
+import logger from '@/lib/logger';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limit quote signing per user
+    const { success: rateLimitOk } = await checkRateLimit(`quote-sign:${user.id}`);
+    if (!rateLimitOk) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
     const body = await request.json();
@@ -66,7 +74,7 @@ export async function POST(request: Request) {
       .eq('id', quoteId);
 
     if (error) {
-      console.error('Error updating quote:', error);
+      logger.error('Error updating quote', { error, quoteId });
       return NextResponse.json({ error: 'Failed to accept quote' }, { status: 500 });
     }
 
@@ -80,7 +88,7 @@ export async function POST(request: Request) {
       });
     } catch (e) {
       // Event logging is non-critical
-      console.log('Could not log quote event:', e);
+      logger.warn('Could not log quote event', { error: e, quoteId });
     }
 
     return NextResponse.json({
@@ -88,7 +96,7 @@ export async function POST(request: Request) {
       message: 'Quote accepted successfully',
     });
   } catch (error) {
-    console.error('Quote sign error:', error);
+    logger.error('Quote sign error', { error });
     return NextResponse.json(
       { error: 'Failed to sign quote' },
       { status: 500 }

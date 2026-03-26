@@ -7,14 +7,23 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/integrations";
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID!;
 const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google-calendar/callback`;
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const { tenantId } = await getAuthContext();
+
+    // Rate limit OAuth initiations
+    const { success: rateLimitOk } = await checkRateLimit(`gcal-connect:${tenantId}`);
+    if (!rateLimitOk) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=rate_limited`
+      );
+    }
     
     // Build OAuth URL
     const scopes = [

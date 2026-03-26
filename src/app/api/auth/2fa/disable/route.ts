@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import logger from '@/lib/logger';
 
 export async function POST() {
   try {
@@ -23,13 +24,13 @@ export async function POST() {
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('Failed to disable 2FA:', updateError);
+      logger.error('Failed to disable 2FA', { error: updateError });
       return NextResponse.json({ error: 'Failed to disable 2FA' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('2FA disable error:', error);
+    logger.error('2FA disable error', { error });
     return NextResponse.json(
       { error: 'Failed to disable 2FA' },
       { status: 500 }
