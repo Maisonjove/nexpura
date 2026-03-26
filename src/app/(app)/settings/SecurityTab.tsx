@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { revokeAccess, getAccessRequests } from "./security-actions";
+import { ShieldCheck, Smartphone, ChevronRight } from "lucide-react";
 
 interface AccessRequest {
   id: string;
@@ -68,6 +70,7 @@ export default function SecurityTab({ tenantId }: Props) {
   const [isPending, startTransition] = useTransition();
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [totpEnabled, setTotpEnabled] = useState(false);
 
   const loadRequests = async () => {
     const data = await getAccessRequests(tenantId);
@@ -75,8 +78,22 @@ export default function SecurityTab({ tenantId }: Props) {
     setLoading(false);
   };
 
+  const loadTotpStatus = async () => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase
+        .from("users")
+        .select("totp_enabled")
+        .eq("id", user.id)
+        .single();
+      setTotpEnabled(data?.totp_enabled ?? false);
+    }
+  };
+
   useEffect(() => {
     loadRequests();
+    loadTotpStatus();
   }, [tenantId]);
 
   const handleRevoke = (requestId: string) => {
@@ -123,6 +140,48 @@ export default function SecurityTab({ tenantId }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Two-Factor Authentication */}
+      <Link
+        href="/settings/two-factor"
+        className="block bg-white rounded-xl border border-stone-200 p-6 hover:border-amber-300 hover:shadow-sm transition-all group"
+      >
+        <div className="flex items-start gap-4">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            totpEnabled ? 'bg-green-100' : 'bg-stone-100'
+          }`}>
+            <Smartphone className={`h-6 w-6 ${totpEnabled ? 'text-green-600' : 'text-stone-500'}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-stone-900">Two-Factor Authentication</h2>
+              <ChevronRight className="h-5 w-5 text-stone-400 group-hover:text-amber-600 transition-colors" />
+            </div>
+            <p className="text-sm text-stone-500 mt-0.5">
+              {totpEnabled 
+                ? 'Your account is protected with an authenticator app'
+                : 'Add an extra layer of security to your account'
+              }
+            </p>
+            <div className="mt-3">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                totpEnabled 
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-amber-100 text-amber-700'
+              }`}>
+                {totpEnabled ? (
+                  <>
+                    <ShieldCheck className="h-3 w-3" />
+                    Enabled
+                  </>
+                ) : (
+                  'Not enabled'
+                )}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Link>
+
       {/* Toast messages */}
       {successMsg && (
         <div className="flex items-center gap-3 bg-stone-100 border border-amber-600/30 text-amber-700 rounded-xl px-4 py-3 text-sm">

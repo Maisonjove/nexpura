@@ -58,7 +58,7 @@ export default function CartPanel({
   );
 
   return (
-    <div className="w-80 xl:w-96 bg-white border-l border-stone-200 flex flex-col">
+    <div className="w-full lg:w-80 xl:w-96 bg-white border-t lg:border-t-0 lg:border-l border-stone-200 flex flex-col min-h-[40vh] lg:min-h-0 max-h-[60vh] lg:max-h-none">
       {/* Cart header */}
       <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
         <h2 className="font-semibold text-stone-900">
@@ -102,14 +102,14 @@ export default function CartPanel({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => onUpdateQty(item.inventoryId, -1)}
-                      className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-sm hover:bg-stone-200"
+                      className="w-8 h-8 md:w-7 md:h-7 rounded-full bg-stone-100 flex items-center justify-center text-sm hover:bg-stone-200 touch-manipulation active:bg-stone-300"
                     >
                       −
                     </button>
                     <span className="text-sm font-medium text-stone-900 w-6 text-center">{item.quantity}</span>
                     <button
                       onClick={() => onUpdateQty(item.inventoryId, 1)}
-                      className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-sm hover:bg-stone-200"
+                      className="w-8 h-8 md:w-7 md:h-7 rounded-full bg-stone-100 flex items-center justify-center text-sm hover:bg-stone-200 touch-manipulation active:bg-stone-300"
                     >
                       +
                     </button>
@@ -210,7 +210,7 @@ export default function CartPanel({
         <button
           onClick={onCharge}
           disabled={cart.length === 0}
-          className="w-full py-3 bg-amber-700 text-white rounded-xl font-semibold text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full py-3 md:py-4 bg-amber-700 text-white rounded-xl font-semibold text-sm md:text-base hover:bg-[#7a6447] transition-colors disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation active:scale-[0.98]"
           title={cart.length === 0 ? "Add items to cart first" : undefined}
         >
           {cart.length === 0 ? "Add items to charge" : `Charge $${total.toFixed(2)}`}

@@ -176,7 +176,7 @@ export default function DashboardClient({
         </p>
         {/* Quick actions */}
         {!readOnly && (
-          <div className="inline-flex mt-4 bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm">
+          <div className="flex flex-wrap gap-2 mt-4 sm:inline-flex sm:bg-white sm:border sm:border-stone-200 sm:rounded-lg sm:overflow-hidden sm:shadow-sm sm:gap-0">
             {[
               { label: 'New Sale', href: `${basePath}/sales/new` },
               { label: 'New Customer', href: `${basePath}/customers/new` },
@@ -186,8 +186,8 @@ export default function DashboardClient({
               <a
                 key={action.label}
                 href={action.href}
-                className={`px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors ${
-                  i < 3 ? 'border-r border-stone-200' : ''
+                className={`px-4 py-2 text-sm font-medium text-stone-700 bg-white border border-stone-200 rounded-lg sm:border-0 sm:rounded-none hover:bg-stone-50 transition-colors touch-manipulation ${
+                  i < 3 ? 'sm:border-r sm:border-stone-200' : ''
                 }`}
               >
                 {action.label}
@@ -408,9 +408,9 @@ export default function DashboardClient({
       )}
 
       {/* ── Operations Grid ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Repairs Table */}
-        <div className="col-span-2 bg-white rounded-lg border border-stone-200 overflow-hidden">
+        <div className="lg:col-span-2 bg-white rounded-lg border border-stone-200 overflow-hidden overflow-x-auto">
           <div className="px-6 py-4 flex justify-between items-center border-b border-stone-100">
             <span className="text-sm font-semibold text-stone-700">Active Repairs</span>
             <a href={`${basePath}/repairs`} className="text-xs text-stone-400 hover:text-amber-700 transition-colors">View all →</a>

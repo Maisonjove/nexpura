@@ -2,12 +2,15 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { CommandPalette } from "@/components/command-palette";
 import { OnboardingTour } from "@/components/onboarding/tour";
+import { SkipToContent } from "@/components/SkipToContent";
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import { canonicalPlan } from '@/lib/features';
 import { LocationProvider } from '@/contexts/LocationContext';
 import logger from "@/lib/logger";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { MobileLayoutWrapper } from "@/components/MobileLayoutWrapper";
 
 // Prevent caching so plan changes take effect immediately
 export const dynamic = 'force-dynamic';
@@ -90,26 +93,36 @@ export default async function AppLayout({
 
   return (
     <LocationProvider initialLocations={locations} initialCurrentLocationId={currentLocationId}>
-      <div className="flex min-h-screen bg-stone-50">
-        <Sidebar
-          user={userData}
-          isSuperAdmin={isSuperAdmin}
-          websiteConfig={websiteConfig}
-          businessMode={businessMode}
-          readyRepairsCount={readyRepairsCount}
-          readyBespokeCount={readyBespokeCount}
-          plan={tenantPlan}
-          tenantName={tenant?.name as string}
-        />
-        <div className="flex-1 ml-64 flex flex-col min-h-screen">
-          <Header user={userData} />
-          <main className="flex-1 overflow-auto p-8">
+      <SkipToContent />
+      <MobileLayoutWrapper
+        sidebar={
+          <Sidebar
+            user={userData}
+            isSuperAdmin={isSuperAdmin}
+            websiteConfig={websiteConfig}
+            businessMode={businessMode}
+            readyRepairsCount={readyRepairsCount}
+            readyBespokeCount={readyBespokeCount}
+            plan={tenantPlan}
+            tenantName={tenant?.name as string}
+          />
+        }
+        header={<Header user={userData} />}
+      >
+        <ErrorBoundary section="main-content">
+          <main 
+            id="main-content"
+            role="main"
+            aria-label="Main content"
+            tabIndex={-1}
+            className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 focus:outline-none"
+          >
             {children}
           </main>
-          <CommandPalette />
-          <OnboardingTour />
-        </div>
-      </div>
+        </ErrorBoundary>
+        <CommandPalette />
+        <OnboardingTour />
+      </MobileLayoutWrapper>
     </LocationProvider>
   );
 }

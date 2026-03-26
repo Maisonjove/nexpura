@@ -16,8 +16,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Search, Edit, Diamond, Printer, Camera, Eye, Globe,
   Package, Grid3X3, List, TrendingUp, AlertTriangle, DollarSign,
-  Filter, X, MoreVertical, ArrowUpDown, FileText
+  Filter, X, MoreVertical, ArrowUpDown, FileText, Download
 } from "lucide-react";
+import { ExportDropdown } from "@/components/ExportButtons";
+import { formatCurrencyForExport, formatDateForExport } from "@/lib/export";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import QuickPrintTagModal from "@/components/QuickPrintTagModal";
 import CameraScannerModal from "@/components/CameraScannerModal";
@@ -290,6 +292,42 @@ export default function InventoryClient({
             <FileText className="w-4 h-4" />
             <span className="hidden sm:inline">Scan Invoice</span>
           </button>
+          <ExportDropdown
+            data={filtered.map(i => ({
+              name: i.name,
+              sku: i.sku || '',
+              stock_number: i.stock_number || '',
+              category: i.stock_categories?.name || '',
+              supplier: i.suppliers?.name || '',
+              quantity: i.quantity,
+              retail_price: formatCurrencyForExport(i.retail_price),
+              cost_price: canViewCost ? formatCurrencyForExport(i.cost_price) : '',
+              status: (STATUS_CONFIG[i.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.available).label,
+              jewellery_type: i.jewellery_type || '',
+              metal_type: i.metal_type || '',
+              stone_type: i.stone_type || '',
+              listed_on_website: i.listed_on_website ? 'Yes' : 'No',
+              created_at: formatDateForExport(i.created_at),
+            }))}
+            columns={[
+              { key: 'name', label: 'Name' },
+              { key: 'sku', label: 'SKU' },
+              { key: 'stock_number', label: 'Stock Number' },
+              { key: 'category', label: 'Category' },
+              { key: 'supplier', label: 'Supplier' },
+              { key: 'quantity', label: 'Quantity' },
+              { key: 'retail_price', label: 'Retail Price' },
+              ...(canViewCost ? [{ key: 'cost_price' as const, label: 'Cost Price' }] : []),
+              { key: 'status', label: 'Status' },
+              { key: 'jewellery_type', label: 'Jewellery Type' },
+              { key: 'metal_type', label: 'Metal Type' },
+              { key: 'stone_type', label: 'Stone Type' },
+              { key: 'listed_on_website', label: 'On Website' },
+              { key: 'created_at', label: 'Created' },
+            ]}
+            filename={`inventory-export-${new Date().toISOString().split('T')[0]}`}
+            sheetName="Inventory"
+          />
           <button
             onClick={() => setShowAddStock(true)}
             className="inline-flex items-center gap-2 h-10 px-5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-medium rounded-xl transition-all shadow-sm"

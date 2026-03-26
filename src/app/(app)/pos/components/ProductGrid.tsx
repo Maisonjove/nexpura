@@ -36,7 +36,7 @@ export default function ProductGrid({
   });
 
   return (
-    <div className="flex-1 flex flex-col bg-stone-50 min-w-0">
+    <div className="flex-1 flex flex-col bg-stone-50 min-w-0 min-h-[50vh] lg:min-h-0">
       {/* Search */}
       <div className="p-4 bg-white border-b border-stone-200 space-y-3">
         <div className="flex gap-2">
@@ -87,12 +87,12 @@ export default function ProductGrid({
         {filteredItems.length === 0 ? (
           <div className="text-center py-12 text-stone-400 text-sm">No items found</div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 md:gap-3">
             {filteredItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => onAddToCart(item)}
-                className="bg-white border border-stone-200 rounded-xl p-3 text-left hover:border-amber-600 hover:shadow-sm transition-all group"
+                className="bg-white border border-stone-200 rounded-xl p-2 md:p-3 text-left hover:border-amber-600 hover:shadow-sm transition-all group active:scale-[0.98] touch-manipulation"
               >
                 <div className="aspect-square w-full mb-2 rounded-lg overflow-hidden bg-stone-100 flex items-center justify-center">
                   {item.primary_image ? (

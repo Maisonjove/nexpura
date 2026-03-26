@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Plus, ArrowRight } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
+import { formatDateForExport } from "@/lib/export";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -96,9 +98,34 @@ export default function CustomerListClient({
             {totalCount}
           </Badge>
         </div>
-        <Link href="/customers/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
-          <Plus className="w-4 h-4 mr-2" /> Add Customer
-        </Link>
+        <div className="flex items-center gap-3">
+          <ExportButtons
+            data={customers.map(c => ({
+              full_name: c.full_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unknown',
+              email: c.email || '',
+              phone: c.mobile || c.phone || '',
+              tags: (c.tags || []).join(', '),
+              is_vip: c.is_vip ? 'Yes' : 'No',
+              created_at: formatDateForExport(c.created_at),
+              updated_at: formatDateForExport(c.updated_at),
+            }))}
+            columns={[
+              { key: 'full_name', label: 'Name' },
+              { key: 'email', label: 'Email' },
+              { key: 'phone', label: 'Phone' },
+              { key: 'tags', label: 'Tags' },
+              { key: 'is_vip', label: 'VIP' },
+              { key: 'created_at', label: 'Created' },
+              { key: 'updated_at', label: 'Updated' },
+            ]}
+            filename={`customers-export-${new Date().toISOString().split('T')[0]}`}
+            sheetName="Customers"
+            size="sm"
+          />
+          <Link href="/customers/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
+            <Plus className="w-4 h-4 mr-2" /> Add Customer
+          </Link>
+        </div>
       </div>
 
       {/* FILTER BAR */}

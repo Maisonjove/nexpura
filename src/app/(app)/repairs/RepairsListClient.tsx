@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, ArrowRight, Camera, Bell } from "lucide-react";
 import CameraScannerModal from "@/components/CameraScannerModal";
+import { ExportButtons } from "@/components/ExportButtons";
+import { formatDateForExport } from "@/lib/export";
 import { toast } from "sonner";
 import logger from "@/lib/logger";
 
@@ -197,6 +199,33 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
               Notify All Ready
             </button>
           )}
+          <ExportButtons
+            data={repairs.map(r => ({
+              repair_number: r.repair_number,
+              customer: r.customers?.full_name || 'Unknown',
+              item_type: r.item_type,
+              description: r.item_description,
+              repair_type: r.repair_type,
+              stage: ALL_REPAIR_STAGES.find(s => s.key === r.stage)?.label || r.stage,
+              priority: r.priority,
+              due_date: formatDateForExport(r.due_date),
+              created_at: formatDateForExport(r.created_at),
+            }))}
+            columns={[
+              { key: 'repair_number', label: 'Repair #' },
+              { key: 'customer', label: 'Customer' },
+              { key: 'item_type', label: 'Item Type' },
+              { key: 'description', label: 'Description' },
+              { key: 'repair_type', label: 'Repair Type' },
+              { key: 'stage', label: 'Status' },
+              { key: 'priority', label: 'Priority' },
+              { key: 'due_date', label: 'Due Date' },
+              { key: 'created_at', label: 'Created' },
+            ]}
+            filename={`repairs-export-${new Date().toISOString().split('T')[0]}`}
+            sheetName="Repairs"
+            size="sm"
+          />
           <button
             onClick={() => setShowCameraScanner(true)}
             className="inline-flex items-center gap-1.5 h-9 px-3 border border-stone-200 rounded-md text-sm text-stone-600 hover:bg-stone-50 transition-colors"

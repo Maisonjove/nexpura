@@ -24,7 +24,7 @@ export default function LoginPage() {
     try {
       // If "Remember me" is checked, set a longer session (30 days)
       // Otherwise use default session duration
-      const { error } = await supabase.auth.signInWithPassword({ 
+      const { data, error } = await supabase.auth.signInWithPassword({ 
         email, 
         password,
       });
@@ -35,6 +35,21 @@ export default function LoginPage() {
         setError(errorMessage);
         setLoading(false);
         return;
+      }
+
+      // Check if user has 2FA enabled
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("users")
+          .select("totp_enabled")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profile?.totp_enabled) {
+          // Redirect to 2FA verification page
+          router.push(`/verify-2fa?userId=${data.user.id}&email=${encodeURIComponent(email)}`);
+          return;
+        }
       }
 
       // Store remember me preference in localStorage

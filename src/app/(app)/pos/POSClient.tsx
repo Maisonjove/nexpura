@@ -406,7 +406,7 @@ export default function POSClient({
   }
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-0 -m-8 mt-0">
+    <div className="flex flex-col lg:flex-row h-auto lg:h-[calc(100vh-120px)] gap-0 -m-4 md:-m-6 lg:-m-8 mt-0">
       {/* Refund Modal */}
       {showRefundModal && (
         <RefundModal

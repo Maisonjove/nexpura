@@ -96,8 +96,8 @@ export default function PaymentModal({
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md my-auto max-h-[95vh] overflow-y-auto">
         <div className="px-6 py-5 border-b border-stone-200 flex items-center justify-between">
           <h3 className="font-semibold text-stone-900 text-lg">Payment</h3>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-900">✕</button>
