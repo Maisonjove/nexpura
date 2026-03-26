@@ -28,6 +28,7 @@ export type AuditAction =
   | 'team_member_update'
   | 'team_member_delete'
   | 'team_member_invite'
+  | 'team_member_locations_update'
   | 'location_create'
   | 'location_update'
   | 'quote_create'

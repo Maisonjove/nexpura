@@ -31,11 +31,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // Disable Turbopack for build due to race condition bug
+  // Turbopack experimental config moved to turbopack key in Next.js 15+
   experimental: {
-    turbo: {
-      enabled: false,
-    },
+    clientTraceMetadata: ['baggage', 'sentry-trace'],
   },
   typescript: {
     ignoreBuildErrors: true,
