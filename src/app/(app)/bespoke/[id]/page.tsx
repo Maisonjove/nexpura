@@ -39,7 +39,7 @@ export default async function BespokeJobDetailPage({
   const [{ data: job }, { data: inventory }] = await Promise.all([
     adminClient
       .from("bespoke_jobs")
-      .select("*, customers(id, full_name, email, mobile)")
+      .select("*, customers(id, full_name, email, mobile), bespoke_milestones(*)")
       .eq("id", id)
       .is("deleted_at", null)
       .single(),
@@ -131,7 +131,13 @@ export default async function BespokeJobDetailPage({
         invoice_id: job.invoice_id ?? null,
         internal_notes: job.internal_notes ?? null,
         workshop_notes: job.workshop_notes ?? null,
-      }}
+        approval_status: job.approval_status ?? null,
+        approval_token: job.approval_token ?? null,
+        approval_requested_at: job.approval_requested_at ?? null,
+        approved_at: job.approved_at ?? null,
+        approval_notes: job.approval_notes ?? null,
+        milestones: Array.isArray(job.bespoke_milestones) ? job.bespoke_milestones : [],
+      } as any}
       customer={customer}
       invoice={invoice}
       inventory={inventory ?? []}

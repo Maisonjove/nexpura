@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createPOSSale, createLaybySale } from "./actions";
 import { lookupVoucher } from "../vouchers/actions";
 import CameraScannerModal from "@/components/CameraScannerModal";
+import RefundModal from "./components/RefundModal";
 import {
   SaleSuccessScreen,
   ProductGrid,
@@ -60,6 +61,7 @@ export default function POSClient({
 
   const [laybyDeposit, setLaybyDeposit] = useState("");
   const [showCameraScanner, setShowCameraScanner] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
 
   const barcodeBuffer = useRef("");
   const barcodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -405,6 +407,14 @@ export default function POSClient({
 
   return (
     <div className="flex h-[calc(100vh-120px)] gap-0 -m-8 mt-0">
+      {/* Refund Modal */}
+      {showRefundModal && (
+        <RefundModal
+          tenantId={tenantId}
+          onClose={() => setShowRefundModal(false)}
+        />
+      )}
+
       {/* Camera Scanner Modal */}
       {showCameraScanner && (
         <CameraScannerModal
@@ -426,6 +436,7 @@ export default function POSClient({
         setCategoryFilter={setCategoryFilter}
         onAddToCart={addToCart}
         onOpenCameraScanner={() => setShowCameraScanner(true)}
+        onOpenRefund={() => setShowRefundModal(true)}
       />
 
       {/* Right Panel - Cart */}

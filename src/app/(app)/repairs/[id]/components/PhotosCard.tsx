@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import JobPhotoUpload from "../JobPhotoUpload";
 import type { JobAttachment } from "./types";
 
@@ -29,11 +30,14 @@ export default function PhotosCard({
         <div className="grid grid-cols-3 gap-2 mb-3">
           {attachments.map(a => (
             <div key={a.id} className="relative group">
-              <img
+              <Image
                 src={a.file_url}
                 alt={a.caption ?? a.file_name}
+                width={200}
+                height={200}
                 className="w-full aspect-square object-cover rounded-lg cursor-pointer"
                 onClick={() => window.open(a.file_url, "_blank")}
+                unoptimized
               />
               {!readOnly && (
                 <button

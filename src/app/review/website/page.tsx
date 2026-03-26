@@ -1,4 +1,5 @@
 import { getAuthOrReviewContext } from "@/lib/auth/review";
+import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -290,8 +291,7 @@ export default async function ReviewWebsitePage({ searchParams }: { searchParams
             <div>
               <p className="text-xs text-stone-400 font-medium uppercase tracking-wide mb-2">Logo</p>
               {config?.logo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={config.logo_url} alt="Logo" className="h-12 object-contain rounded border border-stone-200 p-1 bg-white" />
+                <Image src={config.logo_url} alt="Logo" width={120} height={48} className="h-12 object-contain rounded border border-stone-200 p-1 bg-white" unoptimized />
               ) : (
                 <span className="text-sm text-stone-400 italic">No logo uploaded</span>
               )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { searchInventory } from "../actions";
 import type { InventoryItem, TaxConfig } from "../types";
 import { PAYMENT_METHODS } from "../constants";
@@ -69,10 +70,13 @@ export default function StockSaleForm({
           <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
             <div className="flex items-start gap-4">
               {selectedInventory.primary_image ? (
-                <img
+                <Image
                   src={selectedInventory.primary_image}
                   alt={selectedInventory.name}
+                  width={64}
+                  height={64}
                   className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                  unoptimized
                 />
               ) : (
                 <div className="w-16 h-16 bg-stone-200 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -200,10 +204,13 @@ export default function StockSaleForm({
                   >
                     <div className="flex items-center gap-3">
                       {item.primary_image ? (
-                        <img
+                        <Image
                           src={item.primary_image}
                           alt=""
+                          width={40}
+                          height={40}
                           className="w-10 h-10 object-cover rounded"
+                          unoptimized
                         />
                       ) : (
                         <div className="w-10 h-10 bg-stone-100 rounded flex items-center justify-center">

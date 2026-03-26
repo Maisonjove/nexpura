@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import React from "react";
 import {
   addPassportEvent,
@@ -420,13 +421,13 @@ export default function PassportDetailClient({
           {/* QR Code card */}
           <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm text-center">
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">QR Code</p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={qrUrl}
               alt={`QR Code for ${passport.passport_uid}`}
               width={180}
               height={180}
               className="mx-auto rounded-lg border border-stone-200"
+              unoptimized
             />
             <p className="text-xs text-gray-400 mt-3 break-all">
               {appOrigin.replace("https://", "")}/verify/{passport.passport_uid}

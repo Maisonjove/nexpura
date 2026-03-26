@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useTransition, useCallback, useEffect } from "react";
+import Image from "next/image";
 import {
   X, Camera, Upload, FileText, Loader2, Check, AlertCircle,
   ChevronDown, Plus, Sparkles, Package, ArrowRight, CheckCircle2
@@ -306,7 +307,7 @@ export default function ScanInvoiceModal({ onClose, onSuccess, suppliers: initia
               {/* Image Preview (if re-trying) */}
               {imagePreview && (
                 <div className="relative rounded-xl overflow-hidden border border-stone-200">
-                  <img src={imagePreview} alt="Invoice preview" className="w-full h-48 object-cover" />
+                  <Image src={imagePreview} alt="Invoice preview" width={600} height={192} className="w-full h-48 object-cover" unoptimized />
                   <button
                     onClick={() => setImagePreview(null)}
                     className="absolute top-2 right-2 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
@@ -404,7 +405,7 @@ export default function ScanInvoiceModal({ onClose, onSuccess, suppliers: initia
               
               {imagePreview && (
                 <div className="mt-6 w-48 h-32 rounded-xl overflow-hidden border border-stone-200 shadow-lg">
-                  <img src={imagePreview} alt="Processing" className="w-full h-full object-cover opacity-75" />
+                  <Image src={imagePreview} alt="Processing" width={192} height={128} className="w-full h-full object-cover opacity-75" unoptimized />
                 </div>
               )}
             </div>

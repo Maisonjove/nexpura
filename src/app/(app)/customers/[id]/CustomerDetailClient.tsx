@@ -121,7 +121,7 @@ type CustomerSale = {
   created_at: string;
 };
 
-const TABS = ["Overview", "Repairs", "Bespoke", "Quotes", "Invoices", "Sales", "Passports", "Store Credit", "Communications", "Notes"] as const;
+const TABS = ["Overview", "Repairs", "Bespoke", "Quotes", "Invoices", "Sales", "Passports", "Wishlist", "Loyalty", "Store Credit", "Communications", "Notes"] as const;
 type Tab = (typeof TABS)[number];
 
 function fmt(n: number) {
@@ -137,6 +137,21 @@ function fmtDate(d: string | null | undefined, includeYear = true) {
   } catch { return "—"; }
 }
 
+type WishlistItem = {
+  id: string;
+  inventory_id: string;
+  added_at: string;
+  inventory?: { name: string; sku: string | null; retail_price: number | null };
+};
+
+type LoyaltyTransaction = {
+  id: string;
+  points: number;
+  type: string;
+  description: string | null;
+  created_at: string;
+};
+
 export default function CustomerDetailClient({
   customer,
   creditHistory,
@@ -150,6 +165,8 @@ export default function CustomerDetailClient({
   lifetimeSpend,
   lastVisit,
   readOnly = false,
+  wishlistItems = [],
+  loyaltyTransactions = [],
 }: {
   customer: Customer;
   creditHistory: CreditHistory[];
@@ -163,6 +180,8 @@ export default function CustomerDetailClient({
   lifetimeSpend: number;
   lastVisit: string | null;
   readOnly?: boolean;
+  wishlistItems?: WishlistItem[];
+  loyaltyTransactions?: LoyaltyTransaction[];
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
@@ -309,6 +328,12 @@ export default function CustomerDetailClient({
             )}
             {tab === "Sales" && sales.length > 0 && (
               <span className="ml-1.5 text-[10px] bg-stone-200 text-stone-600 rounded-full px-1.5 py-0.5">{sales.length}</span>
+            )}
+            {tab === "Wishlist" && wishlistItems.length > 0 && (
+              <span className="ml-1.5 text-[10px] bg-stone-200 text-stone-600 rounded-full px-1.5 py-0.5">{wishlistItems.length}</span>
+            )}
+            {tab === "Loyalty" && (customer as { loyalty_points?: number }).loyalty_points != null && (
+              <span className="ml-1.5 text-[10px] bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5">{(customer as { loyalty_points?: number }).loyalty_points ?? 0}pts</span>
             )}
           </button>
         ))}
@@ -593,6 +618,134 @@ export default function CustomerDetailClient({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Wishlist ──────────────────────────────────────────── */}
+        {activeTab === "Wishlist" && (
+          <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-stone-100 flex items-center justify-between">
+              <h2 className="font-bold text-stone-900">Wishlist</h2>
+              <span className="text-xs text-stone-400">{wishlistItems.length} item{wishlistItems.length !== 1 ? "s" : ""}</span>
+            </div>
+            {wishlistItems.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">💎</div>
+                <p className="text-stone-500 font-medium">No wishlist items yet</p>
+                <p className="text-stone-400 text-sm mt-1">Items the customer saves from the catalogue will appear here.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-stone-100">
+                {wishlistItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between px-6 py-4">
+                    <div>
+                      <p className="text-sm font-semibold text-stone-900">
+                        {item.inventory?.name ?? "Unknown Item"}
+                      </p>
+                      {item.inventory?.sku && (
+                        <p className="text-xs text-stone-400 font-mono mt-0.5">SKU: {item.inventory.sku}</p>
+                      )}
+                      <p className="text-xs text-stone-400 mt-0.5">Added {fmtDate(item.added_at)}</p>
+                    </div>
+                    <div className="text-right">
+                      {item.inventory?.retail_price != null && (
+                        <p className="text-sm font-semibold text-stone-900">{fmt(item.inventory.retail_price)}</p>
+                      )}
+                      <button className="text-xs text-amber-700 hover:underline mt-1">Notify customer</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Loyalty Points ────────────────────────────────────── */}
+        {activeTab === "Loyalty" && (
+          <div className="space-y-4">
+            {/* Loyalty Summary Card */}
+            <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-stone-400 mb-1">Loyalty Points</h3>
+                  <p className="text-4xl font-bold text-stone-900">{(customer as { loyalty_points?: number }).loyalty_points ?? 0}</p>
+                  <p className="text-sm text-stone-500 mt-1">pts</p>
+                </div>
+                <div className="text-right">
+                  <div className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold ${
+                    ((customer as { loyalty_tier?: string }).loyalty_tier ?? "bronze") === "platinum"
+                      ? "bg-slate-100 text-slate-700"
+                      : ((customer as { loyalty_tier?: string }).loyalty_tier ?? "bronze") === "gold"
+                      ? "bg-amber-100 text-amber-700"
+                      : ((customer as { loyalty_tier?: string }).loyalty_tier ?? "bronze") === "silver"
+                      ? "bg-stone-100 text-stone-600"
+                      : "bg-amber-50 text-amber-600"
+                  }`}>
+                    <span>⭐</span>
+                    <span className="capitalize">{(customer as { loyalty_tier?: string }).loyalty_tier ?? "Bronze"}</span>
+                  </div>
+                  <p className="text-xs text-stone-400 mt-2">Member tier</p>
+                </div>
+              </div>
+              {/* Tier progress */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between text-xs text-stone-500 mb-1">
+                  <span>Progress to next tier</span>
+                  <span>{Math.min(((customer as { loyalty_points?: number }).loyalty_points ?? 0), 500)} / 500 pts</span>
+                </div>
+                <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-600 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (((customer as { loyalty_points?: number }).loyalty_points ?? 0) / 500) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Tier Breakdown */}
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { tier: "Bronze", min: 0, max: 499, color: "bg-amber-50 border-amber-200 text-amber-700" },
+                { tier: "Silver", min: 500, max: 1499, color: "bg-stone-50 border-stone-300 text-stone-600" },
+                { tier: "Gold", min: 1500, max: 2999, color: "bg-yellow-50 border-yellow-200 text-yellow-700" },
+                { tier: "Platinum", min: 3000, max: null, color: "bg-slate-50 border-slate-200 text-slate-700" },
+              ].map((t) => {
+                const pts = (customer as { loyalty_points?: number }).loyalty_points ?? 0;
+                const active = pts >= t.min && (t.max === null || pts <= t.max);
+                return (
+                  <div key={t.tier} className={`rounded-xl border p-4 text-center ${active ? t.color : "bg-stone-50 border-stone-200 text-stone-400"}`}>
+                    <p className="text-xs font-semibold mb-1">{t.tier}</p>
+                    <p className="text-[10px]">{t.min}–{t.max ?? "∞"} pts</p>
+                    {active && <p className="text-[10px] font-bold mt-1">Current</p>}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Transaction history */}
+            <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+              <div className="p-6 border-b border-stone-100">
+                <h3 className="font-bold text-stone-900">Points History</h3>
+              </div>
+              {loyaltyTransactions.length === 0 ? (
+                <div className="p-12 text-center">
+                  <p className="text-stone-400 text-sm">No loyalty transactions yet.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-stone-100">
+                  {loyaltyTransactions.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between px-6 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-stone-900 capitalize">{tx.type.replace(/_/g, " ")}</p>
+                        {tx.description && <p className="text-xs text-stone-400 mt-0.5">{tx.description}</p>}
+                        <p className="text-xs text-stone-400">{fmtDate(tx.created_at)}</p>
+                      </div>
+                      <p className={`text-sm font-bold ${tx.points > 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                        {tx.points > 0 ? "+" : ""}{tx.points} pts
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -18,3 +18,7 @@ export { default as QuoteInvoiceCard } from "./QuoteInvoiceCard";
 
 // Modals
 export * from "./modals";
+
+// New cards
+export { default as MilestoneCard } from "./MilestoneCard";
+export { default as ApprovalCard } from "./ApprovalCard";

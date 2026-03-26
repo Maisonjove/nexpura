@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createTask, updateTask, deleteTask, getTaskComments, addTaskComment, getTaskAttachments, deleteTaskAttachment } from "./actions";
 import type { StaffTask, TaskComment, TaskAttachment } from "./actions";
 import TaskKanbanView from "./TaskKanbanView";
@@ -258,7 +259,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
                       return (
                         <div key={a.id} className="relative border border-stone-200 rounded-lg overflow-hidden group">
                           {isImage ? (
-                            <img src={a.file_url} alt={a.file_name} className="w-full h-20 object-cover" />
+                            <Image src={a.file_url} alt={a.file_name} width={200} height={80} className="w-full h-20 object-cover" unoptimized />
                           ) : (
                             <div className="w-full h-20 bg-stone-50 flex items-center justify-center">
                               <span className="text-2xl">📎</span>

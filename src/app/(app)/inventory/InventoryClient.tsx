@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import BatchPrintModal from "./BatchPrintModal";
 import AddStockModal from "./AddStockModal";
 import StockDetailModal from "./StockDetailModal";
@@ -512,10 +513,13 @@ export default function InventoryClient({
               {/* Image */}
               <div className="relative aspect-square bg-gradient-to-br from-stone-100 to-stone-50">
                 {item.primary_image ? (
-                  <img
+                  <Image
                     src={item.primary_image}
                     alt={item.name}
+                    width={300}
+                    height={300}
                     className="w-full h-full object-cover"
+                    unoptimized
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
@@ -656,10 +660,13 @@ export default function InventoryClient({
                     </td>
                     <td className="px-2 py-2">
                       {item.primary_image ? (
-                        <img
+                        <Image
                           src={item.primary_image}
                           alt={item.name}
+                          width={40}
+                          height={40}
                           className="w-10 h-10 rounded-lg object-cover"
+                          unoptimized
                         />
                       ) : (
                         <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center">

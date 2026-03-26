@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/public";
 import { notFound } from "next/navigation";
+import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -188,11 +189,13 @@ export default async function VerifyPage({
         {/* Primary image hero */}
         {p.primary_image && (
           <div className="bg-white rounded-2xl border border-[#E8E8E8] overflow-hidden shadow-sm">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={p.primary_image}
               alt={p.title}
+              width={800}
+              height={400}
               className="w-full object-cover rounded-2xl max-h-[400px]"
+              unoptimized
             />
           </div>
         )}

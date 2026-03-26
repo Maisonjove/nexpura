@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { fmt, fmtDate } from "./helpers";
 import type { Invoice, LineItem, Payment, Tenant } from "./types";
 
@@ -19,8 +20,7 @@ export default function PreviewView({ invoice, lineItems, payments, tenant }: Pr
         <div className="flex items-start justify-between mb-10">
           <div>
             {tenant?.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={tenant.logo_url} alt="Logo" className="h-14 object-contain mb-3" />
+              <Image src={tenant.logo_url} alt="Logo" width={200} height={56} className="h-14 object-contain mb-3" unoptimized />
             ) : (
               <div className="w-14 h-14 rounded-xl bg-stone-900 flex items-center justify-center mb-3">
                 <span className="text-white font-semibold text-xl font-bold">

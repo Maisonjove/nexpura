@@ -120,6 +120,35 @@ export default async function CustomerDetailPage({
     communications = commsData ?? [];
   } catch { }
 
+  // Wishlist items
+  let wishlistItems: { id: string; inventory_id: string; added_at: string; inventory?: { name: string; sku: string | null; retail_price: number | null } }[] = [];
+  try {
+    const { data: wlData } = await admin
+      .from("wishlists")
+      .select("id, inventory_id, added_at, inventory(name, sku, retail_price)")
+      .eq("customer_id", id)
+      .eq("tenant_id", tenantId)
+      .order("added_at", { ascending: false });
+    // Normalize inventory from array to single object
+    wishlistItems = (wlData ?? []).map((item) => ({
+      ...item,
+      inventory: Array.isArray(item.inventory) ? item.inventory[0] : item.inventory,
+    })) as typeof wishlistItems;
+  } catch { }
+
+  // Loyalty transactions
+  let loyaltyTransactions: { id: string; points: number; type: string; description: string | null; created_at: string }[] = [];
+  try {
+    const { data: ltData } = await admin
+      .from("loyalty_transactions")
+      .select("id, points, type, description, created_at")
+      .eq("customer_id", id)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    loyaltyTransactions = ltData ?? [];
+  } catch { }
+
   const lifetimeSpend = (invoices ?? [])
     .filter((inv) => inv.status === "paid")
     .reduce((sum, inv) => sum + (inv.total || 0), 0);
@@ -144,6 +173,8 @@ export default async function CustomerDetailPage({
       lifetimeSpend={lifetimeSpend}
       lastVisit={lastVisit}
       readOnly={isReviewMode}
+      wishlistItems={wishlistItems}
+      loyaltyTransactions={loyaltyTransactions}
     />
   );
 }

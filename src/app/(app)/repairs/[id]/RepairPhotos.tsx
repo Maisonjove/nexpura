@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import ImageUpload from "@/components/ui/ImageUpload";
 import { saveRepairIntakePhotos } from "../actions";
 import { useTransition } from "react";
@@ -30,8 +31,7 @@ export default function RepairPhotos({ repairId, tenantId, existingPhotos, readO
         <h2 className="text-base font-semibold text-stone-900 mb-4">Intake Photos</h2>
         <div className="grid grid-cols-3 gap-3">
           {existingPhotos.map((url, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={url} alt={`Photo ${i + 1}`} className="w-full aspect-square object-cover rounded-lg border border-stone-200" />
+            <Image key={i} src={url} alt={`Photo ${i + 1}`} width={200} height={200} unoptimized className="w-full aspect-square object-cover rounded-lg border border-stone-200" />
           ))}
         </div>
       </div>

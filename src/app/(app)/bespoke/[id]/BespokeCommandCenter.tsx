@@ -25,11 +25,14 @@ import {
   DocumentsCard,
   WorkflowActionsCard,
   QuoteInvoiceCard,
+  MilestoneCard,
+  ApprovalCard,
   AddManualItemModal,
   AddStockItemModal,
   RecordPaymentModal,
   StageChangeModal,
 } from "./components";
+import type { Milestone } from "./components/MilestoneCard";
 
 import type { BespokeCommandCenterProps, JobAttachment, JobEvent } from "./components/types";
 
@@ -48,6 +51,7 @@ export default function BespokeCommandCenter({
   const [isPending, startTransition] = useTransition();
   const [localAttachments, setLocalAttachments] = useState(attachments);
   const [localEvents, setLocalEvents] = useState(events);
+  const [localMilestones, setLocalMilestones] = useState<Milestone[]>((job as any).milestones ?? []);
 
   const [showAddManual, setShowAddManual] = useState(false);
   const [showAddStock, setShowAddStock] = useState(false);
@@ -275,6 +279,13 @@ export default function BespokeCommandCenter({
             isPending={isPending}
             onStageChange={handleStageChange}
           />
+          <MilestoneCard
+            jobId={job.id}
+            tenantId={tenantId}
+            milestones={localMilestones}
+            readOnly={readOnly}
+            onMilestoneChange={refresh}
+          />
           <PhotosCard
             attachments={localAttachments}
             jobId={job.id}
@@ -310,6 +321,19 @@ export default function BespokeCommandCenter({
             invoice={invoice}
             currency={currency}
             isTerminal={isTerminal}
+          />
+          <ApprovalCard
+            jobId={job.id}
+            tenantId={tenantId}
+            jobNumber={job.job_number}
+            customerEmail={customer?.email}
+            approvalStatus={job.approval_status}
+            approvalToken={job.approval_token}
+            approvalRequestedAt={job.approval_requested_at}
+            approvedAt={job.approved_at}
+            approvalNotes={job.approval_notes}
+            readOnly={readOnly}
+            onRefresh={refresh}
           />
           {!readOnly && (
             <QuickActionsCard

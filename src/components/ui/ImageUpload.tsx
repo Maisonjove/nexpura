@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 interface ImageUploadProps {
@@ -142,8 +143,7 @@ export default function ImageUpload({
         )}
         {singleUrl ? (
           <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-stone-200 group">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={singleUrl} alt="Uploaded" className="w-full h-full object-cover" />
+            <Image src={singleUrl} alt="Uploaded" width={128} height={128} className="w-full h-full object-cover" unoptimized />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
               <button
                 type="button"
@@ -209,8 +209,7 @@ export default function ImageUpload({
         <div className="flex flex-wrap gap-3">
           {currentImages.map((url) => (
             <div key={url} className="relative w-[120px] h-[120px] rounded-xl overflow-hidden border border-stone-200 group flex-shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="Uploaded" className="w-full h-full object-cover" />
+              <Image src={url} alt="Uploaded" width={120} height={120} className="w-full h-full object-cover" unoptimized />
               <button
                 type="button"
                 onClick={() => handleRemove(url)}

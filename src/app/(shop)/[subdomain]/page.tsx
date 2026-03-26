@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Metadata } from "next";
 
@@ -82,8 +83,7 @@ export default async function ShopHomePage({ params, searchParams }: Props) {
           <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               {config.logo_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={config.logo_url} alt="Logo" className="h-8 object-contain" />
+                <Image src={config.logo_url} alt="Logo" width={120} height={32} className="h-8 object-contain" unoptimized />
               )}
               <span className="text-white font-semibold text-lg">
                 {config.business_name || subdomain}
@@ -112,11 +112,12 @@ export default async function ShopHomePage({ params, searchParams }: Props) {
           style={{ backgroundColor: secondaryColor }}
         >
           {config.hero_image_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={config.hero_image_url}
               alt="Hero"
-              className="absolute inset-0 w-full h-full object-cover opacity-30"
+              fill
+              className="object-cover opacity-30"
+              unoptimized
             />
           )}
           <div className="relative max-w-2xl mx-auto">
@@ -167,11 +168,13 @@ export default async function ShopHomePage({ params, searchParams }: Props) {
                   >
                     <div className="aspect-square bg-stone-50 overflow-hidden">
                       {item.primary_image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={item.primary_image}
                           alt={item.name}
+                          width={300}
+                          height={300}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          unoptimized
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-4xl">💎</div>

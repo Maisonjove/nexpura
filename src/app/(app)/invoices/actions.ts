@@ -132,6 +132,42 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
   if (invErr) throw new Error(`Failed to create invoice: ${invErr.message}`);
   if (!invoice) throw new Error("No invoice returned");
 
+  // Auto-generate Stripe payment link (fire-and-forget)
+  if (process.env.STRIPE_SECRET_KEY && total > 0 && input.status !== "draft") {
+    try {
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      
+      // Create a product + price for this invoice, then a payment link
+      const product = await stripe.products.create({
+        name: `Invoice #${invoiceNumberData}`,
+        metadata: { invoice_id: invoice.id, tenant_id: tenantId },
+      });
+
+      const price = await stripe.prices.create({
+        product: product.id,
+        currency: "aud",
+        unit_amount: Math.round(total * 100),
+      });
+      
+      const paymentLink = await stripe.paymentLinks.create({
+        line_items: [{ price: price.id, quantity: 1 }],
+        metadata: { invoice_id: invoice.id, tenant_id: tenantId },
+        after_completion: {
+          type: "hosted_confirmation",
+          hosted_confirmation: {
+            custom_message: `Thank you! Your payment for Invoice #${invoiceNumberData} has been received.`
+          }
+        },
+      });
+      
+      await supabase.from("invoices").update({ stripe_payment_link: paymentLink.url }).eq("id", invoice.id);
+      logger.info(`[createInvoice] Stripe payment link created: ${paymentLink.url}`);
+    } catch (stripeErr) {
+      logger.warn("[createInvoice] Stripe payment link failed (non-fatal):", stripeErr);
+    }
+  }
+
   // Insert line items
   if (input.line_items.length > 0) {
     const lineItemsData = input.line_items.map((item, idx) => ({

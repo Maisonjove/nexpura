@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import ItemEnquiryForm from "./ItemEnquiryForm";
 
@@ -44,8 +45,7 @@ export default async function ItemDetailPage({ params }: Props) {
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {config.logo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={config.logo_url} alt="Logo" className="h-8 object-contain" />
+              <Image src={config.logo_url} alt="Logo" width={120} height={32} className="h-8 object-contain" unoptimized />
             )}
             <Link href={`/${subdomain}`} className="text-white font-semibold text-lg hover:opacity-80">
               {config.business_name || subdomain}
@@ -63,11 +63,13 @@ export default async function ItemDetailPage({ params }: Props) {
           <div className="space-y-3">
             <div className="aspect-square rounded-2xl overflow-hidden bg-stone-50">
               {item.images?.[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={item.images[0]}
                   alt={item.name}
+                  width={600}
+                  height={600}
                   className="w-full h-full object-cover"
+                  unoptimized
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-8xl">💎</div>
@@ -76,12 +78,14 @@ export default async function ItemDetailPage({ params }: Props) {
             {item.images?.length > 1 && (
               <div className="flex gap-3 overflow-x-auto">
                 {item.images.slice(1).map((img: string, i: number) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     key={i}
                     src={img}
                     alt={`${item.name} ${i + 2}`}
+                    width={80}
+                    height={80}
                     className="w-20 h-20 object-cover rounded-lg flex-shrink-0 border border-stone-200"
+                    unoptimized
                   />
                 ))}
               </div>

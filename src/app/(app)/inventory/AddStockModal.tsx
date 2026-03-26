@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
+import Image from "next/image";
 import { X, ChevronDown, Plus, Package, Upload, Loader2 } from "lucide-react";
 import { RingIcon, NecklaceIcon, BraceletIcon, WatchIcon, EarringsIcon, PendantIcon, OtherJewelleryIcon } from "@/components/icons/JewelleryIcons";
 import { quickAddStock, createQuickSupplier, getSuppliersList } from "./actions";
@@ -317,10 +318,13 @@ export default function AddStockModal({ onClose, onSuccess, suppliers: initialSu
             <div className="border-2 border-dashed border-stone-200 rounded-xl p-4 hover:border-amber-400 transition-colors">
               {imagePreview ? (
                 <div className="relative">
-                  <img
+                  <Image
                     src={imagePreview}
                     alt="Preview"
+                    width={400}
+                    height={128}
                     className="w-full h-32 object-cover rounded-lg"
+                    unoptimized
                   />
                   <button
                     type="button"

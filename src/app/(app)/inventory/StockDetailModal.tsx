@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { X, Edit2, Save, Printer, Globe, Trash2, Package, Check, AlertCircle } from "lucide-react";
 import { updateStockPrices, updateStockStatus, listOnWebsite, archiveStockItem } from "./actions";
 import QuickPrintTagModal from "@/components/QuickPrintTagModal";
@@ -172,10 +173,13 @@ export default function StockDetailModal({
           <div className="flex items-start justify-between px-6 py-4 border-b border-stone-100">
             <div className="flex items-center gap-4">
               {item.primary_image ? (
-                <img
+                <Image
                   src={item.primary_image}
                   alt={item.name}
+                  width={64}
+                  height={64}
                   className="w-16 h-16 rounded-xl object-cover"
+                  unoptimized
                 />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-stone-100 to-stone-200 flex items-center justify-center">

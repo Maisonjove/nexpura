@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { InventoryItem } from "./types";
 import { CATEGORIES, CATEGORY_LABELS } from "./constants";
 
@@ -11,6 +12,7 @@ interface ProductGridProps {
   setCategoryFilter: (value: string) => void;
   onAddToCart: (item: InventoryItem) => void;
   onOpenCameraScanner: () => void;
+  onOpenRefund?: () => void;
 }
 
 export default function ProductGrid({
@@ -21,6 +23,7 @@ export default function ProductGrid({
   setCategoryFilter,
   onAddToCart,
   onOpenCameraScanner,
+  onOpenRefund,
 }: ProductGridProps) {
   const filteredItems = items.filter((item) => {
     const matchesSearch =
@@ -44,6 +47,15 @@ export default function ProductGrid({
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
           />
+          {onOpenRefund && (
+            <button
+              onClick={onOpenRefund}
+              title="Process Refund"
+              className="px-3 py-2 border border-stone-200 rounded-xl text-stone-500 hover:border-red-400 hover:text-red-600 transition-colors text-sm font-medium"
+            >
+              Refund
+            </button>
+          )}
           <button
             onClick={onOpenCameraScanner}
             className="px-3 py-2 border border-stone-200 rounded-xl text-stone-500 hover:border-amber-600 hover:text-amber-700 transition-colors text-lg"
@@ -84,11 +96,13 @@ export default function ProductGrid({
               >
                 <div className="aspect-square w-full mb-2 rounded-lg overflow-hidden bg-stone-100 flex items-center justify-center">
                   {item.primary_image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={item.primary_image}
                       alt={item.name}
+                      width={200}
+                      height={200}
                       className="w-full h-full object-cover"
+                      unoptimized
                     />
                   ) : (
                     <svg className="w-8 h-8 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 interface Props {
@@ -83,11 +84,13 @@ export default async function EmbedCataloguePage({ params, searchParams }: Props
                 >
                   <div className="aspect-square bg-stone-50 overflow-hidden">
                     {item.images?.[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={item.images[0]}
                         alt={item.name}
+                        width={300}
+                        height={300}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-3xl">

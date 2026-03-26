@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import ImageUpload from "@/components/ui/ImageUpload";
 import { saveBespokeJobImages } from "../actions";
 import { useTransition } from "react";
@@ -30,8 +31,7 @@ export default function JobPhotos({ jobId, tenantId, existingImages, readOnly = 
         <h2 className="text-base font-semibold text-stone-900 mb-4">Photos</h2>
         <div className="grid grid-cols-3 gap-3">
           {existingImages.map((url, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={url} alt={`Photo ${i + 1}`} className="w-full aspect-square object-cover rounded-lg border border-stone-200" />
+            <Image key={i} src={url} alt={`Photo ${i + 1}`} width={200} height={200} unoptimized className="w-full aspect-square object-cover rounded-lg border border-stone-200" />
           ))}
         </div>
       </div>

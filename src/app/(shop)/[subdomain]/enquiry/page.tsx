@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import EnquiryForm from "./EnquiryForm";
@@ -33,8 +34,7 @@ export default async function EnquiryPage({ params, searchParams }: Props) {
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {config.logo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={config.logo_url} alt="Logo" className="h-8 object-contain" />
+              <Image src={config.logo_url} alt="Logo" width={120} height={32} className="h-8 object-contain" unoptimized />
             )}
             <Link href={`/${subdomain}`} className="text-white font-semibold text-lg hover:opacity-80">
               {config.business_name || subdomain}

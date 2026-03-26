@@ -2,6 +2,17 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import DashboardClient from "./DashboardClient";
 
+// Generate last N days as YYYY-MM-DD strings
+function getLast7Days(): string[] {
+  const days: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().split("T")[0]);
+  }
+  return days;
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
@@ -45,6 +56,10 @@ export default async function DashboardPage() {
     recentJobsResult,
     recentRepairsResult,
     allTasksResult,
+    sales7dResult,
+    repairs7dResult,
+    customers7dResult,
+    repairStagesResult,
   ] = await Promise.all([
     // 1. Sales this month
     admin
@@ -182,6 +197,35 @@ export default async function DashboardPage() {
       if (!isManager) q = q.eq("assigned_to", user?.id ?? "");
       return q;
     })(),
+    
+    // 15. Sales last 7 days (for sparklines)
+    admin
+      .from("sales")
+      .select("created_at, total")
+      .eq("tenant_id", tenantId)
+      .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+
+    // 16. Repairs created last 7 days (for sparklines)
+    admin
+      .from("repairs")
+      .select("created_at")
+      .eq("tenant_id", tenantId)
+      .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+
+    // 17. Customers created last 7 days (for sparklines)
+    admin
+      .from("customers")
+      .select("created_at")
+      .eq("tenant_id", tenantId)
+      .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+
+    // 18. Repair stage breakdown (for pie chart)
+    admin
+      .from("repairs")
+      .select("stage")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .not("stage", "in", '("collected","cancelled")'),
   ]);
 
   // ── Derive values ─────────────────────────────────────────────────────────────
@@ -335,6 +379,62 @@ export default async function DashboardPage() {
     }
   }
 
+  // ── Sparkline data processing ─────────────────────────────────────────────
+  const last7Days = getLast7Days();
+
+  // Revenue sparkline
+  const revByDay = new Map<string, number>();
+  for (const d of last7Days) revByDay.set(d, 0);
+  for (const s of sales7dResult.data ?? []) {
+    const day = s.created_at.split("T")[0];
+    if (revByDay.has(day)) revByDay.set(day, (revByDay.get(day) ?? 0) + (s.total ?? 0));
+  }
+  const revenueSparkline = last7Days.map((d) => ({ value: revByDay.get(d) ?? 0 }));
+
+  // Sales count sparkline
+  const salesByDay = new Map<string, number>();
+  for (const d of last7Days) salesByDay.set(d, 0);
+  for (const s of sales7dResult.data ?? []) {
+    const day = s.created_at.split("T")[0];
+    if (salesByDay.has(day)) salesByDay.set(day, (salesByDay.get(day) ?? 0) + 1);
+  }
+  const salesCountSparkline = last7Days.map((d) => ({ value: salesByDay.get(d) ?? 0 }));
+
+  // Repairs sparkline
+  const repairsByDay = new Map<string, number>();
+  for (const d of last7Days) repairsByDay.set(d, 0);
+  for (const r of repairs7dResult.data ?? []) {
+    const day = r.created_at.split("T")[0];
+    if (repairsByDay.has(day)) repairsByDay.set(day, (repairsByDay.get(day) ?? 0) + 1);
+  }
+  const repairsSparkline = last7Days.map((d) => ({ value: repairsByDay.get(d) ?? 0 }));
+
+  // Customers sparkline
+  const customersByDay = new Map<string, number>();
+  for (const d of last7Days) customersByDay.set(d, 0);
+  for (const c of customers7dResult.data ?? []) {
+    const day = c.created_at.split("T")[0];
+    if (customersByDay.has(day)) customersByDay.set(day, (customersByDay.get(day) ?? 0) + 1);
+  }
+  const customersSparkline = last7Days.map((d) => ({ value: customersByDay.get(d) ?? 0 }));
+
+  // Bar chart: Sales by day (last 7 days)
+  const salesBarData = last7Days.map((d) => ({
+    day: new Date(d + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short" }),
+    sales: salesByDay.get(d) ?? 0,
+    revenue: Math.round(revByDay.get(d) ?? 0),
+  }));
+
+  // Repair stage pie data
+  const stageMap = new Map<string, number>();
+  for (const r of repairStagesResult.data ?? []) {
+    stageMap.set(r.stage, (stageMap.get(r.stage) ?? 0) + 1);
+  }
+  const repairStageData = Array.from(stageMap.entries()).map(([stage, count]) => ({
+    name: stage.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+    value: count,
+  }));
+
   return (
     <DashboardClient
       firstName={firstName}
@@ -355,6 +455,12 @@ export default async function DashboardPage() {
       activeRepairs={activeRepairs}
       activeBespokeJobs={activeBespokeJobs}
       currency={currency}
+      revenueSparkline={revenueSparkline}
+      salesCountSparkline={salesCountSparkline}
+      repairsSparkline={repairsSparkline}
+      customersSparkline={customersSparkline}
+      salesBarData={salesBarData}
+      repairStageData={repairStageData}
     />
   );
 }

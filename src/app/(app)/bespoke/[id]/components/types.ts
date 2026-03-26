@@ -81,6 +81,11 @@ export interface BespokeJob {
   invoice_id: string | null;
   internal_notes: string | null;
   workshop_notes: string | null;
+  approval_status?: string | null;
+  approval_token?: string | null;
+  approval_requested_at?: string | null;
+  approved_at?: string | null;
+  approval_notes?: string | null;
 }
 
 export interface BespokeCommandCenterProps {

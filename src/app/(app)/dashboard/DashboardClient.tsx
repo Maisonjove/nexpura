@@ -1,5 +1,8 @@
 "use client";
 
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { Sparkline } from "@/components/dashboard/sparkline";
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type ActivityItem = {
@@ -85,6 +88,12 @@ interface DashboardClientProps {
   activeRepairs: ActiveRepair[];
   activeBespokeJobs: ActiveBespokeJob[];
   currency: string;
+  revenueSparkline?: { value: number }[];
+  salesCountSparkline?: { value: number }[];
+  repairsSparkline?: { value: number }[];
+  customersSparkline?: { value: number }[];
+  salesBarData?: { day: string; sales: number; revenue: number }[];
+  repairStageData?: { name: string; value: number }[];
 }
 
 function fmtCurrency(amount: number, currency: string) {
@@ -124,6 +133,8 @@ function formatStageLabel(stage: string) {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+const PIE_COLORS = ["#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fde68a"];
+
 export default function DashboardClient({
   basePath = "",
   readOnly = false,
@@ -145,6 +156,12 @@ export default function DashboardClient({
   activeRepairs,
   activeBespokeJobs,
   currency,
+  revenueSparkline = [],
+  salesCountSparkline = [],
+  repairsSparkline = [],
+  customersSparkline = [],
+  salesBarData = [],
+  repairStageData = [],
 }: DashboardClientProps) {
   return (
     <div className="space-y-6">
@@ -260,19 +277,89 @@ export default function DashboardClient({
 
       {/* ── KPI Grid ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Sales This Month', value: fmtCurrency(salesThisMonthRevenue, currency), sub: `${salesThisMonthCount} sale${salesThisMonthCount !== 1 ? 's' : ''}`, valueAlert: false, subAlert: false },
-          { label: 'Active Repairs', value: String(activeRepairsCount), sub: overdueRepairs.length > 0 ? `${overdueRepairs.length} overdue` : 'all on track', valueAlert: false, subAlert: overdueRepairs.length > 0 },
-          { label: 'Bespoke Jobs', value: String(activeJobsCount), sub: 'in production', valueAlert: false, subAlert: false },
-          { label: 'Outstanding', value: fmtCurrency(totalOutstanding, currency), sub: `${overdueInvoiceCount} invoice${overdueInvoiceCount !== 1 ? 's' : ''} overdue`, valueAlert: overdueInvoiceCount > 0, subAlert: overdueInvoiceCount > 0 },
-        ].map((kpi) => (
-          <div key={kpi.label} className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">{kpi.label}</p>
-            <p className={`text-2xl font-semibold tracking-tight ${kpi.valueAlert ? 'text-rose-600' : 'text-stone-900'}`}>{kpi.value}</p>
-            <p className={`text-xs mt-1 ${kpi.subAlert ? 'text-rose-400' : 'text-stone-400'}`}>{kpi.sub}</p>
-          </div>
-        ))}
+        {/* Revenue KPI */}
+        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Sales This Month</p>
+          <p className="text-2xl font-semibold tracking-tight text-stone-900">{fmtCurrency(salesThisMonthRevenue, currency)}</p>
+          <p className="text-xs text-stone-400 mb-2">{salesThisMonthCount} sale{salesThisMonthCount !== 1 ? 's' : ''}</p>
+          {revenueSparkline.length > 1 && <Sparkline data={revenueSparkline} color="#b45309" />}
+        </div>
+        {/* Active Repairs KPI */}
+        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Active Repairs</p>
+          <p className="text-2xl font-semibold tracking-tight text-stone-900">{activeRepairsCount}</p>
+          <p className={`text-xs mb-2 ${overdueRepairs.length > 0 ? 'text-rose-400' : 'text-stone-400'}`}>
+            {overdueRepairs.length > 0 ? `${overdueRepairs.length} overdue` : 'all on track'}
+          </p>
+          {repairsSparkline.length > 1 && <Sparkline data={repairsSparkline} color="#2563eb" />}
+        </div>
+        {/* Bespoke Jobs KPI */}
+        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Bespoke Jobs</p>
+          <p className="text-2xl font-semibold tracking-tight text-stone-900">{activeJobsCount}</p>
+          <p className="text-xs text-stone-400 mb-2">in production</p>
+          {salesCountSparkline.length > 1 && <Sparkline data={salesCountSparkline} color="#7c3aed" />}
+        </div>
+        {/* Outstanding KPI */}
+        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Outstanding</p>
+          <p className={`text-2xl font-semibold tracking-tight ${overdueInvoiceCount > 0 ? 'text-rose-600' : 'text-stone-900'}`}>
+            {fmtCurrency(totalOutstanding, currency)}
+          </p>
+          <p className={`text-xs mb-2 ${overdueInvoiceCount > 0 ? 'text-rose-400' : 'text-stone-400'}`}>
+            {overdueInvoiceCount} invoice{overdueInvoiceCount !== 1 ? 's' : ''} overdue
+          </p>
+          {customersSparkline.length > 1 && <Sparkline data={customersSparkline} color="#059669" />}
+        </div>
       </div>
+
+      {/* ── Recent Activity Charts ────────────────────────────────────────────── */}
+      {(salesBarData.length > 0 || repairStageData.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Sales by Day Bar Chart */}
+          <div className="lg:col-span-2 bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-4">Sales — Last 7 Days</p>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={salesBarData} barSize={20}>
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#78716c" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#78716c" }} axisLine={false} tickLine={false} width={30} />
+                <Tooltip
+                  contentStyle={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 8, fontSize: 12 }}
+                  formatter={(val, name) => [name === "revenue" ? fmtCurrency(Number(val) || 0, currency) : val, name === "revenue" ? "Revenue" : "Sales"]}
+                />
+                <Bar dataKey="sales" fill="#b45309" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Repairs by Stage Pie Chart */}
+          <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-4">Repairs by Stage</p>
+            {repairStageData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={repairStageData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label={false}>
+                    {repairStageData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 8, fontSize: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-40 flex items-center justify-center text-sm text-stone-400">No active repairs</div>
+            )}
+            <div className="mt-2 space-y-1">
+              {repairStageData.slice(0, 4).map((item, i) => (
+                <div key={item.name} className="flex items-center gap-2 text-xs text-stone-600">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  {item.name} ({item.value})
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Ready for Pickup ─────────────────────────────────────────────────── */}
       {readyForPickup.length > 0 && (

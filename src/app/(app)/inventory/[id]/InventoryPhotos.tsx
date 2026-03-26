@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import ImageUpload from "@/components/ui/ImageUpload";
 import { saveInventoryItemImages } from "../actions";
 import { useTransition, useState } from "react";
@@ -50,8 +51,8 @@ export default function InventoryPhotos({
         <h2 className="font-semibold text-lg text-stone-900">Photos</h2>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
           {allImages.map((url, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={url} alt={i === 0 ? "Primary photo" : `Photo ${i + 1}`}
+            <Image key={i} src={url} alt={i === 0 ? "Primary photo" : `Photo ${i + 1}`}
+              width={200} height={200} unoptimized
               className={`w-full aspect-square object-cover rounded-lg border ${i === 0 ? "border-amber-300 ring-1 ring-amber-200" : "border-stone-200"}`} />
           ))}
         </div>
