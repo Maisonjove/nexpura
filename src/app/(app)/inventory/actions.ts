@@ -262,6 +262,14 @@ export async function updateInventoryItem(id: string, formData: FormData) {
     updates.wholesale_price = wholesalePrice;
   }
 
+  // Get old data for audit
+  const { data: oldItem } = await supabase
+    .from("inventory")
+    .select("name, sku, retail_price, status")
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
+
   const { error } = await supabase
     .from("inventory")
     .update(updates)
@@ -269,6 +277,17 @@ export async function updateInventoryItem(id: string, formData: FormData) {
     .eq("tenant_id", tenantId);
 
   if (error) throw new Error(error.message);
+
+  // Log audit event
+  await logAuditEvent({
+    tenantId,
+    userId: user?.id,
+    action: "inventory_update",
+    entityType: "inventory",
+    entityId: id,
+    oldData: oldItem || undefined,
+    newData: { name, sku: updates.sku, retailPrice, status },
+  });
 
   revalidatePath(`/inventory/${id}`);
   revalidatePath(`/inventory/${id}/edit`);
@@ -345,6 +364,18 @@ export async function adjustStock(
 
   if (movError) throw new Error(movError.message);
 
+  // Log audit event
+  await logAuditEvent({
+    tenantId,
+    userId: user?.id,
+    action: "inventory_stock_adjust",
+    entityType: "inventory",
+    entityId: inventoryId,
+    oldData: { quantity: oldQuantity },
+    newData: { quantity: finalQuantity, movementType, quantityChange },
+    metadata: { notes },
+  });
+
   revalidatePath(`/inventory/${inventoryId}`);
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
@@ -353,6 +384,15 @@ export async function adjustStock(
 export async function archiveInventoryItem(id: string) {
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Get item data for audit
+  const { data: item } = await supabase
+    .from("inventory")
+    .select("name, sku")
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
 
   const { error } = await supabase
     .from("inventory")
@@ -361,6 +401,16 @@ export async function archiveInventoryItem(id: string) {
     .eq("tenant_id", tenantId);
 
   if (error) throw new Error(error.message);
+
+  // Log audit event
+  await logAuditEvent({
+    tenantId,
+    userId: user?.id,
+    action: "inventory_delete",
+    entityType: "inventory",
+    entityId: id,
+    oldData: item || undefined,
+  });
 
   revalidatePath("/inventory");
   redirect("/inventory");
@@ -592,6 +642,16 @@ export async function quickAddStock(formData: FormData): Promise<{ id?: string; 
   } catch {
     // barcode generation is non-critical
   }
+
+  // Log audit event
+  await logAuditEvent({
+    tenantId,
+    userId: user?.id,
+    action: "inventory_create",
+    entityType: "inventory",
+    entityId: item.id,
+    newData: { name, stockNumber, itemType, retailPrice, isConsignment },
+  });
   
   revalidatePath("/inventory");
   return { id: item.id, stockNumber };
@@ -691,6 +751,15 @@ export async function listOnWebsite(itemId: string): Promise<{ success?: boolean
 export async function archiveStockItem(itemId: string): Promise<{ success?: boolean; error?: string }> {
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Get item data for audit
+  const { data: item } = await supabase
+    .from("inventory")
+    .select("name, sku, stock_number")
+    .eq("id", itemId)
+    .eq("tenant_id", tenantId)
+    .single();
   
   const { error } = await supabase
     .from("inventory")
@@ -699,6 +768,16 @@ export async function archiveStockItem(itemId: string): Promise<{ success?: bool
     .eq("tenant_id", tenantId);
   
   if (error) return { error: error.message };
+
+  // Log audit event
+  await logAuditEvent({
+    tenantId,
+    userId: user?.id,
+    action: "inventory_delete",
+    entityType: "inventory",
+    entityId: itemId,
+    oldData: item || undefined,
+  });
   
   revalidatePath("/inventory");
   return { success: true };

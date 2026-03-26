@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 interface ReceiveLine {
   inventoryId: string;
@@ -100,6 +101,23 @@ export async function batchReceiveStock(
       }
 
       receivedCount++;
+    }
+
+    // Log audit event for batch receive
+    if (receivedCount > 0) {
+      await logAuditEvent({
+        tenantId: params.tenantId,
+        userId: params.userId,
+        action: "inventory_receive",
+        entityType: "inventory",
+        newData: {
+          receivedCount,
+          supplierId: params.supplierId,
+          invoiceRef: params.invoiceRef,
+          itemIds: params.lines.filter(l => l.receiveQty > 0).map(l => l.inventoryId),
+        },
+        metadata: { totalItems: params.lines.length },
+      });
     }
 
     revalidatePath("/inventory");

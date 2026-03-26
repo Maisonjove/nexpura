@@ -1,12 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import {
   saveWebsiteConfig,
   publishWebsite,
   checkSubdomainAvailable,
   type WebsiteConfigData,
 } from "./actions";
+import {
+  validateEmail,
+  validatePhone,
+  validateUrl,
+} from "./validation";
 import type { WebsiteType, Tab, AISuggestions, WebsiteConfig, WebsiteBuilderProps as Props, BusinessHours, SocialLinks } from "./types";
 import {
   SetupTab,
@@ -108,46 +114,117 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
   }
 
   async function handleSave() {
+    // Validate email if provided
+    if (config.contact_email) {
+      const emailValidation = validateEmail(config.contact_email);
+      if (!emailValidation.valid) {
+        toast.error(emailValidation.error);
+        return;
+      }
+    }
+
+    // Validate phone if provided
+    if (config.contact_phone) {
+      const phoneValidation = validatePhone(config.contact_phone);
+      if (!phoneValidation.valid) {
+        toast.error(phoneValidation.error);
+        return;
+      }
+    }
+
+    // Validate external URL if provided
+    if (config.external_url) {
+      const urlValidation = validateUrl(config.external_url);
+      if (!urlValidation.valid) {
+        toast.error(urlValidation.error);
+        return;
+      }
+    }
+
     setSaving(true);
     setSaved(false);
+    const saveToast = toast.loading("Saving website settings…");
+    
     try {
-      await saveWebsiteConfig({
+      const result = await saveWebsiteConfig({
         ...config,
         website_type: websiteType,
         custom_domain: customDomainInput || undefined,
       } as WebsiteConfigData);
-      setSaved(true);
+      
+      if (result.error) {
+        toast.error(result.error, { id: saveToast });
+      } else {
+        setSaved(true);
+        toast.success("Website settings saved", { id: saveToast });
+      }
     } catch (err) {
       logger.error(err);
+      toast.error("Failed to save. Please try again.", { id: saveToast });
     } finally {
       setSaving(false);
     }
   }
 
   async function handleConnectSave() {
+    // Validate external URL
+    if (externalUrlInput) {
+      const urlValidation = validateUrl(externalUrlInput);
+      if (!urlValidation.valid) {
+        toast.error(urlValidation.error);
+        return;
+      }
+    } else {
+      toast.error("Please enter your website URL");
+      return;
+    }
+
+    if (!selectedPlatform) {
+      toast.error("Please select your website platform");
+      return;
+    }
+
     setSaving(true);
     setConnectSaved(false);
+    const saveToast = toast.loading("Saving connection settings…");
+    
     try {
-      await saveWebsiteConfig({
+      const result = await saveWebsiteConfig({
         website_type: "connect",
         external_url: externalUrlInput,
         external_platform: selectedPlatform,
       } as WebsiteConfigData);
-      update("external_url", externalUrlInput);
-      update("external_platform", selectedPlatform);
-      setConnectSaved(true);
+      
+      if (result.error) {
+        toast.error(result.error, { id: saveToast });
+      } else {
+        update("external_url", externalUrlInput);
+        update("external_platform", selectedPlatform);
+        setConnectSaved(true);
+        toast.success("Connection settings saved", { id: saveToast });
+      }
     } catch (err) {
       logger.error(err);
+      toast.error("Failed to save. Please try again.", { id: saveToast });
     } finally {
       setSaving(false);
     }
   }
 
   async function handlePublishToggle() {
+    const newPublished = !config.published;
+    const action = newPublished ? "Publishing" : "Unpublishing";
+    const actionPast = newPublished ? "published" : "unpublished";
+    const publishToast = toast.loading(`${action} website…`);
+    
     startTransition(async () => {
-      const newPublished = !config.published;
-      await publishWebsite(newPublished);
-      update("published", newPublished);
+      const result = await publishWebsite(newPublished);
+      if (result.error) {
+        toast.error(result.error, { id: publishToast });
+      } else {
+        update("published", newPublished);
+        toast.success(`Website ${actionPast}`, { id: publishToast });
+      }
     });
   }
 
@@ -156,23 +233,52 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
     setAiAction(action);
     setAiResult(null);
     setAiApplied(null);
+    
+    // Create timeout for AI request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
+    
     try {
       const res = await fetch("/api/ai/website/site-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, currentConfig: config }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
       const data = await res.json() as { suggestedConfig?: Partial<WebsiteConfig>; suggestions?: string[]; rationale?: string; action?: string; error?: string };
+      
+      if (!res.ok) {
+        toast.error(data.error || "AI request failed. Please try again.");
+        return;
+      }
+      
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      
       if (data.suggestions) {
         setAiResult({ suggestions: data.suggestions });
+        toast.success("AI generated suggestions");
       } else if (data.suggestedConfig) {
         setConfig((prev) => ({ ...prev, ...data.suggestedConfig }));
         setSaved(false);
         setAiApplied(action);
         if (data.rationale) setAiResult({ rationale: data.rationale });
+        toast.success("AI suggestions applied — review and save when ready");
       }
     } catch (err) {
-      logger.error(err);
+      clearTimeout(timeoutId);
+      
+      if (err instanceof Error && err.name === "AbortError") {
+        toast.error("AI request timed out. Please try again.");
+      } else {
+        logger.error(err);
+        toast.error("AI request failed. Please try again.");
+      }
     } finally {
       setAiLoading(false);
     }

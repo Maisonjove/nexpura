@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
+import { logger } from '@/lib/logger';
 
 export function PWAProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -9,7 +11,7 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
-          console.log('[PWA] Service Worker registered with scope:', registration.scope);
+          logger.info('[PWA] Service Worker registered', { scope: registration.scope });
 
           // Check for updates periodically
           setInterval(() => {
@@ -17,7 +19,7 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
           }, 60 * 60 * 1000); // Check every hour
         })
         .catch((error) => {
-          console.error('[PWA] Service Worker registration failed:', error);
+          Sentry.captureException(error, { tags: { component: 'PWAProvider', action: 'sw-registration' } });
         });
     }
   }, []);

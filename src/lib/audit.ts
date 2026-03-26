@@ -8,6 +8,8 @@ export type AuditAction =
   | 'inventory_create'
   | 'inventory_update'
   | 'inventory_delete'
+  | 'inventory_stock_adjust'
+  | 'inventory_receive'
   | 'customer_create'
   | 'customer_update'
   | 'customer_delete'
@@ -36,6 +38,12 @@ export type AuditAction =
   | 'payment_create'
   | 'layby_payment'
   | 'layby_cancel'
+  | 'task_create'
+  | 'task_update'
+  | 'task_delete'
+  | 'supplier_create'
+  | 'supplier_update'
+  | 'supplier_delete'
   | 'login'
   | 'logout';
 
@@ -52,7 +60,9 @@ export type EntityType =
   | 'quote'
   | 'sale'
   | 'payment'
-  | 'layby';
+  | 'layby'
+  | 'task'
+  | 'supplier';
 
 interface AuditLogEntry {
   tenantId: string;

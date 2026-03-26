@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -111,7 +112,7 @@ export default function DraggableWidgets({
         setLayout(merged);
       }
     } catch (e) {
-      console.error("Failed to load widget layout:", e);
+      Sentry.captureException(e, { tags: { component: 'DraggableWidgets', action: 'load-layout' } });
     }
   }, [storageKey, widgetIds]);
 
@@ -140,7 +141,7 @@ export default function DraggableWidgets({
         try {
           localStorage.setItem(storageKey, JSON.stringify(newLayout));
         } catch (e) {
-          console.error("Failed to save widget layout:", e);
+          Sentry.captureException(e, { tags: { component: 'DraggableWidgets', action: 'save-layout-drag' } });
         }
 
         // Notify parent
@@ -161,7 +162,7 @@ export default function DraggableWidgets({
       try {
         localStorage.setItem(storageKey, JSON.stringify(newLayout));
       } catch (e) {
-        console.error("Failed to save widget layout:", e);
+        Sentry.captureException(e, { tags: { component: 'DraggableWidgets', action: 'save-layout-toggle' } });
       }
 
       onLayoutChange?.(newLayout);

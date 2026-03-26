@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createSitePage, togglePagePublished, deleteSitePage } from "./actions";
 import type { SitePage } from "./actions";
 
@@ -42,6 +43,7 @@ export default function BuilderPageListClient({ initialPages }: Props) {
   const router = useRouter();
   const [pages, setPages] = useState<SitePage[]>(initialPages);
   const [showCreate, setShowCreate] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [newTitle, setNewTitle] = useState("");
   const [newSlug, setNewSlug] = useState("");
@@ -54,34 +56,81 @@ export default function BuilderPageListClient({ initialPages }: Props) {
   }
 
   function handleCreate() {
-    if (!newTitle.trim() || !newSlug.trim()) return;
+    const trimmedTitle = newTitle.trim();
+    const trimmedSlug = newSlug.trim();
+    
+    if (!trimmedTitle) {
+      setError("Page title is required");
+      return;
+    }
+    if (trimmedTitle.length < 2) {
+      setError("Page title must be at least 2 characters");
+      return;
+    }
+    if (!trimmedSlug) {
+      setError("URL slug is required");
+      return;
+    }
+    if (trimmedSlug.length < 2) {
+      setError("URL slug must be at least 2 characters");
+      return;
+    }
+    
     setError(null);
+    const createToast = toast.loading("Creating page…");
+    
     startTransition(async () => {
-      const result = await createSitePage({ title: newTitle.trim(), slug: newSlug.trim(), page_type: newType });
+      const result = await createSitePage({ title: trimmedTitle, slug: trimmedSlug, page_type: newType });
       if (result.error) {
         setError(result.error);
+        toast.error(result.error, { id: createToast });
       } else if (result.data) {
         setPages((prev) => [...prev, result.data!]);
         setShowCreate(false);
         setNewTitle("");
         setNewSlug("");
         setNewType("custom");
+        toast.success(`Page "${result.data.title}" created`, { id: createToast });
       }
     });
   }
 
   function handleTogglePublish(page: SitePage) {
+    const action = page.published ? "Unpublishing" : "Publishing";
+    const actionPast = page.published ? "unpublished" : "published";
+    const statusToast = toast.loading(`${action} "${page.title}"…`);
+    
     startTransition(async () => {
-      await togglePagePublished(page.id, !page.published);
-      setPages((prev) => prev.map((p) => p.id === page.id ? { ...p, published: !page.published } : p));
+      const result = await togglePagePublished(page.id, !page.published);
+      if (result.error) {
+        toast.error(result.error, { id: statusToast });
+      } else {
+        setPages((prev) => prev.map((p) => p.id === page.id ? { ...p, published: !page.published } : p));
+        toast.success(`"${page.title}" ${actionPast}`, { id: statusToast });
+      }
     });
   }
 
-  function handleDelete(pageId: string) {
-    if (!confirm("Delete this page? This will also delete all its sections.")) return;
+  function handleDeleteClick(pageId: string) {
+    setShowDeleteConfirm(pageId);
+  }
+
+  function handleDeleteConfirm() {
+    if (!showDeleteConfirm) return;
+    
+    const page = pages.find(p => p.id === showDeleteConfirm);
+    const pageName = page?.title || "Page";
+    const deleteToast = toast.loading(`Deleting "${pageName}"…`);
+    
     startTransition(async () => {
-      await deleteSitePage(pageId);
-      setPages((prev) => prev.filter((p) => p.id !== pageId));
+      const result = await deleteSitePage(showDeleteConfirm);
+      if (result.error) {
+        toast.error(result.error, { id: deleteToast });
+      } else {
+        setPages((prev) => prev.filter((p) => p.id !== showDeleteConfirm));
+        toast.success(`"${pageName}" deleted`, { id: deleteToast });
+      }
+      setShowDeleteConfirm(null);
     });
   }
 
@@ -254,8 +303,10 @@ export default function BuilderPageListClient({ initialPages }: Props) {
                         Edit
                       </Link>
                       <button
-                        onClick={() => handleDelete(page.id)}
-                        className="text-red-400 hover:text-red-600 text-xs font-medium"
+                        onClick={() => handleDeleteClick(page.id)}
+                        disabled={page.page_type === "home"}
+                        className="text-red-400 hover:text-red-600 text-xs font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={page.page_type === "home" ? "Home page cannot be deleted" : "Delete page"}
                       >
                         Delete
                       </button>
@@ -267,6 +318,43 @@ export default function BuilderPageListClient({ initialPages }: Props) {
           </table>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <span className="text-red-600 text-lg">⚠️</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-stone-900">Delete Page</h2>
+                <p className="text-sm text-stone-500">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-stone-600 mb-6">
+              Are you sure you want to delete <strong>"{pages.find(p => p.id === showDeleteConfirm)?.title}"</strong>? 
+              This will permanently remove the page and all its sections.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                disabled={isPending}
+                className="flex-1 px-4 py-2 border border-stone-300 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={isPending}
+                className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {isPending ? "Deleting…" : "Delete Page"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Info banner */}
       <div className="bg-stone-50 border border-stone-200 rounded-xl p-5 space-y-3">

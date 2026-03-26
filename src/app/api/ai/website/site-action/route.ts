@@ -4,8 +4,13 @@ import OpenAI from "openai";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+const AI_TIMEOUT_MS = 30000; // 30 second timeout
+
 function getOpenAI() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return new OpenAI({ 
+    apiKey: process.env.OPENAI_API_KEY,
+    timeout: AI_TIMEOUT_MS,
+  });
 }
 
 const ACTION_PROMPTS: Record<string, (cfg: Record<string, unknown>) => string> = {
@@ -28,70 +33,148 @@ Tagline: ${cfg.tagline || "none"}
 Return improved versions as JSON: {"tagline": "...", "about_text": "..."}`,
 };
 
+const VALID_ACTIONS = ["suggest_tagline", "write_about", "generate_seo", "suggest_colors", "improve_content"];
+
 export async function POST(req: NextRequest) {
-  const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
-  const { success: _rlSuccess } = await checkRateLimit(_ip);
-  if (!_rlSuccess) {
-    return new Response("Too many requests", { status: 429 });
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const { success: rlSuccess } = await checkRateLimit(ip);
+  if (!rlSuccess) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment and try again." },
+      { status: 429 }
+    );
   }
 
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: "Please log in to use AI features" }, { status: 401 });
+    }
 
-    const body = await req.json() as { action: string; currentConfig: Record<string, unknown> };
-    const { action, currentConfig } = body;
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
+    }
+
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+
+    const { action, currentConfig } = body as { action: string; currentConfig: Record<string, unknown> };
+
+    if (!action || typeof action !== "string") {
+      return NextResponse.json({ error: "Action is required" }, { status: 400 });
+    }
+
+    if (!VALID_ACTIONS.includes(action)) {
+      return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+    }
 
     const promptFn = ACTION_PROMPTS[action];
     if (!promptFn) {
       return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
 
-    const prompt = promptFn(currentConfig);
+    // Sanitize current config to prevent prompt injection
+    const safeConfig: Record<string, unknown> = {};
+    if (currentConfig && typeof currentConfig === "object") {
+      for (const [key, value] of Object.entries(currentConfig)) {
+        if (typeof value === "string") {
+          safeConfig[key] = value.slice(0, 1000); // Limit string lengths
+        } else if (typeof value === "number" || typeof value === "boolean") {
+          safeConfig[key] = value;
+        }
+      }
+    }
 
-    const response = await getOpenAI().chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 512,
-      messages: [
-        { role: "system", content: "You are a helpful AI assistant for a jewellery business management platform. Always return valid JSON only, no markdown, no code fences." },
-        { role: "user", content: prompt },
-      ],
-    });
+    const prompt = promptFn(safeConfig);
 
-    const text = response.choices[0]?.message?.content || "{}";
-    const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
-    let result: Record<string, unknown>;
     try {
-      result = JSON.parse(cleaned) as Record<string, unknown>;
-    } catch {
-      return NextResponse.json({ error: "Failed to parse AI response", raw: text }, { status: 500 });
-    }
+      const response = await getOpenAI().chat.completions.create({
+        model: "gpt-4o-mini",
+        max_tokens: 512,
+        messages: [
+          { role: "system", content: "You are a helpful AI assistant for a jewellery business management platform. Always return valid JSON only, no markdown, no code fences." },
+          { role: "user", content: prompt },
+        ],
+      });
 
-    // Map action result to suggestedConfig
-    let suggestedConfig: Record<string, unknown> = {};
-    switch (action) {
-      case "suggest_tagline":
-        // Return suggestions array for the client to pick from
-        return NextResponse.json({ suggestions: result.suggestions, action });
-      case "write_about":
-        suggestedConfig = { about_text: result.about_text };
-        break;
-      case "generate_seo":
-        suggestedConfig = { meta_title: result.meta_title, meta_description: result.meta_description };
-        break;
-      case "suggest_colors":
-        suggestedConfig = { primary_color: result.primary_color, secondary_color: result.secondary_color };
-        return NextResponse.json({ suggestedConfig, rationale: result.rationale, action });
-      case "improve_content":
-        suggestedConfig = { tagline: result.tagline, about_text: result.about_text };
-        break;
-    }
+      clearTimeout(timeoutId);
 
-    return NextResponse.json({ suggestedConfig, action });
+      const text = response.choices[0]?.message?.content || "{}";
+      
+      if (!text.trim()) {
+        return NextResponse.json({ error: "AI returned an empty response. Please try again." }, { status: 500 });
+      }
+
+      const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+
+      let result: Record<string, unknown>;
+      try {
+        result = JSON.parse(cleaned) as Record<string, unknown>;
+      } catch {
+        logger.error("AI site-action: Failed to parse response:", text);
+        return NextResponse.json({ error: "AI generated an invalid response. Please try again." }, { status: 500 });
+      }
+
+      // Map action result to suggestedConfig
+      let suggestedConfig: Record<string, unknown> = {};
+      switch (action) {
+        case "suggest_tagline":
+          // Validate suggestions array
+          if (!Array.isArray(result.suggestions) || result.suggestions.length === 0) {
+            return NextResponse.json({ error: "AI did not generate any tagline suggestions. Please try again." }, { status: 500 });
+          }
+          return NextResponse.json({ suggestions: result.suggestions.slice(0, 5), action });
+        case "write_about":
+          if (!result.about_text || typeof result.about_text !== "string") {
+            return NextResponse.json({ error: "AI did not generate about text. Please try again." }, { status: 500 });
+          }
+          suggestedConfig = { about_text: result.about_text };
+          break;
+        case "generate_seo":
+          suggestedConfig = { 
+            meta_title: (result.meta_title as string || "").slice(0, 70),
+            meta_description: (result.meta_description as string || "").slice(0, 170),
+          };
+          break;
+        case "suggest_colors":
+          suggestedConfig = { primary_color: result.primary_color, secondary_color: result.secondary_color };
+          return NextResponse.json({ suggestedConfig, rationale: result.rationale, action });
+        case "improve_content":
+          suggestedConfig = { tagline: result.tagline, about_text: result.about_text };
+          break;
+      }
+
+      return NextResponse.json({ suggestedConfig, action });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      
+      if (err instanceof Error && err.name === "AbortError") {
+        return NextResponse.json({ error: "AI request timed out. Please try again." }, { status: 504 });
+      }
+      throw err;
+    }
   } catch (err) {
     logger.error("AI site-action error:", err);
-    return NextResponse.json({ error: "AI request failed" }, { status: 500 });
+    
+    // Check for specific OpenAI errors
+    if (err instanceof OpenAI.APIError) {
+      if (err.status === 429) {
+        return NextResponse.json({ error: "AI service is busy. Please try again in a moment." }, { status: 429 });
+      }
+      if (err.status === 503) {
+        return NextResponse.json({ error: "AI service is temporarily unavailable. Please try again later." }, { status: 503 });
+      }
+    }
+    
+    return NextResponse.json({ error: "AI request failed. Please try again." }, { status: 500 });
   }
 }

@@ -10,6 +10,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useFocusTrap, useAnnounce } from '@/hooks/useAccessibility';
 import { useLiveRegion } from '@/components/LiveRegion';
+import * as Sentry from '@sentry/nextjs';
 
 interface SearchResult {
   id: string;
@@ -200,7 +201,7 @@ export function CommandPalette() {
           announce('No results found');
         }
       } catch (error) {
-        console.error('Search error:', error);
+        Sentry.captureException(error, { tags: { component: 'CommandPalette', action: 'search' } });
       } finally {
         setIsSearching(false);
       }

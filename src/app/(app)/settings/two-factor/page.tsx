@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ShieldCheck, Smartphone, Copy, Check, AlertTriangle, ArrowLeft, Key, Trash2, MessageSquare } from 'lucide-react';
+import * as Sentry from '@sentry/nextjs';
 import Link from 'next/link';
 
 type TwoFactorState = 'loading' | 'disabled' | 'choose-method' | 'setup-totp' | 'setup-sms' | 'verify-totp' | 'verify-sms' | 'enabled-totp' | 'enabled-sms' | 'backup-codes';
@@ -58,7 +59,7 @@ export default function TwoFactorSettingsPage() {
         setState('disabled');
       }
     } catch (err) {
-      console.error('Error checking 2FA status:', err);
+      Sentry.captureException(err, { tags: { feature: '2fa-status-check' } });
       setState('disabled');
     }
   }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 interface PWAState {
   isOnline: boolean;
@@ -108,7 +109,7 @@ export function usePWA() {
         await registration.sync.register('sync-pos-transactions');
         return true;
       } catch (error) {
-        console.error('Background sync failed:', error);
+        Sentry.captureException(error, { tags: { hook: 'usePWA', action: 'background-sync' } });
         return false;
       }
     }

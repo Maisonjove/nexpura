@@ -86,6 +86,43 @@ export async function getOrCreateDefaultPages(): Promise<{ data: SitePage[]; err
   }
 }
 
+// Validation helpers
+function validatePageTitle(title: string): { valid: boolean; error?: string } {
+  const trimmed = title?.trim() ?? "";
+  if (!trimmed) {
+    return { valid: false, error: "Page title is required" };
+  }
+  if (trimmed.length < 2) {
+    return { valid: false, error: "Page title must be at least 2 characters" };
+  }
+  if (trimmed.length > 100) {
+    return { valid: false, error: "Page title must be 100 characters or less" };
+  }
+  return { valid: true };
+}
+
+function validateSlug(slug: string): { valid: boolean; error?: string } {
+  const trimmed = slug?.trim() ?? "";
+  if (!trimmed) {
+    return { valid: false, error: "URL slug is required" };
+  }
+  if (trimmed.length < 2) {
+    return { valid: false, error: "URL slug must be at least 2 characters" };
+  }
+  if (trimmed.length > 100) {
+    return { valid: false, error: "URL slug must be 100 characters or less" };
+  }
+  if (!/^[a-z0-9-]+$/.test(trimmed)) {
+    return { valid: false, error: "URL slug can only contain lowercase letters, numbers, and hyphens" };
+  }
+  if (trimmed.startsWith("-") || trimmed.endsWith("-")) {
+    return { valid: false, error: "URL slug cannot start or end with a hyphen" };
+  }
+  return { valid: true };
+}
+
+const RESERVED_SLUGS = ["api", "admin", "dashboard", "login", "logout", "signup", "settings", "account", "profile"];
+
 export async function createSitePage(input: {
   title: string;
   slug: string;
@@ -95,12 +132,42 @@ export async function createSitePage(input: {
     const { tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
+    // Validate title
+    const titleValidation = validatePageTitle(input.title);
+    if (!titleValidation.valid) {
+      return { data: null, error: titleValidation.error };
+    }
+
+    // Sanitize and validate slug
+    const sanitizedSlug = input.slug.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/--+/g, "-").replace(/^-|-$/g, "");
+    const slugValidation = validateSlug(sanitizedSlug);
+    if (!slugValidation.valid) {
+      return { data: null, error: slugValidation.error };
+    }
+
+    // Check reserved slugs
+    if (RESERVED_SLUGS.includes(sanitizedSlug)) {
+      return { data: null, error: `"${sanitizedSlug}" is a reserved URL. Please choose a different slug.` };
+    }
+
+    // Check for duplicate slugs within tenant
+    const { data: existingPage } = await admin
+      .from("site_pages")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("slug", sanitizedSlug)
+      .maybeSingle();
+
+    if (existingPage) {
+      return { data: null, error: `A page with URL "/${sanitizedSlug}" already exists` };
+    }
+
     const { data, error } = await admin
       .from("site_pages")
       .insert({
         tenant_id: tenantId,
-        slug: input.slug.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
-        title: input.title,
+        slug: sanitizedSlug,
+        title: input.title.trim(),
         page_type: input.page_type,
         published: false,
       })
@@ -111,41 +178,95 @@ export async function createSitePage(input: {
     revalidatePath("/website/builder");
     return { data: data as SitePage };
   } catch (e) {
-    return { data: null, error: e instanceof Error ? e.message : "Error" };
+    return { data: null, error: e instanceof Error ? e.message : "Failed to create page. Please try again." };
   }
 }
 
-export async function togglePagePublished(pageId: string, published: boolean): Promise<{ error?: string }> {
+export async function togglePagePublished(pageId: string, published: boolean): Promise<{ error?: string; success?: boolean }> {
   try {
+    if (!pageId || typeof pageId !== "string") {
+      return { error: "Invalid page ID" };
+    }
+
     const { tenantId } = await getAuthContext();
     const admin = createAdminClient();
+
+    // Verify page exists and belongs to tenant
+    const { data: page } = await admin
+      .from("site_pages")
+      .select("id, title")
+      .eq("id", pageId)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+
+    if (!page) {
+      return { error: "Page not found or access denied" };
+    }
+
     const { error } = await admin
       .from("site_pages")
       .update({ published, updated_at: new Date().toISOString() })
       .eq("id", pageId)
       .eq("tenant_id", tenantId);
+
     if (error) return { error: error.message };
     revalidatePath("/website/builder");
-    return {};
+    return { success: true };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Error" };
+    return { error: e instanceof Error ? e.message : "Failed to update page status. Please try again." };
   }
 }
 
-export async function deleteSitePage(pageId: string): Promise<{ error?: string }> {
+export async function deleteSitePage(pageId: string): Promise<{ error?: string; success?: boolean }> {
   try {
+    if (!pageId || typeof pageId !== "string") {
+      return { error: "Invalid page ID" };
+    }
+
     const { tenantId } = await getAuthContext();
     const admin = createAdminClient();
+
+    // Verify page exists and belongs to tenant
+    const { data: page } = await admin
+      .from("site_pages")
+      .select("id, title, page_type")
+      .eq("id", pageId)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+
+    if (!page) {
+      return { error: "Page not found or access denied" };
+    }
+
+    // Prevent deletion of essential pages
+    const protectedTypes = ["home"];
+    if (protectedTypes.includes(page.page_type)) {
+      return { error: "The home page cannot be deleted" };
+    }
+
+    // Delete associated sections first
+    const { error: sectionsError } = await admin
+      .from("site_sections")
+      .delete()
+      .eq("page_id", pageId)
+      .eq("tenant_id", tenantId);
+
+    if (sectionsError) {
+      return { error: "Failed to delete page sections. Please try again." };
+    }
+
+    // Delete the page
     const { error } = await admin
       .from("site_pages")
       .delete()
       .eq("id", pageId)
       .eq("tenant_id", tenantId);
+
     if (error) return { error: error.message };
     revalidatePath("/website/builder");
-    return {};
+    return { success: true };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Error" };
+    return { error: e instanceof Error ? e.message : "Failed to delete page. Please try again." };
   }
 }
 

@@ -164,26 +164,56 @@ export async function publishWebsite(publish: boolean): Promise<{ success?: bool
   }
 }
 
-export async function checkSubdomainAvailable(subdomain: string, currentTenantId?: string) {
-  const { supabase, tenantId } = await getAuthContext();
+export async function checkSubdomainAvailable(subdomain: string, currentTenantId?: string): Promise<{ available: boolean; reason?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
 
-  if (!subdomain || subdomain.length < 3) {
-    return { available: false, reason: "Subdomain must be at least 3 characters" };
+    // Validate subdomain format
+    const trimmed = subdomain?.trim() ?? "";
+    
+    if (!trimmed || trimmed.length < 3) {
+      return { available: false, reason: "Subdomain must be at least 3 characters" };
+    }
+
+    if (trimmed.length > 63) {
+      return { available: false, reason: "Subdomain must be 63 characters or less" };
+    }
+
+    if (!/^[a-z0-9-]+$/.test(trimmed)) {
+      return { available: false, reason: "Only lowercase letters, numbers, and hyphens allowed" };
+    }
+
+    if (trimmed.startsWith("-") || trimmed.endsWith("-")) {
+      return { available: false, reason: "Subdomain cannot start or end with a hyphen" };
+    }
+
+    // Check reserved subdomains
+    const reserved = ["www", "admin", "api", "app", "mail", "ftp", "blog", "shop", "store", "help", "support"];
+    if (reserved.includes(trimmed)) {
+      return { available: false, reason: "This subdomain is reserved" };
+    }
+
+    const { data, error } = await supabase
+      .from("website_config")
+      .select("tenant_id")
+      .eq("subdomain", trimmed)
+      .maybeSingle();
+
+    if (error) {
+      logger.error("[checkSubdomainAvailable] Error:", error);
+      return { available: false, reason: "Unable to check availability. Please try again." };
+    }
+
+    if (!data || data.tenant_id === tenantId) {
+      return { available: true };
+    }
+
+    return { available: false, reason: "Subdomain is already taken" };
+  } catch (err) {
+    logger.error("[checkSubdomainAvailable] Unexpected error:", err);
+    return { available: false, reason: "Unable to check availability. Please try again." };
   }
-
-  if (!/^[a-z0-9-]+$/.test(subdomain)) {
-    return { available: false, reason: "Only lowercase letters, numbers, and hyphens allowed" };
-  }
-
-  const { data } = await supabase
-    .from("website_config")
-    .select("tenant_id")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
-
-  if (!data || data.tenant_id === tenantId) {
-    return { available: true };
-  }
-
-  return { available: false, reason: "Subdomain is already taken" };
 }
+
+// Validation helpers moved to ./validation.ts
+// Import from "./validation" directly in client components

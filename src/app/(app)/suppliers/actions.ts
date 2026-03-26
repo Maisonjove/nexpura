@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -70,15 +71,16 @@ export async function createSupplier(
     return { error: "Not authenticated" };
   }
 
-  const { supabase, tenantId } = ctx;
+  const { supabase, userId, tenantId } = ctx;
 
   const str = (key: string) => (formData.get(key) as string) || null;
+  const name = (formData.get("name") as string).trim();
 
   const { data, error } = await supabase
     .from("suppliers")
     .insert({
       tenant_id: tenantId,
-      name: (formData.get("name") as string).trim(),
+      name,
       contact_name: str("contact_name"),
       email: str("email"),
       phone: str("phone"),
@@ -90,6 +92,16 @@ export async function createSupplier(
     .single();
 
   if (error || !data) return { error: error?.message ?? "Failed to create supplier" };
+
+  // Log audit event
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "supplier_create",
+    entityType: "supplier",
+    entityId: data.id,
+    newData: { name, email: str("email"), phone: str("phone") },
+  });
 
   redirect(`/suppliers/${data.id}`);
 }
@@ -105,14 +117,23 @@ export async function updateSupplier(
     return { error: "Not authenticated" };
   }
 
-  const { supabase, tenantId } = ctx;
+  const { supabase, userId, tenantId } = ctx;
 
   const str = (key: string) => (formData.get(key) as string) || null;
+  const name = (formData.get("name") as string).trim();
+
+  // Get old data for audit
+  const { data: oldData } = await supabase
+    .from("suppliers")
+    .select("name, email, phone")
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
 
   const { error } = await supabase
     .from("suppliers")
     .update({
-      name: (formData.get("name") as string).trim(),
+      name,
       contact_name: str("contact_name"),
       email: str("email"),
       phone: str("phone"),
@@ -125,6 +146,18 @@ export async function updateSupplier(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+
+  // Log audit event
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "supplier_update",
+    entityType: "supplier",
+    entityId: id,
+    oldData: oldData || undefined,
+    newData: { name, email: str("email"), phone: str("phone") },
+  });
+
   redirect(`/suppliers/${id}`);
 }
 
@@ -138,7 +171,15 @@ export async function deleteSupplier(
     return { error: "Not authenticated" };
   }
 
-  const { supabase, tenantId } = ctx;
+  const { supabase, userId, tenantId } = ctx;
+
+  // Get old data for audit
+  const { data: oldData } = await supabase
+    .from("suppliers")
+    .select("name, email, phone")
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
 
   const { error } = await supabase
     .from("suppliers")
@@ -147,5 +188,16 @@ export async function deleteSupplier(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
+
+  // Log audit event
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "supplier_delete",
+    entityType: "supplier",
+    entityId: id,
+    oldData: oldData || undefined,
+  });
+
   redirect("/suppliers");
 }

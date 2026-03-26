@@ -245,24 +245,72 @@ function AIEditPanel({ section, onApply }: { section: SiteSection; onApply: (con
   const [error, setError] = useState<string | null>(null);
 
   async function handleAI() {
-    if (!prompt.trim()) return;
+    const trimmedPrompt = prompt.trim();
+    if (!trimmedPrompt) {
+      setError("Please enter a prompt describing what you want to change");
+      return;
+    }
+    if (trimmedPrompt.length > 2000) {
+      setError("Prompt is too long (max 2000 characters)");
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     setSuggestion(null);
+    
+    // Create timeout for AI request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
+    
     try {
       const res = await fetch("/api/ai/website", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sectionType: section.section_type, currentContent: section.content, prompt }),
+        body: JSON.stringify({ sectionType: section.section_type, currentContent: section.content, prompt: trimmedPrompt }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
       const data = await res.json() as { suggestedContent?: Record<string, unknown>; error?: string };
-      if (data.error) throw new Error(data.error);
-      setSuggestion(data.suggestedContent ?? null);
+      
+      if (!res.ok) {
+        setError(data.error || "AI request failed. Please try again.");
+        return;
+      }
+      
+      if (data.error) {
+        setError(data.error);
+        return;
+      }
+      
+      if (!data.suggestedContent) {
+        setError("AI did not return any suggestions. Please try a different prompt.");
+        return;
+      }
+      
+      setSuggestion(data.suggestedContent);
+      toast.success("AI generated suggestion — review and apply if you like it");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "AI error");
+      clearTimeout(timeoutId);
+      
+      if (e instanceof Error && e.name === "AbortError") {
+        setError("AI request timed out. Please try again with a simpler prompt.");
+      } else {
+        setError(e instanceof Error ? e.message : "AI request failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleApply() {
+    if (!suggestion) return;
+    onApply(suggestion);
+    setSuggestion(null);
+    setPrompt("");
+    toast.success("AI suggestion applied — save the page to keep changes");
   }
 
   return (
@@ -271,18 +319,45 @@ function AIEditPanel({ section, onApply }: { section: SiteSection; onApply: (con
       <textarea
         rows={2}
         value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
+        onChange={(e) => {
+          setPrompt(e.target.value);
+          if (error) setError(null);
+        }}
         placeholder="e.g. Make the heading more luxurious and elegant"
         className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none mb-2"
+        disabled={loading}
       />
-      <button onClick={handleAI} disabled={loading || !prompt.trim()} className="w-full px-3 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors">
+      <button 
+        onClick={handleAI} 
+        disabled={loading || !prompt.trim()} 
+        className="w-full px-3 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+      >
+        {loading && (
+          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+        )}
         {loading ? "Generating…" : "Generate Suggestion"}
       </button>
-      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+      {error && (
+        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-xs text-red-600">{error}</p>
+        </div>
+      )}
       {suggestion && (
         <div className="mt-3 p-3 bg-stone-50 rounded-lg border border-stone-200">
-          <pre className="text-xs text-stone-600 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(suggestion, null, 2)}</pre>
-          <button onClick={() => onApply(suggestion)} className="mt-2 w-full px-3 py-1.5 bg-stone-900 text-white text-xs font-medium rounded-lg hover:bg-stone-700 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-stone-600">AI Suggestion:</p>
+            <button 
+              onClick={() => setSuggestion(null)} 
+              className="text-xs text-stone-400 hover:text-stone-600"
+            >
+              Dismiss
+            </button>
+          </div>
+          <pre className="text-xs text-stone-600 overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto">{JSON.stringify(suggestion, null, 2)}</pre>
+          <button onClick={handleApply} className="mt-2 w-full px-3 py-1.5 bg-stone-900 text-white text-xs font-medium rounded-lg hover:bg-stone-700 transition-colors">
             Apply Suggestion
           </button>
         </div>
@@ -302,6 +377,7 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
   const [sections, setSections] = useState<SiteSection[]>(initialSections);
   const [selectedId, setSelectedId] = useState<string | null>(initialSections[0]?.id ?? null);
   const [showAddSection, setShowAddSection] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -347,12 +423,27 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
     setSaved(false);
   }
 
-  function handleDeleteSection(sectionId: string) {
-    if (!confirm("Delete this section?")) return;
+  function handleDeleteClick(sectionId: string) {
+    setShowDeleteConfirm(sectionId);
+  }
+
+  function handleDeleteConfirm() {
+    if (!showDeleteConfirm) return;
+    
+    const section = sections.find(s => s.id === showDeleteConfirm);
+    const sectionType = SECTION_TYPES.find(t => t.type === section?.section_type)?.label || "Section";
+    const deleteToast = toast.loading(`Deleting ${sectionType}…`);
+    
     startTransition(async () => {
-      await deleteSection(sectionId);
-      setSections((prev) => prev.filter((s) => s.id !== sectionId));
-      if (selectedId === sectionId) setSelectedId(null);
+      const result = await deleteSection(showDeleteConfirm);
+      if (result.error) {
+        toast.error(result.error, { id: deleteToast });
+      } else {
+        setSections((prev) => prev.filter((s) => s.id !== showDeleteConfirm));
+        if (selectedId === showDeleteConfirm) setSelectedId(null);
+        toast.success(`${sectionType} deleted`, { id: deleteToast });
+      }
+      setShowDeleteConfirm(null);
     });
   }
 
@@ -412,7 +503,7 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
                 <div className="flex-shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={(e) => { e.stopPropagation(); handleMoveUp(idx); }} className="p-0.5 hover:bg-stone-200 rounded text-stone-400 hover:text-stone-600 text-xs" title="Move up">↑</button>
                   <button onClick={(e) => { e.stopPropagation(); handleMoveDown(idx); }} className="p-0.5 hover:bg-stone-200 rounded text-stone-400 hover:text-stone-600 text-xs" title="Move down">↓</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDeleteSection(section.id); }} className="p-0.5 hover:bg-red-100 rounded text-stone-400 hover:text-red-600 text-xs" title="Delete">✕</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDeleteClick(section.id); }} className="p-0.5 hover:bg-red-100 rounded text-stone-400 hover:text-red-600 text-xs" title="Delete">✕</button>
                 </div>
               </div>
             );
@@ -476,6 +567,42 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
               section={selectedSection}
               onApply={(content) => handleSectionChange({ ...selectedSection, content })}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Delete Section Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <span className="text-red-600 text-lg">⚠️</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-stone-900">Delete Section</h2>
+                <p className="text-sm text-stone-500">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-stone-600 mb-6">
+              Are you sure you want to delete this <strong>{SECTION_TYPES.find(t => t.type === sections.find(s => s.id === showDeleteConfirm)?.section_type)?.label || "section"}</strong>?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                disabled={isPending}
+                className="flex-1 px-4 py-2 border border-stone-300 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={isPending}
+                className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {isPending ? "Deleting…" : "Delete Section"}
+              </button>
+            </div>
           </div>
         </div>
       )}

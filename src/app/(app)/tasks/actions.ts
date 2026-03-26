@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { notifyTaskAssignment } from "@/lib/whatsapp-notifications";
 import logger from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -138,6 +139,22 @@ export async function createTask(
       description: `Task created by ${userEmail}`,
     });
 
+    // Log audit event
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "task_create",
+      entityType: "task",
+      entityId: task?.id,
+      newData: {
+        title,
+        priority: (formData.get("priority") as string) || "medium",
+        status: (formData.get("status") as string) || "pending",
+        assignedTo: (formData.get("assigned_to") as string) || null,
+        dueDate: (formData.get("due_date") as string) || null,
+      },
+    });
+
     // Send WhatsApp notification if assigned
     const assignedTo = (formData.get("assigned_to") as string) || null;
     if (assignedTo) {
@@ -237,6 +254,17 @@ export async function updateTask(
       }
     }
 
+    // Log audit event
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "task_update",
+      entityType: "task",
+      entityId: taskId,
+      oldData: oldTask ? { title: oldTask.title, status: oldTask.status, priority: oldTask.priority } : undefined,
+      newData: updates,
+    });
+
     revalidatePath("/tasks");
     revalidatePath(`/tasks/${taskId}`);
     return { success: true };
@@ -249,8 +277,16 @@ export async function deleteTask(
   taskId: string
 ): Promise<{ success?: boolean; error?: string }> {
   try {
-    const { tenantId } = await getAuthContext();
+    const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
+
+    // Get task data for audit
+    const { data: oldTask } = await admin
+      .from("tasks")
+      .select("title, status, priority")
+      .eq("id", taskId)
+      .eq("tenant_id", tenantId)
+      .single();
 
     const { error } = await admin
       .from("tasks")
@@ -259,6 +295,17 @@ export async function deleteTask(
       .eq("tenant_id", tenantId);
 
     if (error) return { error: error.message };
+
+    // Log audit event
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "task_delete",
+      entityType: "task",
+      entityId: taskId,
+      oldData: oldTask || undefined,
+    });
+
     revalidatePath("/tasks");
     return { success: true };
   } catch (e) {

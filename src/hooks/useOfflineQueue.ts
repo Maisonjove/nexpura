@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 export interface QueuedItem {
   timestamp: number;
@@ -63,7 +64,7 @@ export function useOfflineQueue() {
         error: null,
       }));
     } catch (error) {
-      console.error('[OfflineQueue] Failed to load queue:', error);
+      Sentry.captureException(error, { tags: { hook: 'useOfflineQueue', action: 'load-queue' } });
       setState((s) => ({
         ...s,
         isLoading: false,
@@ -111,7 +112,7 @@ export function useOfflineQueue() {
         throw new Error(`Server error: ${response.status} - ${errorText}`);
       }
     } catch (error) {
-      console.error('[OfflineQueue] Retry failed:', error);
+      Sentry.captureException(error, { tags: { hook: 'useOfflineQueue', action: 'retry' } });
       // Update retry count
       try {
         const db = await openDB();
@@ -135,7 +136,7 @@ export function useOfflineQueue() {
         }
         await loadQueue();
       } catch (updateError) {
-        console.error('[OfflineQueue] Failed to update retry count:', updateError);
+        Sentry.captureException(updateError, { tags: { hook: 'useOfflineQueue', action: 'update-retry-count' } });
       }
     } finally {
       setState((s) => ({ ...s, isSyncing: false }));
@@ -165,7 +166,7 @@ export function useOfflineQueue() {
       });
       await loadQueue();
     } catch (error) {
-      console.error('[OfflineQueue] Failed to remove item:', error);
+      Sentry.captureException(error, { tags: { hook: 'useOfflineQueue', action: 'remove-item' } });
     }
   }, [loadQueue]);
 
@@ -181,7 +182,7 @@ export function useOfflineQueue() {
       });
       await loadQueue();
     } catch (error) {
-      console.error('[OfflineQueue] Failed to clear queue:', error);
+      Sentry.captureException(error, { tags: { hook: 'useOfflineQueue', action: 'clear-queue' } });
     }
   }, [loadQueue]);
 

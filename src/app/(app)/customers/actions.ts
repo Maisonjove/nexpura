@@ -152,9 +152,18 @@ export async function updateCustomer(
 export async function archiveCustomer(id: string): Promise<{ success?: boolean; error?: string }> {
   try {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
     const tenantId = await getTenantId().catch(() => null);
     if (!tenantId) return { error: "Not authenticated" };
+
+    // Get old data for audit
+    const { data: oldData } = await supabase
+      .from("customers")
+      .select("full_name, email, mobile")
+      .eq("id", id)
+      .eq("tenant_id", tenantId)
+      .single();
 
     const { error } = await supabase
       .from("customers")
@@ -163,6 +172,17 @@ export async function archiveCustomer(id: string): Promise<{ success?: boolean; 
       .eq("tenant_id", tenantId);
 
     if (error) return { error: error.message };
+    
+    // Log audit event
+    await logAuditEvent({
+      tenantId,
+      userId: user?.id,
+      action: "customer_delete",
+      entityType: "customer",
+      entityId: id,
+      oldData: oldData || undefined,
+    });
+    
     redirect("/customers");
   } catch (error) {
     logger.error("archiveCustomer failed", { error });
