@@ -1,22 +1,13 @@
 "use client";
 
 import Link from "next/link";
-
-export interface Sale {
-  id: string;
-  sale_number: string;
-  customer_name: string | null;
-  customer_email: string | null;
-  status: string;
-  payment_method: string | null;
-  total: number;
-  amount_paid: number | null;
-  sale_date: string;
-  created_at: string;
-}
+import { useEffect, useState, useTransition } from "react";
+import { useLocation } from "@/contexts/LocationContext";
+import { getSales, SaleWithLocation } from "./sales-actions";
+import { MapPin } from "lucide-react";
 
 interface Props {
-  sales: Sale[];
+  initialSales: SaleWithLocation[];
 }
 
 const STATUS_COLOURS: Record<string, string> = {
@@ -48,7 +39,34 @@ function fmtCurrency(amount: number) {
   }).format(amount);
 }
 
-export default function SalesListClient({ sales }: Props) {
+export default function SalesListClient({ initialSales }: Props) {
+  const { getFilterLocationIds, viewMode, currentLocationId, hasMultipleLocations } = useLocation();
+  const [sales, setSales] = useState<SaleWithLocation[]>(initialSales);
+  const [isPending, startTransition] = useTransition();
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Determine if we should show the location column
+  const showLocationColumn = hasMultipleLocations && (viewMode === "all" || !currentLocationId);
+
+  // Refetch when location changes
+  useEffect(() => {
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+      return;
+    }
+
+    const locationIds = getFilterLocationIds();
+    
+    startTransition(async () => {
+      try {
+        const newSales = await getSales(locationIds);
+        setSales(newSales);
+      } catch (error) {
+        console.error("Failed to fetch sales:", error);
+      }
+    });
+  }, [viewMode, currentLocationId, getFilterLocationIds, isInitialLoad]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -64,6 +82,13 @@ export default function SalesListClient({ sales }: Props) {
           New Sale
         </Link>
       </div>
+
+      {/* Loading state */}
+      {isPending && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm text-amber-700">
+          Updating...
+        </div>
+      )}
 
       {/* Table */}
       {sales.length === 0 ? (
@@ -97,6 +122,11 @@ export default function SalesListClient({ sales }: Props) {
                   <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
                     Customer
                   </th>
+                  {showLocationColumn && (
+                    <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
+                      Location
+                    </th>
+                  )}
                   <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
                     Date
                   </th>
@@ -129,6 +159,18 @@ export default function SalesListClient({ sales }: Props) {
                         <p className="text-xs text-stone-400">{sale.customer_email}</p>
                       )}
                     </td>
+                    {showLocationColumn && (
+                      <td className="px-4 py-3">
+                        {sale.locationName ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-stone-500">
+                            <MapPin size={12} className="text-stone-400" />
+                            {sale.locationName}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-stone-300">—</span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-sm text-stone-500">
                       {new Date(sale.sale_date || sale.created_at).toLocaleDateString("en-AU", {
                         day: "numeric",

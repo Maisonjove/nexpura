@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import POSClient from "./POSClient";
+import POSWrapper from "./POSWrapper";
 
 export const metadata = { title: "POS — Nexpura" };
 
@@ -60,7 +60,7 @@ export default async function POSPage() {
   const hasStripe = !!tenantData?.stripe_account_id;
 
   return (
-    <POSClient
+    <POSWrapper
       tenantId={tenantId}
       userId={user.id}
       inventoryItems={inventoryItems ?? []}
