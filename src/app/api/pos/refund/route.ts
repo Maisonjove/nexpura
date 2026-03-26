@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { validateCSRFForRequest } from "@/lib/csrf";
 
 export async function POST(req: NextRequest) {
+  // CSRF protection
+  if (!validateCSRFForRequest(req)) {
+    return NextResponse.json({ error: "Invalid request origin" }, { status: 403 });
+  }
+
   const body = await req.json();
   const { tenantId, saleId, items, refundMethod, reason, notes, total } = body;
   if (!tenantId || !saleId || !items?.length) {

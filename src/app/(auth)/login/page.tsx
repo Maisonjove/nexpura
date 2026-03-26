@@ -1,55 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Gem } from "lucide-react";
+import { loginAction } from "./actions";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-
-  const supabase = createClient();
 
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
-    try {
-      // If "Remember me" is checked, set a longer session (30 days)
-      // Otherwise use default session duration
-      const { data, error } = await supabase.auth.signInWithPassword({ 
-        email, 
-        password,
-      });
+    startTransition(async () => {
+      const result = await loginAction(email, password);
 
-      if (error) {
-        // Handle error - ensure we always display a string message
-        const errorMessage = error.message || error.code || "Invalid login credentials";
-        setError(errorMessage);
-        setLoading(false);
+      if (!result.success) {
+        setError(result.error || "Login failed");
         return;
       }
 
-      // Check if user has 2FA enabled
-      if (data.user) {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("totp_enabled")
-          .eq("id", data.user.id)
-          .single();
-
-        if (profile?.totp_enabled) {
-          // Redirect to 2FA verification page
-          router.push(`/verify-2fa?userId=${data.user.id}&email=${encodeURIComponent(email)}`);
-          return;
-        }
+      // Check if 2FA is required
+      if (result.requires2FA && result.userId && result.email) {
+        router.push(\`/verify-2fa?userId=\${result.userId}&email=\${encodeURIComponent(result.email)}\`);
+        return;
       }
 
       // Store remember me preference in localStorage
@@ -61,12 +42,7 @@ export default function LoginPage() {
 
       router.push("/dashboard");
       router.refresh();
-    } catch (err) {
-      // Handle unexpected errors (network issues, etc.)
-      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-      setError(errorMessage);
-      setLoading(false);
-    }
+    });
   }
 
   return (
@@ -161,10 +137,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isPending}
             className="w-full bg-amber-700 hover:bg-amber-800 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {isPending ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
@@ -186,7 +162,7 @@ export default function LoginPage() {
             await supabase.auth.signInWithOAuth({
               provider: "google",
               options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
+                redirectTo: \`\${window.location.origin}/auth/callback\`,
               },
             });
           }}

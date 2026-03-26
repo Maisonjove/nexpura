@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import { CommandPalette } from "@/components/command-palette";
 import { OnboardingTour } from "@/components/onboarding/tour";
 import { SkipToContent } from "@/components/SkipToContent";
+import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
@@ -122,6 +123,7 @@ export default async function AppLayout({
         </ErrorBoundary>
         <CommandPalette />
         <OnboardingTour />
+        <SessionTimeoutWarning />
       </MobileLayoutWrapper>
     </LocationProvider>
   );
