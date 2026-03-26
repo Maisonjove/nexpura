@@ -120,9 +120,14 @@ export async function changeTenantStatus(tenantId: string, newStatus: SubStatus)
     newStatus,
   });
 
+  // Revalidate admin paths
   revalidatePath(`/admin/tenants/${tenantId}`);
   revalidatePath("/admin/tenants");
   revalidatePath("/admin");
+  // Revalidate user-facing paths so status changes take effect immediately
+  revalidatePath("/dashboard");
+  revalidatePath("/billing");
+  revalidatePath("/settings");
 }
 
 export async function assignFreeForever(tenantId: string) {

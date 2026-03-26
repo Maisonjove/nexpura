@@ -111,6 +111,16 @@ export async function createRepair(
     created_by: userId,
   });
 
+  // Audit log
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "repair_create",
+    entityType: "repair",
+    entityId: data.id,
+    newData: repairData as Record<string, unknown>,
+  });
+
   redirect(`/repairs/${data.id}`);
 }
 
