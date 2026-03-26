@@ -49,7 +49,7 @@ const nextConfig: NextConfig = {
   // Enable gzip/brotli compression to reduce egress bandwidth
   compress: true,
   // Keep heavy server-only packages out of the client bundle
-  serverExternalPackages: ['@react-pdf/renderer', 'puppeteer-core', 'xlsx', 'postgres'],
+  serverExternalPackages: ['@react-pdf/renderer', 'puppeteer-core', 'exceljs', 'postgres'],
   images: {
     remotePatterns: [
       // Supabase Storage — covers all project buckets

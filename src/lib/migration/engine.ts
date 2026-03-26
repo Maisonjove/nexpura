@@ -820,21 +820,42 @@ export function parseJSONFull(text: string): ParsedFile {
 
 export async function parseXLSXFull(buffer: Uint8Array): Promise<ParsedFile> {
   // Dynamic import to avoid bundling issues in edge runtime
-  const XLSX = await import('xlsx');
-  const workbook = XLSX.read(buffer, { type: 'array' });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
+  const ExcelJS = await import('exceljs');
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
 
-  if (jsonData.length === 0) return { headers: [], rows: [], rowCount: 0 };
-
-  const headers = (jsonData[0] as unknown[]).map(String);
-  const rows: Record<string, unknown>[] = [];
-  for (let i = 1; i < jsonData.length; i++) {
-    const vals = jsonData[i] as unknown[];
-    const row: Record<string, unknown> = {};
-    headers.forEach((h, idx) => { row[h] = vals[idx] ?? ''; });
-    rows.push(row);
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet || worksheet.rowCount === 0) {
+    return { headers: [], rows: [], rowCount: 0 };
   }
+
+  // Get headers from first row
+  const headerRow = worksheet.getRow(1);
+  const headers: string[] = [];
+  headerRow.eachCell((cell, colNumber) => {
+    headers[colNumber - 1] = cell.value ? String(cell.value) : `Column${colNumber}`;
+  });
+
+  // Get data rows
+  const rows: Record<string, unknown>[] = [];
+  for (let rowNum = 2; rowNum <= worksheet.rowCount; rowNum++) {
+    const row = worksheet.getRow(rowNum);
+    const rowData: Record<string, unknown> = {};
+    let hasData = false;
+    
+    headers.forEach((header, idx) => {
+      const cell = row.getCell(idx + 1);
+      const value = cell.value;
+      if (value !== null && value !== undefined && value !== '') {
+        hasData = true;
+      }
+      rowData[header] = value ?? '';
+    });
+    
+    if (hasData) {
+      rows.push(rowData);
+    }
+  }
+
   return { headers, rows, rowCount: rows.length };
 }

@@ -105,12 +105,23 @@ function downloadCSV(csv: string, filename: string) {
 }
 
 async function downloadExcel(data: Record<string, unknown>[], sheetName: string, filename: string) {
-  const XLSX = await import("xlsx");
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-  const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const ExcelJS = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet(sheetName);
+  
+  if (data.length > 0) {
+    // Add headers
+    const headers = Object.keys(data[0]);
+    worksheet.columns = headers.map(key => ({ header: key, key, width: 20 }));
+    
+    // Add rows
+    for (const row of data) {
+      worksheet.addRow(row);
+    }
+  }
+  
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

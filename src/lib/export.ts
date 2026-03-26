@@ -39,34 +39,36 @@ export async function downloadExcel<T extends Record<string, unknown>>(
   filename: string,
   sheetName = 'Data'
 ) {
-  const XLSX = await import('xlsx');
+  const ExcelJS = await import('exceljs');
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet(sheetName);
   
-  // Transform data to use labels as headers
-  const exportData = data.map(row => {
-    const newRow: Record<string, unknown> = {};
-    for (const col of columns) {
-      newRow[col.label] = row[col.key];
-    }
-    return newRow;
-  });
-  
-  const worksheet = XLSX.utils.json_to_sheet(exportData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-  
-  // Auto-size columns
-  const maxWidths = columns.map((col, i) => {
+  // Add headers
+  worksheet.columns = columns.map((col, i) => {
     const headerWidth = col.label.length;
     const dataWidth = Math.max(...data.map(row => {
       const val = row[col.key];
       return val ? String(val).length : 0;
     }));
-    return Math.min(Math.max(headerWidth, dataWidth) + 2, 50);
+    return {
+      header: col.label,
+      key: String(col.key),
+      width: Math.min(Math.max(headerWidth, dataWidth) + 2, 50),
+    };
   });
-  worksheet['!cols'] = maxWidths.map(w => ({ wch: w }));
   
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  // Add rows
+  for (const row of data) {
+    const rowData: Record<string, unknown> = {};
+    for (const col of columns) {
+      rowData[String(col.key)] = row[col.key];
+    }
+    worksheet.addRow(rowData);
+  }
+  
+  // Generate buffer and download
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

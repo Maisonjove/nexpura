@@ -83,14 +83,33 @@ export async function POST(req: NextRequest) {
       rowCount = parsed.rowCount;
     } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
       try {
-        const XLSX = await import('xlsx');
-        const workbook = XLSX.read(uint8, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
-        headers = (jsonData[0] as unknown[] ?? []).map(String);
-        sampleRows = jsonData.slice(1, 11) as unknown[][];
-        rowCount = Math.max(0, jsonData.length - 1);
+        const ExcelJS = await import('exceljs');
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(uint8);
+        
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+          return NextResponse.json({ error: 'Excel file has no worksheets' }, { status: 400 });
+        }
+        
+        // Get headers from first row
+        const headerRow = worksheet.getRow(1);
+        headerRow.eachCell((cell, colNumber) => {
+          headers[colNumber - 1] = cell.value ? String(cell.value) : `Column${colNumber}`;
+        });
+        
+        // Get sample rows (rows 2-11)
+        for (let rowNum = 2; rowNum <= Math.min(11, worksheet.rowCount); rowNum++) {
+          const row = worksheet.getRow(rowNum);
+          const rowData: unknown[] = [];
+          headers.forEach((_, idx) => {
+            const cell = row.getCell(idx + 1);
+            rowData[idx] = cell.value ?? '';
+          });
+          sampleRows.push(rowData);
+        }
+        
+        rowCount = Math.max(0, worksheet.rowCount - 1);
       } catch (e) {
         logger.error('XLSX parse error:', e);
         return NextResponse.json({ error: 'Failed to parse Excel file' }, { status: 400 });
