@@ -1,9 +1,17 @@
+import { Suspense } from "react";
 import { getDashboardData } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
+import DashboardLoading from "./loading";
 
-export default async function DashboardPage() {
-  // Initial load with no location filter (all locations)
+async function DashboardContent() {
   const initialData = await getDashboardData(null);
-
   return <DashboardWrapper initialData={initialData} />;
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <DashboardContent />
+    </Suspense>
+  );
 }

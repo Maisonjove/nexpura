@@ -752,6 +752,22 @@ const getCachedDashboardData = (
   );
 };
 
+// Timeout wrapper for dashboard data fetch
+async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timeoutId: NodeJS.Timeout;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => resolve(fallback), ms);
+  });
+  
+  return Promise.race([
+    promise.then((result) => {
+      clearTimeout(timeoutId);
+      return result;
+    }),
+    timeoutPromise,
+  ]);
+}
+
 // Public function that handles auth and calls cached internal function
 export async function getDashboardData(locationIds: string[] | null): Promise<DashboardData> {
   const { userId, tenantId, tenantName, currency, isManager } = await getAuthContext();
@@ -762,6 +778,13 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
   // Get the cached function for this tenant/user/location combination
   const cachedFn = getCachedDashboardData(tenantId, userId, locationKey);
   
-  // Call the cached function
-  return cachedFn(userId, tenantId, tenantName, currency, isManager, locationIds);
+  // Create fallback empty data
+  const emptyFallback = getEmptyDashboardData(tenantName || "there", tenantName, currency, isManager);
+  
+  // Call the cached function with 8 second timeout (Vercel functions timeout at 10s)
+  return withTimeout(
+    cachedFn(userId, tenantId, tenantName, currency, isManager, locationIds),
+    8000,
+    emptyFallback
+  );
 }
