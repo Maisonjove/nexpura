@@ -1,10 +1,11 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Sparkles, Calendar, DollarSign, ReceiptText, AlertCircle, TrendingDown, BarChart3 } from 'lucide-react';
+
 // Lazy-load heavy chart library (recharts ~400KB) — only loaded when financials page is visited
 const RevenueChart = dynamic(() => import('./RevenueChart'), { ssr: false });
+
 import {
   StatCard,
   Skeleton,
@@ -15,13 +16,14 @@ import {
   pctChange,
 } from './components';
 import type { MetricsData } from './components/types';
-import { createClient } from '@/lib/supabase/client';
 
 interface FinancialsClientProps {
   tenantId: string;
   businessName: string;
   gstRate: number;
   currency?: string;
+  /** Access token passed from the server component for Bearer auth on API calls. */
+  accessToken?: string;
 }
 
 export default function FinancialsClient({
@@ -29,23 +31,24 @@ export default function FinancialsClient({
   businessName,
   gstRate,
   currency = 'AUD',
+  accessToken = '',
 }: FinancialsClientProps) {
   const [tab, setTab] = useState<'dashboard' | 'reports'>('dashboard');
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const headers: HeadersInit = session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : {};
-      const r = await fetch('/api/financials/metrics', { headers });
-      const d = await r.json();
-      if (!d.error) setMetrics(d);
-      setLoadingMetrics(false);
-    });
-  }, []);
+    const headers: HeadersInit = accessToken
+      ? { Authorization: `Bearer ${accessToken}` }
+      : {};
+    fetch('/api/financials/metrics', { headers })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.error) setMetrics(d);
+        setLoadingMetrics(false);
+      })
+      .catch(() => setLoadingMetrics(false));
+  }, [accessToken]);
 
   const now = new Date();
   const monthLabel = now.toLocaleString('en-AU', { month: 'long', year: 'numeric' });
@@ -98,37 +101,11 @@ export default function FinancialsClient({
               </div>
             ) : metrics ? (
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                <StatCard
-                  label="Revenue This Month"
-                  value={fmt(metrics.revenueThisMonth, currency)}
-                  trend={pctChange(metrics.revenueThisMonth, metrics.revenueLastMonth)}
-                  icon={<DollarSign size={16} />}
-                />
-                <StatCard
-                  label="GST Collected"
-                  value={fmt(metrics.gstCollected, currency)}
-                  sub={`${(metrics.gstRate * 100).toFixed(0)}% rate (estimate)`}
-                  icon={<ReceiptText size={16} />}
-                />
-                <StatCard
-                  label="Outstanding Invoices"
-                  value={fmt(metrics.outstanding, currency)}
-                  sub={`${metrics.outstandingCount} invoice${metrics.outstandingCount !== 1 ? 's' : ''}`}
-                  icon={<AlertCircle size={16} />}
-                  urgent={metrics.outstandingCount > 0}
-                />
-                <StatCard
-                  label="Refunds This Month"
-                  value={fmt(metrics.refundsThisMonth, currency)}
-                  sub={`${metrics.refundCount} refund${metrics.refundCount !== 1 ? 's' : ''}`}
-                  icon={<TrendingDown size={16} />}
-                />
-                <StatCard
-                  label="Avg Sale Value"
-                  value={fmt(metrics.avgSaleValue, currency)}
-                  sub={`${metrics.salesCount} sales this month`}
-                  icon={<BarChart3 size={16} />}
-                />
+                <StatCard label="Revenue This Month" value={fmt(metrics.revenueThisMonth, currency)} trend={pctChange(metrics.revenueThisMonth, metrics.revenueLastMonth)} icon={<DollarSign size={16} />} />
+                <StatCard label="GST Collected" value={fmt(metrics.gstCollected, currency)} sub={`${(metrics.gstRate * 100).toFixed(0)}% rate (estimate)`} icon={<ReceiptText size={16} />} />
+                <StatCard label="Outstanding Invoices" value={fmt(metrics.outstanding, currency)} sub={`${metrics.outstandingCount} invoice${metrics.outstandingCount !== 1 ? 's' : ''}`} icon={<AlertCircle size={16} />} urgent={metrics.outstandingCount > 0} />
+                <StatCard label="Refunds This Month" value={fmt(metrics.refundsThisMonth, currency)} sub={`${metrics.refundCount} refund${metrics.refundCount !== 1 ? 's' : ''}`} icon={<TrendingDown size={16} />} />
+                <StatCard label="Avg Sale Value" value={fmt(metrics.avgSaleValue, currency)} sub={`${metrics.salesCount} sales this month`} icon={<BarChart3 size={16} />} />
                 <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
                   <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Payment Mix</p>
                   {Object.keys(metrics.paymentBreakdown).length === 0 ? (
@@ -207,7 +184,6 @@ export default function FinancialsClient({
                   <p className="text-xs text-stone-400 mb-4 italic">
                     ⚠️ This is an estimate based on tax-inclusive revenue at {(metrics.gstRate * 100).toFixed(0)}%. Consult your accountant for official BAS lodgement.
                   </p>
-                  {/* Quarterly breakdown */}
                   {metrics.quarterlyGST && metrics.quarterlyGST.length > 0 && (
                     <>
                       <h3 className="text-sm font-semibold text-stone-700 mb-3">Quarterly GST (Last 4 Quarters)</h3>
