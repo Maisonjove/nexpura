@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { addLocation, toggleLocationActive } from "./actions";
+import { addLocation, toggleLocationActive, deleteLocation } from "./actions";
 
 interface Location {
   id: string;
@@ -83,6 +83,26 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
       
       if (!result.error) {
         setLocations(locations.map(l => l.id === id ? { ...l, is_active: !current } : l));
+      }
+    });
+  }
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.\n\nNote: You can only delete locations that have no linked sales, repairs, jobs, or inventory.`)) {
+      return;
+    }
+    
+    startTransition(async () => {
+      const result = await deleteLocation(id);
+      
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      
+      if (result.success) {
+        setLocations(locations.filter(l => l.id !== id));
+        router.refresh();
       }
     });
   }
@@ -297,7 +317,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                     {l.is_active ? "Active" : "Archived"}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-6 py-4 text-right space-x-3">
                   <button
                     onClick={() => handleToggleActive(l.id, l.is_active)}
                     disabled={isPending}
@@ -305,6 +325,15 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                   >
                     {l.is_active ? "Archive" : "Restore"}
                   </button>
+                  {!l.is_active && (
+                    <button
+                      onClick={() => handleDelete(l.id, l.name)}
+                      disabled={isPending}
+                      className="text-red-400 hover:text-red-600 text-sm font-medium disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

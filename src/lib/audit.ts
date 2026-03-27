@@ -31,6 +31,7 @@ export type AuditAction =
   | 'team_member_locations_update'
   | 'location_create'
   | 'location_update'
+  | 'location_delete'
   | 'quote_create'
   | 'quote_update'
   | 'quote_delete'

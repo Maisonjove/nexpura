@@ -159,6 +159,85 @@ export async function toggleLocationActive(locationId: string, isActive: boolean
   }
 }
 
+export async function deleteLocation(locationId: string): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { error: "Not authenticated" };
+    }
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("tenant_id, role")
+      .eq("id", user.id)
+      .single();
+
+    if (!userData?.tenant_id) {
+      return { error: "No tenant found" };
+    }
+
+    // Only owners can delete locations
+    if (userData.role !== "owner") {
+      return { error: "Not authorized" };
+    }
+
+    // Check if location has any linked data
+    const [salesCheck, repairsCheck, bespokeCheck, inventoryCheck] = await Promise.all([
+      supabase.from("sales").select("id", { count: "exact", head: true }).eq("location_id", locationId),
+      supabase.from("repairs").select("id", { count: "exact", head: true }).eq("location_id", locationId),
+      supabase.from("bespoke_jobs").select("id", { count: "exact", head: true }).eq("location_id", locationId),
+      supabase.from("inventory").select("id", { count: "exact", head: true }).eq("location_id", locationId),
+    ]);
+
+    const hasLinkedData = 
+      (salesCheck.count && salesCheck.count > 0) ||
+      (repairsCheck.count && repairsCheck.count > 0) ||
+      (bespokeCheck.count && bespokeCheck.count > 0) ||
+      (inventoryCheck.count && inventoryCheck.count > 0);
+
+    if (hasLinkedData) {
+      return { error: "Cannot delete location with linked sales, repairs, jobs, or inventory. Archive it instead." };
+    }
+
+    // Get location name for audit
+    const { data: locationData } = await supabase
+      .from("locations")
+      .select("name")
+      .eq("id", locationId)
+      .eq("tenant_id", userData.tenant_id)
+      .single();
+
+    // Delete the location
+    const { error } = await supabase
+      .from("locations")
+      .delete()
+      .eq("id", locationId)
+      .eq("tenant_id", userData.tenant_id);
+
+    if (error) {
+      logger.error("Delete location error:", error);
+      return { error: error.message };
+    }
+
+    await logAuditEvent({
+      tenantId: userData.tenant_id,
+      userId: user.id,
+      action: "location_delete",
+      entityType: "location",
+      entityId: locationId,
+      oldData: { name: locationData?.name },
+    });
+
+    revalidatePath("/settings/locations");
+    return { success: true };
+  } catch (error) {
+    logger.error("deleteLocation failed", { error });
+    return { error: "Operation failed" };
+  }
+}
+
 export async function updateLocation(
   locationId: string, 
   formData: {
