@@ -10,8 +10,7 @@ export async function GET(req: Request) {
     if (!rlSuccess) return Response.json({ error: "Too many requests" }, { status: 429 });
 
     const supabase = await createClient();
-    const _cookies = await (await import("next/headers")).cookies();
-    logger.info({ cookieNames: _cookies.getAll().map(c => c.name), reqCookieHeader: req.headers.get("cookie")?.substring(0,50) }, "debug: route cookies");
+    console.log("[DEBUG metrics] cookie header:", req.headers.get("cookie")?.substring(0, 100));
 
     let { data: { user } } = await supabase.auth.getUser();
 
@@ -24,7 +23,7 @@ export async function GET(req: Request) {
         user = data.user;
       }
     }
-    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return Response.json({ error: "Unauthorized", debug_cookie_header: req.headers.get("cookie")?.substring(0, 200) ?? "none" }, { status: 401 });
 
     // FIX: create admin client BEFORE querying the users table.
     // Using the anon (RLS) client to query users triggers infinite policy
