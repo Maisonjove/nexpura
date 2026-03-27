@@ -2,11 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { unstable_cache, revalidateTag } from "next/cache";
-import { cache } from "react";
 
-// React cache to dedupe auth context within same render
-const getAuthContext = cache(async () => {
+async function getAuthContext() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
@@ -26,11 +23,6 @@ const getAuthContext = cache(async () => {
     userRole,
     isManager: userRole === "owner" || userRole === "manager"
   };
-});
-
-// Revalidate dashboard cache - call this after mutations
-export async function revalidateDashboardCache() {
-  revalidateTag("dashboard", "default");
 }
 
 // Helper to apply location filter to queries
@@ -85,70 +77,13 @@ function getLast7Days(): string[] {
   return days;
 }
 
-// Empty dashboard data for new tenants (fast path)
-function getEmptyDashboardData(
-  firstName: string,
-  tenantName: string | null,
-  currency: string,
-  isManager: boolean
-): DashboardData {
-  return {
-    firstName,
-    tenantName,
-    salesThisMonthRevenue: 0,
-    salesThisMonthCount: 0,
-    activeRepairsCount: 0,
-    activeJobsCount: 0,
-    totalOutstanding: 0,
-    overdueInvoiceCount: 0,
-    lowStockItems: [],
-    overdueRepairs: [],
-    readyForPickup: [],
-    recentActivity: [],
-    myTasks: [],
-    teamTaskSummary: [],
-    isManager,
-    activeRepairs: [],
-    activeBespokeJobs: [],
-    currency,
-    revenueSparkline: Array.from({ length: 7 }, () => ({ value: 0 })),
-    salesCountSparkline: Array.from({ length: 7 }, () => ({ value: 0 })),
-    repairsSparkline: Array.from({ length: 7 }, () => ({ value: 0 })),
-    customersSparkline: Array.from({ length: 7 }, () => ({ value: 0 })),
-    salesBarData: [],
-    repairStageData: [],
-  };
-}
-
-// Internal function that does the actual data fetching - this gets cached
-async function getDashboardDataInternal(
-  userId: string,
-  tenantId: string,
-  tenantName: string | null,
-  currency: string,
-  isManager: boolean,
-  locationIds: string[] | null
-): Promise<DashboardData> {
+export async function getDashboardData(locationIds: string[] | null): Promise<DashboardData> {
+  const { userId, tenantId, tenantName, currency, isManager } = await getAuthContext();
   const admin = createAdminClient();
 
   const firstName = tenantName || "there";
   const today = new Date().toISOString().split("T")[0];
   const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-
-  // Quick parallel check: does this tenant have any data at all?
-  // These run in parallel to minimize latency
-  const [salesCheck, repairsCheck] = await Promise.all([
-    admin.from("sales").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).limit(1),
-    admin.from("repairs").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).limit(1),
-  ]);
-
-  const salesCount = salesCheck.count ?? 0;
-  const repairsCount = repairsCheck.count ?? 0;
-
-  // If tenant has no sales AND no repairs, return empty dashboard fast
-  if (salesCount === 0 && repairsCount === 0) {
-    return getEmptyDashboardData(firstName, tenantName, currency, isManager);
-  }
 
   // Fetch locations for name lookup if we're showing all locations
   const showLocationNames = !locationIds || locationIds.length > 1;
@@ -726,76 +661,4 @@ async function getDashboardDataInternal(
     salesBarData,
     repairStageData,
   };
-}
-
-// Create cached version of the internal function
-// Cache key includes tenantId, userId, and locationIds for proper isolation
-const getCachedDashboardData = (
-  tenantId: string,
-  userId: string,
-  locationKey: string
-) => {
-  return unstable_cache(
-    async (
-      uid: string,
-      tid: string,
-      tName: string | null,
-      curr: string,
-      isMgr: boolean,
-      locIds: string[] | null
-    ) => getDashboardDataInternal(uid, tid, tName, curr, isMgr, locIds),
-    ["dashboard-data", tenantId, userId, locationKey],
-    {
-      revalidate: 60, // Cache for 60 seconds
-      tags: ["dashboard", `dashboard-${tenantId}`],
-    }
-  );
-};
-
-// Timeout wrapper for dashboard data fetch
-async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-  let timeoutId: NodeJS.Timeout;
-  const timeoutPromise = new Promise<T>((resolve) => {
-    timeoutId = setTimeout(() => resolve(fallback), ms);
-  });
-  
-  return Promise.race([
-    promise.then((result) => {
-      clearTimeout(timeoutId);
-      return result;
-    }),
-    timeoutPromise,
-  ]);
-}
-
-// Public function to get empty dashboard (for error fallback)
-export async function getEmptyDashboard(): Promise<DashboardData> {
-  try {
-    const { tenantName, currency, isManager } = await getAuthContext();
-    return getEmptyDashboardData(tenantName || "there", tenantName, currency, isManager);
-  } catch {
-    // If even auth fails, return absolute minimum
-    return getEmptyDashboardData("there", null, "AUD", false);
-  }
-}
-
-// Public function that handles auth and calls cached internal function
-export async function getDashboardData(locationIds: string[] | null): Promise<DashboardData> {
-  const { userId, tenantId, tenantName, currency, isManager } = await getAuthContext();
-  
-  // Create a stable location key for caching
-  const locationKey = locationIds ? locationIds.sort().join(",") : "all";
-  
-  // Get the cached function for this tenant/user/location combination
-  const cachedFn = getCachedDashboardData(tenantId, userId, locationKey);
-  
-  // Create fallback empty data
-  const emptyFallback = getEmptyDashboardData(tenantName || "there", tenantName, currency, isManager);
-  
-  // Call the cached function with 8 second timeout (Vercel functions timeout at 10s)
-  return withTimeout(
-    cachedFn(userId, tenantId, tenantName, currency, isManager, locationIds),
-    8000,
-    emptyFallback
-  );
 }

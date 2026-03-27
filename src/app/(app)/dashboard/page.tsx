@@ -1,24 +1,9 @@
-import { Suspense } from "react";
-import { getDashboardData, getEmptyDashboard } from "./actions";
+import { getDashboardData } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
-import DashboardLoading from "./loading";
 
-async function DashboardContent() {
-  try {
-    const initialData = await getDashboardData(null);
-    return <DashboardWrapper initialData={initialData} />;
-  } catch (error) {
-    console.error("Dashboard load error:", error);
-    // Return empty dashboard on error
-    const fallback = await getEmptyDashboard();
-    return <DashboardWrapper initialData={fallback} />;
-  }
-}
+export default async function DashboardPage() {
+  // Initial load with no location filter (all locations)
+  const initialData = await getDashboardData(null);
 
-export default function DashboardPage() {
-  return (
-    <Suspense fallback={<DashboardLoading />}>
-      <DashboardContent />
-    </Suspense>
-  );
+  return <DashboardWrapper initialData={initialData} />;
 }
