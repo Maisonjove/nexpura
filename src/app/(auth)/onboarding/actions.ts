@@ -103,6 +103,19 @@ export async function completeOnboarding(
     return { error: subErr.message };
   }
 
+  // 4. Create a default location for the tenant
+  const { error: locationErr } = await adminClient.from("locations").insert({
+    tenant_id: tenant.id,
+    name: `${businessName} - Main Store`,
+    type: "retail",
+    is_active: true,
+  });
+
+  if (locationErr) {
+    logger.error("Default location creation error:", locationErr);
+    // Non-critical — user can create location in settings
+  }
+
   // Seed default permissions for all roles
   try {
     await initDefaultPermissions(tenant.id);
