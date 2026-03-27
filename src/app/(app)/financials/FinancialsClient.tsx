@@ -15,6 +15,7 @@ import {
   pctChange,
 } from './components';
 import type { MetricsData } from './components/types';
+import { createClient } from '@/lib/supabase/client';
 
 interface FinancialsClientProps {
   tenantId: string;
@@ -34,10 +35,16 @@ export default function FinancialsClient({
   const [loadingMetrics, setLoadingMetrics] = useState(true);
 
   useEffect(() => {
-    fetch('/api/financials/metrics')
-      .then((r) => r.json())
-      .then((d) => { if (!d.error) setMetrics(d); })
-      .finally(() => setLoadingMetrics(false));
+    const supabase = createClient();
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const headers: HeadersInit = session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {};
+      const r = await fetch('/api/financials/metrics', { headers });
+      const d = await r.json();
+      if (!d.error) setMetrics(d);
+      setLoadingMetrics(false);
+    });
   }, []);
 
   const now = new Date();
