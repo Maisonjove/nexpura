@@ -7,7 +7,9 @@ async function getAuthContext() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
-  const { data: userData } = await supabase
+    // Use admin client to bypass RLS recursion on users table (same fix as AppLayout)
+    const adminClient = createAdminClient();
+  const { data: userData } = await adminClient
     .from("users")
     .select("tenant_id, role, tenants(name, currency, tax_rate, tax_name)")
     .eq("id", user.id)
