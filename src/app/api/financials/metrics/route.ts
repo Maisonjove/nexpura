@@ -143,8 +143,6 @@ export async function GET(req: Request) {
       quarterlyGST,
       gstRate,
     });
-    // Cache financial metrics for 5 minutes (private — user-specific data)
-    response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=60");
     return response;
   } catch (err) {
     logger.error("Metrics error:", err);
