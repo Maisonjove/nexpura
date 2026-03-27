@@ -6,6 +6,27 @@ import { redirect } from "next/navigation";
 import { initDefaultPermissions } from "@/lib/permissions";
 import logger from "@/lib/logger";
 
+// ============================================================================
+// VALIDATION & SANITIZATION
+// ============================================================================
+
+const MAX_BUSINESS_NAME_LENGTH = 100;
+const VALID_PLANS = ["boutique", "studio", "atelier"] as const;
+const VALID_BUSINESS_TYPES = [
+  "Independent Jeweller",
+  "Jewellery Studio",
+  "Retail Store",
+  "Workshop",
+  "Online Store",
+  "Other",
+];
+
+function sanitizeString(str: string | undefined | null, maxLength: number): string {
+  if (!str || typeof str !== "string") return "";
+  // Trim, limit length, remove control characters
+  return str.trim().slice(0, maxLength).replace(/[\x00-\x1F\x7F]/g, "");
+}
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -22,22 +43,46 @@ export async function completeOnboarding(
   businessType: string,
   plan: "boutique" | "studio" | "atelier"
 ): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
+    if (!user) {
+      return { error: "Not authenticated" };
+    }
 
-  const adminClient = createAdminClient();
+    // Validate and sanitize inputs
+    const sanitizedName = sanitizeString(businessName, MAX_BUSINESS_NAME_LENGTH);
+    if (!sanitizedName || sanitizedName.length < 2) {
+      return { error: "Business name must be at least 2 characters" };
+    }
+
+    const sanitizedType = VALID_BUSINESS_TYPES.includes(businessType) 
+      ? businessType 
+      : "Other";
+
+    const validPlan = VALID_PLANS.includes(plan) ? plan : "boutique";
+
+    // Check if user already has a tenant (prevent duplicate onboarding)
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
+
+    if (existingUser?.tenant_id) {
+      redirect("/dashboard");
+    }
+
+    const adminClient = createAdminClient();
 
   // Generate unique slug
-  let slug = slugify(businessName);
+  let slug = slugify(sanitizedName);
   if (!slug) slug = "business";
 
-  // Check if slug exists
+  // Check if slug exists and make unique
   const { data: existingTenant } = await adminClient
     .from("tenants")
     .select("id")
@@ -52,10 +97,10 @@ export async function completeOnboarding(
   const { data: tenant, error: tenantErr } = await adminClient
     .from("tenants")
     .insert({
-      name: businessName,
+      name: sanitizedName,
       slug,
-      business_type: businessType,
-      plan, // Keep in sync with subscriptions.plan
+      business_type: sanitizedType,
+      plan: validPlan,
     })
     .select()
     .single();
@@ -93,20 +138,24 @@ export async function completeOnboarding(
 
   const { error: subErr } = await adminClient.from("subscriptions").insert({
     tenant_id: tenant.id,
-    plan,
+    plan: validPlan,
     status: "trialing",
     trial_ends_at: trialEndsAt.toISOString(),
   });
 
   if (subErr) {
     logger.error("Subscription creation error:", subErr);
-    return { error: subErr.message };
+    // Clean up tenant on failure
+    await adminClient.from("users").delete().eq("id", user.id);
+    await adminClient.from("tenants").delete().eq("id", tenant.id);
+    return { error: "Failed to create subscription" };
   }
 
-  // 4. Create a default location for the tenant
+  // 4. Create a default location for the tenant (sanitized name)
+  const locationName = `${sanitizedName} - Main Store`.slice(0, 100);
   const { error: locationErr } = await adminClient.from("locations").insert({
     tenant_id: tenant.id,
-    name: `${businessName} - Main Store`,
+    name: locationName,
     type: "retail",
     is_active: true,
   });
@@ -119,9 +168,14 @@ export async function completeOnboarding(
   // Seed default permissions for all roles
   try {
     await initDefaultPermissions(tenant.id);
-  } catch {
+  } catch (permErr) {
+    logger.error("Permission seeding error:", permErr);
     // Non-critical — continue
   }
 
   redirect("/dashboard");
+  } catch (error) {
+    logger.error("completeOnboarding failed", { error });
+    return { error: "Something went wrong. Please try again." };
+  }
 }
