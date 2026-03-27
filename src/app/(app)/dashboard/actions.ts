@@ -135,22 +135,18 @@ async function getDashboardDataInternal(
   const today = new Date().toISOString().split("T")[0];
   const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-  // Quick check: does this tenant have any data at all?
-  // This is a fast single query that can short-circuit for new tenants
-  const { count: salesCount } = await admin
-    .from("sales")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId)
-    .limit(1);
-  
-  const { count: repairsCount } = await admin
-    .from("repairs")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId)
-    .limit(1);
+  // Quick parallel check: does this tenant have any data at all?
+  // These run in parallel to minimize latency
+  const [salesCheck, repairsCheck] = await Promise.all([
+    admin.from("sales").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).limit(1),
+    admin.from("repairs").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).limit(1),
+  ]);
+
+  const salesCount = salesCheck.count ?? 0;
+  const repairsCount = repairsCheck.count ?? 0;
 
   // If tenant has no sales AND no repairs, return empty dashboard fast
-  if ((salesCount === 0 || salesCount === null) && (repairsCount === 0 || repairsCount === null)) {
+  if (salesCount === 0 && repairsCount === 0) {
     return getEmptyDashboardData(firstName, tenantName, currency, isManager);
   }
 
