@@ -11,7 +11,17 @@ export async function GET(req: Request) {
 
     const supabase = await createClient();
 
-    const { data: { user } } = await supabase.auth.getUser();
+    let { data: { user } } = await supabase.auth.getUser();
+
+    // Fallback: accept Bearer token when cookies don't reach the Route Handler.
+    if (!user) {
+      const authHeader = req.headers.get("Authorization");
+      const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+      if (token) {
+        const { data } = await supabase.auth.getUser(token);
+        user = data.user;
+      }
+    }
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
     // FIX: create admin client BEFORE querying the users table.
