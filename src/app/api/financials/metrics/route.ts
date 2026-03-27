@@ -10,6 +10,8 @@ export async function GET(req: Request) {
     if (!rlSuccess) return Response.json({ error: "Too many requests" }, { status: 429 });
 
     const supabase = await createClient();
+    const _cookies = await (await import("next/headers")).cookies();
+    logger.info({ cookieNames: _cookies.getAll().map(c => c.name), reqCookieHeader: req.headers.get("cookie")?.substring(0,50) }, "debug: route cookies");
 
     let { data: { user } } = await supabase.auth.getUser();
 
