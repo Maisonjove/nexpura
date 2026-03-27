@@ -12,7 +12,10 @@ export default async function FinancialsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-
+  // Get session server-side to extract access token for client-side API calls.
+  // Cookies are not reliably forwarded to Route Handlers from client fetches,
+  // so we pass the token as a prop and use Bearer auth in FinancialsClient.
+  const { data: { session } } = await supabase.auth.getSession();
   const ctx = await getEntitlementContext();
   if (!ctx.tenantId) redirect("/onboarding");
 
@@ -26,8 +29,7 @@ export default async function FinancialsPage() {
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">Advanced Financials</h1>
           <p className="text-stone-500 mt-2 text-sm leading-relaxed">
-            Your current plan <strong className="text-stone-900">{planDisplayName(ctx.plan)}</strong> includes basic dashboard metrics only.
-            Upgrade to <strong className="text-stone-900">Studio</strong> or <strong className="text-stone-900">Atelier</strong> to access deep financial insights, revenue charts, and tax reporting.
+            Your current plan <strong className="text-stone-900">{planDisplayName(ctx.plan)}</strong> includes basic dashboard metrics only. Upgrade to <strong className="text-stone-900">Studio</strong> or <strong className="text-stone-900">Atelier</strong> to access deep financial insights, revenue charts, and tax reporting.
           </p>
         </div>
         <Link
@@ -55,6 +57,7 @@ export default async function FinancialsPage() {
       businessName={tenant?.name ?? "Your Business"}
       gstRate={tenant?.gst_rate ?? 0.1}
       currency={tenant?.currency ?? "AUD"}
+      accessToken={session?.access_token ?? ""}
     />
   );
 }
