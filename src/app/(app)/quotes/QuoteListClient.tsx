@@ -51,8 +51,8 @@ export default function QuoteListClient() {
   async function loadQuotes() {
     setLoading(true);
     try {
-      const data = await getQuotesList();
-      setQuotes((data || []) as Quote[]);
+      const result = await getQuotesList();
+      setQuotes((result.data || []) as Quote[]);
     } catch (err) {
       logger.error(err);
     } finally {
