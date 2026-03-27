@@ -768,6 +768,17 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Pro
   ]);
 }
 
+// Public function to get empty dashboard (for error fallback)
+export async function getEmptyDashboard(): Promise<DashboardData> {
+  try {
+    const { tenantName, currency, isManager } = await getAuthContext();
+    return getEmptyDashboardData(tenantName || "there", tenantName, currency, isManager);
+  } catch {
+    // If even auth fails, return absolute minimum
+    return getEmptyDashboardData("there", null, "AUD", false);
+  }
+}
+
 // Public function that handles auth and calls cached internal function
 export async function getDashboardData(locationIds: string[] | null): Promise<DashboardData> {
   const { userId, tenantId, tenantName, currency, isManager } = await getAuthContext();
