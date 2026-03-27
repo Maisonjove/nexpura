@@ -52,7 +52,11 @@ export async function checkRateLimit(
 ): Promise<{ success: boolean; remaining?: number }> {
   const limiter = rateLimiters[type];
   if (!limiter) return { success: true };
-  
-  const result = await limiter.limit(identifier);
-  return { success: result.success, remaining: result.remaining };
+  try {
+    const result = await limiter.limit(identifier);
+    return { success: result.success, remaining: result.remaining };
+  } catch {
+    // Redis unavailable or wrong credentials — fail open so the API still works
+    return { success: true };
+  }
 }
