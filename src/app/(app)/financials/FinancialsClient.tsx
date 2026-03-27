@@ -1,9 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Sparkles, Calendar, DollarSign, ReceiptText, AlertCircle, TrendingDown, BarChart3 } from 'lucide-react';
 
-// Lazy-load heavy chart library (recharts ~400KB) — only loaded when financials page is visited
 const RevenueChart = dynamic(() => import('./RevenueChart'), { ssr: false });
 
 import {
@@ -22,8 +21,8 @@ interface FinancialsClientProps {
   businessName: string;
   gstRate: number;
   currency?: string;
-  /** Access token passed from the server component for Bearer auth on API calls. */
-  accessToken?: string;
+  /** Metrics pre-fetched server-side; avoids client-side auth entirely. */
+  initialMetrics?: MetricsData | null;
 }
 
 export default function FinancialsClient({
@@ -31,31 +30,18 @@ export default function FinancialsClient({
   businessName,
   gstRate,
   currency = 'AUD',
-  accessToken = '',
+  initialMetrics = null,
 }: FinancialsClientProps) {
   const [tab, setTab] = useState<'dashboard' | 'reports'>('dashboard');
-  const [metrics, setMetrics] = useState<MetricsData | null>(null);
-  const [loadingMetrics, setLoadingMetrics] = useState(true);
-
-  useEffect(() => {
-    const headers: HeadersInit = accessToken
-      ? { Authorization: `Bearer ${accessToken}` }
-      : {};
-    fetch('/api/financials/metrics', { headers })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.error) setMetrics(d);
-        setLoadingMetrics(false);
-      })
-      .catch(() => setLoadingMetrics(false));
-  }, [accessToken]);
+  // Initialise directly from SSR data — no client-side fetch needed.
+  const [metrics] = useState<MetricsData | null>(initialMetrics);
+  const loadingMetrics = false;
 
   const now = new Date();
   const monthLabel = now.toLocaleString('en-AU', { month: 'long', year: 'numeric' });
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-semibold text-2xl text-stone-900">Financials</h1>
@@ -63,7 +49,6 @@ export default function FinancialsClient({
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 border-b border-stone-200">
         {[
           { key: 'dashboard', label: 'AI Dashboard', icon: <Sparkles size={13} /> },
@@ -73,29 +58,23 @@ export default function FinancialsClient({
             key={t.key}
             onClick={() => setTab(t.key as typeof tab)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === t.key
-                ? 'border-amber-600 text-amber-700'
-                : 'border-transparent text-stone-500 hover:text-stone-700'
+              tab === t.key ? 'border-amber-600 text-amber-700' : 'border-transparent text-stone-500 hover:text-stone-700'
             }`}
           >
-            {t.icon}
-            {t.label}
+            {t.icon}{t.label}
           </button>
         ))}
       </div>
 
-      {/* Dashboard Tab */}
       {tab === 'dashboard' && (
         <div className="space-y-8">
-          {/* Section 1 — Key Metrics */}
           <section>
             <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wider mb-4">Key Metrics — {monthLabel}</h2>
             {loadingMetrics ? (
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
+                {[1,2,3,4,5,6].map((i) => (
                   <div key={i} className="bg-white rounded-xl border border-stone-200 p-5 space-y-3">
-                    <Skeleton h="h-3" w="w-24" />
-                    <Skeleton h="h-8" />
+                    <Skeleton h="h-3" w="w-24" /><Skeleton h="h-8" />
                   </div>
                 ))}
               </div>
@@ -112,23 +91,20 @@ export default function FinancialsClient({
                     <p className="text-sm text-stone-400">No data</p>
                   ) : (
                     <div className="space-y-2">
-                      {Object.entries(metrics.paymentBreakdown)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 4)
-                        .map(([method, total]) => {
-                          const pct = metrics.revenueThisMonth > 0 ? (total / metrics.revenueThisMonth) * 100 : 0;
-                          return (
-                            <div key={method}>
-                              <div className="flex justify-between text-xs mb-0.5">
-                                <span className="capitalize text-stone-600">{method.replace('_', ' ')}</span>
-                                <span className="text-stone-500">{pct.toFixed(0)}%</span>
-                              </div>
-                              <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
-                                <div className="h-1.5 bg-amber-700 rounded-full" style={{ width: `${pct}%` }} />
-                              </div>
+                      {Object.entries(metrics.paymentBreakdown).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([method,total]) => {
+                        const pct = metrics.revenueThisMonth > 0 ? (total/metrics.revenueThisMonth)*100 : 0;
+                        return (
+                          <div key={method}>
+                            <div className="flex justify-between text-xs mb-0.5">
+                              <span className="capitalize text-stone-600">{method.replace('_',' ')}</span>
+                              <span className="text-stone-500">{pct.toFixed(0)}%</span>
                             </div>
-                          );
-                        })}
+                            <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                              <div className="h-1.5 bg-amber-700 rounded-full" style={{width:`${pct}%`}} />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -138,31 +114,22 @@ export default function FinancialsClient({
             )}
           </section>
 
-          {/* Section 2 — AI Insights */}
           <section>
             <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wider mb-4">AI Insights</h2>
             <AIInsightsPanel />
           </section>
 
-          {/* Section 4 — Revenue Chart */}
           <section>
             <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wider mb-4">Revenue — Last 30 Days</h2>
             <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
-              {loadingMetrics ? (
-                <Skeleton h="h-48" />
-              ) : metrics?.chartData ? (
-                <RevenueChart data={metrics.chartData} />
-              ) : null}
+              {metrics?.chartData ? <RevenueChart data={metrics.chartData} /> : null}
             </div>
           </section>
 
-          {/* Section 5 — GST Summary */}
           <section>
             <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wider mb-4">GST Summary</h2>
             <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
-              {loadingMetrics ? (
-                <div className="space-y-3"><Skeleton /><Skeleton h="h-32" /></div>
-              ) : metrics ? (
+              {metrics ? (
                 <>
                   <div className="grid grid-cols-3 gap-4 mb-6">
                     <div className="text-center p-4 bg-stone-50 rounded-lg">
@@ -184,7 +151,7 @@ export default function FinancialsClient({
                   <p className="text-xs text-stone-400 mb-4 italic">
                     ⚠️ This is an estimate based on tax-inclusive revenue at {(metrics.gstRate * 100).toFixed(0)}%. Consult your accountant for official BAS lodgement.
                   </p>
-                  {metrics.quarterlyGST && metrics.quarterlyGST.length > 0 && (
+                  {metrics.quarterlyGST?.length > 0 && (
                     <>
                       <h3 className="text-sm font-semibold text-stone-700 mb-3">Quarterly GST (Last 4 Quarters)</h3>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -203,7 +170,6 @@ export default function FinancialsClient({
             </div>
           </section>
 
-          {/* Section 3 — AI Chat */}
           <section>
             <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wider mb-4">Ask Your Finances</h2>
             <FinancialChat />
@@ -211,7 +177,6 @@ export default function FinancialsClient({
         </div>
       )}
 
-      {/* Reports Tab */}
       {tab === 'reports' && <FinancialReportTab gstRate={gstRate} currency={currency} />}
     </div>
   );
