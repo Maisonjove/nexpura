@@ -85,6 +85,41 @@ function getLast7Days(): string[] {
   return days;
 }
 
+// Empty dashboard data for new tenants (fast path)
+function getEmptyDashboardData(
+  firstName: string,
+  tenantName: string | null,
+  currency: string,
+  isManager: boolean
+): DashboardData {
+  return {
+    firstName,
+    tenantName,
+    salesThisMonthRevenue: 0,
+    salesThisMonthCount: 0,
+    activeRepairsCount: 0,
+    activeJobsCount: 0,
+    totalOutstanding: 0,
+    overdueInvoiceCount: 0,
+    lowStockItems: [],
+    overdueRepairs: [],
+    readyForPickup: [],
+    recentActivity: [],
+    myTasks: [],
+    teamTaskSummary: [],
+    isManager,
+    activeRepairs: [],
+    activeBespokeJobs: [],
+    currency,
+    revenueSparkline: Array(7).fill({ value: 0 }),
+    salesCountSparkline: Array(7).fill({ value: 0 }),
+    repairsSparkline: Array(7).fill({ value: 0 }),
+    customersSparkline: Array(7).fill({ value: 0 }),
+    salesBarData: [],
+    repairStageData: [],
+  };
+}
+
 // Internal function that does the actual data fetching - this gets cached
 async function getDashboardDataInternal(
   userId: string,
@@ -99,6 +134,25 @@ async function getDashboardDataInternal(
   const firstName = tenantName || "there";
   const today = new Date().toISOString().split("T")[0];
   const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
+  // Quick check: does this tenant have any data at all?
+  // This is a fast single query that can short-circuit for new tenants
+  const { count: salesCount } = await admin
+    .from("sales")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .limit(1);
+  
+  const { count: repairsCount } = await admin
+    .from("repairs")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .limit(1);
+
+  // If tenant has no sales AND no repairs, return empty dashboard fast
+  if ((salesCount === 0 || salesCount === null) && (repairsCount === 0 || repairsCount === null)) {
+    return getEmptyDashboardData(firstName, tenantName, currency, isManager);
+  }
 
   // Fetch locations for name lookup if we're showing all locations
   const showLocationNames = !locationIds || locationIds.length > 1;
