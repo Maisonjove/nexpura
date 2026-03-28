@@ -40,8 +40,7 @@ export default function LoginPage() {
         localStorage.removeItem("nexpura_remember_me");
       }
 
-      router.push("/dashboard");
-      router.refresh();
+            window.location.href = "/dashboard";
     });
   }
 
