@@ -132,6 +132,7 @@ function isExemptPath(pathname: string): boolean {
     pathname.startsWith("/features") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/privacy") ||
+    pathname.startsWith("/dashboard") || // Skip sub check for dashboard - it has its own auth
     pathname.includes(".")
   );
 }
