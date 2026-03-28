@@ -97,7 +97,7 @@ export async function loginAction(
     console.error("[loginAction] Unexpected error:", error);
     return {
       success: false,
-      error: "An unexpected error occurred. Please try again.",
+      error: "An unexpected error occurred. Please try again later.",
     };
   }
 }
