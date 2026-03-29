@@ -26,7 +26,7 @@ export default function StockSection({
 }: StockSectionProps) {
   return (
     <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-      <SectionHeader title="Section 6: Stock & Location" />
+      <SectionHeader title="Stock & Location" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {mode === "create" && (
           <div>
