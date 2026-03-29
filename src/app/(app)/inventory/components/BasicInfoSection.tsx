@@ -10,7 +10,7 @@ import type { Category, InventoryItem } from "./types";
 interface BasicInfoSectionProps {
   item?: InventoryItem;
   mode: "create" | "edit";
-  initialCategories: Category[];
+  initialCategories: Category[];h
   itemType: string;
   setItemType: (val: string) => void;
   jewelleryType: string;
@@ -63,7 +63,7 @@ export default function BasicInfoSection({
 
   return (
     <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-      <SectionHeader title="Section 1: Basic Information" />
+      <SectionHeader title="Basic Information" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div className="sm:col-span-2">
           <FieldLabel htmlFor="name" required>Item Name</FieldLabel>
