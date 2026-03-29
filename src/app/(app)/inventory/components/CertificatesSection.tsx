@@ -22,7 +22,7 @@ export default function CertificatesSection({
   setReportUrl,
 }: CertificatesSectionProps) {
   return (
-    <CollapsibleSection title="Section 5: Certificates" badge={certNumber ? "Certified" : undefined}>
+    <CollapsibleSection title="Certificates" badge={certNumber ? "Certified" : undefined}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div>
           <FieldLabel htmlFor="certificate_number">Certificate Number</FieldLabel>
