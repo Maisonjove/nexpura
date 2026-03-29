@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Geist } from "next/font/google";
+import { Inter, Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -14,11 +14,19 @@ const geist = Geist({
   preload: true,
 });
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   variable: '--font-inter',
   display: 'swap', // Prevent FOIT (Flash of Invisible Text)
   preload: true,
+});
+
+const instrumentSerif = Instrument_Serif({
+  variable: '--font-instrument-serif',
+  subsets: ['latin'],
+  weight: '400',
+  style: ['normal', 'italic'],
+  display: 'swap',
 });
 
 export const viewport: Viewport = {
@@ -69,7 +77,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" dir="ltr" className={cn("font-sans", geist.variable)}>
+    <html lang="en" dir="ltr" className={cn("font-sans", geist.variable, instrumentSerif.variable)}>
       <head>
         {/* Preconnect to Supabase to reduce connection latency */}
         <link rel="preconnect" href="https://vkpjocnrefjfpuovzinn.supabase.co" />

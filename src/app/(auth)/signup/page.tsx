@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Gem, Check, X, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Check, X, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
 import { debounce } from "@/lib/utils";
 
 type Plan = "boutique" | "studio" | "atelier";
@@ -67,12 +67,10 @@ function SignupContent() {
   const [step, setStep] = useState(1);
   const [selectedPlan, setSelectedPlan] = useState<Plan>(preselectedPlan || "studio");
 
-  // Step 2: Subdomain
   const [subdomain, setSubdomain] = useState("");
   const [subdomainStatus, setSubdomainStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
   const [subdomainError, setSubdomainError] = useState("");
 
-  // Step 3: Account
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -81,7 +79,6 @@ function SignupContent() {
 
   const supabase = createClient();
 
-  // Debounced subdomain check
   const checkSubdomain = useCallback(
     debounce(async (value: string) => {
       if (!value || value.length < 3) {
@@ -140,28 +137,21 @@ function SignupContent() {
     setError(null);
 
     try {
-      // First create the Supabase auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: { full_name: fullName },
-        },
+        options: { data: { full_name: fullName } },
       });
 
       if (authError) {
-        // Handle error - ensure we always display a string message
         const errorMessage = authError.message || authError.code || "Failed to create account";
         setError(errorMessage);
         setLoading(false);
         return;
       }
 
-      // Go straight to onboarding - NO card required for 14-day trial
-      // Payment will be requested after trial ends (with 48h grace period)
       router.push("/onboarding");
     } catch (err) {
-      // Handle unexpected errors (network issues, etc.)
       const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
       setError(errorMessage);
       setLoading(false);
@@ -173,25 +163,22 @@ function SignupContent() {
   return (
     <div className="w-full max-w-4xl mx-auto">
       {/* Logo */}
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-2.5 mb-3">
-          <div className="w-9 h-9 rounded-lg bg-amber-700 flex items-center justify-center">
-            <Gem size={18} color="white" />
-          </div>
-          <span className="text-xl font-semibold text-stone-900">Nexpura</span>
-        </div>
-        <p className="text-sm text-stone-400">Cloud OS for Jewellery Businesses</p>
+      <div className="text-center mb-10">
+        <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">
+          NEXPURA
+        </Link>
+        <p className="text-sm text-stone-400 mt-2">The modern platform for jewellers</p>
       </div>
 
       {/* Progress indicator */}
-      <div className="flex items-center justify-center gap-0 mb-10">
+      <div className="flex items-center justify-center gap-0 mb-12">
         {[1, 2, 3].map((s) => (
           <div key={s} className="flex items-center">
             <div className="flex flex-col items-center">
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
                   s < step
-                    ? "bg-amber-700 text-white"
+                    ? "bg-stone-900 text-white"
                     : s === step
                     ? "bg-stone-900 text-white ring-4 ring-stone-200"
                     : "bg-white border-2 border-stone-200 text-stone-400"
@@ -203,7 +190,7 @@ function SignupContent() {
                 {s === 1 ? "Plan" : s === 2 ? "Subdomain" : "Account"}
               </span>
             </div>
-            {s < 3 && <div className={`w-20 h-0.5 mb-5 mx-1 ${s < step ? "bg-amber-700" : "bg-stone-200"}`} />}
+            {s < 3 && <div className={`w-20 h-0.5 mb-5 mx-1 ${s < step ? "bg-stone-900" : "bg-stone-200"}`} />}
           </div>
         ))}
       </div>
@@ -211,30 +198,30 @@ function SignupContent() {
       {/* Step 1: Choose Plan */}
       {step === 1 && (
         <div>
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-stone-900 mb-2">Choose your plan</h1>
-            <p className="text-stone-500 text-sm">14-day free trial · No credit card required</p>
+          <div className="text-center mb-10">
+            <h1 className="font-serif text-3xl text-stone-900 mb-3">Choose your plan</h1>
+            <p className="text-stone-400 text-sm">14-day free trial · No credit card required</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {PLANS.map((plan) => (
               <div
                 key={plan.id}
-                className={`relative bg-white rounded-xl border-2 transition-all hover:shadow-md cursor-pointer ${
-                  plan.recommended ? "border-amber-600 shadow-sm" : "border-stone-200 hover:border-stone-300"
-                } ${selectedPlan === plan.id ? "ring-2 ring-amber-600 ring-offset-2" : ""}`}
+                className={`relative bg-white rounded-2xl border-2 transition-all hover:shadow-md cursor-pointer ${
+                  plan.recommended ? "border-stone-900 shadow-sm" : "border-stone-200 hover:border-stone-300"
+                } ${selectedPlan === plan.id ? "ring-2 ring-stone-900 ring-offset-2" : ""}`}
                 onClick={() => setSelectedPlan(plan.id)}
               >
                 {plan.recommended && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-amber-700 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                    <span className="bg-stone-900 text-white text-xs font-semibold px-3 py-1 rounded-full">
                       Most popular
                     </span>
                   </div>
                 )}
                 <div className="p-6">
                   <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-stone-900 mb-1">{plan.name}</h3>
+                    <h3 className="font-serif text-xl text-stone-900 mb-1">{plan.name}</h3>
                     <div className="flex items-baseline gap-1">
                       <span className="text-2xl font-bold text-stone-900">{plan.price}</span>
                       <span className="text-stone-400 text-sm">AUD/mo</span>
@@ -243,7 +230,7 @@ function SignupContent() {
                   <ul className="space-y-2 mb-6">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-center gap-2 text-sm text-stone-600">
-                        <Check size={14} className="text-amber-700 flex-shrink-0" />
+                        <Check size={14} className="text-stone-900 flex-shrink-0" />
                         {feature}
                       </li>
                     ))}
@@ -253,9 +240,9 @@ function SignupContent() {
                       e.stopPropagation();
                       handleSelectPlan(plan.id);
                     }}
-                    className={`w-full py-2.5 rounded-md font-semibold text-sm transition-all ${
+                    className={`w-full py-2.5 rounded-full font-semibold text-sm transition-all ${
                       plan.recommended || selectedPlan === plan.id
-                        ? "bg-amber-700 hover:bg-amber-800 text-white"
+                        ? "bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] text-white shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
                         : "bg-white border-2 border-stone-200 text-stone-700 hover:border-stone-300"
                     }`}
                   >
@@ -266,9 +253,9 @@ function SignupContent() {
             ))}
           </div>
 
-          <p className="text-center text-sm text-stone-400 mt-6">
+          <p className="text-center text-sm text-stone-400 mt-8">
             Already have an account?{" "}
-            <Link href="/login" className="text-amber-700 hover:underline font-medium">
+            <Link href="/login" className="text-stone-900 hover:opacity-70 transition-opacity font-medium">
               Sign in
             </Link>
           </p>
@@ -278,16 +265,14 @@ function SignupContent() {
       {/* Step 2: Choose Subdomain */}
       {step === 2 && (
         <div className="max-w-md mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-stone-900 mb-2">Choose your subdomain</h1>
-            <p className="text-stone-500 text-sm">This will be your store&apos;s URL</p>
+          <div className="text-center mb-10">
+            <h1 className="font-serif text-3xl text-stone-900 mb-3">Choose your subdomain</h1>
+            <p className="text-stone-400 text-sm">This will be your store&apos;s URL</p>
           </div>
 
-          <div className="bg-white rounded-xl border border-stone-200 p-8 shadow-sm">
+          <div className="bg-white rounded-2xl border border-stone-200/60 p-8 shadow-sm">
             <div className="mb-6">
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">
-                Your store URL
-              </label>
+              <label className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">Your store URL</label>
               <div className="flex items-center">
                 <input
                   type="text"
@@ -295,14 +280,13 @@ function SignupContent() {
                   onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
                   placeholder="your-store"
                   autoFocus
-                  className="flex-1 px-3 py-2.5 rounded-l-md border border-r-0 border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors text-sm"
+                  className="flex-1 px-4 py-3 rounded-l-lg border border-r-0 border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
                 />
-                <span className="px-3 py-2.5 bg-stone-100 border border-stone-200 rounded-r-md text-stone-500 text-sm">
+                <span className="px-4 py-3 bg-stone-50 border border-stone-200 rounded-r-lg text-stone-500 text-sm">
                   .nexpura.com
                 </span>
               </div>
 
-              {/* Status indicator */}
               <div className="mt-2 h-5">
                 {subdomainStatus === "checking" && (
                   <div className="flex items-center gap-2 text-stone-400 text-sm">
@@ -334,7 +318,7 @@ function SignupContent() {
             <button
               onClick={handleSubdomainContinue}
               disabled={subdomainStatus !== "available"}
-              className="w-full bg-amber-700 hover:bg-amber-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-md transition-colors text-sm flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-full transition-all text-sm flex items-center justify-center gap-2 shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
             >
               Continue
               <ArrowRight size={16} />
@@ -342,7 +326,7 @@ function SignupContent() {
 
             <button
               onClick={() => setStep(1)}
-              className="w-full mt-3 text-sm text-stone-400 hover:text-stone-600 transition-colors flex items-center justify-center gap-1"
+              className="w-full mt-4 text-sm text-stone-400 hover:text-stone-600 transition-colors flex items-center justify-center gap-1"
             >
               <ArrowLeft size={14} />
               Back to plans
@@ -354,49 +338,43 @@ function SignupContent() {
       {/* Step 3: Create Account */}
       {step === 3 && (
         <div className="max-w-md mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-stone-900 mb-2">Create your account</h1>
-            <p className="text-stone-500 text-sm">Almost there! Just a few more details.</p>
+          <div className="text-center mb-10">
+            <h1 className="font-serif text-3xl text-stone-900 mb-3">Create your account</h1>
+            <p className="text-stone-400 text-sm">Almost there! Just a few more details.</p>
           </div>
 
-          <div className="bg-white rounded-xl border border-stone-200 p-8 shadow-sm">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-amber-800">
+          <div className="bg-white rounded-2xl border border-stone-200/60 p-8 shadow-sm">
+            <div className="bg-stone-50 border border-stone-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-stone-700">
                 <strong>{subdomain}.nexpura.com</strong> on the <strong>{planLabel}</strong> plan
               </p>
             </div>
 
-            <form onSubmit={handleSignup} className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-5">
               <div>
-                <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-                  Your name
-                </label>
+                <label className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">Your name</label>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
                   placeholder="Jane Smith"
-                  className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-                  Work email
-                </label>
+                <label className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">Work email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="you@yourshop.com"
-                  className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-                  Password
-                </label>
+                <label className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">Password</label>
                 <input
                   type="password"
                   value={password}
@@ -404,18 +382,18 @@ function SignupContent() {
                   required
                   minLength={8}
                   placeholder="At least 8 characters"
-                  className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
                 />
               </div>
 
               {error && (
-                <p className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md">{error}</p>
+                <p className="text-red-600 text-sm bg-red-50 border border-red-100 px-4 py-2.5 rounded-lg">{error}</p>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-amber-700 hover:bg-amber-800 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] hover:from-[#4a4a4a] hover:to-[#2a2a2a] text-white font-medium py-3 rounded-full transition-all disabled:opacity-60 text-sm flex items-center justify-center gap-2 shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
               >
                 {loading ? (
                   <>
@@ -431,29 +409,21 @@ function SignupContent() {
               </button>
             </form>
 
-            <p className="text-center text-xs text-stone-400 mt-4">
+            <p className="text-center text-xs text-stone-400 mt-5">
               By signing up you agree to our{" "}
-              <a href="/terms" className="underline">
-                Terms
-              </a>{" "}
-              and{" "}
-              <a href="/privacy" className="underline">
-                Privacy Policy
-              </a>
-              .
+              <a href="/terms" className="underline">Terms</a> and{" "}
+              <a href="/privacy" className="underline">Privacy Policy</a>.
             </p>
 
-            {/* Divider */}
-            <div className="relative my-5">
+            <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-stone-200" />
+                <div className="w-full border-t border-stone-100" />
               </div>
-              <div className="relative flex justify-center text-xs text-stone-400 bg-white px-3">
+              <div className="relative flex justify-center text-xs text-stone-400 bg-white px-4">
                 or sign up with
               </div>
             </div>
 
-            {/* Google OAuth */}
             <button
               type="button"
               onClick={async () => {
@@ -462,14 +432,11 @@ function SignupContent() {
                   provider: "google",
                   options: {
                     redirectTo: `${window.location.origin}/auth/callback`,
-                    queryParams: {
-                      access_type: "offline",
-                      prompt: "consent",
-                    },
+                    queryParams: { access_type: "offline", prompt: "consent" },
                   },
                 });
               }}
-              className="w-full flex items-center justify-center gap-3 border border-stone-200 rounded-md py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+              className="w-full flex items-center justify-center gap-3 border border-stone-200 rounded-full py-3 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M17.64 9.20455C17.64 8.56636 17.5827 7.95273 17.4764 7.36364H9V10.845H13.8436C13.635 11.97 13.0009 12.9232 12.0477 13.5614V15.8195H14.9564C16.6582 14.2527 17.64 11.9455 17.64 9.20455Z" fill="#4285F4"/>
@@ -494,16 +461,13 @@ function SignupContent() {
   );
 }
 
-
 export default function SignupPage() {
   return (
     <Suspense
       fallback={
         <div className="w-full max-w-md mx-auto text-center">
-          <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-6">
-            <Loader2 size={32} className="text-amber-600 animate-spin" />
-          </div>
-          <h1 className="text-xl font-semibold text-stone-900 mb-2">Loading...</h1>
+          <div className="font-serif text-2xl tracking-[0.12em] text-stone-900 mb-6">NEXPURA</div>
+          <Loader2 size={32} className="text-stone-400 animate-spin mx-auto" />
         </div>
       }
     >

@@ -64,7 +64,7 @@ export default {
       },
       fontFamily: {
         sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
-        serif: ["var(--font-serif)", "Cormorant Garamond", "Georgia", "serif"],
+        serif: ["var(--font-instrument-serif)", "var(--font-serif)", "Cormorant Garamond", "Georgia", "serif"],
       },
       fontSize: {
         "display": ["3rem", { lineHeight: "1.15", letterSpacing: "-0.01em" }],

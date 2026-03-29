@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Gem } from "lucide-react";
 import { loginAction } from "./actions";
 
 export default function LoginPage() {
@@ -27,50 +26,44 @@ export default function LoginPage() {
         return;
       }
 
-      // Check if 2FA is required
       if (result.requires2FA && result.userId && result.email) {
         router.push(`/verify-2fa?userId=${result.userId}&email=${encodeURIComponent(result.email)}`);
         return;
       }
 
-      // Store remember me preference in localStorage
       if (rememberMe) {
         localStorage.setItem("nexpura_remember_me", "true");
       } else {
         localStorage.removeItem("nexpura_remember_me");
       }
 
-            router.push("/dashboard");
-                  router.refresh();
+      router.push("/dashboard");
+      router.refresh();
     });
   }
 
   return (
     <div className="w-full max-w-md">
       {/* Logo */}
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-2.5 mb-3">
-          <div className="w-9 h-9 rounded-lg bg-amber-700 flex items-center justify-center">
-            <Gem size={18} color="white" />
-          </div>
-          <span className="text-xl font-semibold text-stone-900">Nexpura</span>
-        </div>
-        <p className="text-sm text-stone-400">Cloud OS for Jewellery Businesses</p>
+      <div className="text-center mb-10">
+        <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">
+          NEXPURA
+        </Link>
+        <p className="text-sm text-stone-400 mt-2">The modern platform for jewellers</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-stone-200 p-10 w-full shadow-sm">
-        <h2 className="text-xl font-semibold text-stone-900 mb-6">
+      <div className="bg-white rounded-2xl border border-stone-200/60 p-10 w-full shadow-sm">
+        <h2 className="font-serif text-2xl text-stone-900 mb-8">
           Welcome back
         </h2>
 
-        <form onSubmit={handlePasswordLogin} className="space-y-4" aria-label="Login form">
+        <form onSubmit={handlePasswordLogin} className="space-y-5" aria-label="Login form">
           <div>
-            <label 
+            <label
               htmlFor="email"
-              className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5"
+              className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2"
             >
               Email
-              <span className="sr-only"> (required)</span>
             </label>
             <input
               id="email"
@@ -82,16 +75,15 @@ export default function LoginPage() {
               aria-describedby={error ? "login-error" : undefined}
               placeholder="you@yourshop.com"
               autoComplete="email"
-              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
+              className="w-full px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
             />
           </div>
           <div>
-            <label 
+            <label
               htmlFor="password"
-              className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5"
+              className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2"
             >
               Password
-              <span className="sr-only"> (required)</span>
             </label>
             <input
               id="password"
@@ -103,11 +95,10 @@ export default function LoginPage() {
               aria-describedby={error ? "login-error" : undefined}
               placeholder="••••••••"
               autoComplete="current-password"
-              className="w-full px-3 py-2.5 rounded-md border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/20 focus:border-amber-600 transition-colors text-sm"
+              className="w-full px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
             />
           </div>
 
-          {/* Remember me checkbox */}
           <div className="flex items-center justify-between">
             <label htmlFor="remember-me" className="flex items-center gap-2 cursor-pointer">
               <input
@@ -115,21 +106,21 @@ export default function LoginPage() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600/20 cursor-pointer"
+                className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-900/20 cursor-pointer"
               />
-              <span className="text-sm text-stone-600">Remember me</span>
+              <span className="text-sm text-stone-500">Remember me</span>
             </label>
-            <Link href="/forgot-password" className="text-sm text-amber-700 hover:underline">
+            <Link href="/forgot-password" className="text-sm text-stone-900 hover:opacity-70 transition-opacity">
               Forgot password?
             </Link>
           </div>
 
           {error && (
-            <p 
+            <p
               id="login-error"
               role="alert"
               aria-live="assertive"
-              className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md"
+              className="text-red-600 text-sm bg-red-50 border border-red-100 px-4 py-2.5 rounded-lg"
             >
               {error}
             </p>
@@ -138,18 +129,18 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full bg-amber-700 hover:bg-amber-800 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-60 text-sm"
+            className="w-full bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] hover:from-[#4a4a4a] hover:to-[#2a2a2a] text-white font-medium py-3 rounded-full transition-all disabled:opacity-60 text-sm shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
           >
             {isPending ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
         {/* Divider */}
-        <div className="relative my-6">
+        <div className="relative my-8">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-stone-200" />
+            <div className="w-full border-t border-stone-100" />
           </div>
-          <div className="relative flex justify-center text-xs text-stone-400 bg-white px-3">
+          <div className="relative flex justify-center text-xs text-stone-400 bg-white px-4">
             or continue with
           </div>
         </div>
@@ -166,7 +157,7 @@ export default function LoginPage() {
               },
             });
           }}
-          className="w-full flex items-center justify-center gap-3 border border-stone-200 rounded-md py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+          className="w-full flex items-center justify-center gap-3 border border-stone-200 rounded-full py-3 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2"
           aria-label="Sign in with Google"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -178,9 +169,9 @@ export default function LoginPage() {
           Continue with Google
         </button>
 
-        <p className="text-center text-sm text-stone-500 mt-6">
+        <p className="text-center text-sm text-stone-400 mt-8">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-amber-700 hover:underline font-medium">
+          <Link href="/signup" className="text-stone-900 hover:opacity-70 transition-opacity font-medium">
             Sign up free
           </Link>
         </p>
