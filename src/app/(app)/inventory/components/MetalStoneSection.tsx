@@ -42,7 +42,7 @@ export default function MetalStoneSection({
   return (
     <>
       {/* Metal Details */}
-      <CollapsibleSection title="Section 3: Metal Details" defaultOpen badge={itemType === "raw_material" || metalForm ? "Relevant" : undefined}>
+      <CollapsibleSection title="Metal Details" defaultOpen badge={itemType === "raw_material" || metalForm ? "Relevant" : undefined}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <div>
             <FieldLabel htmlFor="metal_type">Metal Type</FieldLabel>
@@ -89,7 +89,7 @@ export default function MetalStoneSection({
       </CollapsibleSection>
 
       {/* Stone Details */}
-      <CollapsibleSection title="Section 4: Stone Details" badge={secondaryStones.length > 0 ? `${secondaryStones.length} stones` : undefined}>
+      <CollapsibleSection title="Stone Details" badge={secondaryStones.length > 0 ? `${secondaryStones.length} stones` : undefined}>
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <div>
