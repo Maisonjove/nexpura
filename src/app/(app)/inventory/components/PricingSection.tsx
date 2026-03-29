@@ -23,7 +23,7 @@ export default function PricingSection({
 
   return (
     <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-      <SectionHeader title="Section 2: Pricing" />
+      <SectionHeader title="Pricing" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div>
           <FieldLabel htmlFor="cost_price">Cost Price</FieldLabel>
