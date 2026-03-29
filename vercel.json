@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "src/app/(app)/dashboard/page.tsx": {
+      "maxDuration": 60
+    },
+    "src/app/(app)/layout.tsx": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/grace-period-checker",
