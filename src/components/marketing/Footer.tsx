@@ -50,7 +50,7 @@ export function Footer() {
               <p className="text-xs font-semibold text-stone-500 uppercase tracking-widest mb-4">{group}</p>
               <ul className="space-y-2.5">
                 {links.map((link) => (
-                  <li key={link.href}>
+                  <li key={link.label}>
                     <Link
                       href={link.href}
                       className="text-sm text-stone-500 hover:text-white transition-colors"
