@@ -10,7 +10,7 @@ interface ConsignmentSectionProps {
   setConsignmentStart: (val: string) => void;
   consignmentEnd: string;
   setConsignmentEnd: (val: string) => void;
-  consignmentCommPct: string;
+  consignmentCommPct: string;h
   setConsignmentCommPct: (val: string) => void;
 }
 
@@ -32,7 +32,7 @@ export default function ConsignmentSection({
   }
 
   return (
-    <CollapsibleSection title="Section 7: Consignment" defaultOpen={status === "consignment"}>
+    <CollapsibleSection title="Consignment Details" defaultOpen={status === "consignment"}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <FieldLabel htmlFor="consignor_name">Consignor Name</FieldLabel>
