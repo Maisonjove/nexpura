@@ -50,7 +50,7 @@ export default async function TransfersPage() {
       return (
         <div className="max-w-2xl mx-auto py-16 text-center">
           <h1 className="text-2xl font-semibold text-stone-900 mb-3">No Location Access</h1>
-          <p className="text-stone-500">You don&apos;t have access to any locations.</p>
+          <p className="text-stone-500">You haven&apos;t been assigned to any locations yet. Ask your account owner to assign you to a location in Settings &rarr; Team, or visit Settings &rarr; Locations to set up your first location.</p>
         </div>
       );
     }
