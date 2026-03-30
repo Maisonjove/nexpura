@@ -68,7 +68,7 @@ export default async function NewInvoicePage({
         ? {
                     id: "",
                     customer_id: sp.customer_id || null,
-                    invoice_date: new Date().toISOString().split("T")[0],
+                    invoice_date: null,
                     due_date: null,
                     reference_type: sp.bespoke_id
                       ? "bespoke_job"
