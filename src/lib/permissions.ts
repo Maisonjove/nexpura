@@ -3,6 +3,10 @@ import { createAdminClient } from './supabase/admin';
 export type PermissionKey =
   | 'view_inventory'
   | 'edit_inventory'
+  | 'view_repairs'
+  | 'edit_repairs'
+  | 'view_bespoke'
+  | 'edit_bespoke'
   | 'create_invoices'
   | 'view_cost_price'
   | 'view_margins'
@@ -15,6 +19,10 @@ export type PermissionKey =
 export const ALL_PERMISSION_KEYS: PermissionKey[] = [
   'view_inventory',
   'edit_inventory',
+  'view_repairs',
+  'edit_repairs',
+  'view_bespoke',
+  'edit_bespoke',
   'create_invoices',
   'view_cost_price',
   'view_margins',
@@ -28,6 +36,10 @@ export const ALL_PERMISSION_KEYS: PermissionKey[] = [
 export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   view_inventory: 'View Inventory',
   edit_inventory: 'Edit Inventory',
+  view_repairs: 'View Repairs',
+  edit_repairs: 'Edit Repairs',
+  view_bespoke: 'View Custom Orders',
+  edit_bespoke: 'Edit Custom Orders',
   create_invoices: 'Create Invoices',
   view_cost_price: 'View Cost Price',
   view_margins: 'View Margins',
@@ -66,6 +78,10 @@ export const DEFAULT_PERMISSIONS: Record<string, PermissionMap> = {
   owner: {
     view_inventory: true,
     edit_inventory: true,
+    view_repairs: true,
+    edit_repairs: true,
+    view_bespoke: true,
+    edit_bespoke: true,
     create_invoices: true,
     view_cost_price: true,
     view_margins: true,
@@ -78,6 +94,10 @@ export const DEFAULT_PERMISSIONS: Record<string, PermissionMap> = {
   manager: {
     view_inventory: true,
     edit_inventory: true,
+    view_repairs: true,
+    edit_repairs: true,
+    view_bespoke: true,
+    edit_bespoke: true,
     create_invoices: true,
     view_cost_price: true,
     view_margins: true,
@@ -90,6 +110,10 @@ export const DEFAULT_PERMISSIONS: Record<string, PermissionMap> = {
   salesperson: {
     view_inventory: true,
     edit_inventory: false,
+    view_repairs: true,
+    edit_repairs: false,
+    view_bespoke: true,
+    edit_bespoke: false,
     create_invoices: true,
     view_cost_price: false,
     view_margins: false,
@@ -102,6 +126,10 @@ export const DEFAULT_PERMISSIONS: Record<string, PermissionMap> = {
   workshop_jeweller: {
     view_inventory: true,
     edit_inventory: true,
+    view_repairs: true,
+    edit_repairs: true,
+    view_bespoke: true,
+    edit_bespoke: true,
     create_invoices: false,
     view_cost_price: false,
     view_margins: false,
@@ -114,6 +142,10 @@ export const DEFAULT_PERMISSIONS: Record<string, PermissionMap> = {
   repair_technician: {
     view_inventory: true,
     edit_inventory: false,
+    view_repairs: true,
+    edit_repairs: true,
+    view_bespoke: false,
+    edit_bespoke: false,
     create_invoices: false,
     view_cost_price: false,
     view_margins: false,
@@ -126,6 +158,10 @@ export const DEFAULT_PERMISSIONS: Record<string, PermissionMap> = {
   inventory_manager: {
     view_inventory: true,
     edit_inventory: true,
+    view_repairs: true,
+    edit_repairs: false,
+    view_bespoke: true,
+    edit_bespoke: false,
     create_invoices: false,
     view_cost_price: true,
     view_margins: false,
@@ -138,6 +174,10 @@ export const DEFAULT_PERMISSIONS: Record<string, PermissionMap> = {
   accountant: {
     view_inventory: true,
     edit_inventory: false,
+    view_repairs: true,
+    edit_repairs: false,
+    view_bespoke: true,
+    edit_bespoke: false,
     create_invoices: true,
     view_cost_price: true,
     view_margins: true,
@@ -151,6 +191,10 @@ export const DEFAULT_PERMISSIONS: Record<string, PermissionMap> = {
   staff: {
     view_inventory: true,
     edit_inventory: false,
+    view_repairs: true,
+    edit_repairs: false,
+    view_bespoke: true,
+    edit_bespoke: false,
     create_invoices: false,
     view_cost_price: false,
     view_margins: false,
@@ -163,6 +207,10 @@ export const DEFAULT_PERMISSIONS: Record<string, PermissionMap> = {
   technician: {
     view_inventory: true,
     edit_inventory: false,
+    view_repairs: true,
+    edit_repairs: true,
+    view_bespoke: false,
+    edit_bespoke: false,
     create_invoices: false,
     view_cost_price: false,
     view_margins: false,

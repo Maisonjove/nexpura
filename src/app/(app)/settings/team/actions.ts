@@ -1,29 +1,31 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
   const supabase = await createClient();
+  const admin = createAdminClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
-  const { data: userData } = await supabase
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id, role")
     .eq("id", user.id)
     .single();
   if (!userData?.tenant_id) throw new Error("No tenant found");
-  return { supabase, userId: user.id, tenantId: userData.tenant_id, role: userData.role };
+  return { supabase, admin, userId: user.id, tenantId: userData.tenant_id, role: userData.role };
 }
 
 export async function getTeamMembers() {
   try {
-    const { supabase, tenantId } = await getAuthContext();
-    const { data, error } = await supabase
+    const { admin, tenantId } = await getAuthContext();
+    const { data, error } = await admin
       .from("team_members")
       .select("*")
       .eq("tenant_id", tenantId)
@@ -37,7 +39,7 @@ export async function getTeamMembers() {
 
 export async function inviteTeamMember(formData: FormData) {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { admin, userId, tenantId } = await getAuthContext();
 
     const name = (formData.get("name") as string).trim();
     const email = (formData.get("email") as string).trim().toLowerCase();
@@ -45,24 +47,40 @@ export async function inviteTeamMember(formData: FormData) {
 
     if (!name || !email) return { error: "Name and email are required" };
 
+    // Check if email already exists in team
+    const { data: existing } = await admin
+      .from("team_members")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("email", email)
+      .single();
+
+    if (existing) {
+      return { error: "A team member with this email already exists" };
+    }
+
     // Generate invite token
     const inviteToken = crypto.randomUUID();
 
-    const { data: member, error } = await supabase.from("team_members").insert({
+    const { data: member, error } = await admin.from("team_members").insert({
       tenant_id: tenantId,
       name,
       email,
       role,
       invite_token: inviteToken,
       invite_accepted: false,
+      notify_new_repairs: false,
+      notify_new_bespoke: false,
     }).select("id").single();
 
-    if (error) return { error: error.message };
+    if (error) {
+      logger.error("inviteTeamMember insert failed", { error });
+      return { error: error.message };
+    }
 
-    const { data: { user } } = await supabase.auth.getUser();
     await logAuditEvent({
       tenantId,
-      userId: user?.id,
+      userId,
       action: "team_member_invite",
       entityType: "team_member",
       entityId: member?.id,
@@ -79,17 +97,17 @@ export async function inviteTeamMember(formData: FormData) {
 
 export async function updateTeamMemberRole(memberId: string, role: string) {
   try {
-    const { supabase, userId, tenantId } = await getAuthContext();
+    const { admin, userId, tenantId } = await getAuthContext();
 
     // Get old role for audit
-    const { data: oldData } = await supabase
+    const { data: oldData } = await admin
       .from("team_members")
       .select("role, name")
       .eq("id", memberId)
       .eq("tenant_id", tenantId)
       .single();
 
-    const { error } = await supabase
+    const { error } = await admin
       .from("team_members")
       .update({ role, updated_at: new Date().toISOString() })
       .eq("id", memberId)
@@ -117,17 +135,17 @@ export async function updateTeamMemberRole(memberId: string, role: string) {
 
 export async function removeTeamMember(memberId: string) {
   try {
-    const { supabase, userId, tenantId } = await getAuthContext();
+    const { admin, userId, tenantId } = await getAuthContext();
 
     // Get member data for audit
-    const { data: oldData } = await supabase
+    const { data: oldData } = await admin
       .from("team_members")
       .select("name, email, role")
       .eq("id", memberId)
       .eq("tenant_id", tenantId)
       .single();
 
-    const { error } = await supabase
+    const { error } = await admin
       .from("team_members")
       .delete()
       .eq("id", memberId)
@@ -154,8 +172,8 @@ export async function removeTeamMember(memberId: string) {
 
 export async function getTasks() {
   try {
-    const { supabase, tenantId } = await getAuthContext();
-    const { data, error } = await supabase
+    const { admin, tenantId } = await getAuthContext();
+    const { data, error } = await admin
       .from("tasks")
       .select("*")
       .eq("tenant_id", tenantId)
@@ -169,7 +187,7 @@ export async function getTasks() {
 
 export async function createTask(formData: FormData) {
   try {
-    const { supabase, userId, tenantId } = await getAuthContext();
+    const { admin, userId, tenantId } = await getAuthContext();
 
     const title = (formData.get("title") as string).trim();
     const description = (formData.get("description") as string) || null;
@@ -179,7 +197,7 @@ export async function createTask(formData: FormData) {
 
     if (!title) return { error: "Title is required" };
 
-    const { error } = await supabase.from("tasks").insert({
+    const { error } = await admin.from("tasks").insert({
       tenant_id: tenantId,
       created_by: userId,
       assigned_to: assignedTo || null,
@@ -201,12 +219,12 @@ export async function createTask(formData: FormData) {
 
 export async function updateTaskStatus(taskId: string, status: string) {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { admin, tenantId } = await getAuthContext();
 
     const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
     if (status === "done") updates.completed_at = new Date().toISOString();
 
-    const { error } = await supabase
+    const { error } = await admin
       .from("tasks")
       .update(updates)
       .eq("id", taskId)
@@ -227,17 +245,17 @@ export async function updateTaskStatus(taskId: string, status: string) {
 
 export async function getTeamMemberLocations(memberId: string) {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { admin, tenantId } = await getAuthContext();
 
     // Get the team member's allowed_location_ids and junction table entries
     const [memberRes, junctionRes] = await Promise.all([
-      supabase
+      admin
         .from("team_members")
         .select("allowed_location_ids")
         .eq("id", memberId)
         .eq("tenant_id", tenantId)
         .single(),
-      supabase
+      admin
         .from("team_member_locations")
         .select("location_id")
         .eq("team_member_id", memberId),
@@ -260,10 +278,10 @@ export async function updateTeamMemberLocations(
   locationIds: string[] | null // null means all locations
 ) {
   try {
-    const { supabase, userId, tenantId } = await getAuthContext();
+    const { admin, userId, tenantId } = await getAuthContext();
 
     // Get old data for audit
-    const { data: oldMember } = await supabase
+    const { data: oldMember } = await admin
       .from("team_members")
       .select("name, allowed_location_ids")
       .eq("id", memberId)
@@ -271,7 +289,7 @@ export async function updateTeamMemberLocations(
       .single();
 
     // Update the array column on team_members
-    const { error: updateError } = await supabase
+    const { error: updateError } = await admin
       .from("team_members")
       .update({
         allowed_location_ids: locationIds,
@@ -284,7 +302,7 @@ export async function updateTeamMemberLocations(
 
     // Also sync the junction table
     // First, delete existing entries
-    await supabase
+    await admin
       .from("team_member_locations")
       .delete()
       .eq("team_member_id", memberId);
@@ -295,7 +313,7 @@ export async function updateTeamMemberLocations(
         team_member_id: memberId,
         location_id: locId,
       }));
-      await supabase.from("team_member_locations").insert(entries);
+      await admin.from("team_member_locations").insert(entries);
     }
 
     await logAuditEvent({
@@ -318,8 +336,8 @@ export async function updateTeamMemberLocations(
 
 export async function getLocations() {
   try {
-    const { supabase, tenantId } = await getAuthContext();
-    const { data, error } = await supabase
+    const { admin, tenantId } = await getAuthContext();
+    const { data, error } = await admin
       .from("locations")
       .select("id, name, type, is_active")
       .eq("tenant_id", tenantId)
@@ -329,6 +347,62 @@ export async function getLocations() {
     return { data: data ?? [], error: error?.message };
   } catch (error) {
     logger.error("getLocations failed", { error });
+    return { error: "Operation failed" };
+  }
+}
+
+// ============================================================================
+// Team Member Notification Settings
+// ============================================================================
+
+export async function updateTeamMemberNotifications(
+  memberId: string,
+  notifyNewRepairs: boolean,
+  notifyNewBespoke: boolean
+) {
+  try {
+    const { admin, userId, tenantId } = await getAuthContext();
+
+    // Get old data for audit
+    const { data: oldMember } = await admin
+      .from("team_members")
+      .select("name, notify_new_repairs, notify_new_bespoke")
+      .eq("id", memberId)
+      .eq("tenant_id", tenantId)
+      .single();
+
+    const { error } = await admin
+      .from("team_members")
+      .update({
+        notify_new_repairs: notifyNewRepairs,
+        notify_new_bespoke: notifyNewBespoke,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", memberId)
+      .eq("tenant_id", tenantId);
+
+    if (error) return { error: error.message };
+
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: "team_member_notifications_update",
+      entityType: "team_member",
+      entityId: memberId,
+      oldData: {
+        notify_new_repairs: oldMember?.notify_new_repairs,
+        notify_new_bespoke: oldMember?.notify_new_bespoke,
+      },
+      newData: {
+        notify_new_repairs: notifyNewRepairs,
+        notify_new_bespoke: notifyNewBespoke,
+      },
+    });
+
+    revalidatePath("/settings/team");
+    return { success: true };
+  } catch (error) {
+    logger.error("updateTeamMemberNotifications failed", { error });
     return { error: "Operation failed" };
   }
 }

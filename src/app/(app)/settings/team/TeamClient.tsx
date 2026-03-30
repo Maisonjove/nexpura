@@ -9,9 +9,10 @@ import {
   updateTeamMemberRole,
   createTask,
   updateTaskStatus,
+  updateTeamMemberNotifications,
 } from "./actions";
 import TeamMemberLocationModal from "@/components/TeamMemberLocationModal";
-import { MapPin } from "lucide-react";
+import { MapPin, Bell, BellOff } from "lucide-react";
 
 interface TeamMember {
   id: string;
@@ -23,6 +24,8 @@ interface TeamMember {
   invite_accepted: boolean;
   created_at: string;
   allowed_location_ids: string[] | null;
+  notify_new_repairs: boolean;
+  notify_new_bespoke: boolean;
 }
 
 interface Location {
@@ -348,6 +351,9 @@ export default function TeamClient({
                   {hasMultipleLocations && (
                     <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Locations</th>
                   )}
+                  {isOwner && (
+                    <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Notifications</th>
+                  )}
                   <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Last Login</th>
                   <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Status</th>
                   <th className="px-4 py-3"></th>
@@ -394,6 +400,54 @@ export default function TeamClient({
                             </span>
                           )}
                         </button>
+                      </td>
+                    )}
+                    {isOwner && (
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={m.notify_new_repairs || false}
+                              onChange={(e) => {
+                                startTransition(async () => {
+                                  await updateTeamMemberNotifications(
+                                    m.id,
+                                    e.target.checked,
+                                    m.notify_new_bespoke || false
+                                  );
+                                  router.refresh();
+                                });
+                              }}
+                              disabled={isPending}
+                              className="h-3.5 w-3.5 rounded border-stone-300 text-amber-600 focus:ring-amber-500 disabled:opacity-50"
+                            />
+                            <span className="text-[11px] text-stone-500 group-hover:text-stone-700">
+                              New repairs
+                            </span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={m.notify_new_bespoke || false}
+                              onChange={(e) => {
+                                startTransition(async () => {
+                                  await updateTeamMemberNotifications(
+                                    m.id,
+                                    m.notify_new_repairs || false,
+                                    e.target.checked
+                                  );
+                                  router.refresh();
+                                });
+                              }}
+                              disabled={isPending}
+                              className="h-3.5 w-3.5 rounded border-stone-300 text-amber-600 focus:ring-amber-500 disabled:opacity-50"
+                            />
+                            <span className="text-[11px] text-stone-500 group-hover:text-stone-700">
+                              New custom orders
+                            </span>
+                          </label>
+                        </div>
                       </td>
                     )}
                     <td className="px-4 py-3 text-xs text-stone-400">

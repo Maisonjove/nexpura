@@ -26,9 +26,9 @@ export default async function TeamPage() {
   const businessMode = (userData?.tenants as { business_mode?: string } | null)?.business_mode || 'full';
 
   const [{ data: members }, { data: tasks }, { data: locations }] = await Promise.all([
-    supabase
+    admin
       .from("team_members")
-      .select("id, name, email, role, department, last_login_at, invite_accepted, created_at, allowed_location_ids")
+      .select("id, name, email, role, department, last_login_at, invite_accepted, created_at, allowed_location_ids, notify_new_repairs, notify_new_bespoke")
       .eq("tenant_id", ctx.tenantId)
       .order("created_at", { ascending: true }),
     supabase

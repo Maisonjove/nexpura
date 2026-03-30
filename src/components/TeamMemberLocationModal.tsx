@@ -51,21 +51,29 @@ export default function TeamMemberLocationModal({ member, locations, onClose, on
   }, [member.id]);
 
   function toggleLocation(locationId: string) {
-    if (allLocations) return;
+    // First, make sure we're not in "all locations" mode
+    if (allLocations) {
+      // Switch to specific mode first
+      setAllLocations(false);
+    }
     
     setSelectedLocationIds((prev) => {
-      if (!prev) return [locationId];
-      if (prev.includes(locationId)) {
-        return prev.filter((id) => id !== locationId);
+      const currentIds = prev || [];
+      if (currentIds.includes(locationId)) {
+        return currentIds.filter((id) => id !== locationId);
       }
-      return [...prev, locationId];
+      return [...currentIds, locationId];
     });
   }
 
   function toggleAllLocations() {
-    setAllLocations(!allLocations);
-    if (!allLocations) {
+    if (allLocations) {
+      // Switching from "all" to "specific" - keep it simple
+      setAllLocations(false);
+      // Don't reset selectedLocationIds, let user select
+    } else {
       // Switching to all locations
+      setAllLocations(true);
       setSelectedLocationIds([]);
     }
   }
@@ -169,10 +177,9 @@ export default function TeamMemberLocationModal({ member, locations, onClose, on
                   <button
                     key={location.id}
                     onClick={() => toggleLocation(location.id)}
-                    disabled={allLocations}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
                       allLocations 
-                        ? "opacity-50 cursor-not-allowed border-stone-100 bg-stone-50" 
+                        ? "opacity-60 border-stone-200 hover:border-stone-300 hover:opacity-100" 
                         : isSelected 
                           ? "border-amber-500 bg-amber-50" 
                           : "border-stone-200 hover:border-stone-300"
