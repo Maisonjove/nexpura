@@ -28,12 +28,15 @@ export async function createPassport(formData: FormData): Promise<void> {
   try {
     const { supabase, userId, tenantId } = await getTenantAndUser();
 
-  // Generate UID via postgres function
-  const { data: uidData, error: uidError } = await supabase.rpc(
-    "generate_passport_uid"
+  // Generate global identity number via postgres function
+  // This returns a unique number starting at 100000001, shared across ALL tenants
+  const { data: identityData, error: identityError } = await supabase.rpc(
+    "next_passport_identity"
   );
-  if (uidError || !uidData) throw new Error("Failed to generate passport UID");
-  const passportUid = uidData as string;
+  if (identityError || !identityData) throw new Error("Failed to generate passport identity number");
+  const identityNumber = identityData as number;
+  // Use identity number as the passport UID for display
+  const passportUid = identityNumber.toString();
 
   const title = formData.get("title") as string;
   const jewelleryType = (formData.get("jewellery_type") as string) || null;
@@ -78,6 +81,7 @@ export async function createPassport(formData: FormData): Promise<void> {
     .insert({
       tenant_id: tenantId,
       passport_uid: passportUid,
+      identity_number: identityNumber,
       title,
       jewellery_type: jewelleryType,
       description,
