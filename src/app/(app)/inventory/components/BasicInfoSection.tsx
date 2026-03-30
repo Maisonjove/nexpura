@@ -10,7 +10,7 @@ import type { Category, InventoryItem } from "./types";
 interface BasicInfoSectionProps {
   item?: InventoryItem;
   mode: "create" | "edit";
-  initialCategories: Category[];h
+  initialCategories: Category[];
   itemType: string;
   setItemType: (val: string) => void;
   jewelleryType: string;

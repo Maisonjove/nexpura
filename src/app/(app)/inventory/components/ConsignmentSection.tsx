@@ -10,7 +10,7 @@ interface ConsignmentSectionProps {
   setConsignmentStart: (val: string) => void;
   consignmentEnd: string;
   setConsignmentEnd: (val: string) => void;
-  consignmentCommPct: string;h
+  consignmentCommPct: string;
   setConsignmentCommPct: (val: string) => void;
 }
 
