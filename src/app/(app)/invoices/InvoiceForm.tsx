@@ -32,7 +32,7 @@ interface TenantSettings {
 interface ExistingInvoice {
   id: string;
   customer_id: string | null;
-  invoice_date: string;
+  invoice_date: string | null;
   due_date: string | null;
   reference_type: string | null;
   reference_id: string | null;
