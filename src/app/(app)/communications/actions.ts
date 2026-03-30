@@ -64,11 +64,16 @@ export async function sendCommunication(
     const customerEmail = str("customer_email");
     if (customerEmail) {
       try {
+        const admin = createAdminClient();
+        const { data: tenant } = await admin.from("tenants").select("name, business_name").eq("id", tenantId).single();
+        const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
+        const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
+        
         const { resend } = await import("@/lib/email/resend");
         const subject = str("subject") || "Message from your jeweller";
         const customerName = str("customer_name") || "Valued Customer";
         const { error: sendError } = await resend.emails.send({
-          from: "Nexpura <onboarding@resend.dev>",
+          from: `${businessName} <${fromEmail}>`,
           to: [customerEmail],
           subject,
           html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto"><p>Hi ${customerName},</p><div style="white-space:pre-wrap">${body.replace(/\n/g, "<br/>")}</div></div>`,
@@ -121,9 +126,14 @@ export async function resendEmailLog(logId: string) {
   if (logError || !log) return { error: "Log not found" };
 
   try {
+    const admin = createAdminClient();
+    const { data: tenant } = await admin.from("tenants").select("name, business_name").eq("id", tenantId).single();
+    const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
+    
     const { resend } = await import("@/lib/email/resend");
     const { error: sendError } = await resend.emails.send({
-      from: "Nexpura <onboarding@resend.dev>",
+      from: `${businessName} <${fromEmail}>`,
       to: [log.recipient_email],
       subject: log.subject || "Re-sent message",
       html: `<div><p>Re-sending previous message:</p><hr/><p>${log.subject}</p></div>`,

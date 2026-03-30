@@ -243,6 +243,12 @@ export async function emailBespokeInvoice(
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, tenantId } = ctx;
 
+  // Fetch tenant info for dynamic branding
+  const { data: tenant } = await admin.from("tenants").select("name, business_name, email, phone, address_line1, suburb, state, postcode").eq("id", tenantId).single();
+  const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
+  const businessAddress = [tenant?.address_line1, tenant?.suburb, tenant?.state, tenant?.postcode].filter(Boolean).join(", ");
+  const businessEmail = tenant?.email || "";
+
   const { data: job } = await admin.from("bespoke_jobs").select("job_number, title, customer_id").eq("id", jobId).eq("tenant_id", tenantId).single();
   if (!job) return { error: "Job not found" };
 
@@ -267,7 +273,7 @@ export async function emailBespokeInvoice(
   const htmlBody = `
 <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;color:#1c1917;">
   <div style="background:#1c1917;color:#fff;padding:24px;text-align:center;">
-    <h1 style="margin:0;font-size:22px;">Marcus &amp; Co. Fine Jewellery</h1>
+    <h1 style="margin:0;font-size:22px;">${businessName}</h1>
     <p style="margin:4px 0 0;font-size:13px;color:#d6d3d1;">Invoice ${invoice.invoice_number}</p>
   </div>
   <div style="padding:24px;background:#fafaf9;">
@@ -293,10 +299,12 @@ export async function emailBespokeInvoice(
     </div>
   </div>
   <div style="padding:16px 24px;background:#fff;text-align:center;font-size:12px;color:#78716c;">
-    Marcus &amp; Co. Fine Jewellery · 32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au
+    ${businessName}${businessAddress ? ` · ${businessAddress}` : ""}${businessEmail ? ` · ${businessEmail}` : ""}
   </div>
 </div>`;
 
+  // Use tenant's configured from email, or fall back to nexpura.com domain
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -304,9 +312,9 @@ export async function emailBespokeInvoice(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Marcus & Co. <onboarding@resend.dev>",
+      from: `${businessName} <${fromEmail}>`,
       to: [customer.email],
-      subject: `Invoice ${invoice.invoice_number} — Marcus & Co. Fine Jewellery`,
+      subject: `Invoice ${invoice.invoice_number} — ${businessName}`,
       html: htmlBody,
     }),
   });

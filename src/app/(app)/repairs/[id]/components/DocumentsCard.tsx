@@ -66,7 +66,7 @@ export default function DocumentsCard({
           </button>
         ) : null}
         {!readOnly && customer?.email ? (
-          <a href={`mailto:${customer.email}?subject=Re: Your repair — Marcus & Co.`} className="block w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
+          <a href={`mailto:${customer.email}?subject=Re: Your repair`} className="block w-full text-left text-sm px-3 py-2 rounded-lg border border-stone-200 hover:bg-stone-50 flex items-center gap-2 transition-colors">
             ✉️ Email Customer
           </a>
         ) : !readOnly ? (

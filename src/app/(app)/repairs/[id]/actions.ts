@@ -364,6 +364,12 @@ export async function emailRepairInvoice(
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, tenantId } = ctx;
 
+  // Fetch tenant info for dynamic branding
+  const { data: tenant } = await admin.from("tenants").select("name, business_name, email, phone, address_line1, suburb, state, postcode").eq("id", tenantId).single();
+  const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
+  const businessAddress = [tenant?.address_line1, tenant?.suburb, tenant?.state, tenant?.postcode].filter(Boolean).join(", ");
+  const businessEmail = tenant?.email || "";
+
   // Fetch repair + customer + invoice + line items
   const { data: repair } = await admin.from("repairs").select("repair_number, item_description, customer_id").eq("id", repairId).eq("tenant_id", tenantId).single();
   if (!repair) return { error: "Repair not found" };
@@ -389,7 +395,7 @@ export async function emailRepairInvoice(
   const htmlBody = `
 <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;color:#1c1917;">
   <div style="background:#1c1917;color:#fff;padding:24px;text-align:center;">
-    <h1 style="margin:0;font-size:22px;">Marcus &amp; Co. Fine Jewellery</h1>
+    <h1 style="margin:0;font-size:22px;">${businessName}</h1>
     <p style="margin:4px 0 0;font-size:13px;color:#d6d3d1;">Invoice ${invoice.invoice_number}</p>
   </div>
   <div style="padding:24px;background:#fafaf9;">
@@ -415,10 +421,12 @@ export async function emailRepairInvoice(
     </div>
   </div>
   <div style="padding:16px 24px;background:#fff;text-align:center;font-size:12px;color:#78716c;">
-    Marcus &amp; Co. Fine Jewellery · 32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au
+    ${businessName}${businessAddress ? ` · ${businessAddress}` : ""}${businessEmail ? ` · ${businessEmail}` : ""}
   </div>
 </div>`;
 
+  // Use tenant's configured from email, or fall back to nexpura.com domain
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -426,9 +434,9 @@ export async function emailRepairInvoice(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Marcus & Co. <onboarding@resend.dev>",
+      from: `${businessName} <${fromEmail}>`,
       to: [customer.email],
-      subject: `Invoice ${invoice.invoice_number} — Marcus & Co. Fine Jewellery`,
+      subject: `Invoice ${invoice.invoice_number} — ${businessName}`,
       html: htmlBody,
     }),
   });
@@ -473,6 +481,12 @@ export async function emailJobReady(
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, tenantId } = ctx;
 
+  // Fetch tenant info for dynamic branding
+  const { data: tenant } = await admin.from("tenants").select("name, business_name, email, phone, address_line1, suburb, state, postcode").eq("id", tenantId).single();
+  const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
+  const businessAddress = [tenant?.address_line1, tenant?.suburb, tenant?.state, tenant?.postcode].filter(Boolean).join(", ");
+  const businessEmail = tenant?.email || "";
+
   let customer = null;
   let itemDesc = "";
   let jobNumber = "";
@@ -493,20 +507,21 @@ export async function emailJobReady(
   const htmlBody = `
 <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;color:#1c1917;">
   <div style="background:#1c1917;color:#fff;padding:24px;text-align:center;">
-    <h1 style="margin:0;font-size:22px;">Marcus &amp; Co. Fine Jewellery</h1>
+    <h1 style="margin:0;font-size:22px;">${businessName}</h1>
   </div>
   <div style="padding:24px;background:#fafaf9;">
     <p>Hi ${customer.full_name},</p>
-    <p>Great news — your <strong>${itemDesc}</strong> (${jobNumber}) is ready for collection at Marcus &amp; Co.</p>
+    <p>Great news — your <strong>${itemDesc}</strong> (${jobNumber}) is ready for collection.</p>
     <p>Please come in at your convenience during business hours. Don't forget to bring your receipt.</p>
     <p>If you have any questions, please don't hesitate to get in touch.</p>
-    <p style="margin-top:24px;">Warm regards,<br/>The team at Marcus &amp; Co. Fine Jewellery</p>
+    <p style="margin-top:24px;">Warm regards,<br/>The team at ${businessName}</p>
   </div>
   <div style="padding:16px 24px;background:#fff;text-align:center;font-size:12px;color:#78716c;">
-    Marcus &amp; Co. Fine Jewellery · 32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au
+    ${businessName}${businessAddress ? ` · ${businessAddress}` : ""}${businessEmail ? ` · ${businessEmail}` : ""}
   </div>
 </div>`;
 
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -514,9 +529,9 @@ export async function emailJobReady(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Marcus & Co. <onboarding@resend.dev>",
+      from: `${businessName} <${fromEmail}>`,
       to: [customer.email],
-      subject: `Your repair is ready — Marcus & Co. Fine Jewellery`,
+      subject: `Your repair is ready — ${businessName}`,
       html: htmlBody,
     }),
   });
