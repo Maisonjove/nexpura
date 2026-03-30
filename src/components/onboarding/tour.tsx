@@ -1,7 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Joyride, { Step, STATUS, CallBackProps, EVENTS } from 'react-joyride';
+import dynamic from 'next/dynamic';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Joyride = dynamic(() => import('react-joyride').then(m => m.Joyride), { ssr: false }) as any;
 
 const TOUR_STORAGE_KEY = 'nexpura_tour_completed';
 
@@ -15,58 +18,58 @@ export function OnboardingTour({ forceStart, onComplete }: OnboardingTourProps) 
   const [mounted, setMounted] = useState(false);
 
   // Define tour steps targeting sidebar navigation items
-  const tourSteps: Step[] = [
+  const tourSteps = [
     {
       target: '[data-tour="dashboard"]',
       content: 'Welcome to Nexpura! This is your Dashboard — see your sales, repairs, and key metrics at a glance.',
       title: '📊 Dashboard',
-      placement: 'right',
-      disableBeacon: true,
+      placement: 'right' as const,
     },
     {
       target: '[data-tour="pos"]',
       content: 'Process sales, handle payments, and manage transactions from the POS. You can also create laybys and handle trade-ins.',
       title: '🛒 Point of Sale',
-      placement: 'right',
+      placement: 'right' as const,
     },
     {
       target: '[data-tour="inventory"]',
       content: 'Manage your stock, add new items, track stock levels, and publish products to your website.',
       title: '📦 Inventory',
-      placement: 'right',
+      placement: 'right' as const,
     },
     {
       target: '[data-tour="customers"]',
       content: 'Your customer database. View purchase history, manage communications, and track loyalty.',
       title: '👥 Customers',
-      placement: 'right',
+      placement: 'right' as const,
     },
     {
       target: '[data-tour="repairs"]',
       content: 'Track repair jobs from intake to collection. Send automatic notifications when repairs are ready.',
       title: '🔧 Repairs',
-      placement: 'right',
+      placement: 'right' as const,
     },
     {
       target: '[data-tour="settings"]',
       content: 'Configure your business profile, team members, integrations, and preferences.',
       title: '⚙️ Settings',
-      placement: 'right',
+      placement: 'right' as const,
     },
     {
       target: '[data-tour="help"]',
       content: 'Need help? Find FAQs, video tutorials, and contact support here. You can restart this tour anytime!',
       title: '❓ Help & Support',
-      placement: 'right',
+      placement: 'right' as const,
     },
   ];
 
   // Handle tour completion/skip
-  const handleCallback = useCallback((data: CallBackProps) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleCallback = useCallback((data: any) => {
     const { status, type } = data;
     
-    if (type === EVENTS.TOUR_END) {
-      if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+    if (type === 'tour:end') {
+      if (status === 'finished' || status === 'skipped') {
         // Mark tour as completed in localStorage
         localStorage.setItem(TOUR_STORAGE_KEY, 'true');
         setRun(false);
@@ -120,12 +123,6 @@ export function OnboardingTour({ forceStart, onComplete }: OnboardingTourProps) 
           overlayColor: 'rgba(0, 0, 0, 0.5)',
           zIndex: 10000,
           backgroundColor: '#ffffff',
-        },
-        buttonNext: {
-          backgroundColor: '#b45309',
-        },
-        buttonBack: {
-          color: '#78716c',
         },
       }}
     />

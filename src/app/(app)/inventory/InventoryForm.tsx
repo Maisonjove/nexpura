@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { createInventoryItem, updateInventoryItem } from "./actions";
 
 import {
@@ -18,6 +18,7 @@ import type { InventoryFormProps, SecondaryStone } from "./components/types";
 export default function InventoryForm({ categories: initialCategories, item, mode }: InventoryFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Basic info state
   const [itemType, setItemType] = useState(item?.item_type ?? "finished_piece");
@@ -34,6 +35,48 @@ export default function InventoryForm({ categories: initialCategories, item, mod
   // Metal/Stone state
   const [metalForm, setMetalForm] = useState(item?.metal_form ?? "");
   const [secondaryStones, setSecondaryStones] = useState<SecondaryStone[]>(item?.secondary_stones ?? []);
+
+  // AI categorization data for metal/stone fields
+  const [aiMetalStone, setAiMetalStone] = useState<{
+    metalType?: string | null;
+    metalColour?: string | null;
+    metalPurity?: string | null;
+    stoneType?: string | null;
+    stoneColour?: string | null;
+    stoneClarity?: string | null;
+  } | null>(null);
+
+  // Apply AI categorization to form fields
+  useEffect(() => {
+    if (aiMetalStone && formRef.current) {
+      const form = formRef.current;
+      
+      if (aiMetalStone.metalType) {
+        const el = form.querySelector('[name="metal_type"]') as HTMLSelectElement;
+        if (el) el.value = aiMetalStone.metalType.toLowerCase();
+      }
+      if (aiMetalStone.metalColour) {
+        const el = form.querySelector('[name="metal_colour"]') as HTMLSelectElement;
+        if (el) el.value = aiMetalStone.metalColour.toLowerCase();
+      }
+      if (aiMetalStone.metalPurity) {
+        const el = form.querySelector('[name="metal_purity"]') as HTMLSelectElement;
+        if (el) el.value = aiMetalStone.metalPurity;
+      }
+      if (aiMetalStone.stoneType) {
+        const el = form.querySelector('[name="stone_type"]') as HTMLSelectElement;
+        if (el) el.value = aiMetalStone.stoneType.toLowerCase();
+      }
+      if (aiMetalStone.stoneColour) {
+        const el = form.querySelector('[name="stone_colour"]') as HTMLSelectElement;
+        if (el) el.value = aiMetalStone.stoneColour.toLowerCase();
+      }
+      if (aiMetalStone.stoneClarity) {
+        const el = form.querySelector('[name="stone_clarity"]') as HTMLSelectElement;
+        if (el) el.value = aiMetalStone.stoneClarity;
+      }
+    }
+  }, [aiMetalStone]);
 
   // Certificates state
   const [certNumber, setCertNumber] = useState(item?.certificate_number ?? "");
@@ -92,7 +135,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
           {error}
@@ -114,6 +157,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
         categoryId={categoryId}
         setCategoryId={setCategoryId}
         setError={setError}
+        onAICategorize={setAiMetalStone}
       />
 
       <PricingSection

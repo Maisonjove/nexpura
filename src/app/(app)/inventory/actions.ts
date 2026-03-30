@@ -791,3 +791,87 @@ export async function initializeStockNumbers(): Promise<{ success?: boolean; err
   if (error) return { error: error.message };
   return { success: true };
 }
+
+// AI-powered categorization for inventory items
+export interface AICategorization {
+  itemType: string;
+  jewelleryType: string | null;
+  metalType: string | null;
+  metalColour: string | null;
+  metalPurity: string | null;
+  stoneType: string | null;
+  stoneColour: string | null;
+  stoneClarity: string | null;
+  suggestedCategory: string | null;
+  confidence: number;
+}
+
+export async function categorizeWithAI(
+  itemName: string,
+  description?: string
+): Promise<{ data?: AICategorization; error?: string }> {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    return { error: "AI categorization not configured" };
+  }
+
+  const prompt = `You are a jewellery expert. Analyze this item and categorize it.
+
+Item Name: ${itemName}
+${description ? `Description: ${description}` : ""}
+
+Respond with ONLY valid JSON (no markdown, no explanation):
+{
+  "itemType": "finished_piece" | "loose_stone" | "finding" | "raw_material" | "packaging",
+  "jewelleryType": "ring" | "necklace" | "bracelet" | "earring" | "pendant" | "bangle" | "brooch" | "other" | null,
+  "metalType": "Gold" | "Silver" | "Platinum" | "Palladium" | "Titanium" | "Steel" | "Other" | null,
+  "metalColour": "Yellow" | "White" | "Rose" | "Two-tone" | null,
+  "metalPurity": "9ct" | "14ct" | "18ct" | "22ct" | "24ct" | "925" | "950" | "999" | null,
+  "stoneType": "Diamond" | "Sapphire" | "Ruby" | "Emerald" | "Amethyst" | "Aquamarine" | "Opal" | "Pearl" | "Other" | null,
+  "stoneColour": "White" | "Blue" | "Red" | "Green" | "Yellow" | "Pink" | "Purple" | "Black" | "Other" | null,
+  "stoneClarity": "FL" | "IF" | "VVS1" | "VVS2" | "VS1" | "VS2" | "SI1" | "SI2" | "I1" | "I2" | "I3" | null,
+  "suggestedCategory": string describing the category (e.g., "Engagement Rings", "Diamond Pendants", "Gold Chains") | null,
+  "confidence": number between 0 and 1 indicating how confident you are
+}
+
+Rules:
+- itemType is required, others can be null if not determinable
+- Only use jewelleryType if itemType is "finished_piece"
+- Be precise with metal purity (18ct gold, 925 silver, etc.)
+- For loose stones, focus on stone attributes
+- confidence should be lower if the name is vague`;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.1,
+        max_tokens: 500,
+      }),
+    });
+
+    if (!response.ok) {
+      return { error: "Failed to connect to AI service" };
+    }
+
+    const result = await response.json();
+    const content = result.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      return { error: "No response from AI" };
+    }
+
+    // Parse the JSON response
+    const parsed = JSON.parse(content.trim()) as AICategorization;
+    return { data: parsed };
+  } catch (err) {
+    console.error("AI categorization error:", err);
+    return { error: "Failed to parse AI response" };
+  }
+}

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
-export function SectionHeader({ title }: { title: string }) {
+export function SectionHeader({ title, className = "" }: { title: string; className?: string }) {
   return (
-    <div className="border-b border-stone-100 pb-3 mb-5">
+    <div className={`border-b border-stone-100 pb-3 mb-5 ${className}`}>
       <h2 className="font-semibold text-base text-stone-900 uppercase tracking-wider">{title}</h2>
     </div>
   );
@@ -58,14 +58,18 @@ export function FieldLabel({ htmlFor, children, required }: { htmlFor: string; c
   );
 }
 
-export function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-600 transition-colors ${className}`}
-    />
-  );
-}
+export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { className?: string }>(
+  ({ className = "", ...props }, ref) => {
+    return (
+      <input
+        ref={ref}
+        {...props}
+        className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-600 transition-colors ${className}`}
+      />
+    );
+  }
+);
+Input.displayName = "Input";
 
 export function Select({ className = "", children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
@@ -78,11 +82,15 @@ export function Select({ className = "", children, ...props }: React.SelectHTMLA
   );
 }
 
-export function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      {...props}
-      className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-600 transition-colors resize-none ${className}`}
-    />
-  );
-}
+export const Textarea = forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement> & { className?: string }>(
+  ({ className = "", ...props }, ref) => {
+    return (
+      <textarea
+        ref={ref}
+        {...props}
+        className={`w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-600 transition-colors resize-none ${className}`}
+      />
+    );
+  }
+);
+Textarea.displayName = "Textarea";

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Plus } from "lucide-react";
-import { createCategory } from "../actions";
+import { useState, useRef } from "react";
+import { Plus, Sparkles } from "lucide-react";
+import { createCategory, categorizeWithAI } from "../actions";
 import { SectionHeader, FieldLabel, Input, Select, Textarea } from "./FormElements";
 import { ITEM_TYPES, JEWELLERY_TYPES } from "./constants";
 import type { Category, InventoryItem } from "./types";
@@ -22,6 +22,15 @@ interface BasicInfoSectionProps {
   categoryId: string;
   setCategoryId: (val: string) => void;
   setError: (val: string | null) => void;
+  // AI categorization callbacks for other sections
+  onAICategorize?: (data: {
+    metalType?: string | null;
+    metalColour?: string | null;
+    metalPurity?: string | null;
+    stoneType?: string | null;
+    stoneColour?: string | null;
+    stoneClarity?: string | null;
+  }) => void;
 }
 
 export default function BasicInfoSection({
@@ -39,11 +48,17 @@ export default function BasicInfoSection({
   categoryId,
   setCategoryId,
   setError,
+  onAICategorize,
 }: BasicInfoSectionProps) {
   const [categories, setCategories] = useState(initialCategories);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [addingCat, setAddingCat] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiConfidence, setAiConfidence] = useState<number | null>(null);
+  
+  const nameRef = useRef<HTMLInputElement>(null);
+  const descRef = useRef<HTMLTextAreaElement>(null);
 
   async function handleAddCategory() {
     if (!newCatName.trim()) return;
@@ -61,13 +76,116 @@ export default function BasicInfoSection({
     }
   }
 
+  async function handleAICategorize() {
+    const name = nameRef.current?.value?.trim();
+    if (!name) {
+      setError("Enter an item name first");
+      return;
+    }
+
+    setAiLoading(true);
+    setAiConfidence(null);
+    setError(null);
+
+    try {
+      const description = descRef.current?.value?.trim();
+      const result = await categorizeWithAI(name, description || undefined);
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      if (result.data) {
+        const d = result.data;
+        
+        // Set item type and jewellery type
+        if (d.itemType) setItemType(d.itemType);
+        if (d.jewelleryType) setJewelleryType(d.jewelleryType);
+        
+        // Create category if suggested and doesn't exist
+        if (d.suggestedCategory) {
+          const existingCat = categories.find(
+            c => c.name.toLowerCase() === d.suggestedCategory!.toLowerCase()
+          );
+          if (existingCat) {
+            setCategoryId(existingCat.id);
+          } else {
+            // Create the new category
+            try {
+              const newCat = await createCategory(d.suggestedCategory);
+              setCategories(prev => [...prev, newCat]);
+              setCategoryId(newCat.id);
+            } catch {
+              // Silently fail category creation
+            }
+          }
+        }
+
+        // Pass metal/stone data to parent for MetalStoneSection
+        if (onAICategorize) {
+          onAICategorize({
+            metalType: d.metalType,
+            metalColour: d.metalColour,
+            metalPurity: d.metalPurity,
+            stoneType: d.stoneType,
+            stoneColour: d.stoneColour,
+            stoneClarity: d.stoneClarity,
+          });
+        }
+
+        setAiConfidence(d.confidence);
+      }
+    } catch (err) {
+      setError("AI categorization failed");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   return (
     <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-      <SectionHeader title="Basic Information" />
+      <div className="flex items-center justify-between mb-5">
+        <SectionHeader title="Basic Information" className="mb-0" />
+        <button
+          type="button"
+          onClick={handleAICategorize}
+          disabled={aiLoading}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-violet-700 hover:to-indigo-700 disabled:opacity-60 transition-all shadow-sm"
+        >
+          <Sparkles className={`w-4 h-4 ${aiLoading ? "animate-spin" : ""}`} />
+          {aiLoading ? "Analyzing..." : "Auto-Categorize"}
+        </button>
+      </div>
+
+      {aiConfidence !== null && (
+        <div className={`mb-4 px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${
+          aiConfidence >= 0.8 
+            ? "bg-green-50 text-green-700 border border-green-200" 
+            : aiConfidence >= 0.5 
+              ? "bg-amber-50 text-amber-700 border border-amber-200"
+              : "bg-stone-50 text-stone-600 border border-stone-200"
+        }`}>
+          <Sparkles className="w-4 h-4" />
+          AI categorized with {Math.round(aiConfidence * 100)}% confidence
+          {aiConfidence < 0.8 && " — please review"}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div className="sm:col-span-2">
           <FieldLabel htmlFor="name" required>Item Name</FieldLabel>
-          <Input id="name" name="name" required placeholder="e.g. Diamond Solitaire Ring" defaultValue={item?.name} />
+          <Input 
+            ref={nameRef}
+            id="name" 
+            name="name" 
+            required 
+            placeholder="e.g. 18ct White Gold Diamond Solitaire Ring" 
+            defaultValue={item?.name} 
+          />
+          <p className="text-[10px] text-stone-400 mt-1 uppercase font-bold tracking-tight">
+            💡 Tip: Include metal, stone, and jewellery type for best AI results
+          </p>
         </div>
 
         <div>
@@ -183,6 +301,7 @@ export default function BasicInfoSection({
         <div className="sm:col-span-2">
           <FieldLabel htmlFor="description">Description</FieldLabel>
           <Textarea
+            ref={descRef}
             id="description"
             name="description"
             rows={3}
