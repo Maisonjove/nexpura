@@ -22,6 +22,7 @@ const columns = [
       { label: 'Integrations', href: '/features' },
       { label: 'Security', href: '/features' },
       { label: 'Pricing', href: '/pricing' },
+      { label: 'Verify Passport', href: '/verify' },
     ],
   },
   {

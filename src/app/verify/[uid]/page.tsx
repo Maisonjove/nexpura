@@ -77,7 +77,11 @@ export default async function VerifyPage({
   const { uid } = await params;
   const supabase = createClient();
 
-  const { data: passport } = await supabase
+  // Try to find passport by passport_uid first, then by identity_number
+  let passport = null;
+  
+  // First try passport_uid (legacy format like NXP-XXXXXX)
+  const { data: byUid } = await supabase
     .from("passports")
     .select("*")
     .eq("passport_uid", uid)
@@ -85,6 +89,24 @@ export default async function VerifyPage({
     .eq("status", "active")
     .is("deleted_at", null)
     .single();
+  
+  if (byUid) {
+    passport = byUid;
+  } else {
+    // Try identity_number (numeric format like 100000001)
+    const numericUid = parseInt(uid, 10);
+    if (!isNaN(numericUid)) {
+      const { data: byIdentity } = await supabase
+        .from("passports")
+        .select("*")
+        .eq("identity_number", numericUid)
+        .eq("is_public", true)
+        .eq("status", "active")
+        .is("deleted_at", null)
+        .single();
+      passport = byIdentity;
+    }
+  }
 
   if (!passport) {
     return (
@@ -101,9 +123,18 @@ export default async function VerifyPage({
               </svg>
             </div>
             <h2 className="font-semibold text-xl font-semibold text-[#071A0D] mb-2">Passport Not Found</h2>
-            <p className="text-sm text-gray-500 leading-relaxed">
+            <p className="text-sm text-gray-500 leading-relaxed mb-6">
               This passport does not exist or is private. If you believe this is an error, please contact your jeweller.
             </p>
+            <a 
+              href="/verify"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#071A0D] text-white text-sm font-medium rounded-lg hover:bg-[#0a2614] transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Try Another Number
+            </a>
           </div>
 
           <p className="text-xs text-gray-400 mt-8">Verified by Nexpura · nexpura.com</p>
