@@ -1,15 +1,10 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonPageHeader, SkeletonTable } from "@/components/ui/skeleton";
 
-export default function Loading() {
+export default function InvoicesLoading() {
   return (
-    <div className="space-y-4 p-6">
-      <Skeleton className="h-8 w-48" />
-      <div className="grid gap-4 md:grid-cols-3">
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-      </div>
-      <Skeleton className="h-64" />
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <SkeletonPageHeader />
+      <SkeletonTable rows={8} />
     </div>
   );
 }

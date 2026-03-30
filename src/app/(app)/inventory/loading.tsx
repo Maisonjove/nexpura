@@ -1,4 +1,4 @@
-import { InventorySkeleton } from '@/components/skeletons/PageSkeletons';
+import { InventorySkeleton } from "@/components/ui/skeleton";
 
 export default function InventoryLoading() {
   return <InventorySkeleton />;

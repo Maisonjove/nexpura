@@ -1,4 +1,4 @@
-import { POSSkeleton } from '@/components/skeletons/PageSkeletons';
+import { POSSkeleton } from "@/components/ui/skeleton";
 
 export default function POSLoading() {
   return <POSSkeleton />;
