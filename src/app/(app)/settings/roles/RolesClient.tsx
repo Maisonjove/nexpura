@@ -6,7 +6,7 @@ import Link from "next/link";
 import { 
   Users, Shield, MapPin, ChevronRight, Check, X, 
   Building2, Eye, Edit3, Settings, UserCog, Plus,
-  Mail, Trash2, RefreshCw, Loader2, Phone, MessageSquare
+  Mail, Trash2, RefreshCw, Loader2, Phone, MessageSquare, Bell
 } from "lucide-react";
 import { 
   updateMemberRole, 
@@ -17,8 +17,11 @@ import {
   resendInvite,
   removeMember,
   updateMemberPhone,
+  updateMemberNotifications,
+  updateMemberWhatsAppEnabled,
   DEFAULT_PERMISSIONS,
-  PermissionSet 
+  PermissionSet,
+  NotificationPreferences 
 } from "./actions";
 
 interface TeamMember {
@@ -99,11 +102,113 @@ const PERMISSION_GROUPS = [
   },
 ];
 
+// Notifications Tab Component
+function NotificationsTab({ 
+  member, 
+  canEdit, 
+  isPending,
+  onUpdate 
+}: { 
+  member: TeamMember; 
+  canEdit: boolean; 
+  isPending: boolean;
+  onUpdate: (key: string, value: boolean) => void;
+}) {
+  // Get notification preferences from permissions object
+  const perms = (member.permissions as unknown as Record<string, unknown>) || {};
+  const notifs = (perms.notifications || {}) as Record<string, boolean>;
+  
+  const NOTIFICATION_OPTIONS = [
+    { key: "notifyNewRepairs", label: "New repair jobs", desc: "Get notified when a new repair is created" },
+    { key: "notifyNewBespoke", label: "New bespoke/custom orders", desc: "Get notified when a new custom order is placed" },
+    { key: "notifyRepairReady", label: "Repairs ready for collection", desc: "Get notified when repairs are marked ready" },
+    { key: "notifyBespokeReady", label: "Bespoke jobs ready", desc: "Get notified when custom orders are complete" },
+    { key: "notifyNewSales", label: "New sales", desc: "Get notified when a sale is made" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* WhatsApp Master Toggle */}
+      <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+              <MessageSquare size={20} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-stone-900">WhatsApp Notifications</p>
+              <p className="text-xs text-stone-500">
+                {member.phone_number 
+                  ? `Sending to ${member.phone_number}` 
+                  : "Add phone number to enable"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => canEdit && member.phone_number && onUpdate("whatsapp_enabled", !member.whatsapp_notifications_enabled)}
+            disabled={!canEdit || !member.phone_number || isPending}
+            className={`w-12 h-6 rounded-full transition-colors relative ${
+              member.whatsapp_notifications_enabled && member.phone_number ? "bg-green-500" : "bg-stone-300"
+            } ${canEdit && member.phone_number ? "cursor-pointer" : "cursor-default opacity-60"}`}
+          >
+            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+              member.whatsapp_notifications_enabled && member.phone_number ? "right-1" : "left-1"
+            }`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Individual Notification Toggles */}
+      <div>
+        <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <Bell size={12} />
+          Notification Triggers
+        </h3>
+        <div className="space-y-2">
+          {NOTIFICATION_OPTIONS.map(opt => {
+            const isEnabled = notifs[opt.key] ?? true; // Default to true
+            return (
+              <div
+                key={opt.key}
+                className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
+                  isEnabled ? "bg-white border-amber-200" : "bg-stone-50 border-stone-200"
+                }`}
+              >
+                <div>
+                  <p className={`text-sm font-medium ${isEnabled ? "text-stone-900" : "text-stone-500"}`}>
+                    {opt.label}
+                  </p>
+                  <p className="text-xs text-stone-400">{opt.desc}</p>
+                </div>
+                <button
+                  onClick={() => canEdit && onUpdate(opt.key, !isEnabled)}
+                  disabled={!canEdit || isPending}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${
+                    isEnabled ? "bg-amber-500" : "bg-stone-300"
+                  } ${canEdit ? "cursor-pointer" : "cursor-default opacity-60"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                    isEnabled ? "right-1" : "left-1"
+                  }`} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <p className="text-xs text-stone-400 text-center">
+        Notifications will be sent via WhatsApp if enabled, or email otherwise.
+      </p>
+    </div>
+  );
+}
+
 export default function RolesClient({ members, locations, isOwnerOrManager, tenantId }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
-  const [activeTab, setActiveTab] = useState<"permissions" | "locations">("permissions");
+  const [activeTab, setActiveTab] = useState<"permissions" | "locations" | "notifications">("permissions");
   const [saveMsg, setSaveMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   
   // Invite modal state
@@ -470,6 +575,17 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
                       Store Access
                     </button>
                   )}
+                  <button
+                    onClick={() => setActiveTab("notifications")}
+                    className={`px-6 py-3 text-sm font-medium transition-colors ${
+                      activeTab === "notifications" 
+                        ? "text-amber-700 border-b-2 border-amber-600" 
+                        : "text-stone-500 hover:text-stone-700"
+                    }`}
+                  >
+                    <Bell size={14} className="inline mr-2" />
+                    Notifications
+                  </button>
                 </div>
               </div>
 
@@ -597,6 +713,27 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
                     </div>
                   </div>
                 )}
+
+                {activeTab === "notifications" && (
+                  <NotificationsTab
+                    member={selectedMember}
+                    canEdit={isOwnerOrManager && selectedMember.role !== "owner"}
+                    isPending={isPending}
+                    onUpdate={(key, value) => {
+                      startTransition(async () => {
+                        if (key === "whatsapp_enabled") {
+                          const result = await updateMemberWhatsAppEnabled(selectedMember.id, value as boolean);
+                          if (result.error) setSaveMsg({ type: "err", text: result.error });
+                          else router.refresh();
+                        } else {
+                          const result = await updateMemberNotifications(selectedMember.id, { [key]: value });
+                          if (result.error) setSaveMsg({ type: "err", text: result.error });
+                          else router.refresh();
+                        }
+                      });
+                    }}
+                  />
+                )}
               </div>
             </div>
           ) : (
@@ -700,28 +837,41 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
                           />
                           <span className="text-sm text-stone-700">All stores</span>
                         </label>
-                        {locations.map(loc => (
-                          <label key={loc.id} className="flex items-center gap-2 p-3 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100">
-                            <input
-                              type="checkbox"
-                              checked={inviteLocations === null || inviteLocations?.includes(loc.id)}
-                              onChange={(e) => {
-                                if (inviteLocations === null) {
-                                  // Was "all", now selecting specific
-                                  setInviteLocations(e.target.checked ? [loc.id] : []);
-                                } else if (e.target.checked) {
-                                  setInviteLocations([...inviteLocations, loc.id]);
-                                } else {
-                                  setInviteLocations(inviteLocations.filter(id => id !== loc.id));
-                                }
-                              }}
-                              disabled={inviteLocations === null}
-                              className="text-amber-600 focus:ring-amber-600"
-                            />
-                            <span className="text-sm text-stone-700">{loc.name}</span>
-                            <span className="text-xs text-stone-400 capitalize">({loc.type})</span>
-                          </label>
-                        ))}
+                        <label className="flex items-center gap-2 p-3 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100">
+                          <input
+                            type="radio"
+                            name="locationAccess"
+                            checked={inviteLocations !== null}
+                            onChange={() => setInviteLocations([])}
+                            className="text-amber-600 focus:ring-amber-600"
+                          />
+                          <span className="text-sm text-stone-700">Specific stores only</span>
+                        </label>
+                        {inviteLocations !== null && (
+                          <div className="ml-6 space-y-2 pt-2">
+                            {locations.map(loc => (
+                              <label key={loc.id} className="flex items-center gap-2 p-2 bg-white rounded-lg cursor-pointer hover:bg-stone-50 border border-stone-200">
+                                <input
+                                  type="checkbox"
+                                  checked={inviteLocations.includes(loc.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setInviteLocations([...inviteLocations, loc.id]);
+                                    } else {
+                                      setInviteLocations(inviteLocations.filter(id => id !== loc.id));
+                                    }
+                                  }}
+                                  className="text-amber-600 focus:ring-amber-600"
+                                />
+                                <span className="text-sm text-stone-700">{loc.name}</span>
+                                <span className="text-xs text-stone-400 capitalize">({loc.type})</span>
+                              </label>
+                            ))}
+                            {inviteLocations.length === 0 && (
+                              <p className="text-xs text-amber-600">Select at least one store</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -735,7 +885,7 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
                   </button>
                   <button
                     onClick={handleInvite}
-                    disabled={isPending || !inviteName.trim() || !inviteEmail.trim()}
+                    disabled={isPending || !inviteName.trim() || !inviteEmail.trim() || (hasMultipleLocations && inviteLocations !== null && inviteLocations.length === 0)}
                     className="flex items-center gap-2 bg-stone-800 hover:bg-stone-900 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50"
                   >
                     {isPending ? (

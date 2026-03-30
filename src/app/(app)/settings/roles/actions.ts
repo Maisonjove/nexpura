@@ -473,3 +473,56 @@ export async function updateMemberWhatsAppEnabled(
   revalidatePath("/settings/roles");
   return { success: true };
 }
+
+export interface NotificationPreferences {
+  notifyNewRepairs: boolean;
+  notifyNewBespoke: boolean;
+  notifyRepairReady: boolean;
+  notifyBespokeReady: boolean;
+  notifyNewSales: boolean;
+}
+
+export async function updateMemberNotifications(
+  memberId: string,
+  notifications: Partial<NotificationPreferences>
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+
+  const admin = createAdminClient();
+  
+  // Get current permissions to merge with
+  const { data: member } = await admin
+    .from("team_members")
+    .select("permissions")
+    .eq("id", memberId)
+    .eq("tenant_id", ctx.tenantId)
+    .single();
+  
+  if (!member) return { error: "Member not found" };
+  
+  // Merge notifications into permissions object
+  const currentPerms = (member.permissions || {}) as Record<string, unknown>;
+  const currentNotifs = (currentPerms.notifications || {}) as Record<string, unknown>;
+  const updatedPerms = {
+    ...currentPerms,
+    notifications: {
+      ...currentNotifs,
+      ...notifications,
+    },
+  };
+  
+  const { error } = await admin
+    .from("team_members")
+    .update({ 
+      permissions: updatedPerms,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", memberId)
+    .eq("tenant_id", ctx.tenantId);
+
+  if (error) return { error: error.message };
+  
+  revalidatePath("/settings/roles");
+  return { success: true };
+}
