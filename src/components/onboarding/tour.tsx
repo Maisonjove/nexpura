@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
-import { useJoyride, Step, STATUS, EVENTS } from 'react-joyride';
+import { useCallback, useEffect, useState } from 'react';
+import Joyride, { Step, STATUS, CallBackProps, EVENTS } from 'react-joyride';
 
 const TOUR_STORAGE_KEY = 'nexpura_tour_completed';
 
@@ -11,14 +11,17 @@ interface OnboardingTourProps {
 }
 
 export function OnboardingTour({ forceStart, onComplete }: OnboardingTourProps) {
+  const [run, setRun] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
   // Define tour steps targeting sidebar navigation items
-  const tourSteps: Step[] = useMemo(() => [
+  const tourSteps: Step[] = [
     {
       target: '[data-tour="dashboard"]',
       content: 'Welcome to Nexpura! This is your Dashboard — see your sales, repairs, and key metrics at a glance.',
       title: '📊 Dashboard',
       placement: 'right',
-      skipBeacon: true,
+      disableBeacon: true,
     },
     {
       target: '[data-tour="pos"]',
@@ -56,60 +59,77 @@ export function OnboardingTour({ forceStart, onComplete }: OnboardingTourProps) 
       title: '❓ Help & Support',
       placement: 'right',
     },
-  ], []);
+  ];
 
-  const { Tour, controls, on } = useJoyride({
-    steps: tourSteps,
-    continuous: true,
-    locale: {
-      back: 'Back',
-      close: 'Close',
-      last: 'Finish',
-      next: 'Next',
-      skip: 'Skip tour',
-    },
-    options: {
-      primaryColor: '#b45309',
-      textColor: '#292524',
-      overlayColor: 'rgba(0, 0, 0, 0.5)',
-      zIndex: 10000,
-      showProgress: true,
-      backgroundColor: '#ffffff',
-    },
-  });
-
-  // Listen for tour end events
-  useEffect(() => {
-    const unsubscribe = on(EVENTS.TOUR_END, (data) => {
-      const { status } = data;
+  // Handle tour completion/skip
+  const handleCallback = useCallback((data: CallBackProps) => {
+    const { status, type } = data;
+    
+    if (type === EVENTS.TOUR_END) {
       if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+        // Mark tour as completed in localStorage
         localStorage.setItem(TOUR_STORAGE_KEY, 'true');
+        setRun(false);
         onComplete?.();
       }
-    });
-    return unsubscribe;
-  }, [on, onComplete]);
+    }
+  }, [onComplete]);
 
-  // Start tour on mount if not completed
+  // Check if tour should run on mount
   useEffect(() => {
+    setMounted(true);
+    
+    // Check localStorage after mount (client-side only)
     const completed = localStorage.getItem(TOUR_STORAGE_KEY);
     
     if (forceStart) {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        controls.start();
-      }, 1000);
+      // Force start - clear the flag and run
+      localStorage.removeItem(TOUR_STORAGE_KEY);
+      const timer = setTimeout(() => setRun(true), 1500);
       return () => clearTimeout(timer);
     } else if (!completed) {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        controls.start();
-      }, 1000);
+      // First time user - start tour after a delay to ensure DOM is ready
+      const timer = setTimeout(() => setRun(true), 1500);
       return () => clearTimeout(timer);
     }
-  }, [forceStart, controls]);
+  }, [forceStart]);
 
-  return Tour;
+  // Don't render on server
+  if (!mounted) return null;
+
+  return (
+    <Joyride
+      steps={tourSteps}
+      run={run}
+      continuous
+      showProgress
+      showSkipButton
+      scrollToFirstStep
+      callback={handleCallback}
+      locale={{
+        back: 'Back',
+        close: 'Close',
+        last: 'Finish',
+        next: 'Next',
+        skip: 'Skip tour',
+      }}
+      styles={{
+        options: {
+          primaryColor: '#b45309',
+          textColor: '#292524',
+          overlayColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 10000,
+          backgroundColor: '#ffffff',
+        },
+        buttonNext: {
+          backgroundColor: '#b45309',
+        },
+        buttonBack: {
+          color: '#78716c',
+        },
+      }}
+    />
+  );
 }
 
 export function useRestartTour() {
