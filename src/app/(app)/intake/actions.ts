@@ -405,7 +405,7 @@ export async function createBespokeFromIntake(
       due_date: input.due_date || null,
       quoted_price: input.quoted_price || null,
       deposit_amount: input.deposit_amount || null,
-      deposit_paid: (input.payment_received ?? 0) > 0,
+      deposit_received: (input.payment_received ?? 0) > 0,
       stage: "enquiry",
       internal_notes: input.design_source ? `Design source: ${input.design_source}` : null,
       client_notes: input.notes || null,

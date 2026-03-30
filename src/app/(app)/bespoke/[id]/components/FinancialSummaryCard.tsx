@@ -21,7 +21,7 @@ export default function FinancialSummaryCard({
 }: FinancialSummaryCardProps) {
   const balanceDue = invoice
     ? Math.max(0, invoice.total - invoice.amount_paid)
-    : (job.quoted_price ?? 0) - (job.deposit_paid ? (job.deposit_amount ?? 0) : 0);
+    : (job.quoted_price ?? 0) - (job.deposit_received ? (job.deposit_amount ?? 0) : 0);
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
@@ -49,8 +49,8 @@ export default function FinancialSummaryCard({
         )}
         {job.deposit_amount != null && (
           <div className="flex justify-between text-sm">
-            <span className="text-stone-500">Deposit {job.deposit_paid ? "(paid)" : "(pending)"}</span>
-            <span className={job.deposit_paid ? "text-stone-700" : "text-stone-400"}>{fmt(job.deposit_amount, currency)}</span>
+            <span className="text-stone-500">Deposit {job.deposit_received ? "(paid)" : "(pending)"}</span>
+            <span className={job.deposit_received ? "text-stone-700" : "text-stone-400"}>{fmt(job.deposit_amount, currency)}</span>
           </div>
         )}
         {invoice && (

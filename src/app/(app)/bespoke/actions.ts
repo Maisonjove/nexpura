@@ -66,7 +66,7 @@ function buildJobData(formData: FormData) {
     deposit_due_date: str("deposit_due_date"),
     quoted_price: num("quoted_price"),
     deposit_amount: num("deposit_amount"),
-    deposit_received: bool("deposit_paid"),  // form field "deposit_paid" maps to DB boolean "deposit_received"
+    deposit_received: bool("deposit_received"),
     final_price: num("final_price"),
     description: str("description"),
     internal_notes: str("internal_notes"),

@@ -83,7 +83,7 @@ export interface BespokeJob {
   priority: string;
   quoted_price: number | null;
   deposit_amount: number | null;
-  deposit_paid: boolean;
+  deposit_received: boolean;
   due_date: string | null;
   invoice_id: string | null;
   internal_notes: string | null;

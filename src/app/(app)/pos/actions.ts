@@ -44,12 +44,14 @@ export async function createPOSSale(
 
     const admin = createAdminClient();
   
-  // Generate sale number first
-  const { count } = await admin
-    .from("sales")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", params.tenantId);
-  const saleNumber = `S-${String((count ?? 0) + 1).padStart(4, "0")}`;
+  // Generate sale number using atomic RPC (returns format like "SALE-0001")
+  // This ensures no duplicate numbers and consistent formatting
+  const { data: saleNumber, error: saleNumErr } = await admin.rpc("next_sale_number", { 
+    p_tenant_id: params.tenantId 
+  });
+  if (saleNumErr || !saleNumber) {
+    return { error: `Failed to generate sale number: ${saleNumErr?.message ?? "Unknown error"}` };
+  }
   
   // Track state for rollback
   let saleId: string | null = null;

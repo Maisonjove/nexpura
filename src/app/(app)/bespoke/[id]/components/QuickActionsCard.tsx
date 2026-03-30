@@ -30,13 +30,13 @@ export default function QuickActionsCard({
 }: QuickActionsCardProps) {
   const balanceDue = invoice
     ? Math.max(0, invoice.total - invoice.amount_paid)
-    : (job.quoted_price ?? 0) - (job.deposit_paid ? (job.deposit_amount ?? 0) : 0);
+    : (job.quoted_price ?? 0) - (job.deposit_received ? (job.deposit_amount ?? 0) : 0);
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
       <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Quick Actions</h2>
       <div className="space-y-2">
-        {job.deposit_amount && !job.deposit_paid && (
+        {job.deposit_amount && !job.deposit_received && (
           <button onClick={() => onTakeDeposit(job.deposit_amount ?? 0)} className="w-full text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200 px-4 py-2.5 rounded-lg hover:bg-amber-100 transition-colors text-left">
             💰 Take Deposit ({fmt(job.deposit_amount, currency)})
           </button>

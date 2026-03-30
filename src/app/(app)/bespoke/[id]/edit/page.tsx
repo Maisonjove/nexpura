@@ -84,7 +84,7 @@ export default async function EditBespokeJobPage({
           deposit_due_date: job.deposit_due_date,
           quoted_price: job.quoted_price,
           deposit_amount: job.deposit_amount,
-          deposit_paid: job.deposit_paid,
+          deposit_received: job.deposit_received,
           final_price: job.final_price,
           description: job.description,
           internal_notes: job.internal_notes,

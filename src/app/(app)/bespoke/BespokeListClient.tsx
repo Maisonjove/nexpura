@@ -39,7 +39,7 @@ export const ALL_STAGES = [
   { key: "all", label: "All" },
   { key: "enquiry", label: "Enquiry" },
   { key: "consultation", label: "Consultation" },
-  { key: "deposit_paid", label: "Deposit Paid" },
+  { key: "deposit_received", label: "Deposit Received" },
   { key: "stone_sourcing", label: "Stone Sourcing" },
   { key: "cad", label: "CAD" },
   { key: "approval", label: "Approval" },
@@ -108,7 +108,7 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
     switch (stage.toLowerCase()) {
       case "enquiry": return <Badge variant="outline" className="bg-stone-100 text-stone-600 border-stone-200">Enquiry</Badge>;
       case "consultation": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Consultation</Badge>;
-      case "deposit_paid": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Deposit Paid</Badge>;
+      case "deposit_received": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Deposit Received</Badge>;
       case "stone_sourcing": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Stone Sourcing</Badge>;
       case "cad": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">CAD</Badge>;
       case "approval": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Approval</Badge>;

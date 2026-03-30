@@ -1,5 +1,20 @@
 "use server";
 
+/**
+ * Invoice Server Actions
+ * 
+ * IMPORTANT: Database Computed Columns
+ * -------------------------------------
+ * The `invoices` table has the following DB-computed column:
+ * 
+ * - `amount_due`: Automatically computed as (total - amount_paid).
+ *   This column is maintained by the database and should NOT be set manually.
+ *   It updates automatically when `total` or `amount_paid` changes.
+ * 
+ * When creating/updating invoices, only set `total` and `amount_paid`.
+ * The `amount_due` column is read-only in application code.
+ */
+
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";

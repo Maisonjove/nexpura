@@ -46,7 +46,8 @@ export default async function ReviewBespokeDetailPage({
 
   const customer = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
   const invoiceId = job.invoice_id ?? null;
-  const depositPaid = job.deposit_received ?? job.deposit_paid ?? false;
+  // deposit_received is the canonical field (deposit_paid column was migrated)
+  const depositPaid = job.deposit_received ?? false;
 
   let invoice = null;
   if (invoiceId) {
@@ -99,7 +100,7 @@ export default async function ReviewBespokeDetailPage({
         priority: job.priority ?? "normal",
         quoted_price: job.quoted_price ?? null,
         deposit_amount: job.deposit_amount ?? null,
-        deposit_paid: depositPaid,
+        deposit_received: depositPaid,
         due_date: job.due_date ?? null,
         invoice_id: job.invoice_id ?? null,
         internal_notes: job.internal_notes ?? null,

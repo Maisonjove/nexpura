@@ -28,7 +28,7 @@ function StatusChip({ invoice, job, currency }: { invoice: Invoice | null; job: 
   if (invoice.amount_paid > 0 && invoice.amount_paid < invoice.total) {
     return <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">Partially Paid ({fmt(invoice.amount_paid, currency)})</span>;
   }
-  if (job.deposit_paid) {
+  if (job.deposit_received) {
     return <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">Deposit Paid</span>;
   }
   return <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">Unpaid</span>;
@@ -46,7 +46,7 @@ export default function StatusStrip({
   const isOverdue = job.due_date && new Date(job.due_date) < new Date(new Date().toDateString()) && !isTerminal;
   const balanceDue = invoice
     ? Math.max(0, invoice.total - invoice.amount_paid)
-    : (job.quoted_price ?? 0) - (job.deposit_paid ? (job.deposit_amount ?? 0) : 0);
+    : (job.quoted_price ?? 0) - (job.deposit_received ? (job.deposit_amount ?? 0) : 0);
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl px-5 py-4 mb-4 shadow-sm">

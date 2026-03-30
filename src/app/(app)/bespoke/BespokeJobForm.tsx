@@ -37,7 +37,7 @@ interface JobData {
   deposit_due_date?: string | null;
   quoted_price?: number | null;
   deposit_amount?: number | null;
-  deposit_paid?: boolean;
+  deposit_received?: boolean;
   final_price?: number | null;
   description?: string | null;
   internal_notes?: string | null;
@@ -454,13 +454,13 @@ export default function BespokeJobForm({ customers, mode, job, preselectedCustom
           <div className="col-span-2 flex items-center gap-3 pt-1">
             <input
               type="checkbox"
-              name="deposit_paid"
-              id="deposit_paid"
+              name="deposit_received"
+              id="deposit_received"
               value="true"
-              defaultChecked={job?.deposit_paid ?? false}
+              defaultChecked={job?.deposit_received ?? false}
               className="w-4 h-4 rounded border-stone-200 accent-sage cursor-pointer"
             />
-            <label htmlFor="deposit_paid" className="text-sm text-stone-900 cursor-pointer">
+            <label htmlFor="deposit_received" className="text-sm text-stone-900 cursor-pointer">
               Deposit received
             </label>
           </div>

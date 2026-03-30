@@ -412,7 +412,7 @@ export async function importBespokeJobs(rows: BespokeJobRow[]): Promise<ImportRe
           metal_type: r.metal_type?.trim() || null,
           stone_type: r.stone_type?.trim() || null,
           estimated_cost: r.estimated_cost ? parseFloat(String(r.estimated_cost)) : null,
-          deposit_paid: r.deposit_paid === true || r.deposit_paid === "true" || r.deposit_paid === "yes" || r.deposit_paid === "1" || r.deposit_paid === 1,
+          deposit_received: r.deposit_paid === true || r.deposit_paid === "true" || r.deposit_paid === "yes" || r.deposit_paid === "1" || r.deposit_paid === 1,
           due_date: r.due_date?.trim() || null,
           notes: r.notes?.trim() || null,
         });
@@ -693,7 +693,7 @@ export async function exportBespokeJobs(): Promise<{ csv: string; error?: string
     const adminClient = createAdminClient();
     const { data } = await adminClient
       .from("bespoke_jobs")
-      .select("id,job_number,title,stage,metal_type,stone_type,quoted_price,deposit_amount,deposit_paid,due_date,created_at,customers(full_name,email)")
+      .select("id,job_number,title,stage,metal_type,stone_type,quoted_price,deposit_amount,deposit_received,due_date,created_at,customers(full_name,email)")
       .eq("tenant_id", ctx.tenantId)
       .order("created_at", { ascending: true });
 
@@ -711,7 +711,7 @@ export async function exportBespokeJobs(): Promise<{ csv: string; error?: string
       stone_type: r.stone_type,
       quoted_price: r.quoted_price,
       deposit_amount: r.deposit_amount,
-      deposit_paid: r.deposit_paid,
+      deposit_paid: r.deposit_received,  // Export as deposit_paid for backward compatibility
       due_date: r.due_date,
       created_at: r.created_at,
     }));

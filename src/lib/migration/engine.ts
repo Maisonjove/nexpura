@@ -498,7 +498,7 @@ export async function importBespokeJob(
         priority: 'normal',
         quoted_price: mappedData.quoted_price ? parseFloat(String(mappedData.quoted_price)) : null,
         deposit_amount: mappedData.deposit ? parseFloat(String(mappedData.deposit)) : null,
-        deposit_paid: Boolean(parseFloat(String(mappedData.deposit || '0')) > 0),
+        deposit_received: Boolean(parseFloat(String(mappedData.deposit || '0')) > 0),
         due_date: mappedData.due_date || null,
         description: mappedData.description || null,
         import_metadata: buildImportMetadata(ctx, row.sourceRowNumber, row.sourceExternalId),
