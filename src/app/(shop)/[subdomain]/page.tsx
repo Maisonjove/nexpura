@@ -39,7 +39,33 @@ export default async function ShopHomePage({ params, searchParams }: Props) {
     query = query.eq("published", true);
   }
 
-  const { data: config } = await query.maybeSingle();
+  let { data: config } = await query.maybeSingle();
+
+  // If not found by subdomain in preview mode, fall back to tenant_id lookup
+  if (!config && preview) {
+    try {
+      const { createClient } = await import("@/lib/supabase/server");
+      const userClient = await createClient();
+      const { data: { user } } = await userClient.auth.getUser();
+      if (user) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("tenant_id")
+          .eq("id", user.id)
+          .single();
+        if (userData?.tenant_id) {
+          const { data: tenantConfig } = await supabase
+            .from("website_config")
+            .select("*")
+            .eq("tenant_id", userData.tenant_id)
+            .maybeSingle();
+          if (tenantConfig) config = tenantConfig;
+        }
+      }
+    } catch {
+      // Fallback silently — user might not be authenticated
+    }
+  }
 
   if (!config) notFound();
 
