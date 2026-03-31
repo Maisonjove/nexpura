@@ -30,13 +30,13 @@ export default async function ShopHomePage({ params, searchParams }: Props) {
   const supabase = createAdminClient();
 
   // Fetch website config — allow unpublished for preview mode
-  const query = supabase
+  let query = supabase
     .from("website_config")
     .select("*")
     .eq("subdomain", subdomain);
 
   if (!preview) {
-    query.eq("published", true);
+    query = query.eq("published", true);
   }
 
   const { data: config } = await query.maybeSingle();
