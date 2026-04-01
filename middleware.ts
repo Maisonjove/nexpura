@@ -149,15 +149,49 @@ function isBypassRequest(req: NextRequest): boolean {
   ) as boolean;
 }
 
+// ── Security Headers ─────────────────────────────────────────────────────
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  // Content Security Policy - allow Stripe, Supabase, analytics, and image CDNs
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co https://*.vercel-scripts.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https: http:",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://*.vercel-insights.com https://*.google-analytics.com https://*.googleapis.com",
+    "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co",
+    "frame-ancestors 'self'",
+    "form-action 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+  ].join("; ");
+
+  response.headers.set("Content-Security-Policy", csp);
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "SAMEORIGIN");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  
+  // HSTS is handled by Vercel automatically for production domains with HTTPS
+  // But we set it explicitly for non-Vercel deployments
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   try {
-    return await withTimeout(_proxyInner(request), 5000);
+    const response = await withTimeout(_proxyInner(request), 5000);
+    return addSecurityHeaders(response);
   } catch (err) {
     const isTimeout = err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
     if (!isTimeout) {
       console.error("[middleware] unexpected error — passing through:", err);
     }
-    return NextResponse.next();
+    const fallbackResponse = NextResponse.next();
+    return addSecurityHeaders(fallbackResponse);
   }
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -140,6 +141,27 @@ async function getBusinessContext(tenantId: string) {
 }
 
 export async function POST(req: NextRequest) {
+  // SECURITY: Require authentication
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // SECURITY: Get tenant from authenticated user, NOT from request
+  const admin = createAdminClient();
+  const { data: userData } = await admin
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!userData?.tenant_id) {
+    return NextResponse.json({ error: "No tenant found" }, { status: 403 });
+  }
+
+  const tenantId = userData.tenant_id;
+
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "ai");
   if (!success) {
@@ -147,10 +169,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { message, tenantId } = await req.json();
+    const { message } = await req.json();
 
-    if (!message || !tenantId) {
-      return NextResponse.json({ error: "Message and tenantId required" }, { status: 400 });
+    if (!message) {
+      return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
     // Fetch business context

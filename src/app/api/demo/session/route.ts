@@ -11,9 +11,19 @@ export const dynamic = "force-dynamic";
  * Signs in as the demo user (demo@nexpura.com) and redirects to /dashboard.
  * Sets real Supabase auth cookies — all 15+ protected screens become accessible.
  *
- * Public route (middleware allows /api/*). Demo tenant only. Read-only intent.
+ * SECURITY: Disabled in production. Only works in preview/development.
  */
 export async function GET(request: NextRequest) {
+  // SECURITY: Block demo session access in production
+  const isProduction = process.env.NODE_ENV === "production" && 
+    !process.env.VERCEL_ENV?.includes("preview") &&
+    process.env.ENABLE_DEMO_MODE !== "true";
+    
+  if (isProduction) {
+    logger.warn("[demo/session] Blocked demo session access in production");
+    return NextResponse.json({ error: "Demo mode is disabled" }, { status: 403 });
+  }
+
   const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "auth");
   if (!success) {
