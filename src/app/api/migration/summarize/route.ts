@@ -19,21 +19,39 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { sessionId, tenantId } = await req.json();
-
     const admin = createAdminClient();
 
-    // Get session + files
+    // SECURITY: Get tenant from authenticated user, NOT from request body
+    const { data: userData } = await admin
+      .from('users')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .single();
+    
+    if (!userData?.tenant_id) {
+      return NextResponse.json({ error: 'No tenant found' }, { status: 403 });
+    }
+    const tenantId = userData.tenant_id;
+
+    const { sessionId } = await req.json();
+
+    // SECURITY: Verify session belongs to user's tenant
     const { data: session } = await admin
       .from('migration_sessions')
       .select('*')
       .eq('id', sessionId)
+      .eq('tenant_id', tenantId)
       .single();
+
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
 
     const { data: files } = await admin
       .from('migration_files')
       .select('*')
-      .eq('session_id', sessionId);
+      .eq('session_id', sessionId)
+      .eq('tenant_id', tenantId);
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -43,7 +61,7 @@ export async function POST(req: NextRequest) {
         suggestions: ['Review field mappings carefully', 'Check for duplicate customers before importing'],
         confidence: 0.5,
       };
-      await admin.from('migration_sessions').update({ ai_summary: fallbackSummary }).eq('id', sessionId);
+      await admin.from('migration_sessions').update({ ai_summary: fallbackSummary }).eq('id', sessionId).eq('tenant_id', tenantId);
       return NextResponse.json({ summary: fallbackSummary });
     }
 
@@ -89,7 +107,7 @@ Write a concise migration summary. Return JSON:
     const aiData = await res.json();
     const summary = JSON.parse(aiData.choices[0].message.content);
 
-    await admin.from('migration_sessions').update({ ai_summary: summary }).eq('id', sessionId);
+    await admin.from('migration_sessions').update({ ai_summary: summary }).eq('id', sessionId).eq('tenant_id', tenantId);
 
     return NextResponse.json({ summary });
   } catch (err) {

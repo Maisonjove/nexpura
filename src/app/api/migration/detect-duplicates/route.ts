@@ -89,16 +89,42 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { sessionId, tenantId } = await req.json() as { sessionId: string; tenantId: string };
-    if (!sessionId || !tenantId) {
-      return NextResponse.json({ error: 'Missing sessionId or tenantId' }, { status: 400 });
+    const admin = createAdminClient();
+
+    // SECURITY: Get tenant from authenticated user, NOT from request body
+    const { data: userData } = await admin
+      .from('users')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .single();
+    
+    if (!userData?.tenant_id) {
+      return NextResponse.json({ error: 'No tenant found' }, { status: 403 });
+    }
+    const tenantId = userData.tenant_id;
+
+    const { sessionId } = await req.json() as { sessionId: string };
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 });
     }
 
-    const admin = createAdminClient();
+    // SECURITY: Verify session belongs to user's tenant
+    const { data: session } = await admin
+      .from('migration_sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .eq('tenant_id', tenantId)
+      .single();
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+
     const { data: rawFiles } = await admin
       .from('migration_files')
       .select('*, migration_mappings(*)')
-      .eq('session_id', sessionId);
+      .eq('session_id', sessionId)
+      .eq('tenant_id', tenantId);
 
     const files = (rawFiles ?? []) as MigrationFile[];
     const duplicates: DuplicateCandidate[] = [];

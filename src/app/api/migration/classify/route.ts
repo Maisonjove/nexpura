@@ -36,16 +36,41 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { fileId, fileName, headers, sampleRows, tenantId, sessionId } = await req.json();
+    const admin = createAdminClient();
+
+    // SECURITY: Get tenant from authenticated user, NOT from request body
+    const { data: userData } = await admin
+      .from('users')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .single();
+    
+    if (!userData?.tenant_id) {
+      return NextResponse.json({ error: 'No tenant found' }, { status: 403 });
+    }
+    const tenantId = userData.tenant_id;
+
+    const { fileId, fileName, headers, sampleRows, sessionId } = await req.json();
+
+    // SECURITY: Verify file belongs to user's tenant
+    const { data: file } = await admin
+      .from('migration_files')
+      .select('id')
+      .eq('id', fileId)
+      .eq('tenant_id', tenantId)
+      .single();
+    
+    if (!file) {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 });
+    }
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       // Degrade gracefully
-      const admin = createAdminClient();
       await admin.from('migration_files').update({
         status: 'needs_review',
         classification_notes: 'AI classification unavailable — please review manually',
-      }).eq('id', fileId);
+      }).eq('id', fileId).eq('tenant_id', tenantId);
       return NextResponse.json({ status: 'needs_review' });
     }
 
@@ -102,16 +127,14 @@ Return JSON with:
     const aiData = await res.json();
     const result = JSON.parse(aiData.choices[0].message.content);
 
-    const admin = createAdminClient();
-
-    // Update the file record
+    // Update the file record (reuse admin client from earlier)
     await admin.from('migration_files').update({
       detected_entity: result.detectedEntity,
       detected_platform: result.detectedPlatform,
       confidence_score: result.confidence,
       status: result.confidence >= 0.6 ? 'classified' : 'needs_review',
       classification_notes: result.reasoning,
-    }).eq('id', fileId);
+    }).eq('id', fileId).eq('tenant_id', tenantId);
 
     // Create mapping record
     if (result.suggestedMappings && result.suggestedMappings.length > 0) {

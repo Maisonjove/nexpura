@@ -15,24 +15,41 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // SECURITY: Get user's tenant_id
+    const admin = createAdminClient();
+    const { data: userData } = await admin
+      .from('users')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .single();
+    
+    if (!userData?.tenant_id) {
+      return NextResponse.json({ error: 'No tenant found' }, { status: 403 });
+    }
+
     const sessionId = req.nextUrl.searchParams.get('sessionId');
     if (!sessionId) return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 });
 
-    const admin = createAdminClient();
+    // SECURITY: Verify session belongs to user's tenant
+    const { data: session } = await admin
+      .from('migration_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .eq('tenant_id', userData.tenant_id)
+      .single();
+
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
 
     const { data: files, error } = await admin
       .from('migration_files')
       .select('*')
       .eq('session_id', sessionId)
+      .eq('tenant_id', userData.tenant_id)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-
-    const { data: session } = await admin
-      .from('migration_sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .single();
 
     return NextResponse.json({ files, session });
   } catch (err) {
