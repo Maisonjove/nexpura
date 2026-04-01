@@ -160,7 +160,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     "font-src 'self' https://fonts.gstatic.com data:",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://*.vercel-insights.com https://*.google-analytics.com https://*.googleapis.com",
     "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co",
-    "frame-ancestors 'self' https://annot8.dev https://*.annot8.dev https://openclaw.ai https://*.openclaw.ai",
+    "frame-ancestors 'self' https://annot8.dev https://*.annot8.dev https://openclaw.ai https://*.openclaw.ai https://astry.agency https://*.astry.agency",
     "form-action 'self'",
     "base-uri 'self'",
     "object-src 'none'",
