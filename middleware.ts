@@ -160,7 +160,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     "font-src 'self' https://fonts.gstatic.com data:",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://*.vercel-insights.com https://*.google-analytics.com https://*.googleapis.com",
     "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co",
-    "frame-ancestors 'self'",
+    "frame-ancestors 'self' https://annot8.dev https://*.annot8.dev https://openclaw.ai https://*.openclaw.ai",
     "form-action 'self'",
     "base-uri 'self'",
     "object-src 'none'",
@@ -168,7 +168,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "SAMEORIGIN");
+  // X-Frame-Options removed to allow embedding (CSP frame-ancestors handles this)
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   
