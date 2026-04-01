@@ -89,10 +89,15 @@ export async function loginAction(
       };
     }
     
-    // Record session and check for new device (non-blocking)
+    // Record session and check for new device (non-blocking, completely isolated)
+    // This MUST NOT break login under any circumstances
     if (data.session?.access_token) {
-      recordSession(data.user.id, data.session.access_token, clientHeaders).catch(console.error);
-      checkNewDeviceLogin(data.user.id, data.user.email || '', clientHeaders).catch(console.error);
+      try {
+        recordSession(data.user.id, data.session.access_token, clientHeaders).catch(() => {});
+        checkNewDeviceLogin(data.user.id, data.user.email || '', clientHeaders).catch(() => {});
+      } catch {
+        // Silently ignore - session tracking is non-critical
+      }
     }
   }
 

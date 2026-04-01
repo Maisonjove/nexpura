@@ -71,11 +71,19 @@ export async function POST(request: NextRequest) {
       const isValid = verifyTOTPToken(normalizedCode, profile.totp_secret);
       
       if (isValid) {
-        // Record session after successful 2FA (non-blocking)
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          recordSession(userId, session.access_token).catch(console.error);
-          checkNewDeviceLogin(userId, sessionUser.email || '').catch(console.error);
+        // Record session after successful 2FA (non-blocking, isolated)
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const reqHeaders = {
+              ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+              userAgent: request.headers.get('user-agent') || 'unknown'
+            };
+            recordSession(userId, session.access_token, reqHeaders).catch(() => {});
+            checkNewDeviceLogin(userId, sessionUser.email || '', reqHeaders).catch(() => {});
+          }
+        } catch {
+          // Silently ignore - session tracking is non-critical
         }
         return NextResponse.json({ valid: true, method: 'totp' });
       }
@@ -98,11 +106,19 @@ export async function POST(request: NextRequest) {
           .update({ totp_backup_codes: updatedCodes })
           .eq('id', userId);
 
-        // Record session after successful 2FA (non-blocking)
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          recordSession(userId, session.access_token).catch(console.error);
-          checkNewDeviceLogin(userId, sessionUser.email || '').catch(console.error);
+        // Record session after successful 2FA (non-blocking, isolated)
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const reqHeaders = {
+              ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+              userAgent: request.headers.get('user-agent') || 'unknown'
+            };
+            recordSession(userId, session.access_token, reqHeaders).catch(() => {});
+            checkNewDeviceLogin(userId, sessionUser.email || '', reqHeaders).catch(() => {});
+          }
+        } catch {
+          // Silently ignore - session tracking is non-critical
         }
 
         return NextResponse.json({ valid: true, method: 'backup_code' });
