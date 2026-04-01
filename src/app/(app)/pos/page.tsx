@@ -1,73 +1,73 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { requireAuth } from "@/lib/auth-context";
+import { getCached, tenantCacheKey } from "@/lib/cache";
 import POSWrapper from "./POSWrapper";
 
 export const metadata = { title: "POS — Nexpura" };
 
 export default async function POSPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const auth = await requireAuth().catch(() => null);
+  if (!auth) redirect("/login");
 
+  const { tenantId, userId, taxRate, businessName } = auth;
   const admin = createAdminClient();
 
-  // Use admin for user lookup to bypass RLS recursion/timeouts
-  const { data: userData } = await admin
-    .from("users")
-    .select("tenant_id, full_name")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData?.tenant_id) redirect("/onboarding");
-
-  const tenantId = userData.tenant_id;
-
-  // Fetch inventory items
-  const { data: inventoryItems } = await admin
-    .from("inventory")
-    .select("id, name, sku, retail_price, quantity, primary_image, jewellery_type, item_type, status")
-    .eq("tenant_id", tenantId)
-    .eq("status", "active")
-    .is("deleted_at", null)
-    .gt("quantity", 0)
-    .order("name");
-
-  // Fetch customers
-  const { data: customers } = await admin
-    .from("customers")
-    .select("id, full_name, email, store_credit")
-    .eq("tenant_id", tenantId)
-    .order("full_name");
-
-  // Fetch settings for tax rate
-  const { data: settings } = await admin
-    .from("settings")
-    .select("tax_rate")
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
-
-  const taxRate = settings?.tax_rate ?? 0.1;
-
-  // Fetch tenant business name and Stripe status for receipt branding
-  const { data: tenantData } = await admin
-    .from("tenants")
-    .select("name, stripe_account_id")
-    .eq("id", tenantId)
-    .maybeSingle();
-
-  const businessName = tenantData?.name ?? "Our Store";
-  const hasStripe = !!tenantData?.stripe_account_id;
+  // Parallel fetch with caching for relatively static data
+  const [inventoryItems, customers, tenantSettings] = await Promise.all([
+    // Inventory - cache for 30 seconds (frequently changing but not critical)
+    getCached(
+      tenantCacheKey(tenantId, "pos-inventory"),
+      async () => {
+        const { data } = await admin
+          .from("inventory")
+          .select("id, name, sku, retail_price, quantity, primary_image, jewellery_type, item_type, status")
+          .eq("tenant_id", tenantId)
+          .eq("status", "active")
+          .is("deleted_at", null)
+          .gt("quantity", 0)
+          .order("name");
+        return data ?? [];
+      },
+      30
+    ),
+    // Customers - cache for 1 minute (less frequently changing)
+    getCached(
+      tenantCacheKey(tenantId, "pos-customers"),
+      async () => {
+        const { data } = await admin
+          .from("customers")
+          .select("id, full_name, email, store_credit")
+          .eq("tenant_id", tenantId)
+          .order("full_name");
+        return data ?? [];
+      },
+      60
+    ),
+    // Tenant Stripe status - cache for 5 minutes
+    getCached(
+      tenantCacheKey(tenantId, "stripe-status"),
+      async () => {
+        const { data } = await admin
+          .from("tenants")
+          .select("stripe_account_id")
+          .eq("id", tenantId)
+          .maybeSingle();
+        return { hasStripe: !!data?.stripe_account_id };
+      },
+      300
+    ),
+  ]);
 
   return (
     <POSWrapper
       tenantId={tenantId}
-      userId={user.id}
-      inventoryItems={inventoryItems ?? []}
-      customers={customers ?? []}
+      userId={userId}
+      inventoryItems={inventoryItems}
+      customers={customers}
       taxRate={taxRate}
-      businessName={businessName}
-      hasStripe={hasStripe}
+      businessName={businessName ?? "Our Store"}
+      hasStripe={tenantSettings.hasStripe}
     />
   );
 }

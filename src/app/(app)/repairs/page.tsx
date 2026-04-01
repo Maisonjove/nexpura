@@ -1,8 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { getAuthContext } from "@/lib/auth-context";
 import RepairsListClient from "./RepairsListClient";
-import { hasPermission } from "@/lib/permissions";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
@@ -18,40 +17,31 @@ export default async function RepairsPage({
   const stageFilter = params.stage || "";
   const admin = createAdminClient();
 
-  // Inline review check — URL param is the most reliable signal.
+  // Check for review mode or auth
   let tenantId: string | null = null;
-  let userId: string | null = null;
-  let isReviewMode = false;
+  let canView = false;
+  const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
   
-  if (params.rt && REVIEW_TOKENS.includes(params.rt)) {
+  if (isReviewMode) {
     tenantId = DEMO_TENANT;
-    isReviewMode = true;
+    canView = true;
   } else {
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        userId = user.id;
-        const { data: ud } = await admin.from("users").select("tenant_id").eq("id", user.id).single();
-        tenantId = ud?.tenant_id ?? null;
-      }
-    } catch { /* no session */ }
-    if (!tenantId) redirect("/login");
+    const auth = await getAuthContext();
+    if (!auth) redirect("/login");
+    tenantId = auth.tenantId;
+    canView = auth.permissions.view_repairs;
   }
 
-  // Check permission - skip for review mode
-  if (!isReviewMode && userId && tenantId) {
-    const canView = await hasPermission(userId, tenantId, "view_repairs");
-    if (!canView) {
-      return (
-        <div className="max-w-2xl mx-auto py-16 text-center">
-          <h1 className="text-2xl font-semibold text-stone-900 mb-3">Access Denied</h1>
-          <p className="text-stone-500">You don&apos;t have permission to view repairs.</p>
-        </div>
-      );
-    }
+  if (!canView) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 text-center">
+        <h1 className="text-2xl font-semibold text-stone-900 mb-3">Access Denied</h1>
+        <p className="text-stone-500">You don&apos;t have permission to view repairs.</p>
+      </div>
+    );
   }
 
+  // Build query with minimal fields for list view
   let query = admin
     .from("repairs")
     .select(

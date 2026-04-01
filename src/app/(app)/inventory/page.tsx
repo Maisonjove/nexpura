@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { getAuthContext } from "@/lib/auth-context";
+import { getCached, tenantCacheKey } from "@/lib/cache";
 import InventoryClient from "./InventoryClient";
-import { hasPermission } from "@/lib/permissions";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
@@ -15,34 +15,26 @@ export default async function InventoryPage({
   const sp = searchParams ? await searchParams : {};
   const admin = createAdminClient();
 
+  // Check for review mode or auth
   let tenantId: string | null = null;
-  let userId: string | null = null;
   let tenantName = "Nexpura";
-  
-  if (sp.rt && REVIEW_TOKENS.includes(sp.rt)) {
+  let canViewCost = false;
+  const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+
+  if (isReviewMode) {
     tenantId = DEMO_TENANT;
+    canViewCost = true;
   } else {
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        userId = user.id;
-        const { data: ud } = await admin.from("users").select("tenant_id").eq("id", user.id).single();
-        tenantId = ud?.tenant_id ?? null;
-      }
-    } catch { /* no session */ }
-    if (!tenantId) redirect("/login");
+    const auth = await getAuthContext();
+    if (!auth) redirect("/login");
+    tenantId = auth.tenantId;
+    tenantName = auth.tenantName ?? tenantName;
+    canViewCost = auth.permissions.view_cost_price;
   }
 
-  const canViewCost = (tenantId === DEMO_TENANT) || (userId && tenantId ? await hasPermission(userId, tenantId, "view_cost_price") : false);
-
-  const [
-    { data: items },
-    { data: categories },
-    { data: suppliers },
-    { data: websiteConfig },
-    { data: tenant },
-  ] = await Promise.all([
+  // Parallel fetch with caching for static reference data
+  const [items, categories, suppliers, websiteConfig] = await Promise.all([
+    // Items - no cache (frequently changing)
     admin
       .from("inventory")
       .select(`
@@ -57,31 +49,51 @@ export default async function InventoryPage({
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
-    admin
-      .from("stock_categories")
-      .select("id, name")
-      .eq("tenant_id", tenantId)
-      .order("name"),
-    admin
-      .from("suppliers")
-      .select("id, name")
-      .eq("tenant_id", tenantId)
-      .order("name"),
-    admin
-      .from("website_config")
-      .select("website_type")
-      .eq("tenant_id", tenantId)
-      .maybeSingle(),
-    admin
-      .from("tenants")
-      .select("name")
-      .eq("id", tenantId)
-      .single(),
+    
+    // Categories - cache for 5 minutes
+    getCached(
+      tenantCacheKey(tenantId!, "stock-categories"),
+      async () => {
+        const { data } = await admin
+          .from("stock_categories")
+          .select("id, name")
+          .eq("tenant_id", tenantId)
+          .order("name");
+        return data ?? [];
+      },
+      300
+    ),
+    
+    // Suppliers - cache for 5 minutes
+    getCached(
+      tenantCacheKey(tenantId!, "suppliers"),
+      async () => {
+        const { data } = await admin
+          .from("suppliers")
+          .select("id, name")
+          .eq("tenant_id", tenantId)
+          .order("name");
+        return data ?? [];
+      },
+      300
+    ),
+    
+    // Website config - cache for 5 minutes
+    getCached(
+      tenantCacheKey(tenantId!, "website-config"),
+      async () => {
+        const { data } = await admin
+          .from("website_config")
+          .select("website_type")
+          .eq("tenant_id", tenantId)
+          .maybeSingle();
+        return data;
+      },
+      300
+    ),
   ]);
 
-  if (tenant?.name) tenantName = tenant.name;
-
-  const safeItems = (items ?? []) as unknown as Array<{
+  const safeItems = (items.data ?? []) as unknown as Array<{
     id: string;
     sku: string | null;
     name: string;
@@ -123,8 +135,8 @@ export default async function InventoryPage({
   return (
     <InventoryClient
       items={safeItems}
-      categories={categories ?? []}
-      suppliers={suppliers ?? []}
+      categories={categories}
+      suppliers={suppliers}
       totalItems={totalItems}
       lowStockCount={lowStockCount}
       totalValue={totalValue}

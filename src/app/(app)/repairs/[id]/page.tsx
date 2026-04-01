@@ -1,6 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound, redirect } from "next/navigation";
+import { getAuthContext } from "@/lib/auth-context";
+import { getCached, tenantCacheKey } from "@/lib/cache";
 import RepairCommandCenter from "./RepairCommandCenter";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -17,26 +18,22 @@ export default async function RepairDetailPage({
   const sp = searchParams ? await searchParams : {};
   const adminClient = createAdminClient();
 
+  // Check for review mode or auth
   let tenantId: string | null = null;
-  let tenantCurrencyFromCtx = "AUD";
+  let tenantCurrency = "AUD";
   const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: ud } = await adminClient.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single();
-        tenantId = ud?.tenant_id ?? null;
-        tenantCurrencyFromCtx = (ud?.tenants as { currency?: string } | null)?.currency || "AUD";
-      }
-    } catch { }
-    if (!tenantId) redirect("/login");
+    const auth = await getAuthContext();
+    if (!auth) redirect("/login");
+    tenantId = auth.tenantId;
+    tenantCurrency = auth.currency;
   }
 
-  // Fetch repair + inventory in parallel
-  const [{ data: repair }, { data: inventory }] = await Promise.all([
+  // Phase 1: Fetch core repair + cached reference data in parallel
+  const [repairResult, inventory, tenantSettings] = await Promise.all([
     adminClient
       .from("repairs")
       .select("*, customers(id, full_name, email, mobile)")
@@ -44,27 +41,61 @@ export default async function RepairDetailPage({
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
       .single(),
-    adminClient
-      .from("inventory")
-      .select("id, name, sku, retail_price")
-      .eq("status", "active")
-      .eq("tenant_id", tenantId)
-      .order("name", { ascending: true })
-      .limit(100),
+    
+    // Inventory for upsell - cache for 2 minutes
+    getCached(
+      tenantCacheKey(tenantId, "repair-inventory"),
+      async () => {
+        const { data } = await adminClient
+          .from("inventory")
+          .select("id, name, sku, retail_price")
+          .eq("status", "active")
+          .eq("tenant_id", tenantId)
+          .order("name", { ascending: true })
+          .limit(100);
+        return data ?? [];
+      },
+      120
+    ),
+
+    // Tenant settings - cache for 5 minutes
+    getCached(
+      tenantCacheKey(tenantId, "tenant-settings"),
+      async () => {
+        const [tenant, twilio, website] = await Promise.all([
+          adminClient
+            .from("tenants")
+            .select("name, business_name, sms_templates")
+            .eq("id", tenantId)
+            .single(),
+          adminClient
+            .from("tenant_integrations")
+            .select("enabled")
+            .eq("tenant_id", tenantId)
+            .eq("integration_type", "twilio")
+            .maybeSingle(),
+          adminClient
+            .from("website_config")
+            .select("subdomain")
+            .eq("tenant_id", tenantId)
+            .maybeSingle(),
+        ]);
+        return {
+          businessName: tenant.data?.business_name || tenant.data?.name || "",
+          smsTemplates: (tenant.data?.sms_templates as { job_ready?: string } | null) || {},
+          twilioConnected: !!twilio?.data?.enabled,
+          storeSubdomain: (website?.data?.subdomain as string) ?? null,
+        };
+      },
+      300
+    ),
   ]);
 
+  const { data: repair } = repairResult;
   if (!repair) notFound();
 
-  // Get subdomain for public tracking links
-  const { data: websiteConfig } = await adminClient
-    .from("website_config")
-    .select("subdomain")
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
-  const storeSubdomain = (websiteConfig?.subdomain as string) ?? null;
-
-  // Attachments + events + tenant settings + twilio in parallel
-  const [{ data: attachments }, { data: events }, { data: tenant }, { data: twilioIntegration }] = await Promise.all([
+  // Phase 2: Fetch repair-specific data in parallel
+  const [attachmentsResult, eventsResult, invoiceData] = await Promise.all([
     adminClient
       .from("job_attachments")
       .select("*")
@@ -77,57 +108,38 @@ export default async function RepairDetailPage({
       .eq("job_type", "repair")
       .eq("job_id", id)
       .order("created_at", { ascending: false }),
-    adminClient
-      .from("tenants")
-      .select("name, business_name, sms_templates")
-      .eq("id", tenantId)
-      .single(),
-    adminClient
-      .from("tenant_integrations")
-      .select("enabled")
-      .eq("tenant_id", tenantId)
-      .eq("integration_type", "twilio")
-      .single(),
+    // Invoice + line items + payments if exists
+    repair.invoice_id ? (async () => {
+      const [invResult, lineItemsResult, paymentsResult] = await Promise.all([
+        adminClient
+          .from("invoices")
+          .select("id, invoice_number, status, subtotal, tax_amount, tax_rate, total, amount_paid")
+          .eq("id", repair.invoice_id)
+          .single(),
+        adminClient
+          .from("invoice_line_items")
+          .select("*")
+          .eq("invoice_id", repair.invoice_id),
+        adminClient
+          .from("payments")
+          .select("*")
+          .eq("invoice_id", repair.invoice_id)
+          .order("created_at", { ascending: true }),
+      ]);
+      if (invResult.data) {
+        return {
+          ...invResult.data,
+          lineItems: lineItemsResult.data ?? [],
+          payments: paymentsResult.data ?? [],
+        };
+      }
+      return null;
+    })() : Promise.resolve(null),
   ]);
 
-  const businessName = tenant?.business_name || tenant?.name || "";
-  const smsTemplates = (tenant?.sms_templates as { job_ready?: string } | null) || {};
-  const defaultSmsTemplate = smsTemplates.job_ready || 
-    "Hi {{customer_name}}, great news! Your {{job_type}} is ready for pickup at {{business_name}}. See you soon!";
-  const twilioConnected = !!twilioIntegration?.enabled;
-
-  const tenantCurrency = tenantCurrencyFromCtx;
   const customer = Array.isArray(repair.customers) ? repair.customers[0] ?? null : repair.customers;
-  const invoiceId = repair.invoice_id ?? null;
-
-  // Invoice + line items + payments in parallel
-  let invoice = null;
-  if (invoiceId) {
-    const [{ data: inv }, { data: lineItems }, { data: payments }] = await Promise.all([
-      adminClient
-        .from("invoices")
-        .select("id, invoice_number, status, subtotal, tax_amount, tax_rate, total, amount_paid")
-        .eq("id", invoiceId)
-        .single(),
-      adminClient
-        .from("invoice_line_items")
-        .select("*")
-        .eq("invoice_id", invoiceId),
-      adminClient
-        .from("payments")
-        .select("*")
-        .eq("invoice_id", invoiceId)
-        .order("created_at", { ascending: true }),
-    ]);
-
-    if (inv) {
-      invoice = {
-        ...inv,
-        lineItems: lineItems ?? [],
-        payments: payments ?? [],
-      };
-    }
-  }
+  const defaultSmsTemplate = tenantSettings.smsTemplates.job_ready || 
+    "Hi {{customer_name}}, great news! Your {{job_type}} is ready for pickup at {{business_name}}. See you soon!";
 
   return (
     <RepairCommandCenter
@@ -151,17 +163,17 @@ export default async function RepairDetailPage({
         invoice_id: repair.invoice_id ?? null,
       }}
       customer={customer}
-      invoice={invoice}
-      inventory={inventory ?? []}
+      invoice={invoiceData}
+      inventory={inventory}
       tenantId={tenantId}
       currency={tenantCurrency}
       readOnly={isReviewMode}
-      attachments={attachments ?? []}
-      events={events ?? []}
-      twilioConnected={twilioConnected}
-      businessName={businessName}
+      attachments={attachmentsResult.data ?? []}
+      events={eventsResult.data ?? []}
+      twilioConnected={tenantSettings.twilioConnected}
+      businessName={tenantSettings.businessName}
       defaultSmsTemplate={defaultSmsTemplate}
-      storeSubdomain={storeSubdomain}
+      storeSubdomain={tenantSettings.storeSubdomain}
     />
   );
 }

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { invalidateCache, tenantCacheKey } from "@/lib/cache";
 import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
@@ -962,8 +963,12 @@ export async function createStockSaleFromIntake(
   revalidatePath("/sales");
     revalidatePath("/inventory");
     revalidatePath("/invoices");
-    // Invalidate dashboard cache
+    // Invalidate dashboard and POS caches
     revalidateTag("dashboard", "default");
+    await Promise.all([
+      invalidateCache(tenantCacheKey(tenantId, "pos-inventory")),
+      invalidateCache(tenantCacheKey(tenantId, "pos-customers")),
+    ]);
 
     // Log intake succeeded
     logIntakeEvent({

@@ -1,46 +1,12 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth } from "@/lib/auth-context";
+import { getCached, tenantCacheKey } from "@/lib/cache";
 
-async function getAuthContext() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-    // Use admin client to bypass RLS recursion on users table (same fix as AppLayout)
-    const adminClient = createAdminClient();
-  const { data: userData } = await adminClient
-    .from("users")
-    .select("tenant_id, role, tenants(name, currency, tax_rate, tax_name)")
-    .eq("id", user.id)
-    .single();
-  if (!userData?.tenant_id) throw new Error("No tenant");
-  const tenantData = userData?.tenants as { name?: string; currency?: string; tax_rate?: number; tax_name?: string } | null;
-  const userRole = (userData as { role?: string } | null)?.role ?? "staff";
-  return { 
-    userId: user.id,
-    tenantId: userData.tenant_id as string,
-    tenantName: tenantData?.name ?? null,
-    currency: tenantData?.currency || "AUD",
-    userRole,
-    isManager: userRole === "owner" || userRole === "manager"
-  };
-}
-
-// Helper to apply location filter to queries
-function applyLocationFilter<T extends { eq: (col: string, val: string) => T; in: (col: string, vals: string[]) => T }>(
-  query: T, 
-  locationIds: string[] | null
-): T {
-  if (!locationIds || locationIds.length === 0) {
-    // No filter - return all
-    return query;
-  }
-  if (locationIds.length === 1) {
-    return query.eq("location_id", locationIds[0]);
-  }
-  return query.in("location_id", locationIds);
-}
+// ────────────────────────────────────────────────────────────────
+// Dashboard Data Types
+// ────────────────────────────────────────────────────────────────
 
 export interface DashboardData {
   firstName: string;
@@ -69,6 +35,10 @@ export interface DashboardData {
   repairStageData: Array<{ name: string; value: number }>;
 }
 
+// ────────────────────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────────────────────
+
 function getLast7Days(): string[] {
   const days: string[] = [];
   for (let i = 6; i >= 0; i--) {
@@ -79,32 +49,44 @@ function getLast7Days(): string[] {
   return days;
 }
 
+// ────────────────────────────────────────────────────────────────
+// Main Dashboard Data Fetcher
+// ────────────────────────────────────────────────────────────────
+
 export async function getDashboardData(locationIds: string[] | null): Promise<DashboardData> {
-  const { userId, tenantId, tenantName, currency, isManager } = await getAuthContext();
+  const auth = await requireAuth();
+  const { userId, tenantId, tenantName, currency, isManager } = auth;
   const admin = createAdminClient();
 
   const firstName = tenantName || "there";
   const today = new Date().toISOString().split("T")[0];
   const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Fetch locations for name lookup if we're showing all locations
+  // Fetch locations for name lookup if showing all locations
   const showLocationNames = !locationIds || locationIds.length > 1;
-  let locationMap: Map<string, string> = new Map();
+  let locationMap = new Map<string, string>();
   if (showLocationNames) {
-    const { data: locations } = await admin
-      .from("locations")
-      .select("id, name")
-      .eq("tenant_id", tenantId);
-    for (const loc of locations ?? []) {
+    const locations = await getCached(
+      tenantCacheKey(tenantId, "locations"),
+      async () => {
+        const { data } = await admin
+          .from("locations")
+          .select("id, name")
+          .eq("tenant_id", tenantId);
+        return data ?? [];
+      },
+      60 // 1 minute cache for location names
+    );
+    for (const loc of locations) {
       locationMap.set(loc.id, loc.name);
     }
   }
 
-  // Build base queries with location filtering
-  // Helper to build filtered query
-  const buildQuery = (table: string, locationColumn = "location_id") => {
-    let q = admin.from(table);
-    return q;
+  // Helper to add location filter
+  const addLocFilter = <T extends { eq: (col: string, val: string) => T; in: (col: string, vals: string[]) => T }>(q: T): T => {
+    if (!locationIds || locationIds.length === 0) return q;
+    return locationIds.length === 1 ? q.eq("location_id", locationIds[0]) : q.in("location_id", locationIds);
   };
 
   // ── Parallel fetch — all 18 independent queries at once ─────────────────────
@@ -128,231 +110,124 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
     customers7dResult,
     repairStagesResult,
   ] = await Promise.all([
-    // 1. Sales this month
-    (async () => {
-      let q = admin
-        .from("sales")
-        .select("total, location_id")
-        .eq("tenant_id", tenantId)
-        .gte("created_at", monthStartStr);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    // 1. Sales this month (lightweight - only select what's needed)
+    addLocFilter(admin
+      .from("sales")
+      .select("total")
+      .eq("tenant_id", tenantId)
+      .gte("created_at", monthStartStr)),
 
-    // 2. Outstanding invoices
-    (async () => {
-      let q = admin
-        .from("invoices")
-        .select("id, invoice_number, total, amount_paid, due_date, location_id, customers(full_name)")
-        .eq("tenant_id", tenantId)
-        .in("status", ["partial", "unpaid", "overdue"])
-        .is("deleted_at", null)
-        .order("due_date", { ascending: true })
-        .limit(5);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    // 2. Outstanding invoices (top 5 for display)
+    addLocFilter(admin
+      .from("invoices")
+      .select("id, amount_due")
+      .eq("tenant_id", tenantId)
+      .in("status", ["partial", "unpaid", "overdue"])
+      .is("deleted_at", null)
+      .limit(100)),
 
-    // 3. Overdue invoice count
-    (async () => {
-      let q = admin
-        .from("invoices")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
-        .not("status", "in", '("paid","voided","draft","cancelled")')
-        .lt("due_date", today)
-        .is("deleted_at", null);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    // 3. Overdue invoice count (head-only query)
+    addLocFilter(admin
+      .from("invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .not("status", "in", '("paid","voided","draft","cancelled")')
+      .lt("due_date", today)
+      .is("deleted_at", null)),
 
     // 4. Active bespoke count
-    (async () => {
-      let q = admin
-        .from("bespoke_jobs")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .not("stage", "in", '("completed","cancelled")');
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    addLocFilter(admin
+      .from("bespoke_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .not("stage", "in", '("completed","cancelled")')),
 
     // 5. Active repair count
-    (async () => {
-      let q = admin
-        .from("repairs")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .not("stage", "in", '("collected","cancelled")');
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    addLocFilter(admin
+      .from("repairs")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .not("stage", "in", '("collected","cancelled")')),
 
-    // 6. Overdue repairs detail
-    (async () => {
-      let q = admin
-        .from("repairs")
-        .select("id, repair_number, item_description, due_date, location_id, customers(full_name)")
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .not("stage", "in", '("collected","cancelled")')
-        .lt("due_date", today)
-        .order("due_date", { ascending: true })
-        .limit(5);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    // 6. Overdue repairs (limit 5)
+    addLocFilter(admin
+      .from("repairs")
+      .select("id, repair_number, item_description, due_date, location_id, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .not("stage", "in", '("collected","cancelled")')
+      .lt("due_date", today)
+      .order("due_date", { ascending: true })
+      .limit(5)),
 
-    // 7. Low stock — fetch only items with quantity under threshold (max 50)
-    (async () => {
-      let q = admin
-        .from("inventory")
-        .select("id, name, sku, quantity, low_stock_threshold, track_quantity, location_id")
-        .eq("tenant_id", tenantId)
-        .eq("status", "active")
-        .is("deleted_at", null)
-        .eq("track_quantity", true)
-        .order("quantity", { ascending: true })
-        .limit(50);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    // 7. Low stock (limit 50, filtered in JS)
+    addLocFilter(admin
+      .from("inventory")
+      .select("id, name, sku, quantity, low_stock_threshold")
+      .eq("tenant_id", tenantId)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .eq("track_quantity", true)
+      .order("quantity", { ascending: true })
+      .limit(50)),
 
     // 8. Ready repairs
-    (async () => {
-      let q = admin
-        .from("repairs")
-        .select("id, repair_number, item_description, location_id, customers(full_name)")
-        .eq("tenant_id", tenantId)
-        .eq("stage", "ready")
-        .is("deleted_at", null)
-        .order("updated_at", { ascending: true })
-        .limit(5);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    addLocFilter(admin
+      .from("repairs")
+      .select("id, repair_number, item_description, location_id, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .eq("stage", "ready")
+      .is("deleted_at", null)
+      .limit(5)),
 
     // 9. Ready bespoke
-    (async () => {
-      let q = admin
-        .from("bespoke_jobs")
-        .select("id, job_number, title, location_id, customers(full_name)")
-        .eq("tenant_id", tenantId)
-        .eq("stage", "ready")
-        .is("deleted_at", null)
-        .order("updated_at", { ascending: true })
-        .limit(5);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    addLocFilter(admin
+      .from("bespoke_jobs")
+      .select("id, job_number, title, location_id, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .eq("stage", "ready")
+      .is("deleted_at", null)
+      .limit(5)),
 
     // 10. Active repairs list
-    (async () => {
-      let q = admin
-        .from("repairs")
-        .select("id, item_description, stage, due_date, location_id, customers(full_name)")
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .not("stage", "in", '("collected","cancelled")')
-        .order("due_date", { ascending: true })
-        .limit(5);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    addLocFilter(admin
+      .from("repairs")
+      .select("id, item_description, stage, due_date, location_id, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .not("stage", "in", '("collected","cancelled")')
+      .order("due_date", { ascending: true })
+      .limit(5)),
 
     // 11. Active bespoke list
-    (async () => {
-      let q = admin
-        .from("bespoke_jobs")
-        .select("id, title, stage, due_date, location_id, customers(full_name)")
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .not("stage", "in", '("completed","cancelled")')
-        .order("due_date", { ascending: true })
-        .limit(5);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    addLocFilter(admin
+      .from("bespoke_jobs")
+      .select("id, title, stage, due_date, location_id, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .not("stage", "in", '("completed","cancelled")')
+      .order("due_date", { ascending: true })
+      .limit(5)),
 
     // 12. Recent bespoke jobs
-    (async () => {
-      let q = admin
-        .from("bespoke_jobs")
-        .select("id, title, stage, updated_at, location_id, customers(full_name)")
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .order("updated_at", { ascending: false })
-        .limit(5);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    addLocFilter(admin
+      .from("bespoke_jobs")
+      .select("id, title, stage, updated_at, location_id, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("updated_at", { ascending: false })
+      .limit(5)),
 
     // 13. Recent repairs
-    (async () => {
-      let q = admin
-        .from("repairs")
-        .select("id, item_description, stage, updated_at, location_id, customers(full_name)")
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .order("updated_at", { ascending: false })
-        .limit(5);
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    addLocFilter(admin
+      .from("repairs")
+      .select("id, item_description, stage, updated_at, location_id, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("updated_at", { ascending: false })
+      .limit(5)),
 
     // 14. Tasks due today
     (async () => {
@@ -368,58 +243,34 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
       return q;
     })(),
     
-    // 15. Sales last 7 days (for sparklines)
-    (async () => {
-      let q = admin
-        .from("sales")
-        .select("created_at, total, location_id")
-        .eq("tenant_id", tenantId)
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    // 15. Sales last 7 days (minimal fields)
+    addLocFilter(admin
+      .from("sales")
+      .select("created_at, total")
+      .eq("tenant_id", tenantId)
+      .gte("created_at", sevenDaysAgo)),
 
-    // 16. Repairs created last 7 days (for sparklines)
-    (async () => {
-      let q = admin
-        .from("repairs")
-        .select("created_at, location_id")
-        .eq("tenant_id", tenantId)
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    // 16. Repairs created last 7 days
+    addLocFilter(admin
+      .from("repairs")
+      .select("created_at")
+      .eq("tenant_id", tenantId)
+      .gte("created_at", sevenDaysAgo)),
 
-    // 17. Customers created last 7 days (for sparklines)
+    // 17. Customers created last 7 days
     admin
       .from("customers")
       .select("created_at")
       .eq("tenant_id", tenantId)
-      .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+      .gte("created_at", sevenDaysAgo),
 
-    // 18. Repair stage breakdown (for pie chart)
-    (async () => {
-      let q = admin
-        .from("repairs")
-        .select("stage, location_id")
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .not("stage", "in", '("collected","cancelled")');
-      if (locationIds && locationIds.length > 0) {
-        q = locationIds.length === 1 
-          ? q.eq("location_id", locationIds[0])
-          : q.in("location_id", locationIds);
-      }
-      return q;
-    })(),
+    // 18. Repair stage breakdown
+    addLocFilter(admin
+      .from("repairs")
+      .select("stage")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .not("stage", "in", '("collected","cancelled")')),
   ]);
 
   // ── Derive values ─────────────────────────────────────────────────────────────
@@ -427,9 +278,8 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
   const salesThisMonthRevenue = (salesResult.data ?? []).reduce((s, r) => s + (r.total || 0), 0);
   const salesThisMonthCount = (salesResult.data ?? []).length;
 
-  const outstandingData = outstandingResult.data ?? [];
-  const totalOutstanding = outstandingData.reduce(
-    (sum, inv) => sum + Math.max(0, (inv.total || 0) - (inv.amount_paid || 0)),
+  const totalOutstanding = (outstandingResult.data ?? []).reduce(
+    (sum, inv) => sum + Math.max(0, Number(inv.amount_due) || 0),
     0
   );
 
@@ -455,14 +305,18 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
     };
   });
 
-  const _seenSkus = new Map<string, (typeof lowStockResult.data extends (infer T)[] | null ? T : never)>();
-  for (const item of lowStockResult.data ?? []) {
-    const key = item.sku ?? item.id;
-    if (!_seenSkus.has(key)) _seenSkus.set(key, item);
-  }
-  const lowStockItems = Array.from(_seenSkus.values())
-    .filter((i) => i.quantity <= (i.low_stock_threshold ?? 1))
-    .sort((a, b) => a.quantity - b.quantity)
+  // Dedupe low stock by SKU
+  const seenSkus = new Set<string>();
+  const lowStockItems = (lowStockResult.data ?? [])
+    .filter((i) => {
+      const qty = i.quantity ?? 0;
+      const threshold = i.low_stock_threshold ?? 1;
+      if (qty > threshold) return false;
+      const key = i.sku ?? i.id;
+      if (seenSkus.has(key)) return false;
+      seenSkus.add(key);
+      return true;
+    })
     .slice(0, 10)
     .map((i) => ({ id: i.id, name: i.name, sku: i.sku ?? null, quantity: i.quantity }));
 
@@ -566,18 +420,18 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
   type TeamTaskSummary = { assigneeId: string; assigneeName: string; taskCount: number; overdueCount: number };
   const teamTaskSummary: TeamTaskSummary[] = [];
   if (isManager) {
-    const byAssignee = new Map<string, { name: string; count: number; overdue: number }>();
+    const byAssignee = new Map<string, { count: number }>();
     for (const t of allTasks) {
       if (!t.assigned_to || t.assigned_to === userId) continue;
       const existing = byAssignee.get(t.assigned_to);
       if (existing) {
         existing.count++;
       } else {
-        byAssignee.set(t.assigned_to, { name: "Unknown", count: 1, overdue: 0 });
+        byAssignee.set(t.assigned_to, { count: 1 });
       }
     }
     for (const [id, data] of byAssignee) {
-      teamTaskSummary.push({ assigneeId: id, assigneeName: data.name, taskCount: data.count, overdueCount: data.overdue });
+      teamTaskSummary.push({ assigneeId: id, assigneeName: "Unknown", taskCount: data.count, overdueCount: 0 });
     }
   }
 
