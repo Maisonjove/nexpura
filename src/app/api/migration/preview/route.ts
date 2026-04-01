@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
   parseCSVFull,
@@ -77,6 +78,13 @@ function getMappings(file: MigrationFile): MappingEntry[] {
 }
 
 export async function POST(req: NextRequest) {
+  // SECURITY: Require authentication
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
   const { success } = await checkRateLimit(ip, 'heavy');
   if (!success) {

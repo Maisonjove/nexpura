@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { notFound, redirect } from "next/navigation";
 
 export default async function PrintInvoicePage({
   params,
@@ -7,9 +8,26 @@ export default async function PrintInvoicePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const admin = createAdminClient();
+  
+  // SECURITY: Verify user is authenticated and belongs to the same tenant as the invoice
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
-  // Fetch invoice with tenant info
+  const admin = createAdminClient();
+  
+  // Get user's tenant_id
+  const { data: userData } = await admin
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  
+  if (!userData?.tenant_id) {
+    redirect("/login");
+  }
+
+  // Fetch invoice with tenant info - MUST match user's tenant
   const { data: invoice } = await admin
     .from("invoices")
     .select(`
@@ -17,6 +35,7 @@ export default async function PrintInvoicePage({
       tenants(name, business_name, abn, phone, email, logo_url, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer)
     `)
     .eq("id", id)
+    .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
     .single();
   if (!invoice) notFound();
 

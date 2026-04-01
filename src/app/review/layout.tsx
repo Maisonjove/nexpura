@@ -1,7 +1,14 @@
+import { redirect } from "next/navigation";
 import ReviewSidebar from "@/components/ReviewSidebar";
 import Header from "@/components/Header";
 
-// Force all review pages to be dynamic - they query Supabase at render time
+/**
+ * SECURITY: Review routes are DISABLED in production.
+ * These were development/QA preview routes that expose demo data.
+ * In production, they redirect to the main dashboard.
+ * 
+ * To enable review mode in development, set ENABLE_REVIEW_MODE=true in env.
+ */
 export const dynamic = "force-dynamic";
 
 const DEMO_USER = {
@@ -13,6 +20,14 @@ const DEMO_USER = {
 };
 
 export default function ReviewLayout({ children }: { children: React.ReactNode }) {
+  // SECURITY: Block review mode in production unless explicitly enabled
+  const isProduction = process.env.NODE_ENV === "production";
+  const reviewEnabled = process.env.ENABLE_REVIEW_MODE === "true";
+  
+  if (isProduction && !reviewEnabled) {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="flex min-h-screen bg-stone-50">
       <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white text-center text-xs font-semibold py-1.5">

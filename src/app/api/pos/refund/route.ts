@@ -1,13 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { validateCSRFForRequest } from "@/lib/csrf";
 import { posRefundSchema } from "@/lib/schemas";
 
 export async function POST(req: NextRequest) {
+  // SECURITY: Require authentication
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // CSRF protection
   if (!validateCSRFForRequest(req)) {
     return NextResponse.json({ error: "Invalid request origin" }, { status: 403 });
+  }
+
+  const admin = createAdminClient();
+  
+  // SECURITY: Get user's tenant_id from database, NOT from request body
+  const { data: userData } = await admin
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  
+  if (!userData?.tenant_id) {
+    return NextResponse.json({ error: "No tenant found" }, { status: 403 });
   }
 
   const body = await req.json();
@@ -15,15 +36,16 @@ export async function POST(req: NextRequest) {
   if (!parseResult.success) {
     return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
   }
-  const { tenantId, saleId, items, refundMethod, reason, notes, total } = parseResult.data;
+  const { saleId, items, refundMethod, reason, notes, total } = parseResult.data;
+  
+  // SECURITY: Use authenticated tenant_id, ignore client-supplied one
+  const tenantId = userData.tenant_id;
 
   // Rate limit refunds per tenant to prevent fraud
   const { success: rateLimitOk } = await checkRateLimit(`pos-refund:${tenantId}`);
   if (!rateLimitOk) {
     return NextResponse.json({ error: "Too many refund requests. Please try again later." }, { status: 429 });
   }
-
-  const admin = createAdminClient();
 
   // Check sale exists
   const { data: sale } = await admin

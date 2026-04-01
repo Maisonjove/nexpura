@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import OpenAI from "openai";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -21,6 +22,13 @@ interface SiteAnalysis {
 }
 
 export async function POST(req: NextRequest) {
+  // SECURITY: Require authentication
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success: _rlSuccess } = await checkRateLimit(_ip);
   if (!_rlSuccess) {

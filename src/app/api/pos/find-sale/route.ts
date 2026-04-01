@@ -1,9 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { findSaleQuerySchema } from "@/lib/schemas";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
+  // SECURITY: Require authentication
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const admin = createAdminClient();
+  
+  // SECURITY: Get user's tenant_id from database, NOT from query params
+  const { data: userData } = await admin
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  
+  if (!userData?.tenant_id) {
+    return NextResponse.json({ error: "No tenant found" }, { status: 403 });
+  }
+
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -13,14 +34,12 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const parseResult = findSaleQuerySchema.safeParse({
     q: searchParams.get("q"),
-    tenantId: searchParams.get("tenantId"),
+    tenantId: userData.tenant_id, // Use authenticated tenant, not from params
   });
   if (!parseResult.success) {
     return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
   }
   const { q, tenantId } = parseResult.data;
-
-  const admin = createAdminClient();
 
   // Search by sale_number or customer name
   const { data: sale, error } = await admin

@@ -49,6 +49,14 @@ function validateInput(body: unknown): { valid: boolean; error?: string; data?: 
 }
 
 export async function POST(req: NextRequest) {
+  // SECURITY: Require authentication
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success: rlSuccess } = await checkRateLimit(ip);
   if (!rlSuccess) {

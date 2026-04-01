@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { notFound, redirect } from "next/navigation";
 
 export default async function PrintReceiptPage({
   params,
@@ -7,7 +8,24 @@ export default async function PrintReceiptPage({
   params: Promise<{ jobType: string; jobId: string }>;
 }) {
   const { jobType, jobId } = await params;
+  
+  // SECURITY: Verify user is authenticated and belongs to the same tenant
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
   const admin = createAdminClient();
+  
+  // Get user's tenant_id
+  const { data: userData } = await admin
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  
+  if (!userData?.tenant_id) {
+    redirect("/login");
+  }
 
   // Fetch job + invoice + payments + customer
   let customer: Record<string, unknown> | null = null;
@@ -18,7 +36,9 @@ export default async function PrintReceiptPage({
   if (jobType === "repair") {
     const { data } = await admin.from("repairs")
       .select("*, customers(id, full_name, email, mobile)")
-      .eq("id", jobId).single();
+      .eq("id", jobId)
+      .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
+      .single();
     if (!data) notFound();
     customer = Array.isArray(data.customers) ? data.customers[0] : data.customers;
     jobNumber = data.repair_number;
@@ -27,7 +47,9 @@ export default async function PrintReceiptPage({
   } else if (jobType === "bespoke") {
     const { data } = await admin.from("bespoke_jobs")
       .select("*, customers(id, full_name, email, mobile)")
-      .eq("id", jobId).single();
+      .eq("id", jobId)
+      .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
+      .single();
     if (!data) notFound();
     customer = Array.isArray(data.customers) ? data.customers[0] : data.customers;
     jobNumber = data.job_number;

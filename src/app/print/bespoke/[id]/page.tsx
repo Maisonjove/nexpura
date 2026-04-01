@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { notFound, redirect } from "next/navigation";
 
 export default async function PrintBespokePage({
   params,
@@ -7,12 +8,30 @@ export default async function PrintBespokePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  
+  // SECURITY: Verify user is authenticated and belongs to the same tenant
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
   const admin = createAdminClient();
+  
+  // Get user's tenant_id
+  const { data: userData } = await admin
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  
+  if (!userData?.tenant_id) {
+    redirect("/login");
+  }
 
   const { data: job } = await admin
     .from("bespoke_jobs")
     .select("*, customers(id, full_name, email, mobile, address_line1, suburb, state, postcode)")
     .eq("id", id)
+    .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
     .single();
 
   if (!job) notFound();

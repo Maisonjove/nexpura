@@ -1,13 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/admin/init-qa - Initialize QA tables and seed data
+// SECURITY: This is a super admin only endpoint
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Require authentication and super admin status
+    const serverClient = await createServerClient();
+    const { data: { user } } = await serverClient.auth.getUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check super admin status
+    const adminClient = createAdminClient();
+    const { data: superAdmin } = await adminClient
+      .from("super_admins")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+    
+    if (!superAdmin) {
+      return NextResponse.json({ error: "Forbidden - Super admin access required" }, { status: 403 });
+    }
+
     // Rate limit admin operations by IP
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "anonymous";
     const { success } = await checkRateLimit(`admin-init-qa:${ip}`);
