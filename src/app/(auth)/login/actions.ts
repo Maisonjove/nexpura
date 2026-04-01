@@ -19,14 +19,13 @@ export type LoginResult = {
   lockedUntil?: number;
 };
 
-async function getClientIP(): Promise<string> {
+async function getClientHeaders(): Promise<{ ip: string; userAgent: string }> {
   const headersList = await headers();
   // Check various headers for client IP
   const forwardedFor = headersList.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0].trim();
-  }
-  return headersList.get("x-real-ip") || "unknown";
+  const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : headersList.get("x-real-ip") || "unknown";
+  const userAgent = headersList.get("user-agent") || "unknown";
+  return { ip, userAgent };
 }
 
 export async function loginAction(
@@ -34,10 +33,10 @@ export async function loginAction(
   password: string
 ): Promise<LoginResult> {
   try {
-    const clientIP = await getClientIP();
+    const clientHeaders = await getClientHeaders();
     // Use a combination of email + IP for rate limiting
     // This prevents account enumeration while still protecting against distributed attacks
-    const identifier = `${email.toLowerCase()}:${clientIP}`;
+    const identifier = `${email.toLowerCase()}:${clientHeaders.ip}`;
 
   // Check if login attempts are allowed
   const loginCheck = await checkLoginAttempts(identifier);
@@ -92,8 +91,8 @@ export async function loginAction(
     
     // Record session and check for new device (non-blocking)
     if (data.session?.access_token) {
-      recordSession(data.user.id, data.session.access_token).catch(console.error);
-      checkNewDeviceLogin(data.user.id, data.user.email || '').catch(console.error);
+      recordSession(data.user.id, data.session.access_token, clientHeaders).catch(console.error);
+      checkNewDeviceLogin(data.user.id, data.user.email || '', clientHeaders).catch(console.error);
     }
   }
 

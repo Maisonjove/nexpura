@@ -55,17 +55,32 @@ async function getLocationFromIP(ip: string): Promise<string | null> {
 
 /**
  * Record a new session login
+ * Can optionally pass headers if calling from a context where headers() isn't available
  */
 export async function recordSession(
   userId: string,
-  sessionToken: string
+  sessionToken: string,
+  requestHeaders?: { ip?: string; userAgent?: string }
 ): Promise<void> {
   try {
-    const headersList = await headers();
-    const ip = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-               headersList.get('x-real-ip') || 
-               'unknown';
-    const userAgent = headersList.get('user-agent') || 'unknown';
+    let ip = 'unknown';
+    let userAgent = 'unknown';
+    
+    if (requestHeaders) {
+      ip = requestHeaders.ip || 'unknown';
+      userAgent = requestHeaders.userAgent || 'unknown';
+    } else {
+      try {
+        const headersList = await headers();
+        ip = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+             headersList.get('x-real-ip') || 
+             'unknown';
+        userAgent = headersList.get('user-agent') || 'unknown';
+      } catch {
+        // headers() not available in this context
+      }
+    }
+    
     const deviceInfo = parseUserAgent(userAgent);
     const location = await getLocationFromIP(ip);
     
@@ -187,17 +202,32 @@ export async function cleanupExpiredSessions(maxAgeDays: number = 30): Promise<n
 
 /**
  * Check if login is from a new device/location and send alert
+ * Can optionally pass headers if calling from a context where headers() isn't available
  */
 export async function checkNewDeviceLogin(
   userId: string,
-  userEmail: string
+  userEmail: string,
+  requestHeaders?: { ip?: string; userAgent?: string }
 ): Promise<{ isNewDevice: boolean; deviceInfo: string }> {
   try {
-    const headersList = await headers();
-    const ip = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-               headersList.get('x-real-ip') || 
-               'unknown';
-    const userAgent = headersList.get('user-agent') || 'unknown';
+    let ip = 'unknown';
+    let userAgent = 'unknown';
+    
+    if (requestHeaders) {
+      ip = requestHeaders.ip || 'unknown';
+      userAgent = requestHeaders.userAgent || 'unknown';
+    } else {
+      try {
+        const headersList = await headers();
+        ip = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+             headersList.get('x-real-ip') || 
+             'unknown';
+        userAgent = headersList.get('user-agent') || 'unknown';
+      } catch {
+        // headers() not available in this context
+      }
+    }
+    
     const deviceInfo = parseUserAgent(userAgent);
     
     const admin = createAdminClient();
@@ -213,7 +243,7 @@ export async function checkNewDeviceLogin(
     
     const isNewDevice = !existingSessions || existingSessions.length === 0;
     
-    if (isNewDevice) {
+    if (isNewDevice && userEmail) {
       // Send alert email (non-blocking)
       sendNewDeviceAlert(userEmail, deviceInfo, ip).catch(console.error);
     }
