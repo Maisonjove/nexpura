@@ -548,6 +548,14 @@ export default function VerificationPage() {
                   >
                     Reset
                   </button>
+                  {check.status === "fail" && (
+                    <a
+                      href={`/admin/pilot-issues?prefill=true&title=${encodeURIComponent(`[Verification] ${check.category} failed`)}&route_path=${encodeURIComponent(check.route)}&category=ux_frontend&steps_to_reproduce=${encodeURIComponent(check.whatToCheck.join("\n"))}&expected_result=${encodeURIComponent(check.passLooksLike)}&actual_result=${encodeURIComponent(check.failLooksLike + (check.notes ? `\n\nNotes: ${check.notes}` : ""))}`}
+                      className="px-3 py-1 rounded text-sm font-medium bg-amber-100 text-amber-700 hover:bg-amber-200"
+                    >
+                      → Report as Pilot Issue
+                    </a>
+                  )}
                 </div>
               </div>
 

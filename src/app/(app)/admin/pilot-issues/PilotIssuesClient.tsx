@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   Bug,
@@ -82,7 +83,18 @@ const STATUS_LABELS: Record<IssueStatus, string> = {
   not_a_bug: "Not a Bug",
 };
 
+// Prefill data from URL params (e.g. from verification page)
+interface PrefillData {
+  title?: string;
+  route_path?: string;
+  category?: IssueCategory;
+  steps_to_reproduce?: string;
+  expected_result?: string;
+  actual_result?: string;
+}
+
 export default function PilotIssuesClient({ issues, tenants, currentUserId, currentUserEmail }: Props) {
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<IssueCategory | "all">("all");
   const [filterSeverity, setFilterSeverity] = useState<IssueSeverity | "all">("all");
@@ -91,6 +103,25 @@ export default function PilotIssuesClient({ issues, tenants, currentUserId, curr
   const [editingIssue, setEditingIssue] = useState<PilotIssue | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [copySuccess, setCopySuccess] = useState(false);
+  const [prefillData, setPrefillData] = useState<PrefillData | null>(null);
+
+  // Check for prefill params on mount
+  useEffect(() => {
+    if (searchParams.get("prefill") === "true") {
+      const data: PrefillData = {};
+      if (searchParams.get("title")) data.title = searchParams.get("title")!;
+      if (searchParams.get("route_path")) data.route_path = searchParams.get("route_path")!;
+      if (searchParams.get("category")) data.category = searchParams.get("category") as IssueCategory;
+      if (searchParams.get("steps_to_reproduce")) data.steps_to_reproduce = searchParams.get("steps_to_reproduce")!;
+      if (searchParams.get("expected_result")) data.expected_result = searchParams.get("expected_result")!;
+      if (searchParams.get("actual_result")) data.actual_result = searchParams.get("actual_result")!;
+      
+      if (Object.keys(data).length > 0) {
+        setPrefillData(data);
+        setShowCreateModal(true);
+      }
+    }
+  }, [searchParams]);
 
   // Filter issues
   const filteredIssues = useMemo(() => {
@@ -452,12 +483,17 @@ ${issue.fix_notes ? `### Fix Notes\n${issue.fix_notes}` : ""}
         <IssueModal
           tenants={tenants}
           currentUserEmail={currentUserEmail}
-          onClose={() => setShowCreateModal(false)}
+          prefill={prefillData ?? undefined}
+          onClose={() => {
+            setShowCreateModal(false);
+            setPrefillData(null);
+          }}
           onSave={async (data) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const result = await createPilotIssue(data as any);
             if (!result.error) {
               setShowCreateModal(false);
+              setPrefillData(null);
             }
             return result;
           }}
@@ -534,6 +570,7 @@ function IssueModal({
   onClose,
   onSave,
   onDelete,
+  prefill,
 }: {
   issue?: PilotIssue;
   tenants: { id: string; name: string }[];
@@ -541,19 +578,20 @@ function IssueModal({
   onClose: () => void;
   onSave: (data: Record<string, unknown>) => Promise<{ error?: string }>;
   onDelete?: () => void;
+  prefill?: PrefillData;
 }) {
-  const [title, setTitle] = useState(issue?.title ?? "");
+  const [title, setTitle] = useState(issue?.title ?? prefill?.title ?? "");
   const [description, setDescription] = useState(issue?.description ?? "");
-  const [routePath, setRoutePath] = useState(issue?.route_path ?? "");
-  const [category, setCategory] = useState<IssueCategory>(issue?.category ?? "other");
+  const [routePath, setRoutePath] = useState(issue?.route_path ?? prefill?.route_path ?? "");
+  const [category, setCategory] = useState<IssueCategory>(issue?.category ?? prefill?.category ?? "other");
   const [severity, setSeverity] = useState<IssueSeverity>(issue?.severity ?? "medium");
   const [status, setStatus] = useState<IssueStatus>(issue?.status ?? "new");
   const [isBlocking, setIsBlocking] = useState(issue?.is_pilot_blocking ?? false);
   const [reportedBy, setReportedBy] = useState(issue?.reported_by ?? currentUserEmail ?? "");
   const [tenantId, setTenantId] = useState(issue?.tenant_id ?? "");
-  const [stepsToReproduce, setStepsToReproduce] = useState(issue?.steps_to_reproduce ?? "");
-  const [expectedResult, setExpectedResult] = useState(issue?.expected_result ?? "");
-  const [actualResult, setActualResult] = useState(issue?.actual_result ?? "");
+  const [stepsToReproduce, setStepsToReproduce] = useState(issue?.steps_to_reproduce ?? prefill?.steps_to_reproduce ?? "");
+  const [expectedResult, setExpectedResult] = useState(issue?.expected_result ?? prefill?.expected_result ?? "");
+  const [actualResult, setActualResult] = useState(issue?.actual_result ?? prefill?.actual_result ?? "");
   const [fixNotes, setFixNotes] = useState(issue?.fix_notes ?? "");
   const [fixedInCommit, setFixedInCommit] = useState(issue?.fixed_in_commit ?? "");
   const [assignedTo, setAssignedTo] = useState(issue?.assigned_to ?? "");
