@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
+import { getAuthContext } from "@/lib/auth-context";
 import CustomerDetailClient from "./CustomerDetailClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -22,18 +22,12 @@ export default async function CustomerDetailPage({
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: ud } = await admin.from("users").select("tenant_id").eq("id", user.id).single();
-        tenantId = ud?.tenant_id ?? null;
-      }
-    } catch { /* no session */ }
-    if (!tenantId) redirect("/login");
+    const auth = await getAuthContext();
+    if (!auth) redirect("/login");
+    tenantId = auth.tenantId;
   }
 
-  // Main customer record — scoped to tenant
+  // Phase 1: Core customer record — scoped to tenant
   const { data: customer } = await admin
     .from("customers")
     .select("*")
@@ -44,21 +38,25 @@ export default async function CustomerDetailPage({
 
   if (!customer) notFound();
 
-  // Fetch all related data in parallel — all scoped to tenant
+  // Phase 2: Fetch ALL related data in parallel — 10 queries at once
   const [
-    { data: creditHistory },
-    { data: repairs },
-    { data: bespokeJobs },
-    { data: quotes },
-    { data: invoices },
-    { data: passports },
-    { data: sales },
+    creditHistoryResult,
+    repairsResult,
+    bespokeJobsResult,
+    quotesResult,
+    invoicesResult,
+    passportsResult,
+    salesResult,
+    communicationsResult,
+    wishlistResult,
+    loyaltyResult,
   ] = await Promise.all([
     admin
       .from("customer_store_credit_history")
       .select("*")
       .eq("customer_id", id)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(50),
     admin
       .from("repairs")
       .select("id, repair_number, item_description, stage, due_date, quoted_price, created_at")
@@ -106,54 +104,52 @@ export default async function CustomerDetailPage({
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false })
       .limit(20),
+    (async () => {
+      try {
+        const { data } = await admin
+          .from("customer_communications")
+          .select("id, type, subject, sent_at, sent_by, reference_type, reference_id")
+          .eq("customer_id", id)
+          .eq("tenant_id", tenantId)
+          .order("sent_at", { ascending: false })
+          .limit(50);
+        return data ?? [];
+      } catch { return []; }
+    })(),
+    (async () => {
+      try {
+        const { data } = await admin
+          .from("wishlists")
+          .select("id, inventory_id, added_at, inventory(name, sku, retail_price)")
+          .eq("customer_id", id)
+          .eq("tenant_id", tenantId)
+          .order("added_at", { ascending: false });
+        return (data ?? []).map(item => ({
+          ...item,
+          inventory: Array.isArray(item.inventory) ? item.inventory[0] : item.inventory,
+        }));
+      } catch { return []; }
+    })(),
+    (async () => {
+      try {
+        const { data } = await admin
+          .from("loyalty_transactions")
+          .select("id, points, type, description, created_at")
+          .eq("customer_id", id)
+          .eq("tenant_id", tenantId)
+          .order("created_at", { ascending: false })
+          .limit(20);
+        return data ?? [];
+      } catch { return []; }
+    })(),
   ]);
 
-  let communications: any[] = [];
-  try {
-    const { data: commsData } = await admin
-      .from("customer_communications")
-      .select("id, type, subject, sent_at, sent_by, reference_type, reference_id")
-      .eq("customer_id", id)
-      .eq("tenant_id", tenantId)
-      .order("sent_at", { ascending: false })
-      .limit(50);
-    communications = commsData ?? [];
-  } catch { }
-
-  // Wishlist items
-  let wishlistItems: { id: string; inventory_id: string; added_at: string; inventory?: { name: string; sku: string | null; retail_price: number | null } }[] = [];
-  try {
-    const { data: wlData } = await admin
-      .from("wishlists")
-      .select("id, inventory_id, added_at, inventory(name, sku, retail_price)")
-      .eq("customer_id", id)
-      .eq("tenant_id", tenantId)
-      .order("added_at", { ascending: false });
-    // Normalize inventory from array to single object
-    wishlistItems = (wlData ?? []).map((item) => ({
-      ...item,
-      inventory: Array.isArray(item.inventory) ? item.inventory[0] : item.inventory,
-    })) as typeof wishlistItems;
-  } catch { }
-
-  // Loyalty transactions
-  let loyaltyTransactions: { id: string; points: number; type: string; description: string | null; created_at: string }[] = [];
-  try {
-    const { data: ltData } = await admin
-      .from("loyalty_transactions")
-      .select("id, points, type, description, created_at")
-      .eq("customer_id", id)
-      .eq("tenant_id", tenantId)
-      .order("created_at", { ascending: false })
-      .limit(20);
-    loyaltyTransactions = ltData ?? [];
-  } catch { }
-
-  const lifetimeSpend = (invoices ?? [])
+  const invoices = invoicesResult.data ?? [];
+  const lifetimeSpend = invoices
     .filter((inv) => inv.status === "paid")
     .reduce((sum, inv) => sum + (inv.total || 0), 0);
 
-  const lastVisitDates = (invoices ?? [])
+  const lastVisitDates = invoices
     .map((inv) => inv.paid_at || inv.created_at)
     .filter(Boolean)
     .sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime());
@@ -162,19 +158,19 @@ export default async function CustomerDetailPage({
   return (
     <CustomerDetailClient
       customer={customer}
-      creditHistory={creditHistory || []}
-      repairs={repairs || []}
-      bespokeJobs={bespokeJobs || []}
-      quotes={quotes || []}
-      invoices={invoices || []}
-      passports={passports || []}
-      sales={sales || []}
-      communications={communications}
+      creditHistory={creditHistoryResult.data ?? []}
+      repairs={repairsResult.data ?? []}
+      bespokeJobs={bespokeJobsResult.data ?? []}
+      quotes={quotesResult.data ?? []}
+      invoices={invoices}
+      passports={passportsResult.data ?? []}
+      sales={salesResult.data ?? []}
+      communications={communicationsResult}
       lifetimeSpend={lifetimeSpend}
       lastVisit={lastVisit}
       readOnly={isReviewMode}
-      wishlistItems={wishlistItems}
-      loyaltyTransactions={loyaltyTransactions}
+      wishlistItems={wishlistResult as { id: string; inventory_id: string; added_at: string; inventory?: { name: string; sku: string | null; retail_price: number | null } }[]}
+      loyaltyTransactions={loyaltyResult as { id: string; points: number; type: string; description: string | null; created_at: string }[]}
     />
   );
 }

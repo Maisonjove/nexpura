@@ -15,6 +15,7 @@ import { DEFAULT_PERMISSIONS, ALL_PERMISSION_KEYS } from "@/lib/permissions";
 
 export interface AuthContext {
   userId: string;
+  email: string | null;
   tenantId: string;
   tenantName: string | null;
   businessName: string | null;
@@ -104,6 +105,7 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
 
     return {
       userId: user.id,
+      email: user.email ?? null,
       tenantId: userData.tenant_id,
       tenantName: tenantData?.name ?? null,
       businessName: tenantData?.business_name ?? tenantData?.name ?? null,

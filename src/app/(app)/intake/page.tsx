@@ -1,7 +1,8 @@
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { requireAuth } from "@/lib/auth-context";
+import { getCached, tenantCacheKey } from "@/lib/cache";
 import IntakeClient from "./IntakeClient";
 
 export const metadata = {
@@ -10,51 +11,33 @@ export const metadata = {
 };
 
 async function getPageData() {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  const { tenantId, taxRate, taxName, taxInclusive, currency } = auth;
   const admin = createAdminClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: userData } = await admin
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData?.tenant_id) {
-    redirect("/login");
-  }
-
-  const tenantId = userData.tenant_id;
-
-  const [customersRes, taxRes] = await Promise.all([
-    admin
-      .from("customers")
-      .select("id, full_name, email, mobile, phone")
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .order("full_name")
-      .limit(100),
-    admin
-      .from("tenants")
-      .select("tax_rate, tax_name, tax_inclusive, currency")
-      .eq("id", tenantId)
-      .single(),
-  ]);
+  // Customers change more often - cache for 30 seconds
+  const customers = await getCached(
+    tenantCacheKey(tenantId, "intake-customers"),
+    async () => {
+      const { data } = await admin
+        .from("customers")
+        .select("id, full_name, email, mobile, phone")
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .order("full_name")
+        .limit(100);
+      return data ?? [];
+    },
+    30
+  );
 
   return {
-    customers: customersRes.data ?? [],
-    taxConfig: taxRes.data ?? {
-      tax_rate: 0.1,
-      tax_name: "GST",
-      tax_inclusive: true,
-      currency: "AUD",
+    customers,
+    taxConfig: {
+      tax_rate: taxRate,
+      tax_name: taxName,
+      tax_inclusive: taxInclusive,
+      currency,
     },
   };
 }

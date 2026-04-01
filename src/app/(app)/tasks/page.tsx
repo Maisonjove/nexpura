@@ -1,59 +1,58 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { getAuthContext } from "@/lib/auth-context";
+import { getCached, tenantCacheKey } from "@/lib/cache";
 import TasksClient from "./TasksClient";
 
 export const metadata = { title: "Tasks — Nexpura" };
 
 export default async function TasksPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const auth = await getAuthContext();
+  if (!auth) redirect("/login");
 
+  const { userId, tenantId, role, isManager } = auth;
   const admin = createAdminClient();
-  const { data: userData } = await admin
-    .from("users")
-    .select("tenant_id, role")
-    .eq("id", user.id)
-    .single();
 
-  if (!userData?.tenant_id) redirect("/onboarding");
-
-  const tenantId = userData.tenant_id;
-  const role = userData.role ?? "staff";
-
-  // Fetch my tasks
-  const { data: myTasks } = await admin
-    .from("tasks")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .eq("assigned_to", user.id)
-    .order("due_date", { ascending: true, nullsFirst: false });
-
-  // Fetch all tasks (for manager/owner)
-  let allTasks = null;
-  if (role === "owner" || role === "manager") {
-    const { data } = await admin
+  // Parallel fetch - tasks + team members
+  const [myTasksResult, allTasksResult, teamMembers] = await Promise.all([
+    // My tasks - always fetch
+    admin
       .from("tasks")
       .select("*")
       .eq("tenant_id", tenantId)
-      .order("created_at", { ascending: false });
-    allTasks = data;
-  }
+      .eq("assigned_to", userId)
+      .order("due_date", { ascending: true, nullsFirst: false }),
 
-  // Fetch team members for assignee dropdown
-  const { data: teamMembers } = await admin
-    .from("users")
-    .select("id, full_name, email")
-    .eq("tenant_id", tenantId);
+    // All tasks - only for managers/owners
+    isManager
+      ? admin
+          .from("tasks")
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: null }),
+
+    // Team members - cache for 5 min (rarely changes)
+    getCached(
+      tenantCacheKey(tenantId, "team-members"),
+      async () => {
+        const { data } = await admin
+          .from("users")
+          .select("id, full_name, email")
+          .eq("tenant_id", tenantId);
+        return data ?? [];
+      },
+      300
+    ),
+  ]);
 
   return (
     <TasksClient
-      userId={user.id}
+      userId={userId}
       userRole={role}
-      myTasks={myTasks ?? []}
-      allTasks={allTasks ?? []}
-      teamMembers={teamMembers ?? []}
+      myTasks={myTasksResult.data ?? []}
+      allTasks={allTasksResult.data ?? []}
+      teamMembers={teamMembers}
       tenantId={tenantId}
     />
   );

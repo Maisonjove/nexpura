@@ -1,40 +1,46 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { redirect } from "next/navigation";
+import { getAuthContext } from "@/lib/auth-context";
 import { Wrench, ClipboardList, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 export default async function WorkshopPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+  const auth = await getAuthContext();
+  if (!auth) redirect("/login");
+  
+  const { tenantId } = auth;
   const admin = createAdminClient();
-  const { data: userData } = await admin
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user?.id ?? "")
-    .single();
+  const today = new Date();
 
-  const tenantId = userData?.tenant_id;
+  // Fetch both repair and bespoke in parallel
+  const [repairsResult, jobsResult] = await Promise.all([
+    admin
+      .from("repairs")
+      .select("id, item_description, stage, due_date, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .not("stage", "in", '("collected","cancelled")')
+      .order("due_date", { ascending: true })
+      .limit(50),
+    admin
+      .from("bespoke_jobs")
+      .select("id, title, stage, due_date, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .not("stage", "in", '("completed","cancelled")')
+      .order("due_date", { ascending: true })
+      .limit(50),
+  ]);
 
-  // Fetch active repairs
-  const { data: activeRepairs } = await admin
-    .from("repairs")
-    .select("id, item_description, stage, due_date, customers(full_name)")
-    .eq("tenant_id", tenantId ?? "")
-    .not("stage", "in", '("collected","cancelled")')
-    .order("due_date", { ascending: true });
+  const activeRepairs = repairsResult.data ?? [];
+  const activeJobs = jobsResult.data ?? [];
 
-  // Fetch active bespoke jobs
-  const { data: activeJobs } = await admin
-    .from("bespoke_jobs")
-    .select("id, title, stage, due_date, customers(full_name)")
-    .eq("tenant_id", tenantId ?? "")
-    .not("stage", "in", '("completed","cancelled")')
-    .order("due_date", { ascending: true });
-
-  const totalActive = (activeRepairs?.length ?? 0) + (activeJobs?.length ?? 0);
-  const overdueCount = [...(activeRepairs ?? []), ...(activeJobs ?? [])].filter(
-    item => item.due_date && new Date(item.due_date) < new Date()
+  const totalActive = activeRepairs.length + activeJobs.length;
+  const inProgressCount = [...activeRepairs, ...activeJobs].filter(
+    i => i.stage !== 'intake' && i.stage !== 'enquiry'
+  ).length;
+  const overdueCount = [...activeRepairs, ...activeJobs].filter(
+    item => item.due_date && new Date(item.due_date) < today
   ).length;
 
   return (
@@ -76,9 +82,7 @@ export default async function WorkshopPage() {
             </div>
             <div>
               <p className="nx-label">In Progress</p>
-              <p className="text-2xl font-bold text-stone-900">
-                {[...(activeRepairs ?? []), ...(activeJobs ?? [])].filter(i => i.stage !== 'intake' && i.stage !== 'enquiry').length}
-              </p>
+              <p className="text-2xl font-bold text-stone-900">{inProgressCount}</p>
             </div>
           </div>
         </div>
@@ -106,7 +110,7 @@ export default async function WorkshopPage() {
             <Link href="/repairs" className="text-xs text-amber-700 font-medium hover:underline">View All</Link>
           </div>
           <div className="divide-y divide-stone-100">
-            {activeRepairs && activeRepairs.length > 0 ? (
+            {activeRepairs.length > 0 ? (
               activeRepairs.slice(0, 8).map(repair => (
                 <div key={repair.id} className="px-6 py-4 hover:bg-stone-50 transition-colors flex justify-between items-center">
                   <div>
@@ -124,7 +128,7 @@ export default async function WorkshopPage() {
                       {repair.stage}
                     </span>
                     {repair.due_date && (
-                      <p className={`text-[10px] mt-1 font-medium ${new Date(repair.due_date) < new Date() ? 'text-red-500' : 'text-stone-400'}`}>
+                      <p className={`text-[10px] mt-1 font-medium ${new Date(repair.due_date) < today ? 'text-red-500' : 'text-stone-400'}`}>
                         Due {new Date(repair.due_date).toLocaleDateString()}
                       </p>
                     )}
@@ -147,7 +151,7 @@ export default async function WorkshopPage() {
             <Link href="/bespoke" className="text-xs text-amber-700 font-medium hover:underline">View All</Link>
           </div>
           <div className="divide-y divide-stone-100">
-            {activeJobs && activeJobs.length > 0 ? (
+            {activeJobs.length > 0 ? (
               activeJobs.slice(0, 8).map(job => (
                 <div key={job.id} className="px-6 py-4 hover:bg-stone-50 transition-colors flex justify-between items-center">
                   <div>
@@ -165,7 +169,7 @@ export default async function WorkshopPage() {
                       {job.stage}
                     </span>
                     {job.due_date && (
-                      <p className={`text-[10px] mt-1 font-medium ${new Date(job.due_date) < new Date() ? 'text-red-500' : 'text-stone-400'}`}>
+                      <p className={`text-[10px] mt-1 font-medium ${new Date(job.due_date) < today ? 'text-red-500' : 'text-stone-400'}`}>
                         Due {new Date(job.due_date).toLocaleDateString()}
                       </p>
                     )}

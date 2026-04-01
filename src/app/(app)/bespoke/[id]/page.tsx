@@ -1,6 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
+import { getAuthContext } from "@/lib/auth-context";
+import { getCached, tenantCacheKey } from "@/lib/cache";
 import BespokeCommandCenter from "./BespokeCommandCenter";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -17,44 +18,84 @@ export default async function BespokeJobDetailPage({
   const sp = searchParams ? await searchParams : {};
   const adminClient = createAdminClient();
 
+  // Check for review mode or auth
   let tenantId: string | null = null;
-  let tenantCurrencyFromCtx = "AUD";
+  let tenantCurrency = "AUD";
   const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: ud } = await adminClient.from("users").select("tenant_id, tenants(currency)").eq("id", user.id).single();
-        tenantId = ud?.tenant_id ?? null;
-        tenantCurrencyFromCtx = (ud?.tenants as { currency?: string } | null)?.currency || "AUD";
-      }
-    } catch { /* no session */ }
-    if (!tenantId) redirect("/login");
+    const auth = await getAuthContext();
+    if (!auth) redirect("/login");
+    tenantId = auth.tenantId;
+    tenantCurrency = auth.currency;
   }
 
-  // Fetch job + inventory in parallel (adminClient has no auth dependency)
-  const [{ data: job }, { data: inventory }] = await Promise.all([
+  // Phase 1: Fetch core job + cached reference data in parallel
+  const [jobResult, inventory, tenantSettings] = await Promise.all([
     adminClient
       .from("bespoke_jobs")
       .select("*, customers(id, full_name, email, mobile), bespoke_milestones(*)")
       .eq("id", id)
+      .eq("tenant_id", tenantId)
       .is("deleted_at", null)
       .single(),
-    adminClient
-      .from("inventory")
-      .select("id, name, sku, retail_price")
-      .eq("status", "active")
-      .order("name", { ascending: true })
-      .limit(100),
+
+    // Inventory for upsell - cache for 2 minutes
+    getCached(
+      tenantCacheKey(tenantId, "bespoke-inventory"),
+      async () => {
+        const { data } = await adminClient
+          .from("inventory")
+          .select("id, name, sku, retail_price")
+          .eq("status", "active")
+          .eq("tenant_id", tenantId)
+          .order("name", { ascending: true })
+          .limit(100);
+        return data ?? [];
+      },
+      120
+    ),
+
+    // Tenant settings - cache for 5 minutes
+    getCached(
+      tenantCacheKey(tenantId!, "tenant-settings"),
+      async () => {
+        const [tenant, twilio, website] = await Promise.all([
+          adminClient
+            .from("tenants")
+            .select("name, business_name, sms_templates")
+            .eq("id", tenantId)
+            .single(),
+          adminClient
+            .from("tenant_integrations")
+            .select("enabled")
+            .eq("tenant_id", tenantId)
+            .eq("integration_type", "twilio")
+            .maybeSingle(),
+          adminClient
+            .from("website_config")
+            .select("subdomain")
+            .eq("tenant_id", tenantId)
+            .maybeSingle(),
+        ]);
+        return {
+          businessName: tenant.data?.business_name || tenant.data?.name || "",
+          smsTemplates: (tenant.data?.sms_templates as { job_ready?: string } | null) || {},
+          twilioConnected: !!twilio?.data?.enabled,
+          storeSubdomain: (website?.data?.subdomain as string) ?? null,
+        };
+      },
+      300
+    ),
   ]);
 
+  const { data: job } = jobResult;
   if (!job) notFound();
 
-  // Attachments + events in parallel
-  const [{ data: attachments }, { data: events }] = await Promise.all([
+  // Phase 2: Fetch job-specific data in parallel
+  const [attachmentsResult, eventsResult, invoiceData] = await Promise.all([
     adminClient
       .from("job_attachments")
       .select("*")
@@ -67,43 +108,36 @@ export default async function BespokeJobDetailPage({
       .eq("job_type", "bespoke")
       .eq("job_id", id)
       .order("created_at", { ascending: false }),
+    // Invoice + line items + payments if exists
+    job.invoice_id ? (async () => {
+      const [invResult, lineItemsResult, paymentsResult] = await Promise.all([
+        adminClient
+          .from("invoices")
+          .select("id, invoice_number, status, subtotal, tax_amount, tax_rate, total, amount_paid")
+          .eq("id", job.invoice_id)
+          .single(),
+        adminClient
+          .from("invoice_line_items")
+          .select("*")
+          .eq("invoice_id", job.invoice_id),
+        adminClient
+          .from("payments")
+          .select("*")
+          .eq("invoice_id", job.invoice_id)
+          .order("created_at", { ascending: true }),
+      ]);
+      if (invResult.data) {
+        return {
+          ...invResult.data,
+          lineItems: lineItemsResult.data ?? [],
+          payments: paymentsResult.data ?? [],
+        };
+      }
+      return null;
+    })() : Promise.resolve(null),
   ]);
 
-  const resolvedTenantId = tenantId ?? "";
-  const tenantCurrency = tenantCurrencyFromCtx;
   const customer = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
-  const invoiceId = job.invoice_id ?? null;
-
-  // Invoice + line items + payments in parallel (only if invoice exists)
-  let invoice = null;
-  if (invoiceId) {
-    const [{ data: inv }, { data: lineItems }, { data: payments }] = await Promise.all([
-      adminClient
-        .from("invoices")
-        .select("id, invoice_number, status, subtotal, tax_amount, tax_rate, total, amount_paid")
-        .eq("id", invoiceId)
-        .single(),
-      adminClient
-        .from("invoice_line_items")
-        .select("*")
-        .eq("invoice_id", invoiceId),
-      adminClient
-        .from("payments")
-        .select("*")
-        .eq("invoice_id", invoiceId)
-        .order("created_at", { ascending: true }),
-    ]);
-
-    if (inv) {
-      invoice = {
-        ...inv,
-        lineItems: lineItems ?? [],
-        payments: payments ?? [],
-      };
-    }
-  }
-
-  // deposit_received is the canonical field (deposit_paid column was migrated)
   const depositPaid = job.deposit_received ?? false;
 
   return (
@@ -140,13 +174,13 @@ export default async function BespokeJobDetailPage({
         milestones: Array.isArray(job.bespoke_milestones) ? job.bespoke_milestones : [],
       }}
       customer={customer}
-      invoice={invoice}
-      inventory={inventory ?? []}
-      tenantId={resolvedTenantId}
+      invoice={invoiceData}
+      inventory={inventory}
+      tenantId={tenantId}
       currency={tenantCurrency}
       readOnly={isReviewMode}
-      attachments={attachments ?? []}
-      events={events ?? []}
+      attachments={attachmentsResult.data ?? []}
+      events={eventsResult.data ?? []}
     />
   );
 }
