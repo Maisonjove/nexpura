@@ -83,10 +83,15 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
     }
   }
 
-  // Helper to add location filter
-  const addLocFilter = <T extends { eq: (col: string, val: string) => T; in: (col: string, vals: string[]) => T }>(q: T): T => {
+  // Helper to add location filter - using explicit any to avoid deep type instantiation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const addLocFilter = <T extends any>(q: T): T => {
     if (!locationIds || locationIds.length === 0) return q;
-    return locationIds.length === 1 ? q.eq("location_id", locationIds[0]) : q.in("location_id", locationIds);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const query = q as any;
+    return locationIds.length === 1 
+      ? query.eq("location_id", locationIds[0]) 
+      : query.in("location_id", locationIds);
   };
 
   // ── Parallel fetch — all 18 independent queries at once ─────────────────────
