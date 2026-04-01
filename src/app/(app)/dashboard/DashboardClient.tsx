@@ -1,25 +1,6 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { Sparkline } from "@/components/dashboard/sparkline";
-import { HelpTooltip } from "@/components/ui/HelpTooltip";
-import { Skeleton } from "@/components/ui/skeleton";
-
-// Lazy load heavy recharts components (~400KB)
-const BarChart = dynamic(() => import("recharts").then(mod => mod.BarChart), { ssr: false });
-const Bar = dynamic(() => import("recharts").then(mod => mod.Bar), { ssr: false });
-const LineChart = dynamic(() => import("recharts").then(mod => mod.LineChart), { ssr: false });
-const Line = dynamic(() => import("recharts").then(mod => mod.Line), { ssr: false });
-const PieChart = dynamic(() => import("recharts").then(mod => mod.PieChart), { ssr: false });
-const Pie = dynamic(() => import("recharts").then(mod => mod.Pie), { ssr: false });
-const Cell = dynamic(() => import("recharts").then(mod => mod.Cell), { ssr: false });
-const XAxis = dynamic(() => import("recharts").then(mod => mod.XAxis), { ssr: false });
-const YAxis = dynamic(() => import("recharts").then(mod => mod.YAxis), { ssr: false });
-const RechartsTooltip = dynamic(() => import("recharts").then(mod => mod.Tooltip), { ssr: false });
-const ResponsiveContainer = dynamic(() => import("recharts").then(mod => mod.ResponsiveContainer), { 
-  ssr: false,
-  loading: () => <Skeleton className="w-full h-48" />
-});
+import { useState, useEffect } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -123,17 +104,6 @@ function fmtCurrency(amount: number, currency: string) {
   }).format(amount);
 }
 
-function getStageBadgeClasses(stage: string) {
-  switch (stage) {
-    case "in_progress": return "text-amber-700 bg-amber-50 border border-amber-200";
-    case "ready": return "text-emerald-700 bg-emerald-50 border border-emerald-200";
-    case "quoted":
-    case "assessed": return "text-amber-700 bg-amber-50 border border-amber-200";
-    case "intake": return "text-stone-600 bg-stone-100 border border-stone-200";
-    default: return "text-stone-600 bg-stone-100 border border-stone-200";
-  }
-}
-
 function formatStageLabel(stage: string) {
   const labels: Record<string, string> = {
     intake: "Intake",
@@ -149,9 +119,96 @@ function formatStageLabel(stage: string) {
   return labels[stage] || stage.replace(/_/g, " ");
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Icons ──────────────────────────────────────────────────────────────────
 
-const PIE_COLORS = ["#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fde68a"];
+const icons = {
+  plus: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  ),
+  cart: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+    </svg>
+  ),
+  search: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+    </svg>
+  ),
+  box: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+    </svg>
+  ),
+  folder: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+    </svg>
+  ),
+  userPlus: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
+    </svg>
+  ),
+  mail: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+    </svg>
+  ),
+  users: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+    </svg>
+  ),
+  wrench: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.648 5.648a2.121 2.121 0 01-3-3l5.648-5.648m3-3L19.5 4.5m-8.08 10.67a5.068 5.068 0 01-1.54-3.62c0-1.326.527-2.6 1.46-3.54a5.068 5.068 0 013.54-1.46c1.326 0 2.6.527 3.54 1.46" />
+    </svg>
+  ),
+  sparkles: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+    </svg>
+  ),
+  clipboard: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+    </svg>
+  ),
+};
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
+
+function ActionCard({
+  title,
+  description,
+  icon,
+  href,
+}: {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  href: string;
+}) {
+  return (
+    <a
+      href={href}
+      className="group flex items-center gap-5 bg-white border border-stone-200 rounded-2xl px-6 py-5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400 cursor-pointer"
+    >
+      <div className="flex-shrink-0 text-stone-400 group-hover:text-[#8B7355] transition-colors duration-400">
+        {icon}
+      </div>
+      <div>
+        <p className="text-[0.9375rem] font-medium text-stone-900">{title}</p>
+        <p className="text-[0.8125rem] text-stone-400 mt-0.5 leading-relaxed">{description}</p>
+      </div>
+    </a>
+  );
+}
+
+// ─── Component ──────────────────────────────────────────────────────────────
 
 export default function DashboardClient({
   basePath = "",
@@ -174,383 +231,219 @@ export default function DashboardClient({
   activeRepairs,
   activeBespokeJobs,
   currency,
-  revenueSparkline = [],
-  salesCountSparkline = [],
-  repairsSparkline = [],
-  customersSparkline = [],
-  salesBarData = [],
-  repairStageData = [],
 }: DashboardClientProps) {
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const d = now || new Date();
+  const bp = basePath || "";
+
   return (
-    <div className="space-y-6">
-      {/* Greeting */}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
-          Good morning, {firstName}
-        </h1>
-        <p className="text-sm text-stone-400 mt-1">
-          {tenantName || 'Your Store'} · {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
-        </p>
-        {/* Quick actions */}
-        {!readOnly && (
-          <div className="flex flex-wrap gap-2 mt-4 sm:inline-flex sm:bg-white sm:border sm:border-stone-200 sm:rounded-lg sm:overflow-hidden sm:shadow-sm sm:gap-0">
-            {[
-              { label: 'New Sale', href: `${basePath}/sales/new` },
-              { label: 'New Customer', href: `${basePath}/customers/new` },
-              { label: 'New Repair', href: `${basePath}/repairs/new` },
-              { label: 'New Job', href: `${basePath}/bespoke/new` },
-            ].map((action, i) => (
-              <a
-                key={action.label}
-                href={action.href}
-                className={`px-4 py-2 text-sm font-medium text-stone-700 bg-white border border-stone-200 rounded-lg sm:border-0 sm:rounded-none hover:bg-stone-50 transition-colors touch-manipulation ${
-                  i < 3 ? 'sm:border-r sm:border-stone-200' : ''
-                }`}
-              >
-                {action.label}
+    <div className="flex gap-8 items-start">
+      {/* ── Main Column ──────────────────────────────────────────────────── */}
+      <div className="flex-1 min-w-0 space-y-10">
+        {/* Business name + date/time */}
+        <div className="flex items-start justify-between">
+          <div className="flex-1 text-center">
+            <h1 className="font-serif text-[2.5rem] tracking-[0.08em] text-stone-900 font-normal leading-[1.08] uppercase">
+              {tenantName || "Your Store"}
+            </h1>
+          </div>
+          <div className="text-right flex-shrink-0 pt-1">
+            <p className="text-[0.875rem] font-medium text-stone-900">
+              {d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
+            </p>
+            <p className="text-[0.875rem] text-stone-400 tabular-nums mt-0.5">
+              {d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
+            </p>
+          </div>
+        </div>
+
+        {/* ── Quick Stats ────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-white border border-stone-200 rounded-2xl px-4 py-3">
+            <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-[0.12em]">Sales This Month</p>
+            <p className="text-xl font-semibold tracking-tight mt-0.5 text-stone-900">{fmtCurrency(salesThisMonthRevenue, currency)}</p>
+            <p className="text-xs text-stone-400">{salesThisMonthCount} sale{salesThisMonthCount !== 1 ? "s" : ""}</p>
+          </div>
+          <div className="bg-white border border-stone-200 rounded-2xl px-4 py-3">
+            <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-[0.12em]">Active Repairs</p>
+            <p className="text-xl font-semibold tracking-tight mt-0.5 text-stone-900">{activeRepairsCount}</p>
+            <p className={`text-xs ${overdueRepairs.length > 0 ? "text-rose-500" : "text-stone-400"}`}>
+              {overdueRepairs.length > 0 ? `${overdueRepairs.length} overdue` : "all on track"}
+            </p>
+          </div>
+          <div className="bg-white border border-stone-200 rounded-2xl px-4 py-3">
+            <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-[0.12em]">Bespoke Jobs</p>
+            <p className="text-xl font-semibold tracking-tight mt-0.5 text-stone-900">{activeJobsCount}</p>
+            <p className="text-xs text-stone-400">in production</p>
+          </div>
+          <div className="bg-white border border-stone-200 rounded-2xl px-4 py-3">
+            <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-[0.12em]">Outstanding</p>
+            <p className={`text-xl font-semibold tracking-tight mt-0.5 ${overdueInvoiceCount > 0 ? "text-rose-600" : "text-stone-900"}`}>
+              {fmtCurrency(totalOutstanding, currency)}
+            </p>
+            <p className={`text-xs ${overdueInvoiceCount > 0 ? "text-rose-500" : "text-stone-400"}`}>
+              {overdueInvoiceCount} invoice{overdueInvoiceCount !== 1 ? "s" : ""} overdue
+            </p>
+          </div>
+        </div>
+
+        {/* ── Tasks (if any) ─────────────────────────────────────────────── */}
+        {myTasks.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-serif text-[1.375rem] text-stone-900 flex items-center gap-2.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                Tasks Due Today
+              </h2>
+              <a href={`${bp}/tasks`} className="text-[0.8125rem] text-stone-400 hover:text-stone-900 transition-colors duration-200">
+                View all →
               </a>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Tasks Due Today ──────────────────────────────────────────────────── */}
-      {(myTasks.length > 0 || (isManager && teamTaskSummary.length > 0)) ? (
-        <div className="bg-[#FAF9F6] border border-amber-600/20 rounded-xl p-6 shadow-sm space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-sm font-bold text-stone-800 uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-700 animate-pulse" />
-              {isManager ? "Tasks Due Today" : `Tasks Due Today (${myTasks.length})`}
-            </h2>
-            <a href={`${basePath}/tasks`} className="text-xs font-medium text-amber-700 hover:underline">View all tasks →</a>
-          </div>
-
-          {/* My tasks */}
-          {myTasks.length > 0 && (
-            <>
-              {isManager && (
-                <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest">My Tasks ({myTasks.length})</p>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {myTasks.map(task => (
-                  <div key={task.id} className="bg-white border border-stone-200 p-4 rounded-lg flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start mb-2">
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                          task.priority === 'urgent' ? 'bg-red-100 text-red-700' :
-                          task.priority === 'high' ? 'bg-amber-100 text-amber-700' :
-                          'bg-stone-100 text-stone-600'
-                        }`}>
-                          {task.priority}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-stone-800">{task.title}</p>
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                      <a href={`${basePath}/tasks`} className="text-[11px] font-medium text-stone-400 hover:text-amber-700">Update →</a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Team tasks summary — managers/owners only */}
-          {isManager && teamTaskSummary.length > 0 && (
-            <div className="border-t border-amber-600/10 pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest">Team Tasks</p>
-                <a href={`${basePath}/tasks`} className="text-xs font-medium text-amber-700 hover:underline">View All Team Tasks →</a>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {teamTaskSummary.map((member) => (
-                  <div
-                    key={member.assigneeId}
-                    className={`rounded-lg p-3 border ${member.overdueCount > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-stone-200'}`}
-                  >
-                    <p className="text-xs font-semibold text-stone-800 truncate">{member.assigneeName}</p>
-                    <p className="text-lg font-bold text-stone-900 mt-0.5">{member.taskCount}</p>
-                    <p className={`text-[10px] font-medium ${member.overdueCount > 0 ? 'text-red-600' : 'text-stone-400'}`}>
-                      {member.overdueCount > 0 ? `${member.overdueCount} overdue` : 'task due today'}
-                    </p>
-                  </div>
-                ))}
-              </div>
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="bg-white border border-stone-200 rounded-xl p-5 flex items-center gap-3 shadow-sm">
-          <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-500">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-stone-700">No tasks due today</p>
-            <a href={`${basePath}/tasks`} className="text-xs text-amber-700 hover:underline">View all tasks →</a>
-          </div>
-        </div>
-      )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {myTasks.map((task) => (
+                <a
+                  key={task.id}
+                  href={`${bp}/tasks`}
+                  className="bg-white border border-stone-200 rounded-2xl px-5 py-4 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
+                >
+                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                    task.priority === "urgent" ? "bg-red-100 text-red-700" :
+                    task.priority === "high" ? "bg-amber-100 text-amber-700" :
+                    "bg-stone-100 text-stone-600"
+                  }`}>
+                    {task.priority}
+                  </span>
+                  <p className="text-[0.875rem] font-medium text-stone-900 mt-2">{task.title}</p>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
-      {/* ── KPI Grid ─────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Revenue KPI */}
-        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <div className="flex items-center gap-1 mb-1">
-            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Sales This Month</p>
-            <HelpTooltip content="Total revenue from all completed sales this month. Click to view detailed sales reports." size={12} />
+        {/* ── Sales Menu ─────────────────────────────────────────────────── */}
+        <section>
+          <h2 className="font-serif text-[1.375rem] text-stone-900 mb-4">Sales Menu</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <ActionCard title="New Sale" description="Create a sale" icon={icons.plus} href={`${bp}/sales/new`} />
+            <ActionCard title="Quick Sale" description="Create a sale without a customer" icon={icons.cart} href={`${bp}/pos`} />
+            <ActionCard title="Find Sale" description="Search for a previous sale" icon={icons.search} href={`${bp}/sales`} />
           </div>
-          <p className="text-2xl font-semibold tracking-tight text-stone-900">{fmtCurrency(salesThisMonthRevenue, currency)}</p>
-          <p className="text-xs text-stone-400 mb-2">{salesThisMonthCount} sale{salesThisMonthCount !== 1 ? 's' : ''}</p>
-          {revenueSparkline.length > 1 && <Sparkline data={revenueSparkline} color="#b45309" />}
-        </div>
-        {/* Active Repairs KPI */}
-        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <div className="flex items-center gap-1 mb-1">
-            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Active Repairs</p>
-            <HelpTooltip content="Repairs currently in progress (not collected or cancelled). Overdue items appear in red." size={12} />
+        </section>
+
+        {/* ── Stock Menu ─────────────────────────────────────────────────── */}
+        <section>
+          <h2 className="font-serif text-[1.375rem] text-stone-900 mb-4">Stock Menu</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <ActionCard title="Enter Stock" description="Receive stock from a supplier" icon={icons.box} href={`${bp}/inventory/receive`} />
+            <ActionCard title="New Item" description="Add a new inventory item" icon={icons.folder} href={`${bp}/inventory/new`} />
+            <ActionCard title="Find Item" description="Search for a stock item" icon={icons.search} href={`${bp}/inventory`} />
           </div>
-          <p className="text-2xl font-semibold tracking-tight text-stone-900">{activeRepairsCount}</p>
-          <p className={`text-xs mb-2 ${overdueRepairs.length > 0 ? 'text-rose-400' : 'text-stone-400'}`}>
-            {overdueRepairs.length > 0 ? `${overdueRepairs.length} overdue` : 'all on track'}
-          </p>
-          {repairsSparkline.length > 1 && <Sparkline data={repairsSparkline} color="#2563eb" />}
-        </div>
-        {/* Bespoke Jobs KPI */}
-        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <div className="flex items-center gap-1 mb-1">
-            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Bespoke Jobs</p>
-            <HelpTooltip content="Custom jewellery commissions currently in production or awaiting collection." size={12} />
+        </section>
+
+        {/* ── Customer Menu ──────────────────────────────────────────────── */}
+        <section>
+          <h2 className="font-serif text-[1.375rem] text-stone-900 mb-4">Customer Menu</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <ActionCard title="New Customer" description="Create a new customer profile" icon={icons.userPlus} href={`${bp}/customers/new`} />
+            <ActionCard title="Communications" description="View all sent communications" icon={icons.mail} href={`${bp}/communications`} />
+            <ActionCard title="Find Customer" description="Search for a customer profile" icon={icons.users} href={`${bp}/customers`} />
           </div>
-          <p className="text-2xl font-semibold tracking-tight text-stone-900">{activeJobsCount}</p>
-          <p className="text-xs text-stone-400 mb-2">in production</p>
-          {salesCountSparkline.length > 1 && <Sparkline data={salesCountSparkline} color="#7c3aed" />}
-        </div>
-        {/* Outstanding KPI */}
-        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <div className="flex items-center gap-1 mb-1">
-            <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Outstanding</p>
-            <HelpTooltip content="Total unpaid balance across all invoices. Overdue invoices appear in red." size={12} />
+        </section>
+
+        {/* ── Workshop Menu ──────────────────────────────────────────────── */}
+        <section>
+          <h2 className="font-serif text-[1.375rem] text-stone-900 mb-4">Workshop Menu</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <ActionCard title="New Repair" description="Log a repair job" icon={icons.wrench} href={`${bp}/repairs/new`} />
+            <ActionCard title="Bespoke Job" description="Start a custom commission" icon={icons.sparkles} href={`${bp}/bespoke/new`} />
+            <ActionCard title="Workshop View" description="See all active jobs" icon={icons.clipboard} href={`${bp}/repairs`} />
           </div>
-          <p className={`text-2xl font-semibold tracking-tight ${overdueInvoiceCount > 0 ? 'text-rose-600' : 'text-stone-900'}`}>
-            {fmtCurrency(totalOutstanding, currency)}
-          </p>
-          <p className={`text-xs mb-2 ${overdueInvoiceCount > 0 ? 'text-rose-400' : 'text-stone-400'}`}>
-            {overdueInvoiceCount} invoice{overdueInvoiceCount !== 1 ? 's' : ''} overdue
-          </p>
-          {customersSparkline.length > 1 && <Sparkline data={customersSparkline} color="#059669" />}
-        </div>
+        </section>
       </div>
 
-      {/* ── Recent Activity Charts ────────────────────────────────────────────── */}
-      {(salesBarData.length > 0 || repairStageData.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Sales by Day Bar Chart */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-4">Sales — Last 7 Days</p>
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={salesBarData} barSize={20}>
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#78716c" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#78716c" }} axisLine={false} tickLine={false} width={30} />
-                <RechartsTooltip
-                  contentStyle={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 8, fontSize: 12 }}
-                  formatter={(val, name) => [name === "revenue" ? fmtCurrency(Number(val) || 0, currency) : val, name === "revenue" ? "Revenue" : "Sales"]}
-                />
-                <Bar dataKey="sales" fill="#b45309" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Repairs by Stage Pie Chart */}
-          <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-4">Repairs by Stage</p>
-            {repairStageData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={160}>
-                <PieChart>
-                  <Pie data={repairStageData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label={false}>
-                    {repairStageData.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip contentStyle={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 8, fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-40 flex items-center justify-center text-sm text-stone-400">No active repairs</div>
-            )}
-            <div className="mt-2 space-y-1">
-              {repairStageData.slice(0, 4).map((item, i) => (
-                <div key={item.name} className="flex items-center gap-2 text-xs text-stone-600">
-                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                  {item.name} ({item.value})
-                </div>
+      {/* ── Right Sidebar ────────────────────────────────────────────────── */}
+      <aside className="hidden xl:flex flex-col gap-4 w-[280px] flex-shrink-0 pt-16">
+        {/* Recent Activity */}
+        {recentActivity.length > 0 && (
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
+            <h3 className="font-serif text-lg text-stone-900 mb-4">Recent Activity</h3>
+            <div className="space-y-0.5">
+              {recentActivity.map((item) => (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  className="block py-2.5 px-2 -mx-2 rounded-xl hover:bg-stone-50 transition-colors duration-200"
+                >
+                  <p className="text-[0.875rem] text-stone-900">{item.title}</p>
+                  <p className="text-[0.8125rem] text-stone-400 mt-0.5">
+                    {item.customerName || "No customer"} · {formatStageLabel(item.stage)}
+                  </p>
+                </a>
               ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── Ready for Pickup ─────────────────────────────────────────────────── */}
-      {readyForPickup.length > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-sm font-bold text-emerald-800 uppercase tracking-widest flex items-center gap-2">
+        {/* Ready for Pickup */}
+        {readyForPickup.length > 0 && (
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
+            <h3 className="font-serif text-lg text-stone-900 mb-4 flex items-center gap-2.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              Ready for Customer Pickup ({readyForPickup.length})
-            </h2>
-          </div>
-          <div className="space-y-2">
-            {readyForPickup.map((item) => (
-              <a
-                key={`${item.type}-${item.id}`}
-                href={`${basePath}/${item.type === 'repair' ? 'repairs' : 'bespoke'}/${item.id}`}
-                className="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 border border-emerald-100 hover:border-emerald-300 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
-                    {item.type === 'repair' ? 'Repair' : 'Bespoke'}
-                  </span>
-                  <span className="text-sm font-mono text-stone-600">{item.number}</span>
-                  <span className="text-sm text-stone-800 font-medium">{item.label}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-stone-500">{item.customer || 'No customer'}</span>
-                  <span className="text-xs text-emerald-600 font-semibold">→</span>
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Operations Grid ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Repairs Table */}
-        <div className="lg:col-span-2 bg-white rounded-lg border border-stone-200 overflow-hidden overflow-x-auto">
-          <div className="px-6 py-4 flex justify-between items-center border-b border-stone-100">
-            <span className="text-sm font-semibold text-stone-700">Active Repairs</span>
-            <a href={`${basePath}/repairs`} className="text-xs text-stone-400 hover:text-amber-700 transition-colors">View all →</a>
-          </div>
-          {activeRepairs.length === 0 ? (
-            <div className="px-6 py-10 text-center">
-              <p className="text-sm text-stone-400">No active repairs yet</p>
-              {!readOnly && (
-                <a href={`${basePath}/repairs/new`} className="mt-2 inline-block text-sm font-medium text-amber-700 hover:underline">
-                  Log your first repair →
+              Ready for Pickup
+            </h3>
+            <div className="space-y-0.5">
+              {readyForPickup.map((item) => (
+                <a
+                  key={`${item.type}-${item.id}`}
+                  href={`${bp}/${item.type === "repair" ? "repairs" : "bespoke"}/${item.id}`}
+                  className="block py-2.5 px-2 -mx-2 rounded-xl hover:bg-stone-50 transition-colors duration-200"
+                >
+                  <p className="text-[0.875rem] text-stone-900">{item.label}</p>
+                  <p className="text-[0.8125rem] text-stone-400 mt-0.5">
+                    {item.number} · {item.customer || "No customer"}
+                  </p>
                 </a>
-              )}
+              ))}
             </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-stone-100">
-                  {['Customer', 'Item', 'Status', 'Due'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {activeRepairs.map((r) => {
-                  const isOverdue = r.due_date && new Date(r.due_date) < new Date();
-                  return (
-                    <tr key={r.id} className="border-b border-stone-100 hover:bg-stone-50/50 transition-colors cursor-pointer" onClick={() => window.location.href = `${basePath}/repairs/${r.id}`}>
-                      <td className="px-4 py-3.5 text-sm font-medium text-stone-900">{r.customer || "Unknown"}</td>
-                      <td className="px-4 py-3.5 text-sm text-stone-700">{r.item}</td>
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStageBadgeClasses(r.stage)}`}>
-                          {formatStageLabel(r.stage)}
-                        </span>
-                      </td>
-                      <td className={`px-4 py-3.5 text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-stone-500'}`}>
-                        {r.due_date ? new Date(r.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Right column */}
-        <div className="flex flex-col gap-6">
-          {/* Bespoke jobs */}
-          <div className="bg-white rounded-lg border border-stone-200 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-sm font-semibold text-stone-700">Bespoke Jobs</span>
-              <a href={`${basePath}/bespoke`} className="text-xs text-stone-400 hover:text-amber-700 transition-colors">View all →</a>
+        {/* Alerts */}
+        {(overdueRepairs.length > 0 || lowStockItems.length > 0) && (
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
+            <h3 className="font-serif text-lg text-stone-900 mb-4">Alerts</h3>
+            <div className="space-y-2">
+              {overdueRepairs.map((r) => (
+                <a
+                  key={r.id}
+                  href={`${bp}/repairs/${r.id}`}
+                  className="block py-2 px-3 rounded-xl text-[0.8125rem] border-l-2 border-red-400 bg-red-50 hover:bg-red-100 transition-colors duration-200"
+                >
+                  <span className="font-semibold text-red-700">REP-{r.repairNumber}</span>
+                  <span className="text-red-600"> · {r.customer || "No customer"} · {r.daysOverdue}d overdue</span>
+                </a>
+              ))}
+              {lowStockItems.slice(0, 5).map((item) => (
+                <a
+                  key={item.id}
+                  href={`${bp}/inventory/${item.id}`}
+                  className="block py-2 px-3 rounded-xl text-[0.8125rem] border-l-2 border-amber-400 bg-amber-50 hover:bg-amber-100 transition-colors duration-200"
+                >
+                  <span className="font-semibold text-amber-700">{item.name}</span>
+                  <span className="text-amber-600"> · {item.quantity} left</span>
+                </a>
+              ))}
             </div>
-            {activeBespokeJobs.length === 0 ? (
-              <div className="text-center py-4">
-                <p className="text-sm text-stone-400">No bespoke jobs yet</p>
-                {!readOnly && (
-                  <a href={`${basePath}/bespoke/new`} className="mt-1 inline-block text-sm font-medium text-amber-700 hover:underline">
-                    Create first job →
-                  </a>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {activeBespokeJobs.map((job) => (
-                  <a key={job.id} href={`${basePath}/bespoke/${job.id}`} className="flex justify-between items-center hover:bg-stone-50 rounded-md -mx-1 px-1 py-0.5 transition-colors">
-                    <div>
-                      <p className="text-sm font-medium text-stone-900">{job.title}</p>
-                      <p className="text-xs text-stone-400 mt-0.5">{job.customer || "No customer"}</p>
-                    </div>
-                    <span className="text-xs font-medium text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">
-                      {formatStageLabel(job.stage)}
-                    </span>
-                  </a>
-                ))}
-              </div>
-            )}
           </div>
-
-          {/* Alerts */}
-          <div className="bg-white rounded-lg border border-stone-200 p-6">
-            <p className="text-sm font-semibold text-stone-700 mb-4">Alerts</p>
-            {overdueRepairs.length === 0 && overdueInvoiceCount === 0 && lowStockItems.length === 0 ? (
-              <p className="text-xs text-stone-400 text-center py-2">All clear — no alerts 🎉</p>
-            ) : (
-              <div className="space-y-2">
-                {/* Overdue repairs — with details */}
-                {overdueRepairs.map((r) => (
-                  <a
-                    key={r.id}
-                    href={`${basePath}/repairs/${r.id}`}
-                    className="block px-3 py-2 rounded-md text-xs border-l-2 border-red-400 bg-red-50 hover:bg-red-100 transition-colors"
-                  >
-                    <span className="font-semibold text-red-700">REP-{r.repairNumber}</span>
-                    <span className="text-red-600"> · {r.customer || 'No customer'} · {r.daysOverdue}d overdue</span>
-                  </a>
-                ))}
-                {/* Overdue invoices count */}
-                {overdueInvoiceCount > 0 && (
-                  <a
-                    href={`${basePath}/invoices`}
-                    className="block px-3 py-2 rounded-md text-xs border-l-2 border-red-400 bg-red-50 hover:bg-red-100 transition-colors text-red-700"
-                  >
-                    {overdueInvoiceCount} invoice{overdueInvoiceCount !== 1 ? 's' : ''} overdue
-                  </a>
-                )}
-                {/* Low stock — with names */}
-                {lowStockItems.map((item) => (
-                  <a
-                    key={item.id}
-                    href={`${basePath}/inventory/${item.id}`}
-                    className="block px-3 py-2 rounded-md text-xs border-l-2 border-amber-400 bg-amber-50 hover:bg-amber-100 transition-colors"
-                  >
-                    <span className="font-semibold text-amber-700">{item.name}</span>
-                    {item.sku && <span className="text-amber-600"> ({item.sku})</span>}
-                    <span className="text-amber-600"> · {item.quantity} left</span>
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+        )}
+      </aside>
     </div>
   );
 }
