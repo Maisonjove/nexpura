@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyTOTPToken, verifyBackupCode } from '@/lib/totp';
+import { recordSession, checkNewDeviceLogin } from '@/lib/session-manager';
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { twoFAValidateSchema } from '@/lib/schemas';
@@ -70,6 +71,12 @@ export async function POST(request: NextRequest) {
       const isValid = verifyTOTPToken(normalizedCode, profile.totp_secret);
       
       if (isValid) {
+        // Record session after successful 2FA (non-blocking)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          recordSession(userId, session.access_token).catch(console.error);
+          checkNewDeviceLogin(userId, sessionUser.email || '').catch(console.error);
+        }
         return NextResponse.json({ valid: true, method: 'totp' });
       }
     }
@@ -90,6 +97,13 @@ export async function POST(request: NextRequest) {
           .from('users')
           .update({ totp_backup_codes: updatedCodes })
           .eq('id', userId);
+
+        // Record session after successful 2FA (non-blocking)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          recordSession(userId, session.access_token).catch(console.error);
+          checkNewDeviceLogin(userId, sessionUser.email || '').catch(console.error);
+        }
 
         return NextResponse.json({ valid: true, method: 'backup_code' });
       }

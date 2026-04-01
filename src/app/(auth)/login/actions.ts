@@ -7,6 +7,7 @@ import {
   recordFailedLogin,
   clearLoginAttempts,
 } from "@/lib/auth-security";
+import { recordSession, checkNewDeviceLogin } from "@/lib/session-manager";
 import { headers } from "next/headers";
 
 export type LoginResult = {
@@ -87,6 +88,12 @@ export async function loginAction(
         userId: data.user.id,
         email: data.user.email,
       };
+    }
+    
+    // Record session and check for new device (non-blocking)
+    if (data.session?.access_token) {
+      recordSession(data.user.id, data.session.access_token).catch(console.error);
+      checkNewDeviceLogin(data.user.id, data.user.email || '').catch(console.error);
     }
   }
 
