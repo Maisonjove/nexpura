@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
@@ -13,12 +14,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
+    // SECURITY: Verify the caller has an active session
+    const supabase = await createClient();
+    const { data: { user: sessionUser } } = await supabase.auth.getUser();
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const body = await request.json();
     const parseResult = inviteAcceptSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
     const { token, userId } = parseResult.data;
+
+    // SECURITY: Verify the userId matches the authenticated session
+    if (userId !== sessionUser.id) {
+      return NextResponse.json({ error: "User ID mismatch" }, { status: 403 });
+    }
 
     const admin = createAdminClient();
 
