@@ -3,41 +3,46 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
 import { randomUUID } from "crypto";
 import logger from "@/lib/logger";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { getAuthContext } from "@/lib/auth-context";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
-  const { success } = await checkRateLimit(ip, "api");
-  if (!success) {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  const auth = await getAuthContext();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await req.json();
-  const { jobId, tenantId } = body;
-  if (!jobId || !tenantId) return NextResponse.json({ error: "Missing params" }, { status: 400 });
+  const { jobId } = body;
+  if (!jobId) {
+    return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
+  }
 
   const admin = createAdminClient();
 
-  // Fetch the job + customer
+  // Fetch the job + customer, ensuring tenant match
   const { data: job, error: jobErr } = await admin
     .from("bespoke_jobs")
     .select("*, customers(id, full_name, email)")
     .eq("id", jobId)
-    .eq("tenant_id", tenantId)
+    .eq("tenant_id", auth.tenantId)
     .single();
 
-  if (jobErr || !job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  if (jobErr || !job) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
 
   const customer = Array.isArray(job.customers) ? job.customers[0] : job.customers;
-  if (!customer?.email) return NextResponse.json({ error: "Customer has no email" }, { status: 400 });
+  if (!customer?.email) {
+    return NextResponse.json({ error: "Customer has no email" }, { status: 400 });
+  }
 
   // Fetch tenant details
   const { data: tenant } = await admin
     .from("tenants")
     .select("name, subdomain")
-    .eq("id", tenantId)
+    .eq("id", auth.tenantId)
     .single();
 
   // Generate approval token
@@ -54,9 +59,11 @@ export async function POST(req: NextRequest) {
       approval_requested_at: new Date().toISOString(),
     })
     .eq("id", jobId)
-    .eq("tenant_id", tenantId);
+    .eq("tenant_id", auth.tenantId);
 
-  if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
+  if (updateErr) {
+    return NextResponse.json({ error: updateErr.message }, { status: 500 });
+  }
 
   // Send email
   try {
