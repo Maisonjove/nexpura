@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyTOTPToken, verifyBackupCode } from '@/lib/totp';
 import logger from '@/lib/logger';
@@ -8,6 +9,9 @@ import { twoFAValidateSchema } from '@/lib/schemas';
 /**
  * Validate a 2FA code during login
  * This is called after successful password authentication
+ * 
+ * SECURITY: Requires an active session (from password login) to prevent
+ * oracle attacks where an attacker could validate 2FA codes without knowing the password.
  */
 export async function POST(request: NextRequest) {
   // Strict rate limiting for auth endpoints
@@ -18,12 +22,28 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // SECURITY: Verify the caller has an active session
+    // This ensures they passed password authentication before attempting 2FA
+    const supabase = await createClient();
+    const { data: { user: sessionUser } } = await supabase.auth.getUser();
+    
+    if (!sessionUser) {
+      // No session means they haven't passed password auth
+      return NextResponse.json({ error: 'Session required' }, { status: 401 });
+    }
+
     const body = await request.json();
     const parseResult = twoFAValidateSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
     const { userId, code } = parseResult.data;
+
+    // SECURITY: Verify the userId matches the session user
+    // Prevents validating 2FA for a different user
+    if (userId !== sessionUser.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     const admin = createAdminClient();
     

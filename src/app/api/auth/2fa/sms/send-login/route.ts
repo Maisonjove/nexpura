@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sms2FASendLoginSchema } from '@/lib/schemas';
 
+/**
+ * Send SMS 2FA code during login
+ * 
+ * SECURITY: Requires an active session (from password login) to prevent
+ * SMS bombing attacks where an attacker could trigger SMS sends to any user.
+ */
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
   const { success } = await checkRateLimit(ip, 'auth');
@@ -12,12 +19,25 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // SECURITY: Verify the caller has an active session
+    const supabase = await createClient();
+    const { data: { user: sessionUser } } = await supabase.auth.getUser();
+    
+    if (!sessionUser) {
+      return NextResponse.json({ error: 'Session required' }, { status: 401 });
+    }
+
     const body = await request.json();
     const parseResult = sms2FASendLoginSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
     const { userId } = parseResult.data;
+
+    // SECURITY: Verify the userId matches the session user
+    if (userId !== sessionUser.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     const admin = createAdminClient();
     
