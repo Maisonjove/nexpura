@@ -59,6 +59,8 @@ export interface PilotIssue {
   fixed_at: string | null;
   fixed_in_commit: string | null;
   attachments: string[] | null;
+  assigned_to: string | null;
+  assigned_to_user_id: string | null;
   created_at: string;
   updated_at: string;
 }

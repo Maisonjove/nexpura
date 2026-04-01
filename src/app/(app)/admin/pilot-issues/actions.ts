@@ -73,6 +73,9 @@ interface UpdateIssueInput {
   fix_notes?: string;
   fixed_by?: string;
   fixed_in_commit?: string;
+  assigned_to?: string;
+  assigned_to_user_id?: string;
+  attachments?: string[];
 }
 
 export async function updatePilotIssue(input: UpdateIssueInput) {
@@ -105,6 +108,9 @@ export async function updatePilotIssue(input: UpdateIssueInput) {
   if (input.fix_notes !== undefined) updates.fix_notes = input.fix_notes;
   if (input.fixed_by !== undefined) updates.fixed_by = input.fixed_by;
   if (input.fixed_in_commit !== undefined) updates.fixed_in_commit = input.fixed_in_commit;
+  if (input.assigned_to !== undefined) updates.assigned_to = input.assigned_to;
+  if (input.assigned_to_user_id !== undefined) updates.assigned_to_user_id = input.assigned_to_user_id;
+  if (input.attachments !== undefined) updates.attachments = input.attachments;
 
   const { error } = await admin
     .from("pilot_issues")

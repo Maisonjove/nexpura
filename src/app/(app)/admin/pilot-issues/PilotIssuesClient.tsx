@@ -430,6 +430,11 @@ ${issue.fix_notes ? `### Fix Notes\n${issue.fix_notes}` : ""}
                     )}
                   </div>
                 </div>
+                {issue.assigned_to && (
+                  <span className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
+                    → {issue.assigned_to}
+                  </span>
+                )}
                 {issue.is_pilot_blocking && (
                   <span className="px-2 py-0.5 rounded text-xs font-bold bg-red-600 text-white">BLOCKING</span>
                 )}
@@ -551,6 +556,9 @@ function IssueModal({
   const [actualResult, setActualResult] = useState(issue?.actual_result ?? "");
   const [fixNotes, setFixNotes] = useState(issue?.fix_notes ?? "");
   const [fixedInCommit, setFixedInCommit] = useState(issue?.fixed_in_commit ?? "");
+  const [assignedTo, setAssignedTo] = useState(issue?.assigned_to ?? "");
+  const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [attachments, setAttachments] = useState<string[]>(issue?.attachments ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -578,6 +586,8 @@ function IssueModal({
       actual_result: actualResult,
       fix_notes: fixNotes,
       fixed_in_commit: fixedInCommit,
+      assigned_to: assignedTo || undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
     setSaving(false);
     if (result.error) {
@@ -702,15 +712,27 @@ function IssueModal({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Reported By</label>
-            <input
-              type="text"
-              value={reportedBy}
-              onChange={(e) => setReportedBy(e.target.value)}
-              className="w-full border-stone-200 rounded-lg"
-              placeholder="Name or email"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Reported By</label>
+              <input
+                type="text"
+                value={reportedBy}
+                onChange={(e) => setReportedBy(e.target.value)}
+                className="w-full border-stone-200 rounded-lg"
+                placeholder="Name or email"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Assigned To</label>
+              <input
+                type="text"
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className="w-full border-stone-200 rounded-lg"
+                placeholder="Name or email of assignee"
+              />
+            </div>
           </div>
 
           <div>
@@ -782,6 +804,56 @@ function IssueModal({
               </div>
             </>
           )}
+
+          {/* Attachments */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Screenshots / Attachments</label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="url"
+                value={attachmentUrl}
+                onChange={(e) => setAttachmentUrl(e.target.value)}
+                className="flex-1 border-stone-200 rounded-lg text-sm"
+                placeholder="Paste image URL (e.g. from Imgur, Cloudinary, etc.)"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (attachmentUrl.trim()) {
+                    setAttachments([...attachments, attachmentUrl.trim()]);
+                    setAttachmentUrl("");
+                  }
+                }}
+                className="px-3 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg text-sm"
+              >
+                Add
+              </button>
+            </div>
+            {attachments.length > 0 && (
+              <div className="space-y-2">
+                {attachments.map((url, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-stone-50 rounded-lg px-3 py-2">
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-sm text-blue-600 hover:underline truncate"
+                    >
+                      {url}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setAttachments(attachments.filter((_, j) => j !== i))}
+                      className="text-red-500 hover:text-red-700 text-sm"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-stone-400 mt-1">Upload screenshots to Imgur, Cloudinary, or any image host and paste URLs here.</p>
+          </div>
         </div>
         <div className="px-6 py-4 border-t border-stone-200 flex items-center justify-between bg-stone-50">
           {issue && onDelete ? (
