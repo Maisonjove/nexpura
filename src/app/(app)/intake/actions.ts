@@ -6,6 +6,46 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
+// Intake Observability Logging
+// ────────────────────────────────────────────────────────────────
+
+type IntakeJobType = 'repair' | 'bespoke' | 'stock';
+type IntakeEventType = 'started' | 'succeeded' | 'failed';
+
+interface IntakeLogData {
+  event: IntakeEventType;
+  jobType: IntakeJobType;
+  tenantId: string;
+  userId: string;
+  customerId?: string | null;
+  entityId?: string;
+  entityNumber?: string;
+  invoiceId?: string;
+  errorCategory?: string;
+  errorMessage?: string;
+  quotedPrice?: number;
+  depositAmount?: number;
+  paymentReceived?: number;
+  timestamp: string;
+}
+
+function logIntakeEvent(data: IntakeLogData) {
+  const prefix = `[INTAKE][${data.jobType.toUpperCase()}][${data.event.toUpperCase()}]`;
+  const logData = {
+    ...data,
+    _intakeAudit: true, // Tag for log filtering
+  };
+  
+  if (data.event === 'failed') {
+    logger.error(`${prefix} tenant=${data.tenantId} user=${data.userId} error=${data.errorCategory}: ${data.errorMessage}`, logData);
+  } else if (data.event === 'succeeded') {
+    logger.info(`${prefix} tenant=${data.tenantId} user=${data.userId} entityId=${data.entityId} entityNumber=${data.entityNumber}`, logData);
+  } else {
+    logger.info(`${prefix} tenant=${data.tenantId} user=${data.userId}`, logData);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
 // Auth Helper
 // ────────────────────────────────────────────────────────────────
 
@@ -186,9 +226,27 @@ export interface CreateRepairInput {
 export async function createRepairFromIntake(
   input: CreateRepairInput
 ): Promise<{ id?: string; repair_number?: string; invoice_id?: string; error?: string }> {
+  let tenantId = '';
+  let userId = '';
+  
   try {
-    const { supabase, userId, tenantId } = await getAuthContext();
-    const admin = createAdminClient();
+    const authContext = await getAuthContext();
+    tenantId = authContext.tenantId;
+    userId = authContext.userId;
+    const { supabase, admin } = authContext;
+
+    // Log intake started
+    logIntakeEvent({
+      event: 'started',
+      jobType: 'repair',
+      tenantId,
+      userId,
+      customerId: input.customer_id,
+      quotedPrice: input.quoted_price ?? undefined,
+      depositAmount: input.deposit_amount ?? undefined,
+      paymentReceived: input.payment_received ?? undefined,
+      timestamp: new Date().toISOString(),
+    });
 
   // Generate repair number
   const { data: numData, error: numError } = await supabase.rpc(
@@ -339,10 +397,43 @@ export async function createRepairFromIntake(
     revalidatePath("/invoices");
     // Invalidate dashboard cache
     revalidateTag("dashboard", "default");
+
+    // Log intake succeeded
+    logIntakeEvent({
+      event: 'succeeded',
+      jobType: 'repair',
+      tenantId,
+      userId,
+      customerId: input.customer_id,
+      entityId: data.id,
+      entityNumber: data.repair_number,
+      invoiceId,
+      quotedPrice: input.quoted_price ?? undefined,
+      depositAmount: input.deposit_amount ?? undefined,
+      paymentReceived: input.payment_received ?? undefined,
+      timestamp: new Date().toISOString(),
+    });
+
     return { id: data.id, repair_number: data.repair_number, invoice_id: invoiceId };
   } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Failed to create repair";
+    
+    // Log intake failed
+    logIntakeEvent({
+      event: 'failed',
+      jobType: 'repair',
+      tenantId: tenantId || 'unknown',
+      userId: userId || 'unknown',
+      customerId: input.customer_id,
+      errorCategory: 'exception',
+      errorMessage,
+      quotedPrice: input.quoted_price ?? undefined,
+      depositAmount: input.deposit_amount ?? undefined,
+      timestamp: new Date().toISOString(),
+    });
+
     logger.error("[createRepairFromIntake] Error:", err);
-    return { error: err instanceof Error ? err.message : "Failed to create repair" };
+    return { error: errorMessage };
   }
 }
 
@@ -375,9 +466,27 @@ export interface CreateBespokeInput {
 export async function createBespokeFromIntake(
   input: CreateBespokeInput
 ): Promise<{ id?: string; job_number?: string; invoice_id?: string; error?: string }> {
+  let tenantId = '';
+  let userId = '';
+  
   try {
-    const { supabase, userId, tenantId } = await getAuthContext();
-    const admin = createAdminClient();
+    const authContext = await getAuthContext();
+    tenantId = authContext.tenantId;
+    userId = authContext.userId;
+    const { supabase, admin } = authContext;
+
+    // Log intake started
+    logIntakeEvent({
+      event: 'started',
+      jobType: 'bespoke',
+      tenantId,
+      userId,
+      customerId: input.customer_id,
+      quotedPrice: input.quoted_price ?? undefined,
+      depositAmount: input.deposit_amount ?? undefined,
+      paymentReceived: input.payment_received ?? undefined,
+      timestamp: new Date().toISOString(),
+    });
 
     // Generate job number
     const { data: numData, error: numError } = await supabase.rpc(
@@ -531,10 +640,43 @@ export async function createBespokeFromIntake(
     revalidatePath("/invoices");
     // Invalidate dashboard cache
     revalidateTag("dashboard", "default");
+
+    // Log intake succeeded
+    logIntakeEvent({
+      event: 'succeeded',
+      jobType: 'bespoke',
+      tenantId,
+      userId,
+      customerId: input.customer_id,
+      entityId: data.id,
+      entityNumber: data.job_number,
+      invoiceId,
+      quotedPrice: input.quoted_price ?? undefined,
+      depositAmount: input.deposit_amount ?? undefined,
+      paymentReceived: input.payment_received ?? undefined,
+      timestamp: new Date().toISOString(),
+    });
+
     return { id: data.id, job_number: data.job_number, invoice_id: invoiceId };
   } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Failed to create bespoke job";
+    
+    // Log intake failed
+    logIntakeEvent({
+      event: 'failed',
+      jobType: 'bespoke',
+      tenantId: tenantId || 'unknown',
+      userId: userId || 'unknown',
+      customerId: input.customer_id,
+      errorCategory: 'exception',
+      errorMessage,
+      quotedPrice: input.quoted_price ?? undefined,
+      depositAmount: input.deposit_amount ?? undefined,
+      timestamp: new Date().toISOString(),
+    });
+
     logger.error("[createBespokeFromIntake] Error:", err);
-    return { error: err instanceof Error ? err.message : "Failed to create bespoke job" };
+    return { error: errorMessage };
   }
 }
 
@@ -557,8 +699,26 @@ export interface CreateStockSaleInput {
 export async function createStockSaleFromIntake(
   input: CreateStockSaleInput
 ): Promise<{ id?: string; sale_number?: string; invoice_id?: string; error?: string }> {
+  let tenantId = '';
+  let userId = '';
+  
   try {
-    const { supabase, userId, tenantId } = await getAuthContext();
+    const authContext = await getAuthContext();
+    tenantId = authContext.tenantId;
+    userId = authContext.userId;
+    const { supabase } = authContext;
+
+    // Log intake started
+    logIntakeEvent({
+      event: 'started',
+      jobType: 'stock',
+      tenantId,
+      userId,
+      customerId: input.customer_id,
+      quotedPrice: input.price,
+      paymentReceived: input.payment_received ?? undefined,
+      timestamp: new Date().toISOString(),
+    });
 
   // Generate sale number
   const { data: saleNumberData, error: saleNumErr } = await supabase.rpc(
@@ -667,6 +827,20 @@ export async function createStockSaleFromIntake(
     if (newQty < 0) {
       // Void the sale we just created
       await supabase.from("sales").update({ status: "voided" }).eq("id", sale.id);
+      
+      // Log the out-of-stock failure
+      logIntakeEvent({
+        event: 'failed',
+        jobType: 'stock',
+        tenantId,
+        userId,
+        customerId: input.customer_id,
+        errorCategory: 'out_of_stock',
+        errorMessage: `Item "${item.name || input.item_name}" is out of stock`,
+        quotedPrice: input.price,
+        timestamp: new Date().toISOString(),
+      });
+      
       return { error: `Item "${item.name || input.item_name}" is out of stock` };
     }
     
@@ -689,6 +863,20 @@ export async function createStockSaleFromIntake(
         finalQty = itemRetry.quantity - 1;
         if (finalQty < 0) {
           await supabase.from("sales").update({ status: "voided" }).eq("id", sale.id);
+          
+          // Log the race-condition out-of-stock failure
+          logIntakeEvent({
+            event: 'failed',
+            jobType: 'stock',
+            tenantId,
+            userId,
+            customerId: input.customer_id,
+            errorCategory: 'race_out_of_stock',
+            errorMessage: `Item "${item.name || input.item_name}" just sold out (race condition)`,
+            quotedPrice: input.price,
+            timestamp: new Date().toISOString(),
+          });
+          
           return { error: `Item "${item.name || input.item_name}" just sold out` };
         }
         await supabase
@@ -776,10 +964,41 @@ export async function createStockSaleFromIntake(
     revalidatePath("/invoices");
     // Invalidate dashboard cache
     revalidateTag("dashboard", "default");
+
+    // Log intake succeeded
+    logIntakeEvent({
+      event: 'succeeded',
+      jobType: 'stock',
+      tenantId,
+      userId,
+      customerId: input.customer_id,
+      entityId: sale.id,
+      entityNumber: saleNumber,
+      invoiceId,
+      quotedPrice: input.price,
+      paymentReceived: input.payment_received ?? undefined,
+      timestamp: new Date().toISOString(),
+    });
+
     return { id: sale.id, sale_number: saleNumber, invoice_id: invoiceId };
   } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Failed to create sale";
+    
+    // Log intake failed
+    logIntakeEvent({
+      event: 'failed',
+      jobType: 'stock',
+      tenantId: tenantId || 'unknown',
+      userId: userId || 'unknown',
+      customerId: input.customer_id,
+      errorCategory: 'exception',
+      errorMessage,
+      quotedPrice: input.price,
+      timestamp: new Date().toISOString(),
+    });
+
     logger.error("[createStockSaleFromIntake] Error:", err);
-    return { error: err instanceof Error ? err.message : "Failed to create sale" };
+    return { error: errorMessage };
   }
 }
 
