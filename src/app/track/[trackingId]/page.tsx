@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/public";
 import { notFound } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import TrackingPageClient from "./TrackingPageClient";
+
+// Revalidate tracking data every 30 seconds
+// This means updates show within 30s but pages load instantly from cache
+export const revalidate = 30;
 
 interface PageProps {
   params: Promise<{ trackingId: string }>;
@@ -35,7 +40,7 @@ interface OrderData {
   }>;
 }
 
-async function getOrderByTrackingId(trackingId: string): Promise<OrderData | null> {
+async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
   const supabase = createClient();
   const upperTrackingId = trackingId.toUpperCase();
 
@@ -163,6 +168,13 @@ async function getOrderByTrackingId(trackingId: string): Promise<OrderData | nul
 
   return null;
 }
+
+// Cached version of the fetch function - revalidates every 30 seconds
+const getOrderByTrackingId = unstable_cache(
+  async (trackingId: string) => fetchOrderData(trackingId),
+  ["tracking-order"],
+  { revalidate: 30, tags: ["tracking"] }
+);
 
 export default async function TrackingPage({ params }: PageProps) {
   const { trackingId } = await params;
