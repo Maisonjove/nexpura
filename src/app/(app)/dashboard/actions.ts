@@ -11,6 +11,7 @@ import { getCached, tenantCacheKey } from "@/lib/cache";
 export interface DashboardData {
   firstName: string;
   tenantName: string | null;
+  businessType: string | null;
   salesThisMonthRevenue: number;
   salesThisMonthCount: number;
   activeRepairsCount: number;
@@ -27,6 +28,8 @@ export interface DashboardData {
   activeRepairs: Array<{ id: string; customer: string | null; item: string; stage: string; due_date: string | null; locationName?: string }>;
   activeBespokeJobs: Array<{ id: string; customer: string | null; title: string; stage: string; due_date: string | null; locationName?: string }>;
   currency: string;
+  recentSales: Array<{ id: string; saleNumber: string; customer: string | null }>;
+  recentRepairsList: Array<{ id: string; repairNumber: string; customer: string | null }>;
   revenueSparkline: Array<{ value: number }>;
   salesCountSparkline: Array<{ value: number }>;
   repairsSparkline: Array<{ value: number }>;
@@ -59,6 +62,15 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
   const admin = createAdminClient();
 
   const firstName = tenantName || "there";
+
+  // Fetch business_type from tenant
+  const { data: tenantRow } = await admin
+    .from("tenants")
+    .select("business_type")
+    .eq("id", tenantId)
+    .maybeSingle();
+  const businessType: string | null = tenantRow?.business_type ?? null;
+
   const today = new Date().toISOString().split("T")[0];
   const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -110,6 +122,8 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
     recentJobsResult,
     recentRepairsResult,
     allTasksResult,
+    recentSalesResult,
+    recentRepairsListResult,
     sales7dResult,
     repairs7dResult,
     customers7dResult,
@@ -248,7 +262,24 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
       return q;
     })(),
     
-    // 15. Sales last 7 days (minimal fields)
+    // 15. Recent sales (for sidebar)
+    addLocFilter(admin
+      .from("sales")
+      .select("id, sale_number, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false })
+      .limit(5)),
+
+    // 16. Recent repairs list (for sidebar)
+    addLocFilter(admin
+      .from("repairs")
+      .select("id, repair_number, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(5)),
+
+    // 17. Sales last 7 days (minimal fields)
     addLocFilter(admin
       .from("sales")
       .select("created_at, total")
@@ -496,9 +527,26 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
     value: count,
   }));
 
+  const recentSales = (recentSalesResult.data ?? []).map((s: Record<string, unknown>) => ({
+    id: s.id as string,
+    saleNumber: (s.sale_number as string) ?? (s.id as string).slice(-4).toUpperCase(),
+    customer: Array.isArray(s.customers)
+      ? (s.customers[0] as { full_name: string | null } | null)?.full_name ?? null
+      : (s.customers as { full_name: string | null } | null)?.full_name ?? null,
+  }));
+
+  const recentRepairsList = (recentRepairsListResult.data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    repairNumber: (r.repair_number as string) ?? (r.id as string).slice(-4).toUpperCase(),
+    customer: Array.isArray(r.customers)
+      ? (r.customers[0] as { full_name: string | null } | null)?.full_name ?? null
+      : (r.customers as { full_name: string | null } | null)?.full_name ?? null,
+  }));
+
   return {
     firstName,
     tenantName,
+    businessType,
     salesThisMonthRevenue,
     salesThisMonthCount,
     activeRepairsCount,
@@ -515,6 +563,8 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
     activeRepairs,
     activeBespokeJobs,
     currency,
+    recentSales,
+    recentRepairsList,
     revenueSparkline,
     salesCountSparkline,
     repairsSparkline,

@@ -66,6 +66,7 @@ export default function DashboardWrapper({ initialData }: { initialData: Dashboa
     <DashboardClient
       firstName={data.firstName}
       tenantName={data.tenantName}
+      businessType={data.businessType}
       salesThisMonthRevenue={data.salesThisMonthRevenue}
       salesThisMonthCount={data.salesThisMonthCount}
       activeRepairsCount={data.activeRepairsCount}
@@ -82,6 +83,8 @@ export default function DashboardWrapper({ initialData }: { initialData: Dashboa
       activeRepairs={data.activeRepairs}
       activeBespokeJobs={data.activeBespokeJobs}
       currency={data.currency}
+      recentSales={data.recentSales}
+      recentRepairsList={data.recentRepairsList}
       revenueSparkline={data.revenueSparkline}
       salesCountSparkline={data.salesCountSparkline}
       repairsSparkline={data.repairsSparkline}
