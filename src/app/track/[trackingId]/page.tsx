@@ -63,22 +63,22 @@ async function getOrderByTrackingId(trackingId: string): Promise<OrderData | nul
 
     if (error || !repair) return null;
 
-    // Get attachments
-    const { data: attachments } = await supabase
-      .from("order_attachments")
-      .select("id, file_url, file_name, file_type, description, created_at")
-      .eq("order_type", "repair")
-      .eq("order_id", repair.id)
-      .eq("is_public", true)
-      .order("created_at", { ascending: false });
-
-    // Get status history
-    const { data: history } = await supabase
-      .from("order_status_history")
-      .select("id, status, notes, changed_at")
-      .eq("order_type", "repair")
-      .eq("order_id", repair.id)
-      .order("changed_at", { ascending: false });
+    // Fetch attachments and history in parallel for better performance
+    const [attachmentsResult, historyResult] = await Promise.all([
+      supabase
+        .from("order_attachments")
+        .select("id, file_url, file_name, file_type, description, created_at")
+        .eq("order_type", "repair")
+        .eq("order_id", repair.id)
+        .eq("is_public", true)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("order_status_history")
+        .select("id, status, notes, changed_at")
+        .eq("order_type", "repair")
+        .eq("order_id", repair.id)
+        .order("changed_at", { ascending: false }),
+    ]);
 
     const tenant = Array.isArray(repair.tenants) ? repair.tenants[0] : repair.tenants;
 
@@ -95,8 +95,8 @@ async function getOrderByTrackingId(trackingId: string): Promise<OrderData | nul
         business_name: tenant?.business_name || "Jeweller",
         logo_url: tenant?.logo_url,
       },
-      attachments: attachments || [],
-      status_history: history || [],
+      attachments: attachmentsResult.data || [],
+      status_history: historyResult.data || [],
     };
   }
 
@@ -124,22 +124,22 @@ async function getOrderByTrackingId(trackingId: string): Promise<OrderData | nul
 
     if (error || !bespoke) return null;
 
-    // Get attachments
-    const { data: attachments } = await supabase
-      .from("order_attachments")
-      .select("id, file_url, file_name, file_type, description, created_at")
-      .eq("order_type", "bespoke")
-      .eq("order_id", bespoke.id)
-      .eq("is_public", true)
-      .order("created_at", { ascending: false });
-
-    // Get status history
-    const { data: history } = await supabase
-      .from("order_status_history")
-      .select("id, status, notes, changed_at")
-      .eq("order_type", "bespoke")
-      .eq("order_id", bespoke.id)
-      .order("changed_at", { ascending: false });
+    // Fetch attachments and history in parallel for better performance
+    const [attachmentsResult, historyResult] = await Promise.all([
+      supabase
+        .from("order_attachments")
+        .select("id, file_url, file_name, file_type, description, created_at")
+        .eq("order_type", "bespoke")
+        .eq("order_id", bespoke.id)
+        .eq("is_public", true)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("order_status_history")
+        .select("id, status, notes, changed_at")
+        .eq("order_type", "bespoke")
+        .eq("order_id", bespoke.id)
+        .order("changed_at", { ascending: false }),
+    ]);
 
     const tenant = Array.isArray(bespoke.tenants) ? bespoke.tenants[0] : bespoke.tenants;
 
@@ -156,8 +156,8 @@ async function getOrderByTrackingId(trackingId: string): Promise<OrderData | nul
         business_name: tenant?.business_name || "Jeweller",
         logo_url: tenant?.logo_url,
       },
-      attachments: attachments || [],
-      status_history: history || [],
+      attachments: attachmentsResult.data || [],
+      status_history: historyResult.data || [],
     };
   }
 
