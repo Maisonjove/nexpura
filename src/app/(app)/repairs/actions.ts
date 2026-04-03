@@ -7,6 +7,7 @@ import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { logAuditEvent } from "@/lib/audit";
+import { logStatusChange, sendTrackingEmail } from "@/lib/tracking";
 import logger from "@/lib/logger";
 import { revalidateTag } from "next/cache";
 
@@ -61,6 +62,9 @@ function buildRepairData(formData: FormData) {
     deposit_paid: bool("deposit_paid"),
     internal_notes: str("internal_notes"),
     client_notes: str("client_notes"),
+    // Tracking fields
+    customer_email: str("customer_email"),
+    estimated_completion_date: str("estimated_completion_date"),
   };
 }
 
@@ -111,6 +115,29 @@ export async function createRepair(
     notes: "Repair created",
     created_by: userId,
   });
+
+  // Log initial status to tracking history
+  await logStatusChange({
+    tenantId,
+    orderType: "repair",
+    orderId: data.id,
+    status: "intake",
+    notes: "Repair created",
+    changedBy: userId,
+  });
+
+  // Send tracking email if customer email is provided
+  const customerEmail = repairData.customer_email;
+  if (customerEmail) {
+    // Fire and forget - don't block on email sending
+    sendTrackingEmail({
+      tenantId,
+      orderType: "repair",
+      orderId: data.id,
+    }).catch((err) => {
+      logger.error("[createRepair] Failed to send tracking email:", err);
+    });
+  }
 
   // Audit log
   await logAuditEvent({
@@ -204,6 +231,16 @@ export async function advanceRepairStage(
     });
 
   if (stageError) return { error: stageError.message };
+
+  // Log to order_status_history for tracking page
+  await logStatusChange({
+    tenantId,
+    orderType: "repair",
+    orderId: repairId,
+    status: newStage,
+    notes: notes || undefined,
+    changedBy: userId,
+  });
 
   // Send "repair ready" email when stage becomes 'ready'
   if (newStage === "ready") {

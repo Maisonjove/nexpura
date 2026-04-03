@@ -16,6 +16,7 @@ export async function updateSession(request: NextRequest) {
       pathname.startsWith("/login") ||
       pathname.startsWith("/signup") ||
       pathname.startsWith("/verify") ||
+      pathname.startsWith("/track") || // Public order tracking page
       pathname.startsWith("/forgot-password") ||
       pathname.startsWith("/reset-password") ||
       pathname.startsWith("/support-access") ||
@@ -67,6 +68,7 @@ async function _updateSessionInner(request: NextRequest) {
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/verify") ||
+    pathname.startsWith("/track") || // Public order tracking page
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/reset-password") ||
     pathname.startsWith("/support-access") ||

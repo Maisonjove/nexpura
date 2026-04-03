@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { logStatusChange, sendTrackingEmail } from "@/lib/tracking";
 import { revalidateTag } from "next/cache";
 
 // ────────────────────────────────────────────────────────────────
@@ -71,6 +72,9 @@ function buildJobData(formData: FormData) {
     description: str("description"),
     internal_notes: str("internal_notes"),
     client_notes: str("client_notes"),
+    // Tracking fields
+    customer_email: str("customer_email"),
+    estimated_completion_date: str("estimated_completion_date"),
   };
 }
 
@@ -124,6 +128,28 @@ export async function createBespokeJob(
     notes: "Job created",
     created_by: userId,
   });
+
+  // Log initial status to tracking history
+  await logStatusChange({
+    tenantId,
+    orderType: "bespoke",
+    orderId: data.id,
+    status: "enquiry",
+    notes: "Bespoke job created",
+    changedBy: userId,
+  });
+
+  // Send tracking email if customer email is provided
+  const customerEmail = jobData.customer_email;
+  if (customerEmail) {
+    sendTrackingEmail({
+      tenantId,
+      orderType: "bespoke",
+      orderId: data.id,
+    }).catch((err) => {
+      logger.error("[createBespokeJob] Failed to send tracking email:", err);
+    });
+  }
 
   // Audit log
   await logAuditEvent({
@@ -216,6 +242,16 @@ export async function advanceJobStage(
     });
 
   if (stageError) return { error: stageError.message };
+
+  // Log to order_status_history for tracking page
+  await logStatusChange({
+    tenantId,
+    orderType: "bespoke",
+    orderId: jobId,
+    status: newStage,
+    notes: notes || undefined,
+    changedBy: userId,
+  });
 
   // Send "ready for collection" email when stage becomes 'ready'
   if (newStage === "ready") {

@@ -51,6 +51,7 @@ interface Customer {
 interface RepairData {
   id: string;
   repair_number: string;
+  tracking_id?: string;
   customer_id: string | null;
   item_type: string;
   item_description: string;
@@ -67,6 +68,9 @@ interface RepairData {
   deposit_paid: boolean;
   internal_notes: string | null;
   client_notes: string | null;
+  // Tracking fields
+  customer_email: string | null;
+  estimated_completion_date: string | null;
 }
 
 interface Props {
@@ -505,7 +509,70 @@ export default function RepairForm({ customers, mode, repair, preselectedCustome
         )}
       </Section>
 
-      {/* ── 6. Notes ─────────────────────────────────────── */}
+      {/* ── 6. Customer Tracking ─────────────────────────── */}
+      <Section title="Customer Tracking">
+        <p className="text-xs text-stone-500 -mt-2 mb-4">
+          Send customers a tracking link to check their order status online
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <FieldLabel htmlFor="customer_email">Customer Email</FieldLabel>
+            <input
+              id="customer_email"
+              name="customer_email"
+              type="email"
+              defaultValue={repair?.customer_email || ""}
+              placeholder="customer@example.com"
+              className={inputCls}
+            />
+            <p className="text-xs text-stone-400 mt-1">
+              A tracking link will be emailed when the repair is created
+            </p>
+          </div>
+          <div>
+            <FieldLabel htmlFor="estimated_completion_date">
+              Est. Completion Date
+            </FieldLabel>
+            <input
+              id="estimated_completion_date"
+              name="estimated_completion_date"
+              type="date"
+              defaultValue={repair?.estimated_completion_date?.split("T")[0] || ""}
+              className={inputCls}
+            />
+            <p className="text-xs text-stone-400 mt-1">
+              Shown to customer on tracking page
+            </p>
+          </div>
+        </div>
+        {mode === "edit" && repair?.tracking_id && (
+          <div className="mt-4 p-3 bg-stone-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">
+                  Tracking ID
+                </p>
+                <p className="font-mono font-semibold text-stone-900">
+                  {repair.tracking_id}
+                </p>
+              </div>
+              <a
+                href={`/track/${repair.tracking_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-amber-700 hover:underline flex items-center gap-1"
+              >
+                View tracking page
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        )}
+      </Section>
+
+      {/* ── 7. Notes ─────────────────────────────────────── */}
       <Section title="Notes">
         <div>
           <FieldLabel htmlFor="internal_notes">

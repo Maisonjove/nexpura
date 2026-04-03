@@ -15,6 +15,7 @@ interface Customer {
 interface JobData {
   id?: string;
   job_number?: string;
+  tracking_id?: string;
   customer_id?: string | null;
   title?: string;
   jewellery_type?: string | null;
@@ -42,6 +43,9 @@ interface JobData {
   description?: string | null;
   internal_notes?: string | null;
   client_notes?: string | null;
+  // Tracking fields
+  customer_email?: string | null;
+  estimated_completion_date?: string | null;
 }
 
 interface Props {
@@ -467,7 +471,63 @@ export default function BespokeJobForm({ customers, mode, job, preselectedCustom
         </div>
       </SectionCard>
 
-      {/* ── 7. Notes ─────────────────────────────────────────────── */}
+      {/* ── 7. Customer Tracking ───────────────────────────────── */}
+      <SectionCard title="Customer Tracking" hint="Send customers a tracking link to check their order status online">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <FieldLabel>Customer Email</FieldLabel>
+            <input
+              type="email"
+              name="customer_email"
+              defaultValue={job?.customer_email ?? ""}
+              placeholder="customer@example.com"
+              className={inputCls}
+            />
+            <p className="text-xs text-stone-400 mt-1">
+              A tracking link will be emailed when the job is created
+            </p>
+          </div>
+          <div>
+            <FieldLabel>Est. Completion Date</FieldLabel>
+            <input
+              type="date"
+              name="estimated_completion_date"
+              defaultValue={job?.estimated_completion_date?.split("T")[0] ?? ""}
+              className={inputCls}
+            />
+            <p className="text-xs text-stone-400 mt-1">
+              Shown to customer on tracking page
+            </p>
+          </div>
+        </div>
+        {mode === "edit" && job?.tracking_id && (
+          <div className="mt-4 p-3 bg-stone-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">
+                  Tracking ID
+                </p>
+                <p className="font-mono font-semibold text-stone-900">
+                  {job.tracking_id}
+                </p>
+              </div>
+              <a
+                href={`/track/${job.tracking_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-amber-700 hover:underline flex items-center gap-1"
+              >
+                View tracking page
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* ── 8. Notes ─────────────────────────────────────────────── */}
       <SectionCard title="Notes">
         <div className="space-y-4">
           <div>
