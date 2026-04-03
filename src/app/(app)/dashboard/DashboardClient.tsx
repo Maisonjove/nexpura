@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -152,7 +153,7 @@ const icons = {
   ),
   box: (
     <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
     </svg>
   ),
   folder: (
@@ -178,6 +179,11 @@ const icons = {
   wrench: (
     <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.648 5.648a2.121 2.121 0 01-3-3l5.648-5.648m3-3L19.5 4.5m-8.08 10.67a5.068 5.068 0 01-1.54-3.62c0-1.326.527-2.6 1.46-3.54a5.068 5.068 0 013.54-1.46c1.326 0 2.6.527 3.54 1.46" />
+    </svg>
+  ),
+  hammer: (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z" />
     </svg>
   ),
   sparkles: (
@@ -295,7 +301,7 @@ export default function DashboardClient({
   recentRepairsList,
 }: DashboardClientProps) {
   const [now, setNow] = useState<Date | null>(null);
-  const [viewMode, setViewMode] = useState<"expanded" | "compact">("expanded");
+  const [viewMode, setViewMode] = useState<"expanded" | "compact">("compact");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   useEffect(() => {
@@ -354,7 +360,7 @@ export default function DashboardClient({
       id: "workshop",
       title: "Workshop",
       description: "Repairs, bespoke & appraisals",
-      icon: icons.wrench,
+      icon: icons.hammer,
       items: [
         { title: "New Repair", description: "Log a repair job", icon: icons.wrench, href: `${bp}/repairs/new` },
         { title: "All Repairs", description: "View all repair jobs", icon: icons.wrench, href: `${bp}/repairs` },
@@ -535,55 +541,114 @@ export default function DashboardClient({
           </section>
         ))}
 
-        {/* ── COMPACT VIEW — category cards or drilled-in category ─────── */}
-        {viewMode === "compact" && !activeCategory && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {MENU_SECTIONS.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => setActiveCategory(section.id)}
-                className="group flex items-center gap-5 bg-white border border-stone-200 rounded-2xl px-6 py-5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400 cursor-pointer text-left"
+        {/* ── COMPACT VIEW — animated category drill-down ─────────────── */}
+        {viewMode === "compact" && (
+          <AnimatePresence mode="wait">
+            {!activeCategory ? (
+              <motion.div
+                key="categories"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.06 }}
+                className="grid grid-cols-1 sm:grid-cols-3 gap-3"
               >
-                <div className="flex-shrink-0 text-stone-400 group-hover:text-[#8B7355] transition-colors duration-400">
-                  {section.icon}
-                </div>
-                <div>
-                  <p className="text-[0.9375rem] font-medium text-stone-900">{section.title}</p>
-                  <p className="text-[0.8125rem] text-stone-400 mt-0.5 leading-relaxed">{section.description}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {viewMode === "compact" && activeCategory && (() => {
-          const section = MENU_SECTIONS.find((s) => s.id === activeCategory)!;
-          return (
-            <section>
-              <div className="flex items-center gap-3 mb-4">
-                <button
-                  onClick={() => setActiveCategory(null)}
-                  className="flex items-center gap-1.5 text-[0.8125rem] text-stone-400 hover:text-stone-900 transition-colors duration-200 cursor-pointer"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Back
-                </button>
-                <h2 className="font-serif text-[1.375rem] text-stone-900">{section.title} Menu</h2>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {section.items.map((item) => (
-                  <ActionCard key={item.href} title={item.title} description={item.description} icon={item.icon} href={item.href} />
+                {MENU_SECTIONS.map((section, i) => (
+                  <motion.button
+                    key={section.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.08, delay: i * 0.01 }}
+                    onClick={() => setActiveCategory(section.id)}
+                    className="group flex items-center gap-5 bg-white border border-stone-200 rounded-2xl px-6 py-5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400 cursor-pointer text-left"
+                  >
+                    <div className="flex-shrink-0 text-stone-400 group-hover:text-[#8B7355] transition-colors duration-400">
+                      {section.icon}
+                    </div>
+                    <div>
+                      <p className="text-[0.9375rem] font-medium text-stone-900">{section.title}</p>
+                      <p className="text-[0.8125rem] text-stone-400 mt-0.5 leading-relaxed">{section.description}</p>
+                    </div>
+                  </motion.button>
                 ))}
-              </div>
-            </section>
-          );
-        })()}
+              </motion.div>
+            ) : (() => {
+              const section = MENU_SECTIONS.find((s) => s.id === activeCategory)!;
+              return (
+                <motion.section
+                  key={`category-${activeCategory}`}
+                  initial={{ opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.06 }}
+                >
+                  <div
+                    className="flex items-center gap-3 mb-4"
+                  >
+                    <button
+                      onClick={() => setActiveCategory(null)}
+                      className="flex items-center gap-1.5 text-[0.8125rem] text-stone-400 hover:text-stone-900 transition-colors duration-200 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Back
+                    </button>
+                    <h2 className="font-serif text-[1.375rem] text-stone-900">{section.title} Menu</h2>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {section.items.map((item, i) => (
+                      <motion.div
+                        key={item.href}
+                        initial={{ opacity: 0, y: 3 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.06, delay: i * 0.01 }}
+                      >
+                        <ActionCard title={item.title} description={item.description} icon={item.icon} href={item.href} />
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.section>
+              );
+            })()}
+          </AnimatePresence>
+        )}
       </div>
 
       {/* ── Right Sidebar — always visible ─────────────────────────────── */}
       <aside className="hidden lg:flex flex-col gap-4 w-[280px] flex-shrink-0 pt-16">
+        {/* Tasks Due Today */}
+        <div className="bg-white border border-stone-200 rounded-2xl p-6">
+          <h3 className="font-serif text-lg text-stone-900 mb-4 flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            Tasks for Today
+          </h3>
+          {myTasks.length > 0 ? (
+            <div className="space-y-1">
+              {myTasks.map((task) => (
+                <a
+                  key={task.id}
+                  href={`${bp}/tasks`}
+                  className="block py-2.5 px-2 -mx-2 rounded-xl hover:bg-stone-50 transition-colors duration-200"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                      task.priority === "urgent" ? "bg-red-100 text-red-700" :
+                      task.priority === "high" ? "bg-amber-100 text-amber-700" :
+                      "bg-stone-100 text-stone-600"
+                    }`}>
+                      {task.priority}
+                    </span>
+                  </div>
+                  <p className="text-[0.875rem] text-stone-900 mt-1">{task.title}</p>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[0.8125rem] text-stone-400">No tasks due today</p>
+          )}
+        </div>
+
         {/* Recent Sales */}
         <div className="bg-white border border-stone-200 rounded-2xl p-6">
           <h3 className="font-serif text-lg text-stone-900 mb-4">Recent Sales</h3>

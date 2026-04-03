@@ -277,6 +277,7 @@ export default async function ReviewDashboardPage() {
       readOnly={true}
       firstName="Marcus"
       tenantName="Marcus & Co. Fine Jewellery"
+      businessType="jeweller"
       salesThisMonthRevenue={salesThisMonthRevenue}
       salesThisMonthCount={salesThisMonthCount}
       activeRepairsCount={activeRepairsCount ?? 0}
@@ -293,6 +294,8 @@ export default async function ReviewDashboardPage() {
       activeRepairs={activeRepairs}
       activeBespokeJobs={activeBespokeJobs}
       currency="AUD"
+      recentSales={[]}
+      recentRepairsList={[]}
     />
   );
 }
