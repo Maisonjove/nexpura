@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createRepair, updateRepair } from "./actions";
+import { CustomerAttachments } from "@/components/CustomerAttachments";
 
 // ────────────────────────────────────────────────────────────────
 // Constants
@@ -572,7 +573,21 @@ export default function RepairForm({ customers, mode, repair, preselectedCustome
         )}
       </Section>
 
-      {/* ── 7. Notes ─────────────────────────────────────── */}
+      {/* ── 7. Customer Attachments ────────────────────── */}
+      {mode === "edit" && repair && (
+        <Section title="Customer Attachments">
+          <p className="text-xs text-stone-500 -mt-2 mb-4">
+            Share CAD designs, progress photos, or documents with your customer via the tracking page
+          </p>
+          <CustomerAttachments 
+            orderId={repair.id} 
+            orderType="repair"
+            trackingId={repair.tracking_id}
+          />
+        </Section>
+      )}
+
+      {/* ── 8. Notes ─────────────────────────────────────── */}
       <Section title="Notes">
         <div>
           <FieldLabel htmlFor="internal_notes">
