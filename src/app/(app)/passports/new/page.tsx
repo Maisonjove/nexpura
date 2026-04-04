@@ -65,6 +65,17 @@ export default function NewPassportPage() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
 
+        {/* Photos note */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <div className="text-sm text-amber-800">
+            <p className="font-medium">Photos can be added after creating the passport</p>
+            <p className="text-amber-700 mt-0.5">You&apos;ll be able to upload primary and gallery photos on the next screen.</p>
+          </div>
+        </div>
+
         {/* Section: Piece Details */}
         <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm space-y-4">
           <h2 className="font-semibold text-lg font-semibold text-stone-900">Piece Details</h2>
