@@ -28,12 +28,12 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-stone-100 text-amber-700"
+      ? "bg-emerald-50 text-emerald-700"
       : s === "trialing"
-      ? "bg-amber-700/10 text-amber-700"
+      ? "bg-amber-50 text-amber-700"
       : s === "past_due"
-      ? "bg-yellow-500/10 text-yellow-700"
-      : "bg-red-500/10 text-red-600";
+      ? "bg-yellow-50 text-yellow-700"
+      : "bg-red-50 text-red-600";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {s.replace("_", " ") || "—"}
@@ -45,10 +45,10 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
     p === "studio" || p === "pro"
-      ? "bg-stone-100 text-amber-700"
-      : p === "group" || p === "ultimate"
-      ? "bg-amber-700/15 text-amber-700"
-      : "bg-stone-200 text-stone-500";
+      ? "bg-stone-100 text-stone-700"
+      : p === "atelier" || p === "group" || p === "ultimate"
+      ? "bg-stone-200 text-stone-800"
+      : "bg-stone-100 text-stone-600";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {p || "—"}
@@ -64,10 +64,10 @@ export default async function TenantDetailPage({
   const { id } = await params;
   const adminClient = createAdminClient();
 
-  // Fetch tenant
+  // Fetch tenant with all columns including new ones
   const { data: tenant } = await adminClient
     .from("tenants")
-    .select("*")
+    .select("id, name, slug, business_type, created_at, is_free_forever, subscription_status, grace_period_ends_at, admin_notes, deleted_at")
     .eq("id", id)
     .single();
 
@@ -131,7 +131,7 @@ export default async function TenantDetailPage({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold font-semibold text-stone-900">{tenant.name}</h1>
+          <h1 className="text-2xl font-semibold text-stone-900">{tenant.name}</h1>
           <p className="text-sm text-stone-500 mt-1">/{tenant.slug} · {tenant.business_type ?? "—"}</p>
         </div>
         <div className="flex gap-2 items-center">
@@ -144,8 +144,8 @@ export default async function TenantDetailPage({
         {/* Left col: Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Business Info */}
-          <div className="bg-white rounded-xl border border-stone-200 p-6">
-            <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Business</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-stone-900 mb-4">Business</h2>
             <InfoRow label="Name" value={tenant.name} />
             <InfoRow label="Slug" value={tenant.slug} />
             <InfoRow label="Business Type" value={tenant.business_type} />
@@ -153,15 +153,15 @@ export default async function TenantDetailPage({
           </div>
 
           {/* Owner */}
-          <div className="bg-white rounded-xl border border-stone-200 p-6">
-            <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Owner</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-stone-900 mb-4">Owner</h2>
             <InfoRow label="Name" value={owner?.full_name} />
             <InfoRow label="Email" value={owner?.email} />
           </div>
 
           {/* Subscription */}
-          <div className="bg-white rounded-xl border border-stone-200 p-6">
-            <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Subscription</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-stone-900 mb-4">Subscription</h2>
             <InfoRow label="Plan" value={<PlanBadge plan={sub?.plan} />} />
             <InfoRow label="Status" value={<StatusBadge status={sub?.status} />} />
             <InfoRow label="Trial Ends" value={formatDate(sub?.trial_ends_at)} />
@@ -171,8 +171,8 @@ export default async function TenantDetailPage({
           </div>
 
           {/* Usage */}
-          <div className="bg-white rounded-xl border border-stone-200 p-6">
-            <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Usage</h2>
+          <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-stone-900 mb-4">Usage</h2>
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "Team Members", count: userCount ?? 0 },
@@ -191,8 +191,8 @@ export default async function TenantDetailPage({
 
           {/* Activity Log */}
           {activityLogs && activityLogs.length > 0 && (
-            <div className="bg-white rounded-xl border border-stone-200 p-6">
-              <h2 className="text-base font-semibold text-stone-900 font-semibold mb-4">Recent Activity</h2>
+            <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+              <h2 className="text-base font-semibold text-stone-900 mb-4">Recent Activity</h2>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {activityLogs.map((log) => (
                   <div key={log.id} className="flex items-start gap-2 py-1.5 border-b border-stone-100 last:border-0">
@@ -217,8 +217,8 @@ export default async function TenantDetailPage({
             currentPlan={sub?.plan ?? "boutique"}
             currentStatus={sub?.status ?? "trialing"}
             isFreeForever={!!tenant.is_free_forever}
-            gracePeriodEndsAt={sub?.grace_period_ends_at ?? null}
-            adminNotes={(tenant as Record<string, unknown>).admin_notes as string | null}
+            gracePeriodEndsAt={sub?.grace_period_ends_at ?? tenant.grace_period_ends_at ?? null}
+            adminNotes={tenant.admin_notes as string | null}
             ownerEmail={owner?.email ?? null}
           />
         </div>

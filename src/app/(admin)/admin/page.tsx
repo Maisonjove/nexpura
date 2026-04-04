@@ -28,10 +28,11 @@ export default async function AdminDashboardPage() {
   try {
     const adminClient = createAdminClient();
 
-    // Fetch all tenants
+    // Fetch all tenants (exclude deleted)
     const tenantsRes = await adminClient
       .from("tenants")
-      .select("id, name, created_at")
+      .select("id, name, created_at, deleted_at")
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
     tenants = tenantsRes.data;
 
@@ -106,16 +107,14 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className={`bg-white rounded-xl border border-stone-200 p-4 ${
-              stat.accent ? "ring-1 ring-sage/30" : ""
-            }`}
+            className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm"
           >
             <p className="text-xs text-stone-500 font-medium uppercase tracking-wide">{stat.label}</p>
-            <p className={`text-2xl font-semibold mt-1 ${stat.accent ? "text-amber-700" : "text-stone-900"}`}>
+            <p className={`text-2xl font-semibold mt-1 ${stat.accent ? "text-emerald-600" : "text-stone-900"}`}>
               {stat.value}
             </p>
           </div>
@@ -123,10 +122,10 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Recent Signups */}
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
           <h2 className="text-base font-semibold text-stone-900">Recent Signups</h2>
-          <Link href="/admin/tenants" className="text-sm text-amber-700 hover:underline">
+          <Link href="/admin/tenants" className="text-sm text-stone-700 hover:text-stone-900 hover:underline">
             View all →
           </Link>
         </div>

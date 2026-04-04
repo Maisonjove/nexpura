@@ -57,12 +57,12 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-stone-100 text-amber-700"
+      ? "bg-emerald-50 text-emerald-700"
       : s === "trialing"
-      ? "bg-amber-700/10 text-amber-700"
+      ? "bg-amber-50 text-amber-700"
       : s === "past_due"
-      ? "bg-yellow-500/10 text-yellow-700"
-      : "bg-red-500/10 text-red-600";
+      ? "bg-yellow-50 text-yellow-700"
+      : "bg-red-50 text-red-600";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {s.replace("_", " ") || "—"}
@@ -74,10 +74,10 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
     p === "studio" || p === "pro"
-      ? "bg-stone-100 text-amber-700"
+      ? "bg-stone-100 text-stone-700"
       : p === "atelier" || p === "group" || p === "ultimate"
-      ? "bg-amber-700/15 text-amber-700"
-      : "bg-stone-200 text-stone-500";
+      ? "bg-stone-200 text-stone-800"
+      : "bg-stone-100 text-stone-600";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {p || "—"}
@@ -88,16 +88,16 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
 function AccessBadge({ status, expiresAt }: { status: "pending" | "approved"; expiresAt?: string }) {
   if (status === "pending") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-        <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
         Pending
       </span>
     );
   }
   
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
       Access ({expiresAt ? formatTimeRemaining(expiresAt) : "24h"})
     </span>
   );
@@ -124,7 +124,7 @@ export default function AdminTenantsClient({ tenants, subscriptions, accessStatu
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-stone-200 bg-stone-50/50">
+            <tr className="border-b border-stone-200 bg-stone-50">
               <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Business</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Plan</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Status</th>
@@ -133,7 +133,7 @@ export default function AdminTenantsClient({ tenants, subscriptions, accessStatu
               <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Support Access</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-platinum">
+          <tbody className="divide-y divide-stone-100">
             {tenants.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-8 text-center text-stone-400">
@@ -146,9 +146,9 @@ export default function AdminTenantsClient({ tenants, subscriptions, accessStatu
                 const access = accessStatuses[tenant.id];
 
                 return (
-                  <tr key={tenant.id} className="hover:bg-stone-50/40 transition-colors">
+                  <tr key={tenant.id} className="hover:bg-stone-50 transition-colors">
                     <td className="px-6 py-4 font-medium text-stone-900">
-                      <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-amber-700">
+                      <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-stone-600">
                         {tenant.name}
                       </Link>
                     </td>
@@ -170,7 +170,7 @@ export default function AdminTenantsClient({ tenants, subscriptions, accessStatu
                             {access.status === "approved" && (
                               <button
                                 onClick={() => handleEnterDashboard(tenant.id)}
-                                className="px-2.5 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
+                                className="px-2.5 py-1 text-xs font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-colors"
                               >
                                 Enter →
                               </button>
@@ -179,7 +179,7 @@ export default function AdminTenantsClient({ tenants, subscriptions, accessStatu
                         ) : (
                           <button
                             onClick={() => handleRequestAccess(tenant)}
-                            className="px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors"
+                            className="px-2.5 py-1 text-xs font-medium text-stone-700 bg-stone-100 border border-stone-200 rounded-md hover:bg-stone-200 transition-colors"
                           >
                             Request Access
                           </button>

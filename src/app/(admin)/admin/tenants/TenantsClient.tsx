@@ -41,12 +41,12 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-stone-100 text-amber-700"
+      ? "bg-emerald-50 text-emerald-700"
       : s === "trialing"
-      ? "bg-amber-700/10 text-amber-700"
+      ? "bg-amber-50 text-amber-700"
       : s === "past_due"
-      ? "bg-yellow-500/10 text-yellow-700"
-      : "bg-red-500/10 text-red-600";
+      ? "bg-yellow-50 text-yellow-700"
+      : "bg-red-50 text-red-600";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {s.replace("_", " ") || "—"}
@@ -58,10 +58,10 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
     p === "studio" || p === "pro"
-      ? "bg-stone-100 text-amber-700"
-      : p === "group" || p === "ultimate"
-      ? "bg-amber-700/15 text-amber-700"
-      : "bg-stone-200 text-stone-500";
+      ? "bg-stone-100 text-stone-700"
+      : p === "atelier" || p === "group" || p === "ultimate"
+      ? "bg-stone-200 text-stone-800"
+      : "bg-stone-100 text-stone-600";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {p || "—"}
@@ -75,7 +75,7 @@ function SupportAccessBadge({ access }: { access?: SupportAccess }) {
   const status = access.status;
   if (status === "pending") {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
         Access Pending
       </span>
     );
@@ -86,7 +86,7 @@ function SupportAccessBadge({ access }: { access?: SupportAccess }) {
     if (expiresAt > now) {
       const hoursLeft = Math.round((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60));
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
           Access: {hoursLeft}h left
         </span>
       );
@@ -128,7 +128,7 @@ export default function TenantsClient({
         <div className="flex items-center gap-6 text-right">
           <div>
             <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">MRR</p>
-            <p className="text-xl font-bold text-green-700">${totalMRR}/mo</p>
+            <p className="text-xl font-bold text-emerald-600">${totalMRR}/mo</p>
           </div>
           <div>
             <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">Active</p>
@@ -148,22 +148,22 @@ export default function TenantsClient({
           name="q"
           defaultValue={query}
           placeholder="Search by business name or email…"
-          className="flex-1 min-w-[200px] px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+          className="flex-1 min-w-[200px] px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-stone-900/20"
         />
         <select
           name="plan"
           defaultValue={planFilter}
-          className="px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+          className="px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-stone-900/20"
         >
           <option value="">All Plans</option>
           <option value="boutique">Boutique</option>
           <option value="studio">Studio</option>
-          <option value="group">Group</option>
+          <option value="atelier">Atelier</option>
         </select>
         <select
           name="status"
           defaultValue={statusFilter}
-          className="px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+          className="px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-stone-900/20"
         >
           <option value="">All Statuses</option>
           <option value="trialing">Trialing</option>
@@ -173,14 +173,14 @@ export default function TenantsClient({
         </select>
         <button
           type="submit"
-          className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors"
+          className="px-4 py-2 bg-stone-900 text-white rounded-lg text-sm font-medium hover:bg-stone-800 transition-colors"
         >
           Filter
         </button>
         {(query || planFilter || statusFilter) && (
           <Link
             href="/admin/tenants"
-            className="px-4 py-2 border border-stone-200 text-stone-500 rounded-lg text-sm hover:bg-stone-50 transition-colors"
+            className="px-4 py-2 border border-stone-200 text-stone-600 rounded-lg text-sm hover:bg-stone-50 transition-colors"
           >
             Clear
           </Link>
@@ -188,11 +188,11 @@ export default function TenantsClient({
       </form>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-stone-200 bg-stone-50/50">
+              <tr className="border-b border-stone-200 bg-stone-50">
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Business</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Owner Email</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Plan</th>
@@ -217,7 +217,7 @@ export default function TenantsClient({
                   const hasPendingAccess = tenant.supportAccess?.status === "pending";
                   
                   return (
-                    <tr key={tenant.id} className="hover:bg-stone-50/40 transition-colors">
+                    <tr key={tenant.id} className="hover:bg-stone-50 transition-colors">
                       <td className="px-6 py-4 font-medium text-stone-900">{tenant.name}</td>
                       <td className="px-6 py-4 text-stone-500">{tenant.ownerEmail}</td>
                       <td className="px-6 py-4">
@@ -242,18 +242,18 @@ export default function TenantsClient({
                           {hasActiveAccess ? (
                             <Link
                               href={`/api/support-access/enter?tenantId=${tenant.id}`}
-                              className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                              className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                             >
                               Enter Dashboard
                             </Link>
                           ) : hasPendingAccess ? (
-                            <span className="px-3 py-1.5 text-xs bg-yellow-100 text-yellow-700 rounded-lg">
+                            <span className="px-3 py-1.5 text-xs bg-amber-50 text-amber-700 rounded-lg">
                               Pending...
                             </span>
                           ) : (
                             <button
                               onClick={() => setSelectedTenant({ id: tenant.id, name: tenant.name })}
-                              className="px-3 py-1.5 text-xs bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+                              className="px-3 py-1.5 text-xs border border-stone-200 text-stone-700 rounded-lg hover:bg-stone-50 transition-colors"
                             >
                               Request Access
                             </button>

@@ -10,11 +10,12 @@ export const fetchCache = "force-no-store";
 const PLAN_PRICES: Record<string, number> = {
   boutique: 89,
   studio: 179,
-  group: 0, // custom
+  atelier: 299,
+  group: 299, // custom/legacy
   // Legacy aliases
   basic: 89,
   pro: 179,
-  ultimate: 0,
+  ultimate: 299,
 };
 
 function fmtCurrency(n: number) {
@@ -41,7 +42,8 @@ export default async function RevenueAdminPage() {
 
     const tenantsRes = await admin
       .from("tenants")
-      .select("id, name, created_at, is_free_forever");
+      .select("id, name, created_at, is_free_forever")
+      .is("deleted_at", null);
     tenants = tenantsRes.data;
   } catch (error) {
     logger.error("Failed to fetch revenue data:", error);
@@ -60,10 +62,10 @@ export default async function RevenueAdminPage() {
   const arr = mrr * 12;
 
   // Plan breakdown
-  const planBreakdown = { boutique: 0, studio: 0, group: 0 };
+  const planBreakdown = { boutique: 0, studio: 0, atelier: 0 };
   for (const s of activeSubs) {
     // Normalize legacy keys to new names
-    const key = s.plan === "basic" ? "boutique" : s.plan === "pro" ? "studio" : s.plan === "ultimate" ? "group" : s.plan;
+    const key = s.plan === "basic" ? "boutique" : s.plan === "pro" ? "studio" : s.plan === "ultimate" || s.plan === "group" ? "atelier" : s.plan;
     if (key in planBreakdown) planBreakdown[key as keyof typeof planBreakdown]++;
   }
 
@@ -101,7 +103,7 @@ export default async function RevenueAdminPage() {
           { label: "Active Subscriptions", value: activeSubs.length, icon: "✓", sub: "Paying tenants" },
           { label: "New (30d)", value: newTenants, icon: "🆕", sub: "New tenants" },
         ].map((k) => (
-          <div key={k.label} className="bg-white rounded-xl border border-stone-200 p-5">
+          <div key={k.label} className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
             <div className="text-2xl mb-2">{k.icon}</div>
             <div className="text-2xl font-bold text-stone-900">{k.value}</div>
             <div className="text-xs text-stone-500 mt-0.5">{k.sub}</div>
@@ -112,12 +114,12 @@ export default async function RevenueAdminPage() {
       {/* Secondary KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Trialing", value: trialSubs.length, color: "text-amber-700" },
+          { label: "Trialing", value: trialSubs.length, color: "text-amber-600" },
           { label: "Past Due", value: pastDueSubs.length, color: pastDueSubs.length > 0 ? "text-red-600" : "text-stone-900" },
           { label: "Churned", value: cancelledSubs.length, color: cancelledSubs.length > 5 ? "text-red-600" : "text-stone-900" },
           { label: "Churn Rate", value: `${churnRate}%`, color: "text-stone-900" },
         ].map((k) => (
-          <div key={k.label} className="bg-white rounded-xl border border-stone-200 p-4">
+          <div key={k.label} className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm">
             <div className={`text-xl font-bold ${k.color}`}>{k.value}</div>
             <div className="text-xs text-stone-500 mt-0.5">{k.label}</div>
           </div>
@@ -126,7 +128,7 @@ export default async function RevenueAdminPage() {
 
       {/* Plan breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl border border-stone-200 p-5">
+        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-stone-700 mb-4">Plan Distribution (Active)</h2>
           <div className="space-y-3">
             {Object.entries(planBreakdown).map(([plan, count]) => {
@@ -140,7 +142,7 @@ export default async function RevenueAdminPage() {
                   </div>
                   <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-amber-700 rounded-full transition-all"
+                      className="h-full bg-stone-700 rounded-full transition-all"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -151,7 +153,7 @@ export default async function RevenueAdminPage() {
         </div>
 
         {/* Conversion funnel */}
-        <div className="bg-white rounded-xl border border-stone-200 p-5">
+        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-stone-700 mb-4">Conversion Funnel</h2>
           <div className="space-y-3">
             {[
@@ -167,7 +169,7 @@ export default async function RevenueAdminPage() {
                 </div>
                 <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-amber-700/60 rounded-full"
+                    className="h-full bg-stone-500 rounded-full"
                     style={{ width: `${row.width}%` }}
                   />
                 </div>
@@ -178,7 +180,7 @@ export default async function RevenueAdminPage() {
       </div>
 
       {/* Active subscriptions table */}
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden mb-6">
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden mb-6 shadow-sm">
         <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-stone-700">Active Subscriptions</h2>
           <span className="text-xs text-stone-400">{activeSubs.length} tenants · {fmtCurrency(mrr)} MRR</span>
@@ -199,11 +201,11 @@ export default async function RevenueAdminPage() {
                 return (
                   <tr key={sub.tenant_id} className="hover:bg-stone-50">
                     <td className="px-5 py-3">
-                      <Link href={`/admin/tenants/${sub.tenant_id}`} className="font-medium text-stone-900 hover:text-amber-700">
+                      <Link href={`/admin/tenants/${sub.tenant_id}`} className="font-medium text-stone-900 hover:text-stone-600">
                         {tenant?.name ?? "Unknown"}
                       </Link>
                       {tenant?.is_free_forever && (
-                        <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Free</span>
+                        <span className="ml-2 text-xs text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Free</span>
                       )}
                     </td>
                     <td className="px-4 py-3">

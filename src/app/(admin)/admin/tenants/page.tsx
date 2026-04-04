@@ -22,10 +22,11 @@ export default async function TenantsPage({
 
   const adminClient = createAdminClient();
 
-  // Fetch all tenants with owner email
+  // Fetch all tenants with owner email (exclude deleted)
   const { data: tenants } = await adminClient
     .from("tenants")
-    .select("id, name, slug, created_at")
+    .select("id, name, slug, created_at, deleted_at")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   // Fetch all subscriptions

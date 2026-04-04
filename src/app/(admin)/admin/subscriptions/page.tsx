@@ -8,12 +8,12 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-stone-100 text-amber-700"
+      ? "bg-emerald-50 text-emerald-700"
       : s === "trialing"
-      ? "bg-amber-700/10 text-amber-700"
+      ? "bg-amber-50 text-amber-700"
       : s === "past_due"
-      ? "bg-yellow-500/10 text-yellow-700"
-      : "bg-red-500/10 text-red-600";
+      ? "bg-yellow-50 text-yellow-700"
+      : "bg-red-50 text-red-600";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {s.replace("_", " ") || "—"}
@@ -25,10 +25,10 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
   const cls =
     p === "studio" || p === "pro"
-      ? "bg-stone-100 text-amber-700"
-      : p === "group" || p === "ultimate"
-      ? "bg-amber-700/15 text-amber-700"
-      : "bg-stone-200 text-stone-500";
+      ? "bg-stone-100 text-stone-700"
+      : p === "atelier" || p === "group" || p === "ultimate"
+      ? "bg-stone-200 text-stone-800"
+      : "bg-stone-100 text-stone-600";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
       {p || "—"}
@@ -56,15 +56,15 @@ export default async function SubscriptionsPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold font-semibold text-stone-900">Subscriptions</h1>
+        <h1 className="text-2xl font-semibold text-stone-900">Subscriptions</h1>
         <p className="text-sm text-stone-500 mt-1">{subs?.length ?? 0} subscriptions</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-stone-200 bg-stone-50/50">
+              <tr className="border-b border-stone-200 bg-stone-50">
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Tenant</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Plan</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Status</th>
@@ -73,7 +73,7 @@ export default async function SubscriptionsPage() {
                 <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Stripe Customer</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-platinum">
+            <tbody className="divide-y divide-stone-100">
               {(subs ?? []).length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-stone-400">No subscriptions yet</td>
@@ -83,10 +83,10 @@ export default async function SubscriptionsPage() {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const tenant = (sub as any).tenants;
                   return (
-                    <tr key={sub.id} className="hover:bg-stone-50/40 transition-colors">
+                    <tr key={sub.id} className="hover:bg-stone-50 transition-colors">
                       <td className="px-6 py-4 font-medium text-stone-900">
                         {tenant ? (
-                          <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-amber-700">
+                          <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-stone-600">
                             {tenant.name}
                           </Link>
                         ) : "—"}
