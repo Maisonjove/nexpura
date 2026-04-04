@@ -1,10 +1,22 @@
 {
+  "regions": ["syd1"],
   "functions": {
     "src/app/(app)/dashboard/page.tsx": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "memory": 1024
     },
     "src/app/(app)/layout.tsx": {
       "maxDuration": 60
+    },
+    "src/app/api/health/route.ts": {
+      "maxDuration": 5
+    },
+    "src/app/(app)/pos/page.tsx": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "src/app/(app)/inventory/page.tsx": {
+      "maxDuration": 30
     }
   },
   "crons": [

@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/auth-context";
 import { getCached, tenantCacheKey, invalidateCachePattern } from "@/lib/cache";
+import { coalesceRequest } from "@/lib/high-scale";
 
 // ────────────────────────────────────────────────────────────────
 // Cache Invalidation (call after sales, repairs, invoices change)
@@ -75,12 +76,13 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
   const locationKey = locationIds?.sort().join(",") || "all";
   const cacheKey = tenantCacheKey(tenantId, "dashboard", `${locationKey}:${userId}`);
 
-  // Try to get cached dashboard data (30 second TTL for fast repeat loads)
-  return getCached(
+  // Request coalescing - if multiple users request same dashboard simultaneously,
+  // only 1 database query is made (critical for 1000+ users)
+  return coalesceRequest(cacheKey, () => getCached(
     cacheKey,
     async () => fetchDashboardData(userId, tenantId, tenantName, currency, isManager, locationIds),
     30 // 30 second cache - dashboard feels instant on refresh
-  );
+  ));
 }
 
 // Internal function that does the actual data fetching
