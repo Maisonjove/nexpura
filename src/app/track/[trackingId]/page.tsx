@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/public";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import TrackingPageClient from "./TrackingPageClient";
@@ -40,9 +40,22 @@ interface OrderData {
   }>;
 }
 
+// Validate tracking ID format to prevent abuse
+function isValidTrackingId(id: string): boolean {
+  // Only allow valid tracking ID formats: RPR-XXXXXXXX or BSP-XXXXXXXX
+  return /^(RPR|BSP)-[A-F0-9]{8}$/i.test(id);
+}
+
 async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
-  const supabase = createClient();
+  // Use admin client (service role) - this bypasses RLS
+  // Safe because we're server-side only and validate the tracking ID format
+  const supabase = createAdminClient();
   const upperTrackingId = trackingId.toUpperCase();
+
+  // Validate tracking ID format to prevent enumeration attacks
+  if (!isValidTrackingId(upperTrackingId)) {
+    return null;
+  }
 
   // Try repairs first
   if (upperTrackingId.startsWith("RPR-")) {

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/public";
+import { createAdminClient } from "@/lib/supabase/admin";
 import Image from "next/image";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +45,12 @@ interface PassportEvent {
   created_at: string;
 }
 
+// Validate passport UID format to prevent abuse
+function isValidPassportUid(uid: string): boolean {
+  // NXP-XXXXXX format or numeric identity_number
+  return /^NXP-[A-F0-9]{6}$/i.test(uid) || /^\d{1,12}$/.test(uid);
+}
+
 function SpecItem({ label, value }: { label: string; value: string | number | null | undefined }) {
   if (!value) return null;
   return (
@@ -75,7 +81,30 @@ export default async function VerifyPage({
   params: Promise<{ uid: string }>;
 }) {
   const { uid } = await params;
-  const supabase = createClient();
+  
+  // Validate UID format to prevent enumeration attacks
+  if (!isValidPassportUid(uid)) {
+    return (
+      <div className="min-h-screen bg-[#F8F5F0] flex flex-col items-center justify-center px-4">
+        <div className="w-full max-w-md text-center">
+          <h1 className="font-semibold text-3xl font-bold text-[#071A0D] mb-1">nexpura</h1>
+          <p className="text-xs text-gray-400 uppercase tracking-widest mb-12">Digital Jewellery Passport</p>
+          <div className="bg-white rounded-2xl border border-[#E8E8E8] p-8 shadow-sm">
+            <h2 className="font-semibold text-xl font-semibold text-[#071A0D] mb-2">Invalid Passport ID</h2>
+            <p className="text-sm text-gray-500 leading-relaxed mb-6">
+              Please check the passport ID and try again.
+            </p>
+            <a href="/verify" className="inline-flex items-center gap-2 px-4 py-2 bg-[#071A0D] text-white text-sm font-medium rounded-lg hover:bg-[#0a2614] transition-colors">
+              Try Another Number
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Use admin client (service role) - bypasses RLS, safe because we're server-side only
+  const supabase = createAdminClient();
 
   // Try to find passport by passport_uid first, then by identity_number
   let passport = null;
