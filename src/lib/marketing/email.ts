@@ -66,6 +66,25 @@ export async function sendMarketingEmail(params: SendMarketingEmailParams): Prom
   const admin = createAdminClient();
 
   try {
+    // Check if email is bounced or opted-out (don't waste sends)
+    if (customerId) {
+      const { data: customer } = await admin
+        .from('customers')
+        .select('email_status, email_opted_out')
+        .eq('id', customerId)
+        .single();
+      
+      if (customer?.email_status === 'bounced') {
+        return { success: false, error: 'Email address has bounced previously' };
+      }
+      if (customer?.email_status === 'complained') {
+        return { success: false, error: 'Customer has marked emails as spam' };
+      }
+      if (customer?.email_opted_out) {
+        return { success: false, error: 'Customer has opted out of marketing emails' };
+      }
+    }
+
     // Get email configuration
     const emailConfig = await getTenantEmailConfig(tenantId);
 
