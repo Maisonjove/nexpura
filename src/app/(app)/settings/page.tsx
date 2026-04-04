@@ -743,6 +743,38 @@ export default function SettingsPage() {
               <span className="text-xs text-stone-400">JSON format • May take a minute for large accounts</span>
             </div>
           </div>
+
+          {/* Account Deletion (GDPR) */}
+          <div className="bg-white rounded-xl border border-red-200 p-6">
+            <h2 className="text-base font-semibold text-red-900 mb-2">Delete Account</h2>
+            <p className="text-sm text-stone-500 mb-4">
+              Permanently delete your account and all associated data. This action is irreversible after 30 days.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm("Are you sure you want to delete your account? Your data will be permanently deleted after 30 days. You can cancel during this period.")) {
+                  fetch("/api/data-delete", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ confirm: "DELETE MY DATA" }),
+                  })
+                    .then(res => res.json())
+                    .then(data => {
+                      if (data.status === "scheduled") {
+                        showSuccess(`Account deletion scheduled for ${new Date(data.scheduled_for).toLocaleDateString()}. You can cancel this in Settings.`);
+                      } else if (data.error) {
+                        setErrorMsg(data.error);
+                      }
+                    })
+                    .catch(() => setErrorMsg("Failed to request deletion"));
+                }
+              }}
+              className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              Request account deletion
+            </button>
+          </div>
         </div>
       )}
 
