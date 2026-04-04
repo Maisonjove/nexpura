@@ -39,6 +39,18 @@ export const rateLimiters = {
     redis,
     limiter: Ratelimit.slidingWindow(5, "60 s"),
   }) : null,
+  
+  // PDF generation: 10 per minute per user (memory-intensive)
+  pdf: redis ? new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, "60 s"),
+  }) : null,
+  
+  // Bulk exports: 3 per minute
+  export: redis ? new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(3, "60 s"),
+  }) : null,
 };
 
 export type RateLimitType = keyof typeof rateLimiters;

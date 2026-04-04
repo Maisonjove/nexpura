@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
-  const { success } = await checkRateLimit(ip, "api");
+  const { success } = await checkRateLimit(ip, "pdf");
   if (!success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
