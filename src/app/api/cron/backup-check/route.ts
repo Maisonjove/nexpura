@@ -37,15 +37,17 @@ export async function GET(request: Request) {
       }, { status: 500 });
     }
 
-    // Log backup check
-    await admin.from("system_logs").insert({
-      type: "backup_check",
-      status: "success",
-      message: "Weekly backup check passed - database accessible",
-      created_at: new Date().toISOString(),
-    }).catch(() => {
-      // system_logs might not exist - that's ok
-    });
+    // Log backup check (table might not exist - ignore errors)
+    try {
+      await admin.from("system_logs").insert({
+        type: "backup_check",
+        status: "success",
+        message: "Weekly backup check passed - database accessible",
+        created_at: new Date().toISOString(),
+      });
+    } catch {
+      // system_logs table might not exist - that's ok
+    }
 
     logger.info("[backup-check] Weekly backup check passed");
 
