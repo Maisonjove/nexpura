@@ -7,13 +7,17 @@ import InventoryClient from "./InventoryClient";
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
+const ITEMS_PER_PAGE = 100; // Initial load limit for performance
+
 export default async function InventoryPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ rt?: string }>;
+  searchParams?: Promise<{ rt?: string; page?: string }>;
 }) {
   const sp = searchParams ? await searchParams : {};
   const admin = createAdminClient();
+  const page = parseInt(sp.page || "1", 10);
+  const offset = (page - 1) * ITEMS_PER_PAGE;
 
   // Check for review mode or auth
   let tenantId: string | null = null;
@@ -33,8 +37,8 @@ export default async function InventoryPage({
   }
 
   // Parallel fetch with caching for static reference data
-  const [items, categories, suppliers, websiteConfig] = await Promise.all([
-    // Items - no cache (frequently changing)
+  const [items, totalCount, categories, suppliers, websiteConfig] = await Promise.all([
+    // Items - paginated for performance (100 per page)
     admin
       .from("inventory")
       .select(`
@@ -48,7 +52,15 @@ export default async function InventoryPage({
       `)
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .range(offset, offset + ITEMS_PER_PAGE - 1),
+    
+    // Total count for pagination
+    admin
+      .from("inventory")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null),
     
     // Categories - cache for 5 minutes
     getCached(
@@ -122,7 +134,7 @@ export default async function InventoryPage({
     suppliers: { name: string } | null;
   }>;
 
-  const totalItems = safeItems.length;
+  const totalItems = totalCount.count ?? safeItems.length;
   const lowStockCount = safeItems.filter(
     (i) => i.quantity <= (i.low_stock_threshold ?? 1)
   ).length;
@@ -131,6 +143,7 @@ export default async function InventoryPage({
     0
   );
   const hasWebsite = !!websiteConfig?.website_type;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
   return (
     <InventoryClient
@@ -143,6 +156,9 @@ export default async function InventoryPage({
       canViewCost={canViewCost}
       hasWebsite={hasWebsite}
       tenantName={tenantName}
+      currentPage={page}
+      totalPages={totalPages}
+      itemsPerPage={ITEMS_PER_PAGE}
     />
   );
 }

@@ -826,3 +826,71 @@ export async function exportSuppliers(): Promise<{ csv: string; error?: string }
     return { csv: "", error: "Operation failed" };
   }
 }
+
+// ──────────────────────────────────────────────────────────────
+// FULL DATA EXPORT (Download All)
+// ──────────────────────────────────────────────────────────────
+
+export async function exportAllData(): Promise<{ 
+  success: boolean; 
+  data?: Record<string, string>; 
+  error?: string 
+}> {
+  try {
+    const { tenantId } = await getAuthContext();
+    
+    // Export all entities in parallel
+    const [
+      customers,
+      invoices,
+      repairs,
+      bespokeJobs,
+      sales,
+      inventory,
+      expenses,
+      suppliers,
+    ] = await Promise.all([
+      exportCustomers(),
+      exportInvoices(),
+      exportRepairs(),
+      exportBespokeJobs(),
+      exportSales(),
+      exportInventory(),
+      exportExpenses(),
+      exportSuppliers(),
+    ]);
+
+    // Check for errors
+    const errors = [
+      customers.error,
+      invoices.error,
+      repairs.error,
+      bespokeJobs.error,
+      sales.error,
+      inventory.error,
+      expenses.error,
+      suppliers.error,
+    ].filter(Boolean);
+
+    if (errors.length > 0) {
+      return { success: false, error: errors.join('; ') };
+    }
+
+    return {
+      success: true,
+      data: {
+        'customers.csv': customers.csv,
+        'invoices.csv': invoices.csv,
+        'repairs.csv': repairs.csv,
+        'bespoke_jobs.csv': bespokeJobs.csv,
+        'sales.csv': sales.csv,
+        'inventory.csv': inventory.csv,
+        'expenses.csv': expenses.csv,
+        'suppliers.csv': suppliers.csv,
+      },
+    };
+  } catch (error) {
+    logger.error("exportAllData failed", { error });
+    return { success: false, error: "Failed to export data" };
+  }
+}

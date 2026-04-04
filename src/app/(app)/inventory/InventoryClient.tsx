@@ -76,6 +76,9 @@ interface InventoryClientProps {
   tenantName: string;
   canViewCost: boolean;
   hasWebsite: boolean;
+  currentPage?: number;
+  totalPages?: number;
+  itemsPerPage?: number;
 }
 
 // ─── Status Config ────────────────────────────────────────────────────────────
@@ -103,6 +106,9 @@ export default function InventoryClient({
   tenantName,
   canViewCost,
   hasWebsite,
+  currentPage = 1,
+  totalPages = 1,
+  itemsPerPage = 100,
 }: InventoryClientProps) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -785,10 +791,71 @@ export default function InventoryClient({
         </Card>
       )}
 
-      {/* Results Count */}
+      {/* Results Count & Pagination */}
       {filtered.length > 0 && (
-        <div className="text-center text-sm text-stone-400">
-          Showing {filtered.length} of {items.length} items
+        <div className="flex flex-col items-center gap-3">
+          <div className="text-sm text-stone-400">
+            Showing {filtered.length} of {totalItems} items
+            {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
+          </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <a
+                href={currentPage > 1 ? `?page=${currentPage - 1}` : "#"}
+                className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                  currentPage > 1
+                    ? "border-stone-200 hover:bg-stone-50 text-stone-700"
+                    : "border-stone-100 text-stone-300 cursor-not-allowed"
+                }`}
+                onClick={(e) => currentPage <= 1 && e.preventDefault()}
+              >
+                Previous
+              </a>
+              
+              {/* Page numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <a
+                      key={pageNum}
+                      href={`?page=${pageNum}`}
+                      className={`w-8 h-8 flex items-center justify-center text-sm rounded-lg transition-colors ${
+                        pageNum === currentPage
+                          ? "bg-stone-900 text-white"
+                          : "hover:bg-stone-100 text-stone-600"
+                      }`}
+                    >
+                      {pageNum}
+                    </a>
+                  );
+                })}
+              </div>
+              
+              <a
+                href={currentPage < totalPages ? `?page=${currentPage + 1}` : "#"}
+                className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                  currentPage < totalPages
+                    ? "border-stone-200 hover:bg-stone-50 text-stone-700"
+                    : "border-stone-100 text-stone-300 cursor-not-allowed"
+                }`}
+                onClick={(e) => currentPage >= totalPages && e.preventDefault()}
+              >
+                Next
+              </a>
+            </div>
+          )}
         </div>
       )}
     </div>
