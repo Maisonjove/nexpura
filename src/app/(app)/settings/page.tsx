@@ -707,6 +707,42 @@ export default function SettingsPage() {
               </button>
             </div>
           </form>
+
+          {/* Data Export (GDPR) */}
+          <div className="bg-white rounded-xl border border-stone-200 p-6">
+            <h2 className="text-base font-semibold text-stone-900 mb-2">Your Data</h2>
+            <p className="text-sm text-stone-500 mb-4">
+              Download a copy of all your business data including customers, inventory, sales, repairs, and more.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={async () => {
+                  setErrorMsg(null);
+                  try {
+                    const response = await fetch("/api/data-export", { method: "POST" });
+                    if (!response.ok) throw new Error("Export failed");
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `nexpura-export-${new Date().toISOString().split("T")[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showSuccess("Data export downloaded!");
+                  } catch {
+                    setErrorMsg("Failed to export data. Please try again.");
+                  }
+                }}
+                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+              >
+                Export all data
+              </button>
+              <span className="text-xs text-stone-400">JSON format • May take a minute for large accounts</span>
+            </div>
+          </div>
         </div>
       )}
 
