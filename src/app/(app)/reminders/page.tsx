@@ -149,12 +149,28 @@ export default async function RemindersPage() {
     .sort((a, b) => a.daysUntil - b.daysUntil)
     .slice(0, 20);
 
+  // Transform data to handle Supabase join returning arrays
+  const transformedRepairs = (readyRepairs.data || []).map((r: any) => ({
+    ...r,
+    customer: Array.isArray(r.customer) ? r.customer[0] || null : r.customer,
+  }));
+
+  const transformedBespoke = (readyBespoke.data || []).map((b: any) => ({
+    ...b,
+    customer: Array.isArray(b.customer) ? b.customer[0] || null : b.customer,
+  }));
+
+  const transformedLaybys = (upcomingLaybys.data || []).map((l: any) => ({
+    ...l,
+    customer: Array.isArray(l.customer) ? l.customer[0] || null : l.customer,
+  }));
+
   return (
     <RemindersClient
       tasks={upcomingTasks.data || []}
-      readyRepairs={readyRepairs.data || []}
-      readyBespoke={readyBespoke.data || []}
-      upcomingLaybys={upcomingLaybys.data || []}
+      readyRepairs={transformedRepairs}
+      readyBespoke={transformedBespoke}
+      upcomingLaybys={transformedLaybys}
       customerEvents={upcomingCustomerEvents}
     />
   );
