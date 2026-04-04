@@ -291,10 +291,10 @@ export async function createPOSSale(
             .eq("quantity", oldQty);
           
           if (updateCount === 0) {
-            // Race occurred — retry with current value
+            // Race occurred — another user bought the same item simultaneously
             const { data: invRetry } = await admin
               .from("inventory")
-              .select("quantity")
+              .select("quantity, name")
               .eq("id", item.inventoryId)
               .eq("tenant_id", params.tenantId)
               .single();
@@ -302,9 +302,13 @@ export async function createPOSSale(
             if (invRetry) {
               const retryQty = invRetry.quantity - item.quantity;
               if (retryQty < 0) {
+                const available = invRetry.quantity;
+                const itemName = invRetry.name || inv.name || item.name;
                 return { 
                   success: false, 
-                  error: `Item "${inv.name || item.name}" just sold out. Please remove it and try again.` 
+                  error: available === 0 
+                    ? `"${itemName}" just sold out while you were checking out. Please remove it from your cart.`
+                    : `Only ${available} "${itemName}" left in stock (another sale just went through). Please update your cart.`
                 };
               }
               await admin
