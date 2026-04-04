@@ -14,6 +14,14 @@ import crypto from "crypto";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+/** Escapes special PostgreSQL LIKE pattern characters to prevent injection */
+function sanitizeLikePattern(input: string): string {
+  return input
+    .replace(/\\/g, '\\\\')
+    .replace(/%/g, '\\%')
+    .replace(/_/g, '\\_');
+}
+
 interface WooProduct {
   id: number;
   name: string;
@@ -72,14 +80,15 @@ export async function POST(req: NextRequest) {
     const rawBody = await req.text();
     const body = JSON.parse(rawBody);
 
-    // Find tenant by store URL
+    // Find tenant by store URL (sanitize hostname to prevent LIKE injection)
     const admin = createAdminClient();
+    const safeHostname = sanitizeLikePattern(new URL(source).hostname);
     const { data: integration } = await admin
       .from("integrations")
       .select("tenant_id, config")
       .eq("type", "woocommerce")
       .eq("status", "connected")
-      .filter("config->store_url", "ilike", `%${new URL(source).hostname}%`)
+      .filter("config->store_url", "ilike", `%${safeHostname}%`)
       .single();
 
     if (!integration) {
