@@ -44,7 +44,7 @@ const NAV_GROUPS = [
       { name: 'Passports',          href: '/passports',  icon: ShieldCheck },
       { name: 'Stocktakes',         href: '/stocktakes', icon: ClipboardList },
       { name: 'Stock Transfers',    href: '/inventory/transfers', icon: ArrowRightLeft },
-      { name: 'Reminders',          href: '/settings/reminders', icon: Bell },
+      { name: 'Reminders',          href: '/reminders', icon: Bell },
     ],
   },
   {
