@@ -37,9 +37,16 @@ async function _updateSessionInner(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   const pathname = request.nextUrl.pathname;
 
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = NextResponse.next({
+    request,
+  });
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+    },
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -48,7 +55,9 @@ async function _updateSessionInner(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         );
-        supabaseResponse = NextResponse.next({ request });
+        supabaseResponse = NextResponse.next({
+          request,
+        });
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options)
         );
@@ -61,7 +70,7 @@ async function _updateSessionInner(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // ── Route authorization ──────────────────────────────────────────────────────────
+  // ── Route authorization ────────────────────────────────────────────────────────── //
   // Public routes — no auth required
   const isPublicRoute =
     pathname === "/" ||
@@ -161,6 +170,7 @@ async function _updateSessionInner(request: NextRequest) {
           new Date(sub.current_period_end) < now;
         const isBlocked =
           sub.status === "suspended" || isTrialExpired || isCancelledAndExpired;
+
         if (isBlocked) {
           const suspendedUrl = request.nextUrl.clone();
           suspendedUrl.pathname = "/suspended";
