@@ -32,6 +32,7 @@ interface CreatePOSSaleParams {
   voucherAmount?: number;
   taxName?: string;
   taxRate?: number;
+  idempotencyKey?: string; // Prevents duplicate submissions
 }
 
 export async function createPOSSale(
@@ -43,6 +44,29 @@ export async function createPOSSale(
     if (!user) return { error: "Not authenticated" };
 
     const admin = createAdminClient();
+    
+    // Idempotency check - prevent duplicate submissions
+    if (params.idempotencyKey) {
+      const { data: existing } = await admin
+        .from("sales")
+        .select("id, sale_number")
+        .eq("tenant_id", params.tenantId)
+        .eq("idempotency_key", params.idempotencyKey)
+        .maybeSingle();
+      
+      if (existing) {
+        // Return the existing sale instead of creating a duplicate
+        logger.info("Duplicate POS submission prevented", { 
+          idempotencyKey: params.idempotencyKey, 
+          existingSaleId: existing.id 
+        });
+        return { 
+          id: existing.id, 
+          saleNumber: existing.sale_number,
+          error: undefined 
+        };
+      }
+    }
   
   // Generate sale number using atomic RPC (returns format like "SALE-0001")
   // This ensures no duplicate numbers and consistent formatting

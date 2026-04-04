@@ -156,6 +156,10 @@ export default function POSClient({
   async function handleCharge(paymentMethod: string, voucherId?: string, voucherAmount?: number) {
     setIsPending(true);
     setError(null);
+    
+    // Generate idempotency key to prevent duplicate charges on rapid clicks
+    const idempotencyKey = `pos_${tenantId}_${userId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    
     try {
       const result = await createPOSSale({
         tenantId,
@@ -172,6 +176,7 @@ export default function POSClient({
         storeCreditAmount: paymentMethod === "store_credit" ? total : 0,
         voucherId: voucherId ?? null,
         voucherAmount: voucherAmount ?? 0,
+        idempotencyKey,
       });
 
       if (result.error) {

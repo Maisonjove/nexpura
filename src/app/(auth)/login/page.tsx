@@ -1,18 +1,27 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { loginAction } from "./actions";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [showExpiredMessage, setShowExpiredMessage] = useState(false);
+  
+  // Check if redirected due to session expiry
+  useEffect(() => {
+    if (searchParams.get("expired") === "true") {
+      setShowExpiredMessage(true);
+    }
+  }, [searchParams]);
 
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -37,9 +46,16 @@ export default function LoginPage() {
         localStorage.removeItem("nexpura_remember_me");
       }
 
-      // Prefetch dashboard before navigation for instant load
-      router.prefetch("/dashboard");
-      router.push("/dashboard");
+      // Check if there's a redirect URL from session expiry
+      const redirectUrl = sessionStorage.getItem("nexpura_redirect_after_login");
+      if (redirectUrl) {
+        sessionStorage.removeItem("nexpura_redirect_after_login");
+        router.push(redirectUrl);
+      } else {
+        // Prefetch dashboard before navigation for instant load
+        router.prefetch("/dashboard");
+        router.push("/dashboard");
+      }
       router.refresh();
     });
   }
@@ -55,6 +71,21 @@ export default function LoginPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-stone-200/60 p-10 w-full shadow-sm">
+        {/* Session expired message */}
+        {showExpiredMessage && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-amber-800">Session expired</p>
+                <p className="text-sm text-amber-700 mt-1">Please log in again to continue where you left off.</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <h2 className="font-serif text-2xl text-stone-900 mb-8">
           Welcome back
         </h2>

@@ -8,6 +8,7 @@ import { LocationProvider } from '@/contexts/LocationContext';
 import logger from "@/lib/logger";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LazyOverlays } from "@/components/LazyOverlays";
+import { SessionExpiryModal } from "@/components/SessionExpiryModal";
 
 // Prevent caching so plan changes take effect immediately
 export const dynamic = 'force-dynamic';
@@ -93,6 +94,7 @@ export default async function AppLayout({
           </main>
         </ErrorBoundary>
         <LazyOverlays />
+        <SessionExpiryModal />
       </div>
     </LocationProvider>
   );
