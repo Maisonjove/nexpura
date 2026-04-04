@@ -170,18 +170,9 @@ function XeroCard({ data }: { data: IntegrationStatus["xero"] }) {
           <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3 space-y-1">
             <p className="font-semibold">⚙️ Setup Required</p>
             <p>
-              Add <code className="font-mono">XERO_CLIENT_ID</code>,{" "}
-              <code className="font-mono">XERO_CLIENT_SECRET</code>, and{" "}
-              <code className="font-mono">XERO_REDIRECT_URI</code> to your environment variables.
+              Xero integration requires configuration by your account administrator.
+              Please contact support if you need assistance setting up this integration.
             </p>
-            <a
-              href="https://vercel.com/docs/projects/environment-variables"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-amber-700 underline hover:text-amber-700"
-            >
-              How to add env vars on Vercel <ExternalLink size={10} />
-            </a>
           </div>
         )}
         {result && (
