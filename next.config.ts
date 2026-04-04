@@ -79,6 +79,20 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=86400' },
         ],
       },
+      // Cache fonts for 1 year
+      {
+        source: '/fonts/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      // Stale-while-revalidate for API routes (faster perceived response)
+      {
+        source: '/api/dashboard/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'private, max-age=0, stale-while-revalidate=30' },
+        ],
+      },
     ];
   },
   // Enable gzip/brotli compression to reduce egress bandwidth

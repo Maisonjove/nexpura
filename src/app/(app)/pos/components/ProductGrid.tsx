@@ -102,7 +102,9 @@ export default function ProductGrid({
                       width={200}
                       height={200}
                       className="w-full h-full object-cover"
-                      unoptimized
+                      placeholder="blur"
+                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABQODxIPDRQSEBIXFRQdHx4eHRoaHSQrJyEwPDY2ODYyNjY2OjY8PD4+Ojo+PD4+Pj4+Pj4+Pj4+Pj4+Pj7/2wBDAR4eHh4dLCQsLCQsPD48PD8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz//wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREzFBUf/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AqMdp+Stbu5nuJJTJKWLNx4H0AKKAf//Z"
+                      loading="lazy"
                     />
                   ) : (
                     <svg className="w-8 h-8 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

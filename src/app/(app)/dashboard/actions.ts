@@ -2,7 +2,16 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/auth-context";
-import { getCached, tenantCacheKey } from "@/lib/cache";
+import { getCached, tenantCacheKey, invalidateCachePattern } from "@/lib/cache";
+
+// ────────────────────────────────────────────────────────────────
+// Cache Invalidation (call after sales, repairs, invoices change)
+// ────────────────────────────────────────────────────────────────
+
+export async function invalidateDashboardCache(tenantId: string): Promise<void> {
+  // Invalidate all dashboard caches for this tenant (any location filter)
+  await invalidateCachePattern(`tenant:${tenantId}:dashboard:*`);
+}
 
 // ────────────────────────────────────────────────────────────────
 // Dashboard Data Types
@@ -61,8 +70,29 @@ function getLast7Days(tz: string = "Australia/Sydney"): string[] {
 export async function getDashboardData(locationIds: string[] | null): Promise<DashboardData> {
   const auth = await requireAuth();
   const { userId, tenantId, tenantName, currency, isManager } = auth;
-  const admin = createAdminClient();
 
+  // Cache key includes tenant + location filter + user (for personalized task data)
+  const locationKey = locationIds?.sort().join(",") || "all";
+  const cacheKey = tenantCacheKey(tenantId, "dashboard", `${locationKey}:${userId}`);
+
+  // Try to get cached dashboard data (30 second TTL for fast repeat loads)
+  return getCached(
+    cacheKey,
+    async () => fetchDashboardData(userId, tenantId, tenantName, currency, isManager, locationIds),
+    30 // 30 second cache - dashboard feels instant on refresh
+  );
+}
+
+// Internal function that does the actual data fetching
+async function fetchDashboardData(
+  userId: string,
+  tenantId: string,
+  tenantName: string | null,
+  currency: string,
+  isManager: boolean,
+  locationIds: string[] | null
+): Promise<DashboardData> {
+  const admin = createAdminClient();
   const firstName = tenantName || "there";
 
   // Fetch business_type and timezone from tenant

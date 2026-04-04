@@ -37,6 +37,8 @@ export default function LoginPage() {
         localStorage.removeItem("nexpura_remember_me");
       }
 
+      // Prefetch dashboard before navigation for instant load
+      router.prefetch("/dashboard");
       router.push("/dashboard");
       router.refresh();
     });

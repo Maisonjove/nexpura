@@ -54,6 +54,7 @@ export async function loginAction(
       error: `Too many failed attempts. Please try again in ${minutesRemaining} minutes.`,
       lockedUntil: loginCheck.lockedUntil,
     };
+  }
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
