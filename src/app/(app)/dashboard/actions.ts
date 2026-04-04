@@ -42,12 +42,14 @@ export interface DashboardData {
 // Helpers
 // ────────────────────────────────────────────────────────────────
 
-function getLast7Days(): string[] {
+function getLast7Days(tz: string = "Australia/Sydney"): string[] {
   const days: string[] = [];
+  const now = new Date();
   for (let i = 6; i >= 0; i--) {
-    const d = new Date();
+    const d = new Date(now);
     d.setDate(d.getDate() - i);
-    days.push(d.toISOString().split("T")[0]);
+    // Format in tenant's timezone
+    days.push(new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d));
   }
   return days;
 }
@@ -63,16 +65,29 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
 
   const firstName = tenantName || "there";
 
-  // Fetch business_type from tenant
+  // Fetch business_type and timezone from tenant
   const { data: tenantRow } = await admin
     .from("tenants")
-    .select("business_type")
+    .select("business_type, timezone")
     .eq("id", tenantId)
     .maybeSingle();
   const businessType: string | null = tenantRow?.business_type ?? null;
+  const tz = tenantRow?.timezone ?? "Australia/Sydney";
 
-  const today = new Date().toISOString().split("T")[0];
-  const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  // Calculate dates in tenant's local timezone for accurate "this month" / "today" stats
+  const now = new Date();
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(now); // YYYY-MM-DD
+  
+  // Get first day of current month in tenant's timezone
+  const localDateParts = new Intl.DateTimeFormat("en-CA", { 
+    timeZone: tz, 
+    year: "numeric", 
+    month: "2-digit" 
+  }).formatToParts(now);
+  const year = localDateParts.find(p => p.type === "year")?.value ?? now.getFullYear().toString();
+  const month = localDateParts.find(p => p.type === "month")?.value ?? "01";
+  const monthStartStr = `${year}-${month}-01T00:00:00.000Z`;
+  
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   // Fetch locations for name lookup if showing all locations
@@ -472,7 +487,7 @@ export async function getDashboardData(locationIds: string[] | null): Promise<Da
   }
 
   // ── Sparkline data processing ─────────────────────────────────────────────
-  const last7Days = getLast7Days();
+  const last7Days = getLast7Days(tz);
 
   // Revenue sparkline
   const revByDay = new Map<string, number>();
