@@ -33,12 +33,17 @@ export async function loginAction(
   password: string
 ): Promise<LoginResult> {
   try {
-    const clientHeaders = await getClientHeaders();
+    // Parallelize initial setup - headers, rate limit check, and supabase client creation
+    const [clientHeaders, supabase] = await Promise.all([
+      getClientHeaders(),
+      createClient(),
+    ]);
+    
     // Use a combination of email + IP for rate limiting
     // This prevents account enumeration while still protecting against distributed attacks
     const identifier = `${email.toLowerCase()}:${clientHeaders.ip}`;
 
-  // Check if login attempts are allowed
+  // Check if login attempts are allowed (must be before auth attempt)
   const loginCheck = await checkLoginAttempts(identifier);
   if (!loginCheck.allowed) {
     const minutesRemaining = loginCheck.lockedUntil
@@ -49,9 +54,6 @@ export async function loginAction(
       error: `Too many failed attempts. Please try again in ${minutesRemaining} minutes.`,
       lockedUntil: loginCheck.lockedUntil,
     };
-  }
-
-  const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -69,16 +71,20 @@ export async function loginAction(
     };
   }
 
-  // Clear failed login attempts on successful login
-  await clearLoginAttempts(identifier);
-
-  // Check if user has 2FA enabled
+  // Check if user has 2FA enabled - parallelize with clearing login attempts
   if (data.user) {
-    const { data: profile } = await supabase
-      .from("users")
-      .select("totp_enabled")
-      .eq("id", data.user.id)
-      .single();
+    const [, profileResult] = await Promise.all([
+      // Clear failed login attempts (fire and forget pattern with await)
+      clearLoginAttempts(identifier),
+      // Check 2FA status
+      supabase
+        .from("users")
+        .select("totp_enabled")
+        .eq("id", data.user.id)
+        .single(),
+    ]);
+
+    const profile = profileResult.data;
 
     if (profile?.totp_enabled) {
       return {
@@ -92,13 +98,13 @@ export async function loginAction(
     // Record session and check for new device (non-blocking, completely isolated)
     // This MUST NOT break login under any circumstances
     if (data.session?.access_token) {
-      try {
-        recordSession(data.user.id, data.session.access_token, clientHeaders).catch(() => {});
-        checkNewDeviceLogin(data.user.id, data.user.email || '', clientHeaders).catch(() => {});
-      } catch {
-        // Silently ignore - session tracking is non-critical
-      }
+      // Fire and forget - don't await these
+      recordSession(data.user.id, data.session.access_token, clientHeaders).catch(() => {});
+      checkNewDeviceLogin(data.user.id, data.user.email || '', clientHeaders).catch(() => {});
     }
+  } else {
+    // Still need to clear attempts even if no user data (edge case)
+    await clearLoginAttempts(identifier);
   }
 
   return {
