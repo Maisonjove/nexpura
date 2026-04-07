@@ -2,12 +2,14 @@
 // login actions
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   checkLoginAttempts,
   recordFailedLogin,
   clearLoginAttempts,
 } from "@/lib/auth-security";
 import { recordSession, checkNewDeviceLogin } from "@/lib/session-manager";
+import { getCachedUserProfile } from "@/lib/cached-auth";
 import { headers } from "next/headers";
 
 export type LoginResult = {
@@ -74,11 +76,14 @@ export async function loginAction(
 
   // Check if user has 2FA enabled - parallelize with clearing login attempts
   if (data.user) {
+    // Use admin client (not anon) to avoid RLS recursion on users table (1-2s latency bug)
+    // Also pre-warms the Redis profile cache so middleware doesn't hit DB on first dashboard load
+    const admin = createAdminClient();
     const [, profileResult] = await Promise.all([
-      // Clear failed login attempts (fire and forget pattern with await)
+      // Clear failed login attempts
       clearLoginAttempts(identifier),
-      // Check 2FA status
-      supabase
+      // Check 2FA status via admin client — bypasses the RLS recursion that caused 1-2s delay
+      admin
         .from("users")
         .select("totp_enabled")
         .eq("id", data.user.id)
@@ -86,6 +91,9 @@ export async function loginAction(
     ]);
 
     const profile = profileResult.data;
+
+    // Pre-warm the cached profile so the middleware Redis lookup is instant
+    getCachedUserProfile(data.user.id).catch(() => {});
 
     if (profile?.totp_enabled) {
       return {
