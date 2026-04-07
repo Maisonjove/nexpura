@@ -36,7 +36,7 @@ const emptyStats: DashboardStatsData = {
 const fetcher = async (key: string): Promise<DashboardStatsData> => {
   // Key format: "dashboard-stats:id1,id2,id3" or "dashboard-stats:all"
   const locationPart = key.split(":")[1];
-  const locationIds = locationPart === "all" ? undefined : locationPart.split(",");
+  const locationIds = locationPart === "all" ? null : locationPart.split(",");
   return getDashboardStats(locationIds);
 };
 
