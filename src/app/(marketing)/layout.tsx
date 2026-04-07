@@ -1,12 +1,12 @@
-import { NavBar } from '@/components/marketing/NavBar';
-import { Footer } from '@/components/marketing/Footer';
+import LandingHeader from '@/components/landing/LandingHeader'
+import LandingFooter from '@/components/landing/LandingFooter'
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <NavBar />
-      <main className="flex-1">{children}</main>
-      <Footer />
+      <LandingHeader />
+      <main className="flex-1 pt-[72px]">{children}</main>
+      <LandingFooter />
     </div>
   );
 }

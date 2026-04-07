@@ -9,10 +9,10 @@ const columns = [
   {
     title: 'Solutions',
     links: [
-      { label: 'Retail POS', href: '/features' },
-      { label: 'Inventory Management', href: '/features' },
-      { label: 'Bespoke Orders', href: '/features' },
-      { label: 'Analytics', href: '/features' },
+      { label: 'Retail POS', href: '/features#pos' },
+      { label: 'Inventory Management', href: '/features#inventory' },
+      { label: 'Bespoke Orders', href: '/features#bespoke' },
+      { label: 'Analytics', href: '/features#analytics' },
     ],
   },
   {

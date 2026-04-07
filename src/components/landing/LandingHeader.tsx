@@ -17,17 +17,17 @@ export default function LandingHeader() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-2xl transition-[border-color] duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 bg-white transition-[border-color,box-shadow] duration-300 ${
         scrolled
-          ? 'border-b border-black/[0.08] bg-white/85'
-          : 'border-b border-black/[0.04] bg-white/85'
+          ? 'border-b border-black/[0.08] shadow-[0_1px_0_rgba(0,0,0,0.02)]'
+          : 'border-b border-transparent'
       }`}
     >
       <nav className="flex items-center justify-between max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-20 h-[72px]">
         {/* Left nav */}
         <div className="hidden md:flex items-center gap-10 flex-1">
-          <NavLink href="#toolkit">Solutions</NavLink>
-          <NavLink href="#toolkit">Platform</NavLink>
+          <NavLink href="/features">Features</NavLink>
+          <NavLink href="/pricing">Pricing</NavLink>
         </div>
 
         {/* Logo */}
@@ -40,17 +40,39 @@ export default function LandingHeader() {
 
         {/* Right nav */}
         <div className="hidden md:flex items-center gap-6 flex-1 justify-end">
-          <NavLink href="#">About</NavLink>
-          <NavLink href="#">Contact</NavLink>
+          <NavLink href="/about">About</NavLink>
+          <NavLink href="/contact">Contact</NavLink>
           <NavLink href="/login">Login</NavLink>
           <Link
             href="/verify"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#52B788] text-white text-sm font-medium rounded-lg hover:bg-[#3d9970] transition-colors"
+            className="
+              group inline-flex items-center gap-2
+              pl-4 pr-5 py-2
+              bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a]
+              rounded-full
+              shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.08)]
+              transition-shadow duration-400
+              hover:shadow-[0_2px_4px_rgba(0,0,0,0.22),0_8px_20px_rgba(0,0,0,0.14),inset_0_1px_0_rgba(255,255,255,0.08)]
+              relative overflow-hidden
+            "
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
+            <svg
+              className="w-3.5 h-3.5 text-nexpura-bronze-light relative z-10"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={1.75}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+              />
             </svg>
-            Verify Passport
+            <span className="text-[0.8125rem] font-medium text-white tracking-[0.01em] relative z-10">
+              Verify Passport
+            </span>
           </Link>
         </div>
 
@@ -80,19 +102,39 @@ export default function LandingHeader() {
         }`}
       >
         <div className="flex flex-col gap-4 px-6 sm:px-10 py-6 bg-white/97">
-          <NavLink href="#toolkit">Solutions</NavLink>
-          <NavLink href="#toolkit">Platform</NavLink>
-          <NavLink href="#">About</NavLink>
-          <NavLink href="#">Contact</NavLink>
+          <NavLink href="/features">Features</NavLink>
+          <NavLink href="/pricing">Pricing</NavLink>
+          <NavLink href="/about">About</NavLink>
+          <NavLink href="/contact">Contact</NavLink>
           <NavLink href="/login">Login</NavLink>
           <Link
             href="/verify"
-            className="inline-flex items-center gap-2 mt-2 px-4 py-2.5 bg-[#52B788] text-white text-sm font-medium rounded-lg hover:bg-[#3d9970] transition-colors"
+            className="
+              inline-flex items-center gap-2 mt-2 self-start
+              pl-4 pr-5 py-2.5
+              bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a]
+              rounded-full
+              shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.08)]
+              relative overflow-hidden
+            "
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
+            <svg
+              className="w-3.5 h-3.5 text-nexpura-bronze-light relative z-10"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={1.75}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+              />
             </svg>
-            Verify Passport
+            <span className="text-[0.8125rem] font-medium text-white tracking-[0.01em] relative z-10">
+              Verify Passport
+            </span>
           </Link>
         </div>
       </div>
