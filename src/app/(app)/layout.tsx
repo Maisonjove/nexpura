@@ -1,77 +1,94 @@
 import TopNav from "@/components/TopNav";
 import { SkipToContent } from "@/components/SkipToContent";
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
-import { canonicalPlan } from '@/lib/features';
 import { LocationProvider } from '@/contexts/LocationContext';
 import logger from "@/lib/logger";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LazyOverlays } from "@/components/LazyOverlays";
 import { SessionExpiryModal } from "@/components/SessionExpiryModal";
+import { headers } from 'next/headers';
+import {
+  AUTH_HEADERS,
+  getCachedUserProfile,
+  getCachedLocations,
+  getCachedTeamMember,
+} from '@/lib/cached-auth';
 
-// Prevent caching so plan changes take effect immediately
-export const dynamic = 'force-dynamic';
+// Use revalidate instead of force-dynamic for better performance
+// User data is cached with 5 min TTL in Redis, so 60s revalidate is safe
+export const revalidate = 60;
 
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // First, try to get auth data from headers (set by middleware)
+  // This eliminates duplicate DB calls - middleware already validated the user
+  const headersList = await headers();
+  const headerUserId = headersList.get(AUTH_HEADERS.USER_ID);
+  const headerTenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
 
-  if (!user) {
-    return redirect('/login');
+  // If headers are present, we can skip the auth call
+  // Otherwise fall back to Supabase auth (for edge cases)
+  let userId: string | null = headerUserId;
+  let userEmail: string | null = headersList.get(AUTH_HEADERS.USER_EMAIL);
+
+  if (!userId) {
+    // Fallback: no headers from middleware, need to validate auth
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return redirect('/login');
+    }
+    userId = user.id;
+    userEmail = user.email || null;
   }
 
-  // Use admin client for users table to bypass RLS recursion.
-  // The anon-key client with RLS causes infinite policy recursion on users table,
-  // adding 1–2s latency per request and causing timeouts on complex pages.
-  const admin = createAdminClient();
+  // Get cached user profile (5 min TTL in Redis)
+  // This is much faster than a DB call on every request
+  const profile = await getCachedUserProfile(userId);
 
-  // --- Profile fetch (hard dependency: needed for sidebar & tenant data) ---
-  let profile: Record<string, unknown> | null = null;
-  try {
-    const { data } = await admin
-      .from('users')
-      .select('*, tenants(*)')
-      .eq('id', user.id)
-      .single();
-    profile = data;
-  } catch (err) {
-    logger.error('[AppLayout] Failed to fetch user profile:', err);
-    // No user record = needs onboarding
+  if (!profile) {
+    logger.error('[AppLayout] No user profile found for:', userId);
     return redirect('/onboarding');
   }
 
   // If user exists but has no tenant, redirect to onboarding
-  if (!profile?.tenant_id) {
+  if (!profile.tenant_id) {
     return redirect('/onboarding');
   }
 
-  const userData = { ...user, ...profile };
-  const tenant = profile?.tenants as Record<string, unknown> | null;
+  // Build userData combining auth info and cached profile
+  // Note: profile already has id and email, we just need to ensure non-null values
+  const userData = {
+    ...profile,
+    id: userId,
+    email: userEmail ?? profile.email,
+    // Convert null to undefined for TopNav compatibility
+    full_name: profile.full_name ?? undefined,
+  };
+  const tenant = profile.tenants;
 
-  // --- All non-critical data in a single parallel fetch (reduces DB round-trips) ---
+  // Fetch layout data from cache (parallel, 2 min TTL)
   let locations: { id: string; name: string; type: string; is_active: boolean }[] = [];
   let currentLocationId: string | null = null;
 
-  if (profile?.tenant_id) {
-    try {
-      const [locRes, tmRes] = await Promise.all([
-        admin.from('locations').select('id, name, type, is_active').eq('tenant_id', profile.tenant_id as string).eq('is_active', true).order('name'),
-        admin.from('team_members').select('current_location_id, default_location_id').eq('user_id', user.id).maybeSingle(),
-      ]);
+  try {
+    const [cachedLocations, cachedTeamMember] = await Promise.all([
+      getCachedLocations(profile.tenant_id),
+      getCachedTeamMember(userId),
+    ]);
 
-      locations = locRes.data ?? [];
-      currentLocationId =
-        tmRes.data?.current_location_id ||
-        tmRes.data?.default_location_id ||
-        (locations.length === 1 ? locations[0].id : null);
-    } catch (err) {
-      logger.error('[AppLayout] Failed to fetch layout data:', err);
-    }
+    locations = cachedLocations;
+    currentLocationId =
+      cachedTeamMember?.current_location_id ||
+      cachedTeamMember?.default_location_id ||
+      (locations.length === 1 ? locations[0].id : null);
+  } catch (err) {
+    logger.error('[AppLayout] Failed to fetch cached layout data:', err);
   }
 
   return (

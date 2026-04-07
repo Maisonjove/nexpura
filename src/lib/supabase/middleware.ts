@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import logger from "@/lib/logger";
+import { AUTH_HEADERS, getCachedUserProfile } from "@/lib/cached-auth";
 
 export async function updateSession(request: NextRequest) {
   // Top-level guard: if anything in this function throws (Edge Runtime limits,
@@ -138,24 +139,27 @@ async function _updateSessionInner(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const { data: userRecord } = await supabase
-      .from("users")
-      .select("id, tenant_id, role")
-      .eq("id", user.id)
-      .single();
+    // Use cached user profile instead of direct DB call
+    const userProfile = await getCachedUserProfile(user.id);
 
-    if (!userRecord || !userRecord.tenant_id) {
+    if (!userProfile || !userProfile.tenant_id) {
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = "/onboarding";
       return NextResponse.redirect(onboardingUrl);
     }
+
+    // Pass auth data via headers for layout to consume (eliminates duplicate DB calls)
+    supabaseResponse.headers.set(AUTH_HEADERS.USER_ID, user.id);
+    supabaseResponse.headers.set(AUTH_HEADERS.TENANT_ID, userProfile.tenant_id);
+    supabaseResponse.headers.set(AUTH_HEADERS.USER_ROLE, userProfile.role || "");
+    supabaseResponse.headers.set(AUTH_HEADERS.USER_EMAIL, user.email || "");
 
     // Check subscription status (skip for billing/suspended pages)
     if (!pathname.startsWith("/billing") && !pathname.startsWith("/suspended")) {
       const { data: sub } = await supabase
         .from("subscriptions")
         .select("status, current_period_end, trial_ends_at")
-        .eq("tenant_id", userRecord.tenant_id)
+        .eq("tenant_id", userProfile.tenant_id)
         .maybeSingle();
 
       if (sub) {

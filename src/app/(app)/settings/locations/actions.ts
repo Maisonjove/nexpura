@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { invalidateLocationsCache } from "@/lib/cached-auth";
 
 // ============================================================================
 // TYPES
@@ -219,6 +220,9 @@ export async function addLocation(formData: LocationFormData): Promise<{ data?: 
       newData: { name, type, address: address_line1 },
     }).catch((e) => logger.error("Audit log failed", { error: e }));
 
+    // Invalidate locations cache so layout picks up new location
+    await invalidateLocationsCache(userData.tenant_id);
+
     revalidatePath("/settings/locations");
     return { data };
   } catch (error) {
@@ -281,6 +285,9 @@ export async function toggleLocationActive(locationId: string, isActive: boolean
       oldData: { is_active: isActive },
       newData: { is_active: !isActive },
     }).catch((e) => logger.error("Audit log failed", { error: e }));
+
+    // Invalidate locations cache so layout reflects active/archived status
+    await invalidateLocationsCache(userData.tenant_id);
 
     revalidatePath("/settings/locations");
     return { success: true };
@@ -391,6 +398,9 @@ export async function deleteLocation(locationId: string): Promise<{ success?: bo
       oldData: { name: locationData.name },
     }).catch((e) => logger.error("Audit log failed", { error: e }));
 
+    // Invalidate locations cache
+    await invalidateLocationsCache(userData.tenant_id);
+
     revalidatePath("/settings/locations");
     return { success: true };
   } catch (error) {
@@ -491,6 +501,9 @@ export async function updateLocation(
       oldData,
       newData: { name, type, address: address_line1 },
     }).catch((e) => logger.error("Audit log failed", { error: e }));
+
+    // Invalidate locations cache so layout reflects updates
+    await invalidateLocationsCache(userData.tenant_id);
 
     revalidatePath("/settings/locations");
     revalidatePath(`/settings/locations/${locationId}`);

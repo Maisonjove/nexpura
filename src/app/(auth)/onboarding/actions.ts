@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { initDefaultPermissions } from "@/lib/permissions";
 import logger from "@/lib/logger";
+import { invalidateUserCache } from "@/lib/cached-auth";
 
 // ============================================================================
 // VALIDATION & SANITIZATION
@@ -172,6 +173,9 @@ export async function completeOnboarding(
     logger.error("Permission seeding error:", permErr);
     // Non-critical — continue
   }
+
+  // Invalidate user cache so layout picks up new user profile
+  await invalidateUserCache(user.id);
 
   redirect("/dashboard");
   } catch (error) {
