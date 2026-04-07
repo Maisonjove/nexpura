@@ -1,11 +1,9 @@
 "use client";
 
-import { useCallback } from "react";
 import useSWR from "swr";
 import { useLocation } from "@/contexts/LocationContext";
 import { getDashboardStats, DashboardCriticalData, DashboardStatsData } from "./actions";
 import DashboardClient from "./DashboardClient";
-import { Skeleton } from "@/components/ui/skeleton";
 
 // Default empty stats for initial render
 const emptyStats: DashboardStatsData = {
@@ -33,23 +31,28 @@ const emptyStats: DashboardStatsData = {
   repairStageData: [],
 };
 
+// Fetcher that extracts locationIds from the SWR key and calls the server action
+// This avoids stale closure issues by getting locationIds from the key itself
+const fetcher = async (key: string): Promise<DashboardStatsData> => {
+  // Key format: "dashboard-stats:id1,id2,id3" or "dashboard-stats:all"
+  const locationPart = key.split(":")[1];
+  const locationIds = locationPart === "all" ? undefined : locationPart.split(",");
+  return getDashboardStats(locationIds);
+};
+
 interface DashboardWrapperProps {
   criticalData: DashboardCriticalData;
 }
 
 export default function DashboardWrapper({ criticalData }: DashboardWrapperProps) {
-  const { getFilterLocationIds, viewMode, currentLocationId } = useLocation();
+  const { getFilterLocationIds } = useLocation();
   
   // Get location IDs for the cache key
   const locationIds = getFilterLocationIds();
   const locationKey = locationIds?.sort().join(",") || "all";
   
-  // Fetcher that calls the server action
-  const fetcher = useCallback(async () => {
-    return getDashboardStats(locationIds);
-  }, [locationIds]);
-  
   // SWR for client-side stats fetching with deduplication and caching
+  // The fetcher extracts locationIds from the key to avoid stale closure issues
   const { data: stats, isLoading } = useSWR<DashboardStatsData>(
     `dashboard-stats:${locationKey}`,
     fetcher,
