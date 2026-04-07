@@ -16,6 +16,11 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showExpiredMessage, setShowExpiredMessage] = useState(false);
   
+  // Prefetch dashboard on mount so navigation is instant after login
+  useEffect(() => {
+    router.prefetch("/dashboard");
+  }, [router]);
+
   // Check if redirected due to session expiry
   useEffect(() => {
     if (searchParams.get("expired") === "true") {
@@ -52,11 +57,8 @@ export default function LoginPage() {
         sessionStorage.removeItem("nexpura_redirect_after_login");
         router.push(redirectUrl);
       } else {
-        // Prefetch dashboard before navigation for instant load
-        router.prefetch("/dashboard");
-        router.push("/dashboard");
+          router.push("/dashboard");
       }
-      router.refresh();
     });
   }
 

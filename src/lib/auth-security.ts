@@ -29,16 +29,20 @@ export async function checkLoginAttempts(identifier: string): Promise<{
     const key = `login_attempts:${identifier}`;
     const lockKey = `login_locked:${identifier}`;
 
-    // Check if locked
-    const lockedUntil = await redis.get<number>(lockKey);
+    // Fetch lock status and attempt count in parallel
+    const [lockedUntil, attempts] = await Promise.all([
+      redis.get<number>(lockKey),
+      redis.get<number>(key),
+    ]);
+
     if (lockedUntil && Date.now() < lockedUntil) {
       return { allowed: false, lockedUntil };
     }
 
-    const attempts = (await redis.get<number>(key)) || 0;
+    const attemptCount = attempts || 0;
     return {
-      allowed: attempts < MAX_ATTEMPTS,
-      attemptsRemaining: MAX_ATTEMPTS - attempts,
+      allowed: attemptCount < MAX_ATTEMPTS,
+      attemptsRemaining: MAX_ATTEMPTS - attemptCount,
     };
   } catch (error) {
     // Redis error - allow login to proceed (graceful degradation)
