@@ -7,6 +7,7 @@ import logger from "@/lib/logger";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LazyOverlays } from "@/components/LazyOverlays";
 import { SessionExpiryModal } from "@/components/SessionExpiryModal";
+import { RoutePrefetcher } from "@/components/RoutePrefetcher";
 import { headers } from 'next/headers';
 import {
   AUTH_HEADERS,
@@ -112,6 +113,7 @@ export default async function AppLayout({
         </ErrorBoundary>
         <LazyOverlays />
         <SessionExpiryModal />
+        <RoutePrefetcher />
       </div>
     </LocationProvider>
   );
