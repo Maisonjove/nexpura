@@ -18,10 +18,20 @@ export async function invalidateDashboardCache(tenantId: string): Promise<void> 
 // Dashboard Data Types
 // ────────────────────────────────────────────────────────────────
 
-export interface DashboardData {
+// Critical data - minimal data needed to render the shell immediately
+export interface DashboardCriticalData {
   firstName: string;
   tenantName: string | null;
   businessType: string | null;
+  currency: string;
+  isManager: boolean;
+  userId: string;
+  tenantId: string;
+  timezone: string;
+}
+
+// Stats data - fetched client-side after initial render
+export interface DashboardStatsData {
   salesThisMonthRevenue: number;
   salesThisMonthCount: number;
   activeRepairsCount: number;
@@ -34,10 +44,8 @@ export interface DashboardData {
   recentActivity: Array<{ id: string; title: string; stage: string; customerName: string | null; updatedAt: string; type: "job" | "repair"; href: string; locationName?: string }>;
   myTasks: Array<{ id: string; title: string; priority: string; status: string; due_date: string | null }>;
   teamTaskSummary: Array<{ assigneeId: string; assigneeName: string; taskCount: number; overdueCount: number }>;
-  isManager: boolean;
   activeRepairs: Array<{ id: string; customer: string | null; item: string; stage: string; due_date: string | null; locationName?: string }>;
   activeBespokeJobs: Array<{ id: string; customer: string | null; title: string; stage: string; due_date: string | null; locationName?: string }>;
-  currency: string;
   recentSales: Array<{ id: string; saleNumber: string; customer: string | null }>;
   recentRepairsList: Array<{ id: string; repairNumber: string; customer: string | null }>;
   revenueSparkline: Array<{ value: number }>;
@@ -47,6 +55,9 @@ export interface DashboardData {
   salesBarData: Array<{ day: string; sales: number; revenue: number }>;
   repairStageData: Array<{ name: string; value: number }>;
 }
+
+// Combined type for backward compatibility
+export interface DashboardData extends DashboardCriticalData, DashboardStatsData {}
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -65,52 +76,80 @@ function getLast7Days(tz: string = "Australia/Sydney"): string[] {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Main Dashboard Data Fetcher
+// Critical Data Fetcher (minimal, fast)
 // ────────────────────────────────────────────────────────────────
 
-export async function getDashboardData(locationIds: string[] | null): Promise<DashboardData> {
+export async function getDashboardCriticalData(): Promise<DashboardCriticalData> {
   const auth = await requireAuth();
   const { userId, tenantId, tenantName, currency, isManager } = auth;
 
-  // Cache key includes tenant + location filter + user (for personalized task data)
-  const locationKey = locationIds?.sort().join(",") || "all";
-  const cacheKey = tenantCacheKey(tenantId, "dashboard", `${locationKey}:${userId}`);
+  const cacheKey = tenantCacheKey(tenantId, "dashboard-critical", userId);
 
-  // Request coalescing - if multiple users request same dashboard simultaneously,
-  // only 1 database query is made (critical for 1000+ users)
   return coalesceRequest(cacheKey, () => getCached(
     cacheKey,
-    async () => fetchDashboardData(userId, tenantId, tenantName, currency, isManager, locationIds),
-    30 // 30 second cache - dashboard feels instant on refresh
+    async () => {
+      const admin = createAdminClient();
+      
+      // Single lightweight query for tenant data
+      const { data: tenantRow } = await admin
+        .from("tenants")
+        .select("business_type, timezone")
+        .eq("id", tenantId)
+        .maybeSingle();
+
+      return {
+        firstName: tenantName || "there",
+        tenantName,
+        businessType: tenantRow?.business_type ?? null,
+        currency,
+        isManager,
+        userId,
+        tenantId,
+        timezone: tenantRow?.timezone ?? "Australia/Sydney",
+      };
+    },
+    300 // 5 minute cache - tenant info rarely changes
   ));
 }
 
-// Internal function that does the actual data fetching
-async function fetchDashboardData(
+// ────────────────────────────────────────────────────────────────
+// Stats Data Fetcher (heavy, loaded client-side)
+// ────────────────────────────────────────────────────────────────
+
+export async function getDashboardStats(locationIds: string[] | null): Promise<DashboardStatsData> {
+  const auth = await requireAuth();
+  const { userId, tenantId, isManager } = auth;
+
+  const locationKey = locationIds?.sort().join(",") || "all";
+  const cacheKey = tenantCacheKey(tenantId, "dashboard-stats", `${locationKey}:${userId}`);
+
+  return coalesceRequest(cacheKey, () => getCached(
+    cacheKey,
+    async () => fetchDashboardStats(userId, tenantId, isManager, locationIds),
+    120 // 2 minute cache - stats can be slightly stale
+  ));
+}
+
+async function fetchDashboardStats(
   userId: string,
   tenantId: string,
-  tenantName: string | null,
-  currency: string,
   isManager: boolean,
   locationIds: string[] | null
-): Promise<DashboardData> {
+): Promise<DashboardStatsData> {
   const admin = createAdminClient();
-  const firstName = tenantName || "there";
 
-  // Fetch business_type and timezone from tenant
+  // Get timezone from tenant (cached separately)
   const { data: tenantRow } = await admin
     .from("tenants")
-    .select("business_type, timezone")
+    .select("timezone")
     .eq("id", tenantId)
     .maybeSingle();
-  const businessType: string | null = tenantRow?.business_type ?? null;
   const tz = tenantRow?.timezone ?? "Australia/Sydney";
 
-  // Calculate dates in tenant's local timezone for accurate "this month" / "today" stats
+  // Calculate dates in tenant's local timezone
   const now = new Date();
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(now); // YYYY-MM-DD
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(now);
   
-  // Get first day of current month in tenant's timezone
   const localDateParts = new Intl.DateTimeFormat("en-CA", { 
     timeZone: tz, 
     year: "numeric", 
@@ -122,7 +161,7 @@ async function fetchDashboardData(
   
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Fetch locations for name lookup if showing all locations
+  // Fetch locations for name lookup
   const showLocationNames = !locationIds || locationIds.length > 1;
   let locationMap = new Map<string, string>();
   if (showLocationNames) {
@@ -135,14 +174,14 @@ async function fetchDashboardData(
           .eq("tenant_id", tenantId);
         return data ?? [];
       },
-      60 // 1 minute cache for location names
+      300 // 5 minute cache for location names
     );
     for (const loc of locations) {
       locationMap.set(loc.id, loc.name);
     }
   }
 
-  // Helper to add location filter - using explicit any to avoid deep type instantiation
+  // Helper to add location filter
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const addLocFilter = <T extends any>(q: T): T => {
     if (!locationIds || locationIds.length === 0) return q;
@@ -153,7 +192,7 @@ async function fetchDashboardData(
       : query.in("location_id", locationIds);
   };
 
-  // ── Parallel fetch — all 18 independent queries at once ─────────────────────
+  // ── Parallel fetch — all queries at once ─────────────────────
   const [
     salesResult,
     outstandingResult,
@@ -176,14 +215,14 @@ async function fetchDashboardData(
     customers7dResult,
     repairStagesResult,
   ] = await Promise.all([
-    // 1. Sales this month (lightweight - only select what's needed)
+    // 1. Sales this month
     addLocFilter(admin
       .from("sales")
       .select("total")
       .eq("tenant_id", tenantId)
       .gte("created_at", monthStartStr)),
 
-    // 2. Outstanding invoices (top 5 for display)
+    // 2. Outstanding invoices
     addLocFilter(admin
       .from("invoices")
       .select("id, amount_due")
@@ -192,7 +231,7 @@ async function fetchDashboardData(
       .is("deleted_at", null)
       .limit(100)),
 
-    // 3. Overdue invoice count (head-only query)
+    // 3. Overdue invoice count
     addLocFilter(admin
       .from("invoices")
       .select("id", { count: "exact", head: true })
@@ -217,7 +256,7 @@ async function fetchDashboardData(
       .is("deleted_at", null)
       .not("stage", "in", '("collected","cancelled")')),
 
-    // 6. Overdue repairs (limit 5)
+    // 6. Overdue repairs
     addLocFilter(admin
       .from("repairs")
       .select("id, repair_number, item_description, due_date, location_id, customers(full_name)")
@@ -228,7 +267,7 @@ async function fetchDashboardData(
       .order("due_date", { ascending: true })
       .limit(5)),
 
-    // 7. Low stock (limit 50, filtered in JS)
+    // 7. Low stock
     addLocFilter(admin
       .from("inventory")
       .select("id, name, sku, quantity, low_stock_threshold")
@@ -309,7 +348,7 @@ async function fetchDashboardData(
       return q;
     })(),
     
-    // 15. Recent sales (for sidebar)
+    // 15. Recent sales
     addLocFilter(admin
       .from("sales")
       .select("id, sale_number, customers(full_name)")
@@ -317,7 +356,7 @@ async function fetchDashboardData(
       .order("created_at", { ascending: false })
       .limit(5)),
 
-    // 16. Recent repairs list (for sidebar)
+    // 16. Recent repairs list
     addLocFilter(admin
       .from("repairs")
       .select("id, repair_number, customers(full_name)")
@@ -326,28 +365,28 @@ async function fetchDashboardData(
       .order("created_at", { ascending: false })
       .limit(5)),
 
-    // 17. Sales last 7 days (minimal fields)
+    // 17. Sales last 7 days
     addLocFilter(admin
       .from("sales")
       .select("created_at, total")
       .eq("tenant_id", tenantId)
       .gte("created_at", sevenDaysAgo)),
 
-    // 16. Repairs created last 7 days
+    // 18. Repairs created last 7 days
     addLocFilter(admin
       .from("repairs")
       .select("created_at")
       .eq("tenant_id", tenantId)
       .gte("created_at", sevenDaysAgo)),
 
-    // 17. Customers created last 7 days
+    // 19. Customers created last 7 days
     admin
       .from("customers")
       .select("created_at")
       .eq("tenant_id", tenantId)
       .gte("created_at", sevenDaysAgo),
 
-    // 18. Repair stage breakdown
+    // 20. Repair stage breakdown
     addLocFilter(admin
       .from("repairs")
       .select("stage")
@@ -591,9 +630,6 @@ async function fetchDashboardData(
   }));
 
   return {
-    firstName,
-    tenantName,
-    businessType,
     salesThisMonthRevenue,
     salesThisMonthCount,
     activeRepairsCount,
@@ -606,10 +642,8 @@ async function fetchDashboardData(
     recentActivity,
     myTasks,
     teamTaskSummary,
-    isManager,
     activeRepairs,
     activeBespokeJobs,
-    currency,
     recentSales,
     recentRepairsList,
     revenueSparkline,
@@ -619,4 +653,17 @@ async function fetchDashboardData(
     salesBarData,
     repairStageData,
   };
+}
+
+// ────────────────────────────────────────────────────────────────
+// Legacy Combined Fetcher (for backward compatibility)
+// ────────────────────────────────────────────────────────────────
+
+export async function getDashboardData(locationIds: string[] | null): Promise<DashboardData> {
+  const [critical, stats] = await Promise.all([
+    getDashboardCriticalData(),
+    getDashboardStats(locationIds),
+  ]);
+
+  return { ...critical, ...stats };
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,8 @@ interface DashboardClientProps {
   customersSparkline?: { value: number }[];
   salesBarData?: { day: string; sales: number; revenue: number }[];
   repairStageData?: { name: string; value: number }[];
+  // Progressive loading state
+  isStatsLoading?: boolean;
 }
 
 const BUSINESS_TYPE_LABELS: Record<string, string> = {
@@ -299,6 +302,7 @@ export default function DashboardClient({
   currency,
   recentSales,
   recentRepairsList,
+  isStatsLoading = false,
 }: DashboardClientProps) {
   const [now, setNow] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<"expanded" | "compact">("compact");
@@ -623,7 +627,16 @@ export default function DashboardClient({
             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
             Tasks for Today
           </h3>
-          {myTasks.length > 0 ? (
+          {isStatsLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="py-2">
+                  <Skeleton className="h-4 w-12 mb-2" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : myTasks.length > 0 ? (
             <div className="space-y-1">
               {myTasks.map((task) => (
                 <a
@@ -652,7 +665,16 @@ export default function DashboardClient({
         {/* Recent Sales */}
         <div className="bg-white border border-stone-200 rounded-2xl p-6">
           <h3 className="font-serif text-lg text-stone-900 mb-4">Recent Sales</h3>
-          {recentSales.length > 0 ? (
+          {isStatsLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 py-2">
+                  <Skeleton className="h-4 w-10" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
+          ) : recentSales.length > 0 ? (
             <div className="space-y-0.5">
               {recentSales.map((sale) => (
                 <a
@@ -677,7 +699,16 @@ export default function DashboardClient({
         {/* Recent Repairs */}
         <div className="bg-white border border-stone-200 rounded-2xl p-6">
           <h3 className="font-serif text-lg text-stone-900 mb-4">Recent Repairs</h3>
-          {recentRepairsList.length > 0 ? (
+          {isStatsLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 py-2">
+                  <Skeleton className="h-4 w-10" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
+          ) : recentRepairsList.length > 0 ? (
             <div className="space-y-0.5">
               {recentRepairsList.map((repair) => (
                 <a
@@ -705,7 +736,16 @@ export default function DashboardClient({
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             Ready for Pickup
           </h3>
-          {readyForPickup.length > 0 ? (
+          {isStatsLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="py-2">
+                  <Skeleton className="h-4 w-full mb-1" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+              ))}
+            </div>
+          ) : readyForPickup.length > 0 ? (
             <div className="space-y-0.5">
               {readyForPickup.map((item) => (
                 <a

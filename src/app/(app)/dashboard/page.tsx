@@ -1,9 +1,10 @@
-import { getDashboardData } from "./actions";
+import { getDashboardCriticalData } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
 
 export default async function DashboardPage() {
-  // Initial load with no location filter (all locations)
-  const initialData = await getDashboardData(null);
+  // Only fetch critical data server-side (minimal, fast)
+  // Stats are loaded client-side for progressive loading
+  const criticalData = await getDashboardCriticalData();
 
-  return <DashboardWrapper initialData={initialData} />;
+  return <DashboardWrapper criticalData={criticalData} />;
 }

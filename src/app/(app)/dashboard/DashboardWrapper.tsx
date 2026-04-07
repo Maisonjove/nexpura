@@ -1,96 +1,103 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback } from "react";
+import useSWR from "swr";
 import { useLocation } from "@/contexts/LocationContext";
-import { getDashboardData, DashboardData } from "./actions";
+import { getDashboardStats, DashboardCriticalData, DashboardStatsData } from "./actions";
 import DashboardClient from "./DashboardClient";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function DashboardWrapper({ initialData }: { initialData: DashboardData }) {
+// Default empty stats for initial render
+const emptyStats: DashboardStatsData = {
+  salesThisMonthRevenue: 0,
+  salesThisMonthCount: 0,
+  activeRepairsCount: 0,
+  activeJobsCount: 0,
+  totalOutstanding: 0,
+  overdueInvoiceCount: 0,
+  lowStockItems: [],
+  overdueRepairs: [],
+  readyForPickup: [],
+  recentActivity: [],
+  myTasks: [],
+  teamTaskSummary: [],
+  activeRepairs: [],
+  activeBespokeJobs: [],
+  recentSales: [],
+  recentRepairsList: [],
+  revenueSparkline: [],
+  salesCountSparkline: [],
+  repairsSparkline: [],
+  customersSparkline: [],
+  salesBarData: [],
+  repairStageData: [],
+};
+
+interface DashboardWrapperProps {
+  criticalData: DashboardCriticalData;
+}
+
+export default function DashboardWrapper({ criticalData }: DashboardWrapperProps) {
   const { getFilterLocationIds, viewMode, currentLocationId } = useLocation();
-  const [data, setData] = useState<DashboardData>(initialData);
-  const [isPending, startTransition] = useTransition();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-
-  // Refetch when location changes
-  useEffect(() => {
-    // Skip initial load since we have initialData
-    if (isInitialLoad) {
-      setIsInitialLoad(false);
-      return;
+  
+  // Get location IDs for the cache key
+  const locationIds = getFilterLocationIds();
+  const locationKey = locationIds?.sort().join(",") || "all";
+  
+  // Fetcher that calls the server action
+  const fetcher = useCallback(async () => {
+    return getDashboardStats(locationIds);
+  }, [locationIds]);
+  
+  // SWR for client-side stats fetching with deduplication and caching
+  const { data: stats, isLoading } = useSWR<DashboardStatsData>(
+    `dashboard-stats:${locationKey}`,
+    fetcher,
+    {
+      // Keep stale data while revalidating (instant feel)
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 30000, // 30 seconds deduplication
+      focusThrottleInterval: 60000, // 1 minute between focus revalidations
     }
+  );
 
-    const locationIds = getFilterLocationIds();
-    
-    startTransition(async () => {
-      try {
-        const newData = await getDashboardData(locationIds);
-        setData(newData);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      }
-    });
-  }, [viewMode, currentLocationId, getFilterLocationIds, isInitialLoad]);
-
-  if (isPending) {
-    return (
-      <div className="space-y-6">
-        {/* Header skeleton */}
-        <div>
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-48 mt-2" />
-        </div>
-        {/* Stats skeleton */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white border border-stone-200 rounded-xl p-5">
-              <Skeleton className="h-4 w-24 mb-3" />
-              <Skeleton className="h-8 w-20" />
-            </div>
-          ))}
-        </div>
-        {/* Charts skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white border border-stone-200 rounded-xl p-6">
-            <Skeleton className="h-48 w-full" />
-          </div>
-          <div className="bg-white border border-stone-200 rounded-xl p-6">
-            <Skeleton className="h-48 w-full" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Use stats if available, otherwise empty (skeleton shown in sidebar)
+  const currentStats = stats ?? emptyStats;
+  const showStatsLoading = isLoading && !stats;
 
   return (
     <DashboardClient
-      firstName={data.firstName}
-      tenantName={data.tenantName}
-      businessType={data.businessType}
-      salesThisMonthRevenue={data.salesThisMonthRevenue}
-      salesThisMonthCount={data.salesThisMonthCount}
-      activeRepairsCount={data.activeRepairsCount}
-      activeJobsCount={data.activeJobsCount}
-      totalOutstanding={data.totalOutstanding}
-      overdueInvoiceCount={data.overdueInvoiceCount}
-      lowStockItems={data.lowStockItems}
-      overdueRepairs={data.overdueRepairs}
-      readyForPickup={data.readyForPickup}
-      recentActivity={data.recentActivity}
-      myTasks={data.myTasks}
-      teamTaskSummary={data.teamTaskSummary}
-      isManager={data.isManager}
-      activeRepairs={data.activeRepairs}
-      activeBespokeJobs={data.activeBespokeJobs}
-      currency={data.currency}
-      recentSales={data.recentSales}
-      recentRepairsList={data.recentRepairsList}
-      revenueSparkline={data.revenueSparkline}
-      salesCountSparkline={data.salesCountSparkline}
-      repairsSparkline={data.repairsSparkline}
-      customersSparkline={data.customersSparkline}
-      salesBarData={data.salesBarData}
-      repairStageData={data.repairStageData}
+      firstName={criticalData.firstName}
+      tenantName={criticalData.tenantName}
+      businessType={criticalData.businessType}
+      currency={criticalData.currency}
+      isManager={criticalData.isManager}
+      // Stats - show loading skeletons if not yet loaded
+      salesThisMonthRevenue={currentStats.salesThisMonthRevenue}
+      salesThisMonthCount={currentStats.salesThisMonthCount}
+      activeRepairsCount={currentStats.activeRepairsCount}
+      activeJobsCount={currentStats.activeJobsCount}
+      totalOutstanding={currentStats.totalOutstanding}
+      overdueInvoiceCount={currentStats.overdueInvoiceCount}
+      lowStockItems={currentStats.lowStockItems}
+      overdueRepairs={currentStats.overdueRepairs}
+      readyForPickup={currentStats.readyForPickup}
+      recentActivity={currentStats.recentActivity}
+      myTasks={currentStats.myTasks}
+      teamTaskSummary={currentStats.teamTaskSummary}
+      activeRepairs={currentStats.activeRepairs}
+      activeBespokeJobs={currentStats.activeBespokeJobs}
+      recentSales={currentStats.recentSales}
+      recentRepairsList={currentStats.recentRepairsList}
+      revenueSparkline={currentStats.revenueSparkline}
+      salesCountSparkline={currentStats.salesCountSparkline}
+      repairsSparkline={currentStats.repairsSparkline}
+      customersSparkline={currentStats.customersSparkline}
+      salesBarData={currentStats.salesBarData}
+      repairStageData={currentStats.repairStageData}
+      // Pass loading state for progressive UI
+      isStatsLoading={showStatsLoading}
     />
   );
 }
