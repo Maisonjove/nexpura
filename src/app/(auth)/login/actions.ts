@@ -40,6 +40,10 @@ export async function loginAction(
       getClientHeaders(),
       createClient(),
     ]);
+
+    // SECURITY: Sign out any existing session before signing in as a new user.
+    // Prevents one user's session from bleeding into another user's login flow.
+    await supabase.auth.signOut();
     
     // Use a combination of email + IP for rate limiting
     // This prevents account enumeration while still protecting against distributed attacks

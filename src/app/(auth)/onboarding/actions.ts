@@ -67,14 +67,24 @@ export async function completeOnboarding(
 
     const validPlan = VALID_PLANS.includes(plan) ? plan : "boutique";
 
-    // Check if user already has a tenant (prevent duplicate onboarding)
-    const { data: existingUser } = await supabase
+    // SECURITY: Check if user already has a tenant (prevent duplicate onboarding).
+    // Use admin client to avoid RLS recursion. If the current session belongs to
+    // a different user who already has a tenant, sign them out and reject — this
+    // prevents session bleed where a new signup inherits an existing user's account.
+    const adminCheck = createAdminClient();
+    const { data: existingUser } = await adminCheck
       .from("users")
-      .select("tenant_id")
+      .select("tenant_id, email")
       .eq("id", user.id)
       .single();
 
     if (existingUser?.tenant_id) {
+      // If the session user's email doesn't match — mismatched session, force sign out
+      if (existingUser.email && user.email && existingUser.email !== user.email) {
+        await supabase.auth.signOut();
+        return { error: "Session mismatch detected. Please sign in again." };
+      }
+      // Legitimate: user already completed onboarding, just redirect them
       redirect("/dashboard");
     }
 

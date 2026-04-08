@@ -145,6 +145,12 @@ function SignupContent() {
     setError(null);
 
     try {
+      // SECURITY: Sign out any existing session before creating a new account.
+      // Without this, a logged-in user's session cookie stays active after signUp()
+      // (which returns no session when email confirmation is required), causing
+      // completeOnboarding to run as the OLD user and redirect them to the wrong account.
+      await supabase.auth.signOut();
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
