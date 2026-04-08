@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { initDefaultPermissions } from "@/lib/permissions";
 import logger from "@/lib/logger";
 import { invalidateUserCache } from "@/lib/cached-auth";
@@ -179,6 +180,8 @@ export async function completeOnboarding(
 
   redirect("/dashboard");
   } catch (error) {
+    // Next.js redirect() throws a special error — must re-throw it or the redirect is swallowed
+    if (isRedirectError(error)) throw error;
     logger.error("completeOnboarding failed", { error });
     return { error: "Something went wrong. Please try again." };
   }
