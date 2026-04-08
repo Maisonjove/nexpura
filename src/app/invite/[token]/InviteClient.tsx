@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import PasswordStrength, { scorePassword } from "@/components/PasswordStrength";
 
 interface Props {
   token: string;
@@ -109,8 +110,9 @@ export default function InviteClient({ token, invite }: Props) {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+    const strength = scorePassword(password);
+    if (!strength.allowed) {
+      setError("Please choose a stronger password before continuing.");
       return;
     }
     if (password !== confirmPassword) {
@@ -282,6 +284,7 @@ export default function InviteClient({ token, invite }: Props) {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            <PasswordStrength password={password} className="mt-2" />
           </div>
 
           <div>

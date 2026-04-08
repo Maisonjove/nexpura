@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Check, X, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
 import { debounce } from "@/lib/utils";
+import PasswordStrength, { scorePassword } from "@/components/PasswordStrength";
 
 type Plan = "boutique" | "studio" | "atelier";
 
@@ -130,6 +131,12 @@ function SignupContent() {
     if (subdomainStatus !== "available") {
       setError("Please choose an available subdomain");
       setStep(2);
+      return;
+    }
+
+    const strength = scorePassword(password);
+    if (!strength.allowed) {
+      setError("Please choose a stronger password before continuing.");
       return;
     }
 
@@ -383,10 +390,10 @@ function SignupContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={8}
                   placeholder="At least 8 characters"
                   className="w-full px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
                 />
+                <PasswordStrength password={password} className="mt-2" />
               </div>
 
               {error && (
