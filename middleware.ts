@@ -123,6 +123,7 @@ function isExemptPath(pathname: string): boolean {
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/verify") ||
+    pathname.startsWith("/verify-email") ||
     pathname.startsWith("/track") || // Public order tracking page
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||

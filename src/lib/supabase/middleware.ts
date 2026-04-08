@@ -90,6 +90,11 @@ async function _updateSessionInner(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // /verify-email — public waiting page (must be exempt before auth checks)
+  if (pathname.startsWith("/verify-email")) {
+    return supabaseResponse;
+  }
+
   // /onboarding — requires auth but NOT tenant
   const isOnboarding = pathname.startsWith("/onboarding");
   if (isOnboarding) {
@@ -97,6 +102,12 @@ async function _updateSessionInner(request: NextRequest) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       return NextResponse.redirect(loginUrl);
+    }
+    // SECURITY: Block unverified users from onboarding actions too
+    if (!user.email_confirmed_at) {
+      const verifyUrl = request.nextUrl.clone();
+      verifyUrl.pathname = "/verify-email";
+      return NextResponse.redirect(verifyUrl);
     }
     return supabaseResponse;
   }
@@ -137,6 +148,14 @@ async function _updateSessionInner(request: NextRequest) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       return NextResponse.redirect(loginUrl);
+    }
+
+    // SECURITY: Block unverified users from ALL protected routes — no exceptions.
+    // An unverified user must verify their email before accessing any dashboard page.
+    if (!user.email_confirmed_at) {
+      const verifyUrl = request.nextUrl.clone();
+      verifyUrl.pathname = "/verify-email";
+      return NextResponse.redirect(verifyUrl);
     }
 
     // Use cached user profile instead of direct DB call
