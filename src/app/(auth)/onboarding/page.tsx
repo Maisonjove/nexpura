@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { completeOnboarding } from "./actions";
-import { Mail, RefreshCw } from "lucide-react";
+
 import { createClient } from "@/lib/supabase/client";
 
 type Plan = "boutique" | "studio" | "atelier";
@@ -87,6 +87,7 @@ export default function OnboardingPage() {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
 
+  // Initial load — get user + verification status
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
@@ -98,11 +99,34 @@ export default function OnboardingPage() {
     });
   }, []);
 
+  // Poll for email verification every 4 seconds while on step 3 and unverified
+  useEffect(() => {
+    if (step !== 3 || emailVerified) return;
+    const supabase = createClient();
+    const interval = setInterval(async () => {
+      // Force a fresh session check (not cached)
+      await supabase.auth.refreshSession();
+      const { data } = await supabase.auth.getUser();
+      if (data.user?.email_confirmed_at) {
+        setEmailVerified(true);
+        clearInterval(interval);
+        // Auto-submit once verified
+        handleGoToDashboard();
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, emailVerified]);
+
   async function handleResendVerification() {
     if (!userEmail) return;
     setResendLoading(true);
     const supabase = createClient();
-    await supabase.auth.resend({ type: "signup", email: userEmail });
+    await supabase.auth.resend({
+      type: "signup",
+      email: userEmail,
+      options: { emailRedirectTo: `${window.location.origin}/auth/confirm?next=/onboarding` },
+    });
     setResendLoading(false);
     setResendSent(true);
   }
@@ -169,32 +193,7 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {/* Email verification banner */}
-        {emailVerified === false && (
-          <div className="w-full max-w-2xl mb-6 bg-stone-50 border border-stone-200 rounded-2xl p-5 flex items-start gap-4">
-            <div className="w-10 h-10 bg-stone-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Mail size={18} className="text-stone-600" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-stone-900">Please verify your email</p>
-              <p className="text-xs text-stone-500 mt-1">
-                We sent a verification link to <strong>{userEmail}</strong>. Click the link in the email to verify your account.
-              </p>
-              {resendSent ? (
-                <p className="text-xs text-emerald-700 mt-2 font-medium">Verification email resent!</p>
-              ) : (
-                <button
-                  onClick={handleResendVerification}
-                  disabled={resendLoading}
-                  className="mt-2 flex items-center gap-1.5 text-xs font-medium text-stone-700 hover:text-stone-900 transition-colors"
-                >
-                  <RefreshCw size={12} className={resendLoading ? "animate-spin" : ""} />
-                  {resendLoading ? "Sending…" : "Resend verification email"}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+
 
         {/* Step 1 — Business Info */}
         {step === 1 && (
@@ -318,65 +317,110 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 3 — Confirmation */}
+        {/* Step 3 — Confirmation / Email gate */}
         {step === 3 && (
           <div className="w-full max-w-md">
-            <div className="bg-white rounded-2xl border border-stone-200/60 shadow-sm p-10 text-center">
-              <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h2 className="font-serif text-3xl text-stone-900 mb-3">You&apos;re all set!</h2>
-              <p className="text-stone-400 text-sm mb-8">Your 14-day free trial has started</p>
+            {emailVerified === false ? (
+              /* ── Email not yet verified ── */
+              <div className="bg-white rounded-2xl border border-stone-200/60 shadow-sm p-10 text-center">
+                <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h2 className="font-serif text-2xl text-stone-900 mb-3">Check your inbox</h2>
+                <p className="text-stone-500 text-sm mb-2">
+                  We sent a verification link to
+                </p>
+                <p className="font-semibold text-stone-900 text-sm mb-6">{userEmail}</p>
+                <p className="text-stone-400 text-xs mb-8">
+                  Click the link in the email to verify your account. This page will open the dashboard automatically once verified.
+                </p>
 
-              <div className="bg-stone-50 rounded-lg p-4 mb-8 space-y-3 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-stone-500">Business</span>
-                  <span className="font-semibold text-stone-900">{businessName}</span>
+                {/* Animated waiting indicator */}
+                <div className="flex items-center justify-center gap-2 text-stone-400 text-sm mb-8">
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Waiting for verification…
                 </div>
-                <div className="h-px bg-stone-200" />
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-stone-500">Plan</span>
-                  <span className="font-semibold text-stone-900 capitalize">{planLabel} Plan</span>
-                </div>
-                <div className="h-px bg-stone-200" />
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-stone-500">Trial ends</span>
-                  <span className="font-semibold text-stone-900">
-                    {new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("en-AU", {
-                      day: "numeric", month: "long", year: "numeric",
-                    })}
-                  </span>
-                </div>
-              </div>
 
-              <button
-                onClick={handleGoToDashboard}
-                disabled={isPending}
-                className="w-full bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] hover:from-[#4a4a4a] hover:to-[#2a2a2a] disabled:opacity-50 text-white font-semibold py-3 rounded-full transition-all text-sm flex items-center justify-center gap-2 shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
-              >
-                {isPending ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Setting up your workspace…
-                  </>
+                {resendSent ? (
+                  <p className="text-xs text-emerald-700 font-medium mb-4">Verification email resent!</p>
                 ) : (
-                  <>
-                    Go to Dashboard
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
+                  <button
+                    onClick={handleResendVerification}
+                    disabled={resendLoading}
+                    className="text-sm text-stone-500 hover:text-stone-900 transition-colors underline underline-offset-2 mb-4"
+                  >
+                    {resendLoading ? "Sending…" : "Resend verification email"}
+                  </button>
                 )}
-              </button>
-              <button onClick={() => setStep(2)} className="mt-3 text-sm text-stone-400 hover:text-stone-600 transition-colors">
-                Change plan
-              </button>
-            </div>
+
+                <button onClick={() => setStep(2)} className="mt-2 block mx-auto text-xs text-stone-400 hover:text-stone-600 transition-colors">
+                  ← Change plan
+                </button>
+              </div>
+            ) : (
+              /* ── Email verified — show summary + go to dashboard ── */
+              <div className="bg-white rounded-2xl border border-stone-200/60 shadow-sm p-10 text-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h2 className="font-serif text-3xl text-stone-900 mb-3">You&apos;re all set!</h2>
+                <p className="text-stone-400 text-sm mb-8">Your 14-day free trial has started</p>
+
+                <div className="bg-stone-50 rounded-lg p-4 mb-8 space-y-3 text-left">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-stone-500">Business</span>
+                    <span className="font-semibold text-stone-900">{businessName}</span>
+                  </div>
+                  <div className="h-px bg-stone-200" />
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-stone-500">Plan</span>
+                    <span className="font-semibold text-stone-900 capitalize">{planLabel} Plan</span>
+                  </div>
+                  <div className="h-px bg-stone-200" />
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-stone-500">Trial ends</span>
+                    <span className="font-semibold text-stone-900">
+                      {new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("en-AU", {
+                        day: "numeric", month: "long", year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleGoToDashboard}
+                  disabled={isPending}
+                  className="w-full bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] hover:from-[#4a4a4a] hover:to-[#2a2a2a] disabled:opacity-50 text-white font-semibold py-3 rounded-full transition-all text-sm flex items-center justify-center gap-2 shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
+                >
+                  {isPending ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Setting up your workspace…
+                    </>
+                  ) : (
+                    <>
+                      Go to Dashboard
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+                <button onClick={() => setStep(2)} className="mt-3 text-sm text-stone-400 hover:text-stone-600 transition-colors">
+                  Change plan
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
