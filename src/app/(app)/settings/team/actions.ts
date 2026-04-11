@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { logger } from "A/lib/logger";
+import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { PLAN_FEATURES, canAddStaff, type PlanId } from "@/lib/plans";
 
@@ -13,30 +13,24 @@ async function getAuthContext() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) throw new Error("Not authenticated");
-
   const { data: userData } = await admin
     .from("users")
     .select("tenant_id, role")
     .eq("id", user.id)
     .single();
-
   if (!userData?.tenant_id) throw new Error("No tenant found");
-
   return { supabase, admin, userId: user.id, tenantId: userData.tenant_id, role: userData.role };
 }
 
 export async function getTeamMembers() {
   try {
     const { admin, tenantId } = await getAuthContext();
-
     const { data, error } = await admin
       .from("team_members")
       .select("*")
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: true });
-
     return { data: data ?? [], error: error?.message };
   } catch (error) {
     logger.error("getTeamMembers failed", { error });
@@ -54,37 +48,29 @@ export async function inviteTeamMember(formData: FormData) {
 
     if (!name || !email) return { error: "Name and email are required" };
 
-    // -- SERVER-SIDE PLAN LIMIT ENFORCEMENT -----------------------------------
+    // -- SERVER-SIDE PLAN LIMIT ENFORCEMENT ----------------------------------
     // canAddStaff() in plans.ts is also used client-side for UI feedback, but
-    // the authoritative check MUST happen here in the server action so it
-    // cannot be bypassed by manipulating the client.
-
-    // 1. Fetch this tenant's subscription plan
+    // the authoritative check MUST happen here in the Server Action.
     const { data: subscription } = await admin
       .from("subscriptions")
       .select("plan")
       .eq("tenant_id", tenantId)
       .single();
-
     const userPlan = (subscription?.plan ?? "boutique") as PlanId;
 
-    // 2. Count existing team members for this tenant
     const { count: memberCount } = await admin
       .from("team_members")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenantId);
 
-    // 3. Enforce the limit
     if (!canAddStaff(userPlan, memberCount ?? 0)) {
       const limit = PLAN_FEATURES[userPlan]?.staffLimit;
       const planLabel = userPlan.charAt(0).toUpperCase() + userPlan.slice(1);
       return {
-        error: `Your ${planLabel} plan allows up to ${limit} staff member${
-          limit === 1 ? "" : "s"
-        }. Upgrade your plan to add more team members.`,
+        error: `Your ${planLabel} plan allows up to ${limit} staff member${limit === 1 ? "" : "s"}. Upgrade your plan to add more team members.`,
       };
     }
-    // -------------------------------------------------------------------------
+
 
     // Check if email already exists in team
     const { data: existing } = await admin
@@ -212,13 +198,11 @@ export async function removeTeamMember(memberId: string) {
 export async function getTasks() {
   try {
     const { admin, tenantId } = await getAuthContext();
-
     const { data, error } = await admin
       .from("tasks")
       .select("*")
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false });
-
     return { data: data ?? [], error: error?.message };
   } catch (error) {
     logger.error("getTasks failed", { error });
@@ -250,7 +234,6 @@ export async function createTask(formData: FormData) {
     });
 
     if (error) return { error: error.message };
-
     revalidatePath("/settings/team");
     return { success: true };
   } catch (error) {
@@ -273,7 +256,6 @@ export async function updateTaskStatus(taskId: string, status: string) {
       .eq("tenant_id", tenantId);
 
     if (error) return { error: error.message };
-
     revalidatePath("/settings/team");
     return { success: true };
   } catch (error) {
@@ -290,6 +272,7 @@ export async function getTeamMemberLocations(memberId: string) {
   try {
     const { admin, tenantId } = await getAuthContext();
 
+    // Get the team member's allowed_location_ids and junction table entries
     const [memberRes, junctionRes] = await Promise.all([
       admin
         .from("team_members")
@@ -303,6 +286,7 @@ export async function getTeamMemberLocations(memberId: string) {
         .eq("team_member_id", memberId),
     ]);
 
+    // Prefer junction table if it has entries, otherwise use array column
     const locationIds = junctionRes.data?.length
       ? junctionRes.data.map((l) => l.location_id)
       : memberRes.data?.allowed_location_ids ?? null;
@@ -316,11 +300,12 @@ export async function getTeamMemberLocations(memberId: string) {
 
 export async function updateTeamMemberLocations(
   memberId: string,
-  locationIds: string[] | null
+  locationIds: string[] | null // null means all locations
 ) {
   try {
     const { admin, userId, tenantId } = await getAuthContext();
 
+    // Get old data for audit
     const { data: oldMember } = await admin
       .from("team_members")
       .select("name, allowed_location_ids")
@@ -328,6 +313,7 @@ export async function updateTeamMemberLocations(
       .eq("tenant_id", tenantId)
       .single();
 
+    // Update the array column on team_members
     const { error: updateError } = await admin
       .from("team_members")
       .update({
@@ -339,11 +325,14 @@ export async function updateTeamMemberLocations(
 
     if (updateError) return { error: updateError.message };
 
+    // Also sync the junction table
+    // First, delete existing entries
     await admin
       .from("team_member_locations")
       .delete()
       .eq("team_member_id", memberId);
 
+    // Then insert new entries (if not "all locations")
     if (locationIds && locationIds.length > 0) {
       const entries = locationIds.map((locId) => ({
         team_member_id: memberId,
@@ -359,12 +348,35 @@ export async function updateTeamMemberLocations(
       entityType: "team_member",
       entityId: memberId,
       oldData: { allowed_location_ids: oldMember?.allowed_location_ids },
-      newData: { allowed_location_ids: locationIds },((('A("(('Q51(=()()1(('%((''((""}"(}%(}""('"'"((''mt"(("getLocations failed", { error });
+      newData: { allowed_location_ids: locationIds },
+    });
+
+    revalidatePath("/settings/team");
+    return { success: true };
+  } catch (error) {
+    logger.error("updateTeamMemberLocations failed", { error });
     return { error: "Operation failed" };
   }
 }
 
-// =============================================================================
+export async function getLocations() {
+  try {
+    const { admin, tenantId } = await getAuthContext();
+    const { data, error } = await admin
+      .from("locations")
+      .select("id, name, type, is_active")
+      .eq("tenant_id", tenantId)
+      .eq("is_active", true)
+      .order("name");
+
+    return { data: data ?? [], error: error?.message };
+  } catch (error) {
+    logger.error("getLocations failed", { error });
+    return { error: "Operation failed" };
+  }
+}
+
+// ============================================================================
 // Team Member Notification Settings
 // ============================================================================
 
@@ -376,6 +388,7 @@ export async function updateTeamMemberNotifications(
   try {
     const { admin, userId, tenantId } = await getAuthContext();
 
+    // Get old data for audit
     const { data: oldMember } = await admin
       .from("team_members")
       .select("name, notify_new_repairs, notify_new_bespoke")
