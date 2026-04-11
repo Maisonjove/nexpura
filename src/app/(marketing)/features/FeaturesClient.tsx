@@ -124,7 +124,7 @@ export default function FeaturesClient() {
         <div className="max-w-[820px] mx-auto">
           <motion.p {...heroFadeUp()} className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-6">The Platform</motion.p>
           <motion.h1 {...heroFadeBlur} className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.75rem,5vw,4.25rem)] font-normal leading-[1.15] tracking-[-0.01em] text-stone-900 mb-7">Every feature, <em className="italic">crafted for jewellers</em></motion.h1>
-          <motion.p {...heroFadeUp(0.3)} className="text-base lg:text-lg leading-relaxed text-stone-500 max-w-[600px] mx-auto">Nexpura covers the full spectrum of jewellery business operations — from the shop floor to the workshop, from customer relationships to financial management.</motion.p>
+          <motion.p {...heroFadeUp(0.3)} className="text-base lg:text-lg leading-relaxed text-stone-500 max-w-[600px] mx-auto">Nexpura covers the full spectrum of jewellery business operations - from the shop floor to the workshop, from customer relationships to financial management.</motion.p>
         </div>
       </section>
       <div className="sticky top-[72px] z-30 bg-white/95 backdrop-blur-xl border-y border-black/[0.06]">
