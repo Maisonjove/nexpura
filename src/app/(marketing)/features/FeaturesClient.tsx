@@ -66,7 +66,7 @@ const sections: Feature[] = [
 
 export default function FeaturesClient() {
   const [activeId, setActiveId] = useState<string>(sections[0].id)
-  const navRef = useRef<HTMLDvElement>(null)
+  const navRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
   const [indicator, setIndicator] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
