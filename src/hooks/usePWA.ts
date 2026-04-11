@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Sentry from '@sentry/nextjs';
 
@@ -21,35 +20,30 @@ let deferredPrompt: BeforeInstallPromptEvent | null = null;
 /**
  * Perform a real connectivity check by fetching a small resource.
  * navigator.onLine can give false negatives, so we verify with an actual request.
+ * Any HTTP response (even 404) means we can reach the server = we're online.
  */
 async function checkRealConnectivity(): Promise<boolean> {
   try {
-    // Try to fetch a tiny resource with a short timeout
-    // Using HEAD request to minimize data transfer
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch('/api/health', {
+    await fetch('/api/health', {
       method: 'HEAD',
       cache: 'no-store',
       signal: controller.signal,
     });
-    
     clearTimeout(timeoutId);
-    return response.ok;
+    // Any response (even 4xx/5xx) means we reached the server = online
+    return true;
   } catch {
-    // If the health endpoint fails, try a simpler check
+    // Network error or timeout — try a simpler fallback
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
-      
-      // Fall back to checking if we can reach the app itself
       await fetch('/manifest.json', {
         method: 'HEAD',
         cache: 'no-store',
         signal: controller.signal,
       });
-      
       clearTimeout(timeoutId);
       return true;
     } catch {
@@ -67,7 +61,7 @@ export function usePWA() {
     canInstall: false,
     hasPendingSync: false,
   });
-  
+
   const connectivityCheckRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check online status with real connectivity verification
@@ -84,7 +78,7 @@ export function usePWA() {
       setState((s) => ({ ...s, isOnline: true }));
       verifyConnectivity();
     };
-    
+
     // When browser reports offline, double-check before showing indicator
     const handleOffline = () => {
       // Don't immediately show offline - verify first
@@ -94,10 +88,10 @@ export function usePWA() {
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
+
     // Initial check
     verifyConnectivity();
-    
+
     // Periodic connectivity check every 30 seconds when we think we're offline
     // This helps recover from false offline states faster
     connectivityCheckRef.current = setInterval(() => {
@@ -117,11 +111,10 @@ export function usePWA() {
 
   // Check if running as standalone PWA
   useEffect(() => {
-    const isStandalone = 
+    const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       // @ts-expect-error - Safari specific
       window.navigator.standalone === true;
-    
     setState((s) => ({ ...s, isStandalone, isInstalled: isStandalone }));
   }, []);
 
@@ -156,7 +149,6 @@ export function usePWA() {
     };
 
     navigator.serviceWorker?.addEventListener('message', handleSWMessage);
-
     return () => {
       navigator.serviceWorker?.removeEventListener('message', handleSWMessage);
     };
@@ -165,12 +157,10 @@ export function usePWA() {
   // Trigger install prompt
   const install = useCallback(async () => {
     if (!deferredPrompt) return false;
-
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     deferredPrompt = null;
     setState((s) => ({ ...s, canInstall: false }));
-
     return outcome === 'accepted';
   }, []);
 
@@ -183,7 +173,9 @@ export function usePWA() {
         await registration.sync.register('sync-pos-transactions');
         return true;
       } catch (error) {
-        Sentry.captureException(error, { tags: { hook: 'usePWA', action: 'background-sync' } });
+        Sentry.captureException(error, {
+          tags: { hook: 'usePWA', action: 'background-sync' },
+        });
         return false;
       }
     }
