@@ -35,7 +35,7 @@ async function checkRealConnectivity(): Promise<boolean> {
     // Any response (even 4xx/5xx) means we reached the server = online
     return true;
   } catch {
-    // Network error or timeout — try a simpler fallback
+    // Network error or timeout - try a simpler fallback
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
