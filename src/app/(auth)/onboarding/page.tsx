@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { completeOnboarding } from "./actions";
-
 import { createClient } from "@/lib/supabase/client";
 
 type Plan = "boutique" | "studio" | "atelier";
@@ -24,13 +24,14 @@ interface PlanCard {
   recommended?: boolean;
 }
 
+// FIXED: Staff counts now match src/lib/plans.ts (boutique=1, studio=5, atelier=unlimited)
 const PLANS: PlanCard[] = [
   {
     id: "boutique",
     name: "Boutique",
     price: "AUD $89",
     features: [
-      "Up to 2 staff",
+      "1 staff member",          // was "Up to 2 staff" — fixed to match plans.ts staffLimit:1
       "Customers & CRM",
       "Bespoke Jobs & Repairs",
       "Inventory Management",
@@ -44,7 +45,7 @@ const PLANS: PlanCard[] = [
     name: "Studio",
     price: "AUD $179",
     features: [
-      "Up to 10 staff",
+      "Up to 5 staff",           // was "Up to 10 staff" — fixed to match plans.ts staffLimit:5
       "Everything in Boutique",
       "AI Business Copilot",
       "20GB storage",
@@ -73,15 +74,20 @@ const CheckIcon = () => (
   </svg>
 );
 
-export default function OnboardingPage() {
+// Inner component that reads search params (must be wrapped in Suspense)
+function OnboardingContent() {
+  const searchParams = useSearchParams();
+  // Pre-select plan if passed from signup via ?plan= query param
+  const preselectedPlan = (searchParams.get("plan") as Plan | null) ?? "studio";
+  const validPlans: Plan[] = ["boutique", "studio", "atelier"];
+  const initialPlan: Plan = validPlans.includes(preselectedPlan) ? preselectedPlan : "studio";
+
   const [step, setStep] = useState(1);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-
   const [businessName, setBusinessName] = useState("");
   const [businessType, setBusinessType] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<Plan>("studio");
-
+  const [selectedPlan, setSelectedPlan] = useState<Plan>(initialPlan);
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
@@ -104,18 +110,16 @@ export default function OnboardingPage() {
     if (step !== 3 || emailVerified) return;
     const supabase = createClient();
     const interval = setInterval(async () => {
-      // Force a fresh session check (not cached)
       await supabase.auth.refreshSession();
       const { data } = await supabase.auth.getUser();
       if (data.user?.email_confirmed_at) {
         setEmailVerified(true);
         clearInterval(interval);
-        // Auto-submit once verified
         handleGoToDashboard();
       }
     }, 4000);
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, emailVerified]);
 
   async function handleResendVerification() {
@@ -168,18 +172,22 @@ export default function OnboardingPage() {
             {[1, 2, 3].map((s) => (
               <div key={s} className="flex items-center">
                 <div className="flex flex-col items-center">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
-                    s < step
-                      ? "bg-stone-900 text-white"
-                      : s === step
-                      ? "bg-stone-900 text-white ring-4 ring-stone-200"
-                      : "bg-white border-2 border-stone-200 text-stone-400"
-                  }`}>
+                  <div
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
+                      s < step
+                        ? "bg-stone-900 text-white"
+                        : s === step
+                        ? "bg-stone-900 text-white ring-4 ring-stone-200"
+                        : "bg-white border-2 border-stone-200 text-stone-400"
+                    }`}
+                  >
                     {s < step ? (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
-                    ) : s}
+                    ) : (
+                      s
+                    )}
                   </div>
                   <span className={`mt-1.5 text-xs font-medium ${s === step ? "text-stone-900" : "text-stone-400"}`}>
                     {s === 1 ? "Business" : s === 2 ? "Choose Plan" : "Done"}
@@ -192,8 +200,6 @@ export default function OnboardingPage() {
             ))}
           </div>
         </div>
-
-
 
         {/* Step 1 — Business Info */}
         {step === 1 && (
@@ -263,7 +269,9 @@ export default function OnboardingPage() {
                 <div
                   key={plan.id}
                   className={`relative bg-white rounded-2xl border-2 transition-all hover:shadow-md ${
-                    plan.recommended ? "border-stone-900 shadow-sm" : "border-stone-200 hover:border-stone-300"
+                    plan.recommended
+                      ? "border-stone-900 shadow-sm"
+                      : "border-stone-200 hover:border-stone-300"
                   }`}
                 >
                   {plan.recommended && (
@@ -309,8 +317,8 @@ export default function OnboardingPage() {
               onClick={() => setStep(1)}
               className="mt-4 mx-auto flex items-center gap-1.5 text-sm text-stone-400 hover:text-stone-700 transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLanecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back
             </button>
@@ -325,19 +333,15 @@ export default function OnboardingPage() {
               <div className="bg-white rounded-2xl border border-stone-200/60 shadow-sm p-10 text-center">
                 <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-6">
                   <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    <path strokeLanecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                </div>
+                 </div>
                 <h2 className="font-serif text-2xl text-stone-900 mb-3">Check your inbox</h2>
-                <p className="text-stone-500 text-sm mb-2">
-                  We sent a verification link to
-                </p>
+                <p className="text-stone-500 text-sm mb-2">We sent a verification link to</p>
                 <p className="font-semibold text-stone-900 text-sm mb-6">{userEmail}</p>
                 <p className="text-stone-400 text-xs mb-8">
                   Click the link in the email to verify your account. This page will open the dashboard automatically once verified.
                 </p>
-
-                {/* Animated waiting indicator */}
                 <div className="flex items-center justify-center gap-2 text-stone-400 text-sm mb-8">
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -345,7 +349,6 @@ export default function OnboardingPage() {
                   </svg>
                   Waiting for verification…
                 </div>
-
                 {resendSent ? (
                   <p className="text-xs text-emerald-700 font-medium mb-4">Verification email resent!</p>
                 ) : (
@@ -357,8 +360,10 @@ export default function OnboardingPage() {
                     {resendLoading ? "Sending…" : "Resend verification email"}
                   </button>
                 )}
-
-                <button onClick={() => setStep(2)} className="mt-2 block mx-auto text-xs text-stone-400 hover:text-stone-600 transition-colors">
+                <button
+                  onClick={() => setStep(2)}
+                  className="mt-2 block mx-auto text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                >
                   ← Change plan
                 </button>
               </div>
@@ -388,7 +393,9 @@ export default function OnboardingPage() {
                     <span className="text-stone-500">Trial ends</span>
                     <span className="font-semibold text-stone-900">
                       {new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("en-AU", {
-                        day: "numeric", month: "long", year: "numeric",
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
                       })}
                     </span>
                   </div>
@@ -425,5 +432,27 @@ export default function OnboardingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="text-center">
+            <span className="font-serif text-lg tracking-[0.12em] text-stone-900">NEXPURA</span>
+            <div className="mt-4">
+              <svg className="w-6 h-6 animate-spin text-stone-400 mx-auto" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <OnboardingContent />
+    </Suspense>
   );
 }
