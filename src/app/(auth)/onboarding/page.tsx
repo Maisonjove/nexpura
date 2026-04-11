@@ -31,7 +31,7 @@ const PLANS: PlanCard[] = [
     name: "Boutique",
     price: "AUD $89",
     features: [
-      "1 staff member",          // was "Up to 2 staff" — fixed to match plans.ts staffLimit:1
+      "1 staff member",          // was "Up to 2 staff" - fixed to match plans.ts staffLimit:1
       "Customers & CRM",
       "Bespoke Jobs & Repairs",
       "Inventory Management",
@@ -45,7 +45,7 @@ const PLANS: PlanCard[] = [
     name: "Studio",
     price: "AUD $179",
     features: [
-      "Up to 5 staff",           // was "Up to 10 staff" — fixed to match plans.ts staffLimit:5
+      "Up to 5 staff",           // was "Up to 10 staff" - fixed to match plans.ts staffLimit:5
       "Everything in Boutique",
       "AI Business Copilot",
       "20GB storage",
@@ -93,7 +93,7 @@ function OnboardingContent() {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
 
-  // Initial load — get user + verification status
+  // Initial load - get user + verification status
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
@@ -201,7 +201,7 @@ function OnboardingContent() {
           </div>
         </div>
 
-        {/* Step 1 — Business Info */}
+        {/* Step 1 - Business Info */}
         {step === 1 && (
           <div className="w-full max-w-md">
             <div className="text-center mb-10">
@@ -230,7 +230,7 @@ function OnboardingContent() {
                   onChange={(e) => setBusinessType(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
                 >
-                  <option value="">Select a type…</option>
+                  <option value="">Select a type</option>
                   {BUSINESS_TYPES.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
@@ -250,12 +250,12 @@ function OnboardingContent() {
           </div>
         )}
 
-        {/* Step 2 — Choose Plan */}
+        {/* Step 2 - Choose Plan */}
         {step === 2 && (
           <div className="w-full max-w-4xl">
             <div className="text-center mb-10">
               <h1 className="font-serif text-3xl text-stone-900 mb-3">Choose your plan</h1>
-              <p className="text-stone-400 text-sm">14-day free trial · No credit card required</p>
+              <p className="text-stone-400 text-sm">14-day free trial  No credit card required</p>
             </div>
 
             {error && (
@@ -317,7 +317,7 @@ function OnboardingContent() {
               onClick={() => setStep(1)}
               className="mt-4 mx-auto flex items-center gap-1.5 text-sm text-stone-400 hover:text-stone-700 transition-colors"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLanecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back
@@ -325,11 +325,11 @@ function OnboardingContent() {
           </div>
         )}
 
-        {/* Step 3 — Confirmation / Email gate */}
+        {/* Step 3 - Confirmation / Email gate */}
         {step === 3 && (
           <div className="w-full max-w-md">
             {emailVerified === false ? (
-              /* ── Email not yet verified ── */
+              /*  Email not yet verified  */
               <div className="bg-white rounded-2xl border border-stone-200/60 shadow-sm p-10 text-center">
                 <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-6">
                   <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -347,7 +347,7 @@ function OnboardingContent() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Waiting for verification…
+                  Waiting for verification
                 </div>
                 {resendSent ? (
                   <p className="text-xs text-emerald-700 font-medium mb-4">Verification email resent!</p>
@@ -357,18 +357,18 @@ function OnboardingContent() {
                     disabled={resendLoading}
                     className="text-sm text-stone-500 hover:text-stone-900 transition-colors underline underline-offset-2 mb-4"
                   >
-                    {resendLoading ? "Sending…" : "Resend verification email"}
+                    {resendLoading ? "Sending" : "Resend verification email"}
                   </button>
                 )}
                 <button
                   onClick={() => setStep(2)}
                   className="mt-2 block mx-auto text-xs text-stone-400 hover:text-stone-600 transition-colors"
                 >
-                  ← Change plan
+                   Change plan
                 </button>
               </div>
             ) : (
-              /* ── Email verified — show summary + go to dashboard ── */
+              /*  Email verified - show summary + go to dashboard  */
               <div className="bg-white rounded-2xl border border-stone-200/60 shadow-sm p-10 text-center">
                 <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
                   <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -412,7 +412,7 @@ function OnboardingContent() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      Setting up your workspace…
+                      Setting up your workspace
                     </>
                   ) : (
                     <>
