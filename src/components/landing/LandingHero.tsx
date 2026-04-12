@@ -40,7 +40,7 @@ export default function LandingHero() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
           className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.5rem,4.5vw,4.25rem)] font-normal leading-[1.08] tracking-[-0.01em] text-stone-900 mb-7"
         >
-          Run Your Entire Jewellery Business From One Place
+          The Operating System for Modern Jewellers
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, filter: 'blur(6px)' }}
@@ -48,18 +48,18 @@ export default function LandingHero() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
           className="text-base lg:text-lg font-normal leading-relaxed text-stone-500 max-w-[520px] mb-10 mx-auto lg:mx-0"
         >
-          From point of sale to bespoke orders, Nexpura gives retail and
-          workshop jewellers the modern platform they&apos;ve been waiting for.
+          POS · Inventory · Repairs · Bespoke Orders · CRM · Digital Passports · Memo &amp; Consignment · AI Copilot.
+          One platform. Free migration included.
         </motion.p>
         <motion.div
           initial={{ opacity: 0, filter: 'blur(4px)', y: 12 }}
           animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.65 }}
-          className="self-center lg:self-start"
+          className="flex items-center flex-wrap gap-6 self-center lg:self-start"
         >
           <a
             ref={ctaRef}
-            href="/signup"
+            href="/contact"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             className="
@@ -76,8 +76,14 @@ export default function LandingHero() {
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
             <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-              Get Started
+              Book a Demo
             </span>
+          </a>
+          <a
+            href="/platform"
+            className="text-[0.9375rem] font-medium text-stone-600 underline underline-offset-4 hover:text-stone-900 transition-colors duration-200"
+          >
+            See the Platform
           </a>
         </motion.div>
       </div>

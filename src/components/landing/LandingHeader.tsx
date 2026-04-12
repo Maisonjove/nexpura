@@ -26,7 +26,8 @@ export default function LandingHeader() {
       <nav className="flex items-center justify-between max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-20 h-[72px]">
         {/* Left nav */}
         <div className="hidden md:flex items-center gap-10 flex-1">
-          <NavLink href="/features">Features</NavLink>
+          <NavLink href="/platform">Platform</NavLink>
+          <NavLink href="/features">Solutions</NavLink>
           <NavLink href="/pricing">Pricing</NavLink>
         </div>
 
@@ -40,8 +41,8 @@ export default function LandingHeader() {
 
         {/* Right nav */}
         <div className="hidden md:flex items-center gap-6 flex-1 justify-end">
+          <NavLink href="/#migration">Migration</NavLink>
           <NavLink href="/about">About</NavLink>
-          <NavLink href="/contact">Contact</NavLink>
           <NavLink href="/login">Login</NavLink>
           <Link
             href="/verify"
@@ -102,10 +103,11 @@ export default function LandingHeader() {
         }`}
       >
         <div className="flex flex-col gap-4 px-6 sm:px-10 py-6 bg-white/97">
-          <NavLink href="/features">Features</NavLink>
+          <NavLink href="/platform">Platform</NavLink>
+          <NavLink href="/features">Solutions</NavLink>
           <NavLink href="/pricing">Pricing</NavLink>
+          <NavLink href="/#migration">Migration</NavLink>
           <NavLink href="/about">About</NavLink>
-          <NavLink href="/contact">Contact</NavLink>
           <NavLink href="/login">Login</NavLink>
           <Link
             href="/verify"
