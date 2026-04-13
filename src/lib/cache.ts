@@ -1,5 +1,9 @@
 import { Redis } from "@upstash/redis";
 
+// 300ms timeout: if Redis doesn't respond in time, fall through to DB fetcher.
+// Prevents ~4500ms hangs when Upstash cold-starts (observed in production).
+const REDIS_TIMEOUT_MS = 300;
+
 const redis = process.env.UPSTASH_REDIS_REST_URL
   ? new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL,
@@ -9,7 +13,11 @@ const redis = process.env.UPSTASH_REDIS_REST_URL
 
 /**
  * Get cached data or fetch fresh data if not in cache.
- * Falls back to fetcher if Redis is not configured.
+ * Falls back to fetcher if Redis is not configured or times out.
+ *
+ * Key perf improvements:
+ * - 300ms timeout on Redis read: cold Upstash starts no longer block page loads
+ * - Fire-and-forget Redis write: don't await cache population
  */
 export async function getCached<T>(
   key: string,
@@ -19,11 +27,24 @@ export async function getCached<T>(
   if (!redis) return fetcher();
 
   try {
-    const cached = await redis.get<T>(key);
+    // Race Redis against a 300ms timeout. On cold start / slow Redis we skip to DB.
+    const cached = await Promise.race([
+      redis.get<T>(key),
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), REDIS_TIMEOUT_MS)
+      ),
+    ]);
+
     if (cached !== null && cached !== undefined) return cached;
 
+    // Cache miss (or Redis timed out) — fetch fresh data from DB
     const fresh = await fetcher();
-    await redis.set(key, fresh, { ex: ttlSeconds });
+
+    // Write back to cache without blocking the response (fire-and-forget)
+    redis.set(key, fresh, { ex: ttlSeconds }).catch((err) => {
+      console.error("[cache] Redis write error:", err);
+    });
+
     return fresh;
   } catch (error) {
     // Log but don't fail - fall back to fetcher
@@ -53,8 +74,6 @@ export async function invalidateCachePattern(pattern: string): Promise<void> {
   if (!redis) return;
 
   try {
-    // For patterns, we need to scan and delete
-    // This is expensive - prefer specific key invalidation when possible
     let cursor = 0;
     do {
       const [nextCursor, keys] = await redis.scan(cursor, { match: pattern, count: 100 });
