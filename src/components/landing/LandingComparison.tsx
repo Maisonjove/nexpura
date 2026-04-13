@@ -2,23 +2,23 @@
 import { motion } from 'framer-motion'
 
 const before = [
-  'Spreadsheets for inventory and repairs',
+  'Inventory tracked in spreadsheets',
   'Generic POS not built for jewellery workflows',
-  'No memo/consignment tracking',
-  'No digital passport or authenticity certificate',
-  'Repairs managed in paper books or WhatsApp',
-  'No integrated bespoke order workflow',
-  'No AI or smart business insights',
+  'Repairs managed in notebooks, paper, or messages',
+  'No proper memo or consignment control',
+  'No digital passport or authenticity record',
+  'No structured bespoke workflow',
+  'Limited visibility across jobs, stock, and team activity',
 ]
 
 const after = [
-  'Live inventory across items, stones, and components',
-  'POS designed for jewellery retail from the ground up',
-  'Full memo and consignment tracking with return date alerts',
-  'Digital passports with QR-verifiable authenticity for every piece you sell',
-  'Repair tracker with customer notifications built in',
-  'Structured bespoke workflow with sign-off at every milestone',
-  'AI copilot that answers questions about your own business',
+  'Live inventory across pieces, stones, and components',
+  'POS designed for jewellery retail',
+  'Repair tracking with customer updates built in',
+  'Memo and consignment tracking with return alerts',
+  'QR-verifiable digital passports',
+  'Structured bespoke workflow with milestone sign-off',
+  'Jewellery-specific visibility across stock, jobs, and performance',
 ]
 
 export default function LandingComparison() {
@@ -43,7 +43,7 @@ export default function LandingComparison() {
             className="bg-white border border-stone-100 rounded-2xl p-8"
           >
             <h3 className="text-[0.9375rem] font-medium text-stone-400 uppercase tracking-wider mb-6">
-              The way most jewellers work today
+              What generic systems leave you with
             </h3>
             <ul className="space-y-3">
               {before.map((item) => (
@@ -62,7 +62,7 @@ export default function LandingComparison() {
             className="bg-stone-900 rounded-2xl p-8"
           >
             <h3 className="text-[0.9375rem] font-medium text-stone-400 uppercase tracking-wider mb-6">
-              With Nexpura
+              What Nexpura gives you instead
             </h3>
             <ul className="space-y-3">
               {after.map((item) => (

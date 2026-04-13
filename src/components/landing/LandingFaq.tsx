@@ -26,14 +26,6 @@ const faqs = [
     q: 'Does it work for multiple stores?',
     a: 'Yes. You can manage multiple locations from one account with shared customer profiles, stock by location, and consolidated reporting.',
   },
-  {
-    q: 'Can customers track their repairs or orders?',
-    a: 'Yes. Nexpura generates a secure tracking link for every job or bespoke order that you can share directly with your customer.',
-  },
-  {
-    q: 'Is Nexpura made for jewellers specifically?',
-    a: 'Yes, entirely. It was built from the ground up for jewellery retail, workshops, and ateliers. Not adapted from generic retail software.',
-  },
 ]
 
 export default function LandingFaq() {

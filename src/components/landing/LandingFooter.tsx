@@ -21,6 +21,7 @@ const columns = [
       { label: 'Features', href: '/features' },
       { label: 'Security', href: '/security' },
       { label: 'Pricing', href: '/pricing' },
+      { label: 'Migration', href: '/contact' },
       { label: 'Verify Passport', href: '/verify' },
     ],
   },
@@ -65,6 +66,9 @@ export default function LandingFooter() {
           >
             NEXPURA
           </Link>
+          <p className="text-sm text-stone-500 mt-2">
+            Purpose-built software for jewellery retail, repairs, bespoke, and inventory.
+          </p>
         </motion.div>
 
         {/* Link columns */}

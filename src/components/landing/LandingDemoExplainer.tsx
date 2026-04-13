@@ -3,11 +3,11 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 
 const steps = [
-  { n: '1', title: 'Personalised walkthrough', body: 'We walk through the modules relevant to your business type.' },
-  { n: '2', title: 'Migration discussion', body: 'We audit your current tools and outline an import plan.' },
+  { n: '1', title: 'Personalised walkthrough', body: 'We show the modules that matter most to your business.' },
+  { n: '2', title: 'Migration discussion', body: 'We review your current tools and outline an import plan.' },
   { n: '3', title: 'Workflow review', body: 'We map your repair, bespoke, and sales workflows to Nexpura.' },
-  { n: '4', title: 'Setup recommendations', body: 'You get a tailored configuration before you even sign up.' },
-  { n: '5', title: 'Q&A', body: 'Ask anything. No sales pressure. Just answers.' },
+  { n: '4', title: 'Setup recommendations', body: 'You get a recommended configuration before you commit.' },
+  { n: '5', title: 'Q&A', body: 'Ask anything. Clear answers, no pressure.' },
 ]
 
 export default function LandingDemoExplainer() {
@@ -30,7 +30,7 @@ export default function LandingDemoExplainer() {
           transition={{ duration: 1.2, delay: 0.1 }}
           className="text-stone-500 text-[0.9375rem] mb-14"
         >
-          Book 30 minutes. We will show you exactly how Nexpura fits your business.
+          Book 30 minutes and we'll show you exactly how Nexpura fits your business.
         </motion.p>
         <div className="text-left space-y-0 mb-14">
           {steps.map((step, i) => (

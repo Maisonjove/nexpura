@@ -11,10 +11,8 @@ import LandingMigration from '@/components/landing/LandingMigration'
 import LandingDigitalPassports from '@/components/landing/LandingDigitalPassports'
 import LandingInventory from '@/components/landing/LandingInventory'
 import LandingComparison from '@/components/landing/LandingComparison'
-import LandingTestimonialsExpanded from '@/components/landing/LandingTestimonialsExpanded'
 import LandingDemoExplainer from '@/components/landing/LandingDemoExplainer'
 import LandingFaq from '@/components/landing/LandingFaq'
-import LandingTestimonial from '@/components/landing/LandingTestimonial'
 import LandingCta from '@/components/landing/LandingCta'
 import LandingFooter from '@/components/landing/LandingFooter'
 
@@ -34,10 +32,8 @@ export default function HomePage() {
         <LandingDigitalPassports />
         <LandingInventory />
         <LandingComparison />
-        <LandingTestimonialsExpanded />
         <LandingDemoExplainer />
         <LandingFaq />
-        <LandingTestimonial />
         <LandingCta />
       </main>
       <LandingFooter />
