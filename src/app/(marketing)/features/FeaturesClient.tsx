@@ -292,7 +292,7 @@ export default function FeaturesClient() {
       </div>
 
       {/* Tab content panel */}
-      <div className="px-6 sm:px-10 lg:px-20 py-20 lg:py-28">
+      <div className="px-6 sm:px-10 lg:px-20 pt-10 pb-20 lg:pt-12 lg:pb-28">
         <div className="max-w-[1200px] mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
@@ -305,16 +305,16 @@ export default function FeaturesClient() {
             >
               {/* Left: title + tagline */}
               <div className="lg:col-span-5">
-                <div className="flex items-center gap-4 mb-6">
-                  {(() => { const Icon = activeSection.icon; return <Icon size={28} strokeWidth={1.25} className="text-stone-900" /> })()}
-                  <span className="text-sm tabular-nums text-stone-300 font-medium">
+                <div className="flex items-center gap-3 mb-3">
+                  {(() => { const Icon = activeSection.icon; return <Icon size={20} strokeWidth={1.25} className="text-stone-400" /> })()}
+                  <span className="text-xs tabular-nums text-stone-300 font-medium tracking-widest">
                     {String(activeIndex + 1).padStart(2, '0')}
                   </span>
                 </div>
-                <h2 className="font-serif text-3xl lg:text-[2.5rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-5">
+                <h2 className="font-serif text-3xl lg:text-[2.5rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-4">
                   {activeSection.title}
                 </h2>
-                <p className="text-[0.9375rem] lg:text-base leading-relaxed text-stone-500">
+                <p className="text-[0.9375rem] leading-relaxed text-stone-500">
                   {activeSection.tagline}
                 </p>
               </div>
