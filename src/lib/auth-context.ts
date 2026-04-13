@@ -75,8 +75,54 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
       email = user.email ?? null;
     }
 
-    // Get full tenant settings from Redis cache (5 min TTL, ~20-40ms on hit)
-    const profile = await getCachedUserProfile(userId);
+    // Compute role flags before parallel fetch so we can skip permissions DB call for owners
+    const isOwner = role === "owner";
+    const isManager = role === "owner" || role === "manager";
+    const permCacheKey = tenantCacheKey(tenantId, "permissions", role);
+
+    // Fetch user profile and permissions in parallel — saves ~300ms on cold Redis
+    const [profile, permissions] = await Promise.all([
+      getCachedUserProfile(userId),
+      isOwner
+        ? Promise.resolve(
+            Object.fromEntries(
+              ALL_PERMISSION_KEYS.map((k) => [k, true])
+            ) as PermissionMap
+          )
+        : getCached(
+            permCacheKey,
+            async () => {
+              const admin = createAdminClient();
+              const { data: permRows } = await admin
+                .from("role_permissions")
+                .select("permission_key, enabled")
+                .eq("tenant_id", tenantId)
+                .eq("role", role);
+
+              if (!permRows || permRows.length === 0) {
+                return (
+                  DEFAULT_PERMISSIONS[role] ??
+                  (Object.fromEntries(
+                    ALL_PERMISSION_KEYS.map((k) => [k, false])
+                  ) as PermissionMap)
+                );
+              }
+
+              const map = Object.fromEntries(
+                ALL_PERMISSION_KEYS.map((k) => [k, false])
+              ) as PermissionMap;
+              for (const row of permRows) {
+                if (row.permission_key in map) {
+                  (map as Record<string, boolean>)[row.permission_key] =
+                    row.enabled;
+                }
+              }
+              return map;
+            },
+            300
+          ),
+    ]);
+
     const tenantData = profile?.tenants as {
       name?: string;
       business_name?: string;
@@ -85,48 +131,6 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
       tax_name?: string;
       tax_inclusive?: boolean;
     } | null;
-
-    const isOwner = role === "owner";
-    const isManager = role === "owner" || role === "manager";
-
-    let permissions: PermissionMap;
-    if (isOwner) {
-      permissions = Object.fromEntries(
-        ALL_PERMISSION_KEYS.map((k) => [k, true])
-      ) as PermissionMap;
-    } else {
-      permissions = await getCached(
-        tenantCacheKey(tenantId, "permissions", role),
-        async () => {
-          const admin = createAdminClient();
-          const { data: permRows } = await admin
-            .from("role_permissions")
-            .select("permission_key, enabled")
-            .eq("tenant_id", tenantId)
-            .eq("role", role);
-
-          if (!permRows || permRows.length === 0) {
-            return (
-              DEFAULT_PERMISSIONS[role] ??
-              (Object.fromEntries(
-                ALL_PERMISSION_KEYS.map((k) => [k, false])
-              ) as PermissionMap)
-            );
-          }
-
-          const map = Object.fromEntries(
-            ALL_PERMISSION_KEYS.map((k) => [k, false])
-          ) as PermissionMap;
-          for (const row of permRows) {
-            if (row.permission_key in map) {
-              (map as Record<string, boolean>)[row.permission_key] = row.enabled;
-            }
-          }
-          return map;
-        },
-        300
-      );
-    }
 
     return {
       userId,
