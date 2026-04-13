@@ -17,14 +17,16 @@ export default function LandingLogoBar() {
         whileInView={{ opacity: 1, filter: 'blur(0px)' }}
         viewport={{ once: true }}
         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-        className="flex items-center justify-center gap-x-3 sm:gap-x-4 gap-y-3 flex-wrap px-6 sm:px-10 lg:px-20 max-w-[1200px] mx-auto"
+        className="flex items-center justify-center gap-x-5 gap-y-2 flex-wrap px-6 sm:px-10 lg:px-20 max-w-[1200px] mx-auto"
       >
-        {attributes.map((attr) => (
-          <span
-            key={attr}
-            className="inline-flex items-center px-4 py-2 rounded-full border border-stone-200 bg-stone-50 text-[0.8125rem] font-normal text-stone-600 select-none whitespace-nowrap"
-          >
-            {attr}
+        {attributes.map((attr, i) => (
+          <span key={attr} className="flex items-center gap-5">
+            <span className="text-[0.8125rem] font-normal text-stone-400 tracking-wide whitespace-nowrap">
+              {attr}
+            </span>
+            {i < attributes.length - 1 && (
+              <span className="text-stone-300 select-none">·</span>
+            )}
           </span>
         ))}
       </motion.div>

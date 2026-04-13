@@ -238,14 +238,12 @@ export default function FeaturesClient() {
           {/* Proof strip */}
           <motion.div
             {...fadeUp(0.35)}
-            className="flex items-center justify-center gap-x-3 gap-y-2 flex-wrap"
+            className="flex items-center justify-center gap-x-5 gap-y-2 flex-wrap"
           >
-            {['9 connected modules', 'Built for jewellers', 'Repairs + bespoke built in', 'Guided migration included'].map((item) => (
-              <span
-                key={item}
-                className="inline-flex items-center px-4 py-2 rounded-full border border-stone-200 bg-stone-50 text-[0.8125rem] font-normal text-stone-600 whitespace-nowrap"
-              >
-                {item}
+            {['9 connected modules', 'Built for jewellers', 'Repairs + bespoke built in', 'Guided migration included'].map((item, i, arr) => (
+              <span key={item} className="flex items-center gap-5">
+                <span className="text-[0.8125rem] font-normal text-stone-400 tracking-wide whitespace-nowrap">{item}</span>
+                {i < arr.length - 1 && <span className="text-stone-300 select-none">·</span>}
               </span>
             ))}
           </motion.div>
