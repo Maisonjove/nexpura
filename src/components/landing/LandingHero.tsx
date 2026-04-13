@@ -48,7 +48,7 @@ export default function LandingHero() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
           className="text-base lg:text-lg font-normal leading-relaxed text-stone-500 max-w-[520px] mb-10 mx-auto lg:mx-0"
         >
-          Run your sales floor, repairs, custom orders, and stock from one system built for jewellers.
+          Run repairs, bespoke orders, inventory, sales, and customer records in one connected platform built specifically for jewellery businesses.
         </motion.p>
         <motion.div
           initial={{ opacity: 0, filter: 'blur(4px)', y: 12 }}

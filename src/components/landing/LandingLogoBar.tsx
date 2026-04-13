@@ -3,10 +3,10 @@
 import { motion } from 'framer-motion'
 
 const attributes = [
-  'Built for jewellers, not adapted from generic software',
-  'Repairs, bespoke, inventory and POS in one system',
-  'Free migration included with every plan',
-  'Trusted by independent jewellers',
+  'Built for jewellers',
+  'Free guided migration',
+  'No hidden fees',
+  '14-day trial',
 ]
 
 export default function LandingLogoBar() {
