@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useRef, useEffect } from 'react'
 import {
   ShoppingBag,
   Wrench,
@@ -194,97 +194,23 @@ const sections: Feature[] = [
 ]
 
 export default function FeaturesClient() {
-  const [activeId, setActiveId] = useState<string>(sections[0].id)
+  const [activeIndex, setActiveIndex] = useState(0)
   const navRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-  const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
-  const [indicator, setIndicator] = useState<{ left: number; width: number }>({
-    left: 0,
-    width: 0,
-  })
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
 
-  // Smooth-scroll a hash target into view, accounting for sticky bars
-  const scrollToHash = (hash: string, smooth = true) => {
-    const target = sections.find((s) => s.id === hash)
-    if (!target) return
-    setActiveId(hash)
-    // Wait for layout to settle (fonts, sticky nav, motion fades)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const el = document.getElementById(hash)
-        if (!el) return
-        // Manually compute target Y so we don't rely on transient layout via scrollIntoView
-        const STICKY_OFFSET = 72 + 72 // main header + features sub-nav
-        const BREATHING = 80
-        const top =
-          el.getBoundingClientRect().top + window.scrollY - STICKY_OFFSET - BREATHING
-        window.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
-      })
-    })
-  }
+  const activeSection = sections[activeIndex]
 
-  // On mount: if URL has a hash, scroll to it
+  // Auto-scroll active tab into view in the nav
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const hash = window.location.hash.replace('#', '')
-    if (hash) scrollToHash(hash)
-  }, [])
-
-  // Listen for hash changes (in-page footer link clicks)
-  useEffect(() => {
-    const onHashChange = () => {
-      const hash = window.location.hash.replace('#', '')
-      if (hash) scrollToHash(hash)
-    }
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
-
-  // Scroll-spy: observe section visibility (wider trigger zone so something is always active)
-  useEffect(() => {
-    const observers: IntersectionObserver[] = []
-    sections.forEach((s) => {
-      const el = document.getElementById(s.id)
-      if (!el) return
-      const obs = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) setActiveId(s.id)
-          })
-        },
-        { rootMargin: '-25% 0px -45% 0px', threshold: 0 }
-      )
-      obs.observe(el)
-      observers.push(obs)
-    })
-    return () => observers.forEach((o) => o.disconnect())
-  }, [])
-
-  // Update indicator position when active changes
-  useEffect(() => {
-    const updateIndicator = () => {
-      const el = itemRefs.current[activeId]
-      const list = listRef.current
-      const nav = navRef.current
-      if (!el || !list || !nav) return
-      // Measure relative to the inner flex list (which is the indicator's positioning parent)
-      const elRect = el.getBoundingClientRect()
-      const listRect = list.getBoundingClientRect()
-      setIndicator({
-        left: elRect.left - listRect.left,
-        width: elRect.width,
-      })
-      // Auto-scroll the outer container so the active item is centered
-      const navRect = nav.getBoundingClientRect()
-      const target =
-        elRect.left - navRect.left + nav.scrollLeft - navRect.width / 2 + elRect.width / 2
-      nav.scrollTo({ left: target, behavior: 'smooth' })
-    }
-    updateIndicator()
-    // Re-measure on resize so the indicator stays aligned
-    window.addEventListener('resize', updateIndicator)
-    return () => window.removeEventListener('resize', updateIndicator)
-  }, [activeId])
+    const el = itemRefs.current[activeIndex]
+    const nav = navRef.current
+    if (!el || !nav) return
+    const elRect = el.getBoundingClientRect()
+    const navRect = nav.getBoundingClientRect()
+    const target =
+      elRect.left - navRect.left + nav.scrollLeft - navRect.width / 2 + elRect.width / 2
+    nav.scrollTo({ left: target, behavior: 'smooth' })
+  }, [activeIndex])
 
   return (
     <div className="bg-white">
@@ -326,102 +252,78 @@ export default function FeaturesClient() {
         </div>
       </section>
 
-      {/* Scroll-spy nav */}
+      {/* Tab nav */}
       <div className="sticky top-[72px] z-30 bg-white/95 backdrop-blur-xl border-y border-black/[0.06]">
         <div
           ref={navRef}
-          className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-20 overflow-x-auto scrollbar-none relative"
+          className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-20 overflow-x-auto scrollbar-none"
           style={{ scrollbarWidth: 'none' }}
         >
-          <div ref={listRef} className="flex items-end py-5 whitespace-nowrap relative">
+          <div className="flex items-end whitespace-nowrap relative">
             {sections.map((s, i) => {
-              const isActive = activeId === s.id
+              const isActive = activeIndex === i
               return (
-                <a
+                <button
                   key={s.id}
-                  href={`#${s.id}`}
-                  ref={(el) => {
-                    itemRefs.current[s.id] = el
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    scrollToHash(s.id)
-                    history.replaceState(null, '', `#${s.id}`)
-                  }}
-                  className="group relative flex flex-col items-start gap-1 py-1 transition-opacity duration-500 shrink-0 pr-10 lg:pr-14"
+                  ref={(el) => { itemRefs.current[i] = el }}
+                  onClick={() => setActiveIndex(i)}
+                  className={`relative flex flex-col items-start gap-1 py-5 pr-10 lg:pr-14 cursor-pointer transition-opacity duration-300 shrink-0 ${
+                    isActive ? 'opacity-100' : 'opacity-40 hover:opacity-70'
+                  }`}
                 >
-                  <span
-                    className={`text-[0.625rem] font-mono tabular-nums tracking-[0.15em] transition-colors duration-500 ${
-                      isActive
-                        ? 'text-stone-900'
-                        : 'text-stone-300 group-hover:text-stone-500'
-                    }`}
-                  >
+                  <span className={`text-[0.625rem] font-mono tabular-nums tracking-[0.15em] ${isActive ? 'text-stone-900' : 'text-stone-400'}`}>
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <span
-                    className={`font-serif text-[0.9375rem] lg:text-base leading-none transition-colors duration-500 ${
-                      isActive
-                        ? 'text-stone-900'
-                        : 'text-stone-400 group-hover:text-stone-700'
-                    }`}
-                  >
+                  <span className={`font-serif leading-none transition-colors duration-300 ${isActive ? 'text-stone-900 text-base font-medium' : 'text-stone-500 text-[0.9375rem]'}`}>
                     {s.title}
                   </span>
-                </a>
+                  {/* Active underline */}
+                  {isActive && (
+                    <motion.div
+                      layoutId="tab-indicator"
+                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-stone-900 pr-10 lg:pr-14"
+                      style={{ right: 'var(--tab-pr, 2.5rem)' }}
+                      transition={{ duration: 0.4, ease: EASE }}
+                    />
+                  )}
+                </button>
               )
             })}
-            {/* Animated active indicator */}
-            <motion.div
-              aria-hidden
-              className="absolute bottom-0 h-px bg-stone-900"
-              animate={{ left: indicator.left, width: indicator.width }}
-              transition={{ duration: 0.6, ease: EASE }}
-            />
           </div>
         </div>
       </div>
 
-      {/* Feature sections */}
-      <div className="px-6 sm:px-10 lg:px-20">
-        <div className="max-w-[1200px] mx-auto py-20 lg:py-32 space-y-24 lg:space-y-32">
-          {sections.map((section, index) => {
-            const Icon = section.icon
-            return (
-            <section
-              key={section.id}
-              id={section.id}
-              className="scroll-mt-52 lg:scroll-mt-56 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16"
+      {/* Tab content panel */}
+      <div className="px-6 sm:px-10 lg:px-20 py-20 lg:py-28">
+        <div className="max-w-[1200px] mx-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSection.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: EASE }}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16"
             >
+              {/* Left: title + tagline */}
               <div className="lg:col-span-5">
-                <motion.div
-                  {...fadeUp()}
-                  className="flex items-center gap-4 mb-6"
-                >
-                  <Icon size={28} strokeWidth={1.25} className="text-stone-900" />
+                <div className="flex items-center gap-4 mb-6">
+                  {(() => { const Icon = activeSection.icon; return <Icon size={28} strokeWidth={1.25} className="text-stone-900" /> })()}
                   <span className="text-sm tabular-nums text-stone-300 font-medium">
-                    {String(index + 1).padStart(2, '0')}
+                    {String(activeIndex + 1).padStart(2, '0')}
                   </span>
-                </motion.div>
-                <motion.h2
-                  {...fadeBlur}
-                  className="font-serif text-3xl lg:text-[2.5rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-5"
-                >
-                  {section.title}
-                </motion.h2>
-                <motion.p
-                  {...fadeUp(0.1)}
-                  className="text-[0.9375rem] lg:text-base leading-relaxed text-stone-500"
-                >
-                  {section.tagline}
-                </motion.p>
+                </div>
+                <h2 className="font-serif text-3xl lg:text-[2.5rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-5">
+                  {activeSection.title}
+                </h2>
+                <p className="text-[0.9375rem] lg:text-base leading-relaxed text-stone-500">
+                  {activeSection.tagline}
+                </p>
               </div>
 
-              <motion.ul
-                {...fadeUp(0.15)}
-                className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 self-start"
-              >
-                {section.features.map((f) => (
+              {/* Right: feature list */}
+              <ul className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 self-start">
+                {activeSection.features.map((f) => (
                   <li
                     key={f}
                     className="flex items-start gap-3 text-[0.9375rem] text-stone-700 border-b border-stone-100 pb-4"
@@ -430,10 +332,9 @@ export default function FeaturesClient() {
                     {f}
                   </li>
                 ))}
-              </motion.ul>
-            </section>
-            )
-          })}
+              </ul>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 
