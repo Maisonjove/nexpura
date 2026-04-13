@@ -16,8 +16,8 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 // Tenant ID cache cookie
-// Cache the slug->tenantId mapping in a cookie to avoid a DB round-trip on
-// every single request. The slug->ID mapping is stable so 24h TTL is safe.
+// Cache the slugâtenantId mapping in a cookie to avoid a DB round-trip on
+// every single request. The slugâID mapping is stable so 24h TTL is safe.
 const TENANT_CACHE_COOKIE = "nexpura-tid";
 const TENANT_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -131,9 +131,22 @@ async function checkSubscriptionAndRedirect(
   return response;
 }
 
+// Known app route segments â used to detect /{slug}/{route} tenant-aware URLs.
+// If the second segment is a known app route and the first is NOT, it's a tenant slug path.
+const EXEMPT_TENANT_ROUTES = new Set([
+  "dashboard", "intake", "pos", "sales", "invoices", "quotes", "laybys",
+  "inventory", "customers", "suppliers", "memo", "stocktakes",
+  "repairs", "bespoke", "workshop", "appraisals", "passports",
+  "expenses", "financials", "reports", "refunds", "vouchers", "eod",
+  "marketing", "tasks", "copilot", "website", "documents",
+  "integrations", "reminders", "support", "settings", "billing",
+  "suspended", "communications", "notifications", "migration", "ai",
+  "enquiries", "print-queue", "actions",
+]);
+
 // Exempt paths
 function isExemptPath(pathname: string): boolean {
-  return (
+  if (
     pathname === "/" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
@@ -167,7 +180,19 @@ function isExemptPath(pathname: string): boolean {
     pathname.startsWith("/ai") ||
     pathname.startsWith("/pos") ||
     pathname.includes(".")
-  );
+  ) {
+    return true;
+  }
+  // Tenant-aware URLs /{slug}/{route} â auth and subscription already handled in updateSession
+  const segs = pathname.split("/").filter(Boolean);
+  if (
+    segs.length >= 2 &&
+    EXEMPT_TENANT_ROUTES.has(segs[1]) &&
+    !EXEMPT_TENANT_ROUTES.has(segs[0])
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function isBypassRequest(req: NextRequest): boolean {
@@ -177,12 +202,12 @@ function isBypassRequest(req: NextRequest): boolean {
   const staffCookie = req.cookies.get("nexpura-staff")?.value;
   return (
     (REVIEW_TOKEN && (rtParam === REVIEW_TOKEN || reviewCookie === REVIEW_TOKEN)) ||
-    (STAFF_TOKEN && (rtParam === STAFF_TOKEN || staffCookie === STAFF_TOKEN))
+    (STAFF_TOKEN && staffCookie === STAFF_TOKEN)
   ) as boolean;
 }
 
-// Security Headers
 function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set("X-Frame-Options", "DENY");
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co https://*.vercel-scripts.com https://www.annot8.dev https://cdnjs.cloudflare.com",
@@ -199,16 +224,12 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  if (process.env.NODE_ENV === "production") {
-    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-  }
   return response;
 }
 
 export async function middleware(request: NextRequest) {
   try {
-    const response = await withTimeout(_proxyInner(request), 5000);
+    const response = await withTimeout(_proxyInner(request), 4500);
     return addSecurityHeaders(response);
   } catch (err) {
     const isTimeout = err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
@@ -258,7 +279,7 @@ async function _proxyInner(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
 

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { startStocktake, countItem, completeStocktake, addManualStocktakeItem } from "../actions";
 import type { Stocktake, StocktakeItem } from "../actions";
-import PhotoScannerModal, { type PhotoMatch } from "@/components/PhotoScannerModal";
 import CameraScannerModal from "@/components/CameraScannerModal";
+import PhotoScannerModal, { type PhotoMatch } from "@/components/PhotoScannerModal";
 
 interface Props {
   stocktake: Stocktake;
@@ -23,7 +23,6 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
   const [filter, setFilter] = useState<"all" | "counted" | "uncounted" | "discrepancy">("all");
   const [search, setSearch] = useState("");
   const [showScanner, setShowScanner] = useState(false);
-  const [showPhotoScanner, setShowPhotoScanner] = useState(false);
   const [showAddManual, setShowAddManual] = useState(false);
   const [manualName, setManualName] = useState("");
   const [manualQty, setManualQty] = useState("0");
@@ -31,22 +30,28 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
   const [countingItemId, setCountingItemId] = useState<string | null>(null);
   const [countValue, setCountValue] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const handlePhotoScanApply = (matches: PhotoMatch[]) => {
-        startTransition(async () => {
-              for (const match of matches) {
-                      await countItem(match.id, stocktake.id, match.quantity);
-                            }
-                                  setItems((prev) =>
-                                          prev.map((item) => {
-                                                    const found = matches.find((m) => m.id === item.id);
-                                                              if (found) {
-                                                                          return { ...item, counted_qty: found.quantity, discrepancy: found.quantity - item.expected_qty };
-                                                                                    }
-                                                                                              return item;
-                                                                                                      })
-                                                                                                            );
-                                                                                                                });
-                                                                                                                  };
+    const [showPhotoScanner, setShowPhotoScanner] = useState(false);
+      const handlePhotoScanApply = (matches: PhotoMatch[]) => {
+            startTransition(async () => {
+                  for (const match of matches) {
+                          await countItem(match.id, stocktake.id, match.quantity);
+                                }
+                                      setItems((prev) =>
+                                              prev.map((item) => {
+                                                        const found = matches.find((m) => m.id === item.id);
+                                                                  if (found) {
+                                                                              return {
+                                                                                            ...item,
+                                                                                                          counted_qty: found.quantity,
+                                                                                                                        discrepancy: found.quantity - item.expected_qty,
+                                                                                                                                    };
+                                                                                                                                              }
+                                                                                                                                                        return item;
+                                                                                                                                                                })
+                                                                                                                                                                      );
+                                                                                                                                                                          });
+                                                                                                                                                                            };
+
   const progress = items.length > 0
     ? Math.round((items.filter((i) => i.counted_qty !== null).length / items.length) * 100)
     : 0;
@@ -163,13 +168,13 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
                 className="px-3 py-2 border border-stone-200 text-stone-700 rounded-lg text-sm hover:bg-stone-50"
               >
                 📷 Scan
+                              <button
+                                              onClick={() => setShowPhotoScanner(true)}
+                                                              className="px-3 py-2 border border-amber-300 text-amber-700 rounded-lg text-sm hover:bg-amber-50"
+                                                                            >
+                                                                                            📸 AI Scan
+                                                                                                          </button>
               </button>
-                      <button
-                                onClick={() => setShowPhotoScanner(true)}
-                                          className="px-3 py-2 border border-amber-300 text-amber-700 rounded-lg text-sm hover:bg-amber-50"
-                                                  >
-                                                            📸 AI Scan
-                                                                    </button>
               <button
                 onClick={() => setShowAddManual(true)}
                 className="px-3 py-2 border border-stone-200 text-stone-700 rounded-lg text-sm hover:bg-stone-50"
@@ -376,16 +381,16 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
           onScan={handleScanResult}
           onClose={() => setShowScanner(false)}
           title="Scan Item Barcode"
-        />
-      )}
-            {/* AI Photo scanner modal */}
-                  {showPhotoScanner && (
-                          <PhotoScannerModal
-                                    stocktakeId={stocktake.id}
-                                              onApply={handlePhotoScanApply}
-                                                        onClose={() => setShowPhotoScanner(false)}
-                                                                />
-                                                                      )}
+                  />
+                        )}
+                              {/* AI Photo scanner modal */}
+                                    {showPhotoScanner && (
+                                            <PhotoScannerModal
+                                                      stocktakeId={stocktake.id}
+                                                                onApply={handlePhotoScanApply}
+                                                                          onClose={() => setShowPhotoScanner(false)}
+                                                                                  />
+                                                                                        )}
 
       {/* Manual add modal */}
       {showAddManual && (
