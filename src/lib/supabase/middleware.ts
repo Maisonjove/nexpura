@@ -7,6 +7,34 @@ import { AUTH_HEADERS, getCachedUserProfile } from "@/lib/cached-auth";
 // Leave NEXT_PUBLIC_COOKIE_DOMAIN unset in development to scope cookies to localhost.
 const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined;
 
+// --- Subscription status cookie cache (5-min TTL) ---
+// Skips the subscriptions DB query on every page nav once status is confirmed OK.
+const SUB_CACHE_COOKIE = "nexpura-sub-v2";
+const SUB_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function getCachedSubOk(request: NextRequest, tenantId: string): boolean {
+  const val = request.cookies.get(SUB_CACHE_COOKIE)?.value;
+  if (!val) return false;
+  try {
+    const [cachedTenantId, ts] = val.split("|");
+    if (cachedTenantId === tenantId && ts) {
+      return Date.now() - parseInt(ts, 10) < SUB_CACHE_TTL_MS;
+    }
+  } catch {}
+  return false;
+}
+
+function setSubOkCookie(response: NextResponse, tenantId: string): void {
+  response.cookies.set(SUB_CACHE_COOKIE, `${tenantId}|${Date.now()}`, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 300,
+    path: "/",
+    domain: cookieDomain,
+  });
+}
+
 export async function updateSession(request: NextRequest) {
   try {
     return await _updateSessionInner(request);
@@ -141,7 +169,6 @@ async function _updateSessionInner(request: NextRequest) {
       loginUrl.pathname = "/login";
       return NextResponse.redirect(loginUrl);
     }
-
     if (!user.email_confirmed_at) {
       const verifyUrl = request.nextUrl.clone();
       verifyUrl.pathname = "/verify-email";
@@ -176,32 +203,36 @@ async function _updateSessionInner(request: NextRequest) {
       !pathname.startsWith("/billing") &&
       !pathname.startsWith("/suspended")
     ) {
-      const { data: sub } = await supabase
-        .from("subscriptions")
-        .select("status, current_period_end, trial_ends_at")
-        .eq("tenant_id", userProfile.tenant_id)
-        .maybeSingle();
+      // Check cookie cache before querying the DB (5-min TTL).
+      // On cache miss, query DB; if not blocked, cache the OK result.
+      if (!getCachedSubOk(request, userProfile.tenant_id)) {
+        const { data: sub } = await supabase
+          .from("subscriptions")
+          .select("status, current_period_end, trial_ends_at")
+          .eq("tenant_id", userProfile.tenant_id)
+          .maybeSingle();
 
-      if (sub) {
-        const now = new Date();
-        const isTrialExpired =
-          sub.status === "trialing" &&
-          sub.trial_ends_at &&
-          new Date(sub.trial_ends_at) < now;
-        const isCancelledAndExpired =
-          sub.status === "cancelled" &&
-          sub.current_period_end &&
-          new Date(sub.current_period_end) < now;
-        const isBlocked =
-          sub.status === "suspended" ||
-          isTrialExpired ||
-          isCancelledAndExpired;
+        if (sub) {
+          const now = new Date();
+          const isTrialExpired =
+            sub.status === "trialing" &&
+            sub.trial_ends_at &&
+            new Date(sub.trial_ends_at) < now;
+          const isCancelledAndExpired =
+            sub.status === "cancelled" &&
+            sub.current_period_end &&
+            new Date(sub.current_period_end) < now;
+          const isBlocked =
+            sub.status === "suspended" || isTrialExpired || isCancelledAndExpired;
 
-        if (isBlocked) {
-          const suspendedUrl = request.nextUrl.clone();
-          suspendedUrl.pathname = "/suspended";
-          return NextResponse.redirect(suspendedUrl);
+          if (isBlocked) {
+            const suspendedUrl = request.nextUrl.clone();
+            suspendedUrl.pathname = "/suspended";
+            return NextResponse.redirect(suspendedUrl);
+          }
         }
+        // Not blocked — cache the OK status for 5 minutes
+        setSubOkCookie(authResponse, userProfile.tenant_id);
       }
     }
 
