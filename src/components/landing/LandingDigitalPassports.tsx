@@ -1,5 +1,6 @@
 'use client'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 
 const benefits = [
   'Authenticity customers can verify instantly',
@@ -61,12 +62,15 @@ export default function LandingDigitalPassports() {
           whileInView={{ opacity: 1, filter: 'blur(0px)' }}
           viewport={{ once: true }}
           transition={{ duration: 1.2, delay: 0.2 }}
-          className="bg-stone-100 rounded-2xl aspect-square flex items-center justify-center p-8 text-center"
+          className="relative rounded-2xl overflow-hidden shadow-xl"
         >
-          <div>
-            <p className="text-stone-400 text-sm font-medium mb-2">[ Digital Passport Screenshot ]</p>
-            <p className="text-stone-300 text-xs">Placeholder — replace with real asset</p>
-          </div>
+          <Image
+            src="/screenshots/passport.png"
+            alt="Nexpura Digital Passport - Item Specifications"
+            width={800}
+            height={600}
+            className="w-full h-auto"
+          />
         </motion.div>
       </div>
     </section>

@@ -1,5 +1,6 @@
 'use client'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 
 const points = [
   'Log every repair at intake — customer, item, issue, photos, agreed price.',
@@ -54,12 +55,15 @@ export default function LandingRepairs() {
           whileInView={{ opacity: 1, filter: 'blur(0px)' }}
           viewport={{ once: true }}
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-          className="bg-stone-100 rounded-2xl aspect-video flex items-center justify-center p-8 text-center"
+          className="relative rounded-2xl overflow-hidden shadow-xl"
         >
-          <div>
-            <p className="text-stone-400 text-sm font-medium mb-2">[ Repair Tracker Screenshot ]</p>
-            <p className="text-stone-300 text-xs">Placeholder — replace with real asset</p>
-          </div>
+          <Image
+            src="/screenshots/repairs.png"
+            alt="Nexpura Repair Tracker"
+            width={800}
+            height={500}
+            className="w-full h-auto"
+          />
         </motion.div>
       </div>
     </section>
