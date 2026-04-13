@@ -33,7 +33,7 @@ const securityHeaders = [
       "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://images.unsplash.com https://*.stripe.com",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.resend.com https://*.sentry.io https://*.ingest.sentry.io https://api.stripe.com https://api.openai.com",
       "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
-      "frame-ancestors 'none'",
+      "frame-ancestors 'self' https://annot8.dev https://*.annot8.dev https://openclaw.ai https://*.openclaw.ai https://astry.agency https://*.astry.agency",
       "base-uri 'self'",
       "form-action 'self'",
       "upgrade-insecure-requests",
