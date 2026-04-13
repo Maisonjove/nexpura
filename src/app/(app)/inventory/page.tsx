@@ -1,12 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getAuthContext } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import InventoryClient from "./InventoryClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
-
 const ITEMS_PER_PAGE = 100; // Initial load limit for performance
 
 export default async function InventoryPage({
@@ -19,93 +20,123 @@ export default async function InventoryPage({
   const page = parseInt(sp.page || "1", 10);
   const offset = (page - 1) * ITEMS_PER_PAGE;
 
-  // Check for review mode or auth
-  let tenantId: string | null = null;
-  let tenantName = "Nexpura";
-  let canViewCost = false;
   const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+
+  // Resolve tenantId as fast as possible.
+  // For auth users: read from middleware-set header (instant, no DB round-trip).
+  // For review mode: use the demo tenant constant.
+  let tenantId: string;
 
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
-    canViewCost = true;
   } else {
-    const auth = await getAuthContext();
-    if (!auth) redirect("/login");
-    tenantId = auth.tenantId;
-    tenantName = auth.tenantName ?? tenantName;
-    canViewCost = auth.permissions.view_cost_price;
+    const headersList = await headers();
+    const headerTenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+    if (!headerTenantId) redirect("/login");
+    tenantId = headerTenantId;
   }
 
-  // Parallel fetch with caching for static reference data
-  const [items, totalCount, categories, suppliers, websiteConfig] = await Promise.all([
-    // Items - paginated for performance (100 per page)
-    admin
-      .from("inventory")
-      .select(`
-        id, sku, name, description, item_type, jewellery_type, category_id, 
-        quantity, low_stock_threshold, retail_price, cost_price, status, 
-        is_featured, primary_image, stock_number, is_consignment, 
-        listed_on_website, supplier_id, metal_type, stone_type, 
-        metal_weight_grams, barcode_value, tags, created_at,
-        stock_categories(name),
-        suppliers(name)
-      `)
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + ITEMS_PER_PAGE - 1),
-    
-    // Total count for pagination
-    admin
-      .from("inventory")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null),
-    
-    // Categories - cache for 5 minutes
-    getCached(
-      tenantCacheKey(tenantId!, "stock-categories"),
-      async () => {
-        const { data } = await admin
-          .from("stock_categories")
-          .select("id, name")
-          .eq("tenant_id", tenantId)
-          .order("name");
-        return data ?? [];
-      },
-      300
-    ),
-    
-    // Suppliers - cache for 5 minutes
-    getCached(
-      tenantCacheKey(tenantId!, "suppliers"),
-      async () => {
-        const { data } = await admin
-          .from("suppliers")
-          .select("id, name")
-          .eq("tenant_id", tenantId)
-          .order("name");
-        return data ?? [];
-      },
-      300
-    ),
-    
-    // Website config - cache for 5 minutes
-    getCached(
-      tenantCacheKey(tenantId!, "website-config"),
-      async () => {
-        const { data } = await admin
-          .from("website_config")
-          .select("website_type")
-          .eq("tenant_id", tenantId)
-          .maybeSingle();
-        return data;
-      },
-      300
-    ),
-  ]);
+  // Run auth (for permissions) AND all data queries IN PARALLEL.
+  // Previously auth had to finish before queries could start (~90-190ms sequential).
+  // Now both start at the same time — total time = max(auth, data) not auth + data.
+  const [auth, itemsResult, countResult, categories, suppliers, websiteConfig] =
+    await Promise.all([
+      // Auth: validates session and loads permissions from Redis cache
+      isReviewMode ? Promise.resolve(null) : getAuthContext(),
 
-  const safeItems = (items.data ?? []) as unknown as Array<{
+      // Items - paginated for performance (100 per page)
+      admin
+        .from("inventory")
+        .select(`
+          id,
+          sku,
+          name,
+          description,
+          item_type,
+          jewellery_type,
+          category_id,
+          quantity,
+          low_stock_threshold,
+          retail_price,
+          cost_price,
+          status,
+          is_featured,
+          primary_image,
+          stock_number,
+          is_consignment,
+          listed_on_website,
+          supplier_id,
+          metal_type,
+          stone_type,
+          metal_weight_grams,
+          barcode_value,
+          tags,
+          created_at,
+          stock_categories(name),
+          suppliers(name)
+        `)
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + ITEMS_PER_PAGE - 1),
+
+      // Total count for pagination
+      admin
+        .from("inventory")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null),
+
+      // Categories - cache for 5 minutes
+      getCached(
+        tenantCacheKey(tenantId, "stock-categories"),
+        async () => {
+          const { data } = await admin
+            .from("stock_categories")
+            .select("id, name")
+            .eq("tenant_id", tenantId)
+            .order("name");
+          return data ?? [];
+        },
+        300
+      ),
+
+      // Suppliers - cache for 5 minutes
+      getCached(
+        tenantCacheKey(tenantId, "suppliers"),
+        async () => {
+          const { data } = await admin
+            .from("suppliers")
+            .select("id, name")
+            .eq("tenant_id", tenantId)
+            .order("name");
+          return data ?? [];
+        },
+        300
+      ),
+
+      // Website config - cache for 5 minutes
+      getCached(
+        tenantCacheKey(tenantId, "website-config"),
+        async () => {
+          const { data } = await admin
+            .from("website_config")
+            .select("website_type")
+            .eq("tenant_id", tenantId)
+            .maybeSingle();
+          return data;
+        },
+        300
+      ),
+    ]);
+
+  // Auth check (only for non-review-mode)
+  if (!isReviewMode && !auth) redirect("/login");
+
+  const canViewCost = isReviewMode ? true : (auth?.permissions.view_cost_price ?? false);
+  const tenantName = auth?.tenantName ?? "Nexpura";
+
+  const safeItems = (itemsResult.data ?? []) as unknown as Array<{
     id: string;
     sku: string | null;
     name: string;
@@ -134,7 +165,7 @@ export default async function InventoryPage({
     suppliers: { name: string } | null;
   }>;
 
-  const totalItems = totalCount.count ?? safeItems.length;
+  const totalItems = countResult.count ?? safeItems.length;
   const lowStockCount = safeItems.filter(
     (i) => i.quantity <= (i.low_stock_threshold ?? 1)
   ).length;

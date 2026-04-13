@@ -1,15 +1,19 @@
 /**
  * Unified auth context helper for server components and actions.
- * Eliminates repeated auth + user lookups across the codebase.
- * 
+ *
+ * PERF: Reads userId/tenantId/role from middleware-set request headers
+ * instead of calling supabase.auth.getUser() on every navigation.
+ * Saves ~50-100ms per page load by skipping the Supabase auth round-trip.
+ *
  * Uses request-level memoization via React cache() to prevent
- * duplicate DB calls within the same request.
+ * duplicate calls within the same request.
  */
-
 import { cache } from "react";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCached, tenantCacheKey } from "@/lib/cache";
+import { AUTH_HEADERS, getCachedUserProfile } from "@/lib/cached-auth";
 import type { PermissionMap, PermissionKey } from "@/lib/permissions";
 import { DEFAULT_PERMISSIONS, ALL_PERMISSION_KEYS } from "@/lib/permissions";
 
@@ -29,32 +33,51 @@ export interface AuthContext {
   permissions: PermissionMap;
 }
 
-// Request-scoped memoization using React cache()
-// This ensures within a single request, we only hit the DB once
+// Request-scoped memoization — only hits Redis/DB once per request
 export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    let userId: string;
+    let tenantId: string;
+    let role: string;
+    let email: string | null;
 
-    const admin = createAdminClient();
-    
-    // Single query to get user + tenant data
-    const { data: userData } = await admin
-      .from("users")
-      .select(`
-        tenant_id, role, full_name,
-        tenants(
-          name, business_name, currency, 
-          tax_rate, tax_name, tax_inclusive
-        )
-      `)
-      .eq("id", user.id)
-      .single();
+    // Fast path: read from middleware headers (no Supabase round-trip needed).
+    // Middleware validates the session and forwards these on every protected route.
+    const headersList = await headers();
+    const headerUserId = headersList.get(AUTH_HEADERS.USER_ID);
+    const headerTenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
 
-    if (!userData?.tenant_id) return null;
+    if (headerUserId && headerTenantId) {
+      userId = headerUserId;
+      tenantId = headerTenantId;
+      role = headersList.get(AUTH_HEADERS.USER_ROLE) || "staff";
+      email = headersList.get(AUTH_HEADERS.USER_EMAIL) || null;
+    } else {
+      // Fallback for Server Actions or edge cases where headers aren't present
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return null;
 
-    const tenantData = userData.tenants as {
+      const admin = createAdminClient();
+      const { data: userData } = await admin
+        .from("users")
+        .select("tenant_id, role")
+        .eq("id", user.id)
+        .single();
+
+      if (!userData?.tenant_id) return null;
+
+      userId = user.id;
+      tenantId = userData.tenant_id;
+      role = userData.role ?? "staff";
+      email = user.email ?? null;
+    }
+
+    // Get full tenant settings from Redis cache (5 min TTL, ~20-40ms on hit)
+    const profile = await getCachedUserProfile(userId);
+    const tenantData = profile?.tenants as {
       name?: string;
       business_name?: string;
       currency?: string;
@@ -63,30 +86,32 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
       tax_inclusive?: boolean;
     } | null;
 
-    const role = userData.role ?? "staff";
     const isOwner = role === "owner";
     const isManager = role === "owner" || role === "manager";
 
-    // Get permissions - cache in Redis for 5 minutes
     let permissions: PermissionMap;
     if (isOwner) {
-      // Owner always has all permissions - no DB needed
       permissions = Object.fromEntries(
         ALL_PERMISSION_KEYS.map((k) => [k, true])
       ) as PermissionMap;
     } else {
       permissions = await getCached(
-        tenantCacheKey(userData.tenant_id, "permissions", role),
+        tenantCacheKey(tenantId, "permissions", role),
         async () => {
+          const admin = createAdminClient();
           const { data: permRows } = await admin
             .from("role_permissions")
             .select("permission_key, enabled")
-            .eq("tenant_id", userData.tenant_id)
+            .eq("tenant_id", tenantId)
             .eq("role", role);
 
           if (!permRows || permRows.length === 0) {
-            return DEFAULT_PERMISSIONS[role] ?? 
-              Object.fromEntries(ALL_PERMISSION_KEYS.map((k) => [k, false])) as PermissionMap;
+            return (
+              DEFAULT_PERMISSIONS[role] ??
+              (Object.fromEntries(
+                ALL_PERMISSION_KEYS.map((k) => [k, false])
+              ) as PermissionMap)
+            );
           }
 
           const map = Object.fromEntries(
@@ -99,14 +124,14 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
           }
           return map;
         },
-        300 // 5 minute TTL
+        300
       );
     }
 
     return {
-      userId: user.id,
-      email: user.email ?? null,
-      tenantId: userData.tenant_id,
+      userId,
+      email,
+      tenantId,
       tenantName: tenantData?.name ?? null,
       businessName: tenantData?.business_name ?? tenantData?.name ?? null,
       currency: tenantData?.currency ?? "AUD",
@@ -123,23 +148,18 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
   }
 });
 
-// Shorthand for getting auth context with required flag
 export async function requireAuth(): Promise<AuthContext> {
   const ctx = await getAuthContext();
-  if (!ctx) {
-    throw new Error("Not authenticated");
-  }
+  if (!ctx) throw new Error("Not authenticated");
   return ctx;
 }
 
-// Quick permission check using cached context
 export async function checkPermission(key: PermissionKey): Promise<boolean> {
   const ctx = await getAuthContext();
   if (!ctx) return false;
   return ctx.permissions[key] ?? false;
 }
 
-// Check if user has any of the given permissions
 export async function checkAnyPermission(...keys: PermissionKey[]): Promise<boolean> {
   const ctx = await getAuthContext();
   if (!ctx) return false;
