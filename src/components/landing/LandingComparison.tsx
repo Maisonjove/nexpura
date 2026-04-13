@@ -17,7 +17,7 @@ const after = [
   'Full memo and consignment tracking with return date alerts',
   'QR code verified digital passports for every piece you sell',
   'Repair tracker with customer notifications built in',
-  '12-stage bespoke workflow with sign-off at every milestone',
+  'Structured bespoke workflow with sign-off at every milestone',
   'AI copilot that answers questions about your own business',
 ]
 

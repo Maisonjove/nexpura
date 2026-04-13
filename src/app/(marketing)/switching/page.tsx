@@ -17,7 +17,7 @@ const sources = [
 
 const steps = [
   { num: 1, title: "Choose your source", desc: "Select your current system from our supported sources list. We'll tell you what we can migrate." },
-  { num: 2, title: "Upload your export", desc: "Export your data from your current system (we provide step-by-step guides for each source). Upload the files." },
+  { num: 2, title: "Upload your export", desc: "Export your data from your current system (we provide guides for each source). Upload the files." },
   { num: 3, title: "Review the mapping", desc: "Our AI maps your fields to Nexpura's data model. You review and adjust the mapping in a visual table." },
   { num: 4, title: "Preview before import", desc: "See exactly how your data will look in Nexpura before we commit anything. Check for duplicates and anomalies." },
   { num: 5, title: "Execute and verify", desc: "We import the data with full provenance tracking. Every record shows its migration origin." },

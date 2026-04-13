@@ -21,7 +21,7 @@ const fadeUp = (delay = 0) => ({
 
 const stats = [
   { value: 'Repairs', label: 'Tracked end to end' },
-  { value: 'Bespoke', label: '12 stage workflow' },
+  { value: 'Bespoke', label: 'Full commission workflow' },
   { value: 'Inventory', label: 'Real time visibility' },
   { value: 'Migration', label: 'Free with every plan' },
 ]
@@ -37,7 +37,7 @@ const values = [
   },
   {
     title: 'Partner, not vendor',
-    desc: "We succeed when you succeed. That's why we offer white-glove migration, hands-on onboarding, and a team that picks up the phone.",
+    desc: "We succeed when you succeed. That's why we offer white-glove migration, direct onboarding, and a team that picks up the phone.",
   },
 ]
 

@@ -20,7 +20,7 @@ const faqs = [
   },
   {
     q: 'Can I track bespoke orders?',
-    a: 'Yes. There is a 12-stage bespoke workflow covering initial consultation, stone sourcing, design approval, setting, polish, and delivery.',
+    a: 'Yes. There is a full bespoke workflow covering initial consultation, stone sourcing, design approval, setting, polish, and delivery.',
   },
   {
     q: 'Does it work for multiple stores?',

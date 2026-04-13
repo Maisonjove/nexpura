@@ -57,7 +57,7 @@ const plans = [
     highlights: [
       'Everything in Studio',
       'Unlimited staff and stores',
-      'AI website copy',
+      'AI product descriptions',
       'Custom analytics',
       'Priority migration support',
       'Dedicated success contact',
@@ -80,7 +80,7 @@ const comparison = [
   { key: 'Team Size', values: ['1 staff', 'Up to 5', 'Unlimited'] },
   { key: 'Stores', values: ['1', 'Up to 3', 'Unlimited'] },
   { key: 'Website Builder', values: ['—', 'Yes', 'Yes'] },
-  { key: 'AI Website Copy', values: ['—', '—', 'Yes'] },
+  { key: 'AI Product Descriptions', values: ['—', '—', 'Yes'] },
   { key: 'Custom branding', values: ['—', 'Yes', 'Yes'] },
 ]
 
@@ -134,7 +134,7 @@ export default function PricingClient() {
             {...fadeUp(0.45)}
             className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mt-8"
           >
-            14-day free trial &middot; No credit card required
+            14 day free trial &middot; No credit card required
           </motion.p>
         </div>
       </section>
@@ -212,7 +212,7 @@ export default function PricingClient() {
               {...fadeBlur}
               className="font-serif text-3xl sm:text-4xl lg:text-[3rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900"
             >
-              Every detail, side by side.
+              Every detail, shown together
             </motion.h2>
           </div>
 
@@ -338,7 +338,7 @@ export default function PricingClient() {
             href="/contact"
             className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
           >
-            Talk to sales
+            Get in touch
           </Link>
         </motion.div>
         <p className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mt-8">

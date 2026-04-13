@@ -22,7 +22,7 @@ const footerLinks = {
     { label: 'Contact', href: '/contact' },
     { label: 'Book a Demo', href: '/contact' },
     { label: 'Sign In', href: '/login' },
-    { label: 'Start Free Trial', href: '/signup' },
+    { label: 'Sign Up', href: '/signup' },
   ],
 };
 

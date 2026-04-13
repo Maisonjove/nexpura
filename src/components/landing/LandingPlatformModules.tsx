@@ -6,7 +6,7 @@ const modules = [
   { n: '01', title: 'POS', desc: 'Fast, flexible point of sale built for jewellery retail.' },
   { n: '02', title: 'Inventory', desc: 'Live stock across items, stones, metals, and components.' },
   { n: '03', title: 'Repairs', desc: 'Full job tracking from intake to collection.' },
-  { n: '04', title: 'Bespoke Orders', desc: '12-stage custom order workflow with client sign-off at every milestone.' },
+  { n: '04', title: 'Bespoke Orders', desc: 'Structured custom order workflow with client sign-off at every milestone.' },
   { n: '05', title: 'CRM', desc: 'Complete client profiles, purchase history, VIP tags, and birthdays.' },
   { n: '06', title: 'Invoicing', desc: 'Auto-generated invoices, receipts, and supplier billing.' },
   { n: '07', title: 'Analytics', desc: 'Sales dashboards, stock turnover, and workshop KPIs.' },

@@ -40,7 +40,7 @@ export default function LandingMigration() {
           transition={{ duration: 1.2, delay: 0.1 }}
           className="text-center text-stone-500 text-[0.9375rem] mb-16 max-w-xl mx-auto"
         >
-          Nexpura includes free, hands-on migration support. We move your data, train your team, and stay with you through setup.
+          Nexpura includes free, guided migration support. We move your data, train your team, and stay with you through setup.
         </motion.p>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {steps.map((step, i) => (
