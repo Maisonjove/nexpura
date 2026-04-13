@@ -58,34 +58,7 @@ export default function AboutClient() {
             className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.75rem,5vw,4.25rem)] font-normal leading-[1.15] tracking-[-0.01em] text-stone-900 mb-5"
           >
             Built exclusively <em className="italic">for </em>
-            <span className="relative inline-block isolate align-baseline">
-              {/* Cloud-like grainy gradient behind the word */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute -inset-x-[12%] -inset-y-[35%] -z-10"
-              >
-                <span
-                  className="absolute inset-0 animate-[blobShift_18s_ease-in-out_infinite]"
-                  style={{
-                    background:
-                      'radial-gradient(45% 55% at 40% 50%, rgba(196,168,130,0.85) 0%, rgba(139,115,85,0.45) 35%, rgba(139,115,85,0.12) 60%, transparent 78%), radial-gradient(40% 50% at 70% 55%, rgba(212,184,134,0.7) 0%, rgba(196,168,130,0.35) 40%, transparent 75%)',
-                    filter: 'blur(6px)',
-                  }}
-                />
-                <span
-                  className="absolute inset-0 mix-blend-overlay opacity-[0.5]"
-                  style={{
-                    backgroundImage:
-                      "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/></svg>\")",
-                    WebkitMaskImage:
-                      'radial-gradient(50% 60% at 50% 50%, #000 0%, rgba(0,0,0,0.7) 35%, rgba(0,0,0,0.2) 65%, transparent 82%)',
-                    maskImage:
-                      'radial-gradient(50% 60% at 50% 50%, #000 0%, rgba(0,0,0,0.7) 35%, rgba(0,0,0,0.2) 65%, transparent 82%)',
-                  }}
-                />
-              </span>
-              <em className="italic relative text-stone-900">jewellers</em>
-            </span>
+            <em className="italic">jewellers</em>
           </motion.h1>
           <motion.p
             {...fadeUp(0.3)}
