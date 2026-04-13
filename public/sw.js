@@ -85,6 +85,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip cross-origin requests (e.g. third-party scripts, APIs)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   // API requests: Network first, cache fallback
   if (url.pathname.startsWith('/api/') || CACHEABLE_API_PATTERNS.some(p => p.test(url.pathname))) {
     event.respondWith(networkFirstStrategy(request));
