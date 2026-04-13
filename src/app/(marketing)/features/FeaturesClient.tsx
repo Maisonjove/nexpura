@@ -103,7 +103,7 @@ const sections: Feature[] = [
     id: 'customers',
     title: 'Customers',
     icon: Users,
-    image: '/features/signature.png',
+    image: '/screenshots/dashboard.png',
     tagline: 'A jeweller-specific CRM that keeps purchase history, preferences, reminders, and client value in one place.',
     benefit: 'Turn one-off buyers into long-term clients.',
     features: [
