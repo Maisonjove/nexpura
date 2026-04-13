@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getAuthContext } from "@/lib/auth-context";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import CustomerListClient from "./CustomerListClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -20,27 +22,34 @@ export default async function CustomersPage({
   const offset = (page - 1) * pageSize;
   const admin = createAdminClient();
 
-  // Check for review mode or auth
-  let tenantId: string | null = null;
-  if (params.rt && REVIEW_TOKENS.includes(params.rt)) {
+  const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
+
+  // Resolve tenantId instantly from middleware headers (no Supabase round-trip).
+  // For review mode: use the demo tenant constant.
+  let tenantId: string;
+  if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
-    const auth = await getAuthContext();
-    if (!auth) redirect("/login");
-    tenantId = auth.tenantId;
+    const headersList = await headers();
+    const headerTenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+    if (!headerTenantId) redirect("/login");
+    tenantId = headerTenantId;
   }
 
+  // Build customer query with filters
   let query = admin
     .from("customers")
-    .select("id, full_name, first_name, last_name, email, phone, mobile, tags, is_vip, created_at, updated_at", { count: "exact" })
+    .select("id, full_name, first_name, last_name, email, phone, mobile, tags, is_vip, created_at, updated_at", {
+      count: "exact",
+    })
     .eq("tenant_id", tenantId)
     .is("deleted_at", null);
 
   if (q) {
-    // Use similarity search if pg_trgm is available, fallback to ilike
-    query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,mobile.ilike.%${q}%`);
+    query = query.or(
+      `full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,mobile.ilike.%${q}%`
+    );
   }
-
   if (tagFilter) {
     query = query.contains("tags", [tagFilter]);
   }
@@ -54,7 +63,15 @@ export default async function CustomersPage({
 
   query = query.range(offset, offset + pageSize - 1);
 
-  const { data: customers, count } = await query;
+  // Run auth AND data query IN PARALLEL — no sequential waterfall.
+  // Previously auth (~20-40ms) had to complete before the DB query could start.
+  const [auth, { data: customers, count }] = await Promise.all([
+    isReviewMode ? Promise.resolve(null) : getAuthContext(),
+    query,
+  ]);
+
+  if (!isReviewMode && !auth) redirect("/login");
+
   const totalPages = Math.ceil((count || 0) / pageSize);
 
   return (
