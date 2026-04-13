@@ -289,7 +289,7 @@ export default function FeaturesClient() {
   return (
     <div className="bg-white">
       {/* Hero */}
-      <section className="pt-20 pb-20 lg:pt-28 lg:pb-28 px-6 sm:px-10 lg:px-20 text-center">
+      <section className="pt-20 pb-10 lg:pt-28 lg:pb-10 px-6 sm:px-10 lg:px-20 text-center">
         <div className="max-w-[820px] mx-auto">
           <motion.p
             {...fadeUp()}
@@ -304,13 +304,25 @@ export default function FeaturesClient() {
             Every feature, <em className="italic">crafted for jewellers</em>
           </motion.h1>
           <motion.p
-            {...fadeUp(0.3)}
-            className="text-base lg:text-lg leading-relaxed text-stone-500 max-w-[600px] mx-auto"
+            {...fadeUp(0.2)}
+            className="text-base leading-relaxed text-stone-500 max-w-[640px] mx-auto mb-10"
           >
-            Nexpura covers the full spectrum of jewellery business operations — from
-            the shop floor to the workshop, from customer relationships to financial
-            management.
+            From the shop floor to the workshop, Nexpura brings sales, repairs, bespoke, inventory, customer records, and financial workflows into one connected system.
           </motion.p>
+          {/* Proof strip */}
+          <motion.div
+            {...fadeUp(0.35)}
+            className="flex items-center justify-center gap-x-3 gap-y-2 flex-wrap"
+          >
+            {['9 connected modules', 'Built for jewellers', 'Repairs + bespoke built in', 'Guided migration included'].map((item) => (
+              <span
+                key={item}
+                className="inline-flex items-center px-4 py-2 rounded-full border border-stone-200 bg-stone-50 text-[0.8125rem] font-normal text-stone-600 whitespace-nowrap"
+              >
+                {item}
+              </span>
+            ))}
+          </motion.div>
         </div>
       </section>
 
