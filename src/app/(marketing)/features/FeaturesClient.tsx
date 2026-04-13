@@ -37,6 +37,7 @@ type Feature = {
   title: string
   tagline: string
   benefit: string
+  image: string
   icon: LucideIcon
   features: string[]
 }
@@ -46,6 +47,7 @@ const sections: Feature[] = [
     id: 'pos',
     title: 'Point of Sale',
     icon: ShoppingBag,
+    image: '/features/pos.png',
     tagline: 'A jewellery POS built for fast checkout, flexible payments, and accurate stock movement.',
     benefit: 'Keep checkout fast without losing stock accuracy.',
     features: [
@@ -59,6 +61,7 @@ const sections: Feature[] = [
     id: 'repairs',
     title: 'Repairs & Workshop',
     icon: Wrench,
+    image: '/screenshots/repairs.png',
     tagline: 'Track repairs from intake to collection with status visibility, staff accountability, and customer updates built in.',
     benefit: 'No more lost jobs or constant status calls.',
     features: [
@@ -72,6 +75,7 @@ const sections: Feature[] = [
     id: 'bespoke',
     title: 'Bespoke Commissions',
     icon: Gem,
+    image: '/screenshots/bespoke.png',
     tagline: 'Run custom commissions with structured approvals, milestones, sourcing, and deposit tracking from brief to delivery.',
     benefit: 'Keep bespoke work controlled, visible, and professional.',
     features: [
@@ -85,6 +89,7 @@ const sections: Feature[] = [
     id: 'inventory',
     title: 'Inventory',
     icon: Package,
+    image: '/screenshots/inventory.png',
     tagline: 'Track finished pieces, stones, metals, findings, and raw materials with live visibility and full provenance history.',
     benefit: 'See what you have, where it is, and what needs action.',
     features: [
@@ -98,6 +103,7 @@ const sections: Feature[] = [
     id: 'customers',
     title: 'Customers',
     icon: Users,
+    image: '/features/signature.png',
     tagline: 'A jeweller-specific CRM that keeps purchase history, preferences, reminders, and client value in one place.',
     benefit: 'Turn one-off buyers into long-term clients.',
     features: [
@@ -111,6 +117,7 @@ const sections: Feature[] = [
     id: 'invoices',
     title: 'Invoicing',
     icon: FileText,
+    image: '/screenshots/analytics.png',
     tagline: 'Create branded invoices, track balances, and connect payments directly to repairs and bespoke jobs.',
     benefit: 'Stay on top of cashflow without separate systems.',
     features: [
@@ -124,6 +131,7 @@ const sections: Feature[] = [
     id: 'suppliers',
     title: 'Suppliers',
     icon: Truck,
+    image: '/features/workshop.png',
     tagline: 'Keep supplier records, purchase orders, receiving, and reconciliation connected to inventory.',
     benefit: 'Keep purchasing and stock movement connected.',
     features: [
@@ -137,6 +145,7 @@ const sections: Feature[] = [
     id: 'command-center',
     title: 'Command Centers',
     icon: LayoutGrid,
+    image: '/screenshots/repairs.png',
     tagline: 'Give every repair and bespoke job its own operational screen with status, documents, finances, and activity history in one place.',
     benefit: 'One screen for the entire job — not five disconnected tools.',
     features: [
@@ -150,6 +159,7 @@ const sections: Feature[] = [
     id: 'analytics',
     title: 'Analytics & Reporting',
     icon: BarChart3,
+    image: '/screenshots/analytics.png',
     tagline: 'Track jewellery-specific performance across sales, stock, workshop throughput, and overdue balances.',
     benefit: 'Make decisions from jewellery metrics, not generic retail reports.',
     features: [
@@ -227,22 +237,22 @@ export default function FeaturesClient() {
                   key={s.id}
                   ref={(el) => { itemRefs.current[i] = el }}
                   onClick={() => setActiveIndex(i)}
-                  className={`relative flex flex-col items-start gap-1 py-5 pr-10 lg:pr-14 cursor-pointer transition-opacity duration-300 shrink-0 ${
-                    isActive ? 'opacity-100' : 'opacity-40 hover:opacity-70'
+                  className={`relative flex flex-col items-start gap-1 py-5 pr-10 lg:pr-14 cursor-pointer shrink-0 transition-all duration-300 ${
+                    isActive ? 'opacity-100' : 'opacity-25 hover:opacity-60'
                   }`}
                 >
-                  <span className={`text-[0.625rem] font-mono tabular-nums tracking-[0.15em] ${isActive ? 'text-stone-900' : 'text-stone-400'}`}>
+                  <span className={`text-[0.625rem] font-mono tabular-nums tracking-[0.15em] transition-colors duration-300 ${isActive ? 'text-stone-500' : 'text-stone-400'}`}>
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <span className={`font-serif leading-none transition-colors duration-300 ${isActive ? 'text-stone-900 text-base font-medium' : 'text-stone-500 text-[0.9375rem]'}`}>
+                  <span className={`font-serif leading-none transition-all duration-300 ${isActive ? 'text-stone-900 text-base font-semibold' : 'text-stone-500 text-[0.9375rem] font-normal'}`}>
                     {s.title}
                   </span>
                   {isActive && (
                     <motion.div
                       layoutId="tab-indicator"
-                      className="absolute bottom-0 left-0 h-[2px] bg-stone-900"
+                      className="absolute bottom-0 left-0 h-[2.5px] bg-stone-900"
                       style={{ right: 'var(--tab-pr, 2.5rem)' }}
-                      transition={{ duration: 0.4, ease: EASE }}
+                      transition={{ duration: 0.35, ease: EASE }}
                     />
                   )}
                 </button>
@@ -253,21 +263,21 @@ export default function FeaturesClient() {
       </div>
 
       {/* Tab content panel */}
-      <div className="px-6 sm:px-10 lg:px-20 pt-10 pb-20 lg:pt-12 lg:pb-28">
+      <div className="px-6 sm:px-10 lg:px-20 pt-8 pb-20 lg:pt-10 lg:pb-28">
         <div className="max-w-[1200px] mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeSection.id}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3, ease: EASE }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16"
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25, ease: EASE }}
+              className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start"
             >
-              {/* Left: title + tagline + benefit */}
-              <div className="lg:col-span-5">
+              {/* Left: text */}
+              <div>
                 <div className="flex items-center gap-3 mb-3">
-                  {(() => { const Icon = activeSection.icon; return <Icon size={20} strokeWidth={1.25} className="text-stone-400" /> })()}
+                  {(() => { const Icon = activeSection.icon; return <Icon size={18} strokeWidth={1.25} className="text-stone-400" /> })()}
                   <span className="text-xs tabular-nums text-stone-300 font-medium tracking-widest">
                     {String(activeIndex + 1).padStart(2, '0')}
                   </span>
@@ -278,23 +288,35 @@ export default function FeaturesClient() {
                 <p className="text-[0.9375rem] leading-relaxed text-stone-500 mb-6">
                   {activeSection.tagline}
                 </p>
-                <p className="text-[0.875rem] font-medium text-stone-900 border-l-2 border-stone-900 pl-4">
+                <p className="text-[0.875rem] font-medium text-stone-900 border-l-2 border-stone-900 pl-4 mb-8">
                   {activeSection.benefit}
                 </p>
+                <ul className="space-y-3">
+                  {activeSection.features.map((f) => (
+                    <li key={f} className="flex items-start gap-3 text-[0.9375rem] text-stone-600">
+                      <span className="mt-2 w-1 h-1 rounded-full bg-stone-400 flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              {/* Right: 4 primary features */}
-              <ul className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 self-start">
-                {activeSection.features.map((f) => (
-                  <li
-                    key={f}
-                    className="flex items-start gap-3 text-[0.9375rem] text-stone-700 border-b border-stone-100 pb-4"
-                  >
-                    <span className="mt-2 w-1 h-1 rounded-full bg-stone-900 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
+              {/* Right: product visual */}
+              <div className="relative rounded-2xl overflow-hidden bg-stone-100 shadow-[0_4px_32px_rgba(0,0,0,0.08)]">
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={activeSection.image}
+                    src={activeSection.image}
+                    alt={activeSection.title}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    className="w-full h-full object-cover object-top"
+                    style={{ aspectRatio: '16/10' }}
+                  />
+                </AnimatePresence>
+              </div>
             </motion.div>
           </AnimatePresence>
         </div>
