@@ -21,8 +21,8 @@ const securityHeaders = [
       "camera=(), microphone=(), geolocation=(), interest-cohort=()",
   },
   // Prevent MIME type confusion attacks
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+  { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
   {
     key: "Content-Security-Policy",
     value: [
