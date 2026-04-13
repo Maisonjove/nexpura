@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { PLAN_FEATURES, canAddStaff, type PlanId } from "@/lib/plans";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -46,6 +47,30 @@ export async function inviteTeamMember(formData: FormData) {
     const role = (formData.get("role") as string) || "staff";
 
     if (!name || !email) return { error: "Name and email are required" };
+
+    // -- SERVER-SIDE PLAN LIMIT ENFORCEMENT ----------------------------------
+    // canAddStaff() in plans.ts is also used client-side for UI feedback, but
+    // the authoritative check MUST happen here in the Server Action.
+    const { data: subscription } = await admin
+      .from("subscriptions")
+      .select("plan")
+      .eq("tenant_id", tenantId)
+      .single();
+    const userPlan = (subscription?.plan ?? "boutique") as PlanId;
+
+    const { count: memberCount } = await admin
+      .from("team_members")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId);
+
+    if (!canAddStaff(userPlan, memberCount ?? 0)) {
+      const limit = PLAN_FEATURES[userPlan]?.staffLimit;
+      const planLabel = userPlan.charAt(0).toUpperCase() + userPlan.slice(1);
+      return {
+        error: `Your ${planLabel} plan allows up to ${limit} staff member${limit === 1 ? "" : "s"}. Upgrade your plan to add more team members.`,
+      };
+    }
+
 
     // Check if email already exists in team
     const { data: existing } = await admin

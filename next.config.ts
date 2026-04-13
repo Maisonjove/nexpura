@@ -8,12 +8,19 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const securityHeaders = [
   // HSTS - 2 years with preload (max security)
-  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-XSS-Protection", value: "1; mode=block" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+  {
+    key: "Permissions-Policy",
+    value:
+      "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+  },
   // Prevent MIME type confusion attacks
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
@@ -36,9 +43,16 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // Turbopack experimental config moved to turbopack key in Next.js 15+
   experimental: {
-    clientTraceMetadata: ['baggage', 'sentry-trace'],
+    clientTraceMetadata: ["baggage", "sentry-trace"],
+    // Tree-shake large barrel-export packages so only the icons/components
+    // actually imported end up in the client bundle.
+    optimizePackageImports: [
+      "lucide-react",
+      "recharts",
+      "date-fns",
+      "@radix-ui/react-icons",
+    ],
   },
   typescript: {
     ignoreBuildErrors: false,
@@ -50,47 +64,60 @@ const nextConfig: NextConfig = {
         headers: [
           ...securityHeaders,
           // Enable DNS prefetching for faster external resource resolution
-          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+          { key: "X-DNS-Prefetch-Control", value: "on" },
         ],
       },
       // Aggressive caching for static assets (1 year, immutable)
       {
-        source: '/static/:path*',
+        source: "/static/:path*",
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
       {
-        source: '/_next/static/:path*',
+        source: "/_next/static/:path*",
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
       // Cache icons and manifest for PWA
       {
-        source: '/icons/:path*',
+        source: "/icons/:path*",
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
       {
-        source: '/manifest.json',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=86400' },
-        ],
+        source: "/manifest.json",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400" }],
       },
       // Cache fonts for 1 year
       {
-        source: '/fonts/:path*',
+        source: "/fonts/:path*",
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
       // Stale-while-revalidate for API routes (faster perceived response)
       {
-        source: '/api/dashboard/:path*',
+        source: "/api/dashboard/:path*",
         headers: [
-          { key: 'Cache-Control', value: 'private, max-age=0, stale-while-revalidate=30' },
+          {
+            key: "Cache-Control",
+            value: "private, max-age=0, stale-while-revalidate=30",
+          },
         ],
       },
     ];
@@ -98,10 +125,19 @@ const nextConfig: NextConfig = {
   // Enable gzip/brotli compression to reduce egress bandwidth
   compress: true,
   // Keep heavy server-only packages out of the client bundle
-  serverExternalPackages: ['@react-pdf/renderer', 'puppeteer-core', 'exceljs', 'postgres'],
+  serverExternalPackages: [
+    "@react-pdf/renderer",
+    "puppeteer-core",
+    "exceljs",
+    "postgres",
+  ],
   images: {
+    // Serve modern image formats for smaller file sizes and faster loads
+    formats: ["image/avif", "image/webp"],
+    // Cache optimised images for 24 h at the CDN edge
+    minimumCacheTTL: 86400,
     remotePatterns: [
-      // Supabase Storage — covers all project buckets
+      // Supabase Storage -- covers all project buckets
       {
         protocol: "https",
         hostname: "*.supabase.co",
@@ -118,40 +154,22 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(withBundleAnalyzer(nextConfig), {
-  // For all available options, see:
-  // https://github.com/getsentry/sentry-webpack-plugin#options
-
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
+  // Upload a larger set of source maps for prettier stack traces
   widenClientFileUpload: true,
-
-  // Automatically annotate React components to show their full name in breadcrumbs and session replay
+  // Automatically annotate React components to show their full name in breadcrumbs
   reactComponentAnnotation: {
     enabled: true,
   },
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
+  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers
   tunnelRoute: "/monitoring",
-
   // Hides source maps from generated client bundles
   sourcemaps: {
     deleteSourcemapsAfterUpload: true,
   },
-
-  // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-  // See the following for more information:
-  // https://docs.sentry.io/product/crons/
-  // https://vercel.com/docs/cron-jobs
+  // Enables automatic instrumentation of Vercel Cron Monitors
   automaticVercelMonitors: true,
 });

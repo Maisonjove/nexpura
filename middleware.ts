@@ -4,13 +4,9 @@ import { createServerClient } from "@supabase/ssr";
 import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// ── Review / staff bypass tokens ─────────────────────────────────────────
-// SECURITY: No hardcoded fallback. Both tokens MUST be set as env vars.
-// If they are not set the bypass feature is simply disabled — no one can
-// accidentally bypass subscription gates using a publicly-visible string.
-// Set REVIEW_BYPASS_TOKEN and STAFF_BYPASS_TOKEN in Vercel / .env.local.
+// Review / staff bypass tokens
 const REVIEW_TOKEN = process.env.REVIEW_BYPASS_TOKEN ?? "";
-const STAFF_TOKEN  = process.env.STAFF_BYPASS_TOKEN  ?? "";
+const STAFF_TOKEN = process.env.STAFF_BYPASS_TOKEN ?? "";
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
@@ -19,11 +15,53 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, timeout]);
 }
 
-// ── Subscription cache cookie ─────────────────────────────────────────────
-// Cache the subscription OK status for 5 minutes per user to avoid
-// two DB round-trips on every page request (the biggest middleware cost).
+// Tenant ID cache cookie
+// Cache the slug->tenantId mapping in a cookie to avoid a DB round-trip on
+// every single request. The slug->ID mapping is stable so 24h TTL is safe.
+const TENANT_CACHE_COOKIE = "nexpura-tid";
+const TENANT_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function getCachedTenantId(req: NextRequest, slug: string): string | null {
+  const cookie = req.cookies.get(TENANT_CACHE_COOKIE)?.value;
+  if (!cookie) return null;
+  try {
+    const parts = cookie.split("|");
+    const cachedSlug = parts[0];
+    const tenantId = parts[1];
+    const ts = parts[2];
+    if (cachedSlug === slug && tenantId && ts) {
+      if (Date.now() - parseInt(ts, 10) < TENANT_CACHE_TTL_MS) {
+        return tenantId;
+      }
+    }
+  } catch {
+    // malformed cookie
+  }
+  return null;
+}
+
+function setTenantCacheCookie(
+  response: NextResponse,
+  slug: string,
+  tenantId: string
+): void {
+  response.cookies.set(
+    TENANT_CACHE_COOKIE,
+    slug + "|" + tenantId + "|" + String(Date.now()),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 86400,
+      path: "/",
+      domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined,
+    }
+  );
+}
+
+// Subscription cache cookie
 const SUB_CACHE_COOKIE = "nexpura-sub-ok";
-const SUB_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const SUB_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function getSubCacheUserId(req: NextRequest): string | null {
   const cookie = req.cookies.get(SUB_CACHE_COOKIE)?.value;
@@ -33,13 +71,13 @@ function getSubCacheUserId(req: NextRequest): string | null {
     if (!userId || !ts) return null;
     if (Date.now() - parseInt(ts, 10) < SUB_CACHE_TTL_MS) return userId;
   } catch {
-    // invalid cookie format
+    // invalid cookie
   }
   return null;
 }
 
 function setSubCacheCookie(response: NextResponse, userId: string): void {
-  response.cookies.set(SUB_CACHE_COOKIE, `${userId}|${Date.now()}`, {
+  response.cookies.set(SUB_CACHE_COOKIE, userId + "|" + String(Date.now()), {
     httpOnly: true,
     sameSite: "lax",
     maxAge: Math.floor(SUB_CACHE_TTL_MS / 1000),
@@ -47,13 +85,12 @@ function setSubCacheCookie(response: NextResponse, userId: string): void {
   });
 }
 
-// ── Shared subscription check ─────────────────────────────────────────────
+// Shared subscription check
 async function checkSubscriptionAndRedirect(
   req: NextRequest,
   response: NextResponse
 ): Promise<NextResponse> {
   try {
-    // Auth check — use SSR client so session cookies are honoured
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -66,40 +103,19 @@ async function checkSubscriptionAndRedirect(
         },
       }
     );
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return response;
-
-    // ── Subscription cache: skip DB queries if we recently confirmed OK ──
-    // Cookie stores "{userId}|{timestamp}". If it's fresh and matches the
-    // current user, we know the subscription was good recently — skip the
-    // two extra DB round-trips (users + subscriptions lookups).
     const cachedUserId = getSubCacheUserId(req);
     if (cachedUserId === user.id) {
-      // Still valid — no DB queries needed, refresh the cache window
       setSubCacheCookie(response, user.id);
       return response;
     }
-
-    // SECURITY FIX: use admin client for users table lookup.
-    // The anon/RLS client causes infinite policy recursion on the users table,
-    // adding 1-2 s of latency to every single page request (it fires on every
-    // non-exempt path). Switch to the service-role client to avoid this.
     const admin = createAdminClient();
     const { data: userData } = await admin
-      .from("users")
-      .select("tenant_id")
-      .eq("id", user.id)
-      .single();
-
+      .from("users").select("tenant_id").eq("id", user.id).single();
     if (!userData?.tenant_id) return response;
-
     const { data: subscription } = await admin
-      .from("subscriptions")
-      .select("status")
-      .eq("tenant_id", userData.tenant_id)
-      .single();
-
+      .from("subscriptions").select("status").eq("tenant_id", userData.tenant_id).single();
     if (
       subscription?.status === "suspended" ||
       subscription?.status === "payment_required"
@@ -108,15 +124,14 @@ async function checkSubscriptionAndRedirect(
       billingUrl.pathname = "/billing";
       return NextResponse.redirect(billingUrl);
     }
-
-    // Subscription is good — cache result to skip DB checks for 5 minutes
     setSubCacheCookie(response, user.id);
   } catch (err) {
-    console.error("[middleware] subscription check failed — passing through:", err);
+    console.error("[middleware] subscription check failed -- passing through:", err);
   }
   return response;
 }
 
+// Exempt paths
 function isExemptPath(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -124,7 +139,7 @@ function isExemptPath(pathname: string): boolean {
     pathname.startsWith("/signup") ||
     pathname.startsWith("/verify") ||
     pathname.startsWith("/verify-email") ||
-    pathname.startsWith("/track") || // Public order tracking page
+    pathname.startsWith("/track") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/onboarding") ||
@@ -134,26 +149,40 @@ function isExemptPath(pathname: string): boolean {
     pathname.startsWith("/features") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/privacy") ||
-    pathname.startsWith("/dashboard") || // Skip sub check for dashboard - it has its own auth
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/bespoke") ||
+    pathname.startsWith("/repairs") ||
+    pathname.startsWith("/inventory") ||
+    pathname.startsWith("/customers") ||
+    pathname.startsWith("/invoices") ||
+    pathname.startsWith("/passports") ||
+    pathname.startsWith("/suspended") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/sales") ||
+    pathname.startsWith("/suppliers") ||
+    pathname.startsWith("/expenses") ||
+    pathname.startsWith("/communications") ||
+    pathname.startsWith("/reports") ||
+    pathname.startsWith("/marketing") ||
+    pathname.startsWith("/ai") ||
+    pathname.startsWith("/pos") ||
     pathname.includes(".")
   );
 }
 
 function isBypassRequest(req: NextRequest): boolean {
-  // If env vars are not set, bypass is completely disabled (tokens are empty strings)
   if (!REVIEW_TOKEN && !STAFF_TOKEN) return false;
   const rtParam = req.nextUrl.searchParams.get("rt");
   const reviewCookie = req.cookies.get("nexpura-review")?.value;
-  const staffCookie  = req.cookies.get("nexpura-staff")?.value;
+  const staffCookie = req.cookies.get("nexpura-staff")?.value;
   return (
     (REVIEW_TOKEN && (rtParam === REVIEW_TOKEN || reviewCookie === REVIEW_TOKEN)) ||
-    (STAFF_TOKEN  && (rtParam === STAFF_TOKEN  || staffCookie  === STAFF_TOKEN))
+    (STAFF_TOKEN && (rtParam === STAFF_TOKEN || staffCookie === STAFF_TOKEN))
   ) as boolean;
 }
 
-// ── Security Headers ─────────────────────────────────────────────────────
+// Security Headers
 function addSecurityHeaders(response: NextResponse): NextResponse {
-  // Content Security Policy - allow Stripe, Supabase, analytics, and image CDNs
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co https://*.vercel-scripts.com",
@@ -167,19 +196,13 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     "base-uri 'self'",
     "object-src 'none'",
   ].join("; ");
-
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
-  // X-Frame-Options removed to allow embedding (CSP frame-ancestors handles this)
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  
-  // HSTS is handled by Vercel automatically for production domains with HTTPS
-  // But we set it explicitly for non-Vercel deployments
   if (process.env.NODE_ENV === "production") {
     response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
-
   return response;
 }
 
@@ -189,11 +212,8 @@ export async function middleware(request: NextRequest) {
     return addSecurityHeaders(response);
   } catch (err) {
     const isTimeout = err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
-    if (!isTimeout) {
-      console.error("[middleware] unexpected error — passing through:", err);
-    }
-    const fallbackResponse = NextResponse.next();
-    return addSecurityHeaders(fallbackResponse);
+    if (!isTimeout) console.error("[middleware] unexpected error -- passing through:", err);
+    return addSecurityHeaders(NextResponse.next());
   }
 }
 
@@ -203,7 +223,11 @@ async function _proxyInner(request: NextRequest) {
 
   if (subdomain) {
     try {
-      const tenantId = await getTenantBySlug(subdomain, createAdminClient());
+      let tenantId = getCachedTenantId(request, subdomain);
+      const wasFromCache = tenantId !== null;
+      if (!tenantId) {
+        tenantId = await getTenantBySlug(subdomain, createAdminClient());
+      }
       if (tenantId) {
         const subdomainHeaders = new Headers(request.headers);
         subdomainHeaders.set("x-subdomain-tenant-id", tenantId);
@@ -214,6 +238,7 @@ async function _proxyInner(request: NextRequest) {
           body: request.body,
         });
         const response = await updateSession(enrichedRequest);
+        if (!wasFromCache) setTenantCacheCookie(response, subdomain, tenantId);
         const pathname = enrichedRequest.nextUrl.pathname;
         if (isBypassRequest(enrichedRequest)) return response;
         if (isExemptPath(pathname)) return response;

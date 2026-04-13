@@ -167,7 +167,7 @@ function SignupContent() {
         return;
       }
 
-      router.push("/onboarding");
+      router.push(`/onboarding?plan=${selectedPlan}`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
       setError(errorMessage);
@@ -217,7 +217,7 @@ function SignupContent() {
         <div>
           <div className="text-center mb-10">
             <h1 className="font-serif text-3xl text-stone-900 mb-3">Choose your plan</h1>
-            <p className="text-stone-400 text-sm">14-day free trial · No credit card required</p>
+            <p className="text-stone-400 text-sm">14-day free trial Â· No credit card required</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

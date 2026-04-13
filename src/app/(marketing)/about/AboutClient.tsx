@@ -5,6 +5,20 @@ import { motion } from 'framer-motion'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
+// Hero animations use `animate` (not `whileInView`) — above-fold elements are
+// already visible on load so whileInView never fires for them.
+const heroFadeBlur = {
+  initial: { opacity: 0, filter: 'blur(6px)' },
+  animate: { opacity: 1, filter: 'blur(0px)' },
+  transition: { duration: 1.2, ease: EASE },
+}
+
+const heroFadeUp = (delay = 0) => ({
+  initial: { opacity: 0, filter: 'blur(4px)', y: 16 },
+  animate: { opacity: 1, filter: 'blur(0px)', y: 0 },
+  transition: { duration: 1.2, ease: EASE, delay },
+})
+
 const fadeBlur = {
   initial: { opacity: 0, filter: 'blur(6px)' },
   whileInView: { opacity: 1, filter: 'blur(0px)' },
@@ -48,20 +62,20 @@ export default function AboutClient() {
       <section className="pt-20 pb-24 lg:pt-28 lg:pb-32 px-6 sm:px-10 lg:px-20 text-center">
         <div className="max-w-[820px] mx-auto">
           <motion.p
-            {...fadeUp()}
+            {...heroFadeUp()}
             className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-3"
           >
             Our Story
           </motion.p>
           <motion.h1
-            {...fadeBlur}
+            {...heroFadeBlur}
             className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.75rem,5vw,4.25rem)] font-normal leading-[1.15] tracking-[-0.01em] text-stone-900 mb-5"
           >
             Built exclusively <em className="italic">for </em>
             <em className="italic">jewellers</em>
           </motion.h1>
           <motion.p
-            {...fadeUp(0.3)}
+            {...heroFadeUp(0.3)}
             className="text-base lg:text-lg leading-relaxed text-stone-500 max-w-[600px] mx-auto"
           >
             Nexpura was created for jewellery businesses that outgrow generic retail tools. Repairs are more complex. Bespoke work needs structure. Inventory is more nuanced. Customer relationships are more personal. We built Nexpura to reflect that reality from the ground up.

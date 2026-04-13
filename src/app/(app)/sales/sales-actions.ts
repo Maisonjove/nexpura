@@ -1,19 +1,17 @@
 "use server";
-
-import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 
-async function getAuthContext() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
-  if (!userData?.tenant_id) throw new Error("No tenant");
-  return { tenantId: userData.tenant_id as string };
+/**
+ * Fast tenant ID resolution from middleware-set headers.
+ * Eliminates supabase.auth.getUser() + DB query (~70-150ms savings per call).
+ */
+async function getTenantId(): Promise<string> {
+  const headersList = await headers();
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) throw new Error("Not authenticated");
+  return tenantId;
 }
 
 export interface SaleWithLocation {
@@ -32,13 +30,13 @@ export interface SaleWithLocation {
 }
 
 export async function getSales(locationIds: string[] | null): Promise<SaleWithLocation[]> {
-  const { tenantId } = await getAuthContext();
+  const tenantId = await getTenantId();
   const admin = createAdminClient();
 
   // Determine if we need location names (when showing multiple locations)
   const showLocationNames = !locationIds || locationIds.length > 1;
   const locationMap: Map<string, string> = new Map();
-  
+
   if (showLocationNames) {
     const { data: locations } = await admin
       .from("locations")
@@ -69,6 +67,9 @@ export async function getSales(locationIds: string[] | null): Promise<SaleWithLo
 
   return (sales ?? []).map((sale) => ({
     ...sale,
-    locationName: showLocationNames && sale.location_id ? locationMap.get(sale.location_id) : undefined,
+    locationName:
+      showLocationNames && sale.location_id
+        ? locationMap.get(sale.location_id)
+        : undefined,
   }));
 }
