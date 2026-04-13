@@ -86,6 +86,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      <script src="https://www.annot8.dev/snippet.js" data-project="88bbfcbe4f28b316dc968c9d" async></script>
       </head>
       <body className={cn(
         "min-h-screen bg-background font-sans antialiased",

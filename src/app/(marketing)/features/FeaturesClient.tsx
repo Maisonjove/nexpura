@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useRef, useEffect } from 'react'
 import {
   ShoppingBag,
   Wrench,
@@ -36,6 +36,8 @@ type Feature = {
   id: string
   title: string
   tagline: string
+  benefit: string
+  image: string | null
   icon: LucideIcon
   features: string[]
 }
@@ -45,133 +47,111 @@ const sections: Feature[] = [
     id: 'pos',
     title: 'Point of Sale',
     icon: ShoppingBag,
-    tagline:
-      'A fast, intuitive POS designed for the jewellery shop floor. Process sales, layby, gift vouchers, and returns without slowing down service.',
+    image: null,
+    tagline: 'A jewellery POS built for fast checkout, flexible payments, and accurate stock movement.',
+    benefit: 'Keep checkout fast without losing stock accuracy.',
     features: [
       'Fast barcode and SKU scanning',
+      'Multiple payment methods and split tender',
       'Layby and payment plan support',
-      'Gift voucher creation and redemption',
-      'Multiple payment methods, split tender',
-      'Automatic customer creation from sale',
       'Real-time inventory deduction',
-      'Receipt printing and email delivery',
-      'End-of-day cash reconciliation',
     ],
   },
   {
     id: 'repairs',
     title: 'Repairs & Workshop',
     icon: Wrench,
-    tagline:
-      'Complete repair management from the first phone call to collection. Every job gets a Command Center with full visibility.',
+    image: '/screenshots/repairs.png',
+    tagline: 'Track repairs from intake to collection with status visibility, staff accountability, and customer updates built in.',
+    benefit: 'No more lost jobs or constant status calls.',
     features: [
       'Digital intake with photos',
-      'Stage-by-stage workflow from intake to collected',
       'Customer notifications at each stage',
-      'Labour and material cost tracking',
-      'Repair deposit and balance management',
-      'Overdue alerts on the dashboard',
-      'Repair number sequencing and labels',
-      'Batch printing of repair tags',
+      'Deposit and balance tracking',
+      'Overdue alerts',
     ],
   },
   {
     id: 'bespoke',
     title: 'Bespoke Commissions',
     icon: Gem,
-    tagline:
-      'Manage custom jewellery commissions from concept to delivery. Track design stages, client approvals, and production milestones.',
+    image: '/screenshots/bespoke.png',
+    tagline: 'Run custom commissions with structured approvals, milestones, sourcing, and deposit tracking from brief to delivery.',
+    benefit: 'Keep bespoke work controlled, visible, and professional.',
     features: [
-      'Commission-specific workflow and stages',
-      'Design brief and reference image storage',
       'Client approval gates',
-      'Material specifications and stone requirements',
-      'Milestone-based deposit schedules',
+      'Milestone-based deposit schedule',
+      'Design brief and image storage',
       'Production timeline tracking',
-      'Communication log with client',
-      'Handover and certificate management',
     ],
   },
   {
     id: 'inventory',
     title: 'Inventory',
     icon: Package,
-    tagline:
-      'Full stock control across finished pieces, loose stones, metals, findings, and raw materials — with provenance tracking.',
+    image: '/screenshots/inventory.png',
+    tagline: 'Track finished pieces, stones, metals, findings, and raw materials with live visibility and full provenance history.',
+    benefit: 'See what you have, where it is, and what needs action.',
     features: [
       'Multi-category inventory management',
-      'SKU and barcode management',
-      'Reorder level alerts',
-      'Stock take and variance tracking',
-      'Multi-location stock with transfers',
-      'Supplier linkage per item',
-      'Full provenance and cost history',
-      'Batch import from spreadsheets',
+      'Barcode and SKU support',
+      'Reorder alerts',
+      'Multi-location stock visibility',
     ],
   },
   {
     id: 'customers',
     title: 'Customers',
     icon: Users,
-    tagline:
-      'A CRM built for jewellers. Know your customers — their purchase history, preferences, upcoming birthdays, and lifetime value.',
+    image: null,
+    tagline: 'A jeweller-specific CRM that keeps purchase history, preferences, reminders, and client value in one place.',
+    benefit: 'Turn one-off buyers into long-term clients.',
     features: [
       'Complete purchase and repair history',
-      'VIP tagging and custom tags',
+      'VIP tags and custom fields',
       'Birthday and anniversary reminders',
       'Customer notes and communication log',
-      'Email campaigns and follow-ups',
-      'Customer lifetime value reporting',
-      'Import existing customer lists',
-      'Merge duplicate customer records',
     ],
   },
   {
     id: 'invoices',
     title: 'Invoicing',
     icon: FileText,
-    tagline:
-      "Professional invoices that reflect your brand. Track what's paid, what's outstanding, and what's overdue.",
+    image: null,
+    tagline: 'Create branded invoices, track balances, and connect payments directly to repairs and bespoke jobs.',
+    benefit: 'Stay on top of cashflow without separate systems.',
     features: [
       'Professional invoice templates',
       'Partial payment and balance tracking',
-      'Payment due date and overdue alerts',
-      'PDF generation and email delivery',
-      'GST / VAT / tax handling',
-      'Linked to repairs and bespoke jobs',
       'Outstanding balance dashboard',
-      'Xero and accounting export',
+      'PDF generation and email delivery',
     ],
   },
   {
     id: 'suppliers',
     title: 'Suppliers',
     icon: Truck,
-    tagline:
-      'Manage your supplier relationships, purchase orders, and stock receiving in one place.',
+    image: null,
+    tagline: 'Keep supplier records, purchase orders, receiving, and reconciliation connected to inventory.',
+    benefit: 'Keep purchasing and stock movement connected.',
     features: [
       'Supplier directory with terms',
       'Purchase order creation and tracking',
       'Stock receiving and cost recording',
       'Supplier-linked inventory items',
-      'Outstanding purchase order tracking',
-      'Supplier invoice reconciliation',
     ],
   },
   {
     id: 'command-center',
     title: 'Command Centers',
     icon: LayoutGrid,
-    tagline:
-      'The flagship Nexpura feature. Every repair and bespoke job gets its own dedicated operational screen.',
+    image: null,
+    tagline: 'Give every repair and bespoke job its own operational screen with status, documents, finances, and activity history in one place.',
+    benefit: 'One screen for the entire job — not five disconnected tools.',
     features: [
       'Full job details and history in one screen',
-      'Real-time financial summary',
-      'Stage action buttons with notifications',
-      'Line items, labour, and materials breakdown',
       'Activity timeline of every action',
-      'Customer communication history',
-      'Payment recording with partial support',
+      'Live financial summary',
       'Linked photos and documents',
     ],
   },
@@ -179,117 +159,40 @@ const sections: Feature[] = [
     id: 'analytics',
     title: 'Analytics & Reporting',
     icon: BarChart3,
-    tagline:
-      'Understand your business with reports designed around jewellery metrics — not generic retail analytics.',
+    image: '/screenshots/analytics.png',
+    tagline: 'Track jewellery-specific performance across sales, stock, workshop throughput, and overdue balances.',
+    benefit: 'Make decisions from jewellery metrics, not generic retail reports.',
     features: [
       'Sales by period, category, and staff',
       'Workshop throughput and completion rates',
-      'Customer acquisition and retention metrics',
-      'Outstanding and overdue summary',
       'Inventory turnover analysis',
-      'End-of-day and period closing reports',
-      'Exportable to CSV for accountants',
+      'Outstanding and overdue summary',
     ],
   },
 ]
 
 export default function FeaturesClient() {
-  const [activeId, setActiveId] = useState<string>(sections[0].id)
+  const [activeIndex, setActiveIndex] = useState(0)
   const navRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-  const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
-  const [indicator, setIndicator] = useState<{ left: number; width: number }>({
-    left: 0,
-    width: 0,
-  })
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
 
-  // Smooth-scroll a hash target into view, accounting for sticky bars
-  const scrollToHash = (hash: string, smooth = true) => {
-    const target = sections.find((s) => s.id === hash)
-    if (!target) return
-    setActiveId(hash)
-    // Wait for layout to settle (fonts, sticky nav, motion fades)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const el = document.getElementById(hash)
-        if (!el) return
-        // Manually compute target Y so we don't rely on transient layout via scrollIntoView
-        const STICKY_OFFSET = 72 + 72 // main header + features sub-nav
-        const BREATHING = 80
-        const top =
-          el.getBoundingClientRect().top + window.scrollY - STICKY_OFFSET - BREATHING
-        window.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
-      })
-    })
-  }
+  const activeSection = sections[activeIndex]
 
-  // On mount: if URL has a hash, scroll to it
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const hash = window.location.hash.replace('#', '')
-    if (hash) scrollToHash(hash)
-  }, [])
-
-  // Listen for hash changes (in-page footer link clicks)
-  useEffect(() => {
-    const onHashChange = () => {
-      const hash = window.location.hash.replace('#', '')
-      if (hash) scrollToHash(hash)
-    }
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
-
-  // Scroll-spy: observe section visibility (wider trigger zone so something is always active)
-  useEffect(() => {
-    const observers: IntersectionObserver[] = []
-    sections.forEach((s) => {
-      const el = document.getElementById(s.id)
-      if (!el) return
-      const obs = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) setActiveId(s.id)
-          })
-        },
-        { rootMargin: '-25% 0px -45% 0px', threshold: 0 }
-      )
-      obs.observe(el)
-      observers.push(obs)
-    })
-    return () => observers.forEach((o) => o.disconnect())
-  }, [])
-
-  // Update indicator position when active changes
-  useEffect(() => {
-    const updateIndicator = () => {
-      const el = itemRefs.current[activeId]
-      const list = listRef.current
-      const nav = navRef.current
-      if (!el || !list || !nav) return
-      // Measure relative to the inner flex list (which is the indicator's positioning parent)
-      const elRect = el.getBoundingClientRect()
-      const listRect = list.getBoundingClientRect()
-      setIndicator({
-        left: elRect.left - listRect.left,
-        width: elRect.width,
-      })
-      // Auto-scroll the outer container so the active item is centered
-      const navRect = nav.getBoundingClientRect()
-      const target =
-        elRect.left - navRect.left + nav.scrollLeft - navRect.width / 2 + elRect.width / 2
-      nav.scrollTo({ left: target, behavior: 'smooth' })
-    }
-    updateIndicator()
-    // Re-measure on resize so the indicator stays aligned
-    window.addEventListener('resize', updateIndicator)
-    return () => window.removeEventListener('resize', updateIndicator)
-  }, [activeId])
+    const el = itemRefs.current[activeIndex]
+    const nav = navRef.current
+    if (!el || !nav) return
+    const elRect = el.getBoundingClientRect()
+    const navRect = nav.getBoundingClientRect()
+    const target =
+      elRect.left - navRect.left + nav.scrollLeft - navRect.width / 2 + elRect.width / 2
+    nav.scrollTo({ left: target, behavior: 'smooth' })
+  }, [activeIndex])
 
   return (
     <div className="bg-white">
       {/* Hero */}
-      <section className="pt-20 pb-20 lg:pt-28 lg:pb-28 px-6 sm:px-10 lg:px-20 text-center">
+      <section className="pt-20 pb-10 lg:pt-28 lg:pb-10 px-6 sm:px-10 lg:px-20 text-center">
         <div className="max-w-[820px] mx-auto">
           <motion.p
             {...fadeUp()}
@@ -304,124 +207,120 @@ export default function FeaturesClient() {
             Every feature, <em className="italic">crafted for jewellers</em>
           </motion.h1>
           <motion.p
-            {...fadeUp(0.3)}
-            className="text-base lg:text-lg leading-relaxed text-stone-500 max-w-[600px] mx-auto"
+            {...fadeUp(0.2)}
+            className="text-base leading-relaxed text-stone-500 max-w-[640px] mx-auto mb-10"
           >
-            Nexpura covers the full spectrum of jewellery business operations — from
-            the shop floor to the workshop, from customer relationships to financial
-            management.
+            From the shop floor to the workshop, Nexpura brings sales, repairs, bespoke, inventory, customer records, and financial workflows into one connected system.
           </motion.p>
+          {/* Proof strip */}
+          <motion.div
+            {...fadeUp(0.35)}
+            className="text-[0.8125rem] font-normal text-stone-400 tracking-wide text-center leading-relaxed"
+          >
+            Built for jewellers&nbsp;&nbsp;·&nbsp;&nbsp;9 connected modules&nbsp;&nbsp;·&nbsp;&nbsp;Repairs and bespoke built in&nbsp;&nbsp;·&nbsp;&nbsp;Guided migration included
+          </motion.div>
         </div>
       </section>
 
-      {/* Scroll-spy nav */}
+      {/* Tab nav */}
       <div className="sticky top-[72px] z-30 bg-white/95 backdrop-blur-xl border-y border-black/[0.06]">
         <div
           ref={navRef}
-          className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-20 overflow-x-auto scrollbar-none relative"
+          className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-20 overflow-x-auto scrollbar-none"
           style={{ scrollbarWidth: 'none' }}
         >
-          <div ref={listRef} className="flex items-end gap-10 lg:gap-14 py-5 whitespace-nowrap relative">
+          <div className="flex items-end whitespace-nowrap relative">
             {sections.map((s, i) => {
-              const isActive = activeId === s.id
+              const isActive = activeIndex === i
               return (
-                <a
+                <button
                   key={s.id}
-                  href={`#${s.id}`}
-                  ref={(el) => {
-                    itemRefs.current[s.id] = el
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    scrollToHash(s.id)
-                    history.replaceState(null, '', `#${s.id}`)
-                  }}
-                  className="group relative flex flex-col items-start gap-1 py-1 transition-opacity duration-500"
+                  ref={(el) => { itemRefs.current[i] = el }}
+                  onClick={() => setActiveIndex(i)}
+                  className={`relative flex flex-col items-start gap-1 py-5 pr-10 lg:pr-14 cursor-pointer shrink-0 transition-all duration-300 ${
+                    isActive ? 'opacity-100' : 'opacity-25 hover:opacity-60'
+                  }`}
                 >
-                  <span
-                    className={`text-[0.625rem] font-mono tabular-nums tracking-[0.15em] transition-colors duration-500 ${
-                      isActive
-                        ? 'text-stone-900'
-                        : 'text-stone-300 group-hover:text-stone-500'
-                    }`}
-                  >
+                  <span className={`text-[0.625rem] font-mono tabular-nums tracking-[0.15em] transition-colors duration-300 ${isActive ? 'text-stone-500' : 'text-stone-400'}`}>
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <span
-                    className={`font-serif text-[0.9375rem] lg:text-base leading-none transition-colors duration-500 ${
-                      isActive
-                        ? 'text-stone-900'
-                        : 'text-stone-400 group-hover:text-stone-700'
-                    }`}
-                  >
+                  <span className={`font-serif leading-none transition-all duration-300 ${isActive ? 'text-stone-900 text-base font-semibold' : 'text-stone-500 text-[0.9375rem] font-normal'}`}>
                     {s.title}
                   </span>
-                </a>
+                  {isActive && (
+                    <motion.div
+                      layoutId="tab-indicator"
+                      className="absolute bottom-0 left-0 h-[2.5px] bg-stone-900"
+                      style={{ right: 'var(--tab-pr, 2.5rem)' }}
+                      transition={{ duration: 0.35, ease: EASE }}
+                    />
+                  )}
+                </button>
               )
             })}
-            {/* Animated active indicator */}
-            <motion.div
-              aria-hidden
-              className="absolute bottom-0 h-px bg-stone-900"
-              animate={{ left: indicator.left, width: indicator.width }}
-              transition={{ duration: 0.6, ease: EASE }}
-            />
           </div>
         </div>
       </div>
 
-      {/* Feature sections */}
-      <div className="px-6 sm:px-10 lg:px-20">
-        <div className="max-w-[1200px] mx-auto py-20 lg:py-32 space-y-24 lg:space-y-32">
-          {sections.map((section, index) => {
-            const Icon = section.icon
-            return (
-            <section
-              key={section.id}
-              id={section.id}
-              className="scroll-mt-52 lg:scroll-mt-56 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16"
+      {/* Tab content panel */}
+      <div className="px-6 sm:px-10 lg:px-20 pt-8 pb-20 lg:pt-10 lg:pb-28">
+        <div className="max-w-[1200px] mx-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSection.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25, ease: EASE }}
+              className={`grid grid-cols-1 gap-10 lg:gap-14 items-start ${activeSection.image ? 'lg:grid-cols-2' : 'lg:grid-cols-1 max-w-[640px]'}`}
             >
-              <div className="lg:col-span-5">
-                <motion.div
-                  {...fadeUp()}
-                  className="flex items-center gap-4 mb-6"
-                >
-                  <Icon size={28} strokeWidth={1.25} className="text-stone-900" />
-                  <span className="text-sm tabular-nums text-stone-300 font-medium">
-                    {String(index + 1).padStart(2, '0')}
+              {/* Left: text */}
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  {(() => { const Icon = activeSection.icon; return <Icon size={18} strokeWidth={1.25} className="text-stone-400" /> })()}
+                  <span className="text-xs tabular-nums text-stone-300 font-medium tracking-widest">
+                    {String(activeIndex + 1).padStart(2, '0')}
                   </span>
-                </motion.div>
-                <motion.h2
-                  {...fadeBlur}
-                  className="font-serif text-3xl lg:text-[2.5rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-5"
-                >
-                  {section.title}
-                </motion.h2>
-                <motion.p
-                  {...fadeUp(0.1)}
-                  className="text-[0.9375rem] lg:text-base leading-relaxed text-stone-500"
-                >
-                  {section.tagline}
-                </motion.p>
+                </div>
+                <h2 className="font-serif text-3xl lg:text-[2.5rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-4">
+                  {activeSection.title}
+                </h2>
+                <p className="text-[0.9375rem] leading-relaxed text-stone-500 mb-6">
+                  {activeSection.tagline}
+                </p>
+                <p className="text-[0.875rem] font-medium text-stone-900 border-l-2 border-stone-900 pl-4 mb-8">
+                  {activeSection.benefit}
+                </p>
+                <ul className="space-y-3">
+                  {activeSection.features.map((f) => (
+                    <li key={f} className="flex items-start gap-3 text-[0.9375rem] text-stone-600">
+                      <span className="mt-2 w-1 h-1 rounded-full bg-stone-400 flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <motion.ul
-                {...fadeUp(0.15)}
-                className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 self-start"
-              >
-                {section.features.map((f) => (
-                  <li
-                    key={f}
-                    className="flex items-start gap-3 text-[0.9375rem] text-stone-700 border-b border-stone-100 pb-4"
-                  >
-                    <span className="mt-2 w-1 h-1 rounded-full bg-stone-900 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </motion.ul>
-            </section>
-            )
-          })}
+              {/* Right: product visual (only when available) */}
+              {activeSection.image && (
+                <div className="relative rounded-2xl overflow-hidden bg-stone-100 shadow-[0_4px_32px_rgba(0,0,0,0.08)]">
+                  <AnimatePresence mode="wait">
+                    <motion.img
+                      key={activeSection.image}
+                      src={activeSection.image}
+                      alt={activeSection.title}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className="w-full h-full object-cover object-top"
+                      style={{ aspectRatio: '16/10' }}
+                    />
+                  </AnimatePresence>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 
@@ -429,13 +328,19 @@ export default function FeaturesClient() {
       <section className="py-20 lg:py-36 px-6 sm:px-10 lg:px-20 text-center border-t border-black/[0.06]">
         <motion.h2
           {...fadeBlur}
-          className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-10 italic"
+          className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-4"
         >
-          See it in action.
+          See how Nexpura fits your workflow
         </motion.h2>
-        <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+        <motion.p
+          {...fadeUp(0.1)}
+          className="text-[0.9375rem] text-stone-500 mb-10 max-w-md mx-auto"
+        >
+          Explore the platform in a personalised walkthrough built around your business.
+        </motion.p>
+        <motion.div {...fadeUp(0.2)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           <Link
-            href="/signup"
+            href="/contact"
             className="
               inline-flex items-center justify-center
               min-w-[180px] px-10 py-4 md:min-w-[200px] md:px-12
@@ -449,14 +354,14 @@ export default function FeaturesClient() {
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
             <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-              Start Free Trial
+              Book a Demo
             </span>
           </Link>
           <Link
-            href="/contact"
+            href="/platform"
             className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
           >
-            Book a demo
+            See real workflows
           </Link>
         </motion.div>
       </section>

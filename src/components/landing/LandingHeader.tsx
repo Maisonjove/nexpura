@@ -26,7 +26,8 @@ export default function LandingHeader() {
       <nav className="flex items-center justify-between max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-20 h-[72px]">
         {/* Left nav */}
         <div className="hidden md:flex items-center gap-10 flex-1">
-          <NavLink href="/features">Features</NavLink>
+          <NavLink href="/platform">Platform</NavLink>
+          <NavLink href="/features">Solutions</NavLink>
           <NavLink href="/pricing">Pricing</NavLink>
         </div>
 
@@ -40,14 +41,14 @@ export default function LandingHeader() {
 
         {/* Right nav */}
         <div className="hidden md:flex items-center gap-6 flex-1 justify-end">
+          <NavLink href="/#migration">Migration</NavLink>
           <NavLink href="/about">About</NavLink>
-          <NavLink href="/contact">Contact</NavLink>
           <NavLink href="/login">Login</NavLink>
           <Link
-            href="/verify"
+            href="/contact"
             className="
-              group inline-flex items-center gap-2
-              pl-4 pr-5 py-2
+              inline-flex items-center justify-center
+              pl-5 pr-5 py-2
               bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a]
               rounded-full
               shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.08)]
@@ -57,21 +58,8 @@ export default function LandingHeader() {
             "
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
-            <svg
-              className="w-3.5 h-3.5 text-nexpura-bronze-light relative z-10"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={1.75}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-              />
-            </svg>
             <span className="text-[0.8125rem] font-medium text-white tracking-[0.01em] relative z-10">
-              Verify Passport
+              Book a Demo
             </span>
           </Link>
         </div>
@@ -102,16 +90,17 @@ export default function LandingHeader() {
         }`}
       >
         <div className="flex flex-col gap-4 px-6 sm:px-10 py-6 bg-white/97">
-          <NavLink href="/features">Features</NavLink>
+          <NavLink href="/platform">Platform</NavLink>
+          <NavLink href="/features">Solutions</NavLink>
           <NavLink href="/pricing">Pricing</NavLink>
+          <NavLink href="/#migration">Migration</NavLink>
           <NavLink href="/about">About</NavLink>
-          <NavLink href="/contact">Contact</NavLink>
           <NavLink href="/login">Login</NavLink>
           <Link
-            href="/verify"
+            href="/contact"
             className="
-              inline-flex items-center gap-2 mt-2 self-start
-              pl-4 pr-5 py-2.5
+              inline-flex items-center justify-center mt-2 self-start
+              pl-5 pr-5 py-2.5
               bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a]
               rounded-full
               shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.08)]
@@ -119,21 +108,8 @@ export default function LandingHeader() {
             "
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
-            <svg
-              className="w-3.5 h-3.5 text-nexpura-bronze-light relative z-10"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={1.75}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-              />
-            </svg>
             <span className="text-[0.8125rem] font-medium text-white tracking-[0.01em] relative z-10">
-              Verify Passport
+              Book a Demo
             </span>
           </Link>
         </div>

@@ -2,6 +2,14 @@
 
 import { useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
+
+const bulletPoints = [
+  'Live stock updates',
+  'Reservation and hold tracking',
+  'Provenance and cost history',
+  'Visibility across multiple locations',
+]
 
 export default function LandingInventory() {
   const ctaRef = useRef<HTMLAnchorElement>(null)
@@ -58,22 +66,34 @@ export default function LandingInventory() {
             whileInView={{ opacity: 1, filter: 'blur(0px)' }}
             viewport={{ once: true }}
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-            className="text-base lg:text-[1.0625rem] leading-relaxed text-stone-500 max-w-[480px] mx-auto md:mx-0 mb-8"
+            className="text-base lg:text-[1.0625rem] leading-relaxed text-stone-500 max-w-[480px] mx-auto md:mx-0 mb-6"
           >
-            Real-time tracking for every piece. Effortlessly manage your
-            jewellery assets with precision serial ID, instant stock status
-            updates, and reservation tracking from any device. Eliminate
-            discrepancies and gain complete visibility into your collection.
+            Track every piece, stone, metal, and component with live stock status, reservation tracking, location visibility, and full item history.
           </motion.p>
+          <ul className="space-y-3 mb-8 text-left max-w-[480px] mx-auto md:mx-0">
+            {bulletPoints.map((point, i) => (
+              <motion.li
+                key={point}
+                initial={{ opacity: 0, x: -12 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 + i * 0.07 }}
+                className="flex items-start gap-3 text-[0.9375rem] text-stone-600 leading-relaxed"
+              >
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0" />
+                {point}
+              </motion.li>
+            ))}
+          </ul>
           <motion.div
             initial={{ opacity: 0, filter: 'blur(4px)', y: 16 }}
             whileInView={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
+            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}
           >
-            <a
+            <Link
               ref={ctaRef}
-              href="/signup"
+              href="/features#inventory"
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
               className="
@@ -90,9 +110,9 @@ export default function LandingInventory() {
             >
               <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
               <span className="text-[0.9375rem] font-medium text-white tracking-[0.01em] relative z-10">
-                Learn More
+                See inventory workflows
               </span>
-            </a>
+            </Link>
           </motion.div>
         </div>
       </div>

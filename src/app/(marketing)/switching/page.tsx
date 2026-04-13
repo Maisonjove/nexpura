@@ -17,7 +17,7 @@ const sources = [
 
 const steps = [
   { num: 1, title: "Choose your source", desc: "Select your current system from our supported sources list. We'll tell you what we can migrate." },
-  { num: 2, title: "Upload your export", desc: "Export your data from your current system (we provide step-by-step guides for each source). Upload the files." },
+  { num: 2, title: "Upload your export", desc: "Export your data from your current system (we provide guides for each source). Upload the files." },
   { num: 3, title: "Review the mapping", desc: "Our AI maps your fields to Nexpura's data model. You review and adjust the mapping in a visual table." },
   { num: 4, title: "Preview before import", desc: "See exactly how your data will look in Nexpura before we commit anything. Check for duplicates and anomalies." },
   { num: 5, title: "Execute and verify", desc: "We import the data with full provenance tracking. Every record shows its migration origin." },
@@ -133,10 +133,10 @@ export default function SwitchingPage() {
         <div className="max-w-2xl mx-auto px-6">
           <h2 className="text-2xl font-semibold text-stone-900 mb-3">Ready to make the switch?</h2>
           <p className="text-stone-500 mb-2 leading-relaxed">
-            Start your free trial and use the Migration Hub to import your data before you go live. Our team is available to help at every step.
+            Book a demo and we will walk you through the Migration Hub. Our team will handle your data import at every step.
           </p>
           <ul className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-4 mb-8 text-sm text-stone-600">
-            {["Zero data loss guarantee", "Preview before committing", "Free migration support"].map((p) => (
+            {["Zero data loss guarantee", "Preview before committing", "Free migration with every plan"].map((p) => (
               <li key={p} className="flex items-center gap-2">
                 <CheckCircle size={14} className="text-emerald-600" />
                 {p}
@@ -144,11 +144,11 @@ export default function SwitchingPage() {
             ))}
           </ul>
           <div className="flex gap-3 justify-center">
-            <Link href="/signup" className="px-5 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors">
-              Start Free Trial
+            <Link href="/contact" className="px-5 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors">
+              Book a Demo
             </Link>
-            <Link href="/contact" className="px-5 py-2.5 border border-stone-300 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-50 transition-colors">
-              Contact migration team <ArrowRight size={14} className="inline ml-1" />
+            <Link href="/platform" className="px-5 py-2.5 border border-stone-300 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-50 transition-colors">
+              See the Platform <ArrowRight size={14} className="inline ml-1" />
             </Link>
           </div>
         </div>

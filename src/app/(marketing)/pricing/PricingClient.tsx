@@ -24,41 +24,41 @@ const plans = [
   {
     name: 'Boutique',
     price: 89,
-    description: 'For single-location independent jewellers.',
+    description: 'For single-store jewellers who need one connected system for sales, repairs, bespoke, and stock.',
+    cta: 'Start Free Trial',
     highlights: [
-      'Point of Sale, Inventory, Repairs',
-      'Bespoke commissions',
-      'Customers CRM, Invoicing',
-      'AI Business Copilot',
-      'Command Centers',
-      'Migration Hub',
-      '1 staff, 1 store',
+      'POS, inventory, repairs, and bespoke workflows',
+      'Customers CRM and invoicing',
+      'Command Centers and AI Copilot',
+      'Guided migration included',
+      '1 staff · 1 store',
     ],
     featured: false,
   },
   {
     name: 'Studio',
     price: 179,
-    description: 'For established jewellery businesses ready to scale.',
+    description: 'For growing jewellery businesses that need deeper reporting, branding, and team visibility across locations.',
+    cta: 'Book a Demo',
     highlights: [
       'Everything in Boutique',
       'Full analytics dashboard',
-      'Up to 5 staff, up to 3 stores',
-      'Website builder',
-      'Connect existing website',
+      'Up to 5 staff · up to 3 stores',
       'Custom branding',
+      'Website and digital presence tools',
     ],
     featured: true,
   },
   {
     name: 'Atelier',
     price: 299,
-    description: 'For multi-location groups and high-volume ateliers.',
+    description: 'For multi-store jewellery businesses and high-volume workshops needing advanced support, analytics, and scale.',
+    cta: 'Talk to Sales',
     highlights: [
       'Everything in Studio',
       'Unlimited staff and stores',
-      'AI website copy',
       'Custom analytics',
+      'AI product descriptions',
       'Priority migration support',
       'Dedicated success contact',
     ],
@@ -66,32 +66,46 @@ const plans = [
   },
 ]
 
-const comparison = [
-  { key: 'Point of Sale', values: ['Yes', 'Yes', 'Yes'] },
-  { key: 'Inventory management', values: ['Yes', 'Yes', 'Yes'] },
-  { key: 'Repairs & Workshop', values: ['Yes', 'Yes', 'Yes'] },
-  { key: 'Bespoke commissions', values: ['Yes', 'Yes', 'Yes'] },
-  { key: 'Customers CRM', values: ['Yes', 'Yes', 'Yes'] },
-  { key: 'Invoicing', values: ['Yes', 'Yes', 'Yes'] },
-  { key: 'AI Business Copilot', values: ['Yes', 'Yes', 'Yes'] },
-  { key: 'Command Centers', values: ['Yes', 'Yes', 'Yes'] },
-  { key: 'Migration Hub', values: ['Yes', 'Yes', 'Yes'] },
-  { key: 'Analytics', values: ['Basic', 'Full', 'Full + Custom'] },
-  { key: 'Team Size', values: ['1 staff', 'Up to 5', 'Unlimited'] },
-  { key: 'Stores', values: ['1', 'Up to 3', 'Unlimited'] },
-  { key: 'Website Builder', values: ['—', 'Yes', 'Yes'] },
-  { key: 'AI Website Copy', values: ['—', '—', 'Yes'] },
-  { key: 'Custom branding', values: ['—', 'Yes', 'Yes'] },
+const comparisonGroups = [
+  {
+    heading: 'Core platform',
+    rows: [
+      { key: 'Point of Sale', values: ['Yes', 'Yes', 'Yes'] },
+      { key: 'Inventory', values: ['Yes', 'Yes', 'Yes'] },
+      { key: 'Repairs', values: ['Yes', 'Yes', 'Yes'] },
+      { key: 'Bespoke', values: ['Yes', 'Yes', 'Yes'] },
+      { key: 'CRM', values: ['Yes', 'Yes', 'Yes'] },
+      { key: 'Invoicing', values: ['Yes', 'Yes', 'Yes'] },
+      { key: 'Command Centers', values: ['Yes', 'Yes', 'Yes'] },
+    ],
+  },
+  {
+    heading: 'Growth and reporting',
+    rows: [
+      { key: 'Analytics', values: ['Basic', 'Full', 'Full'] },
+      { key: 'Team size', values: ['1 staff', 'Up to 5', 'Unlimited'] },
+      { key: 'Stores', values: ['1', 'Up to 3', 'Unlimited'] },
+      { key: 'Custom branding', values: ['—', 'Yes', 'Yes'] },
+    ],
+  },
+  {
+    heading: 'Advanced tools',
+    rows: [
+      { key: 'Jeweller showcase website', values: ['—', 'Yes', 'Yes'] },
+      { key: 'AI product descriptions', values: ['—', '—', 'Yes'] },
+      { key: 'Custom analytics', values: ['—', '—', 'Yes'] },
+    ],
+  },
 ]
 
 const faqs = [
   {
     q: 'Can I change plans later?',
-    a: 'Yes — upgrade or downgrade at any time. Changes take effect at the next billing cycle. Upgrades unlock features immediately.',
+    a: 'Yes. Upgrade or downgrade at any time. Changes take effect at the next billing cycle. Upgrades apply immediately.',
   },
   {
     q: 'Is there a setup fee?',
-    a: 'Never. You only pay the monthly subscription. Migration assistance is included with Studio and Atelier.',
+    a: 'Never. You only pay the monthly subscription. Free migration is included with every plan.',
   },
   {
     q: "What's included in the free trial?",
@@ -99,7 +113,7 @@ const faqs = [
   },
   {
     q: 'Do you offer annual billing?',
-    a: 'Yes — annual billing gives you two months free. Enable it in billing settings after signup.',
+    a: 'Yes — annual billing gives you two months free. We can help you set it up when you\'re ready.',
   },
 ]
 
@@ -125,16 +139,15 @@ export default function PricingClient() {
           </motion.h1>
           <motion.p
             {...fadeUp(0.3)}
-            className="text-base lg:text-lg leading-relaxed text-stone-500 max-w-[600px] mx-auto"
+            className="text-base leading-relaxed text-stone-500 max-w-[600px] mx-auto"
           >
-            No hidden fees. No per-transaction cuts. Choose the plan that fits your
-            business and scale when you&apos;re ready.
+            Simple pricing for jewellers — with guided migration included and no transaction cuts. Start with the plan that fits your business and scale when you&apos;re ready.
           </motion.p>
           <motion.p
             {...fadeUp(0.45)}
             className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mt-8"
           >
-            14-day free trial &middot; No credit card required
+            14 day free trial &middot; No credit card required
           </motion.p>
         </div>
       </section>
@@ -172,14 +185,14 @@ export default function PricingClient() {
               </div>
 
               <Link
-                href="/signup"
+                href="/contact"
                 className={`w-full text-center py-3.5 mb-10 text-[0.875rem] font-medium transition-colors duration-300 ${
                   plan.featured
                     ? 'bg-stone-900 text-white hover:bg-stone-800'
                     : 'border border-stone-900 text-stone-900 hover:bg-stone-900 hover:text-white'
                 }`}
               >
-                Start Free Trial
+                {plan.cta}
               </Link>
 
               <ul className="space-y-3 flex-1">
@@ -212,7 +225,7 @@ export default function PricingClient() {
               {...fadeBlur}
               className="font-serif text-3xl sm:text-4xl lg:text-[3rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900"
             >
-              Every detail, side by side.
+              Compare plans at a glance
             </motion.h2>
           </div>
 
@@ -220,7 +233,7 @@ export default function PricingClient() {
             <table className="w-full text-[0.875rem]">
               <thead>
                 <tr className="border-b border-stone-900">
-                  <th className="text-left py-4 pr-4 text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 font-normal">
+                  <th className="text-left py-4 pr-4 text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 font-normal w-1/2">
                     Feature
                   </th>
                   {plans.map((p) => (
@@ -234,21 +247,30 @@ export default function PricingClient() {
                 </tr>
               </thead>
               <tbody>
-                {comparison.map((row) => (
-                  <tr
-                    key={row.key}
-                    className="border-b border-stone-100"
-                  >
-                    <td className="py-4 pr-4 text-stone-700">{row.key}</td>
-                    {row.values.map((v, i) => (
+                {comparisonGroups.map((group) => (
+                  <>
+                    <tr key={group.heading} className="border-b border-stone-200 bg-stone-50">
                       <td
-                        key={i}
-                        className="text-center py-4 px-4 text-stone-500"
+                        colSpan={4}
+                        className="py-3 pr-4 text-[0.7rem] font-medium tracking-[0.15em] uppercase text-stone-500"
                       >
-                        {v}
+                        {group.heading}
                       </td>
+                    </tr>
+                    {group.rows.map((row) => (
+                      <tr key={row.key} className="border-b border-stone-100">
+                        <td className="py-4 pr-4 text-stone-700">{row.key}</td>
+                        {row.values.map((v, i) => (
+                          <td
+                            key={i}
+                            className={`text-center py-4 px-4 ${v === '—' ? 'text-stone-300' : 'text-stone-600'}`}
+                          >
+                            {v}
+                          </td>
+                        ))}
+                      </tr>
                     ))}
-                  </tr>
+                  </>
                 ))}
               </tbody>
             </table>
@@ -270,7 +292,7 @@ export default function PricingClient() {
               {...fadeBlur}
               className="font-serif text-3xl sm:text-4xl lg:text-[3rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900"
             >
-              Common questions, answered.
+              Common questions, answered
             </motion.h2>
           </div>
 
@@ -313,11 +335,11 @@ export default function PricingClient() {
           {...fadeBlur}
           className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-10 italic"
         >
-          Start your free trial today.
+          See how Nexpura fits your business
         </motion.h2>
         <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           <Link
-            href="/signup"
+            href="/contact"
             className="
               inline-flex items-center justify-center
               min-w-[180px] px-10 py-4 md:min-w-[200px] md:px-12
@@ -331,14 +353,14 @@ export default function PricingClient() {
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
             <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-              Get started free
+              Book a Demo
             </span>
           </Link>
           <Link
-            href="/contact"
+            href="/platform"
             className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
           >
-            Talk to sales
+            Explore the Platform
           </Link>
         </motion.div>
         <p className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mt-8">
