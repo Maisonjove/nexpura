@@ -36,6 +36,7 @@ type Feature = {
   id: string
   title: string
   tagline: string
+  benefit: string
   icon: LucideIcon
   features: string[]
 }
@@ -45,133 +46,103 @@ const sections: Feature[] = [
     id: 'pos',
     title: 'Point of Sale',
     icon: ShoppingBag,
-    tagline:
-      'A fast, intuitive POS designed for the jewellery shop floor. Process sales, layby, gift vouchers, and returns without slowing down service.',
+    tagline: 'A jewellery POS built for fast checkout, flexible payments, and accurate stock movement.',
+    benefit: 'Keep checkout fast without losing stock accuracy.',
     features: [
       'Fast barcode and SKU scanning',
+      'Multiple payment methods and split tender',
       'Layby and payment plan support',
-      'Gift voucher creation and redemption',
-      'Multiple payment methods, split tender',
-      'Automatic customer creation from sale',
       'Real-time inventory deduction',
-      'Receipt printing and email delivery',
-      'Daily cash reconciliation',
     ],
   },
   {
     id: 'repairs',
     title: 'Repairs & Workshop',
     icon: Wrench,
-    tagline:
-      'Complete repair management from the first phone call to collection. Every job gets a Command Center with full visibility.',
+    tagline: 'Track repairs from intake to collection with status visibility, staff accountability, and customer updates built in.',
+    benefit: 'No more lost jobs or constant status calls.',
     features: [
       'Digital intake with photos',
-      'Step by step workflow from intake to collected',
       'Customer notifications at each stage',
-      'Labour and material cost tracking',
-      'Repair deposit and balance management',
-      'Overdue alerts on the dashboard',
-      'Repair number sequencing and labels',
-      'Batch printing of repair tags',
+      'Deposit and balance tracking',
+      'Overdue alerts',
     ],
   },
   {
     id: 'bespoke',
     title: 'Bespoke Commissions',
     icon: Gem,
-    tagline:
-      'Manage custom jewellery commissions from concept to delivery. Track design stages, client approvals, and production milestones.',
+    tagline: 'Run custom commissions with structured approvals, milestones, sourcing, and deposit tracking from brief to delivery.',
+    benefit: 'Keep bespoke work controlled, visible, and professional.',
     features: [
-      'Commission-specific workflow and stages',
-      'Design brief and reference image storage',
       'Client approval gates',
-      'Material specifications and stone requirements',
-      'Milestone-based deposit schedules',
+      'Milestone-based deposit schedule',
+      'Design brief and image storage',
       'Production timeline tracking',
-      'Communication log with client',
-      'Handover and certificate management',
     ],
   },
   {
     id: 'inventory',
     title: 'Inventory',
     icon: Package,
-    tagline:
-      'Full stock control across finished pieces, loose stones, metals, findings, and raw materials — with provenance tracking.',
+    tagline: 'Track finished pieces, stones, metals, findings, and raw materials with live visibility and full provenance history.',
+    benefit: 'See what you have, where it is, and what needs action.',
     features: [
       'Multi-category inventory management',
-      'SKU and barcode management',
-      'Reorder level alerts',
-      'Stock take and variance tracking',
-      'Stock tracking across multiple locations with transfers',
-      'Supplier linkage per item',
-      'Full provenance and cost history',
-      'Batch import from spreadsheets',
+      'Barcode and SKU support',
+      'Reorder alerts',
+      'Multi-location stock visibility',
     ],
   },
   {
     id: 'customers',
     title: 'Customers',
     icon: Users,
-    tagline:
-      'A CRM built for jewellers. Know your customers — their purchase history, preferences, upcoming birthdays, and lifetime value.',
+    tagline: 'A jeweller-specific CRM that keeps purchase history, preferences, reminders, and client value in one place.',
+    benefit: 'Turn one-off buyers into long-term clients.',
     features: [
       'Complete purchase and repair history',
-      'VIP tagging and custom tags',
+      'VIP tags and custom fields',
       'Birthday and anniversary reminders',
       'Customer notes and communication log',
-      'Email campaigns and follow-ups',
-      'Customer lifetime value reporting',
-      'Import existing customer lists',
-      'Merge duplicate customer records',
     ],
   },
   {
     id: 'invoices',
     title: 'Invoicing',
     icon: FileText,
-    tagline:
-      "Professional invoices that reflect your brand. Track what's paid, what's outstanding, and what's overdue.",
+    tagline: 'Create branded invoices, track balances, and connect payments directly to repairs and bespoke jobs.',
+    benefit: 'Stay on top of cashflow without separate systems.',
     features: [
       'Professional invoice templates',
       'Partial payment and balance tracking',
-      'Payment due date and overdue alerts',
-      'PDF generation and email delivery',
-      'GST / VAT / tax handling',
-      'Linked to repairs and bespoke jobs',
       'Outstanding balance dashboard',
-      'Xero and accounting export',
+      'PDF generation and email delivery',
     ],
   },
   {
     id: 'suppliers',
     title: 'Suppliers',
     icon: Truck,
-    tagline:
-      'Manage your supplier relationships, purchase orders, and stock receiving in one place.',
+    tagline: 'Keep supplier records, purchase orders, receiving, and reconciliation connected to inventory.',
+    benefit: 'Keep purchasing and stock movement connected.',
     features: [
       'Supplier directory with terms',
       'Purchase order creation and tracking',
       'Stock receiving and cost recording',
       'Supplier-linked inventory items',
-      'Outstanding purchase order tracking',
-      'Supplier invoice reconciliation',
     ],
   },
   {
     id: 'command-center',
     title: 'Command Centers',
     icon: LayoutGrid,
-    tagline:
-      'The flagship Nexpura feature. Every repair and bespoke job gets its own dedicated operational screen.',
+    tagline: 'Give every repair and bespoke job its own operational screen with status, documents, finances, and activity history in one place.',
+    benefit: 'One screen for the entire job — not five disconnected tools.',
     features: [
       'Full job details and history in one screen',
-      'Live financial summary',
-      'Stage action buttons with notifications',
-      'Line items, labour, and materials breakdown',
       'Activity timeline of every action',
-      'Customer communication history',
-      'Payment recording with partial support',
+      'Live financial summary',
       'Linked photos and documents',
     ],
   },
@@ -179,16 +150,13 @@ const sections: Feature[] = [
     id: 'analytics',
     title: 'Analytics & Reporting',
     icon: BarChart3,
-    tagline:
-      'Understand your business with reports designed around jewellery metrics — not generic retail analytics.',
+    tagline: 'Track jewellery-specific performance across sales, stock, workshop throughput, and overdue balances.',
+    benefit: 'Make decisions from jewellery metrics, not generic retail reports.',
     features: [
       'Sales by period, category, and staff',
       'Workshop throughput and completion rates',
-      'Customer acquisition and retention metrics',
-      'Outstanding and overdue summary',
       'Inventory turnover analysis',
-      'Daily and period closing reports',
-      'Exportable to CSV for accountants',
+      'Outstanding and overdue summary',
     ],
   },
 ]
@@ -200,7 +168,6 @@ export default function FeaturesClient() {
 
   const activeSection = sections[activeIndex]
 
-  // Auto-scroll active tab into view in the nav
   useEffect(() => {
     const el = itemRefs.current[activeIndex]
     const nav = navRef.current
@@ -270,11 +237,10 @@ export default function FeaturesClient() {
                   <span className={`font-serif leading-none transition-colors duration-300 ${isActive ? 'text-stone-900 text-base font-medium' : 'text-stone-500 text-[0.9375rem]'}`}>
                     {s.title}
                   </span>
-                  {/* Active underline */}
                   {isActive && (
                     <motion.div
                       layoutId="tab-indicator"
-                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-stone-900 pr-10 lg:pr-14"
+                      className="absolute bottom-0 left-0 h-[2px] bg-stone-900"
                       style={{ right: 'var(--tab-pr, 2.5rem)' }}
                       transition={{ duration: 0.4, ease: EASE }}
                     />
@@ -298,7 +264,7 @@ export default function FeaturesClient() {
               transition={{ duration: 0.3, ease: EASE }}
               className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16"
             >
-              {/* Left: title + tagline */}
+              {/* Left: title + tagline + benefit */}
               <div className="lg:col-span-5">
                 <div className="flex items-center gap-3 mb-3">
                   {(() => { const Icon = activeSection.icon; return <Icon size={20} strokeWidth={1.25} className="text-stone-400" /> })()}
@@ -309,12 +275,15 @@ export default function FeaturesClient() {
                 <h2 className="font-serif text-3xl lg:text-[2.5rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-4">
                   {activeSection.title}
                 </h2>
-                <p className="text-[0.9375rem] leading-relaxed text-stone-500">
+                <p className="text-[0.9375rem] leading-relaxed text-stone-500 mb-6">
                   {activeSection.tagline}
+                </p>
+                <p className="text-[0.875rem] font-medium text-stone-900 border-l-2 border-stone-900 pl-4">
+                  {activeSection.benefit}
                 </p>
               </div>
 
-              {/* Right: feature list */}
+              {/* Right: 4 primary features */}
               <ul className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 self-start">
                 {activeSection.features.map((f) => (
                   <li
@@ -335,11 +304,17 @@ export default function FeaturesClient() {
       <section className="py-20 lg:py-36 px-6 sm:px-10 lg:px-20 text-center border-t border-black/[0.06]">
         <motion.h2
           {...fadeBlur}
-          className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-10 italic"
+          className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-4"
         >
-          See it in action
+          See how Nexpura fits your workflow
         </motion.h2>
-        <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+        <motion.p
+          {...fadeUp(0.1)}
+          className="text-[0.9375rem] text-stone-500 mb-10 max-w-md mx-auto"
+        >
+          Explore the platform in a personalised walkthrough built around your business.
+        </motion.p>
+        <motion.div {...fadeUp(0.2)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           <Link
             href="/contact"
             className="
@@ -362,7 +337,7 @@ export default function FeaturesClient() {
             href="/platform"
             className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
           >
-            See the Platform
+            See real workflows
           </Link>
         </motion.div>
       </section>
