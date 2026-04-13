@@ -35,7 +35,7 @@ function setSubOkCookie(response: NextResponse, tenantId: string): void {
   });
 }
 
-// Routes that never need auth — skip Supabase entirely for instant response.
+// Routes that never need auth â skip Supabase entirely for instant response.
 function isPublicPath(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -48,7 +48,7 @@ function isPublicPath(pathname: string): boolean {
     pathname.startsWith("/support-access") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    // Marketing pages — static, no auth needed
+    // Marketing pages â static, no auth needed
     pathname.startsWith("/features") ||
     pathname.startsWith("/pricing") ||
     pathname.startsWith("/about") ||
@@ -59,6 +59,33 @@ function isPublicPath(pathname: string): boolean {
     pathname.startsWith("/switching") ||
     pathname.includes(".")
   );
+}
+
+// Known app route segments â the second path segment in /{slug}/{route} must be one of these.
+// Guard: if segments[0] is itself a known route (e.g. /repairs/dashboard), it cannot be a slug.
+const TENANT_APP_ROUTES = new Set([
+  "dashboard", "intake", "pos", "sales", "invoices", "quotes", "laybys",
+  "inventory", "customers", "suppliers", "memo", "stocktakes",
+  "repairs", "bespoke", "workshop", "appraisals", "passports",
+  "expenses", "financials", "reports", "refunds", "vouchers", "eod",
+  "marketing", "tasks", "copilot", "website", "documents",
+  "integrations", "reminders", "support", "settings", "billing",
+  "suspended", "communications", "notifications", "migration", "ai",
+  "enquiries", "print-queue", "actions",
+]);
+
+function parseTenantSlugPath(
+  pathname: string
+): { slug: string; route: string } | null {
+  const segments = pathname.split("/").filter(Boolean);
+  if (
+    segments.length >= 2 &&
+    TENANT_APP_ROUTES.has(segments[1]) &&
+    !TENANT_APP_ROUTES.has(segments[0]) // guard: /repairs/dashboard â segments[0]="repairs" is a route â not a slug
+  ) {
+    return { slug: segments[0], route: "/" + segments.slice(1).join("/") };
+  }
+  return null;
 }
 
 export async function updateSession(request: NextRequest) {
@@ -79,7 +106,7 @@ export async function updateSession(request: NextRequest) {
 async function _updateSessionInner(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Short-circuit for public & marketing routes — no Supabase round-trip needed.
+  // Short-circuit for public & marketing routes â no Supabase round-trip needed.
   // This eliminates the 50-100ms auth.getUser() latency on every marketing page nav.
   if (isPublicPath(pathname)) {
     return NextResponse.next({ request });
@@ -147,6 +174,101 @@ async function _updateSessionInner(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // --- Tenant-slug URL routing: /{slug}/{route} ---
+  // Validates the slug matches the authenticated user's tenant, sets AUTH headers,
+  // and rewrites internally to the flat /{route} so page components need zero changes.
+  const tenantParsed = parseTenantSlugPath(pathname);
+  if (tenantParsed !== null) {
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      return NextResponse.redirect(loginUrl);
+    }
+    if (!user.email_confirmed_at) {
+      const verifyUrl = request.nextUrl.clone();
+      verifyUrl.pathname = "/verify-email";
+      return NextResponse.redirect(verifyUrl);
+    }
+
+    const userProfile = await getCachedUserProfile(user.id);
+    if (!userProfile || !userProfile.tenant_id) {
+      const onboardingUrl = request.nextUrl.clone();
+      onboardingUrl.pathname = "/onboarding";
+      return NextResponse.redirect(onboardingUrl);
+    }
+
+    const userTenantSlug = userProfile.tenants?.slug;
+
+    if (userTenantSlug && userTenantSlug !== tenantParsed.slug) {
+      // Cross-tenant URL: silently redirect user to their own correct tenant URL
+      const correctUrl = request.nextUrl.clone();
+      correctUrl.pathname = `/${userTenantSlug}${tenantParsed.route}`;
+      return NextResponse.redirect(correctUrl);
+    }
+
+    // Slug matches (or tenant has no slug yet) â set AUTH headers and rewrite internally
+    const authRequestHeaders = new Headers(request.headers);
+    authRequestHeaders.set(AUTH_HEADERS.USER_ID, user.id);
+    authRequestHeaders.set(AUTH_HEADERS.TENANT_ID, userProfile.tenant_id);
+    authRequestHeaders.set(AUTH_HEADERS.USER_ROLE, userProfile.role || "");
+    authRequestHeaders.set(AUTH_HEADERS.USER_EMAIL, user.email || "");
+
+    // Rewrite: browser keeps /{slug}/{route}, Next.js internally serves /{route}
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname = tenantParsed.route;
+
+    const authResponse = NextResponse.rewrite(rewriteUrl, {
+      request: { headers: authRequestHeaders },
+    });
+
+    // Transfer all session cookies (preserves httpOnly, secure, sameSite, domain, etc.)
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      authResponse.cookies.set(cookie);
+    });
+
+    // Check subscription (skip for billing/suspended pages)
+    if (
+      !tenantParsed.route.startsWith("/billing") &&
+      !tenantParsed.route.startsWith("/suspended")
+    ) {
+      if (!getCachedSubOk(request, userProfile.tenant_id)) {
+        const { data: sub } = await supabase
+          .from("subscriptions")
+          .select("status, current_period_end, trial_ends_at")
+          .eq("tenant_id", userProfile.tenant_id)
+          .maybeSingle();
+
+        if (sub) {
+          const now = new Date();
+          const isTrialExpired =
+            sub.status === "trialing" &&
+            sub.trial_ends_at &&
+            new Date(sub.trial_ends_at) < now;
+          const isCancelledAndExpired =
+            sub.status === "cancelled" &&
+            sub.current_period_end &&
+            new Date(sub.current_period_end) < now;
+          const isBlocked =
+            sub.status === "suspended" ||
+            isTrialExpired ||
+            isCancelledAndExpired;
+
+          if (isBlocked) {
+            const suspendedUrl = request.nextUrl.clone();
+            suspendedUrl.pathname = userTenantSlug
+              ? `/${userTenantSlug}/suspended`
+              : "/suspended";
+            return NextResponse.redirect(suspendedUrl);
+          }
+          // Not blocked â cache the OK status for 5 minutes
+          setSubOkCookie(authResponse, userProfile.tenant_id);
+        }
+      }
+    }
+
+    return authResponse;
+  }
+
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/bespoke") ||
@@ -186,8 +308,16 @@ async function _updateSessionInner(request: NextRequest) {
       return NextResponse.redirect(onboardingUrl);
     }
 
-    // Forward auth data on the REQUEST so AppLayout can read it via headers()
-    // without making a second supabase.auth.getUser() call.
+    // Migrate flat URLs â tenant-aware URLs for bookmarkable, shareable routes.
+    // Tenants with a slug get redirected; tenants without a slug fall through to flat-route mode.
+    const userTenantSlug = userProfile.tenants?.slug;
+    if (userTenantSlug) {
+      const tenantUrl = request.nextUrl.clone();
+      tenantUrl.pathname = `/${userTenantSlug}${pathname}`;
+      return NextResponse.redirect(tenantUrl);
+    }
+
+    // Fallback: tenant has no slug â serve flat route with AUTH headers as before
     const authRequestHeaders = new Headers(request.headers);
     authRequestHeaders.set(AUTH_HEADERS.USER_ID, user.id);
     authRequestHeaders.set(AUTH_HEADERS.TENANT_ID, userProfile.tenant_id);
@@ -234,9 +364,9 @@ async function _updateSessionInner(request: NextRequest) {
             suspendedUrl.pathname = "/suspended";
             return NextResponse.redirect(suspendedUrl);
           }
+          // Not blocked â cache the OK status for 5 minutes
+          setSubOkCookie(authResponse, userProfile.tenant_id);
         }
-        // Not blocked — cache the OK status for 5 minutes
-        setSubOkCookie(authResponse, userProfile.tenant_id);
       }
     }
 
