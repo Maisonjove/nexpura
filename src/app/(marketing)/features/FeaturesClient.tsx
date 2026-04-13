@@ -238,14 +238,9 @@ export default function FeaturesClient() {
           {/* Proof strip */}
           <motion.div
             {...fadeUp(0.35)}
-            className="flex items-center justify-center gap-x-5 gap-y-2 flex-wrap"
+            className="text-[0.8125rem] font-normal text-stone-400 tracking-wide text-center leading-relaxed"
           >
-            {['9 connected modules', 'Built for jewellers', 'Repairs + bespoke built in', 'Guided migration included'].map((item, i, arr) => (
-              <span key={item} className="flex items-center gap-5">
-                <span className="text-[0.8125rem] font-normal text-stone-400 tracking-wide whitespace-nowrap">{item}</span>
-                {i < arr.length - 1 && <span className="text-stone-300 select-none">·</span>}
-              </span>
-            ))}
+            Built for jewellers&nbsp;&nbsp;·&nbsp;&nbsp;9 connected modules&nbsp;&nbsp;·&nbsp;&nbsp;Repairs and bespoke built in&nbsp;&nbsp;·&nbsp;&nbsp;Guided migration included
           </motion.div>
         </div>
       </section>
