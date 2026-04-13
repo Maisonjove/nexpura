@@ -3,10 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import logger from "@/lib/logger";
 import { AUTH_HEADERS, getCachedUserProfile } from "@/lib/cached-auth";
 
+// Use .nexpura.com in production so cookies are shared across all tenant subdomains.
+// Leave NEXT_PUBLIC_COOKIE_DOMAIN unset in development to scope cookies to localhost.
+const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined;
+
 export async function updateSession(request: NextRequest) {
-  // Top-level guard: if anything in this function throws (Edge Runtime limits,
-  // Supabase network failure, etc.) redirect to /login for protected routes
-  // rather than silently passing through unauthenticated.
   try {
     return await _updateSessionInner(request);
   } catch (err) {
@@ -44,7 +45,9 @@ async function _updateSessionInner(request: NextRequest) {
     cookieOptions: {
       httpOnly: true,
       secure: true,
-      sameSite: "strict",
+      sameSite: "lax",
+      // Share session cookies across all *.nexpura.com subdomains in production
+      domain: cookieDomain,
     },
     cookies: {
       getAll() {
@@ -62,12 +65,10 @@ async function _updateSessionInner(request: NextRequest) {
     },
   });
 
-  // Refresh / validate session
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Public routes -- no auth required
   const isPublicRoute =
     pathname === "/" ||
     pathname.startsWith("/login") ||
@@ -85,12 +86,10 @@ async function _updateSessionInner(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // /verify-email -- public waiting page (must be exempt before auth checks)
   if (pathname.startsWith("/verify-email")) {
     return supabaseResponse;
   }
 
-  // /onboarding -- requires auth but NOT tenant
   const isOnboarding = pathname.startsWith("/onboarding");
   if (isOnboarding) {
     if (!user) {
@@ -98,7 +97,6 @@ async function _updateSessionInner(request: NextRequest) {
       loginUrl.pathname = "/login";
       return NextResponse.redirect(loginUrl);
     }
-    // SECURITY: Block unverified users from onboarding actions too
     if (!user.email_confirmed_at) {
       const verifyUrl = request.nextUrl.clone();
       verifyUrl.pathname = "/verify-email";
@@ -107,7 +105,6 @@ async function _updateSessionInner(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // /admin routes -- requires auth + super_admin check (handled in page)
   const isAdminRoute = pathname.startsWith("/admin");
   if (isAdminRoute) {
     if (!user) {
@@ -118,7 +115,6 @@ async function _updateSessionInner(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Protected app routes -- require auth AND tenant
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/bespoke") ||
@@ -146,14 +142,12 @@ async function _updateSessionInner(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // SECURITY: Block unverified users from ALL protected routes.
     if (!user.email_confirmed_at) {
       const verifyUrl = request.nextUrl.clone();
       verifyUrl.pathname = "/verify-email";
       return NextResponse.redirect(verifyUrl);
     }
 
-    // Use cached user profile (Redis, 5-min TTL) instead of direct DB call
     const userProfile = await getCachedUserProfile(user.id);
     if (!userProfile || !userProfile.tenant_id) {
       const onboardingUrl = request.nextUrl.clone();
@@ -161,30 +155,23 @@ async function _updateSessionInner(request: NextRequest) {
       return NextResponse.redirect(onboardingUrl);
     }
 
-    // ── Performance: forward auth data on the REQUEST so AppLayout can read it
-    // via headers() without making a second supabase.auth.getUser() call.
-    // Setting headers on the response (supabaseResponse.headers.set) sends them
-    // to the browser -- they are NOT visible to server components via headers().
-    // Using NextResponse.next({ request: { headers } }) is the correct pattern.
+    // Forward auth data on the REQUEST so AppLayout can read it via headers()
+    // without making a second supabase.auth.getUser() call.
     const authRequestHeaders = new Headers(request.headers);
     authRequestHeaders.set(AUTH_HEADERS.USER_ID, user.id);
     authRequestHeaders.set(AUTH_HEADERS.TENANT_ID, userProfile.tenant_id);
     authRequestHeaders.set(AUTH_HEADERS.USER_ROLE, userProfile.role || "");
     authRequestHeaders.set(AUTH_HEADERS.USER_EMAIL, user.email || "");
 
-    // Build the final response that forwards auth headers to the page handler
     const authResponse = NextResponse.next({
       request: { headers: authRequestHeaders },
     });
 
-    // Transfer all session cookies from the Supabase response.
-    // supabaseResponse.cookies.getAll() returns full ResponseCookie objects
-    // including httpOnly, secure, sameSite, maxAge, etc. -- all are preserved.
+    // Transfer all session cookies (preserves httpOnly, secure, sameSite, domain, etc.)
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       authResponse.cookies.set(cookie);
     });
 
-    // Subscription gate: skip billing and suspended pages
     if (
       !pathname.startsWith("/billing") &&
       !pathname.startsWith("/suspended")
