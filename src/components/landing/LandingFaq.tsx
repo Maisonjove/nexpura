@@ -22,10 +22,6 @@ const faqs = [
     q: 'Can I track bespoke orders?',
     a: 'Yes. There is a full bespoke workflow covering initial consultation, stone sourcing, design approval, setting, polish, and delivery.',
   },
-  {
-    q: 'Does it work for multiple stores?',
-    a: 'Yes. You can manage multiple locations from one account with shared customer profiles, stock by location, and consolidated reporting.',
-  },
 ]
 
 export default function LandingFaq() {
@@ -39,7 +35,7 @@ export default function LandingFaq() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-16"
         >
-          Common questions
+          Questions About Switching to Nexpura
         </motion.h2>
         <div>
           {faqs.map((faq, i) => (
