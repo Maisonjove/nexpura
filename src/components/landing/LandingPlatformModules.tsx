@@ -1,6 +1,5 @@
 'use client'
 import { motion } from 'framer-motion'
-import Link from 'next/link'
 
 const modules = [
   { n: '01', title: 'POS', desc: 'Fast checkout built for jewellery retail' },
@@ -35,7 +34,7 @@ export default function LandingPlatformModules() {
           transition={{ duration: 1.2, delay: 0.1 }}
           className="text-center text-stone-500 text-[0.9375rem] mb-16 max-w-xl mx-auto"
         >
-          From the shop floor to the workshop, from customer records to invoicing, Nexpura connects the workflows generic retail systems leave scattered.
+          From the shop floor to the workshop, Nexpura connects the workflows generic retail systems leave scattered.
         </motion.p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
           {modules.map((mod, i) => (
@@ -45,22 +44,15 @@ export default function LandingPlatformModules() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: i * 0.05 }}
-              className="border border-stone-100 rounded-xl p-5"
+              className="border border-stone-200 rounded-xl p-5 hover:border-stone-300 hover:shadow-sm transition-all duration-200"
             >
-              <span className="text-xs tabular-nums text-stone-300 font-medium block mb-2">{mod.n}</span>
+              <span className="text-xs tabular-nums text-stone-300 font-medium block mb-3">{mod.n}</span>
               <h3 className="font-serif text-base text-stone-900 mb-1.5">{mod.title}</h3>
               <p className="text-xs leading-relaxed text-stone-400">{mod.desc}</p>
             </motion.div>
           ))}
         </div>
-        <div className="text-center">
-          <Link
-            href="/platform"
-            className="text-[0.9375rem] text-stone-600 underline underline-offset-4 hover:text-stone-900 transition-colors duration-200"
-          >
-            Explore the Platform
-          </Link>
-        </div>
+
       </div>
     </section>
   )

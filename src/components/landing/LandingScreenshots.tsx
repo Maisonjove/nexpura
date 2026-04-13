@@ -4,36 +4,49 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 
-const screens = [
+type Screen = {
+  tab: string
+  title: string
+  description: string
+  src: string
+  benefit: string
+}
+
+const screens: Screen[] = [
   {
     tab: 'Repairs',
     title: 'Repair Tracker',
     description: 'Every repair is logged, assigned, and tracked from intake to collection. Staff have full visibility and customers get live status without the calls.',
     src: '/screenshots/repairs.png',
+    benefit: 'No more lost jobs or constant update calls.',
   },
   {
     tab: 'Inventory',
     title: 'Inventory View',
     description: 'Live stock across every piece, stone, and component. No spreadsheets, no guesswork — just an accurate picture of what you have and where it is.',
     src: '/screenshots/inventory.png',
+    benefit: 'See what you have, where it is, and what needs action.',
   },
   {
-    tab: 'Bespoke Orders',
+    tab: 'Bespoke',
     title: 'Bespoke Order Timeline',
     description: 'Custom orders run through a structured workflow with milestones, client approvals, and notes in one place — from first consultation to delivery.',
     src: '/screenshots/bespoke.png',
+    benefit: 'Keep every commission controlled, visible, and professional.',
   },
   {
-    tab: 'Digital Passport',
+    tab: 'Passport',
     title: 'Digital Passport',
     description: 'A QR-verifiable record of materials, craftsmanship, and provenance attached to every eligible piece — giving customers something tangible and trustworthy.',
     src: '/screenshots/passport.png',
+    benefit: 'Give every piece a record your clients can trust and verify.',
   },
   {
     tab: 'Analytics',
     title: 'Analytics Dashboard',
     description: 'Sales performance, workshop output, and stock health in one view. Understand what is moving, what is not, and where attention is needed.',
     src: '/screenshots/analytics.png',
+    benefit: 'Make decisions from jewellery metrics, not generic reports.',
   },
 ]
 
@@ -115,6 +128,9 @@ export default function LandingScreenshots() {
                 </h3>
                 <p className="text-[0.9375rem] leading-relaxed text-stone-500">
                   {screens[active].description}
+                </p>
+                <p className="text-[0.8125rem] font-medium text-stone-900 border-l-2 border-stone-900 pl-3 mt-4">
+                  {screens[active].benefit}
                 </p>
               </div>
             </motion.div>

@@ -40,9 +40,9 @@ export default function LandingDemoExplainer() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: i * 0.08 }}
-              className="flex gap-6 py-6 border-b border-stone-100 last:border-b-0"
+              className="flex gap-6 py-4 border-b border-stone-100 last:border-b-0"
             >
-              <span className="text-stone-300 font-medium text-sm tabular-nums pt-0.5 shrink-0 w-4">{step.n}</span>
+              <span className="text-[0.625rem] font-mono tabular-nums tracking-[0.15em] text-stone-300 pt-1 shrink-0 w-6">{step.n}</span>
               <div>
                 <h3 className="font-serif text-lg text-stone-900 mb-1">{step.title}</h3>
                 <p className="text-[0.9375rem] text-stone-500 leading-relaxed">{step.body}</p>
@@ -55,6 +55,7 @@ export default function LandingDemoExplainer() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
+          className="flex flex-col sm:flex-row gap-4 items-center"
         >
           <Link
             href="/contact"
@@ -62,6 +63,12 @@ export default function LandingDemoExplainer() {
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
             <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">Book a Demo</span>
+          </Link>
+          <Link
+            href="/contact"
+            className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
+          >
+            Contact Us
           </Link>
         </motion.div>
       </div>
