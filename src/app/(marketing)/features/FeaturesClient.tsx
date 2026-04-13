@@ -336,7 +336,7 @@ export default function FeaturesClient() {
                     scrollToHash(s.id)
                     history.replaceState(null, '', `#${s.id}`)
                   }}
-                  className="group relative flex flex-col items-start gap-1 py-1 transition-opacity duration-500"
+                  className="group relative flex flex-col items-start gap-1 py-1 transition-opacity duration-500 shrink-0"
                 >
                   <span
                     className={`text-[0.625rem] font-mono tabular-nums tracking-[0.15em] transition-colors duration-500 ${

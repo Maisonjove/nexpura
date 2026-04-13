@@ -22,7 +22,7 @@ export default function LandingScreenshots() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-4"
         >
-          See Nexpura in action.
+          See Nexpura in action
         </motion.h2>
         <motion.p
           initial={{ opacity: 0 }}

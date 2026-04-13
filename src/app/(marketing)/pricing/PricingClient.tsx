@@ -44,7 +44,7 @@ const plans = [
       'Everything in Boutique',
       'Full analytics dashboard',
       'Up to 5 staff, up to 3 stores',
-      'Website builder',
+      'Product showcase website',
       'Connect existing website',
       'Custom branding',
     ],
@@ -53,7 +53,7 @@ const plans = [
   {
     name: 'Atelier',
     price: 299,
-    description: 'For multi-location groups and high-volume ateliers.',
+    description: 'For jewellery groups with multiple stores and high volume workshops.',
     highlights: [
       'Everything in Studio',
       'Unlimited staff and stores',
@@ -79,7 +79,7 @@ const comparison = [
   { key: 'Analytics', values: ['Basic', 'Full', 'Full + Custom'] },
   { key: 'Team Size', values: ['1 staff', 'Up to 5', 'Unlimited'] },
   { key: 'Stores', values: ['1', 'Up to 3', 'Unlimited'] },
-  { key: 'Website Builder', values: ['—', 'Yes', 'Yes'] },
+  { key: 'Product Showcase Website', values: ['—', 'Yes', 'Yes'] },
   { key: 'AI Product Descriptions', values: ['—', '—', 'Yes'] },
   { key: 'Custom branding', values: ['—', 'Yes', 'Yes'] },
 ]
@@ -270,7 +270,7 @@ export default function PricingClient() {
               {...fadeBlur}
               className="font-serif text-3xl sm:text-4xl lg:text-[3rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900"
             >
-              Common questions, answered.
+              Common questions, answered
             </motion.h2>
           </div>
 
@@ -338,7 +338,7 @@ export default function PricingClient() {
             href="/contact"
             className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
           >
-            Get in touch
+            Contact us
           </Link>
         </motion.div>
         <p className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mt-8">

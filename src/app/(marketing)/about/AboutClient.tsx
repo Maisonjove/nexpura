@@ -125,7 +125,7 @@ export default function AboutClient() {
                 Nexpura changes that. We&apos;ve built every feature from the ground up
                 with jewellers in mind — from the way repairs flow through your
                 workshop, to how you present beautiful digital passports to your
-                clients, to how you manage multi-location inventory with precision.
+                clients, to how you manage inventory across multiple locations with precision.
               </p>
             </motion.div>
           </div>
@@ -220,7 +220,7 @@ export default function AboutClient() {
             href="/contact"
             className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
           >
-            Get in touch
+            Contact us
           </Link>
         </motion.div>
       </section>

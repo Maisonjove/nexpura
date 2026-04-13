@@ -23,7 +23,7 @@ export default function LandingRepairs() {
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
             className="font-serif text-3xl sm:text-4xl lg:text-[2.75rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-6"
           >
-            The repair tracker your customers actually appreciate.
+            The repair tracker your customers actually appreciate
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}

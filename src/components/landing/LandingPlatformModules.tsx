@@ -8,7 +8,7 @@ const modules = [
   { n: '03', title: 'Repairs', desc: 'Full job tracking from intake to collection.' },
   { n: '04', title: 'Bespoke Orders', desc: 'Structured custom order workflow with client sign-off at every milestone.' },
   { n: '05', title: 'CRM', desc: 'Complete client profiles, purchase history, VIP tags, and birthdays.' },
-  { n: '06', title: 'Invoicing', desc: 'Auto-generated invoices, receipts, and supplier billing.' },
+  { n: '06', title: 'Invoicing', desc: 'Automated invoices, receipts, and supplier billing.' },
   { n: '07', title: 'Analytics', desc: 'Sales dashboards, stock turnover, and workshop KPIs.' },
   { n: '08', title: 'Digital Passports', desc: 'QR code verified authenticity certificates for every piece you sell.' },
   { n: '09', title: 'Memo & Consignment', desc: 'Track loaned pieces, return dates, and commission splits.' },
