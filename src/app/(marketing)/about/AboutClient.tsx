@@ -49,13 +49,13 @@ export default function AboutClient() {
         <div className="max-w-[820px] mx-auto">
           <motion.p
             {...fadeUp()}
-            className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-6"
+            className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-3"
           >
             Our Story
           </motion.p>
           <motion.h1
             {...fadeBlur}
-            className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.75rem,5vw,4.25rem)] font-normal leading-[1.15] tracking-[-0.01em] text-stone-900 mb-7"
+            className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.75rem,5vw,4.25rem)] font-normal leading-[1.15] tracking-[-0.01em] text-stone-900 mb-5"
           >
             Built exclusively <em className="italic">for </em>
             <span className="relative inline-block isolate align-baseline">
@@ -69,7 +69,7 @@ export default function AboutClient() {
                   style={{
                     background:
                       'radial-gradient(45% 55% at 40% 50%, rgba(196,168,130,0.85) 0%, rgba(139,115,85,0.45) 35%, rgba(139,115,85,0.12) 60%, transparent 78%), radial-gradient(40% 50% at 70% 55%, rgba(212,184,134,0.7) 0%, rgba(196,168,130,0.35) 40%, transparent 75%)',
-                    filter: 'blur(14px)',
+                    filter: 'blur(6px)',
                   }}
                 />
                 <span
@@ -91,9 +91,7 @@ export default function AboutClient() {
             {...fadeUp(0.3)}
             className="text-base lg:text-lg leading-relaxed text-stone-500 max-w-[600px] mx-auto"
           >
-            Nexpura was created by people who understand the unique challenges of
-            running a jewellery business — from complex repairs to precious metal
-            inventory, lasting customer relationships, and growing a beautiful brand.
+            Nexpura was created for jewellery businesses that outgrow generic retail tools. Repairs are more complex. Bespoke work needs structure. Inventory is more nuanced. Customer relationships are more personal. We built Nexpura to reflect that reality from the ground up.
           </motion.p>
         </div>
       </section>
