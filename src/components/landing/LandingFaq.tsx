@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 const faqs = [
   {
     q: 'How long does migration take?',
-    a: 'Most businesses are fully migrated within 3 to 5 days. For larger operations, up to 2 weeks. We handle everything.',
+    a: 'Most businesses are up and running quickly. Timelines vary depending on the size of your operation and how much data needs to carry across. We handle the process and keep you informed throughout.',
   },
   {
     q: 'Is migration free?',

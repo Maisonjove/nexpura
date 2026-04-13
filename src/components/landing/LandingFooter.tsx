@@ -18,7 +18,7 @@ const columns = [
   {
     title: 'Platform',
     links: [
-      { label: 'Features', href: '/features' },
+      { label: 'Platform', href: '/platform' },
       { label: 'Security', href: '/security' },
       { label: 'Pricing', href: '/pricing' },
       { label: 'Migration', href: '/contact' },
