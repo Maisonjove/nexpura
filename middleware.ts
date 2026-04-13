@@ -4,9 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// ── Review / staff bypass tokens ─────────────────────────────────────────────
-// SECURITY: No hardcoded fallback. Both tokens MUST be set as env vars.
-// If they are not set the bypass feature is simply disabled.
+// Review / staff bypass tokens
 const REVIEW_TOKEN = process.env.REVIEW_BYPASS_TOKEN ?? "";
 const STAFF_TOKEN = process.env.STAFF_BYPASS_TOKEN ?? "";
 
@@ -17,317 +15,51 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, timeout]);
 }
 
-// ── Subscription cache cookie ─────────────────────────────────────────────────
-// Cache the subscription OK status for 5 minutes per user to avoid DB round-trips.
-// Only used for routes NOT already handled by updateSession (supabase/middleware.ts).aimport { NextRequest, NextResponse } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
-import { createServerClient } from "@supabase/ssr";
-import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
-import { createAdminClient } from "@/lib/supabase/admin";
-
-// ── Review / staff bypass tokens ───────────────────────────────────────────
-const REVIEW_TOKEN = process.env.REVIEW_BYPASS_TOKEN ?? "";
-const STAFF_TOKEN = process.env.STAFF_BYPASS_TOKEN ?? "";
-
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-    const timeout = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("MIDDLEWARE_TIMEOUT")), ms)
-        );
-    return Promise.race([promise, timeout]);
-}
-
-// ── Tenant ID cache cookie ─────────────────────────────────────────────────
-// Cache the slug→tenantId mapping in a cookie to avoid a DB round-trip on
-// every single request. The slug→ID mapping is stable so 24 h TTL is safe.
+// Tenant ID cache cookie
+// Cache the slug->tenantId mapping in a cookie to avoid a DB round-trip on
+// every single request. The slug->ID mapping is stable so 24h TTL is safe.
 const TENANT_CACHE_COOKIE = "nexpura-tid";
 const TENANT_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 function getCachedTenantId(req: NextRequest, slug: string): string | null {
-    const cookie = req.cookies.get(TENANT_CACHE_COOKIE)?.value;
-    if (!cookie) return null;
-    try {
-          const [cachedSlug, tenantId, ts] = cookie.split("|");
-          if (cachedSlug === slug && tenantId && ts) {
-                  if (Date.now() - parseInt(ts, 10) < TENANT_CACHE_TTL_MS) {
-                            return tenantId;
-                  }
-          }
-    } catch {
-          // malformed cookie — ignore
+  const cookie = req.cookies.get(TENANT_CACHE_COOKIE)?.value;
+  if (!cookie) return null;
+  try {
+    const parts = cookie.split("|");
+    const cachedSlug = parts[0];
+    const tenantId = parts[1];
+    const ts = parts[2];
+    if (cachedSlug === slug && tenantId && ts) {
+      if (Date.now() - parseInt(ts, 10) < TENANT_CACHE_TTL_MS) {
+        return tenantId;
+      }
     }
-    return null;
+  } catch {
+    // malformed cookie
+  }
+  return null;
 }
 
 function setTenantCacheCookie(
-    response: NextResponse,
-    slug: string,
-    tenantId: string
-  ): void {
-    response.cookies.set(
-          TENANT_CACHE_COOKIE,
-          `${slug}|${tenantId}|${Date.now()}`,
-      {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === "production",
-              sameSite: "lax",
-              maxAge: 86400, // 24 h
-              path: "/",
-              domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined,
-      }
-        );
-}
-
-// ── Subscription cache cookie ──────────────────────────────────────────────
-const SUB_CACHE_COOKIE = "nexpura-sub-ok";
-const SUB_CACHE_TTL_MS = 5 * 60 * 1000;
-
-function getSubCacheUserId(req: NextRequest): string | null {
-    const cookie = req.cookies.get(SUB_CACHE_COOKIE)?.value;
-    if (!cookie) return null;
-    try {
-          const [userId, ts] = cookie.split("|");
-          if (!userId || !ts) return null;
-          if (Date.now() - parseInt(ts, 10) < SUB_CACHE_TTL_MS) return userId;
-    } catch {
-          // invalid cookie format
+  response: NextResponse,
+  slug: string,
+  tenantId: string
+): void {
+  response.cookies.set(
+    TENANT_CACHE_COOKIE,
+    slug + "|" + tenantId + "|" + String(Date.now()),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 86400,
+      path: "/",
+      domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined,
     }
-    return null;
+  );
 }
 
-function setSubCacheCookie(response: NextResponse, userId: string): void {
-    response.cookies.set(SUB_CACHE_COOKIE, `${userId}|${Date.now()}`, {
-          httpOnly: true,
-          sameSite: "lax",
-          maxAge: Math.floor(SUB_CACHE_TTL_MS / 1000),
-          path: "/",
-    });
-}
-
-// ── Shared subscription check ──────────────────────────────────────────────
-async function checkSubscriptionAndRedirect(
-    req: NextRequest,
-    response: NextResponse
-  ): Promise<NextResponse> {
-    try {
-          const supabase = createServerClient(
-                  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                      cookies: {
-                                  getAll() {
-                                                return req.cookies.getAll();
-                                  },
-                                  setAll(cookiesToSet) {
-                                                cookiesToSet.forEach(({ name, value }) =>
-                                                                req.cookies.set(name, value)
-                                                              );
-                                  },
-                      },
-            }
-                );
-
-          const {
-                  data: { user },
-          } = await supabase.auth.getUser();
-          if (!user) return response;
-
-          const cachedUserId = getSubCacheUserId(req);
-          if (cachedUserId === user.id) {
-                  setSubCacheCookie(response, user.id);
-                  return response;
-          }
-
-          const admin = createAdminClient();
-          const { data: userData } = await admin
-            .from("users")
-            .select("tenant_id")
-            .eq("id", user.id)
-            .single();
-
-          if (!userData?.tenant_id) return response;
-
-          const { data: subscription } = await admin
-            .from("subscriptions")
-            .select("status")
-            .eq("tenant_id", userData.tenant_id)
-            .single();
-
-          if (
-                  subscription?.status === "suspended" ||
-                  subscription?.status === "payment_required"
-                ) {
-                  const billingUrl = req.nextUrl.clone();
-                  billingUrl.pathname = "/billing";
-                  return NextResponse.redirect(billingUrl);
-          }
-
-          setSubCacheCookie(response, user.id);
-    } catch (err) {
-          console.error(
-                  "[middleware] subscription check failed -- passing through:",
-                  err
-                );
-    }
-    return response;
-}
-
-// ── Exempt paths ───────────────────────────────────────────────────────────
-function isExemptPath(pathname: string): boolean {
-    return (
-          pathname === "/" ||
-          pathname.startsWith("/login") ||
-          pathname.startsWith("/signup") ||
-          pathname.startsWith("/verify") ||
-          pathname.startsWith("/verify-email") ||
-          pathname.startsWith("/track") ||
-          pathname.startsWith("/_next") ||
-          pathname.startsWith("/api") ||
-          pathname.startsWith("/onboarding") ||
-          pathname.startsWith("/admin") ||
-          pathname.startsWith("/billing") ||
-          pathname.startsWith("/pricing") ||
-          pathname.startsWith("/features") ||
-          pathname.startsWith("/terms") ||
-          pathname.startsWith("/privacy") ||
-          pathname.startsWith("/dashboard") ||
-          pathname.startsWith("/bespoke") ||
-          pathname.startsWith("/repairs") ||
-          pathname.startsWith("/inventory") ||
-          pathname.startsWith("/customers") ||
-          pathname.startsWith("/invoices") ||
-          pathname.startsWith("/passports") ||
-          pathname.startsWith("/suspended") ||
-          pathname.startsWith("/settings") ||
-          pathname.startsWith("/sales") ||
-          pathname.startsWith("/suppliers") ||
-          pathname.startsWith("/expenses") ||
-          pathname.startsWith("/communications") ||
-          pathname.startsWith("/reports") ||
-          pathname.startsWith("/marketing") ||
-          pathname.startsWith("/ai") ||
-          pathname.startsWith("/pos") ||
-          pathname.includes(".")
-        );
-}
-
-function isBypassRequest(req: NextRequest): boolean {
-    if (!REVIEW_TOKEN && !STAFF_TOKEN) return false;
-    const rtParam = req.nextUrl.searchParams.get("rt");
-    const reviewCookie = req.cookies.get("nexpura-review")?.value;
-    const staffCookie = req.cookies.get("nexpura-staff")?.value;
-    return (
-          (REVIEW_TOKEN &&
-                 (rtParam === REVIEW_TOKEN || reviewCookie === REVIEW_TOKEN)) ||
-          (STAFF_TOKEN && (rtParam === STAFF_TOKEN || staffCookie === STAFF_TOKEN))
-        ) as boolean;
-}
-
-// ── Security Headers ───────────────────────────────────────────────────────
-function addSecurityHeaders(response: NextResponse): NextResponse {
-    const csp = [
-          "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co https://*.vercel-scripts.com",
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-          "img-src 'self' data: blob: https: http:",
-          "font-src 'self' https://fonts.gstatic.com data:",
-          "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://*.vercel-insights.com https://*.google-analytics.com https://*.googleapis.com",
-          "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co",
-          "frame-ancestors 'self' https://annot8.dev https://*.annot8.dev https://openclaw.ai https://*.openclaw.ai https://astry.agency https://*.astry.agency",
-          "form-action 'self'",
-          "base-uri 'self'",
-          "object-src 'none'",
-        ].join("; ");
-
-    response.headers.set("Content-Security-Policy", csp);
-    response.headers.set("X-Content-Type-Options", "nosniff");
-    response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-    response.headers.set(
-          "Permissions-Policy",
-          "camera=(), microphone=(), geolocation=()"
-        );
-    if (process.env.NODE_ENV === "production") {
-          response.headers.set(
-                  "Strict-Transport-Security",
-                  "max-age=31536000; includeSubDomains"
-                );
-    }
-    return response;
-}
-
-export async function middleware(request: NextRequest) {
-    try {
-          const response = await withTimeout(_proxyInner(request), 5000);
-          return addSecurityHeaders(response);
-    } catch (err) {
-          const isTimeout =
-                  err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
-          if (!isTimeout) {
-                  console.error(
-                            "[middleware] unexpected error -- passing through:",
-                            err
-                          );
-          }
-          const fallbackResponse = NextResponse.next();
-          return addSecurityHeaders(fallbackResponse);
-    }
-}
-
-async function _proxyInner(request: NextRequest) {
-    const host = request.headers.get("host") ?? "";
-    const subdomain = getSubdomain(host);
-
-    if (subdomain) {
-          try {
-                  // ── Fast path: check cookie cache before hitting the DB ──────────────
-                  let tenantId = getCachedTenantId(request, subdomain);
-                  const wasFromCache = tenantId !== null;
-
-                  if (!tenantId) {
-                            tenantId = await getTenantBySlug(subdomain, createAdminClient());
-                  }
-
-                  if (tenantId) {
-                            const subdomainHeaders = new Headers(request.headers);
-                            subdomainHeaders.set("x-subdomain-tenant-id", tenantId);
-                            subdomainHeaders.set("x-subdomain-slug", subdomain);
-
-                            const enrichedRequest = new NextRequest(request.url, {
-                                        headers: subdomainHeaders,
-                                        method: request.method,
-                                        body: request.body,
-                            });
-
-                            const response = await updateSession(enrichedRequest);
-
-                            // Persist tenant ID in cookie so subsequent requests skip the DB
-                            if (!wasFromCache) {
-                                        setTenantCacheCookie(response, subdomain, tenantId);
-                            }
-
-                            const pathname = enrichedRequest.nextUrl.pathname;
-                            if (isBypassRequest(enrichedRequest)) return response;
-                            if (isExemptPath(pathname)) return response;
-                            return await checkSubscriptionAndRedirect(enrichedRequest, response);
-                  }
-          } catch (err) {
-                  console.error("[proxy] subdomain lookup failed:", err);
-          }
-    }
-
-    const response = await updateSession(request);
-    const pathname = request.nextUrl.pathname;
-    if (isBypassRequest(request)) return response;
-    if (isExemptPath(pathname)) return response;
-    return await checkSubscriptionAndRedirect(request, response);
-}
-
-export const config = {
-    matcher: [
-          "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-        ],
-};
-
-export default middleware;
+// Subscription cache cookie
 const SUB_CACHE_COOKIE = "nexpura-sub-ok";
 const SUB_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -339,13 +71,13 @@ function getSubCacheUserId(req: NextRequest): string | null {
     if (!userId || !ts) return null;
     if (Date.now() - parseInt(ts, 10) < SUB_CACHE_TTL_MS) return userId;
   } catch {
-    // invalid cookie format
+    // invalid cookie
   }
   return null;
 }
 
 function setSubCacheCookie(response: NextResponse, userId: string): void {
-  response.cookies.set(SUB_CACHE_COOKIE, `${userId}|${Date.now()}`, {
+  response.cookies.set(SUB_CACHE_COOKIE, userId + "|" + String(Date.now()), {
     httpOnly: true,
     sameSite: "lax",
     maxAge: Math.floor(SUB_CACHE_TTL_MS / 1000),
@@ -353,10 +85,7 @@ function setSubCacheCookie(response: NextResponse, userId: string): void {
   });
 }
 
-// ── Shared subscription check ─────────────────────────────────────────────────
-// Only reached for routes NOT in isExemptPath -- i.e. routes that updateSession
-// does not fully handle. In practice this is very rare after the isExemptPath
-// expansion below.
+// Shared subscription check
 async function checkSubscriptionAndRedirect(
   req: NextRequest,
   response: NextResponse
@@ -367,46 +96,26 @@ async function checkSubscriptionAndRedirect(
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() {
-            return req.cookies.getAll();
-          },
+          getAll() { return req.cookies.getAll(); },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              req.cookies.set(name, value)
-            );
+            cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
           },
         },
       }
     );
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return response;
-
-    // Skip DB queries if we recently confirmed subscription OK
     const cachedUserId = getSubCacheUserId(req);
     if (cachedUserId === user.id) {
       setSubCacheCookie(response, user.id);
       return response;
     }
-
     const admin = createAdminClient();
     const { data: userData } = await admin
-      .from("users")
-      .select("tenant_id")
-      .eq("id", user.id)
-      .single();
-
+      .from("users").select("tenant_id").eq("id", user.id).single();
     if (!userData?.tenant_id) return response;
-
     const { data: subscription } = await admin
-      .from("subscriptions")
-      .select("status")
-      .eq("tenant_id", userData.tenant_id)
-      .single();
-
+      .from("subscriptions").select("status").eq("tenant_id", userData.tenant_id).single();
     if (
       subscription?.status === "suspended" ||
       subscription?.status === "payment_required"
@@ -415,22 +124,14 @@ async function checkSubscriptionAndRedirect(
       billingUrl.pathname = "/billing";
       return NextResponse.redirect(billingUrl);
     }
-
     setSubCacheCookie(response, user.id);
   } catch (err) {
-    console.error(
-      "[middleware] subscription check failed -- passing through:",
-      err
-    );
+    console.error("[middleware] subscription check failed -- passing through:", err);
   }
   return response;
 }
 
-// ── Exempt paths ─────────────────────────────────────────────────────────────
-// All app routes (dashboard, repairs, inventory, etc.) are exempt because
-// updateSession in supabase/middleware.ts already handles auth + subscription
-// checks for them, including setting AUTH_HEADERS on the forwarded request.
-// Listing them here avoids a redundant DB query in checkSubscriptionAndRedirect.
+// Exempt paths
 function isExemptPath(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -448,7 +149,6 @@ function isExemptPath(pathname: string): boolean {
     pathname.startsWith("/features") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/privacy") ||
-    // App routes -- updateSession already validates auth + subscription for all of these
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/bespoke") ||
     pathname.startsWith("/repairs") ||
@@ -476,13 +176,12 @@ function isBypassRequest(req: NextRequest): boolean {
   const reviewCookie = req.cookies.get("nexpura-review")?.value;
   const staffCookie = req.cookies.get("nexpura-staff")?.value;
   return (
-    (REVIEW_TOKEN &&
-      (rtParam === REVIEW_TOKEN || reviewCookie === REVIEW_TOKEN)) ||
+    (REVIEW_TOKEN && (rtParam === REVIEW_TOKEN || reviewCookie === REVIEW_TOKEN)) ||
     (STAFF_TOKEN && (rtParam === STAFF_TOKEN || staffCookie === STAFF_TOKEN))
   ) as boolean;
 }
 
-// ── Security Headers ──────────────────────────────────────────────────────────
+// Security Headers
 function addSecurityHeaders(response: NextResponse): NextResponse {
   const csp = [
     "default-src 'self'",
@@ -497,22 +196,12 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     "base-uri 'self'",
     "object-src 'none'",
   ].join("; ");
-
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set(
-    "Referrer-Policy",
-    "strict-origin-when-cross-origin"
-  );
-  response.headers.set(
-    "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=()"
-  );
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   if (process.env.NODE_ENV === "production") {
-    response.headers.set(
-      "Strict-Transport-Security",
-      "max-age=31536000; includeSubDomains"
-    );
+    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
   return response;
 }
@@ -522,16 +211,9 @@ export async function middleware(request: NextRequest) {
     const response = await withTimeout(_proxyInner(request), 5000);
     return addSecurityHeaders(response);
   } catch (err) {
-    const isTimeout =
-      err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
-    if (!isTimeout) {
-      console.error(
-        "[middleware] unexpected error -- passing through:",
-        err
-      );
-    }
-    const fallbackResponse = NextResponse.next();
-    return addSecurityHeaders(fallbackResponse);
+    const isTimeout = err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
+    if (!isTimeout) console.error("[middleware] unexpected error -- passing through:", err);
+    return addSecurityHeaders(NextResponse.next());
   }
 }
 
@@ -541,7 +223,11 @@ async function _proxyInner(request: NextRequest) {
 
   if (subdomain) {
     try {
-      const tenantId = await getTenantBySlug(subdomain, createAdminClient());
+      let tenantId = getCachedTenantId(request, subdomain);
+      const wasFromCache = tenantId !== null;
+      if (!tenantId) {
+        tenantId = await getTenantBySlug(subdomain, createAdminClient());
+      }
       if (tenantId) {
         const subdomainHeaders = new Headers(request.headers);
         subdomainHeaders.set("x-subdomain-tenant-id", tenantId);
@@ -552,6 +238,7 @@ async function _proxyInner(request: NextRequest) {
           body: request.body,
         });
         const response = await updateSession(enrichedRequest);
+        if (!wasFromCache) setTenantCacheCookie(response, subdomain, tenantId);
         const pathname = enrichedRequest.nextUrl.pathname;
         if (isBypassRequest(enrichedRequest)) return response;
         if (isExemptPath(pathname)) return response;
