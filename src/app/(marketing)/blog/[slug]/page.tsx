@@ -261,7 +261,7 @@ Make the passport presentation part of your handover ritual. When a client colle
   {
     slug: "jewellery-pos-features",
     title: "What Your POS System Should Do (and What Most Can't)",
-    excerpt: "Not all point-of-sale systems are created equal. Here's what jewellery-specific POS features make the biggest difference on the shop floor.",
+    excerpt: "Not all point-of-sale systems are created equal. Here's what POS features built for jewellers make the biggest difference on the shop floor.",
     date: "2026-02-28",
     category: "Technology",
     readTime: "7 min read",
@@ -271,7 +271,7 @@ Walk into most jewellery stores and you'll find a generic retail POS system that
 
 ## The Jewellery POS Difference
 
-A jewellery-specific POS system understands that:
+A POS system built for jewellers understands that:
 - Each item is often unique (one of a kind or very limited)
 - Prices include precious metal value that fluctuates
 - Sales often involve trade-ins, layby, or custom work

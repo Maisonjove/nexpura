@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 const pains = [
   { title: 'Repairs fall through the cracks', body: 'Jobs get lost. Customers call chasing. Staff scramble.', outcome: 'Nexpura makes every job visible and accountable.' },
   { title: 'No real stock visibility', body: 'You find out something is sold out at the point of sale.', outcome: 'See what you have, where it is, when to reorder.' },
-  { title: 'Memo chaos', body: 'Pieces on loan, no trail, no due-back reminders, no audit.', outcome: 'Track every loaned piece with due-back dates and alerts.' },
+  { title: 'Memo chaos', body: 'Pieces on loan, no trail, no return reminders, no audit.', outcome: 'Track every loaned piece with return dates and alerts.' },
   { title: 'Disconnected tools', body: 'POS in one system, repairs in a notebook, quotes in email.', outcome: 'Bring everything into one place your whole team can use.' },
   { title: 'Customer communication gaps', body: 'Clients have no idea where their order or repair is.', outcome: 'Customers get live status without calling.' },
   { title: 'No audit trail', body: 'When something goes wrong, there is nothing to trace back.', outcome: 'Every action is logged. Nothing is lost.' },
@@ -47,7 +47,7 @@ export default function LandingPainPoints() {
           className="text-center font-serif text-xl sm:text-2xl text-stone-900"
         >
           Nexpura brings everything under one roof.{' '}
-          <span className="text-stone-400">Built specifically for jewellers.</span>
+          <span className="text-stone-400">Built specifically for jewellers</span>
         </motion.p>
       </div>
     </section>

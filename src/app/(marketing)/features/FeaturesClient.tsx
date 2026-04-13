@@ -66,7 +66,7 @@ const sections: Feature[] = [
       'Complete repair management from the first phone call to collection. Every job gets a Command Center with full visibility.',
     features: [
       'Digital intake with photos',
-      'Stage-by-stage workflow from intake to collected',
+      'Step by step workflow from intake to collected',
       'Customer notifications at each stage',
       'Labour and material cost tracking',
       'Repair deposit and balance management',
@@ -166,7 +166,7 @@ const sections: Feature[] = [
       'The flagship Nexpura feature. Every repair and bespoke job gets its own dedicated operational screen.',
     features: [
       'Full job details and history in one screen',
-      'Real-time financial summary',
+      'Live financial summary',
       'Stage action buttons with notifications',
       'Line items, labour, and materials breakdown',
       'Activity timeline of every action',
@@ -431,7 +431,7 @@ export default function FeaturesClient() {
           {...fadeBlur}
           className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-10 italic"
         >
-          See it in action.
+          See it in action
         </motion.h2>
         <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           <Link

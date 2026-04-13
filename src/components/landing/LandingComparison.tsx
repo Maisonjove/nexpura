@@ -12,10 +12,10 @@ const before = [
 ]
 
 const after = [
-  'Real-time inventory across items, stones, and components',
+  'Live inventory across items, stones, and components',
   'POS designed for jewellery retail from the ground up',
-  'Full memo and consignment tracking with due-back alerts',
-  'QR-linked digital passports for every piece you sell',
+  'Full memo and consignment tracking with return date alerts',
+  'QR code verified digital passports for every piece you sell',
   'Repair tracker with customer notifications built in',
   '12-stage bespoke workflow with sign-off at every milestone',
   'AI copilot that answers questions about your own business',
@@ -32,7 +32,7 @@ export default function LandingComparison() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-16"
         >
-          Built for jewellers. Not just adapted for them.
+          Built for jewellers — not just adapted for them
         </motion.h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <motion.div

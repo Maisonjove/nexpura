@@ -17,7 +17,7 @@ const items = [
   {
     title: 'Memo & Consignment',
     description:
-      'Pieces on trial with a client. Stones on consignment from Antwerp. Due-back dates, commission splits, full audit trail. The way the trade actually works.',
+      'Pieces on trial with a client. Stones on consignment from Antwerp. Return dates, commission splits, full audit trail. The way the trade actually works.',
   },
   {
     title: 'A copilot that knows your business',
@@ -75,7 +75,7 @@ export default function LandingDifferentiators() {
                 <br />
                 current software
                 <br />
-                simply can&apos;t do.
+                simply can&apos;t do
               </h2>
               <p className="text-stone-400 text-base leading-relaxed max-w-[400px]">
                 Built from the ground up for jewellers. Not bolted onto generic retail.

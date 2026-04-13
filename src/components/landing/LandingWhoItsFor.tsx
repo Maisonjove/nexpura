@@ -28,7 +28,7 @@ export default function LandingWhoItsFor() {
         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
         className="text-center text-stone-500 text-[0.9375rem] mb-16 max-w-xl mx-auto"
       >
-        Whether you run a single-room studio or a multi-store group, Nexpura fits the way you work.
+        Whether you run a single-room studio or a group of stores, Nexpura fits the way you work.
       </motion.p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-[1200px] mx-auto">
         {segments.map((seg, i) => (

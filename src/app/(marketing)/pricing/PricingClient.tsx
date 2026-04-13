@@ -127,7 +127,7 @@ export default function PricingClient() {
             {...fadeUp(0.3)}
             className="text-base lg:text-lg leading-relaxed text-stone-500 max-w-[600px] mx-auto"
           >
-            No hidden fees. No per-transaction cuts. Choose the plan that fits your
+            No hidden fees. No cuts per transaction. Choose the plan that fits your
             business and scale when you&apos;re ready.
           </motion.p>
           <motion.p

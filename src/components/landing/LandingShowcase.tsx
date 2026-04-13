@@ -28,7 +28,7 @@ const features = [
     icon: Analytics02Icon,
     title: 'Live Analytics',
     description:
-      'Real-time dashboards for sales, inventory turnover, and workshop performance.',
+      'Live dashboards for sales, inventory turnover, and workshop performance.',
   },
   {
     icon: GridViewIcon,

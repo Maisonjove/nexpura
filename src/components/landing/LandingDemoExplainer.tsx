@@ -21,7 +21,7 @@ export default function LandingDemoExplainer() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-4"
         >
-          What happens in a demo.
+          What happens in a demo
         </motion.h2>
         <motion.p
           initial={{ opacity: 0 }}

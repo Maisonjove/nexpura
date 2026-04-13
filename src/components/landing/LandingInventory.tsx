@@ -60,7 +60,7 @@ export default function LandingInventory() {
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
             className="text-base lg:text-[1.0625rem] leading-relaxed text-stone-500 max-w-[480px] mx-auto md:mx-0 mb-8"
           >
-            Real-time tracking for every piece. Effortlessly manage your
+            Live tracking for every piece. Effortlessly manage your
             jewellery assets with precision serial ID, instant stock status
             updates, and reservation tracking from any device. Eliminate
             discrepancies and gain complete visibility into your collection.

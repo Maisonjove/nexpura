@@ -23,8 +23,8 @@ const faqs = [
     a: 'Yes. There is a 12-stage bespoke workflow covering initial consultation, stone sourcing, design approval, setting, polish, and delivery.',
   },
   {
-    q: 'Does it work for multi-store?',
-    a: 'Yes. You can manage multiple locations from one account with shared customer profiles, per-location stock, and consolidated reporting.',
+    q: 'Does it work for multiple stores?',
+    a: 'Yes. You can manage multiple locations from one account with shared customer profiles, stock by location, and consolidated reporting.',
   },
   {
     q: 'Can customers track their repairs or orders?',
@@ -47,7 +47,7 @@ export default function LandingFaq() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-16"
         >
-          Common questions.
+          Common questions
         </motion.h2>
         <div>
           {faqs.map((faq, i) => (

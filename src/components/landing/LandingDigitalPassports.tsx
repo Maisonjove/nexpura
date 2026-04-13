@@ -6,7 +6,7 @@ const benefits = [
   'Authenticity customers can verify instantly',
   'Provenance records that follow the piece',
   'Resale confidence — buyers trust what they can check',
-  'Luxury-grade transparency without luxury-grade overhead',
+  'Customers get verified proof of what they own — no complicated process for you or them',
 ]
 
 export default function LandingDigitalPassports() {
@@ -21,7 +21,7 @@ export default function LandingDigitalPassports() {
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
             className="font-serif text-3xl sm:text-4xl lg:text-[2.75rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-6"
           >
-            Every piece, provenance-verified.
+            Every piece, provenance-verified
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}

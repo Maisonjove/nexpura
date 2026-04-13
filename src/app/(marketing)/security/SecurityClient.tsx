@@ -22,19 +22,19 @@ const fadeUp = (delay = 0) => ({
 const sections = [
   {
     title: 'Your data is yours',
-    body: 'Customer records, inventory, repair history, bespoke orders, and financial data are stored securely and never shared with third parties.',
+    body: 'Customer records, inventory, repair history, bespoke orders, and financial data are stored with care and not shared with third parties for commercial purposes.',
   },
   {
     title: 'Access that fits your team',
-    body: 'Staff access is managed through role-based permissions. You control who sees what, by role or location.',
+    body: 'Staff access is managed by role. You control who sees what, based on their role or location.',
   },
   {
     title: 'Reliable infrastructure',
-    body: 'Nexpura runs on enterprise-grade cloud infrastructure designed for availability and resilience.',
+    body: 'Nexpura runs on modern cloud infrastructure designed for availability and resilience.',
   },
   {
     title: 'Privacy by design',
-    body: 'Your customer and business data is handled with discretion. We do not use your data for advertising or share it with third parties.',
+    body: 'Your customer and business data is handled with discretion. We do not use your data for advertising purposes or share it with third parties.',
   },
   {
     title: 'Built with care',
