@@ -3,12 +3,11 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 
 const screens = [
-  { label: 'Dashboard Overview', src: '/screenshots/dashboard.png' },
-  { label: 'Repair Tracker', src: '/screenshots/repairs.png' },
-  { label: 'Inventory View', src: '/screenshots/inventory.png' },
-  { label: 'Bespoke Order Timeline', src: '/screenshots/bespoke.png' },
-  { label: 'Digital Passport', src: '/screenshots/passport.png' },
-  { label: 'Analytics Dashboard', src: '/screenshots/analytics.png' },
+  { label: 'Repair Tracker', src: '/screenshots/repairs.png', caption: 'Status, balances, deadlines, and client communication in one place.' },
+  { label: 'Inventory View', src: '/screenshots/inventory.png', caption: 'Live stock visibility without spreadsheets.' },
+  { label: 'Bespoke Order Timeline', src: '/screenshots/bespoke.png', caption: 'Every approval, milestone, and note in one structured workflow.' },
+  { label: 'Digital Passport', src: '/screenshots/passport.png', caption: 'A verifiable record of authenticity and provenance.' },
+  { label: 'Analytics Dashboard', src: '/screenshots/analytics.png', caption: 'Sales, workshop, and stock visibility in real time.' },
 ]
 
 export default function LandingScreenshots() {
@@ -31,7 +30,7 @@ export default function LandingScreenshots() {
           transition={{ duration: 1.2, delay: 0.1 }}
           className="text-center text-stone-500 text-[0.9375rem] mb-16 max-w-xl mx-auto"
         >
-          Every tool a modern jeweller needs — beautifully integrated.
+          A closer look at the screens your team uses every day.
         </motion.p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {screens.map((screen, i) => (
@@ -53,6 +52,7 @@ export default function LandingScreenshots() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-4">
                   <p className="text-white text-sm font-medium">{screen.label}</p>
+                  <p className="text-white/70 text-xs mt-1">{screen.caption}</p>
                 </div>
               </div>
             </motion.div>

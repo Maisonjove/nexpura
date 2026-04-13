@@ -1,12 +1,12 @@
 'use client'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 
 const segments = [
-  { emoji: '💍', title: 'Retail Jewellers', description: 'A complete POS, inventory, and CRM built for jewellery retail. Spend less time on admin, more time with customers.' },
-  { emoji: '🔨', title: 'Workshops & Ateliers', description: 'Track every commission, job, and deadline in one place. No more paper logs or spreadsheet chaos.' },
-  { emoji: '🏪', title: 'Multi-Store Groups', description: 'Unified stock visibility, shared customer profiles, and reporting by location across all your stores.' },
-  { emoji: '🔧', title: 'Repair-Heavy Businesses', description: 'Log every repair properly, keep staff accountable, and give customers live status without the calls.' },
-  { emoji: '✏️', title: 'Bespoke-Focused Studios', description: 'A structured custom order workflow with client approvals, stone sourcing, and clear delivery milestones.' },
+  { title: 'Retail Jewellers', description: 'Connected POS, inventory, CRM, and invoicing for jewellery retail.', cta: 'See retail workflows', href: '/features' },
+  { title: 'Workshops & Repairs', description: 'Track repairs, commissions, deadlines, and customer updates in one place.', cta: 'See repair workflows', href: '/features#repairs' },
+  { title: 'Bespoke Studios', description: 'Run custom orders with approvals, milestones, sourcing, and deposits.', cta: 'See bespoke workflows', href: '/features#bespoke' },
+  { title: 'Multi-Store Groups', description: 'Shared customer data, stock visibility, and reporting across locations.', cta: 'See multi-store workflows', href: '/features' },
 ]
 
 export default function LandingWhoItsFor() {
@@ -28,9 +28,9 @@ export default function LandingWhoItsFor() {
         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
         className="text-center text-stone-500 text-[0.9375rem] mb-16 max-w-xl mx-auto"
       >
-        Whether you run a small studio or a group of stores, Nexpura fits the way you work.
+        Whether you sell, repair, create to order, or manage multiple locations, Nexpura fits the workflows generic systems leave disconnected.
       </motion.p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-[1200px] mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-[1200px] mx-auto">
         {segments.map((seg, i) => (
           <motion.div
             key={seg.title}
@@ -40,9 +40,14 @@ export default function LandingWhoItsFor() {
             transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: i * 0.08 }}
             className="bg-white rounded-2xl p-8 border border-stone-100"
           >
-            <div className="text-3xl mb-4">{seg.emoji}</div>
             <h3 className="font-serif text-xl text-stone-900 mb-3">{seg.title}</h3>
-            <p className="text-[0.9375rem] leading-relaxed text-stone-500">{seg.description}</p>
+            <p className="text-[0.9375rem] leading-relaxed text-stone-500 mb-4">{seg.description}</p>
+            <Link
+              href={seg.href}
+              className="text-sm text-stone-600 underline underline-offset-4 hover:text-stone-900 transition-colors duration-200"
+            >
+              {seg.cta}
+            </Link>
           </motion.div>
         ))}
       </div>

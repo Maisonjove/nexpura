@@ -3,16 +3,16 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 
 const modules = [
-  { n: '01', title: 'POS', desc: 'Fast, flexible point of sale built for jewellery retail.' },
-  { n: '02', title: 'Inventory', desc: 'Live stock across items, stones, metals, and components.' },
-  { n: '03', title: 'Repairs', desc: 'Full job tracking from intake to collection.' },
-  { n: '04', title: 'Bespoke Orders', desc: 'Structured custom order workflow with client sign-off at every milestone.' },
-  { n: '05', title: 'CRM', desc: 'Complete client profiles, purchase history, VIP tags, and birthdays.' },
-  { n: '06', title: 'Invoicing', desc: 'Automated invoices, receipts, and supplier billing.' },
-  { n: '07', title: 'Analytics', desc: 'Sales dashboards, stock turnover, and workshop KPIs.' },
-  { n: '08', title: 'Digital Passports', desc: 'Authenticity certificates you can verify with a QR code, issued for every piece you sell.' },
-  { n: '09', title: 'Memo & Consignment', desc: 'Track loaned pieces, return dates, and commission splits.' },
-  { n: '10', title: 'AI Copilot', desc: 'Ask anything about your business in plain English.' },
+  { n: '01', title: 'POS', desc: 'Fast checkout built for jewellery retail' },
+  { n: '02', title: 'Inventory', desc: 'Live stock across pieces, stones, metals, and components' },
+  { n: '03', title: 'Repairs', desc: 'Full job tracking from intake to collection' },
+  { n: '04', title: 'Bespoke Orders', desc: 'Structured custom workflows with sign-off at key milestones' },
+  { n: '05', title: 'CRM', desc: 'Client profiles, purchase history, reminders, and VIP tags' },
+  { n: '06', title: 'Invoicing', desc: 'Invoices, receipts, balances, and supplier billing' },
+  { n: '07', title: 'Analytics', desc: 'Sales, workshop, and stock performance in one view' },
+  { n: '08', title: 'Digital Passports', desc: 'QR-verifiable authenticity and provenance records' },
+  { n: '09', title: 'Memo & Consignment', desc: 'Loaned pieces, returns, and commission splits tracked clearly' },
+  { n: '10', title: 'AI Copilot', desc: 'Ask questions about your business in plain English' },
 ]
 
 export default function LandingPlatformModules() {
@@ -26,7 +26,7 @@ export default function LandingPlatformModules() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-4"
         >
-          One platform. Ten modules.
+          One platform. Every jewellery workflow connected.
         </motion.h2>
         <motion.p
           initial={{ opacity: 0 }}
@@ -35,7 +35,7 @@ export default function LandingPlatformModules() {
           transition={{ duration: 1.2, delay: 0.1 }}
           className="text-center text-stone-500 text-[0.9375rem] mb-16 max-w-xl mx-auto"
         >
-          Every tool your jewellery business needs, connected and talking to each other.
+          From the shop floor to the workshop, from customer records to invoicing, Nexpura connects the workflows generic retail systems leave scattered.
         </motion.p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
           {modules.map((mod, i) => (
@@ -55,10 +55,10 @@ export default function LandingPlatformModules() {
         </div>
         <div className="text-center">
           <Link
-            href="/features"
+            href="/platform"
             className="text-[0.9375rem] text-stone-600 underline underline-offset-4 hover:text-stone-900 transition-colors duration-200"
           >
-            See all features →
+            Explore the Platform
           </Link>
         </div>
       </div>

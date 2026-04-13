@@ -5,18 +5,18 @@ import Link from 'next/link'
 const steps = [
   {
     n: '01',
-    title: 'We audit your current setup',
-    body: 'Tell us what you use. We assess your data, structure, and workflow.',
+    title: 'We review your current setup',
+    body: 'We assess your tools, workflows, and what needs to carry across.',
   },
   {
     n: '02',
     title: 'We migrate your data',
-    body: 'Customer records, inventory, repair history, supplier contacts — we handle it.',
+    body: 'Customers, stock, repair history, supplier records, and key business data are brought across carefully.',
   },
   {
     n: '03',
     title: 'We train your team',
-    body: 'Live onboarding, video walkthroughs, and ongoing support. You are never alone.',
+    body: 'Live onboarding, walkthroughs, and support to help your team get comfortable fast.',
   },
 ]
 
@@ -31,7 +31,7 @@ export default function LandingMigration() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-4"
         >
-          Switch without the stress.
+          Switch without the stress
         </motion.h2>
         <motion.p
           initial={{ opacity: 0 }}
@@ -40,7 +40,7 @@ export default function LandingMigration() {
           transition={{ duration: 1.2, delay: 0.1 }}
           className="text-center text-stone-500 text-[0.9375rem] mb-16 max-w-xl mx-auto"
         >
-          Nexpura includes free, guided migration support. We move your data, train your team, and stay with you through setup.
+          We guide the move from your current setup to Nexpura with migration, onboarding, and practical support from day one.
         </motion.p>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {steps.map((step, i) => (
@@ -66,8 +66,7 @@ export default function LandingMigration() {
           className="bg-stone-50 border border-stone-100 rounded-2xl p-8 text-center mb-10"
         >
           <p className="font-serif text-xl text-stone-900">
-            Free migration included with every plan.{' '}
-            <span className="text-stone-400">No setup fees. No data loss. No downtime.</span>
+            Guided migration included with every plan · No setup fees · No unnecessary downtime
           </p>
         </motion.div>
         <motion.div

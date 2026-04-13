@@ -3,12 +3,11 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 
 const points = [
-  'Log repairs at intake with customer details, item description, photos, agreed price, and due date.',
-  'Assign to a staff member or bench jeweller in one click.',
-  'Customers receive a live status link. No more calls asking if it is ready.',
-  'Status moves from Received to In Workshop, Ready for Pickup, and Collected.',
-  'Staff see all open jobs, priorities, and deadlines in a single view.',
-  'Nothing slips. Nothing gets lost.',
+  'Log item details, photos, pricing, and due date at intake',
+  'Assign work clearly to the right staff member',
+  'Share live status updates without the calls',
+  'Track deposits, balances, and collection readiness',
+  'See all open jobs, priorities, and deadlines in one view',
 ]
 
 export default function LandingRepairs() {
@@ -23,7 +22,7 @@ export default function LandingRepairs() {
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
             className="font-serif text-3xl sm:text-4xl lg:text-[2.75rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-6"
           >
-            The repair tracker your customers actually appreciate
+            The repair workflow your customers can actually follow
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}
@@ -32,7 +31,7 @@ export default function LandingRepairs() {
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
             className="text-stone-500 text-[0.9375rem] leading-relaxed mb-8"
           >
-            Every repair logged, assigned, tracked, and communicated — from intake to collection.
+            Every repair is logged, assigned, tracked, and updated in one place — from intake to collection.
           </motion.p>
           <ul className="space-y-4">
             {points.map((point, i) => (

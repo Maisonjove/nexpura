@@ -3,10 +3,10 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 
 const benefits = [
-  'Authenticity customers can verify instantly',
-  'Provenance records that follow the piece',
-  'Resale confidence — buyers trust what they can check',
-  'Customers get verified proof of what they own — no complicated process for you or them',
+  'Instant customer verification',
+  'Piece-level provenance history',
+  'Better trust at point of sale',
+  'Stronger resale and aftercare confidence',
 ]
 
 export default function LandingDigitalPassports() {
@@ -21,7 +21,7 @@ export default function LandingDigitalPassports() {
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
             className="font-serif text-3xl sm:text-4xl lg:text-[2.75rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-6"
           >
-            Every piece, verified for authenticity
+            Authenticity, provenance, and trust — attached to every piece
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}
@@ -30,7 +30,7 @@ export default function LandingDigitalPassports() {
             transition={{ duration: 1.2, delay: 0.1 }}
             className="text-stone-500 text-[0.9375rem] leading-relaxed mb-4"
           >
-            When a customer buys from you, they deserve to know exactly what they own.
+            When a customer buys from you, they should know exactly what they own.
           </motion.p>
           <motion.p
             initial={{ opacity: 0 }}
@@ -39,7 +39,7 @@ export default function LandingDigitalPassports() {
             transition={{ duration: 1.2, delay: 0.15 }}
             className="text-stone-500 text-[0.9375rem] leading-relaxed mb-8"
           >
-            Nexpura generates a digital passport for every piece — linked via QR code to a verified record of materials, craftsmanship, and provenance.
+            Nexpura generates a digital passport for every eligible piece, linked by QR code to a verified record of materials, craftsmanship, and provenance.
           </motion.p>
           <ul className="space-y-3">
             {benefits.map((b, i) => (
