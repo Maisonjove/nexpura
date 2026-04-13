@@ -7,7 +7,7 @@ import { Gem, Menu, X } from 'lucide-react';
 const navLinks = [
   { label: 'Features', href: '/features' },
   { label: 'Pricing', href: '/pricing' },
-  { label: 'Blog', href: '/blog' },
+  { label: 'Security', href: '/security' },
   { label: 'About', href: '/about' },
   { label: 'Migration', href: '/switching' },
 ];
@@ -50,11 +50,11 @@ export function NavBar() {
             Sign in
           </Link>
           <Link
-            href="/signup"
+            href="/contact"
             prefetch
             className="text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 px-4 py-2 rounded-lg transition-colors"
           >
-            Start Free Trial
+            Book a Demo
           </Link>
         </div>
 
@@ -83,10 +83,10 @@ export function NavBar() {
           <div className="pt-3 border-t border-white/[0.06] flex flex-col gap-2">
             <Link href="/login" className="text-sm text-stone-400 py-1">Sign in</Link>
             <Link
-              href="/signup"
+              href="/contact"
               className="text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 px-4 py-2 rounded-lg transition-colors text-center"
             >
-              Start Free Trial
+              Book a Demo
             </Link>
           </div>
         </div>

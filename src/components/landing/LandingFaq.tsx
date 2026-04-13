@@ -4,7 +4,11 @@ import { motion } from 'framer-motion'
 const faqs = [
   {
     q: 'How long does migration take?',
-    a: 'Most businesses are fully migrated within 3–5 days. For larger operations, up to 2 weeks. We handle everything.',
+    a: 'Most businesses are fully migrated within 3 to 5 days. For larger operations, up to 2 weeks. We handle everything.',
+  },
+  {
+    q: 'Is migration free?',
+    a: 'Yes. Free migration is included with every plan. No setup fees, no data loss, no downtime.',
   },
   {
     q: 'Can Nexpura replace my current POS?',
@@ -23,16 +27,12 @@ const faqs = [
     a: 'Yes. You can manage multiple locations from one account with shared customer profiles, per-location stock, and consolidated reporting.',
   },
   {
-    q: 'Is there a free trial?',
-    a: 'We offer a guided demo and a fully supported onboarding period. Speak to us about what works best for your size.',
-  },
-  {
     q: 'Can customers track their repairs or orders?',
     a: 'Yes. Nexpura generates a secure tracking link for every job or bespoke order that you can share directly with your customer.',
   },
   {
     q: 'Is Nexpura made for jewellers specifically?',
-    a: 'Yes, entirely. It was built from the ground up for jewellery retail, workshops, and ateliers — not adapted from generic retail software.',
+    a: 'Yes, entirely. It was built from the ground up for jewellery retail, workshops, and ateliers. Not adapted from generic retail software.',
   },
 ]
 

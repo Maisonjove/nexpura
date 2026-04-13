@@ -3,12 +3,12 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 
 const points = [
-  'Log every repair at intake — customer, item, issue, photos, agreed price.',
+  'Log repairs at intake with customer details, item description, photos, agreed price, and due date.',
   'Assign to a staff member or bench jeweller in one click.',
-  'Customer gets a live tracking link — no more "is it ready?" calls.',
-  'Status updates: Received → In Workshop → Ready for Pickup → Collected.',
-  'Staff see all open jobs, deadlines, and priorities in one view.',
-  'Nothing slips. Nothing gets lost. Everyone knows where every piece is.',
+  'Customers receive a live status link. No more calls asking if it is ready.',
+  'Status moves from Received to In Workshop, Ready for Pickup, and Collected.',
+  'Staff see all open jobs, priorities, and deadlines in a single view.',
+  'Nothing slips. Nothing gets lost.',
 ]
 
 export default function LandingRepairs() {

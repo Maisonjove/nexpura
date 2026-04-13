@@ -48,8 +48,7 @@ export default function LandingHero() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
           className="text-base lg:text-lg font-normal leading-relaxed text-stone-500 max-w-[520px] mb-10 mx-auto lg:mx-0"
         >
-          POS · Inventory · Repairs · Bespoke Orders · CRM · Digital Passports · Memo &amp; Consignment · AI Copilot.
-          One platform. Free migration included.
+          Run your sales floor, repairs, custom orders, and stock from one system built for jewellers.
         </motion.p>
         <motion.div
           initial={{ opacity: 0, filter: 'blur(4px)', y: 12 }}

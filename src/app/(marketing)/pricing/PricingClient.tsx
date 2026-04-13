@@ -87,11 +87,11 @@ const comparison = [
 const faqs = [
   {
     q: 'Can I change plans later?',
-    a: 'Yes — upgrade or downgrade at any time. Changes take effect at the next billing cycle. Upgrades unlock features immediately.',
+    a: 'Yes. Upgrade or downgrade at any time. Changes take effect at the next billing cycle. Upgrades apply immediately.',
   },
   {
     q: 'Is there a setup fee?',
-    a: 'Never. You only pay the monthly subscription. Migration assistance is included with Studio and Atelier.',
+    a: 'Never. You only pay the monthly subscription. Free migration is included with every plan.',
   },
   {
     q: "What's included in the free trial?",
@@ -172,14 +172,14 @@ export default function PricingClient() {
               </div>
 
               <Link
-                href="/signup"
+                href="/contact"
                 className={`w-full text-center py-3.5 mb-10 text-[0.875rem] font-medium transition-colors duration-300 ${
                   plan.featured
                     ? 'bg-stone-900 text-white hover:bg-stone-800'
                     : 'border border-stone-900 text-stone-900 hover:bg-stone-900 hover:text-white'
                 }`}
               >
-                Start Free Trial
+                Book a Demo
               </Link>
 
               <ul className="space-y-3 flex-1">
@@ -313,11 +313,11 @@ export default function PricingClient() {
           {...fadeBlur}
           className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-10 italic"
         >
-          Start your free trial today.
+          See how Nexpura fits your business
         </motion.h2>
         <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           <Link
-            href="/signup"
+            href="/contact"
             className="
               inline-flex items-center justify-center
               min-w-[180px] px-10 py-4 md:min-w-[200px] md:px-12
@@ -331,7 +331,7 @@ export default function PricingClient() {
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
             <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-              Get started free
+              Book a Demo
             </span>
           </Link>
           <Link

@@ -435,7 +435,7 @@ export default function FeaturesClient() {
         </motion.h2>
         <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           <Link
-            href="/signup"
+            href="/contact"
             className="
               inline-flex items-center justify-center
               min-w-[180px] px-10 py-4 md:min-w-[200px] md:px-12
@@ -449,14 +449,14 @@ export default function FeaturesClient() {
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
             <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-              Start Free Trial
+              Book a Demo
             </span>
           </Link>
           <Link
-            href="/contact"
+            href="/platform"
             className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
           >
-            Book a demo
+            See the Platform
           </Link>
         </motion.div>
       </section>

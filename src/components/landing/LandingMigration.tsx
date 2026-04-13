@@ -82,7 +82,7 @@ export default function LandingMigration() {
             className="inline-flex items-center justify-center min-w-[180px] px-10 py-4 bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.25),0_8px_24px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.25),0_16px_40px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)] relative overflow-hidden transition-shadow duration-400"
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
-            <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">Book a migration call</span>
+            <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">Book a Demo</span>
           </Link>
         </motion.div>
       </div>

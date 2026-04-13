@@ -39,9 +39,9 @@ export default function LandingCta() {
         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
         className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-10 italic"
       >
-        Ready to transform your
+        Ready to run your
         <br />
-        jewellery empire?
+        business better?
       </motion.h2>
       <motion.div
         initial={{ opacity: 0, filter: 'blur(4px)', y: 16 }}
@@ -52,7 +52,7 @@ export default function LandingCta() {
       >
         <a
           ref={ctaRef}
-          href="/signup"
+          href="/contact"
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           className="
@@ -69,7 +69,7 @@ export default function LandingCta() {
         >
           <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
           <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-            Request Private Access
+            Book a Demo
           </span>
         </a>
       </motion.div>

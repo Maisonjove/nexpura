@@ -19,8 +19,7 @@ const columns = [
     title: 'Platform',
     links: [
       { label: 'Features', href: '/features' },
-      { label: 'Integrations', href: '/features' },
-      { label: 'Security', href: '/features' },
+      { label: 'Security', href: '/security' },
       { label: 'Pricing', href: '/pricing' },
       { label: 'Verify Passport', href: '/verify' },
     ],

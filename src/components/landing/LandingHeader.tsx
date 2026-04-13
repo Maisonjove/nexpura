@@ -42,6 +42,7 @@ export default function LandingHeader() {
         {/* Right nav */}
         <div className="hidden md:flex items-center gap-6 flex-1 justify-end">
           <NavLink href="/#migration">Migration</NavLink>
+          <NavLink href="/security">Security</NavLink>
           <NavLink href="/about">About</NavLink>
           <NavLink href="/login">Login</NavLink>
           <Link
@@ -107,6 +108,7 @@ export default function LandingHeader() {
           <NavLink href="/features">Solutions</NavLink>
           <NavLink href="/pricing">Pricing</NavLink>
           <NavLink href="/#migration">Migration</NavLink>
+          <NavLink href="/security">Security</NavLink>
           <NavLink href="/about">About</NavLink>
           <NavLink href="/login">Login</NavLink>
           <Link

@@ -20,10 +20,10 @@ const fadeUp = (delay = 0) => ({
 })
 
 const stats = [
-  { value: '500+', label: 'Jewellers Served' },
-  { value: '12', label: 'Countries' },
-  { value: '5+', label: 'Years Building' },
-  { value: '4.9★', label: 'Customer Rating' },
+  { value: 'Repairs', label: 'Tracked end to end' },
+  { value: 'Bespoke', label: '12 stage workflow' },
+  { value: 'Inventory', label: 'Real time visibility' },
+  { value: 'Migration', label: 'Free with every plan' },
 ]
 
 const values = [
@@ -193,13 +193,13 @@ export default function AboutClient() {
           {...fadeBlur}
           className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-10 italic"
         >
-          Ready to transform
+          Ready to see Nexpura
           <br />
-          your jewellery business?
+          in action?
         </motion.h2>
         <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           <Link
-            href="/signup"
+            href="/contact"
             className="
               inline-flex items-center justify-center
               min-w-[180px] px-10 py-4 md:min-w-[200px] md:px-12
@@ -213,7 +213,7 @@ export default function AboutClient() {
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
             <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-              Start Free Trial
+              Book a Demo
             </span>
           </Link>
           <Link

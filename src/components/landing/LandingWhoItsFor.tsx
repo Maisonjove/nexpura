@@ -2,11 +2,11 @@
 import { motion } from 'framer-motion'
 
 const segments = [
-  { emoji: '💍', title: 'Retail Jewellers', description: 'A complete POS, inventory, and CRM system that runs your floor without the friction.' },
-  { emoji: '🔨', title: 'Workshops & Ateliers', description: 'Track every commission stage, material, and deadline. No more sticky notes or spreadsheets.' },
-  { emoji: '🏪', title: 'Multi-Store Groups', description: 'Centralised stock visibility, shared customer profiles, and per-location reporting across all your stores.' },
-  { emoji: '🔧', title: 'Repair-Heavy Businesses', description: 'Log every intake, assign jobs, notify customers, and never lose a repair ticket again.' },
-  { emoji: '✏️', title: 'Bespoke-Focused Studios', description: '12-stage bespoke workflow with client approvals, stone sourcing, CAD review, and delivery milestones.' },
+  { emoji: '💍', title: 'Retail Jewellers', description: 'A complete POS, inventory, and CRM built for jewellery retail. Spend less time on admin, more time with customers.' },
+  { emoji: '🔨', title: 'Workshops & Ateliers', description: 'Track every commission, job, and deadline in one place. No more paper logs or spreadsheet chaos.' },
+  { emoji: '🏪', title: 'Multi-Store Groups', description: 'Unified stock visibility, shared customer profiles, and per-location reporting across all your stores.' },
+  { emoji: '🔧', title: 'Repair-Heavy Businesses', description: 'Log every repair properly, keep staff accountable, and give customers live status without the calls.' },
+  { emoji: '✏️', title: 'Bespoke-Focused Studios', description: 'A 12-stage custom order workflow with client approvals, stone sourcing, and clear delivery milestones.' },
 ]
 
 export default function LandingWhoItsFor() {
