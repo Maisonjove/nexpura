@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Instrument_Serif } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -112,10 +111,10 @@ export default function RootLayout({
           </PWAProvider>
           <Toaster position="bottom-right" richColors />
         </LiveRegionProvider>
-        <Script
-          src="https://www.annot8.dev/snippet.js?project=88bbfcbe4f28b316dc968c9d"
-          data-project="88bbfcbe4f28b316dc968c9d"
-          strategy="afterInteractive"
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var s=document.createElement('script');s.src='https://www.annot8.dev/snippet.js?project=88bbfcbe4f28b316dc968c9d';s.setAttribute('data-project','88bbfcbe4f28b316dc968c9d');document.head.appendChild(s);})();`,
+          }}
         />
       </body>
     </html>
