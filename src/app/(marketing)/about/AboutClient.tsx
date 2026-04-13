@@ -217,10 +217,10 @@ export default function AboutClient() {
             </span>
           </Link>
           <Link
-            href="/contact"
+            href="/platform"
             className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
           >
-            Contact us
+            See the Platform
           </Link>
         </motion.div>
       </section>

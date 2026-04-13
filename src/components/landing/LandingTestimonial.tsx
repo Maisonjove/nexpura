@@ -13,7 +13,7 @@ export default function LandingTestimonial() {
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="font-serif text-xl sm:text-2xl lg:text-3xl font-normal leading-[1.3] tracking-[-0.01em] text-stone-600 mb-8"
         >
-          Built by people who understand the jewellery trade.
+          Built by people who understand the jewellery trade
         </motion.div>
 
         <motion.p

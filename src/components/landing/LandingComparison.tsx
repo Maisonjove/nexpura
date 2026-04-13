@@ -15,7 +15,7 @@ const after = [
   'Live inventory across items, stones, and components',
   'POS designed for jewellery retail from the ground up',
   'Full memo and consignment tracking with return date alerts',
-  'QR code verified digital passports for every piece you sell',
+  'Digital passports with QR-verifiable authenticity for every piece you sell',
   'Repair tracker with customer notifications built in',
   'Structured bespoke workflow with sign-off at every milestone',
   'AI copilot that answers questions about your own business',

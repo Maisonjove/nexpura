@@ -44,7 +44,7 @@ const plans = [
       'Everything in Boutique',
       'Full analytics dashboard',
       'Up to 5 staff, up to 3 stores',
-      'Product showcase website',
+      'Jeweller showcase website',
       'Connect existing website',
       'Custom branding',
     ],
@@ -79,7 +79,7 @@ const comparison = [
   { key: 'Analytics', values: ['Basic', 'Full', 'Full + Custom'] },
   { key: 'Team Size', values: ['1 staff', 'Up to 5', 'Unlimited'] },
   { key: 'Stores', values: ['1', 'Up to 3', 'Unlimited'] },
-  { key: 'Product Showcase Website', values: ['—', 'Yes', 'Yes'] },
+  { key: 'Jeweller Showcase Website', values: ['—', 'Yes', 'Yes'] },
   { key: 'AI Product Descriptions', values: ['—', '—', 'Yes'] },
   { key: 'Custom branding', values: ['—', 'Yes', 'Yes'] },
 ]
@@ -335,10 +335,10 @@ export default function PricingClient() {
             </span>
           </Link>
           <Link
-            href="/contact"
+            href="/platform"
             className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
           >
-            Contact us
+            See the Platform
           </Link>
         </motion.div>
         <p className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mt-8">

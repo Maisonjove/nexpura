@@ -22,7 +22,7 @@ const fadeUp = (delay = 0) => ({
 const sections = [
   {
     title: 'Your data is yours',
-    body: 'Customer records, inventory, repair history, bespoke orders, and financial data are stored with care and not shared with third parties for commercial purposes.',
+    body: 'Customer records, inventory, repair history, bespoke orders, and financial data are stored with care and not shared with outside parties without your knowledge or consent.',
   },
   {
     title: 'Access that fits your team',
@@ -34,7 +34,7 @@ const sections = [
   },
   {
     title: 'Privacy by design',
-    body: 'Your customer and business data is handled with discretion. We do not use your data for advertising purposes or share it with third parties.',
+    body: 'Your customer and business data is handled with discretion. We do not use your data to serve you advertising or share it with outside parties.',
   },
   {
     title: 'Built with care',
@@ -119,7 +119,7 @@ export default function SecurityClient() {
           >
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
             <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-              Contact Us
+              Book a Demo
             </span>
           </Link>
         </motion.div>

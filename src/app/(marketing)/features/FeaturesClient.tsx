@@ -55,7 +55,7 @@ const sections: Feature[] = [
       'Automatic customer creation from sale',
       'Real-time inventory deduction',
       'Receipt printing and email delivery',
-      'End-of-day cash reconciliation',
+      'Daily cash reconciliation',
     ],
   },
   {
@@ -103,7 +103,7 @@ const sections: Feature[] = [
       'SKU and barcode management',
       'Reorder level alerts',
       'Stock take and variance tracking',
-      'Multi-location stock with transfers',
+      'Stock tracking across multiple locations with transfers',
       'Supplier linkage per item',
       'Full provenance and cost history',
       'Batch import from spreadsheets',
@@ -187,7 +187,7 @@ const sections: Feature[] = [
       'Customer acquisition and retention metrics',
       'Outstanding and overdue summary',
       'Inventory turnover analysis',
-      'End-of-day and period closing reports',
+      'Daily and period closing reports',
       'Exportable to CSV for accountants',
     ],
   },
@@ -321,7 +321,7 @@ export default function FeaturesClient() {
           className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-20 overflow-x-auto scrollbar-none relative"
           style={{ scrollbarWidth: 'none' }}
         >
-          <div ref={listRef} className="flex items-end gap-10 lg:gap-14 py-5 whitespace-nowrap relative">
+          <div ref={listRef} className="flex items-end py-5 whitespace-nowrap relative">
             {sections.map((s, i) => {
               const isActive = activeId === s.id
               return (
@@ -336,7 +336,7 @@ export default function FeaturesClient() {
                     scrollToHash(s.id)
                     history.replaceState(null, '', `#${s.id}`)
                   }}
-                  className="group relative flex flex-col items-start gap-1 py-1 transition-opacity duration-500 shrink-0"
+                  className="group relative flex flex-col items-start gap-1 py-1 transition-opacity duration-500 shrink-0 pr-10 lg:pr-14"
                 >
                   <span
                     className={`text-[0.625rem] font-mono tabular-nums tracking-[0.15em] transition-colors duration-500 ${
