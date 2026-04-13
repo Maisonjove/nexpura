@@ -4,13 +4,11 @@ import { createServerClient } from "@supabase/ssr";
 import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// ── Review / staff bypass tokens ─────────────────────────────────────────
+// ── Review / staff bypass tokens ─────────────────────────────────────────────
 // SECURITY: No hardcoded fallback. Both tokens MUST be set as env vars.
-// If they are not set the bypass feature is simply disabled — no one can
-// accidentally bypass subscription gates using a publicly-visible string.
-// Set REVIEW_BYPASS_TOKEN and STAFF_BYPASS_TOKEN in Vercel / .env.local.
+// If they are not set the bypass feature is simply disabled.
 const REVIEW_TOKEN = process.env.REVIEW_BYPASS_TOKEN ?? "";
-const STAFF_TOKEN  = process.env.STAFF_BYPASS_TOKEN  ?? "";
+const STAFF_TOKEN = process.env.STAFF_BYPASS_TOKEN ?? "";
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
@@ -19,11 +17,11 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, timeout]);
 }
 
-// ── Subscription cache cookie ─────────────────────────────────────────────
-// Cache the subscription OK status for 5 minutes per user to avoid
-// two DB round-trips on every page request (the biggest middleware cost).
+// ── Subscription cache cookie ─────────────────────────────────────────────────
+// Cache the subscription OK status for 5 minutes per user to avoid DB round-trips.
+// Only used for routes NOT already handled by updateSession (supabase/middleware.ts).
 const SUB_CACHE_COOKIE = "nexpura-sub-ok";
-const SUB_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const SUB_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function getSubCacheUserId(req: NextRequest): string | null {
   const cookie = req.cookies.get(SUB_CACHE_COOKIE)?.value;
@@ -47,44 +45,45 @@ function setSubCacheCookie(response: NextResponse, userId: string): void {
   });
 }
 
-// ── Shared subscription check ─────────────────────────────────────────────
+// ── Shared subscription check ─────────────────────────────────────────────────
+// Only reached for routes NOT in isExemptPath -- i.e. routes that updateSession
+// does not fully handle. In practice this is very rare after the isExemptPath
+// expansion below.
 async function checkSubscriptionAndRedirect(
   req: NextRequest,
   response: NextResponse
 ): Promise<NextResponse> {
   try {
-    // Auth check — use SSR client so session cookies are honoured
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() { return req.cookies.getAll(); },
+          getAll() {
+            return req.cookies.getAll();
+          },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
+            cookiesToSet.forEach(({ name, value }) =>
+              req.cookies.set(name, value)
+            );
           },
         },
       }
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) return response;
 
-    // ── Subscription cache: skip DB queries if we recently confirmed OK ──
-    // Cookie stores "{userId}|{timestamp}". If it's fresh and matches the
-    // current user, we know the subscription was good recently — skip the
-    // two extra DB round-trips (users + subscriptions lookups).
+    // Skip DB queries if we recently confirmed subscription OK
     const cachedUserId = getSubCacheUserId(req);
     if (cachedUserId === user.id) {
-      // Still valid — no DB queries needed, refresh the cache window
       setSubCacheCookie(response, user.id);
       return response;
     }
 
-    // SECURITY FIX: use admin client for users table lookup.
-    // The anon/RLS client causes infinite policy recursion on the users table,
-    // adding 1-2 s of latency to every single page request (it fires on every
-    // non-exempt path). Switch to the service-role client to avoid this.
     const admin = createAdminClient();
     const { data: userData } = await admin
       .from("users")
@@ -109,14 +108,21 @@ async function checkSubscriptionAndRedirect(
       return NextResponse.redirect(billingUrl);
     }
 
-    // Subscription is good — cache result to skip DB checks for 5 minutes
     setSubCacheCookie(response, user.id);
   } catch (err) {
-    console.error("[middleware] subscription check failed — passing through:", err);
+    console.error(
+      "[middleware] subscription check failed -- passing through:",
+      err
+    );
   }
   return response;
 }
 
+// ── Exempt paths ─────────────────────────────────────────────────────────────
+// All app routes (dashboard, repairs, inventory, etc.) are exempt because
+// updateSession in supabase/middleware.ts already handles auth + subscription
+// checks for them, including setting AUTH_HEADERS on the forwarded request.
+// Listing them here avoids a redundant DB query in checkSubscriptionAndRedirect.
 function isExemptPath(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -124,7 +130,7 @@ function isExemptPath(pathname: string): boolean {
     pathname.startsWith("/signup") ||
     pathname.startsWith("/verify") ||
     pathname.startsWith("/verify-email") ||
-    pathname.startsWith("/track") || // Public order tracking page
+    pathname.startsWith("/track") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/onboarding") ||
@@ -134,26 +140,42 @@ function isExemptPath(pathname: string): boolean {
     pathname.startsWith("/features") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/privacy") ||
-    pathname.startsWith("/dashboard") || // Skip sub check for dashboard - it has its own auth
+    // App routes -- updateSession already validates auth + subscription for all of these
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/bespoke") ||
+    pathname.startsWith("/repairs") ||
+    pathname.startsWith("/inventory") ||
+    pathname.startsWith("/customers") ||
+    pathname.startsWith("/invoices") ||
+    pathname.startsWith("/passports") ||
+    pathname.startsWith("/suspended") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/sales") ||
+    pathname.startsWith("/suppliers") ||
+    pathname.startsWith("/expenses") ||
+    pathname.startsWith("/communications") ||
+    pathname.startsWith("/reports") ||
+    pathname.startsWith("/marketing") ||
+    pathname.startsWith("/ai") ||
+    pathname.startsWith("/pos") ||
     pathname.includes(".")
   );
 }
 
 function isBypassRequest(req: NextRequest): boolean {
-  // If env vars are not set, bypass is completely disabled (tokens are empty strings)
   if (!REVIEW_TOKEN && !STAFF_TOKEN) return false;
   const rtParam = req.nextUrl.searchParams.get("rt");
   const reviewCookie = req.cookies.get("nexpura-review")?.value;
-  const staffCookie  = req.cookies.get("nexpura-staff")?.value;
+  const staffCookie = req.cookies.get("nexpura-staff")?.value;
   return (
-    (REVIEW_TOKEN && (rtParam === REVIEW_TOKEN || reviewCookie === REVIEW_TOKEN)) ||
-    (STAFF_TOKEN  && (rtParam === STAFF_TOKEN  || staffCookie  === STAFF_TOKEN))
+    (REVIEW_TOKEN &&
+      (rtParam === REVIEW_TOKEN || reviewCookie === REVIEW_TOKEN)) ||
+    (STAFF_TOKEN && (rtParam === STAFF_TOKEN || staffCookie === STAFF_TOKEN))
   ) as boolean;
 }
 
-// ── Security Headers ─────────────────────────────────────────────────────
+// ── Security Headers ──────────────────────────────────────────────────────────
 function addSecurityHeaders(response: NextResponse): NextResponse {
-  // Content Security Policy - allow Stripe, Supabase, analytics, and image CDNs
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co https://*.vercel-scripts.com",
@@ -170,16 +192,20 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
-  // X-Frame-Options removed to allow embedding (CSP frame-ancestors handles this)
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  
-  // HSTS is handled by Vercel automatically for production domains with HTTPS
-  // But we set it explicitly for non-Vercel deployments
+  response.headers.set(
+    "Referrer-Policy",
+    "strict-origin-when-cross-origin"
+  );
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()"
+  );
   if (process.env.NODE_ENV === "production") {
-    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains"
+    );
   }
-
   return response;
 }
 
@@ -188,9 +214,13 @@ export async function middleware(request: NextRequest) {
     const response = await withTimeout(_proxyInner(request), 5000);
     return addSecurityHeaders(response);
   } catch (err) {
-    const isTimeout = err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
+    const isTimeout =
+      err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
     if (!isTimeout) {
-      console.error("[middleware] unexpected error — passing through:", err);
+      console.error(
+        "[middleware] unexpected error -- passing through:",
+        err
+      );
     }
     const fallbackResponse = NextResponse.next();
     return addSecurityHeaders(fallbackResponse);

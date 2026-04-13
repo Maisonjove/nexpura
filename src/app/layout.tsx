@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Geist, Instrument_Serif } from "next/font/google";
+import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -8,50 +8,45 @@ import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { LiveRegionProvider } from "@/components/LiveRegion";
 
 const geist = Geist({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap', // Prevent FOIT (Flash of Invisible Text)
-  preload: true,
-});
-
-const inter = Inter({
   subsets: ["latin"],
-  variable: '--font-inter',
-  display: 'swap', // Prevent FOIT (Flash of Invisible Text)
+  variable: "--font-sans",
+  display: "swap",
   preload: true,
 });
 
 const instrumentSerif = Instrument_Serif({
-  variable: '--font-instrument-serif',
-  subsets: ['latin'],
-  weight: '400',
-  style: ['normal', 'italic'],
-  display: 'swap',
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  display: "swap",
 });
 
 export const viewport: Viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#a16207',
+  themeColor: "#a16207",
 };
 
 export const metadata: Metadata = {
   title: "Nexpura — The Operating System for Modern Jewellers",
-  description: "POS, repairs, bespoke design, inventory, customers, invoicing — unified in one platform built around how jewellers actually work.",
-  manifest: '/manifest.json',
+  description:
+    "POS, repairs, bespoke design, inventory, customers, invoicing — unified in one platform built around how jewellers actually work.",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'Nexpura',
+    statusBarStyle: "default",
+    title: "Nexpura",
   },
   formatDetection: {
     telephone: false,
   },
   openGraph: {
     title: "Nexpura — The Operating System for Modern Jewellers",
-    description: "POS, repairs, bespoke design, inventory, customers, invoicing — unified in one platform built around how jewellers actually work.",
+    description:
+      "POS, repairs, bespoke design, inventory, customers, invoicing — unified in one platform built around how jewellers actually work.",
     images: [
       {
         url: "/og-image.png",
@@ -66,7 +61,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Nexpura — The Operating System for Modern Jewellers",
-    description: "POS, repairs, bespoke design, inventory, customers, invoicing — unified in one platform built around how jewellers actually work.",
+    description:
+      "POS, repairs, bespoke design, inventory, customers, invoicing — unified in one platform built around how jewellers actually work.",
     images: ["/og-image.png"],
   },
 };
@@ -77,20 +73,37 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" dir="ltr" className={cn("font-sans", geist.variable, instrumentSerif.variable)}>
+    <html
+      lang="en"
+      dir="ltr"
+      className={cn("font-sans", geist.variable, instrumentSerif.variable)}
+    >
       <head>
         {/* Preconnect to Supabase to reduce connection latency */}
-        <link rel="preconnect" href="https://vkpjocnrefjfpuovzinn.supabase.co" />
-        <link rel="dns-prefetch" href="https://vkpjocnrefjfpuovzinn.supabase.co" />
+        <link
+          rel="preconnect"
+          href="https://vkpjocnrefjfpuovzinn.supabase.co"
+        />
+        <link
+          rel="dns-prefetch"
+          href="https://vkpjocnrefjfpuovzinn.supabase.co"
+        />
+        {/* Preconnect to Google Fonts to speed up font delivery */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         {/* PWA iOS Safari */}
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="default"
+        />
       </head>
-      <body className={cn(
-        "min-h-screen bg-background font-sans antialiased",
-        inter.variable
-      )}>
+      <body className="min-h-screen bg-background font-sans antialiased">
         <LiveRegionProvider>
           <PWAProvider>
             {children}
