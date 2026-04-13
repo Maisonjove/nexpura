@@ -21,27 +21,27 @@ const EASE = [0.22, 1, 0.36, 1] as const
 const heroFadeBlur = {
   initial: { opacity: 0, filter: 'blur(6px)' },
   animate: { opacity: 1, filter: 'blur(0px)' },
-  transition: { duration: 1.2, ease: EASE },
+  transition: { duration: 0.35, ease: EASE },
 }
 
 const heroFadeUp = (delay = 0) => ({
   initial: { opacity: 0, filter: 'blur(4px)', y: 16 },
   animate: { opacity: 1, filter: 'blur(0px)', y: 0 },
-  transition: { duration: 1.2, ease: EASE, delay },
+  transition: { duration: 0.35, ease: EASE, delay },
 })
 
 const fadeBlur = {
   initial: { opacity: 0, filter: 'blur(6px)' },
   whileInView: { opacity: 1, filter: 'blur(0px)' },
   viewport: { once: true } as const,
-  transition: { duration: 1.2, ease: EASE },
+  transition: { duration: 0.35, ease: EASE },
 }
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, filter: 'blur(4px)', y: 16 },
   whileInView: { opacity: 1, filter: 'blur(0px)', y: 0 },
   viewport: { once: true } as const,
-  transition: { duration: 1.2, ease: EASE, delay },
+  transition: { duration: 0.35, ease: EASE, delay },
 })
 
 type Feature = {
