@@ -1,5 +1,5 @@
 // Nexpura Service Worker - PWA & Offline Support
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `nexpura-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `nexpura-dynamic-${CACHE_VERSION}`;
 const OFFLINE_QUEUE_KEY = 'nexpura-offline-queue';
