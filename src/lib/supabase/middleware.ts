@@ -35,25 +35,39 @@ function setSubOkCookie(response: NextResponse, tenantId: string): void {
   });
 }
 
+// Routes that never need auth — skip Supabase entirely for instant response.
+function isPublicPath(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/verify") ||
+    pathname.startsWith("/track") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password") ||
+    pathname.startsWith("/support-access") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    // Marketing pages — static, no auth needed
+    pathname.startsWith("/features") ||
+    pathname.startsWith("/pricing") ||
+    pathname.startsWith("/about") ||
+    pathname.startsWith("/contact") ||
+    pathname.startsWith("/blog") ||
+    pathname.startsWith("/terms") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/switching") ||
+    pathname.includes(".")
+  );
+}
+
 export async function updateSession(request: NextRequest) {
   try {
     return await _updateSessionInner(request);
   } catch (err) {
     logger.error("[middleware] updateSession threw:", err);
     const { pathname } = request.nextUrl;
-    const isPublicRoute =
-      pathname === "/" ||
-      pathname.startsWith("/login") ||
-      pathname.startsWith("/signup") ||
-      pathname.startsWith("/verify") ||
-      pathname.startsWith("/track") ||
-      pathname.startsWith("/forgot-password") ||
-      pathname.startsWith("/reset-password") ||
-      pathname.startsWith("/support-access") ||
-      pathname.startsWith("/_next") ||
-      pathname.startsWith("/api") ||
-      pathname.includes(".");
-    if (!isPublicRoute) {
+    if (!isPublicPath(pathname)) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       return NextResponse.redirect(loginUrl);
@@ -63,9 +77,16 @@ export async function updateSession(request: NextRequest) {
 }
 
 async function _updateSessionInner(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Short-circuit for public & marketing routes — no Supabase round-trip needed.
+  // This eliminates the 50-100ms auth.getUser() latency on every marketing page nav.
+  if (isPublicPath(pathname)) {
+    return NextResponse.next({ request });
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const pathname = request.nextUrl.pathname;
 
   let supabaseResponse = NextResponse.next({ request });
 
@@ -96,23 +117,6 @@ async function _updateSessionInner(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const isPublicRoute =
-    pathname === "/" ||
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/signup") ||
-    pathname.startsWith("/verify") ||
-    pathname.startsWith("/track") ||
-    pathname.startsWith("/forgot-password") ||
-    pathname.startsWith("/reset-password") ||
-    pathname.startsWith("/support-access") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.includes(".");
-
-  if (isPublicRoute) {
-    return supabaseResponse;
-  }
 
   if (pathname.startsWith("/verify-email")) {
     return supabaseResponse;
