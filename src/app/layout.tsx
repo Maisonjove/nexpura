@@ -113,7 +113,7 @@ export default function RootLayout({
           <Toaster position="bottom-right" richColors />
         </LiveRegionProvider>
         <Script
-          src="https://www.annot8.dev/snippet.js"
+          src="https://www.annot8.dev/snippet.js?project=88bbfcbe4f28b316dc968c9d"
           data-project="88bbfcbe4f28b316dc968c9d"
           strategy="afterInteractive"
         />
