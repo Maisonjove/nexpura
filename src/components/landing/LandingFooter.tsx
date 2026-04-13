@@ -9,16 +9,16 @@ const columns = [
   {
     title: 'Solutions',
     links: [
-      { label: 'Retail POS', href: '/features#pos' },
-      { label: 'Inventory Management', href: '/features#inventory' },
-      { label: 'Bespoke Orders', href: '/features#bespoke' },
-      { label: 'Analytics', href: '/features#analytics' },
+      { label: 'Retail Jewellers', href: '/features' },
+      { label: 'Repairs & Workshop', href: '/features' },
+      { label: 'Bespoke Orders', href: '/features' },
+      { label: 'Multi-Store Groups', href: '/features' },
     ],
   },
   {
     title: 'Platform',
     links: [
-      { label: 'Platform', href: '/platform' },
+      { label: 'Features', href: '/features' },
       { label: 'Security', href: '/security' },
       { label: 'Pricing', href: '/pricing' },
       { label: 'Migration', href: '/contact' },
@@ -50,7 +50,7 @@ const socials = [
 
 export default function LandingFooter() {
   return (
-    <footer className="bg-white border-t border-black/[0.06] pt-16 pb-12 px-6 sm:px-10 lg:px-20">
+    <footer className="bg-white border-t border-black/[0.06] pt-12 pb-10 px-6 sm:px-10 lg:px-20">
       <div className="max-w-[1200px] mx-auto">
         {/* Logo */}
         <motion.div
@@ -58,7 +58,7 @@ export default function LandingFooter() {
           whileInView={{ opacity: 1, filter: 'blur(0px)' }}
           viewport={{ once: true }}
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center mb-12"
+          className="text-center mb-10"
         >
           <Link
             href="/"
@@ -67,7 +67,7 @@ export default function LandingFooter() {
             NEXPURA
           </Link>
           <p className="text-sm text-stone-500 mt-2">
-            Purpose-built software for jewellery retail, repairs, bespoke, and inventory.
+            The operating system for jewellery retail, repairs, bespoke, and inventory.
           </p>
         </motion.div>
 
@@ -77,19 +77,19 @@ export default function LandingFooter() {
           whileInView={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 sm:gap-8 mb-14"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-6 mb-10"
         >
           {columns.map((col) => (
             <div key={col.title}>
-              <h4 className="text-[0.9375rem] font-medium text-stone-900 mb-4">
+              <h4 className="text-[0.875rem] font-medium text-stone-900 mb-3">
                 {col.title}
               </h4>
-              <ul className="flex flex-col gap-2.5">
+              <ul className="flex flex-col gap-2">
                 {col.links.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-[0.875rem] text-stone-500 transition-opacity duration-300 hover:opacity-60"
+                      className="text-[0.8125rem] text-stone-500 transition-opacity duration-300 hover:opacity-60"
                     >
                       {link.label}
                     </Link>
