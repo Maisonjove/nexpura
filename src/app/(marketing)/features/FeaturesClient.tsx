@@ -47,7 +47,7 @@ const sections: Feature[] = [
     id: 'pos',
     title: 'Point of Sale',
     icon: ShoppingBag,
-    image: '/features/pos.png',
+    image: '/screenshots/dashboard.png',
     tagline: 'A jewellery POS built for fast checkout, flexible payments, and accurate stock movement.',
     benefit: 'Keep checkout fast without losing stock accuracy.',
     features: [
