@@ -37,7 +37,7 @@ type Feature = {
   title: string
   tagline: string
   benefit: string
-  image: string
+  image: string | null
   icon: LucideIcon
   features: string[]
 }
@@ -47,7 +47,7 @@ const sections: Feature[] = [
     id: 'pos',
     title: 'Point of Sale',
     icon: ShoppingBag,
-    image: '/screenshots/dashboard.png',
+    image: null,
     tagline: 'A jewellery POS built for fast checkout, flexible payments, and accurate stock movement.',
     benefit: 'Keep checkout fast without losing stock accuracy.',
     features: [
@@ -103,7 +103,7 @@ const sections: Feature[] = [
     id: 'customers',
     title: 'Customers',
     icon: Users,
-    image: '/screenshots/dashboard.png',
+    image: null,
     tagline: 'A jeweller-specific CRM that keeps purchase history, preferences, reminders, and client value in one place.',
     benefit: 'Turn one-off buyers into long-term clients.',
     features: [
@@ -117,7 +117,7 @@ const sections: Feature[] = [
     id: 'invoices',
     title: 'Invoicing',
     icon: FileText,
-    image: '/screenshots/analytics.png',
+    image: null,
     tagline: 'Create branded invoices, track balances, and connect payments directly to repairs and bespoke jobs.',
     benefit: 'Stay on top of cashflow without separate systems.',
     features: [
@@ -131,7 +131,7 @@ const sections: Feature[] = [
     id: 'suppliers',
     title: 'Suppliers',
     icon: Truck,
-    image: '/features/workshop.png',
+    image: null,
     tagline: 'Keep supplier records, purchase orders, receiving, and reconciliation connected to inventory.',
     benefit: 'Keep purchasing and stock movement connected.',
     features: [
@@ -145,7 +145,7 @@ const sections: Feature[] = [
     id: 'command-center',
     title: 'Command Centers',
     icon: LayoutGrid,
-    image: '/screenshots/repairs.png',
+    image: null,
     tagline: 'Give every repair and bespoke job its own operational screen with status, documents, finances, and activity history in one place.',
     benefit: 'One screen for the entire job — not five disconnected tools.',
     features: [
@@ -272,7 +272,7 @@ export default function FeaturesClient() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.25, ease: EASE }}
-              className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start"
+              className={`grid grid-cols-1 gap-10 lg:gap-14 items-start ${activeSection.image ? 'lg:grid-cols-2' : 'lg:grid-cols-1 max-w-[640px]'}`}
             >
               {/* Left: text */}
               <div>
@@ -301,22 +301,24 @@ export default function FeaturesClient() {
                 </ul>
               </div>
 
-              {/* Right: product visual */}
-              <div className="relative rounded-2xl overflow-hidden bg-stone-100 shadow-[0_4px_32px_rgba(0,0,0,0.08)]">
-                <AnimatePresence mode="wait">
-                  <motion.img
-                    key={activeSection.image}
-                    src={activeSection.image}
-                    alt={activeSection.title}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3, ease: 'easeInOut' }}
-                    className="w-full h-full object-cover object-top"
-                    style={{ aspectRatio: '16/10' }}
-                  />
-                </AnimatePresence>
-              </div>
+              {/* Right: product visual (only when available) */}
+              {activeSection.image && (
+                <div className="relative rounded-2xl overflow-hidden bg-stone-100 shadow-[0_4px_32px_rgba(0,0,0,0.08)]">
+                  <AnimatePresence mode="wait">
+                    <motion.img
+                      key={activeSection.image}
+                      src={activeSection.image}
+                      alt={activeSection.title}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className="w-full h-full object-cover object-top"
+                      style={{ aspectRatio: '16/10' }}
+                    />
+                  </AnimatePresence>
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
