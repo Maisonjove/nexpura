@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useTransition } from "react";
+import { useState, useRef, useCallback, useTransition , Suspense } from "react";
 import {
   importInventory, importCustomers, importRepairs,
   importBespokeJobs, importSales, importSuppliers,
@@ -216,9 +216,12 @@ function ExportCard({
 // Main component
 // ──────────────────────────────────────────────────────────
 
-export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
-  const [topTab, setTopTab] = useState<TopTab>("import");
-  const [activeTab, setActiveTab] = useState<EntityType>("inventory");
+function ImportHubClientInner({ counts = {} }: ImportHubClientProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const topTab = (searchParams.get('mode') || 'import') as TopTab;
+  const activeTab = (searchParams.get('tab') || 'inventory') as EntityType;
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -279,7 +282,7 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
   }, [activeTab]);
 
   function switchTab(tab: EntityType) {
-    setActiveTab(tab);
+    router.replace(pathname + (tab !== 'inventory' ? '?tab=' + tab : ''));
     setRows([]);
     setFileName(null);
     setResult(null);
@@ -370,7 +373,7 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
       {/* Top-level Import / Export tabs */}
       <div className="flex gap-1 p-1 bg-stone-100 rounded-xl w-fit">
         <button
-          onClick={() => setTopTab("import")}
+          onClick={() => router.replace(pathname)}
           className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors ${
             topTab === "import"
               ? "bg-white text-stone-900 shadow-sm"
@@ -380,7 +383,7 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
           ↑ Import
         </button>
         <button
-          onClick={() => setTopTab("export")}
+          onClick={() => router.replace(pathname + '?mode=export')}
           className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors ${
             topTab === "export"
               ? "bg-white text-stone-900 shadow-sm"
@@ -643,5 +646,18 @@ export default function ImportHubClient({ counts = {} }: ImportHubClientProps) {
         </>
       )}
     </div>
+  );
+}
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
+
+export default function ImportHubClient(props: Parameters<typeof ImportHubClientInner>[0]) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>
+      <ImportHubClientInner {...props} />
+    </Suspense>
   );
 }
