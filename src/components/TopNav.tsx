@@ -206,7 +206,7 @@ export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
           href={prefix + '/dashboard'}
           className="font-serif text-[1.75rem] tracking-[0.12em] text-stone-900 transition-opacity duration-300 hover:opacity-70 shrink-0 uppercase"
         >
-          {tenantName || 'Nexpura'}
+          Nexpura
         </Link>
 
         {/* Center nav links with dropdowns — desktop */}

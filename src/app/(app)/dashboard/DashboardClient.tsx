@@ -751,6 +751,34 @@ export default function DashboardClient({
           </div>
         </div>
 
+        {/* ── Summary strip ─────────────────────────────────────────────── */}
+        <div className="flex items-center gap-1 flex-wrap -mt-4 mb-2">
+          {[
+            { label: 'Active jobs', count: activeRepairsCount + activeJobsCount, href: `${bp}/workshop` },
+            { label: 'Overdue jobs', count: overdueRepairs.length, href: `${bp}/repairs?filter=overdue`, alert: overdueRepairs.length > 0 },
+            { label: 'Ready for pickup', count: readyForPickup.length, href: `${bp}/repairs?filter=ready`, highlight: readyForPickup.length > 0 },
+            { label: 'Overdue invoices', count: overdueInvoiceCount, href: `${bp}/invoices?filter=overdue`, alert: overdueInvoiceCount > 0 },
+            { label: 'Low stock', count: lowStockItems.length, href: `${bp}/inventory`, alert: lowStockItems.length > 0 },
+          ].map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[0.75rem] border transition-all duration-200 hover:shadow-sm ${
+                item.alert
+                  ? 'bg-red-50 border-red-100 text-red-600 hover:bg-red-100'
+                  : item.highlight
+                  ? 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                  : 'bg-stone-50 border-stone-150 text-stone-500 hover:bg-white hover:border-stone-200'
+              }`}
+            >
+              <span className={`text-[0.9375rem] font-medium tabular-nums ${item.alert ? 'text-red-700' : item.highlight ? 'text-emerald-800' : 'text-stone-700'}`}>
+                {item.count}
+              </span>
+              {item.label}
+            </a>
+          ))}
+        </div>
+
         {/* ── Dev toggle — floating, only in development ─────────────────── */}
         {process.env.NODE_ENV === "development" && (
           <div className="fixed bottom-4 right-4 z-50">
