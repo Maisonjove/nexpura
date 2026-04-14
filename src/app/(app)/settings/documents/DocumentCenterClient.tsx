@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
 interface LabelTemplate {
@@ -25,8 +26,11 @@ const PDF_TYPES = [
 
 type TabId = "labels" | "pdfs" | "history";
 
-export default function DocumentCenterClient({ tenantId: _tenantId, labelTemplates }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>("labels");
+function DocumentCenterClientInner({ tenantId: _tenantId, labelTemplates }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = (searchParams.get('tab') || 'labels') as TabId;
 
   function previewPDF(type: string) {
     const urls: Record<string, string> = {
@@ -50,7 +54,7 @@ export default function DocumentCenterClient({ tenantId: _tenantId, labelTemplat
           {(["labels", "pdfs", "history"] as TabId[]).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => router.replace(pathname + (tab !== 'labels' ? '?tab=' + tab : ''))}
               className={`px-5 py-3 text-sm font-medium capitalize transition-colors ${
                 activeTab === tab
                   ? "border-b-2 border-amber-600 text-amber-700"
@@ -117,5 +121,18 @@ export default function DocumentCenterClient({ tenantId: _tenantId, labelTemplat
         )}
       </div>
     </div>
+  );
+}
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
+
+export default function DocumentCenterClient(props: Parameters<typeof DocumentCenterClientInner>[0]) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>
+      <DocumentCenterClientInner {...props} />
+    </Suspense>
   );
 }
