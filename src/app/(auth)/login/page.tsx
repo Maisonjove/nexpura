@@ -51,16 +51,14 @@ export default function LoginPage() {
         localStorage.removeItem("nexpura_remember_me");
       }
 
-      // Flush the new session into middleware before navigating (Supabase SSR + App Router)
-      await router.refresh();
-
-      // Check if there's a redirect URL from session expiry
+      // Hard navigation: ensures the browser sends all newly-set session cookies with
+      // the request (soft RSC push can race against Set-Cookie header processing).
       const redirectUrl = sessionStorage.getItem("nexpura_redirect_after_login");
       if (redirectUrl) {
         sessionStorage.removeItem("nexpura_redirect_after_login");
-        router.push(redirectUrl);
+        window.location.href = redirectUrl;
       } else {
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       }
     });
   }
