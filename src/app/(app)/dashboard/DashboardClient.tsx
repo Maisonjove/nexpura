@@ -263,9 +263,9 @@ function ActionCard({
   return (
     <a
       href={href}
-      className="group flex items-center gap-5 bg-white border border-stone-200 rounded-2xl px-6 py-5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400 cursor-pointer"
+      className="group flex items-center gap-4 bg-[#FAFAF9] border border-stone-200/60 rounded-xl px-5 py-4 hover:bg-white hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:border-stone-200 hover:-translate-y-[1px] transition-all duration-300 cursor-pointer"
     >
-      <div className="flex-shrink-0 text-stone-400 group-hover:text-[#8B7355] transition-colors duration-400">
+      <div className="flex-shrink-0 text-stone-300 group-hover:text-[#8B7355] transition-colors duration-300">
         {icon}
       </div>
       <div>
@@ -336,7 +336,7 @@ export default function DashboardClient({
     },
     {
       id: "stock",
-      title: "Stock",
+      title: "Inventory",
       description: "Inventory, suppliers & transfers",
       icon: icons.box,
       items: [
@@ -406,8 +406,8 @@ export default function DashboardClient({
     },
     {
       id: "website",
-      title: "Website",
-      description: "Builder, connect & migration",
+      title: "Digital",
+      description: "Website, integrations & migration",
       icon: icons.globe,
       items: [
         { title: "Website Builder", description: "Build your website", icon: icons.globe, href: `${bp}/website` },
@@ -440,23 +440,57 @@ export default function DashboardClient({
     },
   ];
 
+  // ── Compute metrics for each section ───────────────────────────────────────
+  const getMetricForSection = (sectionId: string): { metric: string; hasAlert: boolean } => {
+    switch (sectionId) {
+      case "sales":
+        return salesThisMonthCount > 0
+          ? { metric: `${salesThisMonthCount} sale${salesThisMonthCount !== 1 ? 's' : ''} this month`, hasAlert: true }
+          : { metric: "No sales yet", hasAlert: false };
+      case "stock":
+        return lowStockItems.length > 0
+          ? { metric: `${lowStockItems.length} item${lowStockItems.length !== 1 ? 's' : ''} low on stock`, hasAlert: true }
+          : { metric: "Stock levels healthy", hasAlert: false };
+      case "customers":
+        return { metric: "View customer profiles", hasAlert: false };
+      case "workshop": {
+        const activeJobs = activeRepairsCount + activeJobsCount;
+        return activeJobs > 0
+          ? { metric: `${activeJobs} active job${activeJobs !== 1 ? 's' : ''}`, hasAlert: true }
+          : { metric: "No active jobs", hasAlert: false };
+      }
+      case "finance":
+        return overdueInvoiceCount > 0
+          ? { metric: `${overdueInvoiceCount} overdue invoice${overdueInvoiceCount !== 1 ? 's' : ''}`, hasAlert: true }
+          : { metric: "No overdue invoices", hasAlert: false };
+      case "marketing":
+        return { metric: "Campaigns & customer outreach", hasAlert: false };
+      case "website":
+        return { metric: "Website & integrations", hasAlert: false };
+      case "admin":
+        return myTasks.length > 0
+          ? { metric: `${myTasks.length} task${myTasks.length !== 1 ? 's' : ''} due`, hasAlert: true }
+          : { metric: "No tasks due", hasAlert: false };
+      default:
+        return { metric: "", hasAlert: false };
+    }
+  };
+
   return (
-    <div className="flex gap-8 items-start">
+    <div className="flex gap-6 items-start">
       {/* ── Main Column ──────────────────────────────────────────────────── */}
-      <div className="flex-1 min-w-0 space-y-10">
-        {/* Business name + date/time */}
-        <div className="flex items-start justify-between">
-          <div className="flex-1 text-center">
-            <h1 className="font-serif text-[2.5rem] tracking-[0.08em] text-stone-900 font-normal leading-[1.08] uppercase">
-              {tenantName || "Your Store"}
+      <div className="flex-1 min-w-0 space-y-8">
+        {/* New heading area */}
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <h1 className="font-serif text-[1.75rem] font-normal tracking-[-0.01em] text-stone-900 leading-tight">
+              Nexpura Admin
             </h1>
-            {businessType && BUSINESS_TYPE_LABELS[businessType] && (
-              <p className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mt-1">
-                {BUSINESS_TYPE_LABELS[businessType]}
-              </p>
-            )}
+            <p className="text-[0.8125rem] text-stone-400 mt-1">
+              Overview of sales, workshop activity, inventory, customers, and daily operations
+            </p>
           </div>
-          <div className="text-right flex-shrink-0 pt-1">
+          <div className="text-right flex-shrink-0">
             <p className="text-[0.875rem] font-medium text-stone-900">
               {d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
             </p>
@@ -500,39 +534,6 @@ export default function DashboardClient({
           </div>
         )}
 
-        {/* ── Tasks (if any) ─────────────────────────────────────────────── */}
-        {myTasks.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-serif text-[1.375rem] text-stone-900 flex items-center gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                Tasks Due Today
-              </h2>
-              <a href={`${bp}/tasks`} className="text-[0.8125rem] text-stone-400 hover:text-stone-900 transition-colors duration-200">
-                View all →
-              </a>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {myTasks.map((task) => (
-                <a
-                  key={task.id}
-                  href={`${bp}/tasks`}
-                  className="bg-white border border-stone-200 rounded-2xl px-5 py-4 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
-                >
-                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                    task.priority === "urgent" ? "bg-red-100 text-red-700" :
-                    task.priority === "high" ? "bg-amber-100 text-amber-700" :
-                    "bg-stone-100 text-stone-600"
-                  }`}>
-                    {task.priority}
-                  </span>
-                  <p className="text-[0.875rem] font-medium text-stone-900 mt-2">{task.title}</p>
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* ── EXPANDED VIEW — all sections open ─────────────────────────── */}
         {viewMode === "expanded" && MENU_SECTIONS.map((section) => (
           <section key={section.id}>
@@ -557,24 +558,32 @@ export default function DashboardClient({
                 transition={{ duration: 0.06 }}
                 className="grid grid-cols-1 sm:grid-cols-3 gap-3"
               >
-                {MENU_SECTIONS.map((section, i) => (
-                  <motion.button
-                    key={section.id}
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.08, delay: i * 0.01 }}
-                    onClick={() => setActiveCategory(section.id)}
-                    className="group flex items-center gap-5 bg-white border border-stone-200 rounded-2xl px-6 py-5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400 cursor-pointer text-left"
-                  >
-                    <div className="flex-shrink-0 text-stone-400 group-hover:text-[#8B7355] transition-colors duration-400">
-                      {section.icon}
-                    </div>
-                    <div>
-                      <p className="text-[0.9375rem] font-medium text-stone-900">{section.title}</p>
-                      <p className="text-[0.8125rem] text-stone-400 mt-0.5 leading-relaxed">{section.description}</p>
-                    </div>
-                  </motion.button>
-                ))}
+                {MENU_SECTIONS.map((section, i) => {
+                  const { metric, hasAlert } = getMetricForSection(section.id);
+                  return (
+                    <motion.button
+                      key={section.id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.08, delay: i * 0.01 }}
+                      onClick={() => setActiveCategory(section.id)}
+                      className="group flex items-center gap-5 bg-[#FAFAF9] border border-stone-200/60 rounded-xl px-5 py-5 hover:bg-white hover:shadow-[0_2px_16px_rgba(0,0,0,0.06)] hover:border-stone-200 hover:-translate-y-[1px] transition-all duration-300 cursor-pointer text-left"
+                    >
+                      <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-stone-100 group-hover:bg-stone-900 transition-colors duration-300">
+                        <div className="text-stone-400 group-hover:text-white transition-colors duration-300 scale-[0.75]">
+                          {section.icon}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[0.9375rem] font-medium text-stone-900">{section.title}</p>
+                        <p className="text-[0.8125rem] text-stone-400 mt-0.5 leading-relaxed">{section.description}</p>
+                        <p className={`text-[0.75rem] mt-1.5 ${hasAlert ? 'text-[#8B7355]' : 'text-stone-400'}`}>
+                          {hasAlert && <span className="mr-1">●</span>}{metric}
+                        </p>
+                      </div>
+                    </motion.button>
+                  );
+                })}
               </motion.div>
             ) : (() => {
               const section = MENU_SECTIONS.find((s) => s.id === activeCategory)!;
@@ -619,150 +628,134 @@ export default function DashboardClient({
         )}
       </div>
 
-      {/* ── Right Sidebar — always visible ─────────────────────────────── */}
-      <aside className="hidden lg:flex flex-col gap-4 w-[280px] flex-shrink-0 pt-16">
-        {/* Tasks Due Today */}
-        <div className="bg-white border border-stone-200 rounded-2xl p-6">
-          <h3 className="font-serif text-lg text-stone-900 mb-4 flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            Tasks for Today
-          </h3>
-          {isStatsLoading ? (
-            <div className="space-y-3">
-              {[1, 2].map((i) => (
-                <div key={i} className="py-2">
-                  <Skeleton className="h-4 w-12 mb-2" />
-                  <Skeleton className="h-4 w-full" />
+      {/* ── Right Sidebar — redesigned ─────────────────────────────────── */}
+      <aside className="hidden lg:flex flex-col gap-5 w-[260px] flex-shrink-0">
+        {/* TODAY */}
+        <div className="bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+          <div className="px-5 pt-5 pb-3 border-b border-stone-100">
+            <h3 className="text-[0.75rem] font-medium tracking-[0.12em] uppercase text-stone-400">Today</h3>
+          </div>
+          <div className="p-5 space-y-5">
+            {/* Tasks due */}
+            <div>
+              <p className="text-[0.75rem] font-medium text-stone-500 mb-2">Tasks due</p>
+              {isStatsLoading ? (
+                <div className="space-y-2">
+                  {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-4 w-full" />
+                  ))}
                 </div>
-              ))}
+              ) : myTasks.length > 0 ? (
+                <div className="space-y-1">
+                  {myTasks.slice(0, 3).map(task => (
+                    <a key={task.id} href={`${bp}/tasks`} className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-200">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${task.priority === 'urgent' ? 'bg-red-400' : task.priority === 'high' ? 'bg-amber-400' : 'bg-stone-300'}`} />
+                      <span className="text-[0.8125rem] text-stone-700 truncate">{task.title}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[0.8125rem] text-stone-400">No tasks due today</p>
+              )}
             </div>
-          ) : myTasks.length > 0 ? (
-            <div className="space-y-1">
-              {myTasks.map((task) => (
-                <a
-                  key={task.id}
-                  href={`${bp}/tasks`}
-                  className="block py-2.5 px-2 -mx-2 rounded-xl hover:bg-stone-50 transition-colors duration-200"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                      task.priority === "urgent" ? "bg-red-100 text-red-700" :
-                      task.priority === "high" ? "bg-amber-100 text-amber-700" :
-                      "bg-stone-100 text-stone-600"
-                    }`}>
-                      {task.priority}
-                    </span>
-                  </div>
-                  <p className="text-[0.875rem] text-stone-900 mt-1">{task.title}</p>
-                </a>
-              ))}
+            {/* Ready for pickup */}
+            <div>
+              <p className="text-[0.75rem] font-medium text-stone-500 mb-2">Ready for pickup</p>
+              {isStatsLoading ? (
+                <div className="space-y-2">
+                  {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-4 w-full" />
+                  ))}
+                </div>
+              ) : readyForPickup.length > 0 ? (
+                <div className="space-y-1">
+                  {readyForPickup.slice(0, 3).map(item => (
+                    <a key={`${item.type}-${item.id}`} href={`${bp}/${item.type === 'repair' ? 'repairs' : 'bespoke'}/${item.id}`} className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                      <span className="text-[0.8125rem] text-stone-700 truncate">{item.label}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[0.8125rem] text-stone-400">Nothing ready yet</p>
+              )}
             </div>
-          ) : (
-            <p className="text-[0.8125rem] text-stone-400">No tasks due today</p>
-          )}
+            {/* Overdue */}
+            <div>
+              <p className="text-[0.75rem] font-medium text-stone-500 mb-2">Overdue jobs</p>
+              {isStatsLoading ? (
+                <div className="space-y-2">
+                  {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-4 w-full" />
+                  ))}
+                </div>
+              ) : overdueRepairs.length > 0 ? (
+                <div className="space-y-1">
+                  {overdueRepairs.slice(0, 3).map(r => (
+                    <a key={r.id} href={`${bp}/repairs/${r.id}`} className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                      <span className="text-[0.8125rem] text-stone-700 truncate">{r.item}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[0.8125rem] text-stone-400">No overdue jobs</p>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Recent Sales */}
-        <div className="bg-white border border-stone-200 rounded-2xl p-6">
-          <h3 className="font-serif text-lg text-stone-900 mb-4">Recent Sales</h3>
-          {isStatsLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-3 py-2">
-                  <Skeleton className="h-4 w-10" />
-                  <Skeleton className="h-4 w-24" />
+        {/* RECENT ACTIVITY */}
+        <div className="bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+          <div className="px-5 pt-5 pb-3 border-b border-stone-100">
+            <h3 className="text-[0.75rem] font-medium tracking-[0.12em] uppercase text-stone-400">Recent Activity</h3>
+          </div>
+          <div className="p-5 space-y-5">
+            {/* Recent sales */}
+            <div>
+              <p className="text-[0.75rem] font-medium text-stone-500 mb-2">Sales</p>
+              {isStatsLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-4 w-full" />
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : recentSales.length > 0 ? (
-            <div className="space-y-0.5">
-              {recentSales.map((sale) => (
-                <a
-                  key={sale.id}
-                  href={`${bp}/sales/${sale.id}`}
-                  className="flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-stone-50 transition-colors duration-200"
-                >
-                  <span className="text-[0.8125rem] font-mono text-stone-400 w-10 tabular-nums">
-                    {sale.saleNumber}
-                  </span>
-                  <span className="text-[0.875rem] text-stone-700">
-                    {sale.customer || "Walk-in"}
-                  </span>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[0.8125rem] text-stone-400">No sales yet</p>
-          )}
-        </div>
-
-        {/* Recent Repairs */}
-        <div className="bg-white border border-stone-200 rounded-2xl p-6">
-          <h3 className="font-serif text-lg text-stone-900 mb-4">Recent Repairs</h3>
-          {isStatsLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-3 py-2">
-                  <Skeleton className="h-4 w-10" />
-                  <Skeleton className="h-4 w-24" />
+              ) : recentSales.length > 0 ? (
+                <div className="space-y-0.5">
+                  {recentSales.slice(0, 4).map(sale => (
+                    <a key={sale.id} href={`${bp}/sales/${sale.id}`} className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-200">
+                      <span className="text-[0.75rem] font-mono text-stone-300 w-8 tabular-nums">{sale.saleNumber}</span>
+                      <span className="text-[0.8125rem] text-stone-700 truncate">{sale.customer || 'Walk-in'}</span>
+                    </a>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="text-[0.8125rem] text-stone-400">No recent sales</p>
+              )}
             </div>
-          ) : recentRepairsList.length > 0 ? (
-            <div className="space-y-0.5">
-              {recentRepairsList.map((repair) => (
-                <a
-                  key={repair.id}
-                  href={`${bp}/repairs/${repair.id}`}
-                  className="flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-stone-50 transition-colors duration-200"
-                >
-                  <span className="text-[0.8125rem] font-mono text-stone-400 w-10 tabular-nums">
-                    {repair.repairNumber}
-                  </span>
-                  <span className="text-[0.875rem] text-stone-700">
-                    {repair.customer || "No customer"}
-                  </span>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[0.8125rem] text-stone-400">No repairs yet</p>
-          )}
-        </div>
-
-        {/* Ready for Pickup */}
-        <div className="bg-white border border-stone-200 rounded-2xl p-6">
-          <h3 className="font-serif text-lg text-stone-900 mb-4 flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            Ready for Pickup
-          </h3>
-          {isStatsLoading ? (
-            <div className="space-y-3">
-              {[1, 2].map((i) => (
-                <div key={i} className="py-2">
-                  <Skeleton className="h-4 w-full mb-1" />
-                  <Skeleton className="h-3 w-28" />
+            {/* Recent repairs */}
+            <div>
+              <p className="text-[0.75rem] font-medium text-stone-500 mb-2">Repairs</p>
+              {isStatsLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-4 w-full" />
+                  ))}
                 </div>
-              ))}
+              ) : recentRepairsList.length > 0 ? (
+                <div className="space-y-0.5">
+                  {recentRepairsList.slice(0, 4).map(repair => (
+                    <a key={repair.id} href={`${bp}/repairs/${repair.id}`} className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-200">
+                      <span className="text-[0.75rem] font-mono text-stone-300 w-8 tabular-nums">{repair.repairNumber}</span>
+                      <span className="text-[0.8125rem] text-stone-700 truncate">{repair.customer || 'No customer'}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[0.8125rem] text-stone-400">No recent repairs</p>
+              )}
             </div>
-          ) : readyForPickup.length > 0 ? (
-            <div className="space-y-0.5">
-              {readyForPickup.map((item) => (
-                <a
-                  key={`${item.type}-${item.id}`}
-                  href={`${bp}/${item.type === "repair" ? "repairs" : "bespoke"}/${item.id}`}
-                  className="block py-2.5 px-2 -mx-2 rounded-xl hover:bg-stone-50 transition-colors duration-200"
-                >
-                  <p className="text-[0.875rem] text-stone-900">{item.label}</p>
-                  <p className="text-[0.8125rem] text-stone-400 mt-0.5">
-                    {item.number} · {item.customer || "No customer"}
-                  </p>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[0.8125rem] text-stone-400">Nothing ready yet</p>
-          )}
+          </div>
         </div>
       </aside>
     </div>
