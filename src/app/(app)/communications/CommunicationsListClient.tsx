@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { resendEmailLog } from "./actions";
 import { RefreshCw } from "lucide-react";
@@ -87,8 +88,11 @@ const NOTIF_TYPE_ICONS: Record<string, string> = {
   system: "🔔",
 };
 
-export default function CommunicationsListClient({ comms, emailLogs, notifications }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>("emails");
+function CommunicationsListClientInner({ comms, emailLogs, notifications }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = (searchParams.get('tab') || 'emails') as TabId;
 
   return (
     <div className="space-y-6">
@@ -109,7 +113,7 @@ export default function CommunicationsListClient({ comms, emailLogs, notificatio
           {(["emails", "manual", "notifications"] as TabId[]).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => router.replace(pathname + (tab !== 'emails' ? '?tab=' + tab : ''))}
               className={`px-5 py-3 text-sm font-medium capitalize transition-colors ${
                 activeTab === tab
                   ? "border-b-2 border-amber-600 text-amber-700"
@@ -314,5 +318,18 @@ export default function CommunicationsListClient({ comms, emailLogs, notificatio
         )}
       </div>
     </div>
+  );
+}
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
+
+export default function CommunicationsListClient(props: Parameters<typeof CommunicationsListClientInner>[0]) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>
+      <CommunicationsListClientInner {...props} />
+    </Suspense>
   );
 }
