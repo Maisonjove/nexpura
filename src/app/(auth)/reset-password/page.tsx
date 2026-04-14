@@ -21,7 +21,20 @@ function ResetPasswordContent() {
 
   useEffect(() => {
     async function checkSession() {
-      // PKCE flow: Supabase redirects here with ?code=... after verifying the token
+      // Implicit flow: Supabase redirects with #access_token=...&type=recovery in hash.
+      // The browser Supabase client detects the hash automatically — wait briefly then check session.
+      if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
+        // Give the client a moment to parse the hash and set the session
+        await new Promise(r => setTimeout(r, 800));
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setIsValid(true);
+          setValidating(false);
+          return;
+        }
+      }
+
+      // PKCE flow: Supabase redirects with ?code=... as a query param
       const code = searchParams.get('code');
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -34,7 +47,7 @@ function ResetPasswordContent() {
         return;
       }
 
-      // OTP flow: direct token_hash + type params
+      // OTP/token_hash flow
       const tokenHash = searchParams.get('token_hash');
       const type = searchParams.get('type');
       if (tokenHash && type === 'recovery') {

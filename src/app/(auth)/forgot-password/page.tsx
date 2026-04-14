@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { createBrowserClient } from "@supabase/ssr";
 import { Mail, CheckCircle, ArrowLeft } from "lucide-react";
 
 export default function ForgotPasswordPage() {
@@ -11,7 +11,13 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const supabase = createClient();
+  // Use implicit flow so the reset link works across browsers/devices
+  // (PKCE requires the code verifier to be in the same browser session)
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { flowType: "implicit" } }
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
