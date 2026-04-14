@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition , Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import {
@@ -48,8 +49,11 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "preview", label: "Preview" },
 ];
 
-export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("setup");
+function WebsiteBuilderClientInner({ initial, tenantId }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = (searchParams.get('tab') || 'setup') as Tab;
   const [websiteType, setWebsiteType] = useState<WebsiteType>(
     (initial?.website_type as WebsiteType) || "hosted"
   );
@@ -414,7 +418,7 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => router.replace(pathname + (tab.id !== 'setup' ? '?tab=' + tab.id : ''))}
                   className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === tab.id
                       ? "border-amber-600 text-amber-700"
@@ -543,5 +547,18 @@ export default function WebsiteBuilderClient({ initial, tenantId }: Props) {
         <DomainGuideMode onTypeChange={handleTypeChange} />
       )}
     </div>
+  );
+}
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
+
+export default function WebsiteBuilderClient(props: Parameters<typeof WebsiteBuilderClientInner>[0]) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>
+      <WebsiteBuilderClientInner {...props} />
+    </Suspense>
   );
 }
