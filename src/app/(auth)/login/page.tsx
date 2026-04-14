@@ -49,33 +49,41 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. Auth via Route Handler — sets session cookies via HTTP Set-Cookie headers,
-      //    the only reliable method in Next.js App Router (Server Actions and client-side
-      //    auth both have cookie propagation issues).
+      // 2. Auth via Route Handler — returns a redirect on success so that session
+      //    cookies are included in the Set-Cookie response headers (the only reliable
+      //    pattern in Next.js App Router, same as /auth/confirm).
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, redirectTo: redirectUrl || "/dashboard" }),
         credentials: "same-origin",
+        redirect: "manual", // intercept the redirect so we can handle it
       });
 
-      if (!res.ok) {
+      // 401 = wrong credentials, 500 = server error
+      if (res.status === 401 || res.status === 500) {
         const data = await res.json().catch(() => ({}));
         recordFailedLoginAttempt(rateCheck.identifier).catch(() => {});
-        setError(data.error || "Invalid email or password");
+        setError(res.status === 401 ? "Invalid email or password" : (data.error || "Something went wrong"));
         return;
       }
 
-      // 3. Post-login checks (2FA, session recording — non-blocking)
-      const result = await postLoginChecks(email, rateCheck.identifier);
-
-      if (result.requires2FA && result.userId && result.email) {
-        router.push(`/verify-2fa?userId=${result.userId}&email=${encodeURIComponent(result.email)}`);
-        return;
+      // 200 with body = 2FA required
+      if (res.status === 200) {
+        const data = await res.json().catch(() => ({}));
+        if (data.requires2FA && data.userId && data.email) {
+          router.push(`/verify-2fa?userId=${data.userId}&email=${encodeURIComponent(data.email)}`);
+          return;
+        }
       }
 
-      // 4. Navigate — session cookies are now set in the browser
-      window.location.href = redirectUrl || "/dashboard";
+      // 3xx = redirect response from Route Handler (success path)
+      // The browser hasn't followed the redirect yet (redirect: "manual").
+      // Navigate now — session cookies were set in the response's Set-Cookie headers
+      // and are available for the next request.
+      postLoginChecks(email, rateCheck.identifier).catch(() => {});
+      const destination = res.headers.get("location") || redirectUrl || "/dashboard";
+      window.location.href = destination;
     });
   }
 
