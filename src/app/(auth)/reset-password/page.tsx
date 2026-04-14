@@ -21,12 +21,32 @@ function ResetPasswordContent() {
 
   useEffect(() => {
     async function checkSession() {
+      // Handle recovery token from URL (Supabase password reset email flow)
+      const tokenHash = searchParams.get('token_hash');
+      const type = searchParams.get('type');
+
+      if (tokenHash && type === 'recovery') {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        });
+        if (!error) {
+          setIsValid(true);
+          setValidating(false);
+          return;
+        }
+        // Token invalid/expired — fall through to show error
+        setValidating(false);
+        return;
+      }
+
+      // No token in URL — check for existing session (e.g. navigated back)
       const { data: { session } } = await supabase.auth.getSession();
       if (session) setIsValid(true);
       setValidating(false);
     }
     checkSession();
-  }, [supabase]);
+  }, [supabase, searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
