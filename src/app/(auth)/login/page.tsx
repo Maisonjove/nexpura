@@ -32,34 +32,35 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
 
+    if (rememberMe) {
+      localStorage.setItem("nexpura_remember_me", "true");
+    } else {
+      localStorage.removeItem("nexpura_remember_me");
+    }
+
+    // Pass the post-login redirect URL to the server action so redirect() is
+    // called server-side — the only reliable way to propagate Supabase session
+    // cookies through a Next.js Server Action (client-side push races Set-Cookie).
+    const redirectUrl = sessionStorage.getItem("nexpura_redirect_after_login") || undefined;
+    if (redirectUrl) sessionStorage.removeItem("nexpura_redirect_after_login");
+
     startTransition(async () => {
-      const result = await loginAction(email, password);
+      const result = await loginAction(email, password, redirectUrl);
 
       if (!result.success) {
         setError(result.error || "Login failed");
         return;
       }
 
+      // 2FA required — navigate to verification page (server action returned early)
       if (result.requires2FA && result.userId && result.email) {
         router.push(`/verify-2fa?userId=${result.userId}&email=${encodeURIComponent(result.email)}`);
         return;
       }
 
-      if (rememberMe) {
-        localStorage.setItem("nexpura_remember_me", "true");
-      } else {
-        localStorage.removeItem("nexpura_remember_me");
-      }
-
-      // Hard navigation: ensures the browser sends all newly-set session cookies with
-      // the request (soft RSC push can race against Set-Cookie header processing).
-      const redirectUrl = sessionStorage.getItem("nexpura_redirect_after_login");
-      if (redirectUrl) {
-        sessionStorage.removeItem("nexpura_redirect_after_login");
-        window.location.href = redirectUrl;
-      } else {
-        window.location.href = "/dashboard";
-      }
+      // Non-2FA success: server action called redirect() — no client navigation needed.
+      // If we reach here, redirect() was not called (edge case); fall back to hard nav.
+      window.location.href = redirectUrl || "/dashboard";
     });
   }
 

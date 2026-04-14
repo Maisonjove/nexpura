@@ -11,6 +11,7 @@ import {
 import { recordSession, checkNewDeviceLogin } from "@/lib/session-manager";
 import { getCachedUserProfile } from "@/lib/cached-auth";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 export type LoginResult = {
   success: boolean;
@@ -32,7 +33,8 @@ async function getClientHeaders(): Promise<{ ip: string; userAgent: string }> {
 
 export async function loginAction(
   email: string,
-  password: string
+  password: string,
+  redirectTo?: string
 ): Promise<LoginResult> {
   try {
     // Parallelize initial setup - headers, rate limit check, and supabase client creation
@@ -120,9 +122,10 @@ export async function loginAction(
     await clearLoginAttempts(identifier);
   }
 
-  return {
-    success: true,
-  };
+  // redirect() is called here so cookies set above are included in the same
+  // response cycle — the only reliable way to propagate Supabase session cookies
+  // through a Next.js Server Action called from a client component.
+  redirect(redirectTo || "/dashboard");
   } catch (error) {
     console.error("[loginAction] Unexpected error:", error);
     return {
