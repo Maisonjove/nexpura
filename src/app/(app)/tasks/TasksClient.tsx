@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useTransition, useEffect , Suspense } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createTask, updateTask, deleteTask, getTaskComments, addTaskComment, getTaskAttachments, deleteTaskAttachment } from "./actions";
@@ -57,11 +57,12 @@ function isOverdue(task: StaffTask): boolean {
   return new Date(task.due_date) < new Date(new Date().toDateString());
 }
 
-export default function TasksClient({ userId, userRole, myTasks, allTasks, teamMembers, tenantId }: Props) {
+function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, tenantId }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState<"my" | "all">("my");
+  const activeTab = (searchParams.get('tab') || 'my') as "my" | "all";
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [showNewTask, setShowNewTask] = useState(false);
 
@@ -520,7 +521,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
       <div className="bg-white border border-stone-200 rounded-xl shadow-sm">
         <div className="flex border-b border-stone-200">
           <button
-            onClick={() => setActiveTab("my")}
+            onClick={() => router.replace(pathname)}
             className={`px-5 py-3 text-sm font-medium transition-colors ${
               activeTab === "my"
                 ? "border-b-2 border-amber-600 text-amber-700"
@@ -536,7 +537,7 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
           </button>
           {canSeeAll && (
             <button
-              onClick={() => setActiveTab("all")}
+              onClick={() => router.replace(pathname + '?tab=all')}
               className={`px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === "all"
                   ? "border-b-2 border-amber-600 text-amber-700"
@@ -711,5 +712,18 @@ export default function TasksClient({ userId, userRole, myTasks, allTasks, teamM
         ) : null}
       </div>
     </div>
+  );
+}
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
+
+export default function TasksClient(props: Parameters<typeof TasksClientInner>[0]) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>
+      <TasksClientInner {...props} />
+    </Suspense>
   );
 }
