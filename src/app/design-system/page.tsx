@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 
 // ─── Animation helpers ──────────────────────────────────────────────────────
@@ -125,10 +126,11 @@ function TokenRow({
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-export default function DesignSystemPage() {
-  const [activeTab, setActiveTab] = useState<"primary" | "semantic" | "chart">(
-    "primary"
-  );
+function DesignSystemPageInner() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = (searchParams.get('tab') || 'primary') as "primary" | "semantic" | "chart";
 
   return (
     <div className="space-y-20 lg:space-y-28">
@@ -173,7 +175,7 @@ export default function DesignSystemPage() {
           ).map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => router.replace(pathname + (tab.key !== 'primary' ? '?tab=' + tab.key : ''))}
               className={`px-5 py-2 rounded-lg text-[0.8125rem] font-medium transition-all duration-300 cursor-pointer ${
                 activeTab === tab.key
                   ? "bg-white text-stone-900 shadow-sm"
@@ -1459,5 +1461,18 @@ function AnimationDemo({
         Replay
       </button>
     </div>
+  );
+}
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
+
+export default function DesignSystemPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>
+      <DesignSystemPageInner />
+    </Suspense>
   );
 }
