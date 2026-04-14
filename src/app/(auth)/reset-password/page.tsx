@@ -21,10 +21,22 @@ function ResetPasswordContent() {
 
   useEffect(() => {
     async function checkSession() {
-      // Handle recovery token from URL (Supabase password reset email flow)
+      // PKCE flow: Supabase redirects here with ?code=... after verifying the token
+      const code = searchParams.get('code');
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
+          setIsValid(true);
+          setValidating(false);
+          return;
+        }
+        setValidating(false);
+        return;
+      }
+
+      // OTP flow: direct token_hash + type params
       const tokenHash = searchParams.get('token_hash');
       const type = searchParams.get('type');
-
       if (tokenHash && type === 'recovery') {
         const { error } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
@@ -35,12 +47,11 @@ function ResetPasswordContent() {
           setValidating(false);
           return;
         }
-        // Token invalid/expired — fall through to show error
         setValidating(false);
         return;
       }
 
-      // No token in URL — check for existing session (e.g. navigated back)
+      // No token — check for existing session (e.g. navigated back after success)
       const { data: { session } } = await supabase.auth.getSession();
       if (session) setIsValid(true);
       setValidating(false);
