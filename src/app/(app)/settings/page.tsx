@@ -692,7 +692,7 @@ export default function SettingsPage() {
                 onClick={() => {
                   const supabase = createClient();
                   supabase.auth.resetPasswordForEmail(user?.email || "", {
-                    redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
+                    redirectTo: `${window.location.origin}/auth/confirm?next=/settings`,
                   }).then(() => showSuccess("Password reset email sent!"));
                 }}
               >
