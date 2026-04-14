@@ -276,6 +276,257 @@ function ActionCard({
   );
 }
 
+// ─── Module Data Panel ──────────────────────────────────────────────────────
+
+function ModuleDataPanel({
+  sectionId,
+  bp,
+  salesThisMonthCount,
+  currency,
+  lowStockItems,
+  overdueRepairs,
+  readyForPickup,
+  activeRepairs,
+  activeBespokeJobs,
+  recentSales,
+  overdueInvoiceCount,
+  totalOutstanding,
+  myTasks,
+}: {
+  sectionId: string
+  bp: string
+  salesThisMonthCount: number
+  currency: string
+  lowStockItems: { id: string; name: string; sku: string | null; quantity: number }[]
+  overdueRepairs: { id: string; repairNumber: string; item: string; customer: string | null; daysOverdue: number }[]
+  readyForPickup: { id: string; number: string; label: string; customer: string | null; type: "repair" | "bespoke" }[]
+  activeRepairs: { id: string; customer: string | null; item: string; stage: string; due_date: string | null }[]
+  activeBespokeJobs: { id: string; customer: string | null; title: string; stage: string; due_date: string | null }[]
+  recentSales: { id: string; saleNumber: string; customer: string | null }[]
+  overdueInvoiceCount: number
+  totalOutstanding: number
+  myTasks: { id: string; title: string; priority: string; status: string; due_date: string | null }[]
+}) {
+  // Sales panel
+  if (sectionId === 'sales') return (
+    <div className="mb-6 bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+      <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between">
+        <span className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400">Recent Sales</span>
+        <a href={`${bp}/sales`} className="text-[0.75rem] text-stone-400 hover:text-stone-900 transition-colors">View all →</a>
+      </div>
+      {recentSales.length > 0 ? (
+        <div className="divide-y divide-stone-100">
+          {recentSales.map(sale => (
+            <a key={sale.id} href={`${bp}/sales/${sale.id}`} className="flex items-center gap-4 px-5 py-3 hover:bg-white transition-colors duration-200 group">
+              <span className="text-[0.75rem] font-mono text-stone-300 w-14 flex-shrink-0">{sale.saleNumber}</span>
+              <span className="text-[0.8125rem] text-stone-700 flex-1">{sale.customer || 'Walk-in'}</span>
+              <span className="text-[0.75rem] text-stone-400">Sale</span>
+              <svg className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className="px-5 py-4 text-[0.8125rem] text-stone-400">No recent sales</p>
+      )}
+      <div className="px-5 py-3 border-t border-stone-100 flex gap-4">
+        <span className="text-[0.75rem] text-stone-400">{salesThisMonthCount} sale{salesThisMonthCount !== 1 ? 's' : ''} this month</span>
+        <a href={`${bp}/invoices`} className="text-[0.75rem] text-stone-400 hover:text-stone-900 transition-colors ml-auto">View invoices →</a>
+      </div>
+    </div>
+  )
+
+  // Inventory panel
+  if (sectionId === 'stock') return (
+    <div className="mb-6 bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+      <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between">
+        <span className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400">Stock Status</span>
+        <a href={`${bp}/inventory`} className="text-[0.75rem] text-stone-400 hover:text-stone-900 transition-colors">View all →</a>
+      </div>
+      {lowStockItems.length > 0 ? (
+        <div className="divide-y divide-stone-100">
+          {lowStockItems.map(item => (
+            <a key={item.id} href={`${bp}/inventory`} className="flex items-center gap-4 px-5 py-3 hover:bg-white transition-colors duration-200 group">
+              <span className="text-[0.75rem] font-mono text-stone-300 w-20 truncate flex-shrink-0">{item.sku || item.id.slice(0, 8)}</span>
+              <span className="text-[0.8125rem] text-stone-700 flex-1">{item.name}</span>
+              <span className={`text-[0.75rem] flex-shrink-0 ${item.quantity === 0 ? 'text-red-500' : 'text-amber-600'}`}>
+                {item.quantity === 0 ? 'Out of stock' : `Qty: ${item.quantity}`}
+              </span>
+              <svg className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className="px-5 py-4 text-[0.8125rem] text-stone-400">All stock levels healthy</p>
+      )}
+    </div>
+  )
+
+  // Workshop panel
+  if (sectionId === 'workshop') {
+    const allActive = [
+      ...activeRepairs.map(r => ({ ...r, jobType: 'Repair' as const, href: `${bp}/repairs/${r.id}` })),
+      ...activeBespokeJobs.map(j => ({ ...j, item: j.title, jobType: 'Bespoke' as const, href: `${bp}/bespoke/${j.id}` })),
+    ]
+    return (
+      <div className="mb-6 space-y-3">
+        {/* Overdue */}
+        <div className="bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+          <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between">
+            <span className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+              Overdue
+            </span>
+            <a href={`${bp}/repairs?filter=overdue`} className="text-[0.75rem] text-stone-400 hover:text-stone-900 transition-colors">View all →</a>
+          </div>
+          {overdueRepairs.length > 0 ? (
+            <div className="divide-y divide-stone-100">
+              {overdueRepairs.map(r => (
+                <a key={r.id} href={`${bp}/repairs/${r.id}`} className="flex items-center gap-4 px-5 py-3 hover:bg-white transition-colors duration-200 group">
+                  <span className="text-[0.75rem] font-mono text-stone-300 w-16 flex-shrink-0">{r.repairNumber}</span>
+                  <span className="text-[0.8125rem] text-stone-700 flex-1 truncate">{r.item}{r.customer ? ` — ${r.customer}` : ''}</span>
+                  <span className="text-[0.75rem] text-red-500 flex-shrink-0">{r.daysOverdue}d overdue</span>
+                  <svg className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="px-5 py-4 text-[0.8125rem] text-stone-400">No overdue jobs</p>
+          )}
+        </div>
+        {/* Ready for pickup */}
+        <div className="bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+          <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between">
+            <span className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              Ready for Pickup
+            </span>
+          </div>
+          {readyForPickup.length > 0 ? (
+            <div className="divide-y divide-stone-100">
+              {readyForPickup.map(item => (
+                <a key={`${item.type}-${item.id}`} href={`${bp}/${item.type === 'repair' ? 'repairs' : 'bespoke'}/${item.id}`} className="flex items-center gap-4 px-5 py-3 hover:bg-white transition-colors duration-200 group">
+                  <span className="text-[0.75rem] font-mono text-stone-300 w-16 flex-shrink-0">{item.number}</span>
+                  <span className="text-[0.8125rem] text-stone-700 flex-1 truncate">{item.label}{item.customer ? ` — ${item.customer}` : ''}</span>
+                  <span className="text-[0.75rem] text-emerald-600 flex-shrink-0 capitalize">{item.type}</span>
+                  <svg className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="px-5 py-4 text-[0.8125rem] text-stone-400">Nothing ready for pickup</p>
+          )}
+        </div>
+        {/* Active jobs */}
+        <div className="bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+          <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between">
+            <span className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400">Active Jobs</span>
+            <a href={`${bp}/workshop`} className="text-[0.75rem] text-stone-400 hover:text-stone-900 transition-colors">View all →</a>
+          </div>
+          {allActive.length > 0 ? (
+            <div className="divide-y divide-stone-100">
+              {allActive.slice(0, 6).map((job, i) => (
+                <a key={i} href={job.href} className="flex items-center gap-4 px-5 py-3 hover:bg-white transition-colors duration-200 group">
+                  <span className="text-[0.75rem] font-mono text-stone-300 w-16 flex-shrink-0">{job.id.slice(0, 8)}</span>
+                  <span className="text-[0.8125rem] text-stone-700 flex-1 truncate">{job.item}{job.customer ? ` — ${job.customer}` : ''}</span>
+                  <span className="text-[0.75rem] text-stone-400 flex-shrink-0">{job.jobType}</span>
+                  <span className="text-[0.75rem] text-stone-400 flex-shrink-0 hidden sm:block">{formatStageLabel(job.stage)}</span>
+                  <svg className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="px-5 py-4 text-[0.8125rem] text-stone-400">No active jobs</p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Finance panel
+  if (sectionId === 'finance') return (
+    <div className="mb-6 bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+      <div className="px-5 pt-4 pb-3 border-b border-stone-100">
+        <span className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400">Finance Overview</span>
+      </div>
+      <div className="divide-y divide-stone-100">
+        <a href={`${bp}/invoices?filter=overdue`} className="flex items-center gap-4 px-5 py-3 hover:bg-white transition-colors duration-200 group">
+          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${overdueInvoiceCount > 0 ? 'bg-red-400' : 'bg-stone-200'}`} />
+          <span className="text-[0.8125rem] text-stone-700 flex-1">
+            {overdueInvoiceCount > 0 ? `${overdueInvoiceCount} overdue invoice${overdueInvoiceCount !== 1 ? 's' : ''}` : 'No overdue invoices'}
+          </span>
+          {overdueInvoiceCount > 0 && <span className="text-[0.75rem] text-red-500">Action needed</span>}
+          <svg className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+        </a>
+        <a href={`${bp}/invoices`} className="flex items-center gap-4 px-5 py-3 hover:bg-white transition-colors duration-200 group">
+          <span className="w-1.5 h-1.5 rounded-full bg-stone-200 flex-shrink-0" />
+          <span className="text-[0.8125rem] text-stone-700 flex-1">Outstanding balance: {fmtCurrency(totalOutstanding, currency)}</span>
+          <svg className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  )
+
+  // Customers panel
+  if (sectionId === 'customers') return (
+    <div className="mb-6 bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+      <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between">
+        <span className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400">Customer Activity</span>
+        <a href={`${bp}/customers`} className="text-[0.75rem] text-stone-400 hover:text-stone-900 transition-colors">View all →</a>
+      </div>
+      <p className="px-5 py-4 text-[0.8125rem] text-stone-400">No follow-ups due · <a href={`${bp}/customers`} className="underline hover:text-stone-700">Browse customer profiles →</a></p>
+    </div>
+  )
+
+  // Marketing panel
+  if (sectionId === 'marketing') return (
+    <div className="mb-6 bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+      <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between">
+        <span className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400">Campaign Status</span>
+        <a href={`${bp}/marketing`} className="text-[0.75rem] text-stone-400 hover:text-stone-900 transition-colors">View all →</a>
+      </div>
+      <p className="px-5 py-4 text-[0.8125rem] text-stone-400">No active campaigns · <a href={`${bp}/marketing/campaigns`} className="underline hover:text-stone-700">Create a campaign →</a></p>
+    </div>
+  )
+
+  // Digital panel
+  if (sectionId === 'website') return (
+    <div className="mb-6 bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+      <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between">
+        <span className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400">Digital & Integrations</span>
+        <a href={`${bp}/integrations`} className="text-[0.75rem] text-stone-400 hover:text-stone-900 transition-colors">View all →</a>
+      </div>
+      <p className="px-5 py-4 text-[0.8125rem] text-stone-400">No integration issues · All systems connected</p>
+    </div>
+  )
+
+  // Admin panel
+  if (sectionId === 'admin') return (
+    <div className="mb-6 bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden">
+      <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between">
+        <span className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400">Tasks & Admin</span>
+        <a href={`${bp}/tasks`} className="text-[0.75rem] text-stone-400 hover:text-stone-900 transition-colors">View all →</a>
+      </div>
+      {myTasks.filter(t => t.status !== 'completed' && t.status !== 'done').length > 0 ? (
+        <div className="divide-y divide-stone-100">
+          {myTasks.filter(t => t.status !== 'completed' && t.status !== 'done').map(task => (
+            <a key={task.id} href={`${bp}/tasks`} className="flex items-center gap-4 px-5 py-3 hover:bg-white transition-colors duration-200 group">
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${task.priority === 'urgent' ? 'bg-red-400' : task.priority === 'high' ? 'bg-amber-400' : 'bg-stone-300'}`} />
+              <span className="text-[0.8125rem] text-stone-700 flex-1 truncate">{task.title}</span>
+              <span className="text-[0.75rem] text-stone-400 flex-shrink-0 capitalize">{task.priority}</span>
+              {task.due_date && <span className="text-[0.75rem] text-stone-400 flex-shrink-0 hidden sm:block">{new Date(task.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>}
+              <svg className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className="px-5 py-4 text-[0.8125rem] text-stone-400">No admin tasks due</p>
+      )}
+    </div>
+  )
+
+  return null
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function DashboardClient({
@@ -547,85 +798,179 @@ export default function DashboardClient({
         ))}
 
         {/* ── COMPACT VIEW — animated category drill-down ─────────────── */}
-        {viewMode === "compact" && (
-          <AnimatePresence mode="wait">
-            {!activeCategory ? (
-              <motion.div
-                key="categories"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.06 }}
-                className="grid grid-cols-1 sm:grid-cols-3 gap-3"
-              >
-                {MENU_SECTIONS.map((section, i) => {
-                  const { metric, hasAlert } = getMetricForSection(section.id);
-                  return (
-                    <motion.button
-                      key={section.id}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.08, delay: i * 0.01 }}
-                      onClick={() => setActiveCategory(section.id)}
-                      className="group flex items-center gap-5 bg-[#FAFAF9] border border-stone-200/60 rounded-xl px-5 py-5 hover:bg-white hover:shadow-[0_2px_16px_rgba(0,0,0,0.06)] hover:border-stone-200 hover:-translate-y-[1px] transition-all duration-300 cursor-pointer text-left"
-                    >
-                      <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-stone-100 group-hover:bg-stone-900 transition-colors duration-300">
-                        <div className="text-stone-400 group-hover:text-white transition-colors duration-300 scale-[0.75]">
-                          {section.icon}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[0.9375rem] font-medium text-stone-900">{section.title}</p>
-                        <p className="text-[0.8125rem] text-stone-400 mt-0.5 leading-relaxed">{section.description}</p>
-                        <p className={`text-[0.75rem] mt-1.5 ${hasAlert ? 'text-[#8B7355]' : 'text-stone-400'}`}>
-                          {hasAlert && <span className="mr-1">●</span>}{metric}
-                        </p>
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </motion.div>
-            ) : (() => {
-              const section = MENU_SECTIONS.find((s) => s.id === activeCategory)!;
-              return (
-                <motion.section
-                  key={`category-${activeCategory}`}
-                  initial={{ opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  transition={{ duration: 0.06 }}
-                >
-                  <div
-                    className="flex items-center gap-3 mb-4"
-                  >
-                    <button
-                      onClick={() => setActiveCategory(null)}
-                      className="flex items-center gap-1.5 text-[0.8125rem] text-stone-400 hover:text-stone-900 transition-colors duration-200 cursor-pointer"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                      Back
-                    </button>
-                    <h2 className="font-serif text-[1.375rem] text-stone-900">{section.title} Menu</h2>
+        {viewMode === "compact" && (() => {
+          // Compute needs attention items
+          const needsAttentionItems = [
+            ...overdueRepairs.map(r => ({
+              id: r.repairNumber,
+              label: r.item,
+              customer: r.customer,
+              type: 'Repair',
+              status: 'Overdue',
+              urgency: 'overdue' as const,
+              detail: `${r.daysOverdue} day${r.daysOverdue !== 1 ? 's' : ''} overdue`,
+              href: `${bp}/repairs/${r.id}`,
+            })),
+            ...myTasks.filter(t => t.status !== 'completed' && t.status !== 'done').map(t => ({
+              id: t.id.slice(0, 8),
+              label: t.title,
+              customer: null,
+              type: 'Task',
+              status: t.priority === 'urgent' ? 'Urgent' : 'Due',
+              urgency: t.priority === 'urgent' ? 'overdue' as const : 'pending' as const,
+              detail: t.due_date ? `Due ${new Date(t.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}` : 'No due date',
+              href: `${bp}/tasks`,
+            })),
+            ...lowStockItems.map(s => ({
+              id: s.sku || s.id.slice(0, 8),
+              label: s.name,
+              customer: null,
+              type: 'Stock',
+              status: s.quantity === 0 ? 'Out of Stock' : 'Low Stock',
+              urgency: s.quantity === 0 ? 'overdue' as const : 'pending' as const,
+              detail: `Qty: ${s.quantity}`,
+              href: `${bp}/inventory`,
+            })),
+            ...readyForPickup.map(r => ({
+              id: r.number,
+              label: r.label,
+              customer: r.customer,
+              type: r.type === 'repair' ? 'Repair' : 'Bespoke',
+              status: 'Ready for Pickup',
+              urgency: 'ready' as const,
+              detail: 'Awaiting collection',
+              href: `${bp}/${r.type === 'repair' ? 'repairs' : 'bespoke'}/${r.id}`,
+            })),
+          ]
+
+          return (
+            <>
+              {/* Needs Attention Section */}
+              {needsAttentionItems.length > 0 && !activeCategory && (
+                <section className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-[0.75rem] font-medium tracking-[0.12em] uppercase text-stone-400">Needs Attention</h2>
+                    <span className="text-[0.75rem] text-stone-400">{needsAttentionItems.length} item{needsAttentionItems.length !== 1 ? 's' : ''}</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {section.items.map((item, i) => (
-                      <motion.div
-                        key={item.href}
-                        initial={{ opacity: 0, y: 3 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.06, delay: i * 0.01 }}
-                      >
-                        <ActionCard title={item.title} description={item.description} icon={item.icon} href={item.href} />
-                      </motion.div>
+                  <div className="bg-[#FAFAF9] border border-stone-200/60 rounded-xl overflow-hidden divide-y divide-stone-100">
+                    {needsAttentionItems.map((item, i) => (
+                      <a key={i} href={item.href} className="flex items-center gap-4 px-5 py-3 hover:bg-white transition-colors duration-200 group">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                          item.urgency === 'overdue' ? 'bg-red-400' :
+                          item.urgency === 'ready' ? 'bg-emerald-400' :
+                          'bg-amber-400'
+                        }`} />
+                        <span className="text-[0.75rem] font-mono text-stone-300 w-20 truncate flex-shrink-0">{item.id}</span>
+                        <span className="text-[0.8125rem] text-stone-700 flex-1 truncate">{item.label}{item.customer ? ` — ${item.customer}` : ''}</span>
+                        <span className="text-[0.75rem] text-stone-400 flex-shrink-0 hidden sm:block">{item.type}</span>
+                        <span className={`text-[0.75rem] flex-shrink-0 hidden sm:block ${item.urgency === 'overdue' ? 'text-red-500' : item.urgency === 'ready' ? 'text-emerald-600' : 'text-amber-600'}`}>{item.status}</span>
+                        <span className="text-[0.75rem] text-stone-400 flex-shrink-0">{item.detail}</span>
+                        <svg className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                      </a>
                     ))}
                   </div>
-                </motion.section>
-              );
-            })()}
-          </AnimatePresence>
-        )}
+                </section>
+              )}
+
+              <AnimatePresence mode="wait">
+                {!activeCategory ? (
+                  <motion.div
+                    key="categories"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.06 }}
+                    className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+                  >
+                    {MENU_SECTIONS.map((section, i) => {
+                      const { metric, hasAlert } = getMetricForSection(section.id);
+                      return (
+                        <motion.button
+                          key={section.id}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.08, delay: i * 0.01 }}
+                          onClick={() => setActiveCategory(section.id)}
+                          className="group flex items-center gap-5 bg-[#FAFAF9] border border-stone-200/60 rounded-xl px-5 py-5 hover:bg-white hover:shadow-[0_2px_16px_rgba(0,0,0,0.06)] hover:border-stone-200 hover:-translate-y-[1px] transition-all duration-300 cursor-pointer text-left"
+                        >
+                          <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-stone-100 group-hover:bg-stone-900 transition-colors duration-300">
+                            <div className="text-stone-400 group-hover:text-white transition-colors duration-300 scale-[0.75]">
+                              {section.icon}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[0.9375rem] font-medium text-stone-900">{section.title}</p>
+                            <p className="text-[0.8125rem] text-stone-400 mt-0.5 leading-relaxed">{section.description}</p>
+                            <p className={`text-[0.75rem] mt-1.5 ${hasAlert ? 'text-[#8B7355]' : 'text-stone-400'}`}>
+                              {hasAlert && <span className="mr-1">●</span>}{metric}
+                            </p>
+                          </div>
+                        </motion.button>
+                      );
+                    })}
+                  </motion.div>
+                ) : (() => {
+                  const section = MENU_SECTIONS.find((s) => s.id === activeCategory)!;
+                  return (
+                    <motion.section
+                      key={`category-${activeCategory}`}
+                      initial={{ opacity: 0, x: 8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -8 }}
+                      transition={{ duration: 0.06 }}
+                    >
+                      <div
+                        className="flex items-center gap-3 mb-4"
+                      >
+                        <button
+                          onClick={() => setActiveCategory(null)}
+                          className="flex items-center gap-1.5 text-[0.8125rem] text-stone-400 hover:text-stone-900 transition-colors duration-200 cursor-pointer"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                          Back
+                        </button>
+                        <h2 className="font-serif text-[1.375rem] text-stone-900">{section.title} Menu</h2>
+                      </div>
+                      
+                      {/* Module Data Panel */}
+                      <ModuleDataPanel
+                        sectionId={activeCategory}
+                        bp={bp}
+                        salesThisMonthCount={salesThisMonthCount}
+                        currency={currency}
+                        lowStockItems={lowStockItems}
+                        overdueRepairs={overdueRepairs}
+                        readyForPickup={readyForPickup}
+                        activeRepairs={activeRepairs}
+                        activeBespokeJobs={activeBespokeJobs}
+                        recentSales={recentSales}
+                        overdueInvoiceCount={overdueInvoiceCount}
+                        totalOutstanding={totalOutstanding}
+                        myTasks={myTasks}
+                      />
+                      
+                      <h3 className="text-[0.75rem] font-medium tracking-[0.1em] uppercase text-stone-400 mb-3 mt-2">Quick Actions</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {section.items.map((item, i) => (
+                          <motion.div
+                            key={item.href}
+                            initial={{ opacity: 0, y: 3 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.06, delay: i * 0.01 }}
+                          >
+                            <ActionCard title={item.title} description={item.description} icon={item.icon} href={item.href} />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.section>
+                  );
+                })()}
+              </AnimatePresence>
+            </>
+          )
+        })()}
       </div>
 
       {/* ── Right Sidebar — redesigned ─────────────────────────────────── */}
