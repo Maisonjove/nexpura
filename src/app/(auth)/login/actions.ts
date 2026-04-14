@@ -60,37 +60,41 @@ export async function checkLoginAllowed(
 
 /**
  * Post-login server checks: 2FA status, session recording, cache warm-up.
- * Called after the client-side signInWithPassword succeeds.
+ * Called after the Route Handler auth succeeds. Reads the session from cookies.
  */
 export async function postLoginChecks(
-  userId: string,
   userEmail: string,
-  accessToken: string,
   identifier: string
 ): Promise<LoginResult> {
   try {
     const clientHeaders = await getClientHeaders();
-    const admin = createAdminClient();
+    const { createClient: createServerClient } = await import("@/lib/supabase/server");
+    const supabase = await createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return { success: true };
 
+    const admin = createAdminClient();
     const [, profileResult] = await Promise.all([
       clearLoginAttempts(identifier).catch(() => {}),
-      admin.from("users").select("totp_enabled").eq("id", userId).single(),
+      admin.from("users").select("totp_enabled").eq("id", user.id).single(),
     ]);
 
-    // Pre-warm Redis cache
-    getCachedUserProfile(userId).catch(() => {});
+    getCachedUserProfile(user.id).catch(() => {});
 
     if (profileResult.data?.totp_enabled) {
-      return { success: true, requires2FA: true, userId, email: userEmail };
+      return { success: true, requires2FA: true, userId: user.id, email: user.email };
     }
 
-    // Non-blocking session recording
-    recordSession(userId, accessToken, clientHeaders).catch(() => {});
-    checkNewDeviceLogin(userId, userEmail, clientHeaders).catch(() => {});
+    const session = await supabase.auth.getSession();
+    const accessToken = session.data.session?.access_token;
+    if (accessToken) {
+      recordSession(user.id, accessToken, clientHeaders).catch(() => {});
+      checkNewDeviceLogin(user.id, userEmail, clientHeaders).catch(() => {});
+    }
 
     return { success: true };
   } catch {
-    // Post-login checks failing should never block the user from logging in
     return { success: true };
   }
 }

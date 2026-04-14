@@ -42,38 +42,39 @@ export default function LoginPage() {
     if (redirectUrl) sessionStorage.removeItem("nexpura_redirect_after_login");
 
     startTransition(async () => {
-      // 1. Server-side rate limit check
+      // 1. Rate limit check
       const rateCheck = await checkLoginAllowed(email);
       if (!rateCheck.allowed) {
         setError(rateCheck.error || "Too many attempts. Try again later.");
         return;
       }
 
-      // 2. Client-side auth — browser Supabase client writes cookies directly to
-      //    document.cookie, bypassing the Server Action cookie propagation issue.
-      const supabase = createClient();
-      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      // 2. Auth via Route Handler — sets session cookies via HTTP Set-Cookie headers,
+      //    the only reliable method in Next.js App Router (Server Actions and client-side
+      //    auth both have cookie propagation issues).
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        credentials: "same-origin",
+      });
 
-      if (authError || !data.user || !data.session) {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         recordFailedLoginAttempt(rateCheck.identifier).catch(() => {});
-        setError("Invalid email or password");
+        setError(data.error || "Invalid email or password");
         return;
       }
 
-      // 3. Post-login server checks (2FA, session recording, cache warm-up)
-      const result = await postLoginChecks(
-        data.user.id,
-        data.user.email || email,
-        data.session.access_token,
-        rateCheck.identifier
-      );
+      // 3. Post-login checks (2FA, session recording — non-blocking)
+      const result = await postLoginChecks(email, rateCheck.identifier);
 
       if (result.requires2FA && result.userId && result.email) {
         router.push(`/verify-2fa?userId=${result.userId}&email=${encodeURIComponent(result.email)}`);
         return;
       }
 
-      // 4. Navigate — cookies are already set client-side, so any navigation works
+      // 4. Navigate — session cookies are now set in the browser
       window.location.href = redirectUrl || "/dashboard";
     });
   }
