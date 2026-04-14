@@ -18,7 +18,24 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, redirectTo } = body as { email: string; password: string; redirectTo?: string };
+    const { email, password, redirectTo, checkOnly2FA } = body as { email: string; password: string; redirectTo?: string; checkOnly2FA?: boolean };
+
+    // Handle 2FA-only check (client already authenticated)
+    if (checkOnly2FA) {
+      if (!email) {
+        return NextResponse.json({ requires2FA: false });
+      }
+      const admin = createAdminClient();
+      const { data: userData } = await admin.auth.admin.listUsers();
+      const user = userData?.users?.find(u => u.email === email);
+      if (user) {
+        const { data: profile } = await admin.from("users").select("totp_enabled").eq("id", user.id).single();
+        if (profile?.totp_enabled) {
+          return NextResponse.json({ requires2FA: true, userId: user.id, email: user.email });
+        }
+      }
+      return NextResponse.json({ requires2FA: false });
+    }
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 });

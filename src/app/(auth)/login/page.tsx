@@ -38,8 +38,8 @@ export default function LoginPage() {
       localStorage.removeItem("nexpura_remember_me");
     }
 
-    const redirectUrl = sessionStorage.getItem("nexpura_redirect_after_login") || undefined;
-    if (redirectUrl) sessionStorage.removeItem("nexpura_redirect_after_login");
+    const redirectUrl = sessionStorage.getItem("nexpura_redirect_after_login") || "/dashboard";
+    sessionStorage.removeItem("nexpura_redirect_after_login");
 
     startTransition(async () => {
       // 1. Rate limit check
@@ -49,41 +49,35 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. Auth via Route Handler — returns a redirect on success so that session
-      //    cookies are included in the Set-Cookie response headers (the only reliable
-      //    pattern in Next.js App Router, same as /auth/confirm).
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, redirectTo: redirectUrl || "/dashboard" }),
-        credentials: "same-origin",
-        redirect: "manual", // intercept the redirect so we can handle it
-      });
+      // 2. Client-side auth — browser Supabase client handles cookies/session storage reliably
+      const supabase = createClient();
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
-      // 401 = wrong credentials, 500 = server error
-      if (res.status === 401 || res.status === 500) {
-        const data = await res.json().catch(() => ({}));
+      if (authError || !data.user) {
         recordFailedLoginAttempt(rateCheck.identifier).catch(() => {});
-        setError(res.status === 401 ? "Invalid email or password" : (data.error || "Something went wrong"));
+        setError("Invalid email or password");
         return;
       }
 
-      // 200 with body = 2FA required
-      if (res.status === 200) {
-        const data = await res.json().catch(() => ({}));
-        if (data.requires2FA && data.userId && data.email) {
-          router.push(`/verify-2fa?userId=${data.userId}&email=${encodeURIComponent(data.email)}`);
+      // 3. Check 2FA via existing server action
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, redirectTo: redirectUrl, checkOnly2FA: true }),
+        credentials: "same-origin",
+      });
+
+      if (res.ok) {
+        const data2fa = await res.json().catch(() => ({}));
+        if (data2fa.requires2FA && data2fa.userId && data2fa.email) {
+          router.push(`/verify-2fa?userId=${data2fa.userId}&email=${encodeURIComponent(data2fa.email)}`);
           return;
         }
       }
 
-      // 3xx = redirect response from Route Handler (success path)
-      // The browser hasn't followed the redirect yet (redirect: "manual").
-      // Navigate now — session cookies were set in the response's Set-Cookie headers
-      // and are available for the next request.
+      // 4. Navigate — session is already set in browser cookies by step 2
       postLoginChecks(email, rateCheck.identifier).catch(() => {});
-      const destination = res.headers.get("location") || redirectUrl || "/dashboard";
-      window.location.href = destination;
+      window.location.href = redirectUrl;
     });
   }
 
