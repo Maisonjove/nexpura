@@ -51,13 +51,16 @@ export default function LoginPage() {
         localStorage.removeItem("nexpura_remember_me");
       }
 
+      // Flush the new session into middleware before navigating (Supabase SSR + App Router)
+      await router.refresh();
+
       // Check if there's a redirect URL from session expiry
       const redirectUrl = sessionStorage.getItem("nexpura_redirect_after_login");
       if (redirectUrl) {
         sessionStorage.removeItem("nexpura_redirect_after_login");
         router.push(redirectUrl);
       } else {
-          router.push("/dashboard");
+        router.push("/dashboard");
       }
     });
   }
