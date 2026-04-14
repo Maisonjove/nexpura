@@ -73,7 +73,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
   const router = useRouter();
   const pathname = usePathname();
   const [, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState(stageFilter || "all");
+  const activeTab = stageFilter || "all";
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [notifying, setNotifying] = useState(false);
@@ -247,7 +247,6 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
             <button
               key={tab.key}
               onClick={() => {
-                setActiveTab(tab.key);
                 updateParams({ stage: tab.key === "all" ? "" : tab.key });
               }}
               className={`pb-3 px-1 text-sm transition-colors ${
@@ -347,3 +346,8 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
     </>
   );
 }
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
