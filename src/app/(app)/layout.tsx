@@ -99,6 +99,7 @@ export default async function AppLayout({
         <TopNav
           user={userData}
           tenantName={tenant?.name as string}
+          tenantSlug={tenant?.slug}
         />
         <ErrorBoundary section="main-content">
           <main

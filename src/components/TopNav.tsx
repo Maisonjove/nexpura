@@ -105,9 +105,19 @@ const ADMIN_ITEMS = [
 
 // ─── Dropdown component ────────────────────────────────────────────────────
 
-function NavDropdown({ item, pathname }: { item: (typeof NAV_ITEMS)[number]; pathname: string }) {
+function NavDropdown({
+  item,
+  pathname,
+  prefix,
+}: {
+  item: (typeof NAV_ITEMS)[number];
+  pathname: string;
+  prefix: string;
+}) {
   const hasActiveChild = item.children.some(
-    (child) => pathname === child.href || pathname.startsWith(child.href + '/')
+    (child) =>
+      pathname === prefix + child.href ||
+      pathname.startsWith(prefix + child.href + '/')
   );
 
   return (
@@ -127,11 +137,13 @@ function NavDropdown({ item, pathname }: { item: (typeof NAV_ITEMS)[number]; pat
       <div className="absolute top-full left-1/2 -translate-x-1/2 pt-1 opacity-0 invisible group-hover/nav:opacity-100 group-hover/nav:visible transition-all duration-200 ease-out z-50">
         <div className="bg-white/95 backdrop-blur-2xl border border-black/[0.08] rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.08)] p-2 min-w-[260px]">
           {item.children.map((child) => {
-            const active = pathname === child.href || pathname.startsWith(child.href + '/');
+            const active =
+              pathname === prefix + child.href ||
+              pathname.startsWith(prefix + child.href + '/');
             return (
               <Link
                 key={child.href}
-                href={child.href}
+                href={prefix + child.href}
                 className={`flex flex-col px-4 py-3 rounded-xl transition-colors duration-200 ${
                   active ? 'bg-stone-100' : 'hover:bg-stone-50'
                 }`}
@@ -154,10 +166,12 @@ function NavDropdown({ item, pathname }: { item: (typeof NAV_ITEMS)[number]; pat
 interface TopNavProps {
   user?: { full_name?: string; email?: string; [key: string]: unknown } | null;
   tenantName?: string;
+  tenantSlug?: string;
 }
 
-export default function TopNav({ user, tenantName }: TopNavProps) {
+export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
   const pathname = usePathname();
+  const prefix = tenantSlug ? `/${tenantSlug}` : '';
   const [menuOpen, setMenuOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [scanFlash, setScanFlash] = useState(false);
@@ -189,7 +203,7 @@ export default function TopNav({ user, tenantName }: TopNavProps) {
       <nav className="flex items-center justify-between max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 h-[72px]">
         {/* Logo */}
         <Link
-          href="/dashboard"
+          href={prefix + '/dashboard'}
           className="font-serif text-[1.75rem] tracking-[0.12em] text-stone-900 transition-opacity duration-300 hover:opacity-70 shrink-0 uppercase"
         >
           {tenantName || 'Nexpura'}
@@ -198,7 +212,7 @@ export default function TopNav({ user, tenantName }: TopNavProps) {
         {/* Center nav links with dropdowns — desktop */}
         <div className="hidden lg:flex items-center">
           {NAV_ITEMS.map((item) => (
-            <NavDropdown key={item.label} item={item} pathname={pathname} />
+            <NavDropdown key={item.label} item={item} pathname={pathname} prefix={prefix} />
           ))}
         </div>
 
@@ -284,11 +298,13 @@ export default function TopNav({ user, tenantName }: TopNavProps) {
                 {group.label}
               </p>
               {group.children.map((child) => {
-                const active = pathname === child.href || pathname.startsWith(child.href + '/');
+                const active =
+                  pathname === prefix + child.href ||
+                  pathname.startsWith(prefix + child.href + '/');
                 return (
                   <Link
                     key={child.href}
-                    href={child.href}
+                    href={prefix + child.href}
                     className={`block text-[0.9375rem] py-2.5 px-3 rounded-xl transition-colors duration-200 ${
                       active ? 'text-stone-900 bg-stone-100 font-medium' : 'text-stone-700 hover:bg-stone-50'
                     }`}
@@ -312,11 +328,13 @@ export default function TopNav({ user, tenantName }: TopNavProps) {
               </svg>
             </button>
             {adminOpen && ADMIN_ITEMS.map((child) => {
-              const active = pathname === child.href || pathname.startsWith(child.href + '/');
+              const active =
+                pathname === prefix + child.href ||
+                pathname.startsWith(prefix + child.href + '/');
               return (
                 <Link
                   key={child.href}
-                  href={child.href}
+                  href={prefix + child.href}
                   className={`block text-[0.9375rem] py-2.5 px-3 rounded-xl transition-colors duration-200 ${
                     active ? 'text-stone-900 bg-stone-100 font-medium' : 'text-stone-700 hover:bg-stone-50'
                   }`}
