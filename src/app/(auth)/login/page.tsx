@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { loginAction } from "./actions";
+import { checkLoginAllowed, postLoginChecks, recordFailedLoginAttempt } from "./actions";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,28 +38,42 @@ export default function LoginPage() {
       localStorage.removeItem("nexpura_remember_me");
     }
 
-    // Pass the post-login redirect URL to the server action so redirect() is
-    // called server-side — the only reliable way to propagate Supabase session
-    // cookies through a Next.js Server Action (client-side push races Set-Cookie).
     const redirectUrl = sessionStorage.getItem("nexpura_redirect_after_login") || undefined;
     if (redirectUrl) sessionStorage.removeItem("nexpura_redirect_after_login");
 
     startTransition(async () => {
-      const result = await loginAction(email, password, redirectUrl);
-
-      if (!result.success) {
-        setError(result.error || "Login failed");
+      // 1. Server-side rate limit check
+      const rateCheck = await checkLoginAllowed(email);
+      if (!rateCheck.allowed) {
+        setError(rateCheck.error || "Too many attempts. Try again later.");
         return;
       }
 
-      // 2FA required — navigate to verification page (server action returned early)
+      // 2. Client-side auth — browser Supabase client writes cookies directly to
+      //    document.cookie, bypassing the Server Action cookie propagation issue.
+      const supabase = createClient();
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (authError || !data.user || !data.session) {
+        recordFailedLoginAttempt(rateCheck.identifier).catch(() => {});
+        setError("Invalid email or password");
+        return;
+      }
+
+      // 3. Post-login server checks (2FA, session recording, cache warm-up)
+      const result = await postLoginChecks(
+        data.user.id,
+        data.user.email || email,
+        data.session.access_token,
+        rateCheck.identifier
+      );
+
       if (result.requires2FA && result.userId && result.email) {
         router.push(`/verify-2fa?userId=${result.userId}&email=${encodeURIComponent(result.email)}`);
         return;
       }
 
-      // Non-2FA success: server action called redirect() — no client navigation needed.
-      // If we reach here, redirect() was not called (edge case); fall back to hard nav.
+      // 4. Navigate — cookies are already set client-side, so any navigation works
       window.location.href = redirectUrl || "/dashboard";
     });
   }

@@ -1,7 +1,6 @@
 "use server";
 // login actions
 
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   checkLoginAttempts,
@@ -11,7 +10,6 @@ import {
 import { recordSession, checkNewDeviceLogin } from "@/lib/session-manager";
 import { getCachedUserProfile } from "@/lib/cached-auth";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 
 export type LoginResult = {
   success: boolean;
@@ -24,123 +22,86 @@ export type LoginResult = {
 
 async function getClientHeaders(): Promise<{ ip: string; userAgent: string }> {
   const headersList = await headers();
-  // Check various headers for client IP
   const forwardedFor = headersList.get("x-forwarded-for");
   const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : headersList.get("x-real-ip") || "unknown";
   const userAgent = headersList.get("user-agent") || "unknown";
   return { ip, userAgent };
 }
 
-export async function loginAction(
-  email: string,
-  password: string,
-  redirectTo?: string
-): Promise<LoginResult> {
+/**
+ * Pre-login security check: rate limiting only.
+ * The actual signInWithPassword is done client-side (browser Supabase client)
+ * so session cookies are written directly to document.cookie — reliable across
+ * all Next.js deployment configurations.
+ */
+export async function checkLoginAllowed(
+  email: string
+): Promise<{ allowed: boolean; error?: string; lockedUntil?: number; identifier: string }> {
   try {
-    // Parallelize initial setup - headers, rate limit check, and supabase client creation
-    const [clientHeaders, supabase] = await Promise.all([
-      getClientHeaders(),
-      createClient(),
-    ]);
-
-    // SECURITY: Sign out any existing session before signing in as a new user.
-    // Prevents one user's session from bleeding into another user's login flow.
-    await supabase.auth.signOut();
-    
-    // Use a combination of email + IP for rate limiting
-    // This prevents account enumeration while still protecting against distributed attacks
+    const clientHeaders = await getClientHeaders();
     const identifier = `${email.toLowerCase()}:${clientHeaders.ip}`;
-
-  // Check if login attempts are allowed (must be before auth attempt)
-  const loginCheck = await checkLoginAttempts(identifier);
-  if (!loginCheck.allowed) {
-    const minutesRemaining = loginCheck.lockedUntil
-      ? Math.ceil((loginCheck.lockedUntil - Date.now()) / 60000)
-      : 15;
-    return {
-      success: false,
-      error: `Too many failed attempts. Please try again in ${minutesRemaining} minutes.`,
-      lockedUntil: loginCheck.lockedUntil,
-    };
-  }
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    // Record the failed attempt
-    await recordFailedLogin(identifier);
-
-    // Don't reveal whether email exists or not
-    return {
-      success: false,
-      error: "Invalid email or password",
-    };
-  }
-
-  // Check if user has 2FA enabled - parallelize with clearing login attempts
-  if (data.user) {
-    // Use admin client (not anon) to avoid RLS recursion on users table (1-2s latency bug)
-    // Also pre-warms the Redis profile cache so middleware doesn't hit DB on first dashboard load
-    const admin = createAdminClient();
-    const [, profileResult] = await Promise.all([
-      // Clear failed login attempts
-      clearLoginAttempts(identifier),
-      // Check 2FA status via admin client — bypasses the RLS recursion that caused 1-2s delay
-      admin
-        .from("users")
-        .select("totp_enabled")
-        .eq("id", data.user.id)
-        .single(),
-    ]);
-
-    const profile = profileResult.data;
-
-    // Pre-warm the cached profile so the middleware Redis lookup is instant
-    getCachedUserProfile(data.user.id).catch(() => {});
-
-    if (profile?.totp_enabled) {
+    const loginCheck = await checkLoginAttempts(identifier);
+    if (!loginCheck.allowed) {
+      const minutesRemaining = loginCheck.lockedUntil
+        ? Math.ceil((loginCheck.lockedUntil - Date.now()) / 60000)
+        : 15;
       return {
-        success: true,
-        requires2FA: true,
-        userId: data.user.id,
-        email: data.user.email,
+        allowed: false,
+        error: `Too many failed attempts. Please try again in ${minutesRemaining} minutes.`,
+        lockedUntil: loginCheck.lockedUntil,
+        identifier,
       };
     }
-    
-    // Record session and check for new device (non-blocking, completely isolated)
-    // This MUST NOT break login under any circumstances
-    if (data.session?.access_token) {
-      // Fire and forget - don't await these
-      recordSession(data.user.id, data.session.access_token, clientHeaders).catch(() => {});
-      checkNewDeviceLogin(data.user.id, data.user.email || '', clientHeaders).catch(() => {});
-    }
-  } else {
-    // Still need to clear attempts even if no user data (edge case)
-    await clearLoginAttempts(identifier);
+    return { allowed: true, identifier };
+  } catch {
+    return { allowed: true, identifier: email };
   }
+}
 
-  // redirect() is called here so cookies set above are included in the same
-  // response cycle — the only reliable way to propagate Supabase session cookies
-  // through a Next.js Server Action called from a client component.
-  redirect(redirectTo || "/dashboard");
-  } catch (error: unknown) {
-    // Redirect throws a special NEXT_REDIRECT error — let it propagate
-    if (
-      error &&
-      typeof error === "object" &&
-      "digest" in error &&
-      typeof (error as { digest?: string }).digest === "string" &&
-      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
-    ) {
-      throw error;
+/**
+ * Post-login server checks: 2FA status, session recording, cache warm-up.
+ * Called after the client-side signInWithPassword succeeds.
+ */
+export async function postLoginChecks(
+  userId: string,
+  userEmail: string,
+  accessToken: string,
+  identifier: string
+): Promise<LoginResult> {
+  try {
+    const clientHeaders = await getClientHeaders();
+    const admin = createAdminClient();
+
+    const [, profileResult] = await Promise.all([
+      clearLoginAttempts(identifier).catch(() => {}),
+      admin.from("users").select("totp_enabled").eq("id", userId).single(),
+    ]);
+
+    // Pre-warm Redis cache
+    getCachedUserProfile(userId).catch(() => {});
+
+    if (profileResult.data?.totp_enabled) {
+      return { success: true, requires2FA: true, userId, email: userEmail };
     }
-    console.error("[loginAction] Unexpected error:", error);
-    return {
-      success: false,
-      error: "An unexpected error occurred. Please try again later.",
-    };
+
+    // Non-blocking session recording
+    recordSession(userId, accessToken, clientHeaders).catch(() => {});
+    checkNewDeviceLogin(userId, userEmail, clientHeaders).catch(() => {});
+
+    return { success: true };
+  } catch {
+    // Post-login checks failing should never block the user from logging in
+    return { success: true };
+  }
+}
+
+/**
+ * Record a failed login attempt (called from client after signInWithPassword error).
+ */
+export async function recordFailedLoginAttempt(identifier: string): Promise<void> {
+  try {
+    await recordFailedLogin(identifier);
+  } catch {
+    // non-critical
   }
 }
