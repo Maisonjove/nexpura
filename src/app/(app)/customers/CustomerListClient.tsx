@@ -60,7 +60,7 @@ export default function CustomerListClient({
 }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState(q);
-  const [activeTab, setActiveTab] = useState(tagFilter || "all");
+  const activeTab = tagFilter || "all";
 
   function buildUrl(params: Record<string, string | number>) {
     const url = new URLSearchParams();
@@ -78,7 +78,6 @@ export default function CustomerListClient({
   }
 
   function handleTabChange(tab: string) {
-    setActiveTab(tab);
     router.push(buildUrl({ q: search, tag: tab === "all" ? "" : tab, sort, page: 1 }));
   }
 
@@ -255,3 +254,8 @@ export default function CustomerListClient({
     </div>
   );
 }
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
