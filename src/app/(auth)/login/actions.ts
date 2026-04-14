@@ -126,7 +126,17 @@ export async function loginAction(
   // response cycle — the only reliable way to propagate Supabase session cookies
   // through a Next.js Server Action called from a client component.
   redirect(redirectTo || "/dashboard");
-  } catch (error) {
+  } catch (error: unknown) {
+    // Redirect throws a special NEXT_REDIRECT error — let it propagate
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      typeof (error as { digest?: string }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
     console.error("[loginAction] Unexpected error:", error);
     return {
       success: false,
