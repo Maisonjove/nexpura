@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition , Suspense } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { 
   Users, Shield, MapPin, ChevronRight, Check, X, 
@@ -204,11 +204,13 @@ function NotificationsTab({
   );
 }
 
-export default function RolesClient({ members, locations, isOwnerOrManager, tenantId }: Props) {
+function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
-  const [activeTab, setActiveTab] = useState<"permissions" | "locations" | "notifications">("permissions");
+  const activeTab = (searchParams.get('tab') || 'permissions') as "permissions" | "locations" | "notifications";
   const [saveMsg, setSaveMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   
   // Invite modal state
@@ -552,7 +554,7 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
               <div className="border-b border-stone-100">
                 <div className="flex">
                   <button
-                    onClick={() => setActiveTab("permissions")}
+                    onClick={() => router.replace(pathname)}
                     className={`px-6 py-3 text-sm font-medium transition-colors ${
                       activeTab === "permissions" 
                         ? "text-amber-700 border-b-2 border-amber-600" 
@@ -564,7 +566,7 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
                   </button>
                   {hasMultipleLocations && (
                     <button
-                      onClick={() => setActiveTab("locations")}
+                      onClick={() => router.replace(pathname + '?tab=locations')}
                       className={`px-6 py-3 text-sm font-medium transition-colors ${
                         activeTab === "locations" 
                           ? "text-amber-700 border-b-2 border-amber-600" 
@@ -576,7 +578,7 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
                     </button>
                   )}
                   <button
-                    onClick={() => setActiveTab("notifications")}
+                    onClick={() => router.replace(pathname + '?tab=notifications')}
                     className={`px-6 py-3 text-sm font-medium transition-colors ${
                       activeTab === "notifications" 
                         ? "text-amber-700 border-b-2 border-amber-600" 
@@ -974,5 +976,18 @@ export default function RolesClient({ members, locations, isOwnerOrManager, tena
         </div>
       )}
     </div>
+  );
+}
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
+
+export default function RolesClient(props: Parameters<typeof RolesClientInner>[0]) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>
+      <RolesClientInner {...props} />
+    </Suspense>
   );
 }
