@@ -648,12 +648,6 @@ function ImportHubClientInner({ counts = {} }: ImportHubClientProps) {
     </div>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss
-
 export default function ImportHubClient(props: Parameters<typeof ImportHubClientInner>[0]) {
   return (
     <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>

@@ -560,12 +560,6 @@ function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your S
     </div>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss
-
 export default function PrintingSettingsClient(props: Parameters<typeof PrintingSettingsClientInner>[0]) {
   return (
     <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>

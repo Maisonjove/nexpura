@@ -123,12 +123,6 @@ function DocumentCenterClientInner({ tenantId: _tenantId, labelTemplates }: Prop
     </div>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss
-
 export default function DocumentCenterClient(props: Parameters<typeof DocumentCenterClientInner>[0]) {
   return (
     <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>

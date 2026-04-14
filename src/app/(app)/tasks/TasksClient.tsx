@@ -714,12 +714,6 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
     </div>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss
-
 export default function TasksClient(props: Parameters<typeof TasksClientInner>[0]) {
   return (
     <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>

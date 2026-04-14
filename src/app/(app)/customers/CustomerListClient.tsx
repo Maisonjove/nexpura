@@ -254,8 +254,3 @@ export default function CustomerListClient({
     </div>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss

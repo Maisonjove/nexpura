@@ -978,12 +978,6 @@ function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Pr
     </div>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss
-
 export default function RolesClient(props: Parameters<typeof RolesClientInner>[0]) {
   return (
     <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>

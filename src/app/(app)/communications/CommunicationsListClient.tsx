@@ -320,12 +320,6 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
     </div>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss
-
 export default function CommunicationsListClient(props: Parameters<typeof CommunicationsListClientInner>[0]) {
   return (
     <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>

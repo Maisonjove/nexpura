@@ -549,12 +549,6 @@ function WebsiteBuilderClientInner({ initial, tenantId }: Props) {
     </div>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss
-
 export default function WebsiteBuilderClient(props: Parameters<typeof WebsiteBuilderClientInner>[0]) {
   return (
     <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>

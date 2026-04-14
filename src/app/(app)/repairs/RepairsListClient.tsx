@@ -346,8 +346,3 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
     </>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss

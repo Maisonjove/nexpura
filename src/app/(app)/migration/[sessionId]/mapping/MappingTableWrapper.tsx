@@ -101,12 +101,6 @@ function MappingTableWrapperInner({ sessionId, mappings, rt }: Props) {
     </div>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss
-
 export function MappingTableWrapper(props: Parameters<typeof MappingTableWrapperInner>[0]) {
   return (
     <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>

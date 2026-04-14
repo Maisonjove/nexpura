@@ -251,12 +251,6 @@ function DocumentCenterClientInner({ invoices, quotes, repairs, bespoke, passpor
     </div>
   );
 }
-
- Claude is active in this tab group  
-Open chat
- 
-Dismiss
-
 export default function DocumentCenterClient(props: Parameters<typeof DocumentCenterClientInner>[0]) {
   return (
     <Suspense fallback={<div className="max-w-5xl mx-auto py-10 px-4 animate-pulse"><div className="h-8 bg-stone-200 rounded w-48" /></div>}>
