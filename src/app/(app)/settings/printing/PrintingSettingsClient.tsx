@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { savePrinterConfig } from "./actions";
 
 type PrinterType = "receipt" | "label" | "office";
@@ -38,8 +39,11 @@ interface Props {
   businessName?: string;
 }
 
-export default function PrintingSettingsClient({ tenantId, configs, businessName = "Your Store" }: Props) {
-  const [activeTab, setActiveTab] = useState<PrinterType>("receipt");
+function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your Store" }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = (searchParams.get('tab') || 'receipt') as PrinterType;
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [msgType, setMsgType] = useState<"success" | "error">("success");
@@ -227,13 +231,13 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
       <div className="bg-white border border-stone-200 rounded-2xl shadow-sm overflow-hidden">
         {/* Tabs */}
         <div className="flex border-b border-stone-200">
-          <button className={tabClass("receipt")} onClick={() => setActiveTab("receipt")}>
+          <button className={tabClass("receipt")} onClick={() => router.replace(pathname)}>
             🧾 Receipt Printer
           </button>
-          <button className={tabClass("label")} onClick={() => setActiveTab("label")}>
+          <button className={tabClass("label")} onClick={() => router.replace(pathname + '?tab=label')}>
             🏷️ Label Printer
           </button>
-          <button className={tabClass("office")} onClick={() => setActiveTab("office")}>
+          <button className={tabClass("office")} onClick={() => router.replace(pathname + '?tab=office')}>
             🖨️ Office Printer
           </button>
         </div>
@@ -554,5 +558,18 @@ export default function PrintingSettingsClient({ tenantId, configs, businessName
         </div>
       </div>
     </div>
+  );
+}
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
+
+export default function PrintingSettingsClient(props: Parameters<typeof PrintingSettingsClientInner>[0]) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>
+      <PrintingSettingsClientInner {...props} />
+    </Suspense>
   );
 }
