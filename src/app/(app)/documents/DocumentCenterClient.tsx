@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import type { DocumentItem, PassportDoc } from "./page";
 
@@ -66,8 +67,12 @@ function docTitle(doc: DocumentItem | PassportDoc): string {
   return d.title || (d.customers?.full_name ?? "—");
 }
 
-export default function DocumentCenterClient({ invoices, quotes, repairs, bespoke, passports, refunds }: Props) {
-  const [activeTab, setActiveTab] = useState<DocTab>("invoices");
+function DocumentCenterClientInner({ invoices, quotes, repairs, bespoke, passports, refunds }: Props) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const VALID_TABS: DocTab[] = ["invoices", "quotes", "repairs", "bespoke", "passports", "refunds"];
+  const activeTab: DocTab = (VALID_TABS.includes(searchParams.get('tab') as DocTab) ? searchParams.get('tab') : 'invoices') as DocTab;
 
   const docMap: Record<DocTab, (DocumentItem | PassportDoc)[]> = {
     invoices,
@@ -104,7 +109,7 @@ export default function DocumentCenterClient({ invoices, quotes, repairs, bespok
           return (
             <button
               key={type.id}
-              onClick={() => setActiveTab(type.id)}
+              onClick={() => router.replace(pathname + (type.id !== 'invoices' ? '?tab=' + type.id : ''))}
               className={`p-3 rounded-xl border-2 text-center transition-all ${
                 activeTab === type.id
                   ? "border-amber-600 bg-amber-700/5"
@@ -125,7 +130,7 @@ export default function DocumentCenterClient({ invoices, quotes, repairs, bespok
           {DOC_TYPES.map((type) => (
             <button
               key={type.id}
-              onClick={() => setActiveTab(type.id)}
+              onClick={() => router.replace(pathname + (type.id !== 'invoices' ? '?tab=' + type.id : ''))}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
                 activeTab === type.id
                   ? "border-b-2 border-amber-600 text-amber-700"
@@ -244,5 +249,18 @@ export default function DocumentCenterClient({ invoices, quotes, repairs, bespok
         </p>
       </div>
     </div>
+  );
+}
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
+
+export default function DocumentCenterClient(props: Parameters<typeof DocumentCenterClientInner>[0]) {
+  return (
+    <Suspense fallback={<div className="max-w-5xl mx-auto py-10 px-4 animate-pulse"><div className="h-8 bg-stone-200 rounded w-48" /></div>}>
+      <DocumentCenterClientInner {...props} />
+    </Suspense>
   );
 }
