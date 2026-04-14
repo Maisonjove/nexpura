@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { MappingTable } from '../../_components/MappingTable';
 import { ArrowRight, FileText } from 'lucide-react';
 
@@ -22,9 +22,11 @@ interface Props {
   rt?: string;
 }
 
-export function MappingTableWrapper({ sessionId, mappings, rt }: Props) {
+function MappingTableWrapperInner({ sessionId, mappings, rt }: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState(0);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = parseInt(searchParams.get('tab') || '0', 10);
   const [saving, setSaving] = useState(false);
 
   if (mappings.length === 0) {
@@ -58,7 +60,7 @@ export function MappingTableWrapper({ sessionId, mappings, rt }: Props) {
           {mappings.map((m, i) => (
             <button
               key={m.id}
-              onClick={() => setActiveTab(i)}
+              onClick={() => router.replace(pathname + (i !== 0 ? '?tab=' + i : ''))}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 i === activeTab
                   ? 'border-[amber-700] text-amber-700'
@@ -97,5 +99,18 @@ export function MappingTableWrapper({ sessionId, mappings, rt }: Props) {
         {saving ? 'Saving...' : <><span>Continue to Preview</span> <ArrowRight className="w-4 h-4" /></>}
       </button>
     </div>
+  );
+}
+
+ Claude is active in this tab group  
+Open chat
+ 
+Dismiss
+
+export function MappingTableWrapper(props: Parameters<typeof MappingTableWrapperInner>[0]) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>}>
+      <MappingTableWrapperInner {...props} />
+    </Suspense>
   );
 }
