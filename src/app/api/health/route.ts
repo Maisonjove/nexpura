@@ -44,3 +44,6 @@ export async function GET() {
     );
   }
 }
+
+// HEAD requests use the same logic as GET (Next.js edge runtime does not auto-delegate)
+export { GET as HEAD };
