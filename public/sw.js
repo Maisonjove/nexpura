@@ -1,18 +1,15 @@
 // Nexpura Service Worker - PWA & Offline Support
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `nexpura-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `nexpura-dynamic-${CACHE_VERSION}`;
 const OFFLINE_QUEUE_KEY = 'nexpura-offline-queue';
 
 // Assets to cache immediately on install — critical for app shell
+// Only cache truly public, auth-free assets.
+// Protected routes (dashboard, pos, inventory, etc.) must NEVER be pre-cached
+// because caching them while unauthenticated stores the login-redirect response,
+// causing ERR_FAILED for logged-in users on every navigation.
 const STATIC_ASSETS = [
-  '/',
-  '/dashboard',
-  '/pos',
-  '/inventory',
-  '/customers',
-  '/repairs',
-  '/invoices',
   '/offline',
   '/manifest.json',
 ];
