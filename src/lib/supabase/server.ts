@@ -12,7 +12,6 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions: {
-        httpOnly: true,
         secure: true,
         sameSite: "lax",
         // Share session cookies across all *.nexpura.com subdomains in production
