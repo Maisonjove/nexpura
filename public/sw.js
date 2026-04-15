@@ -68,6 +68,16 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Navigation requests: always fetch from network so the auth middleware
+  // runs server-side on every page visit. Serving HTML from cache causes
+  // stale auth state, ERR_FAILED, or showing the wrong page after login/logout.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match('/offline'))
+    );
+    return;
+  }
+
   // Skip non-GET requests for caching (but handle POST for offline queue)
   if (request.method !== 'GET') {
     // Check if this is a POS sale that should be queued offline
