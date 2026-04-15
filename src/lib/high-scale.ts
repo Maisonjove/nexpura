@@ -19,7 +19,7 @@ const redis = process.env.UPSTASH_REDIS_REST_URL
 
 const pendingRequests = new Map<string, Promise<unknown>>();
 
-/**
+/**h
  * Coalesce identical requests - if 100 users request the same data
  * at the same time, only 1 database query is made.
  */
@@ -255,7 +255,7 @@ export async function checkDatabaseHealth(): Promise<{
     );
     
     return {
-      healthy: response.ok,
+      healthy: response.status < 500, // 401/4xx = service up, just unauthorized
       latencyMs: Date.now() - start,
     };
   } catch {
