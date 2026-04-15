@@ -35,7 +35,7 @@ function setSubOkCookie(response: NextResponse, tenantId: string): void {
   });
 }
 
-// Routes that never need auth â skip Supabase entirely for instant response.
+// Routes that never need auth — skip Supabase entirely for instant response.
 function isPublicPath(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -48,7 +48,7 @@ function isPublicPath(pathname: string): boolean {
     pathname.startsWith("/support-access") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    // Marketing pages â static, no auth needed
+    // Marketing pages — static, no auth needed
     pathname.startsWith("/features") ||
     pathname.startsWith("/pricing") ||
     pathname.startsWith("/about") ||
@@ -61,17 +61,50 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
-// Known app route segments â the second path segment in /{slug}/{route} must be one of these.
+// Known app route segments — the second path segment in /{slug}/{route} must be one of these.
 // Guard: if segments[0] is itself a known route (e.g. /repairs/dashboard), it cannot be a slug.
 const TENANT_APP_ROUTES = new Set([
-  "dashboard", "intake", "pos", "sales", "invoices", "quotes", "laybys",
-  "inventory", "customers", "suppliers", "memo", "stocktakes",
-  "repairs", "bespoke", "workshop", "appraisals", "passports",
-  "expenses", "financials", "reports", "refunds", "vouchers", "eod",
-  "marketing", "tasks", "copilot", "website", "documents",
-  "integrations", "reminders", "support", "settings", "billing",
-  "suspended", "communications", "notifications", "migration", "ai",
-  "enquiries", "print-queue", "actions",
+  "dashboard",
+  "intake",
+  "pos",
+  "sales",
+  "invoices",
+  "quotes",
+  "laybys",
+  "inventory",
+  "customers",
+  "suppliers",
+  "memo",
+  "stocktakes",
+  "repairs",
+  "bespoke",
+  "workshop",
+  "appraisals",
+  "passports",
+  "expenses",
+  "financials",
+  "reports",
+  "refunds",
+  "vouchers",
+  "eod",
+  "marketing",
+  "tasks",
+  "copilot",
+  "website",
+  "documents",
+  "integrations",
+  "reminders",
+  "support",
+  "settings",
+  "billing",
+  "suspended",
+  "communications",
+  "notifications",
+  "migration",
+  "ai",
+  "enquiries",
+  "print-queue",
+  "actions",
 ]);
 
 function parseTenantSlugPath(
@@ -81,11 +114,28 @@ function parseTenantSlugPath(
   if (
     segments.length >= 2 &&
     TENANT_APP_ROUTES.has(segments[1]) &&
-    !TENANT_APP_ROUTES.has(segments[0]) // guard: /repairs/dashboard â segments[0]="repairs" is a route â not a slug
+    !TENANT_APP_ROUTES.has(segments[0]) // guard: /repairs/dashboard — segments[0]="repairs" is a route — not a slug
   ) {
     return { slug: segments[0], route: "/" + segments.slice(1).join("/") };
   }
   return null;
+}
+
+/**
+ * Transfer Supabase session cookies from a supabaseResponse onto a redirect response.
+ * This ensures that any token refreshes that happened during the request are not
+ * lost when we redirect — without this, the browser keeps sending stale tokens,
+ * triggering "Invalid Refresh Token: Already Used" on every page load.
+ */
+function redirectWithCookies(
+  url: URL,
+  supabaseResponse: NextResponse
+): NextResponse {
+  const redirect = NextResponse.redirect(url);
+  supabaseResponse.cookies.getAll().forEach((cookie) => {
+    redirect.cookies.set(cookie);
+  });
+  return redirect;
 }
 
 export async function updateSession(request: NextRequest) {
@@ -106,7 +156,7 @@ export async function updateSession(request: NextRequest) {
 async function _updateSessionInner(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Short-circuit for public & marketing routes â no Supabase round-trip needed.
+  // Short-circuit for public & marketing routes — no Supabase round-trip needed.
   // This eliminates the 50-100ms auth.getUser() latency on every marketing page nav.
   if (isPublicPath(pathname)) {
     return NextResponse.next({ request });
@@ -119,7 +169,11 @@ async function _updateSessionInner(request: NextRequest) {
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookieOptions: {
-      httpOnly: true,
+      // httpOnly is intentionally omitted so the browser Supabase client
+      // (createBrowserClient) can read and refresh session cookies via
+      // document.cookie. Setting httpOnly here causes a cookie split where
+      // the middleware writes httpOnly tokens the browser can't see, leading
+      // to "Invalid Refresh Token: Already Used" on every navigation.
       secure: true,
       sameSite: "lax",
       // Share session cookies across all *.nexpura.com subdomains in production
@@ -154,12 +208,12 @@ async function _updateSessionInner(request: NextRequest) {
     if (!user) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
-      return NextResponse.redirect(loginUrl);
+      return redirectWithCookies(loginUrl, supabaseResponse);
     }
     if (!user.email_confirmed_at) {
       const verifyUrl = request.nextUrl.clone();
       verifyUrl.pathname = "/verify-email";
-      return NextResponse.redirect(verifyUrl);
+      return redirectWithCookies(verifyUrl, supabaseResponse);
     }
     return supabaseResponse;
   }
@@ -169,7 +223,7 @@ async function _updateSessionInner(request: NextRequest) {
     if (!user) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
-      return NextResponse.redirect(loginUrl);
+      return redirectWithCookies(loginUrl, supabaseResponse);
     }
     return supabaseResponse;
   }
@@ -182,31 +236,30 @@ async function _updateSessionInner(request: NextRequest) {
     if (!user) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
-      return NextResponse.redirect(loginUrl);
+      return redirectWithCookies(loginUrl, supabaseResponse);
     }
     if (!user.email_confirmed_at) {
       const verifyUrl = request.nextUrl.clone();
       verifyUrl.pathname = "/verify-email";
-      return NextResponse.redirect(verifyUrl);
+      return redirectWithCookies(verifyUrl, supabaseResponse);
     }
 
     const userProfile = await getCachedUserProfile(user.id);
     if (!userProfile || !userProfile.tenant_id) {
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = "/onboarding";
-      return NextResponse.redirect(onboardingUrl);
+      return redirectWithCookies(onboardingUrl, supabaseResponse);
     }
 
     const userTenantSlug = userProfile.tenants?.slug;
-
     if (userTenantSlug && userTenantSlug !== tenantParsed.slug) {
       // Cross-tenant URL: silently redirect user to their own correct tenant URL
       const correctUrl = request.nextUrl.clone();
       correctUrl.pathname = `/${userTenantSlug}${tenantParsed.route}`;
-      return NextResponse.redirect(correctUrl);
+      return redirectWithCookies(correctUrl, supabaseResponse);
     }
 
-    // Slug matches (or tenant has no slug yet) â set AUTH headers and rewrite internally
+    // Slug matches (or tenant has no slug yet) — set AUTH headers and rewrite internally
     const authRequestHeaders = new Headers(request.headers);
     authRequestHeaders.set(AUTH_HEADERS.USER_ID, user.id);
     authRequestHeaders.set(AUTH_HEADERS.TENANT_ID, userProfile.tenant_id);
@@ -216,12 +269,11 @@ async function _updateSessionInner(request: NextRequest) {
     // Rewrite: browser keeps /{slug}/{route}, Next.js internally serves /{route}
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = tenantParsed.route;
-
     const authResponse = NextResponse.rewrite(rewriteUrl, {
       request: { headers: authRequestHeaders },
     });
 
-    // Transfer all session cookies (preserves httpOnly, secure, sameSite, domain, etc.)
+    // Transfer all session cookies (preserves secure, sameSite, domain, etc.)
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       authResponse.cookies.set(cookie);
     });
@@ -249,18 +301,17 @@ async function _updateSessionInner(request: NextRequest) {
             sub.current_period_end &&
             new Date(sub.current_period_end) < now;
           const isBlocked =
-            sub.status === "suspended" ||
-            isTrialExpired ||
-            isCancelledAndExpired;
+            sub.status === "suspended" || isTrialExpired || isCancelledAndExpired;
 
           if (isBlocked) {
             const suspendedUrl = request.nextUrl.clone();
             suspendedUrl.pathname = userTenantSlug
               ? `/${userTenantSlug}/suspended`
               : "/suspended";
-            return NextResponse.redirect(suspendedUrl);
+            return redirectWithCookies(suspendedUrl, supabaseResponse);
           }
-          // Not blocked â cache the OK status for 5 minutes
+
+          // Not blocked — cache the OK status for 5 minutes
           setSubOkCookie(authResponse, userProfile.tenant_id);
         }
       }
@@ -293,31 +344,31 @@ async function _updateSessionInner(request: NextRequest) {
     if (!user) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
-      return NextResponse.redirect(loginUrl);
+      return redirectWithCookies(loginUrl, supabaseResponse);
     }
     if (!user.email_confirmed_at) {
       const verifyUrl = request.nextUrl.clone();
       verifyUrl.pathname = "/verify-email";
-      return NextResponse.redirect(verifyUrl);
+      return redirectWithCookies(verifyUrl, supabaseResponse);
     }
 
     const userProfile = await getCachedUserProfile(user.id);
     if (!userProfile || !userProfile.tenant_id) {
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = "/onboarding";
-      return NextResponse.redirect(onboardingUrl);
+      return redirectWithCookies(onboardingUrl, supabaseResponse);
     }
 
-    // Migrate flat URLs â tenant-aware URLs for bookmarkable, shareable routes.
+    // Migrate flat URLs — tenant-aware URLs for bookmarkable, shareable routes.
     // Tenants with a slug get redirected; tenants without a slug fall through to flat-route mode.
     const userTenantSlug = userProfile.tenants?.slug;
     if (userTenantSlug) {
       const tenantUrl = request.nextUrl.clone();
       tenantUrl.pathname = `/${userTenantSlug}${pathname}`;
-      return NextResponse.redirect(tenantUrl);
+      return redirectWithCookies(tenantUrl, supabaseResponse);
     }
 
-    // Fallback: tenant has no slug â serve flat route with AUTH headers as before
+    // Fallback: tenant has no slug — serve flat route with AUTH headers as before
     const authRequestHeaders = new Headers(request.headers);
     authRequestHeaders.set(AUTH_HEADERS.USER_ID, user.id);
     authRequestHeaders.set(AUTH_HEADERS.TENANT_ID, userProfile.tenant_id);
@@ -328,7 +379,7 @@ async function _updateSessionInner(request: NextRequest) {
       request: { headers: authRequestHeaders },
     });
 
-    // Transfer all session cookies (preserves httpOnly, secure, sameSite, domain, etc.)
+    // Transfer all session cookies (preserves secure, sameSite, domain, etc.)
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       authResponse.cookies.set(cookie);
     });
@@ -362,9 +413,10 @@ async function _updateSessionInner(request: NextRequest) {
           if (isBlocked) {
             const suspendedUrl = request.nextUrl.clone();
             suspendedUrl.pathname = "/suspended";
-            return NextResponse.redirect(suspendedUrl);
+            return redirectWithCookies(suspendedUrl, supabaseResponse);
           }
-          // Not blocked â cache the OK status for 5 minutes
+
+          // Not blocked — cache the OK status for 5 minutes
           setSubOkCookie(authResponse, userProfile.tenant_id);
         }
       }
