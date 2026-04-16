@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { checkLoginAllowed, postLoginChecks, recordFailedLoginAttempt } from "./actions";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -231,5 +231,28 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-md">
+        <div className="text-center mb-10">
+          <span className="font-serif text-2xl tracking-[0.12em] text-stone-900">NEXPURA</span>
+          <p className="text-sm text-stone-400 mt-2">The modern platform for jewellers</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-stone-200/60 p-10 w-full shadow-sm">
+          <div className="h-8 w-48 bg-stone-100 rounded animate-pulse mb-8" />
+          <div className="space-y-5">
+            <div className="h-12 bg-stone-100 rounded-lg animate-pulse" />
+            <div className="h-12 bg-stone-100 rounded-lg animate-pulse" />
+            <div className="h-12 bg-stone-900 rounded-full animate-pulse" />
+          </div>
+        </div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }
