@@ -22,20 +22,28 @@ function ResetPasswordContent() {
   useEffect(() => {
     async function checkSession() {
       // Implicit flow: Supabase redirects with #access_token=...&type=recovery in hash.
-      // The browser Supabase client detects the hash automatically — wait briefly then check session.
-      if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
-        // Give the client a moment to parse the hash and set the session
-        await new Promise(r => setTimeout(r, 800));
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setIsValid(true);
-          setValidating(false);
-          return;
+      // @supabase/ssr's createBrowserClient does NOT auto-process implicit flow hash tokens
+      // (it uses PKCE/cookie-based auth by default). We must parse the hash manually and
+      // call setSession() ourselves.
+      if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (!error) {
+            setIsValid(true);
+            setValidating(false);
+            return;
+          }
         }
       }
 
       // PKCE flow: Supabase redirects with ?code=... as a query param
-      const code = searchParams.get('code');
+      const code = searchParams.get("code");
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
@@ -48,12 +56,12 @@ function ResetPasswordContent() {
       }
 
       // OTP/token_hash flow
-      const tokenHash = searchParams.get('token_hash');
-      const type = searchParams.get('type');
-      if (tokenHash && type === 'recovery') {
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
+      if (tokenHash && type === "recovery") {
         const { error } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
-          type: 'recovery',
+          type: "recovery",
         });
         if (!error) {
           setIsValid(true);
@@ -65,10 +73,13 @@ function ResetPasswordContent() {
       }
 
       // No token — check for existing session (e.g. navigated back after success)
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) setIsValid(true);
       setValidating(false);
     }
+
     checkSession();
   }, [supabase, searchParams]);
 
@@ -90,7 +101,6 @@ function ResetPasswordContent() {
     }
 
     const { error } = await supabase.auth.updateUser({ password });
-
     if (error) {
       setError(error.message);
       setLoading(false);
@@ -115,11 +125,15 @@ function ResetPasswordContent() {
     return (
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">NEXPURA</Link>
+          <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">
+            NEXPURA
+          </Link>
         </div>
         <div className="bg-white rounded-2xl border border-stone-200/60 p-10 w-full shadow-sm text-center">
           <h2 className="font-serif text-2xl text-stone-900 mb-3">Invalid or expired link</h2>
-          <p className="text-stone-500 text-sm mb-8">This password reset link is invalid or has expired.</p>
+          <p className="text-stone-500 text-sm mb-8">
+            This password reset link is invalid or has expired.
+          </p>
           <Link
             href="/forgot-password"
             className="inline-flex items-center justify-center w-full bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] text-white font-medium py-3 rounded-full text-sm shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
@@ -135,7 +149,9 @@ function ResetPasswordContent() {
     return (
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">NEXPURA</Link>
+          <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">
+            NEXPURA
+          </Link>
         </div>
         <div className="bg-white rounded-2xl border border-stone-200/60 p-10 w-full shadow-sm text-center">
           <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
@@ -151,7 +167,9 @@ function ResetPasswordContent() {
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-10">
-        <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">NEXPURA</Link>
+        <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">
+          NEXPURA
+        </Link>
         <p className="text-sm text-stone-400 mt-2">The modern platform for jewellers</p>
       </div>
 
@@ -161,7 +179,9 @@ function ResetPasswordContent() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">New password</label>
+            <label className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">
+              New password
+            </label>
             <div className="relative">
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
@@ -177,7 +197,9 @@ function ResetPasswordContent() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">Confirm password</label>
+            <label className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">
+              Confirm password
+            </label>
             <div className="relative">
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
@@ -192,7 +214,9 @@ function ResetPasswordContent() {
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 border border-red-100 px-4 py-2.5 rounded-lg">{error}</p>
+            <p className="text-red-600 text-sm bg-red-50 border border-red-100 px-4 py-2.5 rounded-lg">
+              {error}
+            </p>
           )}
 
           <button

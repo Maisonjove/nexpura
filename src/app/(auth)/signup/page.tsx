@@ -77,6 +77,7 @@ function SignupContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createClient();
@@ -167,7 +168,8 @@ function SignupContent() {
         return;
       }
 
-      router.push(`/onboarding?plan=${selectedPlan}`);
+      setSubmitted(true);
+      setLoading(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
       setError(errorMessage);
@@ -176,6 +178,42 @@ function SignupContent() {
   }
 
   const planLabel = PLANS.find((p) => p.id === selectedPlan)?.name ?? selectedPlan;
+
+  if (submitted) {
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <div className="text-center mb-10">
+          <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">
+            NEXPURA
+          </Link>
+        </div>
+        <div className="bg-white rounded-2xl border border-stone-200/60 p-10 shadow-sm text-center">
+          <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
+              <rect width="20" height="16" x="2" y="4" rx="2"/>
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+          </div>
+          <h1 className="font-serif text-3xl text-stone-900 mb-3">Check your email</h1>
+          <p className="text-stone-500 text-sm mb-2">We sent a confirmation link to</p>
+          <p className="font-semibold text-stone-900 mb-6">{email}</p>
+          <p className="text-stone-400 text-xs leading-relaxed">
+            Click the link in the email to verify your account and complete setup.
+            If you don&apos;t see it, check your spam or junk folder.
+          </p>
+          <div className="mt-8 pt-6 border-t border-stone-100 text-xs text-stone-400">
+            Wrong email?{" "}
+            <button
+              onClick={() => { setSubmitted(false); setStep(3); }}
+              className="text-stone-600 underline hover:text-stone-900 transition-colors"
+            >
+              Go back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -462,7 +500,7 @@ function SignupContent() {
                 await supabase.auth.signInWithOAuth({
                   provider: "google",
                   options: {
-                    redirectTo: `${window.location.origin}/auth/callback`,
+                    redirectTo: `${window.location.origin}/auth/confirm`,
                     queryParams: { access_type: "offline", prompt: "consent" },
                   },
                 });

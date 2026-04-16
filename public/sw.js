@@ -1,18 +1,15 @@
 // Nexpura Service Worker - PWA & Offline Support
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `nexpura-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `nexpura-dynamic-${CACHE_VERSION}`;
 const OFFLINE_QUEUE_KEY = 'nexpura-offline-queue';
 
 // Assets to cache immediately on install — critical for app shell
+// Only cache truly public, auth-free assets.
+// Protected routes (dashboard, pos, inventory, etc.) must NEVER be pre-cached
+// because caching them while unauthenticated stores the login-redirect response,
+// causing ERR_FAILED for logged-in users on every navigation.
 const STATIC_ASSETS = [
-  '/',
-  '/dashboard',
-  '/pos',
-  '/inventory',
-  '/customers',
-  '/repairs',
-  '/invoices',
   '/offline',
   '/manifest.json',
 ];
@@ -70,6 +67,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Navigation requests: always fetch from network so the auth middleware
+  // runs server-side on every page visit. Serving HTML from cache causes
+  // stale auth state, ERR_FAILED, or showing the wrong page after login/logout.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match('/offline'))
+    );
+    return;
+  }
 
   // Skip non-GET requests for caching (but handle POST for offline queue)
   if (request.method !== 'GET') {
