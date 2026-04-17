@@ -22,10 +22,11 @@ import {
   StageTimeline,
   PhotosCard,
   ActivityTimeline,
-  FinancialSummaryCard,
-  QuickActionsCard,
-  DocumentsCard,
-  WorkflowActionsCard,
+  JobOverviewCard,
+  FinancialSnapshotCard,
+  WorkflowChecklist,
+  AlertsCard,
+  SidebarQuickActions,
   AddManualItemModal,
   AddStockItemModal,
   RecordPaymentModal,
@@ -40,6 +41,7 @@ import type {
   JobEvent,
   Repair,
   LineItem,
+  Payment,
 } from "./components/types";
 
 interface Props {
@@ -106,6 +108,12 @@ export default function RepairCommandCenter({
   const [paymentNotes, setPaymentNotes] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Internal notes editable state
+  const [internalNotesValue, setInternalNotesValue] = useState(repair.internal_notes || "");
+
+  // Collapsible workshop notes
+  const [showWorkshopNotes, setShowWorkshopNotes] = useState(false);
+
   // Escape key closes any open modal
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -123,6 +131,7 @@ export default function RepairCommandCenter({
 
   const isTerminal = ["collected", "cancelled"].includes(repair.stage);
   const currentStageIndex = REPAIR_STAGES.findIndex((s) => s.key === repair.stage);
+  const currentStageLabel = REPAIR_STAGES.find((s) => s.key === repair.stage)?.label ?? repair.stage;
   const balanceDue = invoice
     ? Math.max(0, invoice.total - invoice.amount_paid)
     : (repair.quoted_price ?? 0) - (repair.deposit_paid ? (repair.deposit_amount ?? 0) : 0);
@@ -377,7 +386,7 @@ export default function RepairCommandCenter({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 pb-16">
+    <div className="max-w-7xl mx-auto px-4 pb-20">
       {/* Toast */}
       {toast && (
         <div className="fixed top-4 right-4 z-50 bg-stone-900 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-xl">
@@ -409,17 +418,62 @@ export default function RepairCommandCenter({
       <StatusStrip repair={repair} customer={customer} invoice={invoice} currency={currency} readOnly={readOnly} />
 
       {/* Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-5 items-start">
-        {/* Left Column */}
+      <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-5 items-start mt-4">
+        {/* LEFT COLUMN */}
         <div className="space-y-5">
+          {/* 1. CustomerCard */}
           <CustomerCard customer={customer} />
+
+          {/* 2. ItemRepairCard */}
           <ItemRepairCard repair={repair} />
-          <StageTimeline
-            currentStage={repair.stage}
-            onStageChange={handleStageChange}
-            readOnly={readOnly}
-            isTerminal={isTerminal}
-          />
+
+          {/* 3. Work Required Card */}
+          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Work Required</h2>
+            
+            {/* Work Description */}
+            {repair.work_description ? (
+              <p className="text-sm text-stone-700 leading-relaxed mb-4">{repair.work_description}</p>
+            ) : (
+              <p className="text-sm text-stone-400 mb-4">No work description provided</p>
+            )}
+
+            {/* Workshop Notes - Collapsible */}
+            {repair.workshop_notes && (
+              <div className="mb-4">
+                <button 
+                  onClick={() => setShowWorkshopNotes(!showWorkshopNotes)} 
+                  className="text-xs text-amber-700 hover:underline font-medium"
+                >
+                  {showWorkshopNotes ? "Hide workshop notes ↑" : "Show workshop notes ↓"}
+                </button>
+                {showWorkshopNotes && (
+                  <p className="text-xs text-stone-600 bg-stone-50 rounded-lg p-3 mt-2">
+                    <span className="font-semibold">Workshop:</span> {repair.workshop_notes}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Internal Notes - Amber Box */}
+            {repair.internal_notes && (
+              <div className="mb-4">
+                <p className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">
+                  <span className="font-semibold">Internal:</span> {repair.internal_notes}
+                </p>
+              </div>
+            )}
+
+            {/* Stage Timeline */}
+            <StageTimeline
+              currentStage={repair.stage}
+              onStageChange={handleStageChange}
+              readOnly={readOnly}
+              isTerminal={isTerminal}
+            />
+          </div>
+
+          {/* 4. PhotosCard */}
           <PhotosCard
             attachments={localAttachments}
             readOnly={readOnly}
@@ -432,24 +486,46 @@ export default function RepairCommandCenter({
               logJobEvent("repair", repair.id, tenantId, "photo_uploaded", `Photo uploaded: ${att.caption ?? att.file_name}`);
             }}
           />
-          <ActivityTimeline events={localEvents} />
 
-          {/* Line Items Card */}
+          {/* 5. Pricing & Payment Card */}
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Line Items</h2>
-              {invoice && (() => {
-                const label = { draft: "Draft", unpaid: "Sent", partial: "Partial", paid: "Paid", voided: "Voided", overdue: "Overdue" }[invoice.status] || invoice.status;
-                return (
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${invoice.status === "paid" ? "bg-stone-900 text-white" : invoice.status === "partial" ? "bg-amber-100 text-amber-800" : "bg-stone-100 text-stone-600"}`}>
-                    {label}
-                  </span>
-                );
-              })()}
+            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-4">Pricing & Payment</h2>
+
+            {/* Quote Strip - 3 columns */}
+            <div className="grid grid-cols-3 gap-4 mb-5 pb-5 border-b border-stone-100">
+              <div className="text-center">
+                <p className="text-xs text-stone-500 mb-1">Quoted</p>
+                <p className="text-lg font-semibold text-stone-900">{fmt(repair.quoted_price, currency)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-stone-500 mb-1">Deposit</p>
+                <p className={`text-lg font-semibold ${repair.deposit_paid ? "text-emerald-700" : "text-stone-400"}`}>
+                  {fmt(repair.deposit_amount, currency)}
+                  {repair.deposit_paid && <span className="text-xs ml-1">✓</span>}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-stone-500 mb-1">Balance</p>
+                <p className={`text-lg font-semibold ${balanceDue > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                  {fmt(balanceDue, currency)}
+                </p>
+              </div>
             </div>
 
+            {/* Line Items Table */}
             {invoice && invoice.lineItems.length > 0 ? (
               <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Line Items</p>
+                  {(() => {
+                    const label = { draft: "Draft", unpaid: "Sent", partial: "Partial", paid: "Paid", voided: "Voided", overdue: "Overdue" }[invoice.status] || invoice.status;
+                    return (
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${invoice.status === "paid" ? "bg-stone-900 text-white" : invoice.status === "partial" ? "bg-amber-100 text-amber-800" : "bg-stone-100 text-stone-600"}`}>
+                        {label}
+                      </span>
+                    );
+                  })()}
+                </div>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-stone-400 uppercase tracking-wider">
@@ -499,8 +575,9 @@ export default function RepairCommandCenter({
               <p className="text-sm text-stone-400 mb-4">No line items yet.</p>
             )}
 
+            {/* Add Line Item Buttons */}
             {!readOnly && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-5">
                 <button onClick={() => { setFormError(null); setShowAddManual(true); }} className="flex items-center gap-1.5 text-xs font-medium text-stone-600 border border-stone-200 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -517,66 +594,131 @@ export default function RepairCommandCenter({
                 )}
               </div>
             )}
+
+            {/* Invoice Link / Generate */}
+            <div className="border-t border-stone-100 pt-4 mb-4">
+              {invoice ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">{invoice.invoice_number}</p>
+                    <p className="text-xs text-stone-400 mt-0.5 capitalize">{invoice.status}</p>
+                  </div>
+                  <Link href={`/invoices/${invoice.id}`} className="text-xs font-medium text-amber-700 hover:underline border border-amber-200 bg-amber-50 px-3 py-1.5 rounded-lg">
+                    View Invoice →
+                  </Link>
+                </div>
+              ) : !readOnly ? (
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-stone-400 flex-1">No invoice generated yet.</p>
+                  <button onClick={handleGenerateInvoice} disabled={isPending} className="text-xs font-medium bg-amber-600 text-white px-3 py-1.5 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50">
+                    Generate Invoice
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-stone-400">No invoice generated.</p>
+              )}
+            </div>
+
+            {/* Payment History */}
+            {invoice && invoice.payments.length > 0 && (
+              <div className="border-t border-stone-100 pt-4">
+                <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Payment History</p>
+                <div className="space-y-2">
+                  {invoice.payments.map((p: Payment) => (
+                    <div key={p.id} className="flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-stone-700 font-medium capitalize">{p.payment_method.replace(/_/g, " ")}</span>
+                        {p.payment_date && <span className="text-stone-400 ml-1.5">{new Date(p.payment_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
+                        {p.notes && <span className="text-stone-400 block">{p.notes}</span>}
+                      </div>
+                      <span className="font-semibold text-stone-800">{fmt(p.amount, currency)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Linked Invoice Card */}
+          {/* 6. Notes Card */}
           <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Invoice</h2>
-            {invoice ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-stone-900">{invoice.invoice_number}</p>
-                  <p className="text-xs text-stone-400 mt-0.5 capitalize">{invoice.status}</p>
-                </div>
-                <Link href={`/invoices/${invoice.id}`} className="text-xs font-medium text-amber-700 hover:underline border border-amber-200 bg-amber-50 px-3 py-1.5 rounded-lg">
-                  View Invoice →
-                </Link>
+            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-4">Notes & Activity</h2>
+
+            {/* Internal Notes - Editable if not readOnly */}
+            <div className="mb-4">
+              <label className="text-xs font-medium text-stone-500 block mb-1.5">Internal Notes</label>
+              {!readOnly ? (
+                <textarea
+                  value={internalNotesValue}
+                  onChange={(e) => setInternalNotesValue(e.target.value)}
+                  placeholder="Add internal notes..."
+                  className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 resize-none"
+                  rows={3}
+                />
+              ) : (
+                <p className="text-sm text-stone-700 bg-stone-50 rounded-lg p-3">
+                  {repair.internal_notes || <span className="text-stone-400">No internal notes</span>}
+                </p>
+              )}
+            </div>
+
+            {/* Intake Notes Display */}
+            {repair.intake_notes && (
+              <div className="mb-4 pb-4 border-b border-stone-100">
+                <label className="text-xs font-medium text-stone-500 block mb-1.5">Intake Notes</label>
+                <p className="text-sm text-stone-700 bg-stone-50 rounded-lg p-3">{repair.intake_notes}</p>
               </div>
-            ) : !readOnly ? (
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-stone-400 flex-1">No invoice generated yet.</p>
-                <button onClick={handleGenerateInvoice} disabled={isPending} className="text-xs font-medium bg-amber-600 text-white px-3 py-1.5 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50">
-                  Generate Invoice
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-stone-400">No invoice generated.</p>
             )}
+
+            {/* Activity Timeline */}
+            <ActivityTimeline events={localEvents} />
           </div>
         </div>
 
-        {/* Right Sticky Sidebar */}
+        {/* RIGHT SIDEBAR - sticky */}
         <div className="lg:sticky lg:top-24 space-y-4">
-          <FinancialSummaryCard repair={repair} invoice={invoice} currency={currency} balanceDue={balanceDue} />
+          {/* 1. JobOverviewCard */}
+          <JobOverviewCard repair={repair} readOnly={readOnly} />
+
+          {/* 2. FinancialSnapshotCard */}
+          <FinancialSnapshotCard repair={repair} invoice={invoice} currency={currency} balanceDue={balanceDue} />
+
+          {/* 3. WorkflowChecklist */}
+          <WorkflowChecklist repair={repair} customer={customer} invoice={invoice} attachments={localAttachments} />
+
+          {/* 4. AlertsCard - only renders if alerts */}
+          <AlertsCard repair={repair} customer={customer} invoice={invoice} attachments={localAttachments} balanceDue={balanceDue} />
+
+          {/* 5. SidebarQuickActions */}
           {!readOnly && (
-            <QuickActionsCard
+            <SidebarQuickActions
               repair={repair}
               invoice={invoice}
+              customer={customer}
               currency={currency}
               balanceDue={balanceDue}
               isPending={isPending}
+              emailSending={emailSending}
               onOpenPaymentModal={openPaymentModal}
               onMarkFullyPaid={handleMarkFullyPaid}
               onGenerateInvoice={handleGenerateInvoice}
+              onStageChange={handleStageChange}
+              onEmailInvoice={handleEmailInvoice}
+              onEmailReady={handleEmailReady}
             />
-          )}
-          <DocumentsCard
-            repair={repair}
-            invoice={invoice}
-            customer={customer}
-            readOnly={readOnly}
-            emailSending={emailSending}
-            emailSuccess={emailSuccess}
-            emailError={emailError}
-            onEmailInvoice={handleEmailInvoice}
-            onEmailReady={handleEmailReady}
-            onGenerateInvoice={handleGenerateInvoice}
-          />
-          {!readOnly && !isTerminal && (
-            <WorkflowActionsCard repair={repair} isPending={isPending} onStageChange={handleStageChange} />
           )}
         </div>
       </div>
+
+      {/* Sticky bottom bar - only if !readOnly */}
+      {!readOnly && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-6 py-3 flex items-center justify-between z-40">
+          <span className="text-xs text-stone-400">Stage: {currentStageLabel}</span>
+          <div className="flex gap-2">
+            <button onClick={() => window.print()} className="text-xs font-medium text-stone-600 border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50">Print</button>
+            <button onClick={handleEmailInvoice} className="text-xs font-medium text-stone-600 border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50">Email</button>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <AddManualItemModal

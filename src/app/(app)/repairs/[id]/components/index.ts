@@ -11,6 +11,12 @@ export { default as FinancialSummaryCard } from "./FinancialSummaryCard";
 export { default as QuickActionsCard } from "./QuickActionsCard";
 export { default as DocumentsCard } from "./DocumentsCard";
 export { default as WorkflowActionsCard } from "./WorkflowActionsCard";
+// New sidebar components
+export { default as WorkflowChecklist } from "./WorkflowChecklist";
+export { default as AlertsCard } from "./AlertsCard";
+export { default as JobOverviewCard } from "./JobOverviewCard";
+export { default as FinancialSnapshotCard } from "./FinancialSnapshotCard";
+export { default as SidebarQuickActions } from "./SidebarQuickActions";
 export * from "./modals";
 export * from "./constants";
 export * from "./types";

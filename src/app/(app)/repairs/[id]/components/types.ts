@@ -75,6 +75,7 @@ export interface Repair {
   deposit_paid: boolean;
   due_date: string | null;
   invoice_id: string | null;
+  created_at?: string;
 }
 
 export interface RepairCommandCenterProps {
