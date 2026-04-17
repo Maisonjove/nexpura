@@ -10,7 +10,6 @@ export const JEWELLERY_TYPES = [
   "Brooch",
   "Bangle",
   "Chain",
-  "Other",
 ];
 
 export const METAL_TYPES = [
@@ -31,7 +30,6 @@ export const METAL_PURITIES = [
   "24ct",
   "925 Silver",
   "950 Platinum",
-  "Other",
 ];
 
 export const METAL_COLOURS = [
@@ -56,7 +54,7 @@ export const STONE_SHAPES = [
   "Marquise",
   "Asscher",
   "Radiant",
-  "Other",
+
 ];
 
 export const SETTING_STYLES = [
@@ -68,7 +66,7 @@ export const SETTING_STYLES = [
   "Three-stone",
   "Tension",
   "Cluster",
-  "Other",
+
 ];
 
 export const REPAIR_ISSUES = [
@@ -83,7 +81,7 @@ export const REPAIR_ISSUES = [
   "Stone setting",
   "Soldering",
   "General repair",
-  "Other",
+
 ];
 
 export const PRIORITIES = [

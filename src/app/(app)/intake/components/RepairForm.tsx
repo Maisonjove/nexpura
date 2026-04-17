@@ -82,7 +82,7 @@ export default function RepairForm({ data, onChange }: RepairFormProps) {
 
   // Handle select change with "other" support
   const handleSelectChange = (field: keyof RepairData, value: string) => {
-    if (value === "other") {
+    if (value.toLowerCase() === "other") {
       // Keep "other" in state, but actual value will come from free text
       update(field, "other" as RepairData[typeof field]);
     } else {

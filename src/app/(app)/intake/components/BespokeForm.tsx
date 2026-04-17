@@ -69,7 +69,7 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
 
   // Handle select change with "other" support
   const handleSelectChange = (field: keyof BespokeData, value: string) => {
-    if (value === "other") {
+    if (value.toLowerCase() === "other") {
       update(field, "other" as BespokeData[typeof field]);
     } else {
       update(field, value as BespokeData[typeof field]);
