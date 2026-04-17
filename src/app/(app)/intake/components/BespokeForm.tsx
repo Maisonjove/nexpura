@@ -491,53 +491,6 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
         </div>
       </section>
 
-      {/* ─────────────────────────────────────────────────────────────
-          Card 4: Notes
-      ───────────────────────────────────────────────────────────── */}
-      <section className={`${cardCls} p-6 mb-6`}>
-        <h2 className={cardHeaderCls}>
-          <span className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Notes
-          </span>
-        </h2>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>Assigned Salesperson</label>
-            <input
-              type="text"
-              value={data.assigned_salesperson}
-              onChange={(e) => update("assigned_salesperson", e.target.value)}
-              placeholder="Salesperson name"
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Workshop Routing</label>
-            <input
-              type="text"
-              value={data.workshop_routing}
-              onChange={(e) => update("workshop_routing", e.target.value)}
-              placeholder="e.g. External, In-house"
-              className={inputCls}
-            />
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label className={labelCls}>Internal Notes</label>
-          <textarea
-            value={data.internal_notes}
-            onChange={(e) => update("internal_notes", e.target.value)}
-            placeholder="Workshop-only notes..."
-            rows={3}
-            className={`${inputCls} resize-none`}
-          />
-        </div>
-      </section>
     </>
   );
 }
