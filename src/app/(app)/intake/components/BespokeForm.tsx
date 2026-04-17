@@ -347,15 +347,19 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
             <div>
               <label className={labelCls}>Ring Size</label>
               <select
-                value={data.ring_size}
-                onChange={(e) => update("ring_size", e.target.value)}
+                value={getSelectValue("ring_size", RING_SIZES)}
+                onChange={(e) => handleSelectChange("ring_size", e.target.value)}
                 className={selectCls}
               >
                 <option value="">Select size...</option>
                 {RING_SIZES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
+                <option value="other">Other (specify)...</option>
               </select>
+              {isOtherMode("ring_size") && (
+                <input type="text" placeholder="Please specify..." value={otherValues.ring_size || ""} onChange={(e) => handleOtherChange("ring_size", e.target.value)} className={`${inputCls} mt-2`} autoFocus />
+              )}
             </div>
           )}
           <div>

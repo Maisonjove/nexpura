@@ -245,15 +245,19 @@ export default function RepairForm({ data, onChange }: RepairFormProps) {
             <div>
               <label className={labelCls}>Current Ring Size</label>
               <select
-                value={data.current_size}
-                onChange={(e) => update("current_size", e.target.value)}
+                value={getSelectValue("current_size", RING_SIZES)}
+                onChange={(e) => handleSelectChange("current_size", e.target.value)}
                 className={selectCls}
               >
                 <option value="">Select size...</option>
                 {RING_SIZES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
+                <option value="other">Other (specify)...</option>
               </select>
+              {isOtherMode("current_size") && (
+                <input type="text" placeholder="Please specify..." value={otherValues.current_size || ""} onChange={(e) => handleOtherChange("current_size", e.target.value)} className={`${inputCls} mt-2`} autoFocus />
+              )}
             </div>
           )}
         </div>
@@ -329,15 +333,19 @@ export default function RepairForm({ data, onChange }: RepairFormProps) {
                 <div>
                   <label className={labelCls}>Metal Colour</label>
                   <select
-                    value={data.metal_colour}
-                    onChange={(e) => update("metal_colour", e.target.value)}
+                    value={getSelectValue("metal_colour", METAL_COLOURS)}
+                    onChange={(e) => handleSelectChange("metal_colour", e.target.value)}
                     className={selectCls}
                   >
                     <option value="">Select colour...</option>
                     {METAL_COLOURS.map((c) => (
                       <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
+                    <option value="other">Other (specify)...</option>
                   </select>
+                  {isOtherMode("metal_colour") && (
+                    <input type="text" placeholder="Please specify..." value={otherValues.metal_colour || ""} onChange={(e) => handleOtherChange("metal_colour", e.target.value)} className={`${inputCls} mt-2`} autoFocus />
+                  )}
                 </div>
                 <div>
                   <label className={labelCls}>Size / Length</label>
@@ -465,28 +473,36 @@ export default function RepairForm({ data, onChange }: RepairFormProps) {
             <div>
               <label className={labelCls}>Resize From</label>
               <select
-                value={data.resize_from}
-                onChange={(e) => update("resize_from", e.target.value)}
+                value={getSelectValue("resize_from", RING_SIZES)}
+                onChange={(e) => handleSelectChange("resize_from", e.target.value)}
                 className={selectCls}
               >
                 <option value="">Current size...</option>
                 {RING_SIZES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
+                <option value="other">Other (specify)...</option>
               </select>
+              {isOtherMode("resize_from") && (
+                <input type="text" placeholder="Please specify..." value={otherValues.resize_from || ""} onChange={(e) => handleOtherChange("resize_from", e.target.value)} className={`${inputCls} mt-2`} autoFocus />
+              )}
             </div>
             <div>
               <label className={labelCls}>Resize To</label>
               <select
-                value={data.resize_to}
-                onChange={(e) => update("resize_to", e.target.value)}
+                value={getSelectValue("resize_to", RING_SIZES)}
+                onChange={(e) => handleSelectChange("resize_to", e.target.value)}
                 className={selectCls}
               >
                 <option value="">Target size...</option>
                 {RING_SIZES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
+                <option value="other">Other (specify)...</option>
               </select>
+              {isOtherMode("resize_to") && (
+                <input type="text" placeholder="Please specify..." value={otherValues.resize_to || ""} onChange={(e) => handleOtherChange("resize_to", e.target.value)} className={`${inputCls} mt-2`} autoFocus />
+              )}
             </div>
           </div>
         )}
