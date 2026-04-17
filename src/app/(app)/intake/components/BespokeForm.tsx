@@ -1,16 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import {
   JEWELLERY_TYPES,
   METAL_TYPES,
   METAL_PURITIES,
-  METAL_COLOURS,
   PRIORITIES,
   PAYMENT_METHODS,
   RING_SIZES,
   STONE_SHAPES,
   SETTING_STYLES,
-  COLLECTION_STATUSES,
 } from "../constants";
 import { inputCls, selectCls, labelCls, cardCls, cardHeaderCls } from "./styles";
 
@@ -61,8 +60,55 @@ interface BespokeFormProps {
 }
 
 export default function BespokeForm({ data, onChange }: BespokeFormProps) {
+  // State for "Other" free text fields
+  const [otherValues, setOtherValues] = useState<Record<string, string>>({});
+
   const update = <K extends keyof BespokeData>(field: K, value: BespokeData[K]) => {
     onChange({ ...data, [field]: value });
+  };
+
+  // Handle select change with "other" support
+  const handleSelectChange = (field: keyof BespokeData, value: string) => {
+    if (value === "other") {
+      update(field, "other" as BespokeData[typeof field]);
+    } else {
+      update(field, value as BespokeData[typeof field]);
+      if (otherValues[field]) {
+        setOtherValues(prev => {
+          const newVals = { ...prev };
+          delete newVals[field];
+          return newVals;
+        });
+      }
+    }
+  };
+
+  // Handle "other" text input change
+  const handleOtherChange = (field: keyof BespokeData, value: string) => {
+    setOtherValues(prev => ({ ...prev, [field]: value }));
+    update(field, value as BespokeData[typeof field]);
+  };
+
+  // Check if field is in "other" mode
+  const isOtherMode = (field: keyof BespokeData) => {
+    return data[field] === "other" || (otherValues[field] && data[field] === otherValues[field]);
+  };
+
+  // Get select value (show "other" if custom value entered)
+  const getSelectValue = (field: keyof BespokeData, options: string[] | { value: string; label: string }[]): string => {
+    const currentValue = data[field];
+    if (!currentValue || typeof currentValue !== 'string') return "";
+    
+    const isArray = Array.isArray(options) && typeof options[0] === 'string';
+    if (isArray) {
+      const exists = (options as string[]).includes(currentValue);
+      if (exists) return currentValue;
+    } else {
+      const exists = (options as { value: string; label: string }[]).some(o => o.value === currentValue);
+      if (exists) return currentValue;
+    }
+    
+    return "other";
   };
 
   const balanceDue = Math.max(
@@ -109,34 +155,6 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className={labelCls}>Jewellery Type</label>
-            <select
-              value={data.jewellery_type}
-              onChange={(e) => update("jewellery_type", e.target.value)}
-              className={selectCls}
-            >
-              <option value="">Select type...</option>
-              {JEWELLERY_TYPES.map((t) => (
-                <option key={t} value={t.toLowerCase()}>{t}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>Priority</label>
-            <select
-              value={data.priority}
-              onChange={(e) => update("priority", e.target.value)}
-              className={selectCls}
-            >
-              {PRIORITIES.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
         <div className="mt-4">
           <label className={labelCls}>Brief / Description</label>
           <textarea
@@ -145,17 +163,6 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
             placeholder="Describe what the customer wants..."
             rows={3}
             className={`${inputCls} resize-none`}
-          />
-        </div>
-
-        <div className="mt-4">
-          <label className={labelCls}>Design Source / Inspiration</label>
-          <input
-            type="text"
-            value={data.design_source}
-            onChange={(e) => update("design_source", e.target.value)}
-            placeholder="Reference images, sketches, existing pieces..."
-            className={inputCls}
           />
         </div>
 
@@ -181,6 +188,57 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
             />
           </div>
         </div>
+
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div>
+            <label className={labelCls}>Jewellery Type</label>
+            <select
+              value={getSelectValue("jewellery_type", JEWELLERY_TYPES.map(t => t.toLowerCase()))}
+              onChange={(e) => handleSelectChange("jewellery_type", e.target.value)}
+              className={selectCls}
+            >
+              <option value="">Select type...</option>
+              {JEWELLERY_TYPES.map((t) => (
+                <option key={t} value={t.toLowerCase()}>{t}</option>
+              ))}
+              <option value="other">Other (specify)...</option>
+            </select>
+            {isOtherMode("jewellery_type") && (
+              <input
+                type="text"
+                placeholder="Please specify..."
+                value={otherValues.jewellery_type || (data.jewellery_type !== "other" ? data.jewellery_type : "")}
+                onChange={(e) => handleOtherChange("jewellery_type", e.target.value)}
+                className={`${inputCls} mt-2`}
+                autoFocus
+              />
+            )}
+          </div>
+          <div>
+            <label className={labelCls}>Metal Type</label>
+            <select
+              value={getSelectValue("metal_type", METAL_TYPES)}
+              onChange={(e) => handleSelectChange("metal_type", e.target.value)}
+              className={selectCls}
+            >
+              <option value="">Select metal...</option>
+              {METAL_TYPES.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+              <option value="other">Other (specify)...</option>
+            </select>
+            {isOtherMode("metal_type") && (
+              <input
+                type="text"
+                placeholder="Please specify..."
+                value={otherValues.metal_type || (data.metal_type !== "other" ? data.metal_type : "")}
+                onChange={(e) => handleOtherChange("metal_type", e.target.value)}
+                className={`${inputCls} mt-2`}
+                autoFocus
+              />
+            )}
+          </div>
+        </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
@@ -196,66 +254,7 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
           </span>
         </h2>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className={labelCls}>Metal Type</label>
-            <select
-              value={data.metal_type}
-              onChange={(e) => update("metal_type", e.target.value)}
-              className={selectCls}
-            >
-              <option value="">Select metal...</option>
-              {METAL_TYPES.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>Metal Colour</label>
-            <select
-              value={data.metal_colour}
-              onChange={(e) => update("metal_colour", e.target.value)}
-              className={selectCls}
-            >
-              <option value="">Select colour...</option>
-              {METAL_COLOURS.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>Purity</label>
-            <select
-              value={data.metal_purity}
-              onChange={(e) => update("metal_purity", e.target.value)}
-              className={selectCls}
-            >
-              <option value="">Select purity...</option>
-              {METAL_PURITIES.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className={labelCls}>Stone Type</label>
-            <select
-              value={data.stone_type}
-              onChange={(e) => update("stone_type", e.target.value)}
-              className={selectCls}
-            >
-              <option value="">Select stone...</option>
-              <option value="diamond">Diamond</option>
-              <option value="lab_diamond">Lab Diamond</option>
-              <option value="sapphire">Sapphire</option>
-              <option value="ruby">Ruby</option>
-              <option value="emerald">Emerald</option>
-              <option value="pearl">Pearl</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Stone Details</label>
             <input
@@ -266,67 +265,101 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
               className={inputCls}
             />
           </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4 mt-4">
-          <div>
-            <label className={labelCls}>Stone Count</label>
-            <input
-              type="number"
-              min="0"
-              value={data.stone_count}
-              onChange={(e) => update("stone_count", e.target.value)}
-              placeholder="0"
-              className={inputCls}
-            />
-          </div>
           <div>
             <label className={labelCls}>Stone Shape</label>
             <select
-              value={data.stone_shape}
-              onChange={(e) => update("stone_shape", e.target.value)}
+              value={getSelectValue("stone_shape", STONE_SHAPES)}
+              onChange={(e) => handleSelectChange("stone_shape", e.target.value)}
               className={selectCls}
             >
               <option value="">Select shape...</option>
               {STONE_SHAPES.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
+              <option value="other">Other (specify)...</option>
             </select>
+            {isOtherMode("stone_shape") && (
+              <input
+                type="text"
+                placeholder="Please specify..."
+                value={otherValues.stone_shape || (data.stone_shape !== "other" ? data.stone_shape : "")}
+                onChange={(e) => handleOtherChange("stone_shape", e.target.value)}
+                className={`${inputCls} mt-2`}
+                autoFocus
+              />
+            )}
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mt-4">
           <div>
             <label className={labelCls}>Setting Style</label>
             <select
-              value={data.setting_style}
-              onChange={(e) => update("setting_style", e.target.value)}
+              value={getSelectValue("setting_style", SETTING_STYLES)}
+              onChange={(e) => handleSelectChange("setting_style", e.target.value)}
               className={selectCls}
             >
               <option value="">Select style...</option>
               {SETTING_STYLES.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
+              <option value="other">Other (specify)...</option>
             </select>
+            {isOtherMode("setting_style") && (
+              <input
+                type="text"
+                placeholder="Please specify..."
+                value={otherValues.setting_style || (data.setting_style !== "other" ? data.setting_style : "")}
+                onChange={(e) => handleOtherChange("setting_style", e.target.value)}
+                className={`${inputCls} mt-2`}
+                autoFocus
+              />
+            )}
+          </div>
+          <div>
+            <label className={labelCls}>Metal Purity</label>
+            <select
+              value={getSelectValue("metal_purity", METAL_PURITIES)}
+              onChange={(e) => handleSelectChange("metal_purity", e.target.value)}
+              className={selectCls}
+            >
+              <option value="">Select purity...</option>
+              {METAL_PURITIES.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+              <option value="other">Other (specify)...</option>
+            </select>
+            {isOtherMode("metal_purity") && (
+              <input
+                type="text"
+                placeholder="Please specify..."
+                value={otherValues.metal_purity || (data.metal_purity !== "other" ? data.metal_purity : "")}
+                onChange={(e) => handleOtherChange("metal_purity", e.target.value)}
+                className={`${inputCls} mt-2`}
+                autoFocus
+              />
+            )}
           </div>
         </div>
 
-        {isRing && (
-          <div className="mt-4">
-            <label className={labelCls}>Ring Size</label>
-            <select
-              value={data.ring_size}
-              onChange={(e) => update("ring_size", e.target.value)}
-              className={selectCls}
-            >
-              <option value="">Select size...</option>
-              {RING_SIZES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
         <div className="grid grid-cols-2 gap-4 mt-4">
+          {isRing && (
+            <div>
+              <label className={labelCls}>Ring Size</label>
+              <select
+                value={data.ring_size}
+                onChange={(e) => update("ring_size", e.target.value)}
+                className={selectCls}
+              >
+                <option value="">Select size...</option>
+                {RING_SIZES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
-            <label className={labelCls}>Dimensions</label>
+            <label className={labelCls}>Dimensions / Size</label>
             <input
               type="text"
               value={data.dimensions}
@@ -335,68 +368,11 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
               className={inputCls}
             />
           </div>
-          <div>
-            <label className={labelCls}>Due Date</label>
-            <input
-              type="date"
-              value={data.due_date}
-              onChange={(e) => update("due_date", e.target.value)}
-              className={inputCls}
-            />
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label className={labelCls}>Additional Notes</label>
-          <textarea
-            value={data.notes}
-            onChange={(e) => update("notes", e.target.value)}
-            placeholder="Any other specifications or requirements..."
-            rows={2}
-            className={`${inputCls} resize-none`}
-          />
         </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          Card 3: Photos & Documentation
-      ───────────────────────────────────────────────────────────── */}
-      <section className={`${cardCls} p-6 mb-6`}>
-        <h2 className={cardHeaderCls}>
-          <span className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Photos & Documentation
-          </span>
-        </h2>
-
-        {/* Drop Zone */}
-        <div className="border-2 border-dashed border-stone-200 rounded-xl p-8 text-center hover:border-amber-300 hover:bg-amber-50/30 transition-colors cursor-pointer">
-          <svg className="w-10 h-10 text-stone-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <p className="text-sm text-stone-600 mb-1">Drop photos here or click to upload</p>
-          <p className="text-xs text-stone-400">PNG, JPG, HEIC up to 10MB each</p>
-        </div>
-
-        {/* Photo Type Chips */}
-        <div className="flex flex-wrap gap-2 mt-4">
-          {["Design sketch", "Reference image", "Inspiration", "CAD render", "Material samples"].map((type) => (
-            <span
-              key={type}
-              className="px-3 py-1.5 text-xs font-medium bg-stone-100 text-stone-600 rounded-full"
-            >
-              {type}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────────
-          Card 4: Pricing & Payment
+          Card 3: Pricing & Payment
       ───────────────────────────────────────────────────────────── */}
       <section className={`${cardCls} p-6 mb-6`}>
         <h2 className={cardHeaderCls}>
@@ -407,6 +383,39 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
             Pricing & Payment
           </span>
         </h2>
+
+        {/* Financial Summary Strip */}
+        <div className="mb-5 p-4 bg-stone-50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-xs text-stone-500 uppercase tracking-wide">Quote</p>
+                <p className="text-lg font-semibold text-stone-900">
+                  ${(parseFloat(data.quoted_price) || 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="w-px h-10 bg-stone-200" />
+              <div>
+                <p className="text-xs text-stone-500 uppercase tracking-wide">Deposit</p>
+                <p className="text-lg font-semibold text-stone-900">
+                  ${(parseFloat(data.deposit_amount) || 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="w-px h-10 bg-stone-200" />
+              <div>
+                <p className="text-xs text-stone-500 uppercase tracking-wide">Balance</p>
+                <p className={`text-lg font-bold ${balanceDue > 0 ? "text-amber-700" : "text-emerald-600"}`}>
+                  ${balanceDue.toFixed(2)}
+                </p>
+              </div>
+            </div>
+            {paymentStatus && (
+              <span className={`px-3 py-1.5 text-xs font-medium rounded-full ${paymentStatus.color}`}>
+                {paymentStatus.label}
+              </span>
+            )}
+          </div>
+        </div>
 
         <div className="grid grid-cols-3 gap-4">
           <div>
@@ -453,100 +462,45 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className={labelCls}>Payment Method</label>
-            <select
-              value={data.payment_method}
-              onChange={(e) => update("payment_method", e.target.value)}
-              className={selectCls}
-            >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>Discount Override</label>
+        <div className="mt-4">
+          <label className={labelCls}>Payment Method</label>
+          <select
+            value={getSelectValue("payment_method", PAYMENT_METHODS)}
+            onChange={(e) => handleSelectChange("payment_method", e.target.value)}
+            className={selectCls}
+          >
+            {PAYMENT_METHODS.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+            <option value="other">Other (specify)...</option>
+          </select>
+          {isOtherMode("payment_method") && (
             <input
               type="text"
-              value={data.discount_amount}
-              onChange={(e) => update("discount_amount", e.target.value)}
-              placeholder="e.g. 10% or $50"
-              className={inputCls}
+              placeholder="Please specify..."
+              value={otherValues.payment_method || (data.payment_method !== "other" ? data.payment_method : "")}
+              onChange={(e) => handleOtherChange("payment_method", e.target.value)}
+              className={`${inputCls} mt-2`}
+              autoFocus
             />
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label className={labelCls}>Payment Notes</label>
-          <input
-            type="text"
-            value={data.payment_notes}
-            onChange={(e) => update("payment_notes", e.target.value)}
-            placeholder="Special payment arrangements..."
-            className={inputCls}
-          />
-        </div>
-
-        {/* Financial Summary Strip */}
-        <div className="mt-5 pt-5 border-t border-stone-100">
-          <div className="flex items-center justify-between p-4 bg-stone-50 rounded-lg">
-            <div className="flex items-center gap-6">
-              <div>
-                <p className="text-xs text-stone-500 uppercase tracking-wide">Quote</p>
-                <p className="text-lg font-semibold text-stone-900">
-                  ${(parseFloat(data.quoted_price) || 0).toFixed(2)}
-                </p>
-              </div>
-              <div className="w-px h-10 bg-stone-200" />
-              <div>
-                <p className="text-xs text-stone-500 uppercase tracking-wide">Deposit</p>
-                <p className="text-lg font-semibold text-stone-900">
-                  ${(parseFloat(data.deposit_amount) || 0).toFixed(2)}
-                </p>
-              </div>
-              <div className="w-px h-10 bg-stone-200" />
-              <div>
-                <p className="text-xs text-stone-500 uppercase tracking-wide">Balance</p>
-                <p className={`text-lg font-bold ${balanceDue > 0 ? "text-amber-700" : "text-emerald-600"}`}>
-                  ${balanceDue.toFixed(2)}
-                </p>
-              </div>
-            </div>
-            {paymentStatus && (
-              <span className={`px-3 py-1.5 text-xs font-medium rounded-full ${paymentStatus.color}`}>
-                {paymentStatus.label}
-              </span>
-            )}
-          </div>
+          )}
         </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          Card 5: Operational Details
+          Card 4: Notes
       ───────────────────────────────────────────────────────────── */}
       <section className={`${cardCls} p-6 mb-6`}>
         <h2 className={cardHeaderCls}>
           <span className="flex items-center gap-2">
             <svg className="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
-            Operational Details
+            Notes
           </span>
         </h2>
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>Job Reference</label>
-            <input
-              type="text"
-              value={data.job_reference}
-              onChange={(e) => update("job_reference", e.target.value)}
-              placeholder="Internal reference"
-              className={inputCls}
-            />
-          </div>
           <div>
             <label className={labelCls}>Assigned Salesperson</label>
             <input
@@ -556,67 +510,6 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
               placeholder="Salesperson name"
               className={inputCls}
             />
-          </div>
-        </div>
-
-        {/* Job Complete */}
-        <div className="mt-4 flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={data.job_complete}
-              onChange={(e) => update("job_complete", e.target.checked)}
-              className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-500/20"
-            />
-            <span className="text-sm text-stone-700">Job Complete</span>
-          </label>
-          {data.job_complete && (
-            <div className="flex-1">
-              <input
-                type="date"
-                value={data.job_complete_date}
-                onChange={(e) => update("job_complete_date", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className={labelCls}>Collected By</label>
-            <input
-              type="text"
-              value={data.collected_by}
-              onChange={(e) => update("collected_by", e.target.value)}
-              placeholder="Person who collected"
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Collected On</label>
-            <input
-              type="date"
-              value={data.collected_on}
-              onChange={(e) => update("collected_on", e.target.value)}
-              className={inputCls}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className={labelCls}>Collection Status</label>
-            <select
-              value={data.collection_status}
-              onChange={(e) => update("collection_status", e.target.value)}
-              className={selectCls}
-            >
-              <option value="">Select status...</option>
-              {COLLECTION_STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
           </div>
           <div>
             <label className={labelCls}>Workshop Routing</label>
@@ -629,23 +522,9 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
             />
           </div>
         </div>
-      </section>
 
-      {/* ─────────────────────────────────────────────────────────────
-          Card 6: Internal Notes & Follow-Up
-      ───────────────────────────────────────────────────────────── */}
-      <section className={`${cardCls} p-6 mb-6`}>
-        <h2 className={cardHeaderCls}>
-          <span className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Internal Notes & Follow-Up
-          </span>
-        </h2>
-
-        <div>
-          <label className={labelCls}>Internal Workshop Notes</label>
+        <div className="mt-4">
+          <label className={labelCls}>Internal Notes</label>
           <textarea
             value={data.internal_notes}
             onChange={(e) => update("internal_notes", e.target.value)}
@@ -653,50 +532,6 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
             rows={3}
             className={`${inputCls} resize-none`}
           />
-        </div>
-
-        <div className="mt-4">
-          <label className={labelCls}>Customer Communication Notes</label>
-          <textarea
-            value={data.customer_communication_notes}
-            onChange={(e) => update("customer_communication_notes", e.target.value)}
-            placeholder="Notes on customer interactions..."
-            rows={2}
-            className={`${inputCls} resize-none`}
-          />
-        </div>
-
-        <div className="mt-4">
-          <label className={labelCls}>Follow-Up Comments</label>
-          <textarea
-            value={data.followup_comments}
-            onChange={(e) => update("followup_comments", e.target.value)}
-            placeholder="Follow-up actions required..."
-            rows={2}
-            className={`${inputCls} resize-none`}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className={labelCls}>Reminder Date</label>
-            <input
-              type="date"
-              value={data.reminder_date}
-              onChange={(e) => update("reminder_date", e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Delivery / Pickup Notes</label>
-            <input
-              type="text"
-              value={data.delivery_notes}
-              onChange={(e) => update("delivery_notes", e.target.value)}
-              placeholder="Special delivery instructions"
-              className={inputCls}
-            />
-          </div>
         </div>
       </section>
     </>

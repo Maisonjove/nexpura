@@ -27,9 +27,6 @@ import {
   type RepairData,
   type BespokeData,
   type StockData,
-  primaryBtnCls,
-  secondaryBtnCls,
-  ghostBtnCls,
 } from "./components";
 
 // ────────────────────────────────────────────────────────────────
@@ -613,7 +610,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
       {/* Loading Overlay */}
       {isPending && <LoadingOverlay jobType={jobType} />}
 
-      <div className="flex gap-8 pb-24">
+      <div className="flex gap-8">
         {/* ─── Left Column: Intake Builder ────────────────────── */}
         <div className="flex-1 min-w-0">
           {/* Premium Job Type Segmented Controls */}
@@ -707,58 +704,6 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
           descriptionFilled={getDescriptionFilled()}
           photosCount={0}
         />
-      </div>
-
-      {/* ─── Sticky Bottom Action Bar ────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 shadow-lg z-40">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          {/* Left: Auto-saving indicator */}
-          <div className="flex items-center gap-2 text-sm text-stone-400">
-            <svg className="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-            </svg>
-            <span>Auto-saving draft...</span>
-          </div>
-
-          {/* Right: Action buttons */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={isPending}
-              className={ghostBtnCls}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              disabled={isPending}
-              className={secondaryBtnCls}
-            >
-              <span className="flex items-center gap-1.5">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Print
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isPending || !isFormValid}
-              className={`${primaryBtnCls} flex items-center gap-2`}
-            >
-              {isPending && (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              )}
-              {isPending 
-                ? "Creating..." 
-                : `Create ${jobType === "repair" ? "Repair" : jobType === "bespoke" ? "Job" : "Sale"}`
-              }
-            </button>
-          </div>
-        </div>
       </div>
     </>
   );
