@@ -352,6 +352,100 @@ export async function updateRepairStage(
     // Non-fatal — stage was updated successfully
   }
 
+  // ── Auto-email customer with tracking link on stage change ──────────────
+  const EMAIL_NOTIFY_STAGES = ["quoted", "approved", "in_progress", "in_workshop", "quality_check", "ready", "collected"];
+  if (EMAIL_NOTIFY_STAGES.includes(stage)) {
+    try {
+      const { data: repairRow } = await admin
+        .from("repairs")
+        .select("repair_number, item_description, customer_id, due_date")
+        .eq("id", repairId)
+        .single();
+
+      if (repairRow?.customer_id) {
+        const { data: customer } = await admin
+          .from("customers")
+          .select("full_name, email")
+          .eq("id", repairRow.customer_id)
+          .single();
+
+        if (customer?.email) {
+          const { data: tenant } = await admin
+            .from("tenants")
+            .select("name, business_name, email, phone")
+            .eq("id", tenantId)
+            .single();
+          const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
+
+          const { data: websiteConfig } = await admin
+            .from("website_config")
+            .select("subdomain")
+            .eq("tenant_id", tenantId)
+            .maybeSingle();
+
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com";
+          const trackingUrl = websiteConfig?.subdomain
+            ? `${appUrl}/${websiteConfig.subdomain}/track/${repairId}`
+            : null;
+
+          const STAGE_EMAIL_SUBJECTS: Record<string, string> = {
+            quoted: `Your repair quote is ready — ${repairRow.repair_number}`,
+            approved: `Repair approved & scheduled — ${repairRow.repair_number}`,
+            in_progress: `Work has started on your repair — ${repairRow.repair_number}`,
+            in_workshop: `Your item is in the workshop — ${repairRow.repair_number}`,
+            quality_check: `Almost done! Quality check underway — ${repairRow.repair_number}`,
+            ready: `Your item is ready for collection — ${repairRow.repair_number}`,
+            collected: `Thank you — repair complete — ${repairRow.repair_number}`,
+          };
+
+          const STAGE_EMAIL_BODY: Record<string, string> = {
+            quoted: `A quote is ready for your repair. Please contact us to review and approve.`,
+            approved: `Your repair has been approved and is now scheduled for work. We'll keep you updated as it progresses.`,
+            in_progress: `Great news — work has started on your <strong>${repairRow.item_description || "item"}</strong>. We'll notify you when it's complete.`,
+            in_workshop: `Your item is currently in our workshop. Our team is working on it with care.`,
+            quality_check: `Your repair is in its final quality check — almost ready!`,
+            ready: `Wonderful news — your <strong>${repairRow.item_description || "item"}</strong> is ready for collection! Please visit us at your convenience during business hours.`,
+            collected: `Thank you for trusting us with your precious piece. We hope you're delighted with the result.`,
+          };
+
+          const firstName = customer.full_name?.split(" ")[0] ?? "there";
+          const trackingSection = trackingUrl
+            ? `<div style="margin:20px 0;text-align:center;"><a href="${trackingUrl}" style="display:inline-block;background:#8B7355;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;letter-spacing:0.5px;">View Live Status →</a><p style="margin:8px 0 0;font-size:12px;color:#78716c;">Or copy this link: <a href="${trackingUrl}" style="color:#8B7355;">${trackingUrl}</a></p></div>`
+            : "";
+
+          const htmlBody = `<div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;color:#1c1917;"><div style="background:#1c1917;color:#fff;padding:28px 24px;text-align:center;"><h1 style="margin:0;font-size:20px;letter-spacing:1px;">${businessName}</h1></div><div style="padding:28px 24px;background:#fafaf9;"><p style="margin:0 0 16px;">Hi ${firstName},</p><p style="margin:0 0 16px;">${STAGE_EMAIL_BODY[stage]}</p>${trackingSection}<div style="margin:24px 0;padding:16px;background:#fff;border:1px solid #e7e5e4;border-radius:8px;"><p style="margin:0 0 8px;font-size:12px;color:#78716c;text-transform:uppercase;letter-spacing:1px;">Repair Reference</p><p style="margin:0;font-size:18px;font-weight:600;font-family:monospace;">${repairRow.repair_number}</p>${repairRow.item_description ? `<p style="margin:4px 0 0;font-size:14px;color:#57534e;">${repairRow.item_description}</p>` : ""}</div>${tenant?.phone || tenant?.email ? `<p style="font-size:13px;color:#78716c;margin:16px 0 0;">Questions? Contact us${tenant.phone ? ` on ${tenant.phone}` : ""}${tenant.email ? ` or ${tenant.email}` : ""}.</p>` : ""}</div><div style="padding:14px 24px;background:#fff;text-align:center;font-size:11px;color:#a8a29e;border-top:1px solid #e7e5e4;">${businessName} · Powered by Nexpura</div></div>`;
+
+          const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: `${businessName} <${fromEmail}>`,
+              to: [customer.email],
+              subject: STAGE_EMAIL_SUBJECTS[stage] || `Repair update — ${repairRow.repair_number}`,
+              html: htmlBody,
+            }),
+          });
+
+          await admin.from("job_events").insert({
+            tenant_id: tenantId,
+            job_type: "repair",
+            job_id: repairId,
+            event_type: "email_sent",
+            description: `Status update email sent to ${customer.email} — stage: ${stageLabel}`,
+            actor: userId,
+          });
+        }
+      }
+    } catch (emailErr) {
+      logger.error("Auto email on stage change failed:", emailErr);
+      // Non-fatal
+    }
+  }
+
   revalidatePath(`/repairs/${repairId}`);
   return { success: true, smsSent };
 }
