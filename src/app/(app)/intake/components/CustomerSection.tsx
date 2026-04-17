@@ -3,13 +3,15 @@
 import { useState, useEffect } from "react";
 import { searchCustomers, createCustomerInline } from "../actions";
 import type { Customer } from "../types";
-import { inputCls, labelCls } from "./styles";
+import { inputCls, labelCls, cardCls, primaryBtnCls, ghostBtnCls } from "./styles";
 
 interface CustomerSectionProps {
   initialCustomers: Customer[];
   selectedCustomer: Customer | null;
   onSelectCustomer: (customer: Customer | null) => void;
   onError: (error: string) => void;
+  isWalkIn: boolean;
+  onWalkInToggle: (value: boolean) => void;
 }
 
 export default function CustomerSection({
@@ -17,6 +19,8 @@ export default function CustomerSection({
   selectedCustomer,
   onSelectCustomer,
   onError,
+  isWalkIn,
+  onWalkInToggle,
 }: CustomerSectionProps) {
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -68,13 +72,28 @@ export default function CustomerSection({
         phone: newCustomer.phone || null,
       };
       onSelectCustomer(customer);
+      onWalkInToggle(false);
       setShowNewCustomerForm(false);
       setNewCustomer({ first_name: "", last_name: "", email: "", phone: "" });
     }
   };
 
+  // Phone icon SVG
+  const PhoneIcon = () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+    </svg>
+  );
+
+  // Email icon SVG
+  const EmailIcon = () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  );
+
   return (
-    <section className="bg-white border border-stone-200 rounded-xl p-6 mb-6 shadow-sm">
+    <section className={`${cardCls} p-6 mb-6`}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-stone-900">Customer</h2>
         {selectedCustomer && (
@@ -84,7 +103,7 @@ export default function CustomerSection({
               onSelectCustomer(null);
               setCustomerSearch("");
             }}
-            className="text-sm text-stone-500 hover:text-stone-900"
+            className="text-sm text-amber-700 hover:text-amber-800 font-medium"
           >
             Change
           </button>
@@ -92,26 +111,49 @@ export default function CustomerSection({
       </div>
 
       {selectedCustomer ? (
-        // Selected Customer Card
-        <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+        // Selected Customer Card — Premium Display
+        <div className="bg-stone-50 border border-stone-200 rounded-xl p-5">
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-amber-700 font-semibold">
+            {/* Avatar Initial Circle */}
+            <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-amber-800 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+              <span className="text-white font-semibold text-lg">
                 {selectedCustomer.full_name?.[0]?.toUpperCase() || "?"}
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-stone-900">
+              <p className="font-semibold text-stone-900 text-lg">
                 {selectedCustomer.full_name || "Unknown"}
               </p>
-              {(selectedCustomer.email ||
-                selectedCustomer.mobile ||
-                selectedCustomer.phone) && (
-                <p className="text-sm text-stone-500 truncate">
-                  {selectedCustomer.email ||
-                    selectedCustomer.mobile ||
-                    selectedCustomer.phone}
-                </p>
+              <div className="flex flex-col gap-1 mt-1.5">
+                {selectedCustomer.email && (
+                  <p className="text-sm text-stone-600">{selectedCustomer.email}</p>
+                )}
+                {(selectedCustomer.mobile || selectedCustomer.phone) && (
+                  <p className="text-sm text-stone-600">
+                    {selectedCustomer.mobile || selectedCustomer.phone}
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* Quick Action Icons */}
+            <div className="flex items-center gap-2">
+              {(selectedCustomer.mobile || selectedCustomer.phone) && (
+                <a
+                  href={`tel:${selectedCustomer.mobile || selectedCustomer.phone}`}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-stone-200 text-stone-600 hover:text-amber-700 hover:border-amber-300 transition-colors"
+                  title="Call customer"
+                >
+                  <PhoneIcon />
+                </a>
+              )}
+              {selectedCustomer.email && (
+                <a
+                  href={`mailto:${selectedCustomer.email}`}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-stone-200 text-stone-600 hover:text-amber-700 hover:border-amber-300 transition-colors"
+                  title="Email customer"
+                >
+                  <EmailIcon />
+                </a>
               )}
             </div>
           </div>
@@ -179,7 +221,7 @@ export default function CustomerSection({
                 isCreatingCustomer ||
                 (!newCustomer.first_name && !newCustomer.last_name)
               }
-              className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 disabled:opacity-50 transition-colors"
+              className={primaryBtnCls}
             >
               {isCreatingCustomer ? "Creating..." : "Create Customer"}
             </button>
@@ -194,7 +236,7 @@ export default function CustomerSection({
                   phone: "",
                 });
               }}
-              className="px-4 py-2 text-stone-600 text-sm font-medium hover:text-stone-900 transition-colors"
+              className={ghostBtnCls}
             >
               Cancel
             </button>
@@ -209,13 +251,15 @@ export default function CustomerSection({
             onChange={(e) => {
               setCustomerSearch(e.target.value);
               setShowCustomerDropdown(true);
+              if (isWalkIn) onWalkInToggle(false);
             }}
             onFocus={() => setShowCustomerDropdown(true)}
             placeholder="Search by name, phone, or email..."
             className={inputCls}
+            disabled={isWalkIn}
           />
-          {showCustomerDropdown && customers.length > 0 && (
-            <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-stone-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+          {showCustomerDropdown && !isWalkIn && customers.length > 0 && (
+            <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-stone-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
               {customers.map((c) => (
                 <button
                   key={c.id}
@@ -239,6 +283,30 @@ export default function CustomerSection({
               ))}
             </div>
           )}
+
+          {/* Walk-in Toggle */}
+          <div className="mt-4 flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isWalkIn}
+                onChange={(e) => onWalkInToggle(e.target.checked)}
+                className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-500/20"
+              />
+              <span className="text-sm text-stone-700">Walk-in customer (no record)</span>
+            </label>
+          </div>
+
+          {/* Warning if no customer and not walk-in */}
+          {!isWalkIn && (
+            <div className="mt-4 flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+              <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="text-sm text-amber-800">No customer linked to this job</span>
+            </div>
+          )}
+
           <div className="mt-3 flex items-center gap-2 text-sm">
             <span className="text-stone-400">Customer not found?</span>
             <button
@@ -249,9 +317,6 @@ export default function CustomerSection({
               Create new customer →
             </button>
           </div>
-          <p className="text-xs text-stone-400 mt-1">
-            Optional — leave blank for walk-in
-          </p>
         </div>
       )}
     </section>

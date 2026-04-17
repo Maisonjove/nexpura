@@ -27,6 +27,9 @@ import {
   type RepairData,
   type BespokeData,
   type StockData,
+  primaryBtnCls,
+  secondaryBtnCls,
+  ghostBtnCls,
 } from "./components";
 
 // ────────────────────────────────────────────────────────────────
@@ -37,19 +40,52 @@ const initialRepairData: RepairData = {
   item_type: "",
   item_description: "",
   metal_type: "",
+  metal_purity: "",
+  metal_colour: "",
   stones: "",
+  stone_count: "",
   size_length: "",
+  current_size: "",
+  hallmark: "",
+  engraving: "",
+  brand: "",
+  serial_number: "",
   identifying_details: "",
   condition_notes: "",
+  is_heirloom: false,
+  customer_supplied: false,
+  is_high_value: false,
   issue_type: "",
   work_description: "",
   risk_notes: "",
   priority: "normal",
   due_date: "",
+  assigned_staff: "",
+  resize_from: "",
+  resize_to: "",
+  replacement_stone_type: "",
+  replacement_stone_shape: "",
+  replacement_stone_carat: "",
+  clasp_type: "",
   quoted_price: "",
   deposit_amount: "",
   payment_received: "",
   payment_method: "cash",
+  discount_amount: "",
+  payment_notes: "",
+  repair_reference: "",
+  assigned_salesperson: "",
+  job_complete: false,
+  job_complete_date: "",
+  collected_by: "",
+  collected_on: "",
+  collection_status: "",
+  workshop_routing: "",
+  internal_notes: "",
+  customer_communication_notes: "",
+  followup_comments: "",
+  reminder_date: "",
+  delivery_notes: "",
 };
 
 const initialBespokeData: BespokeData = {
@@ -57,11 +93,16 @@ const initialBespokeData: BespokeData = {
   jewellery_type: "",
   description: "",
   design_source: "",
+  budget: "",
+  timeline: "",
   metal_type: "",
   metal_colour: "",
   metal_purity: "",
   stone_type: "",
   stone_details: "",
+  stone_count: "",
+  stone_shape: "",
+  setting_style: "",
   ring_size: "",
   dimensions: "",
   notes: "",
@@ -71,6 +112,21 @@ const initialBespokeData: BespokeData = {
   deposit_amount: "",
   payment_received: "",
   payment_method: "cash",
+  discount_amount: "",
+  payment_notes: "",
+  job_reference: "",
+  assigned_salesperson: "",
+  job_complete: false,
+  job_complete_date: "",
+  collected_by: "",
+  collected_on: "",
+  collection_status: "",
+  workshop_routing: "",
+  internal_notes: "",
+  customer_communication_notes: "",
+  followup_comments: "",
+  reminder_date: "",
+  delivery_notes: "",
 };
 
 const initialStockData: StockData = {
@@ -79,6 +135,29 @@ const initialStockData: StockData = {
   payment_method: "cash",
   create_invoice: true,
 };
+
+// ────────────────────────────────────────────────────────────────
+// Job Type Icons (inline SVG)
+// ────────────────────────────────────────────────────────────────
+
+const WrenchIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+const SparkleIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+  </svg>
+);
+
+const TagIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+  </svg>
+);
 
 // ────────────────────────────────────────────────────────────────
 // Error Display Component
@@ -130,7 +209,7 @@ function ErrorBanner({
   };
 
   return (
-    <div className={`${bgColors[errorType]} border rounded-lg p-4 mb-6`}>
+    <div className={`${bgColors[errorType]} border rounded-2xl p-4 mb-6`}>
       <div className="flex items-start gap-3">
         {icons[errorType]}
         <div className="flex-1">
@@ -179,6 +258,31 @@ function LoadingOverlay({ jobType }: { jobType: JobType }) {
 }
 
 // ────────────────────────────────────────────────────────────────
+// Job Type Tab Configuration
+// ────────────────────────────────────────────────────────────────
+
+const jobTypeTabs: { type: JobType; label: string; helper: string; icon: React.ReactNode }[] = [
+  {
+    type: "repair",
+    label: "Repair",
+    helper: "Restore or modify an existing piece",
+    icon: <WrenchIcon />,
+  },
+  {
+    type: "bespoke",
+    label: "Bespoke",
+    helper: "Create a custom piece from brief",
+    icon: <SparkleIcon />,
+  },
+  {
+    type: "stock",
+    label: "Stock Item",
+    helper: "Sell ready-made inventory",
+    icon: <TagIcon />,
+  },
+];
+
+// ────────────────────────────────────────────────────────────────
 // Main Component
 // ────────────────────────────────────────────────────────────────
 
@@ -200,6 +304,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
 
   // Customer state
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isWalkIn, setIsWalkIn] = useState(false);
 
   // Inventory state (for stock sale)
   const [selectedInventory, setSelectedInventory] = useState<InventoryItem | null>(null);
@@ -208,6 +313,14 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   const [repairData, setRepairData] = useState<RepairData>(initialRepairData);
   const [bespokeData, setBespokeData] = useState<BespokeData>(initialBespokeData);
   const [stockData, setStockData] = useState<StockData>(initialStockData);
+
+  // ─── Walk-in Toggle Handler ───────────────────────────────────
+  const handleWalkInToggle = useCallback((value: boolean) => {
+    setIsWalkIn(value);
+    if (value) {
+      setSelectedCustomer(null);
+    }
+  }, []);
 
   // ─── Job Type Switching ───────────────────────────────────────
   const handleJobTypeChange = useCallback((type: JobType) => {
@@ -251,6 +364,13 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
     if (jobType === "bespoke") return bespokeData.jewellery_type;
     if (jobType === "stock") return selectedInventory?.jewellery_type || "";
     return "";
+  };
+
+  const getDescriptionFilled = () => {
+    if (jobType === "repair") return !!repairData.item_description.trim();
+    if (jobType === "bespoke") return !!bespokeData.description.trim();
+    if (jobType === "stock") return !!selectedInventory;
+    return false;
   };
 
   // ─── Validation ───────────────────────────────────────────────
@@ -452,6 +572,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   const resetForm = useCallback(() => {
     setSuccessResult(null);
     setSelectedCustomer(null);
+    setIsWalkIn(false);
     setSelectedInventory(null);
     setRepairData(initialRepairData);
     setBespokeData(initialBespokeData);
@@ -465,6 +586,11 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   const dismissError = useCallback(() => {
     setError(null);
   }, []);
+
+  // ─── Cancel Handler ───────────────────────────────────────────
+  const handleCancel = useCallback(() => {
+    router.back();
+  }, [router]);
 
   // ─────────────────────────────────────────────────────────────
   // Success State Render
@@ -487,27 +613,33 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
       {/* Loading Overlay */}
       {isPending && <LoadingOverlay jobType={jobType} />}
 
-      <div className="flex gap-8">
+      <div className="flex gap-8 pb-24">
         {/* ─── Left Column: Intake Builder ────────────────────── */}
         <div className="flex-1 min-w-0">
-          {/* Job Type Selector */}
-          <div className="bg-white border border-stone-200 rounded-xl p-1.5 mb-6 shadow-sm">
-            <div className="flex">
-              {(["repair", "bespoke", "stock"] as JobType[]).map((type) => (
+          {/* Premium Job Type Segmented Controls */}
+          <div className="bg-white border border-stone-200 rounded-2xl p-2 mb-6 shadow-sm">
+            <div className="grid grid-cols-3 gap-2">
+              {jobTypeTabs.map((tab) => (
                 <button
-                  key={type}
+                  key={tab.type}
                   type="button"
-                  onClick={() => handleJobTypeChange(type)}
+                  onClick={() => handleJobTypeChange(tab.type)}
                   disabled={isPending}
-                  className={`flex-1 px-6 py-3 text-sm font-medium rounded-lg transition-all ${
-                    jobType === type
+                  className={`relative px-4 py-4 rounded-xl transition-all ${
+                    jobType === tab.type
                       ? "bg-amber-700 text-white shadow-sm"
                       : "text-stone-600 hover:text-stone-900 hover:bg-stone-50"
                   } ${isPending ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
-                  {type === "repair" && "Repair"}
-                  {type === "bespoke" && "Bespoke"}
-                  {type === "stock" && "Stock Item"}
+                  <div className="flex flex-col items-center gap-1.5">
+                    <span className={jobType === tab.type ? "text-white" : "text-stone-500"}>
+                      {tab.icon}
+                    </span>
+                    <span className="text-sm font-semibold">{tab.label}</span>
+                    <span className={`text-xs ${jobType === tab.type ? "text-amber-100" : "text-stone-400"}`}>
+                      {tab.helper}
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -522,6 +654,8 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
               setErrorType('server');
               setError(msg);
             }}
+            isWalkIn={isWalkIn}
+            onWalkInToggle={handleWalkInToggle}
           />
 
           {/* Form based on job type */}
@@ -551,29 +685,6 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
               onDismiss={dismissError} 
             />
           )}
-
-          {/* Submit Button */}
-          <div className="flex items-center justify-end gap-3 pb-8">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              disabled={isPending}
-              className="px-5 py-2.5 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isPending || !isFormValid}
-              className="px-8 py-2.5 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isPending && (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              )}
-              {isPending ? "Creating..." : `Create ${jobType === "repair" ? "Repair" : jobType === "bespoke" ? "Job" : "Sale"}`}
-            </button>
-          </div>
         </div>
 
         {/* ─── Right Column: Summary Rail ────────────────────── */}
@@ -588,7 +699,66 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
           balanceRemaining={getBalanceRemaining()}
           missingFields={getMissingFields()}
           taxConfig={taxConfig}
+          isWalkIn={isWalkIn}
+          isFormValid={isFormValid}
+          isPending={isPending}
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+          descriptionFilled={getDescriptionFilled()}
+          photosCount={0}
         />
+      </div>
+
+      {/* ─── Sticky Bottom Action Bar ────────────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 shadow-lg z-40">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          {/* Left: Auto-saving indicator */}
+          <div className="flex items-center gap-2 text-sm text-stone-400">
+            <svg className="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            <span>Auto-saving draft...</span>
+          </div>
+
+          {/* Right: Action buttons */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={isPending}
+              className={ghostBtnCls}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              disabled={isPending}
+              className={secondaryBtnCls}
+            >
+              <span className="flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Print
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isPending || !isFormValid}
+              className={`${primaryBtnCls} flex items-center gap-2`}
+            >
+              {isPending && (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              )}
+              {isPending 
+                ? "Creating..." 
+                : `Create ${jobType === "repair" ? "Repair" : jobType === "bespoke" ? "Job" : "Sale"}`
+              }
+            </button>
+          </div>
+        </div>
       </div>
     </>
   );

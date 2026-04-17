@@ -22,7 +22,54 @@ export const METAL_TYPES = [
   { value: "white_gold", label: "White Gold" },
 ];
 
-export const METAL_PURITIES = ["24K", "22K", "18K", "14K", "10K", "9K", "950", "925", "750"];
+export const METAL_PURITIES = [
+  "9ct",
+  "10ct",
+  "14ct",
+  "18ct",
+  "22ct",
+  "24ct",
+  "925 Silver",
+  "950 Platinum",
+  "Other",
+];
+
+export const METAL_COLOURS = [
+  { value: "yellow", label: "Yellow Gold" },
+  { value: "white", label: "White Gold" },
+  { value: "rose", label: "Rose Gold" },
+  { value: "platinum", label: "Platinum" },
+];
+
+export const RING_SIZES = [
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+];
+
+export const STONE_SHAPES = [
+  "Round",
+  "Oval",
+  "Cushion",
+  "Emerald",
+  "Princess",
+  "Pear",
+  "Marquise",
+  "Asscher",
+  "Radiant",
+  "Other",
+];
+
+export const SETTING_STYLES = [
+  "Solitaire",
+  "Halo",
+  "Pavé",
+  "Channel Set",
+  "Bezel",
+  "Three-stone",
+  "Tension",
+  "Cluster",
+  "Other",
+];
 
 export const REPAIR_ISSUES = [
   "Ring resize",
@@ -60,9 +107,10 @@ export const PAYMENT_METHODS = [
   { value: "other", label: "Other" },
 ];
 
-export const RING_SIZES = [
-  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+export const COLLECTION_STATUSES = [
+  { value: "awaiting", label: "Awaiting completion" },
+  { value: "ready", label: "Ready for collection" },
+  { value: "collected", label: "Collected" },
 ];
 
 export const DESIGN_SOURCES = [
@@ -71,5 +119,5 @@ export const DESIGN_SOURCES = [
   "Existing piece modification",
   "Our design",
   "CAD provided by customer",
-  "TBD with designer"
+  "TBD with designer",
 ];
