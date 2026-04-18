@@ -63,6 +63,29 @@ export interface DashboardData extends DashboardCriticalData, DashboardStatsData
 // Helpers
 // ────────────────────────────────────────────────────────────────
 
+// Shared tenant-meta fetch — used by both the critical data path and the
+// stats path. Cached per tenant (not per user) with a long TTL since these
+// fields rarely change. Previously both paths re-queried `tenants` for
+// timezone / business_type, adding ~50-100ms each on cold caches.
+async function getTenantMeta(tenantId: string): Promise<{ businessType: string | null; timezone: string }> {
+  return getCached(
+    tenantCacheKey(tenantId, "tenant-meta"),
+    async () => {
+      const admin = createAdminClient();
+      const { data } = await admin
+        .from("tenants")
+        .select("business_type, timezone")
+        .eq("id", tenantId)
+        .maybeSingle();
+      return {
+        businessType: data?.business_type ?? null,
+        timezone: data?.timezone ?? "Australia/Sydney",
+      };
+    },
+    900 // 15 min — tenant meta is effectively static
+  );
+}
+
 function getLast7Days(tz: string = "Australia/Sydney"): string[] {
   const days: string[] = [];
   const now = new Date();
@@ -88,27 +111,19 @@ export async function getDashboardCriticalData(): Promise<DashboardCriticalData>
   return coalesceRequest(cacheKey, () => getCached(
     cacheKey,
     async () => {
-      const admin = createAdminClient();
-      
-      // Single lightweight query for tenant data
-      const { data: tenantRow } = await admin
-        .from("tenants")
-        .select("business_type, timezone")
-        .eq("id", tenantId)
-        .maybeSingle();
-
+      const meta = await getTenantMeta(tenantId);
       return {
         firstName: tenantName || "there",
         tenantName,
-        businessType: tenantRow?.business_type ?? null,
+        businessType: meta.businessType,
         currency,
         isManager,
         userId,
         tenantId,
-        timezone: tenantRow?.timezone ?? "Australia/Sydney",
+        timezone: meta.timezone,
       };
     },
-    300 // 5 minute cache - tenant info rarely changes
+    900 // 15 min — tenant info rarely changes (aligned with getTenantMeta)
   ));
 }
 
@@ -126,7 +141,7 @@ export async function getDashboardStats(locationIds: string[] | null): Promise<D
   return coalesceRequest(cacheKey, () => getCached(
     cacheKey,
     async () => fetchDashboardStats(userId, tenantId, isManager, locationIds),
-    120 // 2 minute cache - stats can be slightly stale
+    300 // 5 minute cache — stats are a snapshot; absolute freshness not required
   ));
 }
 
@@ -138,13 +153,8 @@ async function fetchDashboardStats(
 ): Promise<DashboardStatsData> {
   const admin = createAdminClient();
 
-  // Get timezone from tenant (cached separately)
-  const { data: tenantRow } = await admin
-    .from("tenants")
-    .select("timezone")
-    .eq("id", tenantId)
-    .maybeSingle();
-  const tz = tenantRow?.timezone ?? "Australia/Sydney";
+  // Use the shared tenant-meta cache instead of a fresh query every call
+  const { timezone: tz } = await getTenantMeta(tenantId);
 
   // Calculate dates in tenant's local timezone
   const now = new Date();
