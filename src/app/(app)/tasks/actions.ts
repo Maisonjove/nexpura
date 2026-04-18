@@ -119,7 +119,7 @@ export async function createTask(
       assigned_to: (formData.get("assigned_to") as string) || null,
       due_date: (formData.get("due_date") as string) || null,
       priority: (formData.get("priority") as string) || "normal",
-      status: (formData.get("status") as string) || "pending",
+      status: (formData.get("status") as string) || "todo",
       linked_type: (formData.get("linked_type") as string) || null,
       linked_id: (formData.get("linked_id") as string) || null,
       notes: (formData.get("notes") as string) || null,
@@ -169,7 +169,7 @@ export async function createTask(
       newData: {
         title,
         priority: (formData.get("priority") as string) || "normal",
-        status: (formData.get("status") as string) || "pending",
+        status: (formData.get("status") as string) || "todo",
         assignedTo: (formData.get("assigned_to") as string) || null,
         dueDate: (formData.get("due_date") as string) || null,
       },

@@ -28,7 +28,7 @@ export default function TaskDetailClient({
   const [isPending, startTransition] = useTransition();
 
   async function handleStatusToggle() {
-    const newStatus = task.status === "completed" ? "pending" : "completed";
+    const newStatus = task.status === "completed" ? "todo" : "completed";
     startTransition(async () => {
       await updateTask(task.id, { status: newStatus });
     });

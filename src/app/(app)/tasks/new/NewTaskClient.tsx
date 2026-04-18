@@ -42,7 +42,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
     assigned_to: "",
     due_date: "",
     priority: "normal",
-    status: "pending",
+    status: "todo",
     linked_type: linkedType,
     linked_id: linkedId,
     notes: "",
