@@ -211,6 +211,19 @@ export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
 
         {/* Center nav links with dropdowns — desktop */}
         <div className="hidden lg:flex items-center">
+          {/* Intake is the start of every workflow — promote it to a
+              dedicated top-level link so jewellers can find it without
+              hunting through the Sales dropdown. */}
+          <Link
+            href={prefix + '/intake'}
+            className={`relative px-5 py-6 text-[0.9375rem] font-medium transition-opacity duration-300 hover:opacity-70 cursor-pointer ${
+              pathname === prefix + '/intake' || pathname.startsWith(prefix + '/intake/')
+                ? 'text-amber-800'
+                : 'text-amber-700'
+            }`}
+          >
+            + Intake
+          </Link>
           {NAV_ITEMS.map((item) => (
             <NavDropdown key={item.label} item={item} pathname={pathname} prefix={prefix} />
           ))}
@@ -291,6 +304,14 @@ export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
           <div className="py-2 mb-2">
             <LocationPicker showAllOption={true} />
           </div>
+
+          {/* Primary CTA: New Intake (mobile) */}
+          <Link
+            href={prefix + '/intake'}
+            className="block text-[0.9375rem] font-medium py-3 px-4 mb-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 transition-colors"
+          >
+            + New Intake
+          </Link>
 
           {NAV_ITEMS.map((group) => (
             <div key={group.label} className="mb-3">
