@@ -108,23 +108,43 @@ export async function createTask(
     const title = (formData.get("title") as string)?.trim();
     if (!title) return { error: "Title is required" };
 
-    const { data: task, error } = await admin
-      .from("tasks")
-      .insert({
-        tenant_id: tenantId,
-        title,
-        description: (formData.get("description") as string) || null,
-        assigned_to: (formData.get("assigned_to") as string) || null,
-        due_date: (formData.get("due_date") as string) || null,
-        priority: (formData.get("priority") as string) || "medium",
-        status: (formData.get("status") as string) || "pending",
-        linked_type: (formData.get("linked_type") as string) || null,
-        linked_id: (formData.get("linked_id") as string) || null,
-        notes: (formData.get("notes") as string) || null,
-        created_by: userId,
-      })
-      .select("id")
-      .single();
+    // Core payload (columns that exist on every tenant's schema). Optional
+    // columns (linked_type, linked_id, notes) are added separately and
+    // retry-dropped on PGRST204 to tolerate schema-cache drift where the
+    // migration for those columns wasn't applied.
+    const payload: Record<string, unknown> = {
+      tenant_id: tenantId,
+      title,
+      description: (formData.get("description") as string) || null,
+      assigned_to: (formData.get("assigned_to") as string) || null,
+      due_date: (formData.get("due_date") as string) || null,
+      priority: (formData.get("priority") as string) || "medium",
+      status: (formData.get("status") as string) || "pending",
+      linked_type: (formData.get("linked_type") as string) || null,
+      linked_id: (formData.get("linked_id") as string) || null,
+      notes: (formData.get("notes") as string) || null,
+      created_by: userId,
+    };
+
+    let task: { id: string } | null = null;
+    let error: { message: string; code?: string } | null = null;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const result = await admin
+        .from("tasks")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (!result.error) { task = result.data as { id: string }; error = null; break; }
+      error = result.error as { message: string; code?: string };
+      if (error.code === "PGRST204") {
+        const match = error.message.match(/Could not find the '(\w+)' column/);
+        if (match && match[1] in payload) {
+          delete payload[match[1]];
+          continue;
+        }
+      }
+      break;
+    }
 
     if (error) return { error: error.message };
 
@@ -208,13 +228,30 @@ export async function updateTask(
       .eq("id", taskId)
       .single();
 
-    const { error } = await admin
-      .from("tasks")
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq("id", taskId)
-      .eq("tenant_id", tenantId);
-
-    if (error) return { error: error.message };
+    // Same PGRST204 retry as createTask — tolerate missing optional columns.
+    const updatePayload: Record<string, unknown> = {
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    let updateError: { message: string; code?: string } | null = null;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const result = await admin
+        .from("tasks")
+        .update(updatePayload)
+        .eq("id", taskId)
+        .eq("tenant_id", tenantId);
+      if (!result.error) { updateError = null; break; }
+      updateError = result.error as { message: string; code?: string };
+      if (updateError.code === "PGRST204") {
+        const match = updateError.message.match(/Could not find the '(\w+)' column/);
+        if (match && match[1] in updatePayload) {
+          delete updatePayload[match[1]];
+          continue;
+        }
+      }
+      break;
+    }
+    if (updateError) return { error: updateError.message };
 
     // Log activities for specific changes
     if (updates.status && updates.status !== oldTask?.status) {
