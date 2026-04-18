@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import Link from "next/link";
 import InventoryForm from "../../InventoryForm";
 
@@ -10,24 +12,21 @@ interface PageProps {
 }
 
 export default async function EditInventoryPage({ params }: PageProps) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [{ id }, headersList, supabase] = await Promise.all([
+    params,
+    headers(),
+    createClient(),
+  ]);
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  const userId = headersList.get(AUTH_HEADERS.USER_ID);
+  if (!tenantId || !userId) redirect("/login");
 
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user?.id ?? "")
-    .single();
-
-  const tenantId = userData?.tenant_id ?? "";
-  const canViewCost = tenantId && user ? await hasPermission(user.id, tenantId, "view_cost_price") : false;
-
-  const [{ data: item }, { data: categories }] = await Promise.all([
+  const [{ data: item }, { data: categories }, canViewCost] = await Promise.all([
     supabase
       .from("inventory")
       .select("*")
       .eq("id", id)
+      .eq("tenant_id", tenantId)
       .is("deleted_at", null)
       .single(),
     supabase
@@ -35,6 +34,7 @@ export default async function EditInventoryPage({ params }: PageProps) {
       .select("id, name")
       .eq("tenant_id", tenantId)
       .order("name"),
+    hasPermission(userId, tenantId, "view_cost_price"),
   ]);
 
   if (!item) notFound();

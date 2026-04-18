@@ -1,19 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import SaleForm from "../SaleForm";
 
 export default async function NewSalePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const [headersList, supabase] = await Promise.all([headers(), createClient()]);
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) redirect("/login");
 
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id, tenants(tax_rate, tax_name, currency)")
-    .eq("id", user.id)
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("tax_rate, tax_name, currency")
+    .eq("id", tenantId)
     .single();
 
-  const tenant = userData?.tenants as { tax_rate?: number; tax_name?: string; currency?: string } | null;
   const taxRate = tenant?.tax_rate ?? 0.1;
   const taxName = tenant?.tax_name || "GST";
   const currency = tenant?.currency || "AUD";
