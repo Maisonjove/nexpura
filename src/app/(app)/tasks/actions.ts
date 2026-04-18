@@ -118,7 +118,7 @@ export async function createTask(
       description: (formData.get("description") as string) || null,
       assigned_to: (formData.get("assigned_to") as string) || null,
       due_date: (formData.get("due_date") as string) || null,
-      priority: (formData.get("priority") as string) || "medium",
+      priority: (formData.get("priority") as string) || "normal",
       status: (formData.get("status") as string) || "pending",
       linked_type: (formData.get("linked_type") as string) || null,
       linked_id: (formData.get("linked_id") as string) || null,
@@ -168,7 +168,7 @@ export async function createTask(
       entityId: task?.id,
       newData: {
         title,
-        priority: (formData.get("priority") as string) || "medium",
+        priority: (formData.get("priority") as string) || "normal",
         status: (formData.get("status") as string) || "pending",
         assignedTo: (formData.get("assigned_to") as string) || null,
         dueDate: (formData.get("due_date") as string) || null,

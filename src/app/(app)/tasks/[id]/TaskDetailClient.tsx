@@ -54,8 +54,9 @@ export default function TaskDetailClient({
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    task.priority === "urgent" ? "bg-red-100 text-red-700" :
                     task.priority === "high" ? "bg-red-50 text-red-600" :
-                    task.priority === "medium" ? "bg-amber-50 text-amber-600" :
+                    task.priority === "medium" || task.priority === "normal" ? "bg-amber-50 text-amber-600" :
                     "bg-emerald-50 text-emerald-600"
                   }`}>
                     {task.priority} Priority

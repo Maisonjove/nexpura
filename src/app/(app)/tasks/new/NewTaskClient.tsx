@@ -41,7 +41,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
     description: "",
     assigned_to: "",
     due_date: "",
-    priority: "medium",
+    priority: "normal",
     status: "pending",
     linked_type: linkedType,
     linked_id: linkedId,
@@ -151,7 +151,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
                 className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 bg-white"
               >
                 <option value="low">Low</option>
-                <option value="medium">Medium</option>
+                <option value="normal">Normal</option>
                 <option value="high">High</option>
                 <option value="urgent">Urgent</option>
               </select>
