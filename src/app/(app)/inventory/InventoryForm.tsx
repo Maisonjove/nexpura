@@ -127,9 +127,13 @@ export default function InventoryForm({ categories: initialCategories, item, mod
           await updateInventoryItem(item.id, formData);
         }
       } catch (err) {
-        if (err instanceof Error && !err.message.includes("NEXT_REDIRECT")) {
-          setError(err.message);
+        // Next.js redirect() throws a sentinel error we must re-throw so the
+        // framework can perform the navigation to /inventory/{id}. Swallowing
+        // it leaves the user stranded on /inventory/new with no feedback.
+        if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
+          throw err;
         }
+        setError(err instanceof Error ? err.message : "Failed to save item");
       }
     });
   }
