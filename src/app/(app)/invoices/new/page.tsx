@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { headers } from "next/headers";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import InvoiceForm from "../InvoiceForm";
 import { redirect } from "next/navigation";
 
@@ -13,19 +14,13 @@ export default async function NewInvoicePage({
           sale_id?: string;
     }>;
 }) {
-    const supabase = await createClient();
-    const {
-          data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) redirect("/login");
-
-  const { data: userData } = await createAdminClient()
-      .from("users")
-      .select("tenant_id")
-      .eq("id", user.id)
-      .single();
-    const tenantId = userData?.tenant_id;
-    const sp = await searchParams;
+    const [supabase, headersList, sp] = await Promise.all([
+      createClient(),
+      headers(),
+      searchParams,
+    ]);
+    const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+    if (!tenantId) redirect("/login");
 
   const [{ data: customers }, { data: tenant }, { data: inventoryItems }] =
         await Promise.all([
