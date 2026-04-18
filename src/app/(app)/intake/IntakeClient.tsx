@@ -373,7 +373,14 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   // ─── Validation ───────────────────────────────────────────────
   const getMissingFields = () => {
     const missing: string[] = [];
-    
+
+    // A customer must be explicitly selected OR marked as walk-in — otherwise
+    // the job would save with customer_id=null and be orphaned downstream
+    // (no email, no tracking link, no invoice recipient).
+    if (!selectedCustomer && !isWalkIn) {
+      missing.push("Customer (or tick Walk-in)");
+    }
+
     if (jobType === "repair") {
       if (!repairData.item_type) missing.push("Item type");
       if (!repairData.item_description) missing.push("Item description");
@@ -382,7 +389,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
     } else if (jobType === "stock") {
       if (!selectedInventory) missing.push("Stock item");
     }
-    
+
     return missing;
   };
 
