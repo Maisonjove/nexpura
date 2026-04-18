@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { sendJobReadyEmail } from "@/lib/email/send";
 import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -151,18 +152,17 @@ export async function createBespokeJob(
     });
   }
 
-  // Audit log
-  await logAuditEvent({
-    tenantId,
-    userId,
-    action: 'bespoke_create',
-    entityType: 'bespoke_job',
-    entityId: data.id,
-    newData: { job_number: numData, customer_id: customerId, title: jobData.title },
+  after(() => {
+    logAuditEvent({
+      tenantId,
+      userId,
+      action: 'bespoke_create',
+      entityType: 'bespoke_job',
+      entityId: data.id,
+      newData: { job_number: numData, customer_id: customerId, title: jobData.title },
+    });
+    revalidateTag("dashboard", "default");
   });
-
-  // Invalidate dashboard cache
-  revalidateTag("dashboard", "default");
 
   redirect(`/bespoke/${data.id}`);
 }
@@ -191,18 +191,17 @@ export async function updateBespokeJob(
 
   if (error) return { error: error.message };
 
-  // Audit log
-  await logAuditEvent({
-    tenantId,
-    userId: ctx.userId,
-    action: 'bespoke_update',
-    entityType: 'bespoke_job',
-    entityId: id,
-    newData: buildJobData(formData),
+  after(() => {
+    logAuditEvent({
+      tenantId,
+      userId: ctx.userId,
+      action: 'bespoke_update',
+      entityType: 'bespoke_job',
+      entityId: id,
+      newData: buildJobData(formData),
+    });
+    revalidateTag("dashboard", "default");
   });
-
-  // Invalidate dashboard cache
-  revalidateTag("dashboard", "default");
 
   redirect(`/bespoke/${id}`);
 }

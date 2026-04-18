@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { sendRepairReadyEmail, sendQuoteEmail } from "@/lib/email/send";
 import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -139,18 +140,17 @@ export async function createRepair(
     });
   }
 
-  // Audit log
-  await logAuditEvent({
-    tenantId,
-    userId,
-    action: "repair_create",
-    entityType: "repair",
-    entityId: data.id,
-    newData: repairData as Record<string, unknown>,
+  after(() => {
+    logAuditEvent({
+      tenantId,
+      userId,
+      action: "repair_create",
+      entityType: "repair",
+      entityId: data.id,
+      newData: repairData as Record<string, unknown>,
+    });
+    revalidateTag("dashboard", "default");
   });
-
-  // Invalidate dashboard cache
-  revalidateTag("dashboard", "default");
 
   redirect(`/repairs/${data.id}`);
 }
@@ -180,18 +180,17 @@ export async function updateRepair(
 
   if (error) return { error: error.message };
 
-  // Audit log
-  await logAuditEvent({
-    tenantId,
-    userId,
-    action: "repair_update",
-    entityType: "repair",
-    entityId: id,
-    newData: repairData as Record<string, unknown>,
+  after(() => {
+    logAuditEvent({
+      tenantId,
+      userId,
+      action: "repair_update",
+      entityType: "repair",
+      entityId: id,
+      newData: repairData as Record<string, unknown>,
+    });
+    revalidateTag("dashboard", "default");
   });
-
-  // Invalidate dashboard cache
-  revalidateTag("dashboard", "default");
 
   redirect(`/repairs/${id}`);
 }

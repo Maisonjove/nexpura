@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 
@@ -121,17 +122,18 @@ export async function createCustomer(formData: FormData): Promise<{ id?: string;
       .single();
 
     if (error) return { error: error.message };
-    
-    // Log audit event
-    await logAuditEvent({
-      tenantId: userData.tenant_id,
-      userId: user.id,
-      action: "customer_create",
-      entityType: "customer",
-      entityId: data.id,
-      newData: { full_name: customerData.full_name, email: customerData.email, phone: customerData.mobile || customerData.phone },
-    });
-    
+
+    after(() =>
+      logAuditEvent({
+        tenantId: userData.tenant_id,
+        userId: user.id,
+        action: "customer_create",
+        entityType: "customer",
+        entityId: data.id,
+        newData: { full_name: customerData.full_name, email: customerData.email, phone: customerData.mobile || customerData.phone },
+      })
+    );
+
     return { id: data.id };
   } catch (error) {
     logger.error("createCustomer failed", { error });
@@ -172,18 +174,19 @@ export async function updateCustomer(
       .eq("tenant_id", tenantId);
 
     if (error) return { error: error.message };
-    
-    // Log audit event
-    await logAuditEvent({
-      tenantId,
-      userId: user?.id,
-      action: "customer_update",
-      entityType: "customer",
-      entityId: id,
-      oldData: oldData || undefined,
-      newData: { full_name: customerData.full_name, email: customerData.email, phone: customerData.mobile || customerData.phone },
-    });
-    
+
+    after(() =>
+      logAuditEvent({
+        tenantId,
+        userId: user?.id,
+        action: "customer_update",
+        entityType: "customer",
+        entityId: id,
+        oldData: oldData || undefined,
+        newData: { full_name: customerData.full_name, email: customerData.email, phone: customerData.mobile || customerData.phone },
+      })
+    );
+
     return { success: true };
   } catch (error) {
     logger.error("updateCustomer failed", { error });
@@ -214,17 +217,18 @@ export async function archiveCustomer(id: string): Promise<{ success?: boolean; 
       .eq("tenant_id", tenantId);
 
     if (error) return { error: error.message };
-    
-    // Log audit event
-    await logAuditEvent({
-      tenantId,
-      userId: user?.id,
-      action: "customer_delete",
-      entityType: "customer",
-      entityId: id,
-      oldData: oldData || undefined,
-    });
-    
+
+    after(() =>
+      logAuditEvent({
+        tenantId,
+        userId: user?.id,
+        action: "customer_delete",
+        entityType: "customer",
+        entityId: id,
+        oldData: oldData || undefined,
+      })
+    );
+
     redirect("/customers");
   } catch (error) {
     logger.error("archiveCustomer failed", { error });
