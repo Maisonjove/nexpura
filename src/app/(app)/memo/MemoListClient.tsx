@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createMemoItem, updateMemoStatus } from "./actions";
 import type { MemoItem } from "./actions";
-import { X, Search, BarChart2, ArrowRight, User, Package, Calendar, Clock } from "lucide-react";
+import { X, Search, BarChart2, ArrowRight, User, Package, Calendar, Clock, Plus } from "lucide-react";
 import { format } from "date-fns";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -99,12 +100,13 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
             <BarChart2 size={18} />
             Reports
           </button>
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-shadow shadow-sm"
+          <Link
+            href={`/memo/new?type=${tab}`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-shadow shadow-sm"
           >
-            + New Entry
-          </button>
+            <Plus size={16} />
+            New {tab === "memo" ? "Memo" : "Consignment"}
+          </Link>
         </div>
       </div>
 

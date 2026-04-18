@@ -335,13 +335,13 @@ export default function InventoryClient({
             filename={`inventory-export-${new Date().toISOString().split('T')[0]}`}
             sheetName="Inventory"
           />
-          <button
-            onClick={() => setShowAddStock(true)}
+          <Link
+            href="/inventory/new"
             className="inline-flex items-center gap-2 h-10 px-5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-medium rounded-xl transition-all shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            Quick Add
-          </button>
+            Add Item
+          </Link>
         </div>
       </div>
 
@@ -543,13 +543,13 @@ export default function InventoryClient({
                 : "Try adjusting your search or filters."}
             </p>
             {items.length === 0 && (
-              <button
-                onClick={() => setShowAddStock(true)}
+              <Link
+                href="/inventory/new"
                 className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-xl hover:bg-amber-700 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Add your first item
-              </button>
+              </Link>
             )}
           </div>
         </Card>
