@@ -376,12 +376,12 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                 ⊞ Board
               </button>
             </div>
-            <button
-              onClick={() => setShowNewTask(true)}
+            <Link
+              href="/tasks/new"
               className="px-3 py-1.5 bg-[#071A0D] text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-colors"
             >
               + New Task
-            </button>
+            </Link>
           </div>
         </div>
       </div>

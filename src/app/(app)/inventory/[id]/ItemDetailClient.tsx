@@ -374,12 +374,12 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
               )}
 
               {!readOnly && (
-                <button
-                  onClick={() => setShowAdjustModal(true)}
-                  className="w-full mt-4 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
+                <Link
+                  href={`/inventory/${item.id}/adjust`}
+                  className="w-full mt-4 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors block text-center"
                 >
                   Adjust Stock
-                </button>
+                </Link>
               )}
             </div>
 
