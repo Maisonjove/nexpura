@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { generateBarcodeValue } from "@/lib/barcode";
 import { logAuditEvent } from "@/lib/audit";
 
@@ -183,15 +184,16 @@ export async function createInventoryItem(formData: FormData) {
     if (smError) throw new Error(`Initial stock movement failed: ${smError.message}`);
   }
 
-  // Log audit event
-  await logAuditEvent({
-    tenantId,
-    userId: user?.id,
-    action: "inventory_create",
-    entityType: "inventory",
-    entityId: item.id,
-    newData: { name, sku, retailPrice, quantity, status },
-  });
+  after(() =>
+    logAuditEvent({
+      tenantId,
+      userId: user?.id,
+      action: "inventory_create",
+      entityType: "inventory",
+      entityId: item.id,
+      newData: { name, sku, retailPrice, quantity, status },
+    })
+  );
 
   revalidatePath("/inventory");
   redirect(`/inventory/${item.id}`);
@@ -332,16 +334,17 @@ export async function updateInventoryItem(id: string, formData: FormData) {
 
   if (updateError) throw new Error(updateError.message);
 
-  // Log audit event
-  await logAuditEvent({
-    tenantId,
-    userId: user?.id,
-    action: "inventory_update",
-    entityType: "inventory",
-    entityId: id,
-    oldData: oldItem || undefined,
-    newData: { name, sku: updates.sku, retailPrice, status },
-  });
+  after(() =>
+    logAuditEvent({
+      tenantId,
+      userId: user?.id,
+      action: "inventory_update",
+      entityType: "inventory",
+      entityId: id,
+      oldData: oldItem || undefined,
+      newData: { name, sku: updates.sku, retailPrice, status },
+    })
+  );
 
   revalidatePath(`/inventory/${id}`);
   revalidatePath(`/inventory/${id}/edit`);

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { logActivity } from "@/lib/activity-log";
 import { notifyTaskAssignment } from "@/lib/whatsapp-notifications";
 import logger from "@/lib/logger";
@@ -148,31 +149,29 @@ export async function createTask(
 
     if (error) return { error: error.message };
 
-    await logActivity(tenantId, userId, "created_task", "staff_task", task?.id, title);
-    
-    // Log in task activity timeline
-    await admin.from("task_activities").insert({
-      tenant_id: tenantId,
-      task_id: task?.id,
-      user_id: userId,
-      activity_type: "created",
-      description: `Task created by ${userEmail}`,
-    });
-
-    // Log audit event
-    await logAuditEvent({
-      tenantId,
-      userId,
-      action: "task_create",
-      entityType: "task",
-      entityId: task?.id,
-      newData: {
-        title,
-        priority: (formData.get("priority") as string) || "normal",
-        status: (formData.get("status") as string) || "todo",
-        assignedTo: (formData.get("assigned_to") as string) || null,
-        dueDate: (formData.get("due_date") as string) || null,
-      },
+    after(async () => {
+      await logActivity(tenantId, userId, "created_task", "staff_task", task?.id, title);
+      await admin.from("task_activities").insert({
+        tenant_id: tenantId,
+        task_id: task?.id,
+        user_id: userId,
+        activity_type: "created",
+        description: `Task created by ${userEmail}`,
+      });
+      await logAuditEvent({
+        tenantId,
+        userId,
+        action: "task_create",
+        entityType: "task",
+        entityId: task?.id,
+        newData: {
+          title,
+          priority: (formData.get("priority") as string) || "normal",
+          status: (formData.get("status") as string) || "todo",
+          assignedTo: (formData.get("assigned_to") as string) || null,
+          dueDate: (formData.get("due_date") as string) || null,
+        },
+      });
     });
 
     // Send WhatsApp notification if assigned

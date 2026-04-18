@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "next/server";
 import { invalidateCache, tenantCacheKey } from "@/lib/cache";
 import logger from "@/lib/logger";
 
@@ -415,13 +416,11 @@ export async function createRepairFromIntake(
     }
   }
 
-  revalidatePath("/repairs");
+  after(() => {
+    revalidatePath("/repairs");
     revalidatePath("/workshop");
     revalidatePath("/invoices");
-    // Invalidate dashboard cache
     revalidateTag("dashboard", "default");
-
-    // Log intake succeeded
     logIntakeEvent({
       event: 'succeeded',
       jobType: 'repair',
@@ -436,8 +435,9 @@ export async function createRepairFromIntake(
       paymentReceived: input.payment_received ?? undefined,
       timestamp: new Date().toISOString(),
     });
+  });
 
-    return { id: data.id, repair_number: data.repair_number, invoice_id: invoiceId };
+  return { id: data.id, repair_number: data.repair_number, invoice_id: invoiceId };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Failed to create repair";
     
@@ -658,13 +658,11 @@ export async function createBespokeFromIntake(
     }
   }
 
-  revalidatePath("/bespoke");
+  after(() => {
+    revalidatePath("/bespoke");
     revalidatePath("/workshop");
     revalidatePath("/invoices");
-    // Invalidate dashboard cache
     revalidateTag("dashboard", "default");
-
-    // Log intake succeeded
     logIntakeEvent({
       event: 'succeeded',
       jobType: 'bespoke',
@@ -679,8 +677,9 @@ export async function createBespokeFromIntake(
       paymentReceived: input.payment_received ?? undefined,
       timestamp: new Date().toISOString(),
     });
+  });
 
-    return { id: data.id, job_number: data.job_number, invoice_id: invoiceId };
+  return { id: data.id, job_number: data.job_number, invoice_id: invoiceId };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Failed to create bespoke job";
     
