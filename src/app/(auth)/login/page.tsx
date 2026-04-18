@@ -55,7 +55,19 @@ function LoginPageContent() {
 
       if (authError || !data.user) {
         recordFailedLoginAttempt(rateCheck.identifier).catch(() => {});
-        setError("Invalid email or password");
+        // Distinguish specific error cases so the user knows how to recover.
+        // Supabase exposes the machine-readable reason on `authError.code`.
+        const code = (authError as { code?: string } | null)?.code ?? "";
+        const msg = authError?.message ?? "";
+        if (code === "email_not_confirmed" || /email.*confirm/i.test(msg)) {
+          setError("Please verify your email — check your inbox for the confirmation link.");
+        } else if (code === "invalid_credentials" || /invalid.*credentials/i.test(msg)) {
+          setError("Invalid email or password");
+        } else if (authError?.status && authError.status >= 500) {
+          setError("Sign-in service is having trouble — please try again in a moment.");
+        } else {
+          setError(msg || "Invalid email or password");
+        }
         return;
       }
 
