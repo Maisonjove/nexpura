@@ -111,8 +111,14 @@ export default function SidebarQuickActions({
 
         {/* Document Actions */}
         <div className="border-t border-stone-100 pt-2 mt-2 space-y-2">
-          <button 
-            onClick={() => window.open(`/print/repair/${repair.id}`, "_blank")} 
+          <Link
+            href={`/tasks?new=1&linked_type=repair&linked_id=${repair.id}&stage=${repair.stage}`}
+            className="block w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 transition-colors text-center"
+          >
+            ＋ Create Task
+          </Link>
+          <button
+            onClick={() => window.open(`/print/repair/${repair.id}`, "_blank")}
             className="w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 transition-colors flex items-center justify-center gap-2"
           >
             🖨️ Print
