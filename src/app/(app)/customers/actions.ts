@@ -56,7 +56,7 @@ function buildCustomerData(formData: FormData, tenantId?: string, userId?: strin
   };
 }
 
-export async function createCustomer(formData: FormData): Promise<{ id?: string; error?: string }> {
+export async function createCustomer(formData: FormData): Promise<{ id?: string; error?: string; duplicateId?: string; duplicateField?: "email" | "mobile" }> {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -71,6 +71,48 @@ export async function createCustomer(formData: FormData): Promise<{ id?: string;
     if (!userData?.tenant_id) return { error: "No tenant found" };
 
     const customerData = buildCustomerData(formData, userData.tenant_id, user.id);
+
+    // Graceful duplicate detection: if email or mobile is supplied and a
+    // customer with the same value already exists for this tenant, surface
+    // the existing id so the UI can link the user to the existing record
+    // instead of silently creating a duplicate. The user can still proceed
+    // by clearing/changing the conflicting field.
+    const normalisedEmail = customerData.email?.trim().toLowerCase() || null;
+    const normalisedMobile = customerData.mobile?.replace(/\s+/g, "").trim() || null;
+    if (normalisedEmail) {
+      const { data: existing } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("tenant_id", userData.tenant_id)
+        .ilike("email", normalisedEmail)
+        .is("deleted_at", null)
+        .limit(1)
+        .maybeSingle();
+      if (existing?.id) {
+        return {
+          error: "A customer with this email already exists.",
+          duplicateId: existing.id,
+          duplicateField: "email",
+        };
+      }
+    }
+    if (normalisedMobile) {
+      const { data: existing } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("tenant_id", userData.tenant_id)
+        .eq("mobile", normalisedMobile)
+        .is("deleted_at", null)
+        .limit(1)
+        .maybeSingle();
+      if (existing?.id) {
+        return {
+          error: "A customer with this mobile already exists.",
+          duplicateId: existing.id,
+          duplicateField: "mobile",
+        };
+      }
+    }
 
     const { data, error } = await supabase
       .from("customers")
