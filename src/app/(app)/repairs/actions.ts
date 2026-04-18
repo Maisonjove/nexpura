@@ -73,23 +73,30 @@ function buildRepairData(formData: FormData) {
 // ────────────────────────────────────────────────────────────────
 
 export async function createRepair(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   formData: FormData
-): Promise<{ id?: string; error?: string }> {
+): Promise<any> {
+  const dbg: Record<string, unknown> = { step: "start" };
   let ctx;
   try {
     ctx = await getAuthContext();
-  } catch {
-    return { error: "Not authenticated" };
+    dbg.step1_auth = "ok";
+  } catch (e) {
+    dbg.step1_auth_threw = String((e as Error)?.message || e);
+    return { __dbg: dbg, error: "Not authenticated" };
   }
 
   const { supabase, userId, tenantId } = ctx;
+  dbg.tenantId = tenantId;
+  dbg.userId = userId;
 
   // Generate repair number using the DB function
   const { data: numData, error: numError } = await supabase.rpc(
     "next_repair_number",
     { p_tenant_id: tenantId }
   );
-  if (numError) return { error: numError.message };
+  dbg.step2_rpc = { numData: String(numData), numError: numError ? String(numError.message) : null };
+  if (numError) return { __dbg: dbg, error: numError.message };
 
   const repairData = {
     ...buildRepairData(formData),
@@ -98,6 +105,8 @@ export async function createRepair(
     repair_number: numData as string,
     stage: "intake",
   };
+  dbg.step3_repairData_keys = Object.keys(repairData);
+  dbg.step3_customer_id = repairData.customer_id;
 
   const { data, error } = await supabase
     .from("repairs")
@@ -105,7 +114,9 @@ export async function createRepair(
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  dbg.step4_insert = { data, error: error ? { code: (error as { code?: string }).code, message: error.message } : null };
+  if (error) return { __dbg: dbg, error: error.message };
+  if (!data) return { __dbg: dbg, error: "Insert returned no data" };
 
   // Insert initial stage entry
   await supabase.from("repair_stages").insert({
