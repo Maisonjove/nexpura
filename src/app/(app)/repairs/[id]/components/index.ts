@@ -1,5 +1,6 @@
 // Repair Command Center Components barrel export
 export { default as StatusStrip } from "./StatusStrip";
+export { default as TrackingLinkActions } from "./TrackingLinkActions";
 export { default as CustomerCard } from "./CustomerCard";
 export { default as ItemRepairCard } from "./ItemRepairCard";
 export { default as StageTimeline } from "./StageTimeline";
