@@ -28,6 +28,7 @@ const STONE_SHAPES = ["round", "princess", "oval", "cushion", "pear", "marquise"
 export default function NewPassportPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [jewelleryType, setJewelleryType] = useState("");
   const [stoneOpen, setStoneOpen] = useState(false);
   const [ringOpen, setRingOpen] = useState(false);
@@ -36,12 +37,19 @@ export default function NewPassportPage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       const formData = new FormData(e.currentTarget);
       formData.set("is_public", isPublic ? "true" : "false");
       await createPassport(formData);
     } catch (err) {
+      // Next's server-side redirect() throws a sentinel NEXT_REDIRECT error
+      // the framework intercepts to perform the navigation. Swallowing it
+      // would leave the user stranded on /passports/new after a successful
+      // save. Re-throw so Next can navigate; surface everything else.
+      if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) throw err;
       logger.error(err);
+      setError(err instanceof Error ? err.message : "Save failed. Please try again.");
       setLoading(false);
     }
   }
@@ -64,6 +72,12 @@ export default function NewPassportPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600">
+            {error}
+          </div>
+        )}
 
         {/* Photos note */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">

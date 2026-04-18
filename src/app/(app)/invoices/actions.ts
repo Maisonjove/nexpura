@@ -481,14 +481,23 @@ export async function voidInvoice(invoiceId: string): Promise<{ error?: string }
 }
 
 export async function createInvoiceAndRedirect(input: CreateInvoiceInput): Promise<void> {
-  const { id } = await createInvoice(input);
-  redirect(`/invoices/${id}`);
+  const result = await createInvoice(input);
+  if (result.error || !result.id) {
+    // Don't redirect to /invoices/undefined — surface the error via throw so
+    // the client form's catch handler shows it to the user instead of
+    // silently landing them on a stale list page.
+    throw new Error(result.error || "Failed to create invoice");
+  }
+  redirect(`/invoices/${result.id}`);
 }
 
 export async function updateInvoiceAndRedirect(
   id: string,
   input: CreateInvoiceInput
 ): Promise<void> {
-  await updateInvoice(id, input);
+  const result = await updateInvoice(id, input);
+  if (result?.error) {
+    throw new Error(result.error);
+  }
   redirect(`/invoices/${id}`);
 }

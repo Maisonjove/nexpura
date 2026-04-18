@@ -27,12 +27,17 @@ export default function NewAppraisalClient({ customers }: Props) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
-      const result = await createAppraisal(fd);
-      if (result.error) {
-        setError(result.error);
-        return;
+      try {
+        const result = await createAppraisal(fd);
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        router.push(`/appraisals/${result.id}`);
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) throw err;
+        setError(err instanceof Error ? err.message : "Save failed. Please try again.");
       }
-      router.push(`/appraisals/${result.id}`);
     });
   }
 
