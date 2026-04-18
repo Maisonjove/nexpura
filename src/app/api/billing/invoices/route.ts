@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import Stripe from "stripe";
+import { getStripe } from "@/lib/stripe/client";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2026-02-25.clover" });
 
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
@@ -38,7 +36,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ invoices: [] });
     }
 
-    const invoices = await stripe.invoices.list({
+    const invoices = await getStripe().invoices.list({
       customer: sub.stripe_customer_id,
       limit: 24,
     });

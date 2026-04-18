@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { stripe } from "@/lib/stripe/client";
+import { getStripe } from "@/lib/stripe/client";
 import { STRIPE_PRICES, type PlanKey, type IntervalKey } from "@/lib/stripe/prices";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     let stripeCustomerId = subscription?.stripe_customer_id as string | null;
 
     if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         email: userData.email ?? user.email ?? undefined,
         name: userData.full_name ?? undefined,
         metadata: {
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       subscription?.status !== "trialing" &&
       subscription?.trial_ends_at !== null;
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer: stripeCustomerId,
       mode: "subscription",
       payment_method_types: ["card"],

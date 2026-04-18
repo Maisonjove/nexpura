@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthContext, getIntegration } from "@/lib/integrations";
-import { resend } from "@/lib/email/resend";
+import { getResend } from "@/lib/email/resend";
 import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { InsurancePDF } from "@/lib/pdf/InsurancePDF";
@@ -97,7 +97,7 @@ export async function POST(
     const tenantAbn = (tenant as any)?.abn || null;
     const storeFooter = [businessName, tenantPhone, tenantAddress].filter(Boolean).join(" | ");
 
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: `${businessName} <receipts@nexpura.com>`,
       to: [appraisal.customer_email as string],
       replyTo: tenantEmail ? [tenantEmail] : undefined,

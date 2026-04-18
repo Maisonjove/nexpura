@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { Resend } from 'resend';
+import { getResend } from '@/lib/email/resend';
 import DailyTaskDigestEmail from '@/lib/email/templates/DailyTaskDigestEmail';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function GET(request: Request) {
   // Check for auth (cron secret)
@@ -62,7 +60,7 @@ export async function GET(request: Request) {
         if (tasks && tasks.length > 0) {
           // 5. Send email
           try {
-            await resend.emails.send({
+            await getResend().emails.send({
               from: 'Nexpura <notifications@nexpura.com>',
               to: user.email,
               subject: `Your Daily Tasks — ${tenant.name}`,

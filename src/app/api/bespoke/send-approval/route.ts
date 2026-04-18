@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Resend } from "resend";
+import { getResend } from "@/lib/email/resend";
 import { randomUUID } from "crypto";
 import logger from "@/lib/logger";
 import { getAuthContext } from "@/lib/auth-context";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext();
@@ -67,7 +65,7 @@ export async function POST(req: NextRequest) {
 
   // Send email
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: `${tenant?.name || "Nexpura"} <noreply@nexpura.com>`,
       to: customer.email,
       subject: `Your custom jewellery design is ready for approval — Job #${job.job_number}`,

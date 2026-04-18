@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { resend } from '../resend'
+import { getResend } from '../resend'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getFromAddress, getSystemFromAddress } from '../get-from-address'
 import UserInvitedEmail from '../templates/UserInvitedEmail'
@@ -24,7 +24,7 @@ export async function sendUserInvitedEmail(
   acceptUrl: string
 ): Promise<EmailResult> {
   const subject = `You've been invited to join ${businessName} on Nexpura`
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
@@ -51,7 +51,7 @@ export async function sendLowStockAlertEmail(
     ? await getFromAddress(tenantId, "notifications")
     : { from: `${businessName} <notifications@nexpura.com>` };
   
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: fromAddress.from,
     to: [email],
     subject,
@@ -90,7 +90,7 @@ export async function sendAppointmentConfirmationEmail(params: {
   
   const emailConfig = await getFromAddress(params.tenantId, "notifications");
   
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: emailConfig.from,
     to: [params.customerEmail],
     replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
@@ -135,7 +135,7 @@ export async function sendRepairEnquiryConfirmationEmail(params: {
   
   const emailConfig = await getFromAddress(params.tenantId, "notifications");
   
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: emailConfig.from,
     to: [params.customerEmail],
     replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
@@ -177,7 +177,7 @@ export async function sendNewEnquiryNotificationEmail(params: {
   const businessName = tenant.business_name || tenant.name || 'Your Business'
   const subject = `New ${params.enquiryType} enquiry from ${params.customerName}`
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [tenant.email],
     subject,
@@ -211,7 +211,7 @@ export async function sendSupportAccessRequestEmail(params: {
   const denyUrl = `${APP_URL}/support-access/deny/${params.token}`
   const subject = `Nexpura Support Access Request`
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('support'),
     to: [params.tenantEmail],
     subject,
@@ -247,7 +247,7 @@ export async function sendSupportAccessApprovedEmail(params: {
   const dashboardUrl = `${APP_URL}/admin`
   const subject = `Support Access Approved — ${params.businessName}`
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [params.superAdminEmail],
     subject,

@@ -6,10 +6,8 @@
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Resend } from "resend";
+import { getResend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface OverdueSequenceStep {
   days: number;
@@ -142,7 +140,7 @@ async function sendOverdueEmail(params: {
   }[urgency];
 
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: `${tenantName} <noreply@nexpura.com>`,
       to: toEmail,
       subject,

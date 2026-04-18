@@ -3,12 +3,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { Resend } from "resend";
+import { getResend } from "@/lib/email/resend";
 import { getTenantEmailSender } from "../email/actions";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -243,7 +241,7 @@ export async function inviteTeamMember(
   const emailSender = await getTenantEmailSender(ctx.tenantId);
   
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: emailSender.from,
       replyTo: emailSender.replyTo,
       to: email.toLowerCase(),
@@ -340,7 +338,7 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
   const emailSender = await getTenantEmailSender(ctx.tenantId);
   
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: emailSender.from,
       replyTo: emailSender.replyTo,
       to: member.email,

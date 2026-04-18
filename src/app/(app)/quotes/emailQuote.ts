@@ -3,10 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantEmailConfig } from "@/lib/email-sender";
-import { Resend } from "resend";
+import { getResend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 function fmt(amount: number): string {
   return new Intl.NumberFormat("en-AU", {
@@ -186,7 +184,7 @@ export async function emailQuote(
       type: "quotes",
     });
 
-    const { error: sendError } = await resend.emails.send({
+    const { error: sendError } = await getResend().emails.send({
       from: emailConfig.from,
       to: customerEmail,
       replyTo: emailConfig.replyTo || (tenant?.email ? tenant.email : undefined),

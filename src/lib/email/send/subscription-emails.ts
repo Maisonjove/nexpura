@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { resend } from '../resend'
+import { getResend } from '../resend'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSystemFromAddress } from '../get-from-address'
 import SubscriptionWelcomeEmail from '../templates/SubscriptionWelcomeEmail'
@@ -41,7 +41,7 @@ export async function sendSubscriptionWelcomeEmail(tenantId: string): Promise<Em
   const trialEndsAt = sub?.trial_ends_at ?? new Date(Date.now() + 14 * 86400000).toISOString()
 
   const subject = `Welcome to Nexpura, ${businessName}!`
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [tenant.email],
     subject,
@@ -65,7 +65,7 @@ export async function sendTrialEndingSoonEmail(email: string, name: string, tria
   const daysLeft = Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
   const subject = `Your Nexpura trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
@@ -91,7 +91,7 @@ export async function sendPaymentSuccessEmail(
   nextBillingDate: string
 ): Promise<EmailResult> {
   const subject = `Payment confirmed — ${businessName}`
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
@@ -107,7 +107,7 @@ export async function sendPaymentSuccessEmail(
 
 export async function sendPaymentFailedEmail(email: string, name: string, amount: number, retryUrl: string): Promise<EmailResult> {
   const subject = `Payment failed — action required`
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
@@ -123,7 +123,7 @@ export async function sendPaymentFailedEmail(email: string, name: string, amount
 
 export async function sendGracePeriodStartedEmail(email: string, name: string, deadline: string, paymentUrl: string): Promise<EmailResult> {
   const subject = `Payment required — account suspension in 48 hours`
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
@@ -139,7 +139,7 @@ export async function sendGracePeriodStartedEmail(email: string, name: string, d
 
 export async function sendGracePeriod24hEmail(email: string, name: string): Promise<EmailResult> {
   const subject = `🚨 24 hours remaining — pay now to avoid suspension`
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
@@ -155,7 +155,7 @@ export async function sendGracePeriod24hEmail(email: string, name: string): Prom
 
 export async function sendAccountSuspendedEmail(email: string, name: string): Promise<EmailResult> {
   const subject = `Your Nexpura account has been suspended`
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
@@ -171,7 +171,7 @@ export async function sendAccountSuspendedEmail(email: string, name: string): Pr
 
 export async function sendAccountReactivatedEmail(email: string, name: string, planName: string): Promise<EmailResult> {
   const subject = `Your Nexpura account is back! 🎉`
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
@@ -187,7 +187,7 @@ export async function sendAccountReactivatedEmail(email: string, name: string, p
 
 export async function sendFreeToPaidConversionEmail(email: string, name: string, deadline: string): Promise<EmailResult> {
   const subject = `Payment required for your Nexpura account`
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,
@@ -207,7 +207,7 @@ export async function sendFreeToPaidConversionEmail(email: string, name: string,
 
 export async function sendCancellationEmail(email: string, name: string): Promise<EmailResult> {
   const subject = `Your Nexpura subscription has been cancelled`
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: getSystemFromAddress('nexpura'),
     to: [email],
     subject,

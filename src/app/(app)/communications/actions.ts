@@ -70,10 +70,10 @@ export async function sendCommunication(
         const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
         const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
         
-        const { resend } = await import("@/lib/email/resend");
+        const { getResend } = await import("@/lib/email/resend");
         const subject = str("subject") || "Message from your jeweller";
         const customerName = str("customer_name") || "Valued Customer";
-        const { error: sendError } = await resend.emails.send({
+        const { error: sendError } = await getResend().emails.send({
           from: `${businessName} <${fromEmail}>`,
           to: [customerEmail],
           subject,
@@ -132,8 +132,8 @@ export async function resendEmailLog(logId: string) {
     const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
     const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
     
-    const { resend } = await import("@/lib/email/resend");
-    const { error: sendError } = await resend.emails.send({
+    const { getResend } = await import("@/lib/email/resend");
+    const { error: sendError } = await getResend().emails.send({
       from: `${businessName} <${fromEmail}>`,
       to: [log.recipient_email],
       subject: log.subject || "Re-sent message",

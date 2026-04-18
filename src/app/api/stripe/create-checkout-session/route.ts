@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { getStripe } from "@/lib/stripe/client";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
@@ -16,8 +17,6 @@ const STRIPE_PRICES: Record<string, string> = {
 // Boutique $89/month AUD - prod_UAJ5YPkVeuRXpw
 // Studio $179/month AUD - prod_UAJ5ggVHq4ChKY
 // Atelier $299/month AUD - prod_UAJ5cAOEp1PLvb
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,7 +57,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com";
 
     // Create Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [

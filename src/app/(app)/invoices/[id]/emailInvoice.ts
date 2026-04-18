@@ -5,12 +5,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/lib/pdf/InvoicePDF";
 import { getTenantEmailConfig } from "@/lib/email-sender";
-import { Resend } from "resend";
+import { getResend } from "@/lib/email/resend";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 function fmtDate(d: string | null): string {
   if (!d) return "—";
@@ -282,7 +280,7 @@ export async function emailInvoice(
     });
 
     // 7. Send via Resend with PDF attachment
-    const { error: sendError } = await resend.emails.send({
+    const { error: sendError } = await getResend().emails.send({
       from: emailConfig.from,
       to: customerEmail,
       replyTo: emailConfig.replyTo || (tenant?.email ? tenant.email : undefined),

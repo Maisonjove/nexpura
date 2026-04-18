@@ -1,8 +1,6 @@
-import { Resend } from "resend";
+import { getResend } from "@/lib/email/resend";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Default fallback email
 const DEFAULT_FROM_EMAIL = "notifications@nexpura.com";
@@ -106,7 +104,7 @@ export async function sendTenantEmail(
   try {
     const emailConfig = await getTenantEmailConfig(config);
 
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: emailConfig.from,
       to: options.to,
       subject: options.subject,
@@ -137,7 +135,7 @@ export async function sendSystemEmail(
   options: SendEmailOptions & { from?: string }
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: options.from || `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>`,
       to: options.to,
       subject: options.subject,

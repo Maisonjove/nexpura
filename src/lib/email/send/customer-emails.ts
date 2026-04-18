@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { resend } from '../resend'
+import { getResend } from '../resend'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getFromAddress } from '../get-from-address'
 import InvoiceEmail from '../templates/InvoiceEmail'
@@ -79,7 +79,7 @@ export async function sendInvoiceEmail(invoiceId: string): Promise<EmailResult> 
 
   const emailConfig = await getFromAddress(invoice.tenant_id, "invoices");
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: emailConfig.from,
     to: [customer.email],
     replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
@@ -169,7 +169,7 @@ export async function sendJobReadyEmail(jobId: string): Promise<EmailResult> {
 
   const emailConfig = await getFromAddress(job.tenant_id, "notifications");
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: emailConfig.from,
     to: [customer.email],
     replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
@@ -249,7 +249,7 @@ export async function sendRepairReadyEmail(repairId: string): Promise<EmailResul
 
   const emailConfig = await getFromAddress(repair.tenant_id, "notifications");
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: emailConfig.from,
     to: [customer.email],
     replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
@@ -325,7 +325,7 @@ export async function sendQuoteEmail(repairId: string, quotedPrice: number): Pro
 
   const emailConfig = await getFromAddress(repair.tenant_id, "quotes");
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: emailConfig.from,
     to: [customer.email],
     replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
@@ -396,7 +396,7 @@ export async function sendPassportEmail(passportId: string): Promise<EmailResult
 
   const emailConfig = await getFromAddress(passport.tenant_id, "notifications");
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: emailConfig.from,
     to: [passport.current_owner_email],
     replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
@@ -454,7 +454,7 @@ export async function sendRepairReceivedEmail(repairId: string): Promise<EmailRe
 
   const emailConfig = await getFromAddress(repair.tenant_id, "notifications");
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: emailConfig.from,
     to: [customer.email],
     replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),
@@ -501,7 +501,7 @@ export async function sendPassportVerificationEmail(passportId: string): Promise
 
   const emailConfig = await getFromAddress(passport.tenant_id, "notifications");
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: emailConfig.from,
     to: [passport.current_owner_email],
     replyTo: emailConfig.replyTo ? [emailConfig.replyTo] : (tenant?.email ? [tenant.email] : undefined),

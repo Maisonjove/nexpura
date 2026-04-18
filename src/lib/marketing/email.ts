@@ -1,4 +1,4 @@
-import { resend } from '@/lib/email/resend';
+import { getResend } from '@/lib/email/resend';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 interface SendMarketingEmailParams {
@@ -89,7 +89,7 @@ export async function sendMarketingEmail(params: SendMarketingEmailParams): Prom
     const emailConfig = await getTenantEmailConfig(tenantId);
 
     // Send email via Resend
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: emailConfig.from,
       to: toName ? `${toName} <${to}>` : to,
       replyTo: emailConfig.replyTo,

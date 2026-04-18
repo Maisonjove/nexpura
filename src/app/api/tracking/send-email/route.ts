@@ -3,8 +3,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
 import logger from "@/lib/logger";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // Nexpura API key for tracking emails (using provided key)
 const TRACKING_RESEND_API_KEY = "re_epopKqUe_LMAqTn1LUpoAG9jWpzPuMX93";
 const trackingResend = new Resend(TRACKING_RESEND_API_KEY);

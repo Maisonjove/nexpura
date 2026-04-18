@@ -3,12 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import Stripe from "stripe";
+import { getStripe } from "@/lib/stripe/client";
 import logger from "@/lib/logger";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-02-25.clover",
-});
 
 const PRICE_PER_MESSAGE_CENTS = 16; // $0.16 AUD
 
@@ -133,7 +129,7 @@ export async function createCampaignCheckout(campaignId: string): Promise<{
 
   try {
     // Create Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
         {

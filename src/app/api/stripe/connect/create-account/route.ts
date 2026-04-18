@@ -5,12 +5,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
+import { getStripe } from "@/lib/stripe/client";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -52,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     if (tenant?.stripe_account_id) {
       // Account exists, create new onboarding link
-      const accountLink = await stripe.accountLinks.create({
+      const accountLink = await getStripe().accountLinks.create({
         account: tenant.stripe_account_id,
         refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/payments?refresh=true`,
         return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/payments?success=true`,
@@ -67,7 +65,7 @@ export async function POST(req: NextRequest) {
     const businessName = body.businessName || tenant?.business_name || "Business";
 
     // Create new Connect account (Standard type)
-    const account = await stripe.accounts.create({
+    const account = await getStripe().accounts.create({
       type: "standard",
       business_type: "company",
       company: {
@@ -86,7 +84,7 @@ export async function POST(req: NextRequest) {
       .eq("id", tenantId);
 
     // Create onboarding link
-    const accountLink = await stripe.accountLinks.create({
+    const accountLink = await getStripe().accountLinks.create({
       account: account.id,
       refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/payments?refresh=true`,
       return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/payments?success=true`,
