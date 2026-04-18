@@ -67,59 +67,93 @@ export async function createInventoryItem(formData: FormData) {
 
   // Auto-generate SKU if blank
   if (!sku) {
-    const { data: skuData } = await supabase.rpc("next_sku", { p_tenant_id: tenantId });
+    const { data: skuData, error: skuError } = await supabase.rpc("next_sku", { p_tenant_id: tenantId });
+    if (skuError) throw new Error(`SKU generation failed: ${skuError.message}`);
     sku = skuData as string;
   }
 
-  const { data: item, error } = await supabase
-    .from("inventory")
-    .insert({
-      tenant_id: tenantId,
-      name,
-      item_type: itemType,
-      jewellery_type: jewelleryType || null,
-      category_id: categoryId || null,
-      description: description || null,
-      metal_type: metalType || null,
-      metal_colour: metalColour || null,
-      metal_purity: metalPurity || null,
-      metal_weight_grams: metalWeight,
-      stone_type: stoneType || null,
-      stone_carat: stoneCarat,
-      stone_colour: stoneColour || null,
-      stone_clarity: stoneClarity || null,
-      ring_size: ringSize || null,
-      dimensions: dimensions || null,
-      cost_price: costPrice,
-      wholesale_price: wholesalePrice,
-      retail_price: retailPrice,
-      quantity,
-      low_stock_threshold: lowStockThreshold,
-      track_quantity: trackQuantity,
-      sku,
-      barcode: barcode || null,
-      supplier_name: supplierName || null,
-      supplier_sku: supplierSku || null,
-      is_featured: isFeatured,
-      status,
-      created_by: user?.id,
-      certificate_number: (formData.get("certificate_number") as string) || null,
-      grading_lab: (formData.get("grading_lab") as string) || null,
-      grade: (formData.get("grade") as string) || null,
-      report_url: (formData.get("report_url") as string) || null,
-      stock_location: (formData.get("stock_location") as string) || "display",
-      metal_form: (formData.get("metal_form") as string) || null,
-      consignor_name: (formData.get("consignor_name") as string) || null,
-      consignor_contact: (formData.get("consignor_contact") as string) || null,
-      consignment_start_date: (formData.get("consignment_start_date") as string) || null,
-      consignment_end_date: (formData.get("consignment_end_date") as string) || null,
-      consignment_commission_pct: formData.get("consignment_commission_pct") ? parseFloat(formData.get("consignment_commission_pct") as string) : null,
-      supplier_invoice_ref: (formData.get("supplier_invoice_ref") as string) || null,
-    })
-    .select("id")
-    .single();
+  // Build payload: core fields always included. Extended fields (certificate,
+  // metal_form, consignment, supplier_invoice_ref) are skipped when the user
+  // didn't provide a value — this prevents PostgREST PGRST204 errors when a
+  // tenant's schema cache or migration state is missing one of these columns,
+  // while still persisting the field when it's actually set.
+  const optionalString = (key: string) => {
+    const v = formData.get(key) as string | null;
+    return v && v.trim() !== "" ? v : null;
+  };
+  const core: Record<string, unknown> = {
+    tenant_id: tenantId,
+    name,
+    item_type: itemType,
+    jewellery_type: jewelleryType || null,
+    category_id: categoryId || null,
+    description: description || null,
+    metal_type: metalType || null,
+    metal_colour: metalColour || null,
+    metal_purity: metalPurity || null,
+    metal_weight_grams: metalWeight,
+    stone_type: stoneType || null,
+    stone_carat: stoneCarat,
+    stone_colour: stoneColour || null,
+    stone_clarity: stoneClarity || null,
+    ring_size: ringSize || null,
+    dimensions: dimensions || null,
+    cost_price: costPrice,
+    wholesale_price: wholesalePrice,
+    retail_price: retailPrice,
+    quantity,
+    low_stock_threshold: lowStockThreshold,
+    track_quantity: trackQuantity,
+    sku,
+    barcode: barcode || null,
+    supplier_name: supplierName || null,
+    supplier_sku: supplierSku || null,
+    is_featured: isFeatured,
+    status,
+    created_by: user?.id,
+  };
+  const extended: Record<string, unknown> = {};
+  const addIfSet = (key: string, value: unknown) => {
+    if (value !== null && value !== undefined && value !== "") extended[key] = value;
+  };
+  addIfSet("certificate_number", optionalString("certificate_number"));
+  addIfSet("grading_lab", optionalString("grading_lab"));
+  addIfSet("grade", optionalString("grade"));
+  addIfSet("report_url", optionalString("report_url"));
+  addIfSet("stock_location", optionalString("stock_location"));
+  addIfSet("metal_form", optionalString("metal_form"));
+  addIfSet("consignor_name", optionalString("consignor_name"));
+  addIfSet("consignor_contact", optionalString("consignor_contact"));
+  addIfSet("consignment_start_date", optionalString("consignment_start_date"));
+  addIfSet("consignment_end_date", optionalString("consignment_end_date"));
+  const commRaw = formData.get("consignment_commission_pct") as string | null;
+  if (commRaw && commRaw.trim() !== "") extended["consignment_commission_pct"] = parseFloat(commRaw);
+  addIfSet("supplier_invoice_ref", optionalString("supplier_invoice_ref"));
 
-  if (error) throw new Error(error.message);
+  // Retry-on-PGRST204: if PostgREST's schema cache doesn't know about a column
+  // we're inserting (e.g. a migration was run but the cache is stale, or the
+  // column is missing on this tenant's DB), drop the offending column from the
+  // payload and retry. Caps at 20 attempts so a genuinely broken payload still
+  // surfaces.
+  const payload: Record<string, unknown> = { ...core, ...extended };
+  let item: { id: string } | null = null;
+  let error: { message: string; code?: string; details?: string; hint?: string } | null = null;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const result = await supabase.from("inventory").insert(payload).select("id").single();
+    if (!result.error) { item = result.data as { id: string }; error = null; break; }
+    const err = result.error as { message: string; code?: string };
+    error = err;
+    if (err.code === "PGRST204") {
+      const match = err.message.match(/Could not find the '(\w+)' column/);
+      if (match && match[1] in payload) {
+        delete payload[match[1]];
+        continue;
+      }
+    }
+    break;
+  }
+
+  if (error || !item) throw new Error(`Failed to create inventory item: ${error?.message ?? 'no item returned'}`);
 
   // Generate and set barcode_value
   try {
@@ -137,7 +171,7 @@ export async function createInventoryItem(formData: FormData) {
 
   // Create initial stock movement if quantity > 0
   if (quantity > 0) {
-    await supabase.from("stock_movements").insert({
+    const { error: smError } = await supabase.from("stock_movements").insert({
       tenant_id: tenantId,
       inventory_id: item.id,
       movement_type: "purchase",
@@ -146,6 +180,7 @@ export async function createInventoryItem(formData: FormData) {
       notes: "Initial stock",
       created_by: user?.id,
     });
+    if (smError) throw new Error(`Initial stock movement failed: ${smError.message}`);
   }
 
   // Log audit event
