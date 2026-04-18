@@ -48,9 +48,24 @@ export default async function AppLayout({
     userEmail = user.email || null;
   }
 
-  // Get cached user profile (5 min TTL in Redis)
-  // This is much faster than a DB call on every request
-  const profile = await getCachedUserProfile(userId);
+  // Fetch profile + locations + team-member in parallel. Middleware already
+  // resolved tenantId into AUTH_HEADERS.TENANT_ID, so getCachedLocations no
+  // longer has to wait for getCachedUserProfile — eliminates ~50-100ms serial
+  // round-trip on every first paint.
+  const locationsTenantId = headerTenantId ?? null;
+  const [profile, cachedLocationsResult, cachedTeamMemberResult] = await Promise.all([
+    getCachedUserProfile(userId),
+    locationsTenantId
+      ? getCachedLocations(locationsTenantId).catch((err) => {
+          logger.error('[AppLayout] Failed to fetch cached locations:', err);
+          return [] as { id: string; name: string; type: string; is_active: boolean }[];
+        })
+      : Promise.resolve([] as { id: string; name: string; type: string; is_active: boolean }[]),
+    getCachedTeamMember(userId).catch((err) => {
+      logger.error('[AppLayout] Failed to fetch cached team member:', err);
+      return null;
+    }),
+  ]);
 
   if (!profile) {
     logger.error('[AppLayout] No user profile found for:', userId);
@@ -63,34 +78,29 @@ export default async function AppLayout({
   }
 
   // Build userData combining auth info and cached profile
-  // Note: profile already has id and email, we just need to ensure non-null values
   const userData = {
     ...profile,
     id: userId,
     email: userEmail ?? profile.email,
-    // Convert null to undefined for TopNav compatibility
     full_name: profile.full_name ?? undefined,
   };
   const tenant = profile.tenants;
 
-  // Fetch layout data from cache (parallel, 2 min TTL)
-  let locations: { id: string; name: string; type: string; is_active: boolean }[] = [];
-  let currentLocationId: string | null = null;
-
-  try {
-    const [cachedLocations, cachedTeamMember] = await Promise.all([
-      getCachedLocations(profile.tenant_id),
-      getCachedTeamMember(userId),
-    ]);
-
-    locations = cachedLocations;
-    currentLocationId =
-      cachedTeamMember?.current_location_id ||
-      cachedTeamMember?.default_location_id ||
-      (locations.length === 1 ? locations[0].id : null);
-  } catch (err) {
-    logger.error('[AppLayout] Failed to fetch cached layout data:', err);
+  // If the locations fetch ran against a stale tenantId (header mismatch with
+  // profile), refetch with the authoritative profile tenantId. Rare edge case.
+  let locations = cachedLocationsResult;
+  if (locationsTenantId !== profile.tenant_id) {
+    try {
+      locations = await getCachedLocations(profile.tenant_id);
+    } catch (err) {
+      logger.error('[AppLayout] Failed to fetch cached locations (profile tenant):', err);
+    }
   }
+  const cachedTeamMember = cachedTeamMemberResult;
+  const currentLocationId =
+    cachedTeamMember?.current_location_id ||
+    cachedTeamMember?.default_location_id ||
+    (locations.length === 1 ? locations[0].id : null);
 
   return (
     <LocationProvider initialLocations={locations} initialCurrentLocationId={currentLocationId}>
