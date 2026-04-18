@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   createRepairFromIntake,
@@ -17,17 +18,53 @@ import type {
   JobType,
   SuccessResult,
 } from "./types";
-import {
-  CustomerSection,
-  RepairForm,
-  BespokeForm,
-  StockSaleForm,
-  SuccessScreen,
-  SummaryPanel,
-  type RepairData,
-  type BespokeData,
-  type StockData,
-} from "./components";
+// Static imports: the two components that render on every intake page paint
+// (customer picker + summary rail). Keep in the main chunk so there's no
+// flash on first load.
+import { CustomerSection, SummaryPanel } from "./components";
+// Type-only imports — stripped at build, no runtime cost.
+import type { RepairData, BespokeData, StockData } from "./components";
+
+// Dynamic imports: tab-specific form components. Only the tab the user is
+// viewing gets fetched. RepairForm is the default-selected tab so it's
+// still likely in the critical path on first visit, but each form is now
+// its own chunk so a session that only creates repairs never downloads
+// the bespoke/stock bundles. Together these split ~1500 lines of client
+// JS out of the initial bundle.
+//
+// Each tab form renders a shell while its chunk loads so tab switching
+// doesn't show a jarring empty space.
+const TabFormFallback = () => (
+  <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-5 animate-pulse">
+    <div className="h-5 w-32 bg-stone-100 rounded" />
+    <div className="grid grid-cols-2 gap-4">
+      <div className="h-11 bg-stone-100 rounded-lg" />
+      <div className="h-11 bg-stone-100 rounded-lg" />
+    </div>
+    <div className="h-24 bg-stone-100 rounded-lg" />
+    <div className="grid grid-cols-2 gap-4">
+      <div className="h-11 bg-stone-100 rounded-lg" />
+      <div className="h-11 bg-stone-100 rounded-lg" />
+    </div>
+  </div>
+);
+
+const RepairForm = dynamic(
+  () => import("./components/RepairForm"),
+  { loading: TabFormFallback, ssr: true }
+);
+const BespokeForm = dynamic(
+  () => import("./components/BespokeForm"),
+  { loading: TabFormFallback, ssr: false }
+);
+const StockSaleForm = dynamic(
+  () => import("./components/StockSaleForm"),
+  { loading: TabFormFallback, ssr: false }
+);
+const SuccessScreen = dynamic(
+  () => import("./components/SuccessScreen"),
+  { ssr: false }
+);
 
 // ────────────────────────────────────────────────────────────────
 // Initial State
