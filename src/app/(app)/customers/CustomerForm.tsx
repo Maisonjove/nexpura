@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createCustomer, updateCustomer } from "./actions";
 
@@ -53,6 +54,7 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [duplicateId, setDuplicateId] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>(
     customer?.tags?.filter((t) => STANDARD_TAGS.includes(t)) || []
   );
@@ -69,6 +71,7 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setDuplicateId(null);
     const formData = new FormData(e.currentTarget);
 
     // Add selected tags
@@ -80,6 +83,7 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
         const result = await createCustomer(formData);
         if (result.error) {
           setError(result.error);
+          if (result.duplicateId) setDuplicateId(result.duplicateId);
         } else if (result.id) {
           // If there's a returnTo URL (e.g. coming from bespoke/repair new form),
           // redirect back there with the new customer pre-selected
@@ -120,7 +124,20 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
           <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
           </svg>
-          {error}
+          <div className="flex-1">
+            {error}
+            {duplicateId && (
+              <>
+                {" "}
+                <Link
+                  href={`/customers/${duplicateId}`}
+                  className="underline font-medium hover:text-red-900"
+                >
+                  View existing customer →
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       )}
 
