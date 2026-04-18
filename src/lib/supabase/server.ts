@@ -1,21 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-
-// Use .nexpura.com in production so cookies are shared across all tenant subdomains.
-// Leave NEXT_PUBLIC_COOKIE_DOMAIN unset in development to scope cookies to localhost.
-const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined;
+import { cookies, headers } from "next/headers";
+import { getCookieDomain, getIsSecure } from "./cookie-config";
 
 export async function createClient() {
   const cookieStore = await cookies();
+  const headerStore = await headers();
+  const host = headerStore.get("host") || undefined;
+  const proto = headerStore.get("x-forwarded-proto") || undefined;
+  const protocol = proto ? `${proto}:` : undefined;
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions: {
-        secure: true,
+        secure: getIsSecure(protocol, host),
         sameSite: "lax",
-        // Share session cookies across all *.nexpura.com subdomains in production
-        domain: cookieDomain,
+        domain: getCookieDomain(host),
       },
       cookies: {
         getAll() {

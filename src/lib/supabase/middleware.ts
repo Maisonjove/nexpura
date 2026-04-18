@@ -2,10 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import logger from "@/lib/logger";
 import { AUTH_HEADERS, getCachedUserProfile } from "@/lib/cached-auth";
-
-// Use .nexpura.com in production so cookies are shared across all tenant subdomains.
-// Leave NEXT_PUBLIC_COOKIE_DOMAIN unset in development to scope cookies to localhost.
-const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined;
+import { getCookieDomain, getIsSecure } from "@/lib/supabase/cookie-config";
 
 // --- Subscription status cookie cache (5-min TTL) ---
 // Skips the subscriptions DB query on every page nav once status is confirmed OK.
@@ -24,14 +21,19 @@ function getCachedSubOk(request: NextRequest, tenantId: string): boolean {
   return false;
 }
 
-function setSubOkCookie(response: NextResponse, tenantId: string): void {
+function setSubOkCookie(
+  response: NextResponse,
+  tenantId: string,
+  host: string | undefined,
+  protocol: string | undefined
+): void {
   response.cookies.set(SUB_CACHE_COOKIE, `${tenantId}|${Date.now()}`, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: getIsSecure(protocol, host),
     sameSite: "lax",
     maxAge: 300,
     path: "/",
-    domain: cookieDomain,
+    domain: getCookieDomain(host),
   });
 }
 
@@ -167,6 +169,12 @@ async function _updateSessionInner(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request });
 
+  const host = request.headers.get("host") || undefined;
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const protocol = forwardedProto
+    ? `${forwardedProto}:`
+    : request.nextUrl.protocol;
+
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookieOptions: {
       // httpOnly is intentionally omitted so the browser Supabase client
@@ -174,10 +182,9 @@ async function _updateSessionInner(request: NextRequest) {
       // document.cookie. Setting httpOnly here causes a cookie split where
       // the middleware writes httpOnly tokens the browser can't see, leading
       // to "Invalid Refresh Token: Already Used" on every navigation.
-      secure: true,
+      secure: getIsSecure(protocol, host),
       sameSite: "lax",
-      // Share session cookies across all *.nexpura.com subdomains in production
-      domain: cookieDomain,
+      domain: getCookieDomain(host),
     },
     cookies: {
       getAll() {
@@ -312,7 +319,7 @@ async function _updateSessionInner(request: NextRequest) {
           }
 
           // Not blocked — cache the OK status for 5 minutes
-          setSubOkCookie(authResponse, userProfile.tenant_id);
+          setSubOkCookie(authResponse, userProfile.tenant_id, host, protocol);
         }
       }
     }
@@ -417,7 +424,7 @@ async function _updateSessionInner(request: NextRequest) {
           }
 
           // Not blocked — cache the OK status for 5 minutes
-          setSubOkCookie(authResponse, userProfile.tenant_id);
+          setSubOkCookie(authResponse, userProfile.tenant_id, host, protocol);
         }
       }
     }
