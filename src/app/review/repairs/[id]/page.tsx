@@ -97,6 +97,7 @@ export default async function ReviewRepairDetailPage({
         deposit_paid: repair.deposit_paid ?? false,
         due_date: repair.due_date ?? null,
         invoice_id: repair.invoice_id ?? null,
+        tracking_id: repair.tracking_id ?? null,
       }}
       customer={customer}
       invoice={invoice}
