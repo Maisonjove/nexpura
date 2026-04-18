@@ -53,7 +53,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
     if (!customerId) { toast.error("Please select a customer"); return; }
     setLoading(true);
     try {
-      await createQuote({
+      const result = await createQuote({
         customer_id: customerId,
         items,
         total_amount: totalAmount,
@@ -61,11 +61,19 @@ export default function QuoteForm({ tenantId, customers }: Props) {
         expires_at: expiresAt || null,
         notes,
       });
+      // Don't silently redirect on failure — surface the error so the user
+      // knows nothing was saved instead of landing on the list thinking it
+      // worked.
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
       router.push("/quotes");
       router.refresh();
     } catch (err) {
+      if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) throw err;
       logger.error(err);
-      toast.error("Failed to create quote");
+      toast.error(err instanceof Error ? err.message : "Failed to create quote");
     } finally {
       setLoading(false);
     }

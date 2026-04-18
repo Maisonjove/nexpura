@@ -39,12 +39,17 @@ export default function NewMemoClient({ memoType, customers, suppliers }: Props)
     fd.set("memo_type", memoType);
 
     startTransition(async () => {
-      const result = await createMemoItem(fd);
-      if (result.error) {
-        setError(result.error);
-        return;
+      try {
+        const result = await createMemoItem(fd);
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        router.push("/memo");
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) throw err;
+        setError(err instanceof Error ? err.message : "Save failed. Please try again.");
       }
-      router.push("/memo");
     });
   }
 

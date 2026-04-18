@@ -163,8 +163,10 @@ export default function NewTaskClient({ teamMembers }: Props) {
                 onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
                 className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 bg-white"
               >
-                <option value="pending">Pending</option>
+                <option value="todo">To Do</option>
                 <option value="in_progress">In Progress</option>
+                <option value="blocked">Blocked</option>
+                <option value="done">Done</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
