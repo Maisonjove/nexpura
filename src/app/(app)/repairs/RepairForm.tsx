@@ -254,12 +254,21 @@ export default function RepairForm({ customers, mode, repair, preselectedCustome
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
-      if (mode === "create") {
-        const result = await createRepair(formData);
-        if (result?.error) setError(result.error);
-      } else if (repair) {
-        const result = await updateRepair(repair.id, formData);
-        if (result?.error) setError(result.error);
+      try {
+        if (mode === "create") {
+          const result = await createRepair(formData);
+          if (result?.error) setError(result.error);
+        } else if (repair) {
+          const result = await updateRepair(repair.id, formData);
+          if (result?.error) setError(result.error);
+        }
+      } catch (err) {
+        // Next.js `redirect()` throws a sentinel NEXT_REDIRECT error that the
+        // framework re-handles to perform the navigation. Re-throw it so Next
+        // can. For any other error, surface it to the user instead of leaving
+        // them on a silent form that looks like it succeeded.
+        if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) throw err;
+        setError(err instanceof Error ? err.message : "Save failed. Please try again.");
       }
     });
   }

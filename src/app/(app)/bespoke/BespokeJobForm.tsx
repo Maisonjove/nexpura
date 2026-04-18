@@ -134,12 +134,19 @@ export default function BespokeJobForm({ customers, mode, job, preselectedCustom
     fd.set("customer_id", selectedCustomerId);
 
     startTransition(async () => {
-      if (mode === "create") {
-        const result = await createBespokeJob(fd);
-        if (result?.error) setError(result.error);
-      } else if (job?.id) {
-        const result = await updateBespokeJob(job.id, fd);
-        if (result?.error) setError(result.error);
+      try {
+        if (mode === "create") {
+          const result = await createBespokeJob(fd);
+          if (result?.error) setError(result.error);
+        } else if (job?.id) {
+          const result = await updateBespokeJob(job.id, fd);
+          if (result?.error) setError(result.error);
+        }
+      } catch (err) {
+        // Preserve Next's redirect sentinel; surface everything else to the user
+        // instead of letting the form look like it saved silently.
+        if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) throw err;
+        setError(err instanceof Error ? err.message : "Save failed. Please try again.");
       }
     });
   }

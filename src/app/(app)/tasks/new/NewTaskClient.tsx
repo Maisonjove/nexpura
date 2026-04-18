@@ -58,11 +58,16 @@ export default function NewTaskClient({ teamMembers }: Props) {
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     startTransition(async () => {
-      const result = await createTask(fd);
-      if (result.error) {
-        setError(result.error);
-      } else {
-        router.push("/tasks");
+      try {
+        const result = await createTask(fd);
+        if (result?.error) {
+          setError(result.error);
+        } else {
+          router.push("/tasks");
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) throw err;
+        setError(err instanceof Error ? err.message : "Save failed. Please try again.");
       }
     });
   }
