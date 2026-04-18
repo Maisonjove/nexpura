@@ -1,6 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import InvoiceDetailClient from "./InvoiceDetailClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -13,23 +14,22 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ rt?: string }>;
 }) {
-  const { id } = await params;
-  const sp = searchParams ? await searchParams : {};
+  const [{ id }, sp, headersList] = await Promise.all([
+    params,
+    searchParams ? searchParams : Promise.resolve({} as { rt?: string }),
+    headers(),
+  ]);
   const adminClient = createAdminClient();
 
-  let tenantId: string | null = null;
+  let tenantId: string | null;
   const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: ud } = await adminClient.from("users").select("tenant_id").eq("id", user.id).single();
-        tenantId = ud?.tenant_id ?? null;
-      }
-    } catch { /* no session */ }
+    // Middleware already resolved the tenant for this authenticated request
+    // and put it in the AUTH_HEADERS — skipping the auth.getUser + users
+    // SELECT round-trips shaves ~60-150ms off every detail-page render.
+    tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
     if (!tenantId) redirect("/login");
   }
 

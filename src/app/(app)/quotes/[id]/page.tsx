@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import QuoteDetailClient from "../QuoteDetailClient";
 
 export const metadata = {
@@ -8,26 +9,20 @@ export const metadata = {
 };
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  // Get tenant from authenticated user — never trust URL params
-  const { data: userData } = await createAdminClient()
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData?.tenant_id) redirect("/onboarding");
+  const [{ id }, headersList, supabase] = await Promise.all([
+    params,
+    headers(),
+    createClient(),
+  ]);
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) redirect("/login");
 
   // Scope quote to current tenant — prevents cross-tenant data leak
   const { data: quote } = await supabase
     .from("quotes")
     .select("*, customers(*)")
     .eq("id", id)
-    .eq("tenant_id", userData.tenant_id)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (!quote) notFound();

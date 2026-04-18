@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import QuoteForm from "../QuoteForm";
 
 export const metadata = {
@@ -8,30 +9,22 @@ export const metadata = {
 };
 
 export default async function NewQuotePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: userData } = await createAdminClient()
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData?.tenant_id) redirect("/onboarding");
+  const [headersList, supabase] = await Promise.all([headers(), createClient()]);
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) redirect("/login");
 
   // Fetch customers for the dropdown
   const { data: customers } = await supabase
     .from("customers")
     .select("id, full_name")
-    .eq("tenant_id", userData.tenant_id)
+    .eq("tenant_id", tenantId)
     .order("full_name");
 
   return (
     <div className="py-6">
-      <QuoteForm 
-        tenantId={userData.tenant_id} 
-        customers={customers || []} 
+      <QuoteForm
+        tenantId={tenantId}
+        customers={customers || []}
       />
     </div>
   );

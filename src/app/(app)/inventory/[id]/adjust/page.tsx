@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import AdjustClient from "./AdjustClient";
 
 export const metadata = { title: "Adjust Stock — Nexpura" };
@@ -9,24 +11,19 @@ interface PageProps {
 }
 
 export default async function AdjustStockPage({ params }: PageProps) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData?.tenant_id) redirect("/login");
+  const [{ id }, headersList, supabase] = await Promise.all([
+    params,
+    headers(),
+    createClient(),
+  ]);
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) redirect("/login");
 
   const { data: item } = await supabase
     .from("inventory")
     .select("id, name, sku, quantity")
     .eq("id", id)
-    .eq("tenant_id", userData.tenant_id)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (!item) notFound();

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import Link from "next/link";
 import PassportDetailClient from "./PassportDetailClient";
 import PassportPhotos from "./PassportPhotos";
@@ -50,16 +51,14 @@ export default async function PassportDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const supabase = await createClient();
-
-  // Get current user's tenant_id — use admin to avoid RLS recursion
-  const { data: { user } } = await supabase.auth.getUser();
-  const admin = createAdminClient();
-  const { data: userData } = user
-    ? await admin.from("users").select("tenant_id").eq("id", user.id).single()
-    : { data: null };
-  const tenantId = userData?.tenant_id ?? "";
+  const [{ id }, headersList, supabase] = await Promise.all([
+    params,
+    headers(),
+    createClient(),
+  ]);
+  // Middleware already resolved the tenant for this request — no need to
+  // re-query auth.getUser + users.select
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID) ?? "";
 
   const { data: passport, error } = await supabase
     .from("passports")

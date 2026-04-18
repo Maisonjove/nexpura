@@ -1,6 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import SupplierListClient from "./SupplierListClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -11,23 +12,18 @@ export default async function SuppliersPage({
 }: {
   searchParams?: Promise<{ rt?: string }>;
 }) {
-  const params = searchParams ? await searchParams : {};
+  const [params, headersList] = await Promise.all([
+    searchParams ? searchParams : Promise.resolve({} as { rt?: string }),
+    headers(),
+  ]);
   const admin = createAdminClient();
 
-  // Inline review check — URL param is the most reliable signal.
-  // Does not depend on middleware, cookies, or dynamic imports.
-  let tenantId: string | null = null;
+  let tenantId: string | null;
   if (params.rt && REVIEW_TOKENS.includes(params.rt)) {
     tenantId = DEMO_TENANT;
   } else {
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: ud } = await admin.from("users").select("tenant_id").eq("id", user.id).single();
-        tenantId = ud?.tenant_id ?? null;
-      }
-    } catch { /* no session */ }
+    // Middleware already resolved tenant for authenticated requests
+    tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
     if (!tenantId) redirect("/login");
   }
 

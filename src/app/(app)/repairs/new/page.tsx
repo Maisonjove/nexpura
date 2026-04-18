@@ -1,4 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import RepairForm from "../RepairForm";
 
 export default async function NewRepairPage({
@@ -6,25 +9,18 @@ export default async function NewRepairPage({
 }: {
   searchParams: Promise<{ customer_id?: string }>;
 }) {
-  const { customer_id } = await searchParams;
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user?.id ?? "")
-    .single();
-
-  const tenantId = userData?.tenant_id;
+  const [{ customer_id }, headersList, supabase] = await Promise.all([
+    searchParams,
+    headers(),
+    createClient(),
+  ]);
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) redirect("/login");
 
   const { data: customers } = await supabase
     .from("customers")
     .select("id, full_name")
-    .eq("tenant_id", tenantId ?? "")
+    .eq("tenant_id", tenantId)
     .is("deleted_at", null)
     .order("full_name", { ascending: true });
 

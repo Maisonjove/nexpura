@@ -1,25 +1,17 @@
-import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import NewAppraisalClient from "./NewAppraisalClient";
 
 export const metadata = { title: "New Appraisal — Nexpura" };
 
 export default async function NewAppraisalPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const headersList = await headers();
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) redirect("/login");
 
   const admin = createAdminClient();
-  const { data: userData } = await admin
-    .from("users")
-    .select("tenant_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData?.tenant_id) redirect("/login");
-  const tenantId = userData.tenant_id;
-
   const { data: customers } = await admin
     .from("customers")
     .select("id, first_name, last_name, email, phone")
