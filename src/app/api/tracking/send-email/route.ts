@@ -3,11 +3,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
 import logger from "@/lib/logger";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Nexpura API key for tracking emails (using provided key)
-const TRACKING_RESEND_API_KEY = "re_epopKqUe_LMAqTn1LUpoAG9jWpzPuMX93";
-const trackingResend = new Resend(TRACKING_RESEND_API_KEY);
+// Tracking emails can use a dedicated key (RESEND_TRACKING_API_KEY) so it can
+// be rotated independently of the main transactional key. Falls back to
+// RESEND_API_KEY if the dedicated one isn't set. Never hardcoded — the key
+// is resolved lazily per-request, and if neither env var is present the
+// route returns a clean 500 instead of crashing or silently "succeeding".
+function getTrackingResendOrError(): { client: Resend } | { error: string } {
+  const key = process.env.RESEND_TRACKING_API_KEY || process.env.RESEND_API_KEY;
+  if (!key) {
+    return { error: "Email provider is not configured (RESEND_API_KEY missing)." };
+  }
+  return { client: new Resend(key) };
+}
 
 interface SendTrackingEmailRequest {
   orderType: "repair" | "bespoke";
@@ -85,6 +92,17 @@ export async function POST(request: NextRequest) {
     const businessName = tenant?.business_name || "Your Jeweller";
     const trackingUrl = `https://nexpura.com/track/${order.tracking_id}`;
     const orderTypeLabel = orderType === "repair" ? "Repair" : "Bespoke Order";
+
+    // Resolve the Resend client lazily; fail cleanly if the key isn't set.
+    const resendResult = getTrackingResendOrError();
+    if ("error" in resendResult) {
+      logger.error("[tracking/send-email] " + resendResult.error);
+      return NextResponse.json(
+        { error: "Email service unavailable. Please contact support." },
+        { status: 500 }
+      );
+    }
+    const trackingResend = resendResult.client;
 
     // Send email
     const { data: emailResult, error: emailError } = await trackingResend.emails.send({
