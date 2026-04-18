@@ -415,7 +415,7 @@ export default function RepairCommandCenter({
       </div>
 
       {/* Status Strip */}
-      <StatusStrip repair={repair} customer={customer} invoice={invoice} currency={currency} readOnly={readOnly} />
+      <StatusStrip repair={repair} customer={customer} invoice={invoice} currency={currency} readOnly={readOnly} tenantId={tenantId} />
 
       {/* Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-5 items-start mt-4">
