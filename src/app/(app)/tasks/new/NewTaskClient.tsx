@@ -41,8 +41,8 @@ export default function NewTaskClient({ teamMembers }: Props) {
     description: "",
     assigned_to: "",
     due_date: "",
-    priority: "medium",
-    status: "pending",
+    priority: "normal",
+    status: "todo",
     linked_type: linkedType,
     linked_id: linkedId,
     notes: "",
@@ -58,11 +58,16 @@ export default function NewTaskClient({ teamMembers }: Props) {
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     startTransition(async () => {
-      const result = await createTask(fd);
-      if (result.error) {
-        setError(result.error);
-      } else {
-        router.push("/tasks");
+      try {
+        const result = await createTask(fd);
+        if (result?.error) {
+          setError(result.error);
+        } else {
+          router.push("/tasks");
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) throw err;
+        setError(err instanceof Error ? err.message : "Save failed. Please try again.");
       }
     });
   }
@@ -146,7 +151,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
                 className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 bg-white"
               >
                 <option value="low">Low</option>
-                <option value="medium">Medium</option>
+                <option value="normal">Normal</option>
                 <option value="high">High</option>
                 <option value="urgent">Urgent</option>
               </select>

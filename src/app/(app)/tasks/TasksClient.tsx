@@ -101,8 +101,8 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
     description: "",
     assigned_to: "",
     due_date: "",
-    priority: "medium",
-    status: "pending",
+    priority: "normal",
+    status: "todo",
     linked_type: "",
     linked_id: "",
     notes: "",
@@ -135,7 +135,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
       else {
         showMsg("Task created!");
         setShowNewTask(false);
-        setForm({ title: "", description: "", assigned_to: "", due_date: "", priority: "medium", status: "pending", linked_type: "", linked_id: "", notes: "" });
+        setForm({ title: "", description: "", assigned_to: "", due_date: "", priority: "normal", status: "todo", linked_type: "", linked_id: "", notes: "" });
         router.refresh();
       }
     });
@@ -206,8 +206,10 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   }}
                   className="text-xs border border-stone-200 rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                 >
-                  <option value="pending">Pending</option>
+                  <option value="todo">To Do</option>
                   <option value="in_progress">In Progress</option>
+                  <option value="blocked">Blocked</option>
+                  <option value="done">Done</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
@@ -451,7 +453,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                   >
                     <option value="low">Low</option>
-                    <option value="medium">Medium</option>
+                    <option value="normal">Normal</option>
                     <option value="high">High</option>
                     <option value="urgent">Urgent</option>
                   </select>
@@ -463,8 +465,10 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
                     className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
                   >
-                    <option value="pending">Pending</option>
+                    <option value="todo">To Do</option>
                     <option value="in_progress">In Progress</option>
+                    <option value="blocked">Blocked</option>
+                    <option value="done">Done</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
@@ -562,8 +566,10 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
             className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs text-stone-600 focus:outline-none"
           >
             <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
+            <option value="todo">To Do</option>
             <option value="in_progress">In Progress</option>
+            <option value="blocked">Blocked</option>
+            <option value="done">Done</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
@@ -574,7 +580,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
           >
             <option value="">All Priorities</option>
             <option value="low">Low</option>
-            <option value="medium">Medium</option>
+            <option value="normal">Normal</option>
             <option value="high">High</option>
             <option value="urgent">Urgent</option>
           </select>
@@ -679,7 +685,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     </div>
                   </div>
                   <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {task.status === "pending" && (
+                    {(task.status === "todo" || task.status === "pending") && (
                       <button
                         onClick={() => handleStatusChange(task.id, "in_progress")}
                         disabled={isPending}

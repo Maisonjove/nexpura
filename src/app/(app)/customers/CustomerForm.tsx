@@ -79,27 +79,38 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
     formData.set("custom_tags", customTags);
 
     startTransition(async () => {
-      if (mode === "create") {
-        const result = await createCustomer(formData);
-        if (result.error) {
-          setError(result.error);
-          if (result.duplicateId) setDuplicateId(result.duplicateId);
-        } else if (result.id) {
-          // If there's a returnTo URL (e.g. coming from bespoke/repair new form),
-          // redirect back there with the new customer pre-selected
-          if (returnTo) {
-            router.push(`${returnTo}?customer_id=${result.id}`);
+      try {
+        if (mode === "create") {
+          const result = await createCustomer(formData);
+          if (result.error) {
+            setError(result.error);
+            if (result.duplicateId) setDuplicateId(result.duplicateId);
+          } else if (result.id) {
+            // If there's a returnTo URL (e.g. coming from bespoke/repair new form),
+            // redirect back there with the new customer pre-selected
+            if (returnTo) {
+              router.push(`${returnTo}?customer_id=${result.id}`);
+            } else {
+              router.push(`/customers/${result.id}`);
+            }
           } else {
-            router.push(`/customers/${result.id}`);
+            // Action returned neither error nor id - don't leave the user staring
+            // at a silent form. This shouldn't happen under normal flow.
+            setError("Save did not complete. Please try again.");
+          }
+        } else if (mode === "edit" && customer?.id) {
+          const result = await updateCustomer(customer.id, formData);
+          if (result.error) {
+            setError(result.error);
+          } else {
+            router.push(`/customers/${customer.id}`);
           }
         }
-      } else if (mode === "edit" && customer?.id) {
-        const result = await updateCustomer(customer.id, formData);
-        if (result.error) {
-          setError(result.error);
-        } else {
-          router.push(`/customers/${customer.id}`);
-        }
+      } catch (err) {
+        // Preserve Next's redirect sentinel; surface everything else to the user
+        // so saves never look silently successful when they weren't.
+        if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) throw err;
+        setError(err instanceof Error ? err.message : "Save failed. Please try again.");
       }
     });
   }
