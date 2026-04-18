@@ -145,9 +145,13 @@ export default function BespokeForm({ data, onChange }: BespokeFormProps) {
         </h2>
 
         <div>
-          <label className={labelCls}>Title *</label>
+          <label htmlFor="bespoke-title" className={labelCls}>Title *</label>
           <input
+            id="bespoke-title"
+            name="title"
             type="text"
+            required
+            aria-required="true"
             value={data.title}
             onChange={(e) => update("title", e.target.value)}
             placeholder="e.g. Custom Engagement Ring"
