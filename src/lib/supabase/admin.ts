@@ -1,12 +1,15 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Admin Supabase client using service role key.
  * NEVER import this in client components — server-only.
  * Bypasses RLS to see all tenant data.
  */
+let cachedClient: SupabaseClient | null = null;
+
 export function createAdminClient() {
-  return createClient(
+  if (cachedClient) return cachedClient;
+  cachedClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
@@ -16,4 +19,5 @@ export function createAdminClient() {
       },
     }
   );
+  return cachedClient;
 }

@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import Link from "next/link";
 import CustomerForm from "../../CustomerForm";
 
@@ -8,21 +10,19 @@ export default async function EditCustomerPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user?.id ?? "")
-    .single();
+  const [{ id }, headersList, supabase] = await Promise.all([
+    params,
+    headers(),
+    createClient(),
+  ]);
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) redirect("/login");
 
   const { data: customer } = await supabase
     .from("customers")
     .select("*")
     .eq("id", id)
-    .eq("tenant_id", userData?.tenant_id ?? "")
+    .eq("tenant_id", tenantId)
     .is("deleted_at", null)
     .single();
 

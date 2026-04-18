@@ -1,8 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies, headers } from "next/headers";
+import { cache } from "react";
 import { getCookieDomain, getIsSecure } from "./cookie-config";
 
-export async function createClient() {
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
   const headerStore = await headers();
   const host = headerStore.get("host") || undefined;
@@ -34,4 +35,4 @@ export async function createClient() {
       },
     }
   );
-}
+});
