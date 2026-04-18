@@ -304,13 +304,33 @@ export async function updateInventoryItem(id: string, formData: FormData) {
     .eq("tenant_id", tenantId)
     .single();
 
-  const { error } = await supabase
-    .from("inventory")
-    .update(updates)
-    .eq("id", id)
-    .eq("tenant_id", tenantId);
+  // Retry-on-PGRST204: the `inventory` schema may be missing optional columns
+  // (certificate, consignment, stock_location, metal_form, supplier_invoice_ref,
+  // secondary_stones, etc.) depending on migration state. Drop the offending
+  // column from the payload and retry, same pattern createInventoryItem uses.
+  // Caps at 20 attempts so a genuinely broken payload still surfaces.
+  const payload: Record<string, unknown> = { ...updates };
+  let updateError: { message: string; code?: string } | null = null;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const result = await supabase
+      .from("inventory")
+      .update(payload)
+      .eq("id", id)
+      .eq("tenant_id", tenantId);
+    if (!result.error) { updateError = null; break; }
+    const err = result.error as { message: string; code?: string };
+    updateError = err;
+    if (err.code === "PGRST204") {
+      const match = err.message.match(/Could not find the '(\w+)' column/);
+      if (match && match[1] in payload) {
+        delete payload[match[1]];
+        continue;
+      }
+    }
+    break;
+  }
 
-  if (error) throw new Error(error.message);
+  if (updateError) throw new Error(updateError.message);
 
   // Log audit event
   await logAuditEvent({
