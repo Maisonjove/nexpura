@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
@@ -103,6 +104,7 @@ export async function createSupplier(
     newData: { name, email: str("email"), phone: str("phone") },
   });
 
+  revalidatePath("/suppliers");
   redirect(`/suppliers/${data.id}`);
 }
 
@@ -158,6 +160,8 @@ export async function updateSupplier(
     newData: { name, email: str("email"), phone: str("phone") },
   });
 
+  revalidatePath("/suppliers");
+  revalidatePath(`/suppliers/${id}`);
   redirect(`/suppliers/${id}`);
 }
 
@@ -199,5 +203,6 @@ export async function deleteSupplier(
     oldData: oldData || undefined,
   });
 
+  revalidatePath("/suppliers");
   redirect("/suppliers");
 }

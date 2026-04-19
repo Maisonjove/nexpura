@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
@@ -179,6 +180,7 @@ export async function createCustomer(formData: FormData): Promise<{ id?: string;
       })
     );
 
+    revalidatePath("/customers");
     return { id: data.id };
   } catch (error) {
     logger.error("createCustomer failed", { error });
@@ -232,6 +234,8 @@ export async function updateCustomer(
       })
     );
 
+    revalidatePath("/customers");
+    revalidatePath(`/customers/${id}`);
     return { success: true };
   } catch (error) {
     logger.error("updateCustomer failed", { error });
@@ -274,6 +278,7 @@ export async function archiveCustomer(id: string): Promise<{ success?: boolean; 
       })
     );
 
+    revalidatePath("/customers");
     redirect("/customers");
   } catch (error) {
     logger.error("archiveCustomer failed", { error });
@@ -312,6 +317,7 @@ export async function addCustomerNote(
       .eq("tenant_id", tenantId);
 
     if (error) return { error: error.message };
+    revalidatePath(`/customers/${customerId}`);
     return { success: true };
   } catch (error) {
     logger.error("addCustomerNote failed", { error });

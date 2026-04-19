@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
@@ -107,6 +108,7 @@ export async function createVoucher(formData: FormData): Promise<{ id?: string; 
     newData: { code, amount, issued_to_name: (formData.get("issued_to_name") as string) || null },
   });
 
+  revalidatePath("/vouchers");
   redirect(`/vouchers/${voucher.id}`);
 }
 
@@ -161,5 +163,6 @@ export async function voidVoucher(id: string): Promise<{ success?: boolean; erro
     newData: { status: "voided" },
   });
 
+  revalidatePath("/vouchers");
   redirect("/vouchers");
 }

@@ -10,7 +10,7 @@ import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { logStatusChange, sendTrackingEmail } from "@/lib/tracking";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -164,6 +164,7 @@ export async function createBespokeJob(
     revalidateTag("dashboard", "default");
   });
 
+  revalidatePath("/bespoke");
   redirect(`/bespoke/${data.id}`);
 }
 
@@ -203,6 +204,8 @@ export async function updateBespokeJob(
     revalidateTag("dashboard", "default");
   });
 
+  revalidatePath("/bespoke");
+  revalidatePath(`/bespoke/${id}`);
   redirect(`/bespoke/${id}`);
 }
 
@@ -338,6 +341,7 @@ export async function archiveBespokeJob(
   
   // Invalidate dashboard cache
   revalidateTag("dashboard", "default");
+  revalidatePath("/bespoke");
   redirect("/bespoke");
 }
 

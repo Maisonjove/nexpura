@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { withIdempotency } from "@/lib/idempotency";
 import { logAuditEvent } from "@/lib/audit";
 
@@ -265,6 +266,7 @@ export async function processRefund(params: {
     return { error: refundResult.error };
   }
 
+  revalidatePath("/refunds");
   redirect(`/refunds/${refundResult.id}`);
 }
 

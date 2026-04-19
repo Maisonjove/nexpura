@@ -10,7 +10,7 @@ import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { logAuditEvent } from "@/lib/audit";
 import { logStatusChange, sendTrackingEmail } from "@/lib/tracking";
 import logger from "@/lib/logger";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -152,6 +152,7 @@ export async function createRepair(
     revalidateTag("dashboard", "default");
   });
 
+  revalidatePath("/repairs");
   redirect(`/repairs/${data.id}`);
 }
 
@@ -192,6 +193,8 @@ export async function updateRepair(
     revalidateTag("dashboard", "default");
   });
 
+  revalidatePath("/repairs");
+  revalidatePath(`/repairs/${id}`);
   redirect(`/repairs/${id}`);
 }
 
@@ -363,6 +366,7 @@ export async function archiveRepair(
   
   // Invalidate dashboard cache
   revalidateTag("dashboard", "default");
+  revalidatePath("/repairs");
   redirect("/repairs");
 }
 

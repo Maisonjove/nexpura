@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/lib/notifications";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -187,6 +187,7 @@ export async function createSale(
 
   // Invalidate dashboard cache
   revalidateTag("dashboard", "default");
+  revalidatePath("/sales");
 
   redirect(`/sales/${sale.id}`);
 }
@@ -378,5 +379,6 @@ export async function deleteSale(
   
   // Invalidate dashboard cache
   revalidateTag("dashboard", "default");
+  revalidatePath("/sales");
   redirect("/sales");
 }

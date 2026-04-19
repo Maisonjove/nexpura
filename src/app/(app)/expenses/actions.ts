@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 
 async function getAuthContext() {
@@ -109,6 +110,7 @@ export async function createExpense(
     newData: { description, amount, category: str("category") || "other" },
   });
 
+  revalidatePath("/expenses");
   redirect(`/expenses/${data.id}`);
 }
 
@@ -165,6 +167,8 @@ export async function updateExpense(
     newData: { description, amount, category: str("category") || "other" },
   });
 
+  revalidatePath("/expenses");
+  revalidatePath(`/expenses/${id}`);
   redirect(`/expenses/${id}`);
 }
 
@@ -205,5 +209,6 @@ export async function deleteExpense(
     oldData: oldData || undefined,
   });
 
+  revalidatePath("/expenses");
   redirect("/expenses");
 }
