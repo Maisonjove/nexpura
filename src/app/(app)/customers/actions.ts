@@ -1,10 +1,55 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+
+export type CustomerListRow = {
+  id: string;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  mobile: string | null;
+  tags: string[] | null;
+  is_vip: boolean | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+/**
+ * Fetch the next batch of customers for the "Load older" client flow on
+ * /customers. Returns a single page of 200 customers, ordered by created_at
+ * desc. Tenant-scoped via the caller's session — same auth contract as every
+ * other server action on this route.
+ */
+export async function loadMoreCustomers(
+  offset: number
+): Promise<{ customers: CustomerListRow[]; error?: string }> {
+  try {
+    const tenantId = await getTenantId();
+    const admin = createAdminClient();
+    const pageSize = 200;
+    const { data, error } = await admin
+      .from("customers")
+      .select(
+        "id, full_name, first_name, last_name, email, phone, mobile, tags, is_vip, created_at, updated_at"
+      )
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) return { customers: [], error: error.message };
+    return { customers: (data ?? []) as CustomerListRow[] };
+  } catch (err) {
+    logger.error("loadMoreCustomers failed", { err });
+    return { customers: [], error: "Failed to load more customers" };
+  }
+}
 
 async function getTenantId(): Promise<string> {
   const supabase = await createClient();

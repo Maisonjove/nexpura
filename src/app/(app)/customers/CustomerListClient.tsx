@@ -2,19 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, ArrowRight } from "lucide-react";
+import { Search, Plus, ArrowRight, Loader2 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { formatDateForExport } from "@/lib/export";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { loadMoreCustomers } from "./actions";
 
 type Customer = {
   id: string;
@@ -31,54 +29,143 @@ type Customer = {
 };
 
 interface Props {
-  customers: Customer[];
+  initialCustomers: Customer[];
   totalCount: number;
-  page: number;
-  totalPages: number;
+  initialPage: number;
+  pageSize: number;
+  /**
+   * If present, initialCustomers is a *server-side search result* (ILIKE
+   * across the full tenant history, not the recent-200). Local search is
+   * then redundant — input still does a client-side filter over whatever
+   * the server returned.
+   */
   q: string;
-  tagFilter: string;
-  sort: string;
 }
-
-
 
 function getInitials(name: string | null) {
   if (!name) return "?";
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+function displayName(c: Customer) {
+  return c.full_name || `${c.first_name || ""} ${c.last_name || ""}`.trim() || "Unknown";
+}
 
 export default function CustomerListClient({
-  customers,
+  initialCustomers,
   totalCount,
-  page,
-  totalPages,
-  q,
-  tagFilter,
-  sort,
+  initialPage,
+  pageSize,
+  q: initialQ,
 }: Props) {
   const router = useRouter();
-  const [search, setSearch] = useState(q);
-  const activeTab = tagFilter || "all";
+  const [isPending, startTransition] = useTransition();
 
-  function buildUrl(params: Record<string, string | number>) {
-    const url = new URLSearchParams();
-    if (params.q) url.set("q", params.q as string);
-    if (params.tag && params.tag !== "all") url.set("tag", params.tag as string);
-    if (params.sort && params.sort !== "created_at_desc") url.set("sort", params.sort as string);
-    if (params.page && params.page !== 1) url.set("page", String(params.page));
-    const qs = url.toString();
-    return qs ? `/customers?${qs}` : "/customers";
-  }
+  // Loaded rows grow as the user clicks "Load older". Starts with whatever
+  // the server handed us on first paint (200 most-recent, or a server-side
+  // search result if ?q= was used).
+  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [loadedPage, setLoadedPage] = useState(initialPage);
 
-  function handleSearch(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    router.push(buildUrl({ q: search, tag: activeTab, sort, page: 1 }));
-  }
+  // Local search runs instantly against `customers` (whatever is loaded).
+  // Separate from the server-side `q` so the UI can let the user refine
+  // instantly without any round-trip.
+  const [localSearch, setLocalSearch] = useState("");
 
-  function handleTabChange(tab: string) {
-    router.push(buildUrl({ q: search, tag: tab === "all" ? "" : tab, sort, page: 1 }));
+  // Tag + sort are local; no server round-trip per interaction.
+  const [activeTag, setActiveTag] = useState<string>("all");
+  const [sort, setSort] = useState<string>("created_at_desc");
+
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Derive the tag chip options from the loaded set so we only show tags
+  // that are actually in use, plus the canonical set jewellers expect.
+  const availableTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of customers) {
+      if (c.is_vip) set.add("VIP");
+      for (const t of c.tags || []) if (t) set.add(t);
+    }
+    // Guarantee the common canonical tags are always selectable even if
+    // none of the loaded customers are tagged with them yet.
+    for (const canonical of ["VIP", "Bridal", "Retail", "Wholesale"]) set.add(canonical);
+    return Array.from(set).sort();
+  }, [customers]);
+
+  // Client-side filter + sort pipeline — instant over the loaded set.
+  const visibleCustomers = useMemo(() => {
+    const needle = localSearch.trim().toLowerCase();
+    let out = customers;
+    if (needle) {
+      out = out.filter((c) => {
+        const name = displayName(c).toLowerCase();
+        if (name.includes(needle)) return true;
+        if (c.email && c.email.toLowerCase().includes(needle)) return true;
+        if (c.phone && c.phone.toLowerCase().includes(needle)) return true;
+        if (c.mobile && c.mobile.toLowerCase().includes(needle)) return true;
+        return false;
+      });
+    }
+    if (activeTag && activeTag !== "all") {
+      out = out.filter((c) => {
+        if (activeTag === "VIP" && c.is_vip) return true;
+        return (c.tags || []).includes(activeTag);
+      });
+    }
+    const sorted = [...out];
+    switch (sort) {
+      case "name_asc":
+        sorted.sort((a, b) => displayName(a).localeCompare(displayName(b)));
+        break;
+      case "name_desc":
+        sorted.sort((a, b) => displayName(b).localeCompare(displayName(a)));
+        break;
+      case "updated_desc":
+        sorted.sort((a, b) => (b.updated_at ?? b.created_at).localeCompare(a.updated_at ?? a.created_at));
+        break;
+      case "updated_asc":
+        sorted.sort((a, b) => (a.updated_at ?? a.created_at).localeCompare(b.updated_at ?? b.created_at));
+        break;
+      case "created_at_asc":
+        sorted.sort((a, b) => a.created_at.localeCompare(b.created_at));
+        break;
+      default:
+        sorted.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    }
+    return sorted;
+  }, [customers, localSearch, activeTag, sort]);
+
+  // The "Search all customers" escape hatch: delegate to the server so the
+  // ILIKE match runs over the full tenant history, not just the loaded set.
+  // Used when the user has typed a query and can't find what they're looking
+  // for in the loaded batch.
+  const searchAllServer = useCallback(() => {
+    const term = localSearch.trim();
+    if (!term) return;
+    startTransition(() => router.push(`/customers?q=${encodeURIComponent(term)}`));
+  }, [localSearch, router]);
+
+  const loadedLocalCount = customers.length;
+  const canLoadMore = !initialQ && loadedLocalCount < totalCount;
+  const hasLocalMatches = visibleCustomers.length > 0;
+
+  async function handleLoadMore() {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await loadMoreCustomers(loadedPage * pageSize);
+      if (res.customers.length > 0) {
+        setCustomers((prev) => {
+          const seen = new Set(prev.map((p) => p.id));
+          const merged = [...prev];
+          for (const c of res.customers) if (!seen.has(c.id)) merged.push(c);
+          return merged;
+        });
+        setLoadedPage((p) => p + 1);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
   const getTagBadge = (tag: string) => {
@@ -99,25 +186,25 @@ export default function CustomerListClient({
         </div>
         <div className="flex items-center gap-3">
           <ExportButtons
-            data={customers.map(c => ({
-              full_name: c.full_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unknown',
-              email: c.email || '',
-              phone: c.mobile || c.phone || '',
-              tags: (c.tags || []).join(', '),
-              is_vip: c.is_vip ? 'Yes' : 'No',
+            data={visibleCustomers.map((c) => ({
+              full_name: displayName(c),
+              email: c.email || "",
+              phone: c.mobile || c.phone || "",
+              tags: (c.tags || []).join(", "),
+              is_vip: c.is_vip ? "Yes" : "No",
               created_at: formatDateForExport(c.created_at),
               updated_at: formatDateForExport(c.updated_at),
             }))}
             columns={[
-              { key: 'full_name', label: 'Name' },
-              { key: 'email', label: 'Email' },
-              { key: 'phone', label: 'Phone' },
-              { key: 'tags', label: 'Tags' },
-              { key: 'is_vip', label: 'VIP' },
-              { key: 'created_at', label: 'Created' },
-              { key: 'updated_at', label: 'Updated' },
+              { key: "full_name", label: "Name" },
+              { key: "email", label: "Email" },
+              { key: "phone", label: "Phone" },
+              { key: "tags", label: "Tags" },
+              { key: "is_vip", label: "VIP" },
+              { key: "created_at", label: "Created" },
+              { key: "updated_at", label: "Updated" },
             ]}
-            filename={`customers-export-${new Date().toISOString().split('T')[0]}`}
+            filename={`customers-export-${new Date().toISOString().split("T")[0]}`}
             sheetName="Customers"
             size="sm"
           />
@@ -128,38 +215,82 @@ export default function CustomerListClient({
       </div>
 
       {/* FILTER BAR */}
-      <div className="flex items-center gap-3">
-        <form onSubmit={handleSearch} className="relative max-w-sm flex-1 flex gap-2">
-          <div className="relative flex-1">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <div className="relative max-w-sm flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
-            <Input 
-              placeholder="Search customers..." 
+            <Input
+              placeholder="Search loaded customers…"
               className="pl-9 h-10 border-stone-200 focus-visible:ring-[amber-700] text-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
             />
           </div>
-          <Button type="submit" variant="outline" size="icon" className="h-10 w-10 shrink-0">
-            <Search className="h-4 w-4" />
-          </Button>
-        </form>
-        <Select value={activeTab} onValueChange={(val) => handleTabChange(val || "all")}>
-          <SelectTrigger className="w-[180px] h-10 text-sm border-stone-200 focus:ring-amber-600">
-            <SelectValue placeholder="All Tags" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Tags</SelectItem>
-            <SelectItem value="VIP">VIP</SelectItem>
-            <SelectItem value="Bridal">Bridal</SelectItem>
-            <SelectItem value="Retail">Retail</SelectItem>
-            <SelectItem value="Wholesale">Wholesale</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select value={activeTag} onValueChange={(val) => setActiveTag(val || "all")}>
+            <SelectTrigger className="w-[180px] h-10 text-sm border-stone-200 focus:ring-amber-600">
+              <SelectValue placeholder="All Tags" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tags</SelectItem>
+              {availableTags.map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={(val) => setSort(val || "created_at_desc")}>
+            <SelectTrigger className="w-[170px] h-10 text-sm border-stone-200 focus:ring-amber-600">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="created_at_desc">Newest first</SelectItem>
+              <SelectItem value="created_at_asc">Oldest first</SelectItem>
+              <SelectItem value="name_asc">Name A–Z</SelectItem>
+              <SelectItem value="name_desc">Name Z–A</SelectItem>
+              <SelectItem value="updated_desc">Recently updated</SelectItem>
+              <SelectItem value="updated_asc">Least recently updated</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* "Search all customers" escape hatch — only shown when the user has
+            typed something, has found either too few or no matches in the
+            loaded set, AND there is older data that's not loaded yet. */}
+        {localSearch.trim().length >= 2 && !initialQ && (visibleCustomers.length < 5 || !hasLocalMatches) && customers.length < totalCount && (
+          <button
+            type="button"
+            onClick={searchAllServer}
+            disabled={isPending}
+            className="self-start inline-flex items-center gap-2 text-xs text-amber-700 hover:text-amber-800 disabled:opacity-60"
+          >
+            {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+            Search all {totalCount.toLocaleString()} customers for &ldquo;{localSearch.trim()}&rdquo;
+          </button>
+        )}
+
+        {/* Server-side search banner — when we arrived here via ?q= (full-
+            tenant ILIKE), make that context explicit and give a way back. */}
+        {initialQ && (
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+            <span>
+              Showing server-side search results for <strong>&ldquo;{initialQ}&rdquo;</strong>
+              {" "}({initialCustomers.length} match{initialCustomers.length === 1 ? "" : "es"})
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined") window.history.replaceState(null, "", "/customers");
+                router.push("/customers");
+              }}
+              className="text-amber-800 hover:text-amber-900 underline"
+            >
+              Back to all customers
+            </button>
+          </div>
+        )}
       </div>
 
       {/* TABLE */}
-      {customers.length === 0 ? (
+      {visibleCustomers.length === 0 ? (
         <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
           <div className="p-16 text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
@@ -167,15 +298,23 @@ export default function CustomerListClient({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <h3 className="font-semibold text-lg text-stone-900">No customers yet</h3>
-            <p className="text-stone-500 mt-1 text-sm">Add your first customer to get started.</p>
-            <Link
-              href="/customers/new"
-              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add your first customer →
-            </Link>
+            <h3 className="font-semibold text-lg text-stone-900">
+              {customers.length === 0 ? "No customers yet" : "No matches in loaded customers"}
+            </h3>
+            <p className="text-stone-500 mt-1 text-sm">
+              {customers.length === 0
+                ? "Add your first customer to get started."
+                : "Try a different search or clear filters."}
+            </p>
+            {customers.length === 0 && (
+              <Link
+                href="/customers/new"
+                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add your first customer →
+              </Link>
+            )}
           </div>
         </Card>
       ) : (
@@ -192,15 +331,19 @@ export default function CustomerListClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {customers.map((customer) => {
-                const name = customer.full_name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || "Unknown";
+              {visibleCustomers.map((customer) => {
+                const name = displayName(customer);
                 const initials = getInitials(name);
                 const tags: string[] = [
                   ...(customer.is_vip ? ["VIP"] : []),
                   ...(customer.tags || []),
                 ];
                 return (
-                  <TableRow key={customer.id} className="hover:bg-stone-50/60 border-stone-100 cursor-pointer transition-colors" onClick={() => router.push(`/customers/${customer.id}`)}>
+                  <TableRow
+                    key={customer.id}
+                    className="hover:bg-stone-50/60 border-stone-100 cursor-pointer transition-colors"
+                    onClick={() => router.push(`/customers/${customer.id}`)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
@@ -235,22 +378,31 @@ export default function CustomerListClient({
         </Card>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2">
-          <p className="text-xs text-stone-500">
-            Page {page} of {totalPages}
-          </p>
-          <div className="flex gap-2">
-            {page > 1 && (
-              <Link href={buildUrl({ q, tag: tagFilter, sort, page: page - 1 })} className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors border border-stone-200 bg-transparent hover:bg-stone-100 hover:text-stone-900 text-stone-600 h-8 px-3 text-xs">Previous</Link>
+      {/* Footer: visible count + Load older */}
+      <div className="flex items-center justify-between pt-2 text-xs text-stone-500">
+        <span>
+          {visibleCustomers.length === customers.length
+            ? `Showing ${customers.length.toLocaleString()} of ${totalCount.toLocaleString()} customers`
+            : `Showing ${visibleCustomers.length.toLocaleString()} of ${customers.length.toLocaleString()} loaded (${totalCount.toLocaleString()} total)`}
+        </span>
+        {canLoadMore && (
+          <button
+            type="button"
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            className="inline-flex items-center gap-2 px-3 h-8 text-xs font-medium text-stone-600 border border-stone-200 rounded-md hover:bg-stone-50 transition-colors disabled:opacity-60"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…
+              </>
+            ) : (
+              <>Load older {Math.min(pageSize, totalCount - customers.length).toLocaleString()}</>
             )}
-            {page < totalPages && (
-              <Link href={buildUrl({ q, tag: tagFilter, sort, page: page + 1 })} className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors border border-stone-200 bg-transparent hover:bg-stone-100 hover:text-stone-900 text-stone-600 h-8 px-3 text-xs">Next</Link>
-            )}
-          </div>
-        </div>
-      )}
+          </button>
+        )}
+      </div>
+
     </div>
   );
 }
