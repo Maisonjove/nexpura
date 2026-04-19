@@ -94,7 +94,23 @@ export function RoutePrefetcher({ tenantSlug }: Props) {
     // it provided no measurable advantage over 50 ms while creating
     // confusing interaction with the browser's request coalescing on
     // some paths.)
+    //
+    // NOTE: on a complex dashboard the wrapping useEffect itself fires
+    // only after the whole subtree commits — measured at ~5-6 s on
+    // prod. The pre-hydration inline script in PrehydrationPrefetch.tsx
+    // fires the same requests at HTML parse time (~300 ms), so by the
+    // time THIS callback runs, the server-side caches are already warm
+    // and the router.prefetch round-trip is much cheaper. Keep firing
+    // here anyway because router.prefetch is what populates Next's
+    // internal segment-cache Map — the inline warmup only warms the
+    // server, not the router Map.
+    if (typeof performance !== "undefined" && performance.mark) {
+      try { performance.mark("nx_routeprefetcher_mount"); } catch {}
+    }
     const t1 = setTimeout(() => {
+      if (typeof performance !== "undefined" && performance.mark) {
+        try { performance.mark("nx_routeprefetcher_fire_hot"); } catch {}
+      }
       for (const r of hot) router.prefetch(r, { kind: FULL });
     }, 50);
 

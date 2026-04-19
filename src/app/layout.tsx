@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { PWAProvider } from "@/components/PWAProvider";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { LiveRegionProvider } from "@/components/LiveRegion";
+import { PrehydrationPrefetch } from "@/components/PrehydrationPrefetch";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -102,6 +103,24 @@ export default function RootLayout({
           name="apple-mobile-web-app-status-bar-style"
           content="default"
         />
+        {/*
+          Pre-hydration RSC warmup for the hot tenant-prefixed routes.
+          See src/components/PrehydrationPrefetch.tsx for the full rationale.
+
+          Emitted inside <head> so the browser executes it the moment the
+          <head> parse reaches this node — before the body paints, before
+          any JS module loads, certainly before React hydrates. The user's
+          first click in the hot path therefore sees a Lambda + DB that's
+          already warm, cutting ~500-1500ms off the first-click cold RSC
+          fetch even though RSC responses themselves are `no-store`.
+
+          URL + header shape is byte-identical to what Next's
+          `router.prefetch` fires for a route-level cache miss (audited
+          live on prod via e2e/prefetch-audit.spec.ts). A previous attempt
+          that used a different request shape caused duplicate traffic and
+          was reverted; this version does not.
+        */}
+        <PrehydrationPrefetch />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
         <LiveRegionProvider>
