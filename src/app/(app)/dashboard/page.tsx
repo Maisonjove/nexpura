@@ -4,6 +4,17 @@ import { getDashboardCriticalData, getDashboardStats } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
 import logger from "@/lib/logger";
 
+// Trial: run the dashboard on the Edge runtime. Rationale for trying:
+// cold-start on Edge is ~10-30ms vs Fluid Node's ~100-200ms. For Australian
+// users (same region as Supabase Sydney), edge is co-located so data-read
+// latency is identical. Hot-path savings are minor, but first-cold-visit
+// after a long gap ("reopen the app after lunch") benefits.
+//
+// If this change reveals package-compat issues OR measures worse for any
+// reason, revert cleanly by removing this line. Layout (app)/layout.tsx
+// stays on Node — page-level runtime override is fine.
+export const runtime = "edge";
+
 export default async function DashboardPage() {
   // Critical data is cached 15 min — ~5-20 ms on warm cache, ~50-100 ms cold.
   // We await it on the outer path so the shell's server-rendered HTML can
