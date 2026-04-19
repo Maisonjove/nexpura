@@ -74,11 +74,15 @@ function LoginPageContent() {
         return;
       }
 
-      // 3. Check 2FA via existing server action
+      // 3. Check 2FA.
+      // Pass `userId` so the server can skip admin.auth.admin.listUsers()
+      // (previously used to resolve email→id) and go straight to a single-row
+      // `users.totp_enabled` lookup. Server verifies that userId matches the
+      // authenticated session before trusting it.
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, redirectTo: redirectUrl, checkOnly2FA: true }),
+        body: JSON.stringify({ email, password, redirectTo: redirectUrl, checkOnly2FA: true, userId: data.user.id }),
         credentials: "same-origin",
       });
 
