@@ -184,18 +184,27 @@ export default function Sidebar({
     '/settings': 'settings',
   };
 
-  // Critical routes that should be prefetched for faster navigation
-  const PREFETCH_ROUTES = ['/dashboard', '/pos', '/inventory', '/customers', '/invoices', '/repairs'];
+  // Hot routes get explicit full prefetch; everything else uses Next.js'
+  // default `prefetch="auto"` (viewport-based segment prefetch). Previously
+  // non-hot routes had `prefetch={false}` which DISABLED Next's default —
+  // clicks on /tasks/workshop/bespoke/etc had zero prior warming.
+  const PREFETCH_ROUTES = new Set([
+    '/dashboard', '/intake', '/pos', '/inventory', '/customers',
+    '/invoices', '/repairs', '/tasks', '/workshop', '/bespoke',
+  ]);
 
   function NavItem({ name, href, icon: Icon, badge, highlight }: { name: string; href: string; icon: React.ElementType; badge?: number; highlight?: boolean }) {
     const active = isActive(href);
     const tourAttr = TOUR_TARGETS[href];
-    const shouldPrefetch = PREFETCH_ROUTES.includes(href);
+    const isHot = PREFETCH_ROUTES.has(href);
     return (
       <li role="none">
         <Link
           href={href}
-          prefetch={shouldPrefetch}
+          // For hot routes: force full RSC-payload prefetch.
+          // For everything else: omit the prop so Next's default
+          // `prefetch="auto"` applies (viewport-based segment prefetch).
+          {...(isHot ? { prefetch: true } : {})}
           data-tour={tourAttr}
           role="menuitem"
           aria-current={active ? 'page' : undefined}

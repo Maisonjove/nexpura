@@ -124,7 +124,7 @@ export default async function AppLayout({
         </ErrorBoundary>
         <LazyOverlays />
         <SessionExpiryModal />
-        <RoutePrefetcher />
+        <RoutePrefetcher tenantSlug={tenant?.slug ?? null} />
       </div>
     </LocationProvider>
   );

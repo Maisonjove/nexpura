@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 // ─── Types (mirrors DashboardClient; kept local so this chunk is standalone) ──
@@ -36,10 +37,13 @@ const chevronRight = (
 
 function TableRow({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a href={href} className="flex items-center gap-3 px-5 py-3 hover:bg-white/80 transition-colors duration-150 group">
+    // next/link: SPA-style navigation + viewport-based prefetch. Plain
+    // <a href> was causing a full page reload on every dashboard row
+    // click, discarding the entire client state.
+    <Link href={href} className="flex items-center gap-3 px-5 py-3 hover:bg-white/80 transition-colors duration-150 group">
       {children}
       <span className="text-stone-300 group-hover:text-stone-500 transition-colors flex-shrink-0 ml-auto">{chevronRight}</span>
-    </a>
+    </Link>
   );
 }
 
@@ -56,7 +60,7 @@ function PanelHeader({ label, href, linkText = "View all →" }: { label: string
     <div className="px-5 pt-4 pb-3 border-b border-[#E8E4DF] flex items-center justify-between">
       <span className="text-[0.6875rem] font-semibold tracking-[0.1em] uppercase text-stone-400">{label}</span>
       {href && (
-        <a href={href} className="text-[0.75rem] text-stone-400 hover:text-stone-700 transition-colors">{linkText}</a>
+        <Link href={href} className="text-[0.75rem] text-stone-400 hover:text-stone-700 transition-colors">{linkText}</Link>
       )}
     </div>
   );
@@ -204,7 +208,7 @@ export default function ModuleDataPanel({
       ) : <EmptyState message="No recent sales" />}
       <div className="px-5 py-3 border-t border-[#E8E4DF] flex items-center justify-between">
         <span className="text-[0.75rem] text-stone-400">{salesThisMonthCount} sale{salesThisMonthCount !== 1 ? "s" : ""} this month</span>
-        <a href={`${bp}/invoices`} className="text-[0.75rem] text-stone-400 hover:text-stone-700 transition-colors">Invoices →</a>
+        <Link href={`${bp}/invoices`} className="text-[0.75rem] text-stone-400 hover:text-stone-700 transition-colors">Invoices →</Link>
       </div>
     </div>
   );

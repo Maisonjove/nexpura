@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -303,13 +304,15 @@ const icons = {
 
 function TableRow({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a
+    // next/link: SPA navigation + default viewport prefetch. Plain <a> was
+    // doing a full page reload on every dashboard row click.
+    <Link
       href={href}
       className="flex items-center gap-3 px-5 py-3 hover:bg-white/80 transition-colors duration-150 group"
     >
       {children}
       <span className="text-stone-300 group-hover:text-stone-500 transition-colors flex-shrink-0 ml-auto">{icons.chevronRight}</span>
-    </a>
+    </Link>
   );
 }
 
@@ -326,9 +329,9 @@ function PanelHeader({ label, href, linkText = "View all →" }: { label: string
     <div className="px-5 pt-4 pb-3 border-b border-[#E8E4DF] flex items-center justify-between">
       <span className="text-[0.6875rem] font-semibold tracking-[0.1em] uppercase text-stone-400">{label}</span>
       {href && (
-        <a href={href} className="text-[0.75rem] text-stone-400 hover:text-stone-700 transition-colors">
+        <Link href={href} className="text-[0.75rem] text-stone-400 hover:text-stone-700 transition-colors">
           {linkText}
-        </a>
+        </Link>
       )}
     </div>
   );
@@ -338,7 +341,11 @@ function PanelHeader({ label, href, linkText = "View all →" }: { label: string
 
 function ActionCard({ title, description, icon, href }: { title: string; description: string; icon: React.ReactNode; href: string }) {
   return (
-    <a
+    // next/link with default prefetch. The dashboard's action-card grid is
+    // the primary nav surface for jewellers — using <a> here forced a full
+    // page reload on every click, the single biggest felt-latency hit in
+    // the app. <Link> gives SPA transition + viewport-based prefetch.
+    <Link
       href={href}
       className="group flex items-center gap-3.5 bg-white border border-[#E8E4DF] rounded-xl px-4 py-3.5
         hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] hover:border-stone-300 hover:-translate-y-px
@@ -352,7 +359,7 @@ function ActionCard({ title, description, icon, href }: { title: string; descrip
         <p className="text-[0.875rem] font-medium text-stone-900 leading-snug">{title}</p>
         <p className="text-[0.75rem] text-stone-400 mt-0.5 leading-relaxed">{description}</p>
       </div>
-    </a>
+    </Link>
   );
 }
 
@@ -644,7 +651,7 @@ export default function DashboardClient({
             { label: "Overdue invoices", count: overdueInvoiceCount, href: `${bp}/invoices?filter=overdue`, style: overdueInvoiceCount > 0 ? "danger" : "neutral" },
             { label: "Low stock", count: lowStockItems.length, href: `${bp}/inventory`, style: lowStockItems.length > 0 ? "warn" : "neutral" },
           ].map((item) => (
-            <a
+            <Link
               key={item.label}
               href={item.href}
               className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[0.75rem] border font-medium transition-all duration-200
@@ -661,7 +668,7 @@ export default function DashboardClient({
                 {item.count}
               </span>
               {item.label}
-            </a>
+            </Link>
           ))}
         </div>
 

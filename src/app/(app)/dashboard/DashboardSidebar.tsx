@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // ─── Types (mirrors DashboardClient's) ───────────────────────────────────────
@@ -90,11 +91,11 @@ export default function DashboardSidebar({
             ) : myTasks.length > 0 ? (
               <div className="space-y-0.5">
                 {myTasks.slice(0, 3).map((task) => (
-                  <a key={task.id} href={`${bp}/tasks`}
+                  <Link key={task.id} href={`${bp}/tasks`}
                     className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-150">
                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${task.priority === "urgent" ? "bg-red-400" : task.priority === "high" ? "bg-amber-400" : "bg-stone-300"}`} />
                     <span className="text-[0.8rem] text-stone-700 truncate">{task.title}</span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             ) : <p className="text-[0.8rem] text-stone-400">No tasks due today</p>}
@@ -108,12 +109,12 @@ export default function DashboardSidebar({
             ) : readyForPickup.length > 0 ? (
               <div className="space-y-0.5">
                 {readyForPickup.slice(0, 4).map((item) => (
-                  <a key={`${item.type}-${item.id}`}
+                  <Link key={`${item.type}-${item.id}`}
                     href={`${bp}/${item.type === "repair" ? "repairs" : "bespoke"}/${item.id}`}
                     className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-150">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
                     <span className="text-[0.8rem] text-stone-700 truncate">{item.label}</span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             ) : <p className="text-[0.8rem] text-stone-400">Nothing ready yet</p>}
@@ -125,11 +126,11 @@ export default function DashboardSidebar({
               <p className="text-[0.75rem] font-semibold text-stone-500 mb-2">Overdue jobs</p>
               <div className="space-y-0.5">
                 {overdueRepairs.slice(0, 3).map((r) => (
-                  <a key={r.id} href={`${bp}/repairs/${r.id}`}
+                  <Link key={r.id} href={`${bp}/repairs/${r.id}`}
                     className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-150">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
                     <span className="text-[0.8rem] text-stone-700 truncate">{r.item}</span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -151,11 +152,11 @@ export default function DashboardSidebar({
             ) : recentSales.length > 0 ? (
               <div className="space-y-0.5">
                 {recentSales.slice(0, 4).map((sale) => (
-                  <a key={sale.id} href={`${bp}/sales/${sale.id}`}
+                  <Link key={sale.id} href={`${bp}/sales/${sale.id}`}
                     className="flex items-center gap-2.5 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-150">
                     <span className="text-[0.7rem] font-mono text-stone-300 tabular-nums w-6 flex-shrink-0">{sale.saleNumber}</span>
                     <span className="text-[0.8rem] text-stone-700 truncate">{sale.customer || "Walk-in"}</span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             ) : <p className="text-[0.8rem] text-stone-400">No recent sales</p>}
@@ -169,11 +170,11 @@ export default function DashboardSidebar({
             ) : recentRepairsList.length > 0 ? (
               <div className="space-y-0.5">
                 {recentRepairsList.slice(0, 4).map((repair) => (
-                  <a key={repair.id} href={`${bp}/repairs/${repair.id}`}
+                  <Link key={repair.id} href={`${bp}/repairs/${repair.id}`}
                     className="flex items-center gap-2.5 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-150">
                     <span className="text-[0.7rem] font-mono text-stone-300 tabular-nums w-6 flex-shrink-0">{repair.repairNumber}</span>
                     <span className="text-[0.8rem] text-stone-700 truncate">{repair.customer || "No customer"}</span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             ) : <p className="text-[0.8rem] text-stone-400">No recent repairs</p>}
