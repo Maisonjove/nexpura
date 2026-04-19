@@ -3,6 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import logger from "@/lib/logger";
 import { AUTH_HEADERS, getCachedUserProfile } from "@/lib/cached-auth";
 import { getCookieDomain, getIsSecure } from "@/lib/supabase/cookie-config";
+import {
+  extractAccessToken,
+  isTokenFresh,
+  verifyAccessTokenLocal,
+  type LocalAuthUser,
+} from "@/lib/supabase/jwt-verify";
 
 // --- Subscription status cookie cache (5-min TTL) ---
 // Skips the subscriptions DB query on every page nav once status is confirmed OK.
@@ -202,9 +208,44 @@ async function _updateSessionInner(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // ── FAST PATH: local JWT verification ────────────────────────────────
+  // The slow path below (supabase.auth.getUser) round-trips to Supabase's
+  // auth server on every protected nav (~150-300ms from Sydney → Supabase
+  // Sydney DC). For any request with a fresh access token (> 5 min left of
+  // its default 1h TTL) we can verify the JWT locally against the project's
+  // JWKS (ES256, cached 1h in-process) in ~1-3ms. When the token is missing,
+  // near expiry, or fails verification, we fall through to the slow path
+  // which preserves Supabase's normal refresh-cookie flow.
+  //
+  // Trade-off: token-revocation lag for forced logout = remaining access-token
+  // TTL. Not acceptable for security-critical admin flows — those should call
+  // auth.getUser() explicitly. For normal page navigation this is safe.
+  const accessToken = extractAccessToken(request.cookies.getAll());
+  const localUser: LocalAuthUser | null = accessToken
+    ? await verifyAccessTokenLocal(accessToken)
+    : null;
+  const useFastPath = isTokenFresh(localUser);
+
+  let user: { id: string; email: string | null; email_confirmed_at: string | null } | null;
+  if (useFastPath && localUser) {
+    // Synthesize the minimal user shape middleware needs. email_confirmed_at
+    // is normally an ISO string on the Supabase User; middleware only checks
+    // truthy/falsy, so any non-empty string works.
+    user = {
+      id: localUser.id,
+      email: localUser.email,
+      email_confirmed_at: localUser.emailVerified ? "verified" : null,
+    };
+  } else {
+    const { data } = await supabase.auth.getUser();
+    user = data.user
+      ? {
+          id: data.user.id,
+          email: data.user.email ?? null,
+          email_confirmed_at: data.user.email_confirmed_at ?? null,
+        }
+      : null;
+  }
 
   if (pathname.startsWith("/verify-email")) {
     return supabaseResponse;
