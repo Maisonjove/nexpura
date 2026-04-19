@@ -128,7 +128,7 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
         tracking_id,
         stage,
         description,
-        item_type,
+        jewellery_type,
         estimated_completion_date,
         created_at,
         tenant_id,
@@ -168,7 +168,7 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
       order_type: "bespoke",
       status: bespoke.stage || "enquiry",
       item_description: bespoke.description,
-      item_type: bespoke.item_type,
+      item_type: bespoke.jewellery_type,
       estimated_completion_date: bespoke.estimated_completion_date,
       created_at: bespoke.created_at,
       tenant: {
