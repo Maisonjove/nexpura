@@ -33,10 +33,15 @@ export default async function RepairsPage({
     tenantId = headerTenantId;
   }
 
-  // Cap initial list at 200 repairs — the jeweller sees everything they need
-  // on the first screen; older repairs reached via filter or dedicated report.
-  // Previously the query returned every repair the tenant had ever created,
-  // which scaled the payload + HTML render cost linearly with repair count.
+  // Load the 200 most-recent repairs once. Stage filtering is now entirely
+  // client-side — previously each tab click triggered a full server round-trip
+  // (~3.5s observed) to re-query the same rows with a different `.eq("stage", …)`.
+  // With 200 rows already on the client, filtering them by stage via useMemo
+  // is ~1ms and feels instant.
+  //
+  // Server-side `q` (search) is preserved so deep-links like `?q=REP-047`
+  // and the camera-scanner fallback still work for repairs older than the
+  // recent 200.
   let query = admin
     .from("repairs")
     .select(
@@ -52,9 +57,6 @@ export default async function RepairsPage({
     query = query.or(
       `repair_number.ilike.%${q}%,item_description.ilike.%${q}%,repair_type.ilike.%${q}%`
     );
-  }
-  if (stageFilter) {
-    query = query.eq("stage", stageFilter);
   }
 
   // Run auth AND data query IN PARALLEL — no sequential waterfall.

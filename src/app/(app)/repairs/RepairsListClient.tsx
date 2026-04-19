@@ -76,11 +76,16 @@ function getInitials(name: string | null) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function RepairsListClient({ repairs, view, q, stageFilter }: Props) {
+export default function RepairsListClient({ repairs, view: _view, q, stageFilter }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [, startTransition] = useTransition();
-  const activeTab = stageFilter || "all";
+
+  // Stage filtering is entirely client-side now. URL stays the source of truth
+  // across refresh / share, but tab clicks update local state for instant
+  // re-render and sync the URL via history.replaceState (no server round-trip).
+  const [activeTab, setActiveTab] = useState<string>(stageFilter || "all");
+
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [notifying, setNotifying] = useState(false);
@@ -88,8 +93,16 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
 
   const readyRepairs = useMemo(() => repairs.filter(r => r.stage === "ready"), [repairs]);
   const inProgressCount = useMemo(() => repairs.filter(r => r.stage === "in_progress").length, [repairs]);
+
+  // Visible rows = apply current stage filter client-side. With the default
+  // 200-row server cap, filtering this locally is ~1ms and feels instant.
+  const visibleRepairs = useMemo(
+    () => (activeTab === "all" ? repairs : repairs.filter(r => r.stage === activeTab)),
+    [repairs, activeTab]
+  );
+
   const exportRows = useMemo(() =>
-    repairs.map(r => ({
+    visibleRepairs.map(r => ({
       repair_number: r.repair_number,
       customer: r.customers?.full_name || 'Unknown',
       item_type: r.item_type,
@@ -100,7 +113,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
       due_date: formatDateForExport(r.due_date),
       created_at: formatDateForExport(r.created_at),
     })),
-    [repairs]
+    [visibleRepairs]
   );
 
   async function handleBulkNotify() {
@@ -126,10 +139,25 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
 
   const useSampleData = false; // Always use real data — show empty state when no repairs
 
+  // Stage tab click: instant client-side filter + shallow URL sync so refresh
+  // and share-links still land on the right tab. No server round-trip.
+  function setStage(stage: string) {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (stage && stage !== "all") params.set("stage", stage);
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    setActiveTab(stage || "all");
+    // replaceState keeps the URL in sync without Next triggering an RSC fetch.
+    if (typeof window !== "undefined") window.history.replaceState(null, "", nextUrl);
+  }
+
+  // Search / other param updates still go through the router so the server
+  // can apply the `q` filter (covers repairs older than the recent-200 cap —
+  // used by the camera-scanner fallback).
   function updateParams(updates: Record<string, string>) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
-    if (stageFilter) params.set("stage", stageFilter);
+    if (activeTab && activeTab !== "all") params.set("stage", activeTab);
     Object.entries(updates).forEach(([k, v]) => {
       if (v) params.set(k, v); else params.delete(k);
     });
@@ -258,9 +286,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
           return (
             <button
               key={tab.key}
-              onClick={() => {
-                updateParams({ stage: tab.key === "all" ? "" : tab.key });
-              }}
+              onClick={() => setStage(tab.key === "all" ? "" : tab.key)}
               className={`pb-3 px-1 text-sm transition-colors ${
                 isActive
                   ? "border-b-2 border-amber-600 text-stone-900 font-medium"
@@ -288,7 +314,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
             </TableRow>
           </TableHeader>
           <TableBody>
-            {repairs.length === 0 ? (
+            {visibleRepairs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-16 text-stone-400">
                   <div className="flex flex-col items-center gap-3">
@@ -300,7 +326,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
                   </div>
                 </TableCell>
               </TableRow>
-            ) : repairs.map((repair) => {
+            ) : visibleRepairs.map((repair) => {
                   const overdue = isOverdue(repair.due_date, repair.stage);
                   const name = repair.customers?.full_name || "Unknown";
                   return (
