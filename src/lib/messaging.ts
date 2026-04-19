@@ -150,7 +150,7 @@ export async function getTrackingThread(trackingId: string): Promise<OrderMessag
 
 /**
  * Fetch the thread for a job — authenticated staff variant. RLS-scoped by
- * tenant via auth.tenant_id() policy. Ordered oldest-to-newest for
+ * tenant via get_tenant_id() policy. Ordered oldest-to-newest for
  * conversation flow.
  */
 export async function getStaffThread(

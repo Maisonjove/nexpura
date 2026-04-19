@@ -44,7 +44,7 @@ ALTER TABLE order_messages ENABLE ROW LEVEL SECURITY;
 -- Authenticated staff: read any message belonging to their tenant.
 CREATE POLICY order_messages_select_tenant
   ON order_messages FOR SELECT
-  USING (tenant_id = auth.tenant_id());
+  USING (tenant_id = get_tenant_id());
 
 -- Authenticated staff: reply on any order in their tenant.
 -- sender_type must be 'staff' and sender_user_id must match the caller.
@@ -54,7 +54,7 @@ CREATE POLICY order_messages_select_tenant
 CREATE POLICY order_messages_insert_staff_reply
   ON order_messages FOR INSERT
   WITH CHECK (
-    tenant_id = auth.tenant_id()
+    tenant_id = get_tenant_id()
     AND sender_type = 'staff'
     AND sender_user_id = auth.uid()
   );
@@ -62,10 +62,10 @@ CREATE POLICY order_messages_insert_staff_reply
 -- Staff can mark messages read (only the read flag on their tenant's rows).
 CREATE POLICY order_messages_update_mark_read
   ON order_messages FOR UPDATE
-  USING (tenant_id = auth.tenant_id())
-  WITH CHECK (tenant_id = auth.tenant_id());
+  USING (tenant_id = get_tenant_id())
+  WITH CHECK (tenant_id = get_tenant_id());
 
 -- No delete policy — messages are an audit record.
 
 COMMENT ON TABLE order_messages IS
-  'Customer ↔ jeweller thread on a repair or bespoke job. Customer-side posts via /track tracking_id flow (service-role, validated in action). Staff-side via auth.tenant_id() RLS.';
+  'Customer ↔ jeweller thread on a repair or bespoke job. Customer-side posts via /track tracking_id flow (service-role, validated in action). Staff-side via get_tenant_id() RLS.';
