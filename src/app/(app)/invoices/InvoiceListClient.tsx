@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { InvoiceRow } from "./page";
 
 const STATUS_TABS = [
@@ -62,17 +62,57 @@ export default function InvoiceListClient({
   page,
   totalPages,
   q,
-  statusFilter,
+  statusFilter: initialStatusFilter,
   stats,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Status tab filtering is client-side now — same pattern as /repairs and
+  // /bespoke. Every tab click used to trigger a full RSC round-trip to
+  // re-query the same invoices with a different `.eq("status", …)`. With
+  // 200 rows loaded, filtering them via useMemo is ~1ms and instant.
+  const [activeStatus, setActiveStatus] = useState(initialStatusFilter || "all");
+
+  // "overdue" is a computed status, not a literal status value. Mirror the
+  // same predicate the server query used to apply:
+  //   status NOT IN (paid, voided, draft, cancelled) AND due_date < today
+  const todayStr = new Date().toISOString().split("T")[0];
+  const visibleInvoices = useMemo(() => {
+    if (activeStatus === "all") return invoices;
+    if (activeStatus === "overdue") {
+      return invoices.filter(
+        (inv) =>
+          !["paid", "voided", "draft", "cancelled"].includes(inv.status) &&
+          inv.due_date !== null &&
+          inv.due_date < todayStr
+      );
+    }
+    return invoices.filter((inv) => inv.status === activeStatus);
+  }, [invoices, activeStatus, todayStr]);
+
+  // Status tab click: instant local-state filter + shallow URL sync so refresh
+  // and share-links still land on the right tab. No router.push, no RSC fetch.
+  const setStatus = useCallback(
+    (status: string) => {
+      const sp = new URLSearchParams();
+      if (q) sp.set("q", q);
+      if (status && status !== "all") sp.set("status", status);
+      const nextUrl = sp.toString() ? `${pathname}?${sp.toString()}` : pathname;
+      setActiveStatus(status || "all");
+      if (typeof window !== "undefined") window.history.replaceState(null, "", nextUrl);
+    },
+    [q, pathname]
+  );
+
+  // Search + pagination still go through the router — server handles the
+  // ILIKE search (which may need to look past the 200-most-recent cap) and
+  // serves older pages for tenants with >200 invoices.
   const navigate = useCallback(
     (newParams: Record<string, string>) => {
       const sp = new URLSearchParams();
       if (q) sp.set("q", q);
-      if (statusFilter && statusFilter !== "all") sp.set("status", statusFilter);
+      if (activeStatus && activeStatus !== "all") sp.set("status", activeStatus);
       sp.set("page", "1");
       Object.entries(newParams).forEach(([k, v]) => {
         if (v) sp.set(k, v);
@@ -80,7 +120,7 @@ export default function InvoiceListClient({
       });
       router.push(`${pathname}?${sp.toString()}`);
     },
-    [q, statusFilter, pathname, router]
+    [q, activeStatus, pathname, router]
   );
 
   return (
@@ -141,7 +181,7 @@ export default function InvoiceListClient({
               const val = e.target.value;
               const sp = new URLSearchParams();
               if (val) sp.set("q", val);
-              if (statusFilter && statusFilter !== "all") sp.set("status", statusFilter);
+              if (activeStatus && activeStatus !== "all") sp.set("status", activeStatus);
               router.push(`${pathname}?${sp.toString()}`);
             }}
             className="w-full max-w-md px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
@@ -153,9 +193,9 @@ export default function InvoiceListClient({
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => navigate({ status: tab.key === "all" ? "" : tab.key })}
+              onClick={() => setStatus(tab.key === "all" ? "" : tab.key)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                statusFilter === tab.key || (tab.key === "all" && statusFilter === "all")
+                activeStatus === tab.key || (tab.key === "all" && activeStatus === "all")
                   ? "bg-amber-700 text-white"
                   : "text-stone-500 hover:text-stone-900 hover:bg-stone-900/5"
               }`}
@@ -166,7 +206,7 @@ export default function InvoiceListClient({
         </div>
 
         {/* Table */}
-        {invoices.length === 0 ? (
+        {visibleInvoices.length === 0 ? (
           <div className="py-16 text-center">
             <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-3">
               <svg className="w-6 h-6 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,7 +259,7 @@ export default function InvoiceListClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-platinum">
-                {invoices.map((inv) => {
+                {visibleInvoices.map((inv) => {
                   const badge = STATUS_BADGE[inv.status] ?? STATUS_BADGE.draft;
                   const isOverdue =
                     inv.due_date &&
@@ -284,28 +324,34 @@ export default function InvoiceListClient({
           </div>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+        {/* Pagination footer — now shows the client-filtered count of visible
+            invoices on the current page, and hides Prev/Next unless there's
+            an older/newer page of 200 to fetch server-side. */}
+        {(totalPages > 1 || visibleInvoices.length !== invoices.length) && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-stone-200">
             <p className="text-sm text-stone-500">
-              Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, totalCount)} of {totalCount}
+              {visibleInvoices.length === invoices.length
+                ? `Showing ${invoices.length} of ${totalCount} invoices`
+                : `Showing ${visibleInvoices.length} of ${invoices.length} loaded (${totalCount} total)`}
             </p>
-            <div className="flex gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => navigate({ page: String(page - 1) })}
-                className="px-3 py-1.5 text-sm border border-stone-200 rounded-lg text-stone-900 disabled:opacity-30 hover:border-amber-600/40 transition-colors"
-              >
-                Previous
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => navigate({ page: String(page + 1) })}
-                className="px-3 py-1.5 text-sm border border-stone-200 rounded-lg text-stone-900 disabled:opacity-30 hover:border-amber-600/40 transition-colors"
-              >
-                Next
-              </button>
-            </div>
+            {totalPages > 1 && (
+              <div className="flex gap-2">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => navigate({ page: String(page - 1) })}
+                  className="px-3 py-1.5 text-sm border border-stone-200 rounded-lg text-stone-900 disabled:opacity-30 hover:border-amber-600/40 transition-colors"
+                >
+                  Previous
+                </button>
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => navigate({ page: String(page + 1) })}
+                  className="px-3 py-1.5 text-sm border border-stone-200 rounded-lg text-stone-900 disabled:opacity-30 hover:border-amber-600/40 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -15,7 +15,10 @@ export default async function InvoicesPage({
   const q = params.q || "";
   const statusFilter = params.status || "all";
   const page = parseInt(params.page || "1");
-  const pageSize = 20;
+  // 200 per page — status filtering is client-side now, so the page needs to
+  // hold enough rows for common tab clicks to still show meaningful data.
+  // Matches /repairs and /bespoke.
+  const pageSize = 200;
   const offset = (page - 1) * pageSize;
   const admin = createAdminClient();
 
@@ -59,7 +62,11 @@ export default async function InvoicesPage({
       .eq("status", "paid")
       .gte("paid_at", monthStart)
       .is("deleted_at", null),
-    // List query with filters
+    // List query — status filter is now applied client-side so every tab
+    // click is 0 network round-trips. Server returns the 200 most-recent
+    // invoices (filtered by search `q` when present) and the client filters
+    // them by status via useMemo. For tenants with >200 invoices, the older
+    // ones are still reachable via ?page=N deep-links or the search box.
     (async () => {
       let query = admin
         .from("invoices")
@@ -69,16 +76,6 @@ export default async function InvoicesPage({
         )
         .eq("tenant_id", tenantId)
         .is("deleted_at", null);
-
-      if (statusFilter !== "all") {
-        if (statusFilter === "overdue") {
-          query = query
-            .not("status", "in", '("paid","voided","draft","cancelled")')
-            .lt("due_date", today);
-        } else {
-          query = query.eq("status", statusFilter);
-        }
-      }
 
       if (q) query = query.ilike("invoice_number", `%${q}%`);
 
