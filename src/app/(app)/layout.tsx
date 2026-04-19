@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LazyOverlays } from "@/components/LazyOverlays";
 import { SessionExpiryModal } from "@/components/SessionExpiryModal";
 import { RoutePrefetcher } from "@/components/RoutePrefetcher";
+import { NativePrefetchHints } from "@/components/NativePrefetchHints";
 import { headers } from 'next/headers';
 import {
   AUTH_HEADERS,
@@ -125,6 +126,7 @@ export default async function AppLayout({
         <LazyOverlays />
         <SessionExpiryModal />
         <RoutePrefetcher tenantSlug={tenant?.slug ?? null} />
+        <NativePrefetchHints tenantSlug={tenant?.slug ?? null} />
       </div>
     </LocationProvider>
   );
