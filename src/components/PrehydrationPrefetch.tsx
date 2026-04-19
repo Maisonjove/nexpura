@@ -1,27 +1,32 @@
 /**
  * Pre-hydration hot-route warmup.
  *
- * Problem: `RoutePrefetcher` calls `router.prefetch()` from a `useEffect`.
- * On a complex page (dashboard) the effect doesn't fire until React has
- * completed hydration — measured at ~2.9 s after HTML parse on production.
- * That's the entire "first click feels cold" window.
+ * Emits an inline <script> in the very first HTML chunk so the browser
+ * executes it during HTML parse — before any JS bundles, before React,
+ * long before any useEffect. For authenticated tenant-prefixed URLs, it
+ * fires fetch() requests that mimic Next's RSC prefetch (same headers).
  *
- * Solution: emit an inline `<script>` during server render. The browser
- * executes it synchronously during HTML parse, BEFORE any JS bundles have
- * been parsed and well before React hydrates. The script fires `fetch()`
- * requests that mimic Next's RSC prefetch (same URL + `rsc: 1` header).
- * The responses land in the browser's HTTP cache.
+ * The responses land in the browser's HTTP cache. When React later
+ * hydrates and router.prefetch() runs for the same URL + headers, the
+ * browser serves from HTTP cache in ms. A click that arrives before
+ * router.prefetch() has run benefits too: the in-flight HTTP fetch
+ * finishes and warms the cache while the user is still deciding.
  *
- * When React later hydrates and `router.prefetch()` runs with the same URL
- * + headers, the browser serves the response from HTTP cache (~0-10 ms)
- * instead of re-hitting the origin (~1650 ms). The prefetch cache populates
- * immediately; a click that arrives during the gap finds a warm router
- * cache.
+ * Tenant slug is resolved at runtime from location.pathname (first path
+ * segment) — cheap, always available at parse time, no server-side
+ * async work needed. Non-tenant URLs (/login, /signup, /) produce a
+ * slug that doesn't match the hot-routes pattern and are skipped.
  *
- * This is a server component so the inline script content is part of the
- * first-streamed HTML — no JS parsing required to emit it.
+ * Placed in the ROOT layout (src/app/layout.tsx) rather than the (app)
+ * layout so it fires BEFORE the (app) layout's async auth work
+ * completes. That was the key finding: (app) layout's async fetches
+ * were delaying HTML emit (and therefore this script) by ~2.6 s.
  */
 
+// Heuristic: tenant slugs used in Nexpura look like `maison-jove` or
+// `intake-1776553836`, so they contain a hyphen. Flat app routes (like
+// "login", "signup", "pricing") do not. This keeps us from noisy
+// prefetching on non-authenticated pages.
 const HOT_ROUTES = [
   "customers",
   "repairs",
@@ -33,17 +38,16 @@ const HOT_ROUTES = [
   "intake",
 ];
 
-interface Props {
-  tenantSlug?: string | null;
-}
-
-export function PrehydrationPrefetch({ tenantSlug }: Props) {
-  if (!tenantSlug) return null;
-
-  // IIFE runs during HTML parse. Uses `var`/function to avoid relying on
-  // any runtime being loaded first. Swallows all errors — any failure is
-  // silent, the normal router.prefetch() still runs later as a safety net.
-  const js = `(function(){try{var h=[${HOT_ROUTES.map((r) => JSON.stringify(r)).join(",")}];var p=${JSON.stringify(tenantSlug)};for(var i=0;i<h.length;i++){fetch('/'+p+'/'+h[i],{headers:{'rsc':'1','next-router-prefetch':'1'},credentials:'include'}).catch(function(){});}}catch(e){}})()`;
+export function PrehydrationPrefetch() {
+  const js = `
+(function(){try{
+  var seg=location.pathname.split('/')[1];
+  if(!seg||seg.indexOf('-')<0)return;
+  var h=${JSON.stringify(HOT_ROUTES)};
+  for(var i=0;i<h.length;i++){
+    fetch('/'+seg+'/'+h[i],{headers:{'rsc':'1','next-router-prefetch':'1'},credentials:'include'}).catch(function(){});
+  }
+}catch(e){}})()`.trim();
 
   return (
     // eslint-disable-next-line react/no-danger

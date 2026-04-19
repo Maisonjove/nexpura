@@ -9,7 +9,6 @@ import { LazyOverlays } from "@/components/LazyOverlays";
 import { SessionExpiryModal } from "@/components/SessionExpiryModal";
 import { RoutePrefetcher } from "@/components/RoutePrefetcher";
 import { NativePrefetchHints } from "@/components/NativePrefetchHints";
-import { PrehydrationPrefetch } from "@/components/PrehydrationPrefetch";
 import { headers } from 'next/headers';
 import {
   AUTH_HEADERS,
@@ -106,11 +105,6 @@ export default async function AppLayout({
 
   return (
     <LocationProvider initialLocations={locations} initialCurrentLocationId={currentLocationId}>
-      {/* Pre-hydration inline script: fires fetch() for hot routes the
-          moment the browser parses this HTML (before JS bundles execute,
-          before React hydrates). ~2.9 s faster than router.prefetch() in
-          useEffect on a complex dashboard. */}
-      <PrehydrationPrefetch tenantSlug={tenant?.slug ?? null} />
       <SkipToContent />
       <div className="min-h-screen bg-stone-50 font-sans">
         <TopNav

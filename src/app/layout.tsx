@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { PWAProvider } from "@/components/PWAProvider";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { LiveRegionProvider } from "@/components/LiveRegion";
+import { PrehydrationPrefetch } from "@/components/PrehydrationPrefetch";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -104,6 +105,11 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
+        {/* Pre-hydration hot-route prefetch — fires during HTML parse in
+            the browser, populates HTTP cache so router.prefetch() later
+            serves from cache instead of round-tripping. Reads tenant
+            slug from location.pathname at parse time. */}
+        <PrehydrationPrefetch />
         <LiveRegionProvider>
           <PWAProvider>
             {children}
