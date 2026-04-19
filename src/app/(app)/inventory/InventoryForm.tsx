@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { createInventoryItem, updateInventoryItem } from "./actions";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 import {
   BasicInfoSection,
@@ -225,13 +226,12 @@ export default function InventoryForm({ categories: initialCategories, item, mod
         <a href={mode === "edit" && item ? `/inventory/${item.id}` : "/inventory"} className="px-5 py-2.5 text-sm font-bold text-stone-400 uppercase tracking-wider border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors">
           Cancel
         </a>
-        <button
-          type="submit"
-          disabled={isPending}
+        <SubmitButton
+          isPending={isPending}
+          idleLabel={mode === "create" ? "Add Item" : "Save Changes"}
+          pendingLabel="Saving..."
           className="px-8 py-2.5 bg-amber-700 text-white text-sm font-bold uppercase tracking-widest rounded-lg hover:bg-amber-800 disabled:opacity-60 transition-colors shadow-sm flex items-center gap-2"
-        >
-          {isPending ? "Saving..." : mode === "create" ? "Add Item" : "Save Changes"}
-        </button>
+        />
       </div>
     </form>
   );

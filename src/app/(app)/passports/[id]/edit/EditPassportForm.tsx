@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updatePassport } from "../../actions";
 import logger from "@/lib/logger";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 const JEWELLERY_TYPES = [
   "ring", "necklace", "bracelet", "earrings", "brooch", "pendant", "bangle", "chain", "watch", "other",
@@ -230,9 +231,12 @@ export default function EditPassportForm({ passport }: { passport: PassportRow }
         {/* Submit */}
         <div className="flex items-center justify-end gap-3 pb-6">
           <button type="button" onClick={() => router.back()} className="px-5 py-2.5 border border-stone-900 text-stone-900 text-sm font-medium rounded-lg hover:bg-stone-900/5 transition-colors">Cancel</button>
-          <button type="submit" disabled={loading} className="px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-            {loading ? "Saving…" : "Save Changes"}
-          </button>
+          <SubmitButton
+            isPending={loading}
+            idleLabel="Save Changes"
+            pendingLabel="Saving…"
+            className="px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          />
         </div>
       </form>
     </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPassport } from "../actions";
 import logger from "@/lib/logger";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 const JEWELLERY_TYPES = [
   "ring",
@@ -337,13 +338,12 @@ export default function NewPassportPage() {
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={loading}
+          <SubmitButton
+            isPending={loading}
+            idleLabel="Create Passport"
+            pendingLabel="Creating…"
             className="px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loading ? "Creating…" : "Create Passport"}
-          </button>
+          />
         </div>
       </form>
     </div>

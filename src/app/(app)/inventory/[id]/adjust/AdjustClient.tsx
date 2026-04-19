@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { adjustStock } from "../../actions";
+import { useFormHydrated } from "@/components/ui/submit-button";
 
 const MOVEMENT_TYPES = [
   { value: "purchase", label: "Purchase (stock in)" },
@@ -28,6 +29,7 @@ export default function AdjustClient({ inventoryId, itemName, itemSku, currentQt
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const hydrated = useFormHydrated();
 
   const quantityChange = quantity ? (direction === "add" ? parseInt(quantity) : -parseInt(quantity)) : 0;
   const newQty = currentQty + quantityChange;
@@ -174,10 +176,12 @@ export default function AdjustClient({ inventoryId, itemName, itemSku, currentQt
           <div className="flex gap-3 pt-4 border-t border-stone-100">
             <button
               type="submit"
-              disabled={isPending || !quantity || parseInt(quantity) <= 0 || newQty < 0}
+              disabled={!hydrated || isPending || !quantity || parseInt(quantity) <= 0 || newQty < 0}
               className="px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {isPending ? (
+              {!hydrated ? (
+                "Preparing…"
+              ) : isPending ? (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle

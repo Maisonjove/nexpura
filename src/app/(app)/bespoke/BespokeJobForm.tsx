@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createBespokeJob, updateBespokeJob } from "./actions";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 // ────────────────────────────────────────────────────────────────
 // Types
@@ -584,13 +585,12 @@ export default function BespokeJobForm({ customers, mode, job, preselectedCustom
         <a href="/bespoke" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">
           Cancel
         </a>
-        <button
-          type="submit"
-          disabled={isPending}
+        <SubmitButton
+          isPending={isPending}
+          idleLabel={mode === "create" ? "Create Job" : "Save Changes"}
+          pendingLabel="Saving…"
           className="bg-amber-700 text-white text-sm font-medium px-6 py-2.5 rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isPending ? "Saving…" : mode === "create" ? "Create Job" : "Save Changes"}
-        </button>
+        />
       </div>
     </form>
   );

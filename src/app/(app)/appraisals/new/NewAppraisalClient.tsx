@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createAppraisal } from "../actions";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 interface Customer {
   id: string;
@@ -296,13 +297,12 @@ export default function NewAppraisalClient({ customers }: Props) {
           </div>
 
           <div className="flex gap-3 pt-4 border-t border-stone-100">
-            <button
-              type="submit"
-              disabled={isPending}
+            <SubmitButton
+              isPending={isPending}
+              idleLabel="Create Appraisal"
+              pendingLabel="Creating…"
               className="px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
-            >
-              {isPending ? "Creating…" : "Create Appraisal"}
-            </button>
+            />
             <Link
               href="/appraisals"
               className="px-4 py-2.5 border border-stone-200 text-stone-600 text-sm font-medium rounded-lg hover:bg-stone-50 transition-colors"

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createCustomer, updateCustomer } from "./actions";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type CustomerData = {
   id?: string;
@@ -325,16 +326,12 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
         >
           Cancel
         </button>
-        <button
-          type="submit"
-          disabled={isPending}
+        <SubmitButton
+          isPending={isPending}
+          idleLabel={mode === "create" ? "Create Customer" : "Save Changes"}
+          pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
           className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
-        >
-          {isPending
-            ? mode === "create" ? "Creating…" : "Saving…"
-            : mode === "create" ? "Create Customer" : "Save Changes"
-          }
-        </button>
+        />
       </div>
     </form>
   );

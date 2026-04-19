@@ -5,6 +5,7 @@ import Image from "next/image";
 import { X, ChevronDown, Plus, Package, Upload, Loader2 } from "lucide-react";
 import { RingIcon, NecklaceIcon, BraceletIcon, WatchIcon, EarringsIcon, PendantIcon, OtherJewelleryIcon } from "@/components/icons/JewelleryIcons";
 import { quickAddStock, createQuickSupplier } from "./actions";
+import { useFormHydrated } from "@/components/ui/submit-button";
 
 interface Supplier {
   id: string;
@@ -29,6 +30,7 @@ const ITEM_TYPES = [
 
 export default function AddStockModal({ onClose, onSuccess, suppliers: initialSuppliers }: AddStockModalProps) {
   const [isPending, startTransition] = useTransition();
+  const hydrated = useFormHydrated();
   const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
   const [showNewSupplier, setShowNewSupplier] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState("");
@@ -377,10 +379,15 @@ export default function AddStockModal({ onClose, onSuccess, suppliers: initialSu
             type="submit"
             form="add-stock-form"
             onClick={handleSubmit}
-            disabled={isPending}
+            disabled={!hydrated || isPending}
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 text-white font-medium hover:from-amber-700 hover:to-amber-800 transition-all disabled:opacity-50 flex items-center gap-2"
           >
-            {isPending ? (
+            {!hydrated ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Preparing…
+              </>
+            ) : isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Adding...

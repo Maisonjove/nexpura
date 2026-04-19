@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createTask } from "../actions";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 const LINKED_TYPE_LABELS: Record<string, string> = {
   repair: "Repair",
@@ -215,13 +216,12 @@ export default function NewTaskClient({ teamMembers }: Props) {
           </div>
 
           <div className="flex gap-3 pt-4 border-t border-stone-100">
-            <button
-              type="submit"
-              disabled={isPending}
+            <SubmitButton
+              isPending={isPending}
+              idleLabel="Create Task"
+              pendingLabel="Creating…"
               className="px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
-            >
-              {isPending ? "Creating…" : "Create Task"}
-            </button>
+            />
             <Link
               href="/tasks"
               className="px-4 py-2.5 border border-stone-200 text-stone-600 text-sm font-medium rounded-lg hover:bg-stone-50 transition-colors"
