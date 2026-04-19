@@ -80,20 +80,16 @@ export function RoutePrefetcher({ tenantSlug }: Props) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const FULL = "full" as any;
 
-    // Hot routes: fire on the very next microtask — the instant React has
-    // completed the initial commit of this layout. This is the earliest
-    // possible moment `router.prefetch` is callable. Previous setTimeout(50)
-    // was leaving a 50 ms "clicked-too-early" window where a fast jeweller
-    // could beat the prefetch entirely.
-    //
-    // If the user clicks during a still-in-flight prefetch, Next's router
-    // dedupes against the pending request and reuses its response — so even
-    // a mid-flight prefetch saves a full cold round-trip.
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (cancelled) return;
+    // Hot routes: 50 ms after mount — early enough to complete before a
+    // deliberating user clicks, late enough to let React settle its
+    // initial commit. (queueMicrotask was tried but fires AFTER React
+    // hydration completes on complex pages — ~3 s in, not at t=0. So
+    // it provided no measurable advantage over 50 ms while creating
+    // confusing interaction with the browser's request coalescing on
+    // some paths.)
+    const t1 = setTimeout(() => {
       for (const r of hot) router.prefetch(r, { kind: FULL });
-    });
+    }, 50);
 
     // Warm routes: 1.5 s after mount — background fill-in that doesn't
     // compete with the hot tier for the initial network burst.
@@ -102,7 +98,7 @@ export function RoutePrefetcher({ tenantSlug }: Props) {
     }, 1500);
 
     return () => {
-      cancelled = true;
+      clearTimeout(t1);
       clearTimeout(t2);
     };
   }, [router, tenantSlug]);

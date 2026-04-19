@@ -1,0 +1,128 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - navigation [ref=e5]:
+        - link "Nexpura" [ref=e6] [cursor=pointer]:
+          - /url: /test/dashboard
+        - generic [ref=e7]:
+          - link "+ Intake" [ref=e8] [cursor=pointer]:
+            - /url: /test/intake
+          - button "Sales" [ref=e10] [cursor=pointer]: Sales
+          - button "Inventory" [ref=e12] [cursor=pointer]: Inventory
+          - button "Customers" [ref=e14] [cursor=pointer]: Customers
+          - button "Workshop" [ref=e16] [cursor=pointer]: Workshop
+          - button "Finance" [ref=e18] [cursor=pointer]: Finance
+          - button "Marketing" [ref=e20] [cursor=pointer]: Marketing
+          - button "More" [ref=e22] [cursor=pointer]: More
+        - generic [ref=e23]:
+          - button "Notifications" [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+          - button "Admin settings" [ref=e29] [cursor=pointer]:
+            - img [ref=e30]
+          - link "T" [ref=e33] [cursor=pointer]:
+            - /url: /settings
+            - generic [ref=e34]: T
+    - main "Main content" [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - heading "Nexpura Admin" [level=1] [ref=e40]
+              - paragraph [ref=e41]: Overview of sales, workshop activity, inventory, customers, and daily operations
+            - generic [ref=e42]:
+              - paragraph [ref=e43]: Saturday 18 April
+              - paragraph [ref=e44]: 10:31 am
+          - generic [ref=e45]:
+            - link "0 Active jobs" [ref=e46] [cursor=pointer]:
+              - /url: /workshop
+              - generic [ref=e47]: "0"
+              - text: Active jobs
+            - link "0 Overdue jobs" [ref=e48] [cursor=pointer]:
+              - /url: /repairs?filter=overdue
+              - generic [ref=e49]: "0"
+              - text: Overdue jobs
+            - link "0 Ready for pickup" [ref=e50] [cursor=pointer]:
+              - /url: /repairs?filter=ready
+              - generic [ref=e51]: "0"
+              - text: Ready for pickup
+            - link "0 Overdue invoices" [ref=e52] [cursor=pointer]:
+              - /url: /invoices?filter=overdue
+              - generic [ref=e53]: "0"
+              - text: Overdue invoices
+            - link "0 Low stock" [ref=e54] [cursor=pointer]:
+              - /url: /inventory
+              - generic [ref=e55]: "0"
+              - text: Low stock
+          - generic [ref=e56]:
+            - button "Sales Sales, invoices, quotes & POS 0 sales recorded this month" [ref=e57] [cursor=pointer]:
+              - img [ref=e59]
+              - generic [ref=e61]:
+                - paragraph [ref=e62]: Sales
+                - paragraph [ref=e63]: Sales, invoices, quotes & POS
+              - paragraph [ref=e64]: 0 sales recorded this month
+            - button "Inventory Stock, suppliers & transfers All stock levels healthy" [ref=e65] [cursor=pointer]:
+              - img [ref=e67]
+              - generic [ref=e69]:
+                - paragraph [ref=e70]: Inventory
+                - paragraph [ref=e71]: Stock, suppliers & transfers
+              - paragraph [ref=e72]: All stock levels healthy
+            - button "Customers Profiles & communications No follow-ups due" [ref=e73] [cursor=pointer]:
+              - img [ref=e75]
+              - generic [ref=e77]:
+                - paragraph [ref=e78]: Customers
+                - paragraph [ref=e79]: Profiles & communications
+              - paragraph [ref=e80]: No follow-ups due
+            - button "Workshop Repairs, bespoke & appraisals No active jobs" [ref=e81] [cursor=pointer]:
+              - img [ref=e83]
+              - generic [ref=e85]:
+                - paragraph [ref=e86]: Workshop
+                - paragraph [ref=e87]: Repairs, bespoke & appraisals
+              - paragraph [ref=e88]: No active jobs
+            - button "Finance Expenses, reports & reconciliation No overdue invoices" [ref=e89] [cursor=pointer]:
+              - img [ref=e91]
+              - generic [ref=e93]:
+                - paragraph [ref=e94]: Finance
+                - paragraph [ref=e95]: Expenses, reports & reconciliation
+              - paragraph [ref=e96]: No overdue invoices
+            - button "Marketing Campaigns, email & SMS No active campaigns" [ref=e97] [cursor=pointer]:
+              - img [ref=e99]
+              - generic [ref=e101]:
+                - paragraph [ref=e102]: Marketing
+                - paragraph [ref=e103]: Campaigns, email & SMS
+              - paragraph [ref=e104]: No active campaigns
+            - button "Digital Website, integrations & migration All systems connected" [ref=e105] [cursor=pointer]:
+              - img [ref=e107]
+              - generic [ref=e109]:
+                - paragraph [ref=e110]: Digital
+                - paragraph [ref=e111]: Website, integrations & migration
+              - paragraph [ref=e112]: All systems connected
+            - button "Admin Settings, billing & team No tasks due" [ref=e113] [cursor=pointer]:
+              - img [ref=e115]
+              - generic [ref=e118]:
+                - paragraph [ref=e119]: Admin
+                - paragraph [ref=e120]: Settings, billing & team
+              - paragraph [ref=e121]: No tasks due
+        - complementary [ref=e122]:
+          - generic [ref=e123]:
+            - heading "Today" [level=3] [ref=e125]
+            - generic [ref=e126]:
+              - paragraph [ref=e128]: Tasks due
+              - paragraph [ref=e133]: Ready for pickup
+          - generic [ref=e137]:
+            - heading "Recent Activity" [level=3] [ref=e139]
+            - generic [ref=e140]:
+              - paragraph [ref=e142]: Sales
+              - paragraph [ref=e148]: Repairs
+  - region "Notifications alt+T"
+  - status [ref=e153]
+  - alert [ref=e154]
+  - alert [ref=e155]
+  - generic:
+    - generic:
+      - img
+```

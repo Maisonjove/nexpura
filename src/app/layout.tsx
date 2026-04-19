@@ -6,7 +6,6 @@ import { Toaster } from "sonner";
 import { PWAProvider } from "@/components/PWAProvider";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { LiveRegionProvider } from "@/components/LiveRegion";
-import { PrehydrationPrefetch } from "@/components/PrehydrationPrefetch";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -103,11 +102,6 @@ export default function RootLayout({
           name="apple-mobile-web-app-status-bar-style"
           content="default"
         />
-        {/* Pre-hydration hot-route prefetch — placed at the end of <head>
-            so the browser executes it the moment the head finishes parsing,
-            before the first painted body element. Reads tenant slug from
-            location.pathname at parse time. */}
-        <PrehydrationPrefetch />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
         <LiveRegionProvider>
