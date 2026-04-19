@@ -7,11 +7,12 @@ import { useMemo, useState, useTransition } from "react";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, ArrowRight, Camera, Bell } from "lucide-react";
+import { Plus, Camera, Bell } from "lucide-react";
 import { formatDateForExport } from "@/lib/export";
 import { toast } from "sonner";
 import logger from "@/lib/logger";
+import { RepairRow } from "./RepairRow";
+import { useProgressiveRender } from "@/lib/useProgressiveRender";
 
 // CameraScannerModal pulls in camera + barcode-detection APIs; ExportButtons
 // bundles the XLSX writer. Neither renders on first paint — load on demand.
@@ -72,18 +73,7 @@ export const ALL_REPAIR_STAGES = [
   { key: "cancelled", label: "Cancelled" },
 ];
 
-// Sample data removed — real DB data is used exclusively
-
-function isOverdue(due_date: string | null, stage: string) {
-  if (!due_date) return false;
-  if (["collected", "cancelled", "ready"].includes(stage)) return false;
-  return new Date(due_date) < new Date(new Date().toDateString());
-}
-
-function getInitials(name: string | null) {
-  if (!name) return "?";
-  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-}
+// isOverdue / getInitials now live in ./RepairRow.tsx (used per-row).
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -190,20 +180,13 @@ export default function RepairsListClient({
     startTransition(() => router.push(`${pathname}?${params.toString()}`));
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "intake": return <Badge className="bg-stone-100 text-stone-600 hover:bg-stone-100 border border-stone-200">Intake</Badge>;
-      case "assessed": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Assessed</Badge>;
-      case "quoted": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Quoted</Badge>;
-      case "approved": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Approved</Badge>;
-      case "in_progress": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">In Progress</Badge>;
-      case "quality_check": return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200">Quality Check</Badge>;
-      case "ready": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200">Ready</Badge>;
-      case "collected": return <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200">Collected</Badge>;
-      case "cancelled": return <Badge className="bg-red-50 text-red-600 hover:bg-red-50 border border-red-200">Cancelled</Badge>;
-      default: return <Badge variant="outline" className="text-stone-600 border-stone-200 capitalize">{status.replace(/_/g, ' ')}</Badge>;
-    }
-  };
+  // Stage-badge lookup moved into RepairRow component (module-level map,
+  // not recreated per render). Kept this comment as a signpost.
+
+  // Progressive-render cap: start at 40 (about a viewport's worth), fill
+  // the rest in 40-row batches across animation frames so the initial
+  // hydration doesn't block on reconciling 200 rows at once.
+  const renderCap = useProgressiveRender(visibleRepairs.length, { initialCount: 40, batchSize: 40 });
 
   return (
     <>
@@ -370,37 +353,16 @@ export default function RepairsListClient({
                   </div>
                 </TableCell>
               </TableRow>
-            ) : visibleRepairs.map((repair) => {
-                  const overdue = isOverdue(repair.due_date, repair.stage);
-                  const name = repair.customers?.full_name || "Unknown";
-                  return (
-                    <TableRow key={repair.id} className="hover:bg-stone-50/60 border-stone-100 cursor-pointer" onClick={() => router.push(`/repairs/${repair.id}`)}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="bg-stone-100 text-stone-600 text-xs font-semibold">
-                              {getInitials(name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm font-medium text-stone-900">{name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium text-sm text-stone-900">{repair.item_type}</p>
-                        <p className="text-xs text-stone-400 mt-0.5">{repair.item_description}</p>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(repair.stage)}</TableCell>
-                      <TableCell className={`text-sm ${overdue ? 'text-red-600 font-medium' : 'text-stone-700'}`}>
-                        {repair.due_date ? new Date(repair.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}
-                      </TableCell>
-                      <TableCell className="text-sm text-stone-700">—</TableCell>
-                      <TableCell className="text-sm font-medium text-stone-900">—</TableCell>
-                      <TableCell>
-                        <ArrowRight className="w-4 h-4 text-stone-300 hover:text-amber-700" />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+            ) : (
+              // Memoized row component; each row only re-renders when its
+              // own `repair` prop identity changes. Slicing by renderCap
+              // means the initial paint contains ~40 rows; the remainder
+              // fills in across subsequent animation frames via the
+              // progressive-render hook.
+              visibleRepairs.slice(0, renderCap).map((repair) => (
+                <RepairRow key={repair.id} repair={repair} />
+              ))
+            )}
             </TableBody>
         </Table>
       </Card>

@@ -6,10 +6,11 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, ArrowRight, Bell } from "lucide-react";
+import { Plus, Bell } from "lucide-react";
 import { toast } from "sonner";
 import logger from "@/lib/logger";
+import { BespokeRow } from "./BespokeRow";
+import { useProgressiveRender } from "@/lib/useProgressiveRender";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -54,15 +55,7 @@ export const ALL_STAGES = [
   { key: "cancelled", label: "Cancelled" },
 ];
 
-function isOverdue(due_date: string | null) {
-  if (!due_date) return false;
-  return new Date(due_date) < new Date(new Date().toDateString());
-}
-
-function getInitials(name: string | null) {
-  if (!name) return "?";
-  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-}
+// isOverdue / getInitials now live in ./BespokeRow.tsx (used per-row).
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -134,23 +127,12 @@ export default function BespokeListClient({
     if (typeof window !== "undefined") window.history.replaceState(null, "", nextUrl);
   }
 
+  // Stage-badge styling + date formatting moved into BespokeRow (module-
+  // level map, not rebuilt per render).
 
-  const getStageBadge = (stage: string) => {
-    switch (stage.toLowerCase()) {
-      case "enquiry": return <Badge variant="outline" className="bg-stone-100 text-stone-600 border-stone-200">Enquiry</Badge>;
-      case "consultation": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Consultation</Badge>;
-      case "deposit_received": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Deposit Received</Badge>;
-      case "stone_sourcing": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Stone Sourcing</Badge>;
-      case "cad": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">CAD</Badge>;
-      case "approval": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Approval</Badge>;
-      case "setting": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Setting</Badge>;
-      case "polish": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Polish</Badge>;
-      case "ready": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Ready</Badge>;
-      case "collected": return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Collected</Badge>;
-      case "cancelled": return <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">Cancelled</Badge>;
-      default: return <Badge variant="outline" className="text-stone-600 border-stone-200 capitalize">{stage.replace(/_/g, ' ')}</Badge>;
-    }
-  };
+  // Progressive-render cap — initial 40 rows, remainder fills in across
+  // animation frames so the initial hydration doesn't block on all rows.
+  const renderCap = useProgressiveRender(visibleJobs.length, { initialCount: 40, batchSize: 40 });
 
   return (
     <>
@@ -286,36 +268,12 @@ export default function BespokeListClient({
                 </TableCell>
               </TableRow>
             ) : (
-              visibleJobs.map((job) => {
-                const overdue = isOverdue(job.due_date);
-                const name = job.customers?.full_name || "Unknown";
-                return (
-                  <TableRow key={job.id} className="hover:bg-stone-50/60 border-stone-100 cursor-pointer" onClick={() => router.push(`/bespoke/${job.id}`)}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="bg-stone-100 text-stone-600 text-xs font-semibold">
-                            {getInitials(name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium text-stone-900">{name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium text-sm text-stone-900">{job.title}</p>
-                      <p className="text-xs text-stone-400 mt-0.5">—</p>
-                    </TableCell>
-                    <TableCell>{getStageBadge(job.stage)}</TableCell>
-                    <TableCell className={`text-sm ${overdue ? 'text-red-600 font-medium' : 'text-stone-700'}`}>
-                      {job.due_date ? new Date(job.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}
-                    </TableCell>
-                    <TableCell className="text-sm text-stone-700">—</TableCell>
-                    <TableCell>
-                      <ArrowRight className="w-4 h-4 text-stone-300 hover:text-amber-700" />
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+              // Memoized row component + progressive render: initial
+              // paint is ~40 rows, remainder fills in over animation
+              // frames so hydration doesn't block for the full list.
+              visibleJobs.slice(0, renderCap).map((job) => (
+                <BespokeRow key={job.id} job={job} />
+              ))
             )}
           </TableBody>
         </Table>
