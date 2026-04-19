@@ -42,22 +42,31 @@ const fetcher = async (key: string): Promise<DashboardStatsData> => {
 
 interface DashboardWrapperProps {
   criticalData: DashboardCriticalData;
+  /**
+   * Stats fetched server-side in parallel with critical data. Used as SWR
+   * fallbackData so the dashboard paints fully populated on first load
+   * without a post-hydration round-trip. Fetched with null (all locations);
+   * if the user's LocationContext defaults to a specific location, SWR
+   * revalidates with the correct key on mount.
+   */
+  initialStats: DashboardStatsData | null;
 }
 
-export default function DashboardWrapper({ criticalData }: DashboardWrapperProps) {
+export default function DashboardWrapper({ criticalData, initialStats }: DashboardWrapperProps) {
   const { getFilterLocationIds } = useLocation();
-  
+
   // Get location IDs for the cache key
   const locationIds = getFilterLocationIds();
   const locationKey = locationIds?.sort().join(",") || "all";
-  
-  // SWR for client-side stats fetching with deduplication and caching
-  // The fetcher extracts locationIds from the key to avoid stale closure issues
+
   const { data: stats, isLoading } = useSWR<DashboardStatsData>(
     `dashboard-stats:${locationKey}`,
     fetcher,
     {
-      // Keep stale data while revalidating (instant feel)
+      // Pre-populate with server-rendered stats so the dashboard paints
+      // populated instantly — SWR still revalidates in the background to keep
+      // data fresh, but the first frame has real numbers.
+      fallbackData: locationKey === "all" && initialStats ? initialStats : undefined,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 30000, // 30 seconds deduplication
@@ -66,8 +75,8 @@ export default function DashboardWrapper({ criticalData }: DashboardWrapperProps
   );
 
   // Use stats if available, otherwise empty (skeleton shown in sidebar)
-  const currentStats = stats ?? emptyStats;
-  const showStatsLoading = isLoading && !stats;
+  const currentStats = stats ?? initialStats ?? emptyStats;
+  const showStatsLoading = isLoading && !stats && !initialStats;
 
   return (
     <DashboardClient
