@@ -10,24 +10,14 @@ import BespokeListClient from "./BespokeListClient";
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
-/**
- * Synchronous top level: unwrap searchParams, return the shell tree with
- * an async <BespokeBody> wrapped in Suspense. All server work — auth,
- * tenant resolution, database reads — lives inside the body. React emits
- * the shell's HTML as soon as the parent component returns; the body
- * streams in later. See /repairs/page.tsx for the same pattern rationale.
- */
-export default async function BespokePage({
+// Synchronous top level — see /repairs/page.tsx for the same pattern
+// and rationale.
+
+export default function BespokePage({
   searchParams,
 }: {
   searchParams: Promise<{ view?: string; q?: string; stage?: string; rt?: string }>;
 }) {
-  const params = await searchParams;
-  const view = params.view || "pipeline";
-  const q = params.q || "";
-  const stageFilter = params.stage || "";
-  const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
-
   return (
     <div className="space-y-6 max-w-[1400px]">
       <div className="flex items-center justify-between">
@@ -40,24 +30,23 @@ export default async function BespokePage({
         </Link>
       </div>
 
-      <Suspense key={`${q}:${stageFilter}`} fallback={<BespokeBodySkeleton />}>
-        <BespokeBody q={q} view={view} stageFilter={stageFilter} isReviewMode={isReviewMode} />
+      <Suspense fallback={<BespokeBodySkeleton />}>
+        <BespokeBody searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
 async function BespokeBody({
-  q,
-  view,
-  stageFilter,
-  isReviewMode,
+  searchParams,
 }: {
-  q: string;
-  view: string;
-  stageFilter: string;
-  isReviewMode: boolean;
+  searchParams: Promise<{ view?: string; q?: string; stage?: string; rt?: string }>;
 }) {
+  const params = await searchParams;
+  const view = params.view || "pipeline";
+  const q = params.q || "";
+  const stageFilter = params.stage || "";
+  const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
   let tenantId: string | null = null;
   let canView = false;
   if (isReviewMode) {

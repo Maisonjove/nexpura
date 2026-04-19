@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 /**
  * Warms the Next.js App Router prefetch cache for the routes a jeweller
@@ -56,13 +56,28 @@ interface Props {
   tenantSlug?: string | null;
 }
 
+// Mirror TopNav's heuristic: a tenant slug is always a first path segment
+// with at least one hyphen. This lets the prefetcher warm the *correct*
+// tenant-prefixed URLs even when the layout no longer passes a slug prop —
+// e.g. during the PPR-static shell, before any auth-bound server work has
+// run. Without this, the prefetcher would warm flat `/customers` URLs that
+// the middleware answers with a 307 redirect, wasting every prefetch.
+function detectTenantSlugFromPathname(pathname: string | null): string | null {
+  if (!pathname) return null;
+  const seg = pathname.split("/")[1];
+  if (!seg || seg.indexOf("-") < 0) return null;
+  return seg;
+}
+
 export function RoutePrefetcher({ tenantSlug }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const effectiveSlug = tenantSlug ?? detectTenantSlugFromPathname(pathname);
 
   useEffect(() => {
     // Build tenant-prefixed URLs if we have a slug. Without a slug we fall
     // back to flat paths — the middleware will still rewrite internally.
-    const prefix = tenantSlug ? `/${tenantSlug}` : "";
+    const prefix = effectiveSlug ? `/${effectiveSlug}` : "";
     const hot = HOT_ROUTES.map((r) => prefix + r);
     const warm = WARM_ROUTES.map((r) => prefix + r);
 
@@ -101,7 +116,7 @@ export function RoutePrefetcher({ tenantSlug }: Props) {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [router, tenantSlug]);
+  }, [router, effectiveSlug]);
 
   return null;
 }

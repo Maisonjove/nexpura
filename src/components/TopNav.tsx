@@ -169,9 +169,26 @@ interface TopNavProps {
   tenantSlug?: string;
 }
 
+// Heuristic: tenant slugs in Nexpura look like `maison-jove` or
+// `intake-1776553836` — they contain at least one hyphen. Non-tenant app
+// paths (/login, /signup, /dashboard when not prefixed, etc.) don't. This
+// lets the static layout render TopNav with the right prefix without
+// waiting on a server auth/profile fetch — the URL is the source of
+// truth for which tenant the user is viewing.
+function detectTenantSlugFromPathname(pathname: string | null): string | null {
+  if (!pathname) return null;
+  const seg = pathname.split('/')[1];
+  if (!seg || seg.indexOf('-') < 0) return null;
+  return seg;
+}
+
 export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
   const pathname = usePathname();
-  const prefix = tenantSlug ? `/${tenantSlug}` : '';
+  // Prefer the explicit tenantSlug prop when provided (server-fetched).
+  // Fall back to URL-derived slug so TopNav can render immediately during
+  // the static layout shell — before any auth data has been fetched.
+  const effectiveSlug = tenantSlug ?? detectTenantSlugFromPathname(pathname);
+  const prefix = effectiveSlug ? `/${effectiveSlug}` : '';
   const [menuOpen, setMenuOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [scanFlash, setScanFlash] = useState(false);

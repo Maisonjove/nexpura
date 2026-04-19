@@ -44,6 +44,14 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   experimental: {
     clientTraceMetadata: ["baggage", "sentry-trace"],
+    // NOTE: Next 16 replaced `experimental.ppr` with a different caching
+    // model (`cacheComponents: true` at the top level + `use cache` directives
+    // on cached components + `unstable_instant` per-route). That's a bigger
+    // migration than this pass is taking on. We've kept the prerequisite
+    // groundwork in place — (app)/layout.tsx is synchronous, and the target
+    // pages have zero top-level awaits with all dynamic work inside Suspense —
+    // so when we flip `cacheComponents: true`, these routes are already
+    // correctly structured for instant navigation.
     // App Router client-side route cache lifetime.
     //
     // Default (Next 15+) is `dynamic: 0` — dynamic routes are NOT cached

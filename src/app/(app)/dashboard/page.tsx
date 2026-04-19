@@ -4,34 +4,27 @@ import { getDashboardCriticalData, getDashboardStats } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
 import logger from "@/lib/logger";
 
-export default async function DashboardPage() {
-  // Critical data is cached 15 min — ~5-20 ms on warm cache, ~50-100 ms cold.
-  // We await it on the outer path so the shell's server-rendered HTML can
-  // ship the moment this resolves, without waiting on the 20-query stats
-  // batch.
-  const criticalData = await getDashboardCriticalData();
+// The page below is synchronous at the top level so the shell (Suspense
+// fallback) emits in the first streamed HTML chunk on hard-nav, before
+// the dynamic body (auth + critical data + stats) resolves. This also
+// leaves the page correctly shaped for future migration to Next 16's
+// cacheComponents / unstable_instant model, which will ship the shell
+// from the CDN edge.
 
+export default function DashboardPage() {
   return (
     <Suspense fallback={<DashboardStatsFallback />}>
-      {/* Stats fetch (20 parallel queries, ~100-500 ms cold, cached 5 min)
-          runs inside the Suspense boundary. Next.js ships the shell HTML
-          immediately and streams the populated DashboardWrapper in when
-          stats resolve. On cold first-of-day hits this cuts TTFB for the
-          skeleton from ~500 ms down to ~50 ms; the real content still
-          arrives at the same wall-clock time but the user sees the
-          dashboard *structure* sooner. On warm hits both paths complete in
-          under ~100 ms total, so the user experience is essentially
-          identical to the pre-Suspense path. */}
-      <DashboardStatsStream criticalData={criticalData} />
+      {/* All dynamic work lives here: requireAuth (cookies), critical data
+          (15 min cache, ~5-20 ms warm / ~50-100 ms cold), and the 20-query
+          stats batch (~100-500 ms cold / ~30-80 ms warm). The outer page
+          renders zero async work so PPR can prerender the shell. */}
+      <DashboardStatsStream />
     </Suspense>
   );
 }
 
-async function DashboardStatsStream({
-  criticalData,
-}: {
-  criticalData: Awaited<ReturnType<typeof getDashboardCriticalData>>;
-}) {
+async function DashboardStatsStream() {
+  const criticalData = await getDashboardCriticalData();
   const initialStats = await getDashboardStats(null).catch((err) => {
     logger.error("[DashboardPage] initial stats fetch failed, falling back to client-side fetch:", err);
     return null;

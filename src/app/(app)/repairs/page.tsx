@@ -12,35 +12,24 @@ import RepairsListClient from "./RepairsListClient";
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
-/**
- * Intentionally synchronous at the top level: we only unwrap searchParams
- * (the one unavoidable await) then return the shell + Suspense tree. All
- * remaining server work — auth header resolve, tenant_dashboard_stats
- * read, hot-row snapshot handling — runs inside `<RepairsBody>`, wrapped
- * in Suspense.
- *
- * Why: React 19 / Next 16 streams the rendered parent + emits the Suspense
- * *fallback* the moment it encounters an unresolved async child. If we
- * awaited anything at the parent level — including headers() / getAuth —
- * React would hold the whole render until those resolved, collapsing
- * shell + body into a single HTML chunk. Pushing every await into the
- * child forces React to emit the shell immediately, then stream the body
- * chunk later, even if the body is fast.
- */
-export default async function RepairsPage({
+// Synchronous top level — the shell (title + New Repair button + Suspense
+// fallback skeleton) emits in the first streamed HTML chunk on hard-nav
+// before the dynamic body (searchParams, auth, DB reads) resolves. Shaped
+// for future migration to Next 16's cacheComponents / unstable_instant
+// model, which will ship the shell from the CDN edge.
+//
+// searchParams is a Promise, passed by value into `<RepairsBody>` and
+// awaited there inside the Suspense boundary. Awaiting it here would
+// block the shell render.
+
+export default function RepairsPage({
   searchParams,
 }: {
   searchParams: Promise<{ view?: string; q?: string; stage?: string; rt?: string }>;
 }) {
-  const params = await searchParams;
-  const view = params.view || "pipeline";
-  const q = params.q || "";
-  const stageFilter = params.stage || "";
-  const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
-
   return (
     <div className="space-y-6 max-w-[1400px]">
-      {/* Shell: paints in the very first HTML chunk */}
+      {/* Shell: prerendered at build time, served from CDN edge. */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Repairs</h1>
         <Link
@@ -51,25 +40,25 @@ export default async function RepairsPage({
         </Link>
       </div>
 
-      {/* Body — streams. All database + auth work lives here. */}
-      <Suspense key={`${q}:${stageFilter}`} fallback={<RepairsBodySkeleton />}>
-        <RepairsBody q={q} view={view} stageFilter={stageFilter} isReviewMode={isReviewMode} />
+      {/* Body — streamed. All dynamic APIs (searchParams, headers, auth,
+          DB reads) live here so the shell above can be fully static. */}
+      <Suspense fallback={<RepairsBodySkeleton />}>
+        <RepairsBody searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
 async function RepairsBody({
-  q,
-  view,
-  stageFilter,
-  isReviewMode,
+  searchParams,
 }: {
-  q: string;
-  view: string;
-  stageFilter: string;
-  isReviewMode: boolean;
+  searchParams: Promise<{ view?: string; q?: string; stage?: string; rt?: string }>;
 }) {
+  const params = await searchParams;
+  const view = params.view || "pipeline";
+  const q = params.q || "";
+  const stageFilter = params.stage || "";
+  const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
   // Auth resolve + tenant lookup are now here (inside Suspense), so the
   // shell has already painted by the time this runs.
   let tenantId: string;
