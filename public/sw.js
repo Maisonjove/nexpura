@@ -1,5 +1,5 @@
 // Nexpura Service Worker - PWA & Offline Support
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const STATIC_CACHE = `nexpura-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `nexpura-dynamic-${CACHE_VERSION}`;
 // Hot-route RSC prefetch cache — 15-second TTL, per-user via Vary: cookie
@@ -275,17 +275,71 @@ async function computeSessionCookieHash() {
   }
 }
 
-// Cache-with-TTL + explicit cookie keying for hot-route RSC prefetches.
-// Serve cached response only if (a) fresh within TTL AND (b) the cookie
-// state that produced it still matches. If we cannot read cookies from
-// the CookieStore API (unsupported browser), we DO NOT cache and DO NOT
-// serve from cache — pass-through to network to preserve isolation.
+// ─── In-flight request coalescing ────────────────────────────────────────
+//
+// Before this map existed, the realistic-user timeline on first visit was:
+//   t≈1600 ms: inline warmup fires fetch(A) for /test/customers
+//   t≈2500 ms: user clicks the Customers link → router.prefetch fires
+//              fetch(B) for the SAME URL with the SAME cookie state
+//   t≈3500 ms: fetch(A) completes, SW caches the response
+//   t≈3800 ms: fetch(B) completes (started from scratch, full round-trip)
+//              → wasted 1000-1500 ms of redundant network work
+//
+// With coalescing: fetch(B) sees fetch(A) is already in flight for the
+// same (URL, cookie-hash) key, attaches to the same promise, returns a
+// clone of the same Response as soon as it resolves. 1 network request
+// instead of 2. The click observes the warmup response.
+//
+// Scope matches the rest of this pass: hot-route RSC prefetches only,
+// keyed by URL + session cookie hash. Never coalesce across cookie state
+// (safeguards the cross-user isolation the last pass established).
+const inflightFetches = new Map(); // key -> Promise<Response>
+
+function coalescingKey(url, cookieHash) {
+  return `${url}\u0000${cookieHash}`;
+}
+
+// Store the ORIGINAL resolved Response in the map. The map itself holds
+// the promise; awaiters .clone() the resolved Response so each consumer
+// gets its own independent body stream (bodies can only be consumed
+// once, but clone() tees the underlying stream). The map entry is
+// removed 100 ms after the promise settles — late enough to coalesce a
+// click that arrives a few microseconds after the fetch resolves, early
+// enough that the Response is not retained indefinitely.
+async function coalescedHotFetch(request, cookieHash) {
+  const key = coalescingKey(request.url, cookieHash);
+  const existing = inflightFetches.get(key);
+  if (existing) {
+    const res = await existing;
+    return res.clone();
+  }
+  const promise = fetch(request);
+  inflightFetches.set(key, promise);
+  promise
+    .catch(() => {})
+    .finally(() => {
+      setTimeout(() => {
+        if (inflightFetches.get(key) === promise) {
+          inflightFetches.delete(key);
+        }
+      }, 100);
+    });
+  const response = await promise;
+  return response.clone();
+}
+
+// Cache-with-TTL + explicit cookie keying + in-flight coalescing for
+// hot-route RSC prefetches. Serve cached response only if (a) fresh
+// within TTL AND (b) the cookie state that produced it still matches.
+// If we cannot read cookies from the CookieStore API (unsupported
+// browser), we DO NOT cache and DO NOT serve from cache — pass-through
+// to network to preserve isolation.
 async function rscPrefetchStrategy(request) {
   const url = request.url;
   const currentCookieHash = await computeSessionCookieHash();
   if (currentCookieHash === null) {
     // CookieStore unavailable — cannot verify per-user isolation.
-    // Pass-through and do NOT cache. (No perf win; correctness preserved.)
+    // Pass-through and do NOT cache / coalesce.
     return fetch(request);
   }
   const cache = await caches.open(RSC_PREFETCH_CACHE);
@@ -302,7 +356,10 @@ async function rscPrefetchStrategy(request) {
     // Stale, or a different session's cookie → fall through to network.
   }
   try {
-    const response = await fetch(request);
+    // Coalesce concurrent fetches for (URL, cookie-hash). If a warmup
+    // fetch is already running for this exact key, the click awaits it
+    // instead of starting a second network round-trip.
+    const response = await coalescedHotFetch(request, currentCookieHash);
     if (response.ok && response.type === 'basic') {
       const toStore = response.clone();
       cache
