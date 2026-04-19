@@ -44,6 +44,36 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   experimental: {
     clientTraceMetadata: ["baggage", "sentry-trace"],
+    // App Router client-side route cache lifetime.
+    //
+    // Default (Next 15+) is `dynamic: 0` — dynamic routes are NOT cached
+    // client-side, so every in-session nav re-fetches the RSC payload.
+    // That forces a full round-trip even though the prefetcher just warmed
+    // the route seconds ago.
+    //
+    // With tag-based invalidation wired from every mutating action
+    // (customers/tasks/inventory/invoices/repairs/bespoke/sales),
+    // revalidateTag() and revalidatePath() correctly purge cached entries
+    // as soon as any write happens in the same session. So we can safely
+    // extend the idle cache lifetime.
+    //
+    // dynamic: 120 — a jeweller moving between customer → their repair →
+    // back to customer → their invoice over 1-2 min of active work gets
+    // warm route entry on every nav. After 2 min of idle, the next click
+    // re-fetches (acceptable fresh-read cost after meaningful elapsed time).
+    //
+    // static: 300 — 5 min for layouts / loading.tsx / truly-static segments,
+    // which change rarely.
+    //
+    // Trade-off: if two users on separate tabs edit the same tenant's
+    // data, one tab may see the other's change up to 120s late. For a
+    // single-user workflow (the typical jeweller's shop) this is invisible;
+    // for multi-staff concurrent edits the staleness window is bounded and
+    // mutations on *your own* tab are always fresh via revalidatePath/Tag.
+    staleTimes: {
+      dynamic: 120,
+      static: 300,
+    },
     // Tree-shake large barrel-export packages so only the icons/components
     // actually imported end up in the client bundle.
     optimizePackageImports: [
