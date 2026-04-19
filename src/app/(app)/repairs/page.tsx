@@ -33,7 +33,10 @@ export default async function RepairsPage({
     tenantId = headerTenantId;
   }
 
-  // Build repair query with minimal fields for list view
+  // Cap initial list at 200 repairs — the jeweller sees everything they need
+  // on the first screen; older repairs reached via filter or dedicated report.
+  // Previously the query returned every repair the tenant had ever created,
+  // which scaled the payload + HTML render cost linearly with repair count.
   let query = admin
     .from("repairs")
     .select(
@@ -42,7 +45,8 @@ export default async function RepairsPage({
     )
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(200);
 
   if (q) {
     query = query.or(
