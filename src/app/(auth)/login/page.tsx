@@ -16,10 +16,13 @@ function LoginPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [showExpiredMessage, setShowExpiredMessage] = useState(false);
   
-  // Prefetch dashboard on mount so navigation is instant after login
-  useEffect(() => {
-    router.prefetch("/dashboard");
-  }, [router]);
+  // NOTE: We intentionally do NOT `router.prefetch("/dashboard")` here.
+  // On mount the user is unauthenticated, so middleware responds with a
+  // 307 redirect to /login — and Next.js caches *that* redirect in the
+  // router cache. A subsequent `router.replace("/dashboard")` after a
+  // successful login would then replay the cached redirect and land the
+  // user back on /login. The prefetch does more harm than good for the
+  // normal case (unauth → login → auth → dashboard).
 
   // Check if redirected due to session expiry
   useEffect(() => {
@@ -87,9 +90,15 @@ function LoginPageContent() {
         }
       }
 
-      // 4. Navigate — session is already set in browser cookies by step 2
+      // 4. Navigate via soft-nav so we reuse the prefetched /dashboard bundle
+      // and avoid a full page reload. @supabase/ssr's createBrowserClient
+      // synchronously writes auth cookies to document.cookie *before*
+      // signInWithPassword resolves, so by the time router.replace fires the
+      // cookie is already in the jar and the RSC fetch for /dashboard sends
+      // it to middleware. Using router.replace (not router.push) also removes
+      // /login from history so back-button doesn't flash the login form.
       postLoginChecks(email, rateCheck.identifier).catch(() => {});
-      window.location.href = redirectUrl;
+      router.replace(redirectUrl);
     });
   }
 
