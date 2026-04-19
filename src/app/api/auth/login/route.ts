@@ -18,14 +18,52 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, redirectTo, checkOnly2FA } = body as { email: string; password: string; redirectTo?: string; checkOnly2FA?: boolean };
+    const { email, password, redirectTo, checkOnly2FA, userId: clientUserId } = body as { email: string; password: string; redirectTo?: string; checkOnly2FA?: boolean; userId?: string };
 
-    // Handle 2FA-only check (client already authenticated)
+    // Handle 2FA-only check (client already authenticated via client-side
+    // signInWithPassword). Historically this path called
+    // admin.auth.admin.listUsers() to resolve email→userId before querying
+    // totp_enabled — a single-row lookup wrapped in a full-project user list
+    // that scales O(project users) and costs ~100-500ms.
+    //
+    // Fast path: the client already has `data.user.id` from its own
+    // signInWithPassword response — pass it in the request body and we skip
+    // listUsers entirely, going straight to the single users-table query.
+    //
+    // Safety: verify clientUserId matches the authenticated session user
+    // before trusting it, so a malicious client can't ask about someone
+    // else's totp_enabled flag. (This matches the pattern already used by
+    // /api/auth/2fa/validate.) Even if this check somehow returned the wrong
+    // answer, it could not bypass 2FA — the actual TOTP code validation at
+    // /api/auth/2fa/validate separately enforces that the submitted userId
+    // matches the session.
     if (checkOnly2FA) {
+      const admin = createAdminClient();
+
+      // Fast path: client passed its own userId
+      if (clientUserId) {
+        const supabase = await createClient();
+        const { data: { user: sessionUser } } = await supabase.auth.getUser();
+        if (!sessionUser || sessionUser.id !== clientUserId) {
+          // Session doesn't match — don't trust the supplied userId. Fall
+          // through to the email path below (or return a safe default).
+        } else {
+          const { data: profile } = await admin
+            .from("users")
+            .select("totp_enabled")
+            .eq("id", clientUserId)
+            .single();
+          if (profile?.totp_enabled) {
+            return NextResponse.json({ requires2FA: true, userId: clientUserId, email: sessionUser.email });
+          }
+          return NextResponse.json({ requires2FA: false });
+        }
+      }
+
+      // Slow fallback path: no userId supplied, look up by email.
       if (!email) {
         return NextResponse.json({ requires2FA: false });
       }
-      const admin = createAdminClient();
       const { data: userData } = await admin.auth.admin.listUsers();
       const user = userData?.users?.find(u => u.email === email);
       if (user) {
