@@ -40,6 +40,13 @@ interface Props {
    * the server returned.
    */
   q: string;
+  /**
+   * Page renders the title + primary-action button as a server-rendered
+   * shell above the Suspense boundary, so set this true to skip the
+   * duplicate h1/add-button block from the client. Export button stays
+   * inside the client (it needs the loaded row data to build the CSV).
+   */
+  hideTitleBlock?: boolean;
 }
 
 function getInitials(name: string | null) {
@@ -57,6 +64,7 @@ export default function CustomerListClient({
   initialPage,
   pageSize,
   q: initialQ,
+  hideTitleBlock = false,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -176,43 +184,48 @@ export default function CustomerListClient({
 
   return (
     <div className="space-y-6 max-w-[1400px]">
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Customers</h1>
-          <Badge variant="outline" className="text-stone-500 font-medium px-2.5 py-0.5 rounded-full border-stone-200">
-            {totalCount}
-          </Badge>
+      {/* HEADER — rendered on the server above the Suspense boundary when
+          the page uses the shell-first streaming pattern. Skipped here to
+          avoid a duplicate title when the real count + export button
+          stream in. Kept inline when this component is used standalone. */}
+      {!hideTitleBlock && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Customers</h1>
+            <Badge variant="outline" className="text-stone-500 font-medium px-2.5 py-0.5 rounded-full border-stone-200">
+              {totalCount}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-3">
+            <ExportButtons
+              data={visibleCustomers.map((c) => ({
+                full_name: displayName(c),
+                email: c.email || "",
+                phone: c.mobile || c.phone || "",
+                tags: (c.tags || []).join(", "),
+                is_vip: c.is_vip ? "Yes" : "No",
+                created_at: formatDateForExport(c.created_at),
+                updated_at: formatDateForExport(c.updated_at),
+              }))}
+              columns={[
+                { key: "full_name", label: "Name" },
+                { key: "email", label: "Email" },
+                { key: "phone", label: "Phone" },
+                { key: "tags", label: "Tags" },
+                { key: "is_vip", label: "VIP" },
+                { key: "created_at", label: "Created" },
+                { key: "updated_at", label: "Updated" },
+              ]}
+              filename={`customers-export-${new Date().toISOString().split("T")[0]}`}
+              sheetName="Customers"
+              size="sm"
+            />
+            <Link href="/customers/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
+              <Plus className="w-4 h-4 mr-2" /> Add Customer
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <ExportButtons
-            data={visibleCustomers.map((c) => ({
-              full_name: displayName(c),
-              email: c.email || "",
-              phone: c.mobile || c.phone || "",
-              tags: (c.tags || []).join(", "),
-              is_vip: c.is_vip ? "Yes" : "No",
-              created_at: formatDateForExport(c.created_at),
-              updated_at: formatDateForExport(c.updated_at),
-            }))}
-            columns={[
-              { key: "full_name", label: "Name" },
-              { key: "email", label: "Email" },
-              { key: "phone", label: "Phone" },
-              { key: "tags", label: "Tags" },
-              { key: "is_vip", label: "VIP" },
-              { key: "created_at", label: "Created" },
-              { key: "updated_at", label: "Updated" },
-            ]}
-            filename={`customers-export-${new Date().toISOString().split("T")[0]}`}
-            sheetName="Customers"
-            size="sm"
-          />
-          <Link href="/customers/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
-            <Plus className="w-4 h-4 mr-2" /> Add Customer
-          </Link>
-        </div>
-      </div>
+      )}
 
       {/* FILTER BAR */}
       <div className="flex flex-col gap-2">

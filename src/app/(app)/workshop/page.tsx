@@ -1,26 +1,52 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
 import { getAuthContext } from "@/lib/auth-context";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { Wrench, ClipboardList, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default async function WorkshopPage() {
   const auth = await getAuthContext();
   if (!auth) redirect("/login");
-  
+
   const { tenantId } = auth;
+
+  return (
+    <div className="space-y-6 nx-fade-in">
+      {/* Shell — ships in the first HTML packet while the body streams. */}
+      <div className="nx-page-header">
+        <div>
+          <h1 className="nx-page-title">Workshop Overview</h1>
+          <p className="text-sm text-stone-500 mt-1">Manage production and repair workflows</p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/workshop/calendar" className="px-4 py-2 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors flex items-center gap-2">
+            <Clock size={16} />
+            Calendar View
+          </Link>
+          <Link href="/repairs/new" className="nx-btn-primary flex items-center gap-2">
+            <Wrench size={16} />
+            New Repair
+          </Link>
+        </div>
+      </div>
+
+      {/* Heavy body (active lists + counts) streams in behind Suspense. */}
+      <Suspense fallback={<WorkshopBodySkeleton />}>
+        <WorkshopBody tenantId={tenantId} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function WorkshopBody({ tenantId }: { tenantId: string }) {
   const admin = createAdminClient();
   const today = new Date();
-
-  // Whole workshop payload (active lists + accurate stats) cached behind
-  // the per-tenant `workshop:{tenantId}` tag. repairs/actions.ts and
-  // bespoke/actions.ts both call revalidateTag on create/update/delete so
-  // new jobs/stage changes appear on the next nav. Keyed on `todayIso`
-  // so overdue counts automatically freshen at midnight without an explicit
-  // cron.
   const todayIso = today.toISOString().split("T")[0];
+
   const fetchWorkshop = unstable_cache(
     async () => {
       const [repairsResult, jobsResult, ar, aj, ipr, ipj, odr, odj] = await Promise.all([
@@ -71,30 +97,10 @@ export default async function WorkshopPage() {
     { tags: [CACHE_TAGS.workshop(tenantId)], revalidate: 3600 }
   );
 
-  const payload = await fetchWorkshop();
-  const activeRepairs = payload.activeRepairs;
-  const activeJobs = payload.activeJobs;
-  const { totalActive, inProgressCount, overdueCount } = payload;
+  const { activeRepairs, activeJobs, totalActive, inProgressCount, overdueCount } = await fetchWorkshop();
 
   return (
-    <div className="space-y-6 nx-fade-in">
-      <div className="nx-page-header">
-        <div>
-          <h1 className="nx-page-title">Workshop Overview</h1>
-          <p className="text-sm text-stone-500 mt-1">Manage production and repair workflows</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/workshop/calendar" className="px-4 py-2 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors flex items-center gap-2">
-            <Clock size={16} />
-            Calendar View
-          </Link>
-          <Link href="/repairs/new" className="nx-btn-primary flex items-center gap-2">
-            <Wrench size={16} />
-            New Repair
-          </Link>
-        </div>
-      </div>
-
+    <>
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="nx-card">
@@ -151,8 +157,8 @@ export default async function WorkshopPage() {
                       {repair.item_description}
                     </Link>
                     <p className="text-xs text-stone-400 mt-0.5">
-                      {Array.isArray(repair.customers) 
-                        ? (repair.customers[0] as { full_name?: string })?.full_name 
+                      {Array.isArray(repair.customers)
+                        ? (repair.customers[0] as { full_name?: string })?.full_name
                         : (repair.customers as { full_name?: string } | null)?.full_name}
                     </p>
                   </div>
@@ -192,8 +198,8 @@ export default async function WorkshopPage() {
                       {job.title}
                     </Link>
                     <p className="text-xs text-stone-400 mt-0.5">
-                      {Array.isArray(job.customers) 
-                        ? (job.customers[0] as { full_name?: string })?.full_name 
+                      {Array.isArray(job.customers)
+                        ? (job.customers[0] as { full_name?: string })?.full_name
                         : (job.customers as { full_name?: string } | null)?.full_name}
                     </p>
                   </div>
@@ -215,6 +221,53 @@ export default async function WorkshopPage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
+  );
+}
+
+function WorkshopBodySkeleton() {
+  return (
+    <>
+      {/* Stats grid — matches the real 3-card layout exactly so there's no jump. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="nx-card">
+            <div className="flex items-center gap-4">
+              <Skeleton className="w-12 h-12 rounded-full flex-shrink-0" />
+              <div className="flex-1">
+                <Skeleton className="h-3 w-20 mb-2" />
+                <Skeleton className="h-7 w-12" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tables — same shape as the active-repairs / bespoke panels. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {Array.from({ length: 2 }).map((_, panel) => (
+          <div key={panel} className="nx-table-wrapper">
+            <div className="px-6 py-4 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <div className="divide-y divide-stone-100">
+              {Array.from({ length: 5 }).map((_, row) => (
+                <div key={row} className="px-6 py-4 flex justify-between items-center">
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-3/4 mb-2" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                  <div className="text-right">
+                    <Skeleton className="h-5 w-16 ml-auto mb-1" />
+                    <Skeleton className="h-3 w-20 ml-auto" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

@@ -1,10 +1,14 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getAuthContext } from "@/lib/auth-context";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { Skeleton } from "@/components/ui/skeleton";
 import CustomerListClient from "./CustomerListClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -18,20 +22,12 @@ export default async function CustomersPage({
   searchParams: Promise<{ q?: string; tag?: string; sort?: string; page?: string; rt?: string }>;
 }) {
   const params = await searchParams;
-  // `q` is the ONLY filter that still hits the server — it lets deep-link
-  // URLs and the client-side "Search all customers" escape hatch look past
-  // the recent-200 cap with a full-tenant ILIKE match. Tag filtering and
-  // sort are now entirely client-side over the loaded set.
   const q = params.q || "";
-  // `?page=N` is preserved as a paging escape hatch for tenants with >200
-  // customers — mostly used via the "Load older" button on the client, or
-  // via deep-link. Default view is always page 1 with the 200 most recent.
   const page = parseInt(params.page || "1");
-  const offset = (page - 1) * DEFAULT_PAGE_SIZE;
-  const admin = createAdminClient();
 
   const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
 
+  // Fast-path tenant resolution — no DB call, headers-only.
   let tenantId: string;
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
@@ -42,17 +38,42 @@ export default async function CustomersPage({
     tenantId = headerTenantId;
   }
 
-  // Whole-list payload cached behind unstable_cache + per-tenant tag.
-  // Invalidated from customers/actions.ts (create/update/archive) and
-  // intake/actions.ts (customer create). Keyed by tenant + page + search
-  // so deep-link search URLs and "Load older" pages don't collide. When
-  // the tag is revalidated, every keyed variation for that tenant is
-  // invalidated atomically — the next visit fetches fresh.
-  //
-  // We skip caching entirely when `q` is present but short (< 2 chars):
-  // ad-hoc searches are rarely repeated and not worth the cache churn.
-  // The default /customers hot-path (no search, page 1) is always cached.
-  const cacheKey = [`customers-list`, tenantId, String(page), q || "nq"];
+  return (
+    <div className="space-y-6 max-w-[1400px]">
+      {/* Shell — streams in the first HTML packet, before any DB query. */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Customers</h1>
+        <Link
+          href="/customers/new"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2"
+        >
+          <Plus className="w-4 h-4 mr-2" /> Add Customer
+        </Link>
+      </div>
+
+      {/* Row table + count + export button stream in behind Suspense. */}
+      <Suspense key={`${q}:${page}`} fallback={<CustomerTableSkeleton />}>
+        <CustomerRows tenantId={tenantId} q={q} page={page} isReviewMode={isReviewMode} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function CustomerRows({
+  tenantId,
+  q,
+  page,
+  isReviewMode,
+}: {
+  tenantId: string;
+  q: string;
+  page: number;
+  isReviewMode: boolean;
+}) {
+  const offset = (page - 1) * DEFAULT_PAGE_SIZE;
+  const admin = createAdminClient();
+
+  const cacheKey = ["customers-list", tenantId, String(page), q || "nq"];
   const fetchPage = unstable_cache(
     async () => {
       let listQ = admin
@@ -89,30 +110,56 @@ export default async function CustomersPage({
       };
     },
     cacheKey,
-    {
-      tags: [CACHE_TAGS.customers(tenantId)],
-      // Revalidate at most hourly even without a write — safety net against
-      // edge cases where a write misses the invalidation path.
-      revalidate: 3600,
-    }
+    { tags: [CACHE_TAGS.customers(tenantId)], revalidate: 3600 }
   );
 
   const [auth, payload] = await Promise.all([
     isReviewMode ? Promise.resolve(null) : getAuthContext(),
     fetchPage(),
   ]);
-  const customers = payload.rows;
-  const count = payload.count;
-
   if (!isReviewMode && !auth) redirect("/login");
 
   return (
     <CustomerListClient
-      initialCustomers={customers || []}
-      totalCount={count || 0}
+      initialCustomers={payload.rows}
+      totalCount={payload.count}
       initialPage={page}
       pageSize={DEFAULT_PAGE_SIZE}
       q={q}
+      hideTitleBlock
     />
+  );
+}
+
+function CustomerTableSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Filter bar shape */}
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-10 flex-1 max-w-sm rounded-lg" />
+        <Skeleton className="h-10 w-32 rounded-lg" />
+        <Skeleton className="h-10 w-40 rounded-lg" />
+      </div>
+      {/* Table shape */}
+      <div className="nx-table-wrapper">
+        <div className="px-6 py-3 border-b border-stone-100 bg-stone-50/50 flex gap-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-4 w-28 ml-auto" />
+        </div>
+        <div className="divide-y divide-stone-100">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="px-6 py-4 flex items-center gap-4">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-24 ml-auto" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

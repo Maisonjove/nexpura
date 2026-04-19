@@ -54,6 +54,12 @@ interface Props {
     totalOverdue: number;
     paidThisMonth: number;
   };
+  /**
+   * Set true when the page's server shell renders its own title + New
+   * Invoice button above the Suspense boundary — avoids a duplicate H1
+   * flash when the list streams in.
+   */
+  hideTitleBlock?: boolean;
 }
 
 export default function InvoiceListClient({
@@ -64,6 +70,7 @@ export default function InvoiceListClient({
   q,
   statusFilter: initialStatusFilter,
   stats,
+  hideTitleBlock = false,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -125,19 +132,21 @@ export default function InvoiceListClient({
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Invoices</h1>
-        <Link
-          href="/invoices/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Invoice
-        </Link>
-      </div>
+      {/* Header (skipped when the server shell renders it above) */}
+      {!hideTitleBlock && (
+        <div className="flex items-center justify-between">
+          <h1 className="font-semibold text-2xl font-semibold text-stone-900">Invoices</h1>
+          <Link
+            href="/invoices/new"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Invoice
+          </Link>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
