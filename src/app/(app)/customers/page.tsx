@@ -1,9 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { unstable_cache } from "next/cache";
 import { getAuthContext } from "@/lib/auth-context";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
-import { getCached, tenantCacheKey } from "@/lib/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import CustomerListClient from "./CustomerListClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -41,63 +42,67 @@ export default async function CustomersPage({
     tenantId = headerTenantId;
   }
 
-  // List query — no count:"exact" here. Combining list+count in one request
-  // forces PostgREST to run a SELECT COUNT(*) alongside the ranged fetch,
-  // which on a 200k+-row table with deleted_at filter causes an index scan
-  // and adds hundreds of ms to TTFB on every nav. Count is fetched
-  // separately below and cached.
-  let listQuery = admin
-    .from("customers")
-    .select(
-      "id, full_name, first_name, last_name, email, phone, mobile, tags, is_vip, created_at, updated_at"
-    )
-    .eq("tenant_id", tenantId)
-    .is("deleted_at", null);
-
-  if (q) {
-    listQuery = listQuery.or(
-      `full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,mobile.ilike.%${q}%`
-    );
-  }
-
-  listQuery = listQuery
-    .order("created_at", { ascending: false })
-    .range(offset, offset + DEFAULT_PAGE_SIZE - 1);
-
-  // Count query — head-only (no row serialization) + 30-second per-tenant
-  // Redis cache. Cache is keyed on tenant + search `q` so deep-link search
-  // URLs still get accurate totals, but the default /customers view is
-  // served count-from-cache after the first hit of a 30s window.
-  // Freshness trade-off: exact total may lag by up to 30s after a create/
-  // delete. Acceptable — the list itself (and the "Showing X of TOTAL"
-  // label) stays coherent because the list rows are read fresh every time.
-  const countCacheKey = tenantCacheKey(tenantId, "customers-count", q || "all");
-  const countPromise = getCached(
-    countCacheKey,
+  // Whole-list payload cached behind unstable_cache + per-tenant tag.
+  // Invalidated from customers/actions.ts (create/update/archive) and
+  // intake/actions.ts (customer create). Keyed by tenant + page + search
+  // so deep-link search URLs and "Load older" pages don't collide. When
+  // the tag is revalidated, every keyed variation for that tenant is
+  // invalidated atomically — the next visit fetches fresh.
+  //
+  // We skip caching entirely when `q` is present but short (< 2 chars):
+  // ad-hoc searches are rarely repeated and not worth the cache churn.
+  // The default /customers hot-path (no search, page 1) is always cached.
+  const cacheKey = [`customers-list`, tenantId, String(page), q || "nq"];
+  const fetchPage = unstable_cache(
     async () => {
-      let cq = admin
+      let listQ = admin
+        .from("customers")
+        .select(
+          "id, full_name, first_name, last_name, email, phone, mobile, tags, is_vip, created_at, updated_at"
+        )
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null);
+      if (q) {
+        listQ = listQ.or(
+          `full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,mobile.ilike.%${q}%`
+        );
+      }
+      const listResult = await listQ
+        .order("created_at", { ascending: false })
+        .range(offset, offset + DEFAULT_PAGE_SIZE - 1);
+
+      let countQ = admin
         .from("customers")
         .select("id", { count: "exact", head: true })
         .eq("tenant_id", tenantId)
         .is("deleted_at", null);
       if (q) {
-        cq = cq.or(
+        countQ = countQ.or(
           `full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,mobile.ilike.%${q}%`
         );
       }
-      const { count } = await cq;
-      return count ?? 0;
+      const { count } = await countQ;
+
+      return {
+        rows: listResult.data ?? [],
+        count: count ?? 0,
+      };
     },
-    30
+    cacheKey,
+    {
+      tags: [CACHE_TAGS.customers(tenantId)],
+      // Revalidate at most hourly even without a write — safety net against
+      // edge cases where a write misses the invalidation path.
+      revalidate: 3600,
+    }
   );
 
-  const [auth, listResult, totalCount] = await Promise.all([
+  const [auth, payload] = await Promise.all([
     isReviewMode ? Promise.resolve(null) : getAuthContext(),
-    listQuery,
-    countPromise,
+    fetchPage(),
   ]);
-  const customers = listResult.data;
-  const count = totalCount;
+  const customers = payload.rows;
+  const count = payload.count;
 
   if (!isReviewMode && !auth) redirect("/login");
 

@@ -1,11 +1,12 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { generateBarcodeValue } from "@/lib/barcode";
 import { logAuditEvent } from "@/lib/audit";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 async function getTenantId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -196,6 +197,7 @@ export async function createInventoryItem(formData: FormData) {
   );
 
   revalidatePath("/inventory");
+  revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
   redirect(`/inventory/${item.id}`);
 }
 
@@ -349,6 +351,7 @@ export async function updateInventoryItem(id: string, formData: FormData) {
   revalidatePath(`/inventory/${id}`);
   revalidatePath(`/inventory/${id}/edit`);
   revalidatePath("/inventory");
+  revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
   redirect(`/inventory/${id}`);
 }
 
@@ -436,6 +439,7 @@ export async function adjustStock(
   revalidatePath(`/inventory/${inventoryId}`);
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
+  revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
 }
 
 export async function archiveInventoryItem(id: string) {
@@ -470,6 +474,7 @@ export async function archiveInventoryItem(id: string) {
   });
 
   revalidatePath("/inventory");
+  revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
   redirect("/inventory");
 }
 

@@ -11,6 +11,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { logStatusChange, sendTrackingEmail } from "@/lib/tracking";
 import logger from "@/lib/logger";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -150,6 +151,7 @@ export async function createRepair(
       newData: repairData as Record<string, unknown>,
     });
     revalidateTag("dashboard", "default");
+    revalidateTag(CACHE_TAGS.workshop(tenantId), "default");
   });
 
   revalidatePath("/repairs");
@@ -191,6 +193,7 @@ export async function updateRepair(
       newData: repairData as Record<string, unknown>,
     });
     revalidateTag("dashboard", "default");
+    revalidateTag(CACHE_TAGS.workshop(tenantId), "default");
   });
 
   revalidatePath("/repairs");

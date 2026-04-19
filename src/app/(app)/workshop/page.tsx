@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import { getAuthContext } from "@/lib/auth-context";
-import { getCached, tenantCacheKey } from "@/lib/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { Wrench, ClipboardList, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
@@ -13,16 +14,32 @@ export default async function WorkshopPage() {
   const admin = createAdminClient();
   const today = new Date();
 
-  // List queries are bounded to 50 rows each (UI renders 8). The summary
-  // counters used to be computed from those 50 rows — which was silently
-  // wrong for any tenant with >50 active items. Replace with accurate
-  // head-only counts, bundled + cached 30 s per tenant so we amortise the
-  // 6 head queries across navs.
+  // Whole workshop payload (active lists + accurate stats) cached behind
+  // the per-tenant `workshop:{tenantId}` tag. repairs/actions.ts and
+  // bespoke/actions.ts both call revalidateTag on create/update/delete so
+  // new jobs/stage changes appear on the next nav. Keyed on `todayIso`
+  // so overdue counts automatically freshen at midnight without an explicit
+  // cron.
   const todayIso = today.toISOString().split("T")[0];
-  const statsPromise = getCached(
-    tenantCacheKey(tenantId, "workshop-stats", todayIso),
+  const fetchWorkshop = unstable_cache(
     async () => {
-      const [ar, aj, ipr, ipj, odr, odj] = await Promise.all([
+      const [repairsResult, jobsResult, ar, aj, ipr, ipj, odr, odj] = await Promise.all([
+        admin
+          .from("repairs")
+          .select("id, item_description, stage, due_date, customers(full_name)")
+          .eq("tenant_id", tenantId)
+          .is("deleted_at", null)
+          .not("stage", "in", '("collected","cancelled")')
+          .order("due_date", { ascending: true })
+          .limit(50),
+        admin
+          .from("bespoke_jobs")
+          .select("id, title, stage, due_date, customers(full_name)")
+          .eq("tenant_id", tenantId)
+          .is("deleted_at", null)
+          .not("stage", "in", '("completed","cancelled")')
+          .order("due_date", { ascending: true })
+          .limit(50),
         admin.from("repairs").select("id", { count: "exact", head: true })
           .eq("tenant_id", tenantId).is("deleted_at", null)
           .not("stage", "in", '("collected","cancelled")'),
@@ -43,38 +60,21 @@ export default async function WorkshopPage() {
           .not("stage", "in", '("completed","cancelled")').lt("due_date", todayIso),
       ]);
       return {
+        activeRepairs: repairsResult.data ?? [],
+        activeJobs: jobsResult.data ?? [],
         totalActive: (ar.count ?? 0) + (aj.count ?? 0),
         inProgressCount: (ipr.count ?? 0) + (ipj.count ?? 0),
         overdueCount: (odr.count ?? 0) + (odj.count ?? 0),
       };
     },
-    30
+    ["workshop", tenantId, todayIso],
+    { tags: [CACHE_TAGS.workshop(tenantId)], revalidate: 3600 }
   );
 
-  const [repairsResult, jobsResult, stats] = await Promise.all([
-    admin
-      .from("repairs")
-      .select("id, item_description, stage, due_date, customers(full_name)")
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .not("stage", "in", '("collected","cancelled")')
-      .order("due_date", { ascending: true })
-      .limit(50),
-    admin
-      .from("bespoke_jobs")
-      .select("id, title, stage, due_date, customers(full_name)")
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .not("stage", "in", '("completed","cancelled")')
-      .order("due_date", { ascending: true })
-      .limit(50),
-    statsPromise,
-  ]);
-
-  const activeRepairs = repairsResult.data ?? [];
-  const activeJobs = jobsResult.data ?? [];
-
-  const { totalActive, inProgressCount, overdueCount } = stats;
+  const payload = await fetchWorkshop();
+  const activeRepairs = payload.activeRepairs;
+  const activeJobs = payload.activeJobs;
+  const { totalActive, inProgressCount, overdueCount } = payload;
 
   return (
     <div className="space-y-6 nx-fade-in">

@@ -3,10 +3,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 export type CustomerListRow = {
   id: string;
@@ -181,6 +182,7 @@ export async function createCustomer(formData: FormData): Promise<{ id?: string;
     );
 
     revalidatePath("/customers");
+    revalidateTag(CACHE_TAGS.customers(userData.tenant_id), "default");
     return { id: data.id };
   } catch (error) {
     logger.error("createCustomer failed", { error });
@@ -235,6 +237,7 @@ export async function updateCustomer(
     );
 
     revalidatePath("/customers");
+    revalidateTag(CACHE_TAGS.customers(tenantId), "default");
     revalidatePath(`/customers/${id}`);
     return { success: true };
   } catch (error) {
@@ -279,6 +282,7 @@ export async function archiveCustomer(id: string): Promise<{ success?: boolean; 
     );
 
     revalidatePath("/customers");
+    revalidateTag(CACHE_TAGS.customers(tenantId), "default");
     redirect("/customers");
   } catch (error) {
     logger.error("archiveCustomer failed", { error });

@@ -1,7 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import { getAuthContext } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import TasksClient from "./TasksClient";
 import type { StaffTask } from "./actions";
 
@@ -21,32 +23,44 @@ export default async function TasksPage() {
   const TASK_LIST_COLUMNS =
     "id, title, description, status, priority, due_date, assigned_to, linked_type, linked_id, created_at, updated_at";
 
+  // Both task lists are cached behind unstable_cache + the per-tenant
+  // `tasks:{tenantId}` tag. tasks/actions.ts calls `revalidateTag` on every
+  // create/update/delete so new tasks land on next nav without TTL wait.
+  // Keyed on userId so the "My Tasks" slice doesn't accidentally leak
+  // across staff members sharing a tenant.
+  const fetchMyTasks = unstable_cache(
+    async () => {
+      const { data } = await admin
+        .from("tasks")
+        .select(TASK_LIST_COLUMNS)
+        .eq("tenant_id", tenantId)
+        .eq("assigned_to", userId)
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .limit(500);
+      return data ?? [];
+    },
+    ["tasks-my", tenantId, userId],
+    { tags: [CACHE_TAGS.tasks(tenantId)], revalidate: 3600 }
+  );
+
+  const fetchAllTasks = unstable_cache(
+    async () => {
+      const { data } = await admin
+        .from("tasks")
+        .select(TASK_LIST_COLUMNS)
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      return data ?? [];
+    },
+    ["tasks-all", tenantId],
+    { tags: [CACHE_TAGS.tasks(tenantId)], revalidate: 3600 }
+  );
+
   // Parallel fetch - tasks + team members
-  const [myTasksResult, allTasksResult, teamMembers] = await Promise.all([
-    // My tasks - always fetch, bounded to 500 most-recent-by-due (any staff
-    // member with >500 personal tasks should use a filter, not scroll).
-    admin
-      .from("tasks")
-      .select(TASK_LIST_COLUMNS)
-      .eq("tenant_id", tenantId)
-      .eq("assigned_to", userId)
-      .order("due_date", { ascending: true, nullsFirst: false })
-      .limit(500),
-
-    // All tasks - only for managers/owners, bounded to 500 most-recent.
-    // Previously unbounded — a mature tenant could pull thousands of rows
-    // into the RSC on every /tasks nav. The Kanban view only needs enough
-    // rows to fill the visible columns; older completed tasks aren't useful
-    // there.
-    isManager
-      ? admin
-          .from("tasks")
-          .select(TASK_LIST_COLUMNS)
-          .eq("tenant_id", tenantId)
-          .order("created_at", { ascending: false })
-          .limit(500)
-      : Promise.resolve({ data: null }),
-
+  const [myTasks, allTasks, teamMembers] = await Promise.all([
+    fetchMyTasks(),
+    isManager ? fetchAllTasks() : Promise.resolve([]),
     // Team members - cache for 5 min (rarely changes)
     getCached(
       tenantCacheKey(tenantId, "team-members"),
@@ -65,8 +79,8 @@ export default async function TasksPage() {
     <TasksClient
       userId={userId}
       userRole={role}
-      myTasks={(myTasksResult.data ?? []) as unknown as StaffTask[]}
-      allTasks={(allTasksResult.data ?? []) as unknown as StaffTask[]}
+      myTasks={myTasks as unknown as StaffTask[]}
+      allTasks={allTasks as unknown as StaffTask[]}
       teamMembers={teamMembers}
       tenantId={tenantId}
     />

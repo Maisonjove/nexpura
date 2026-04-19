@@ -11,6 +11,7 @@ import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { logStatusChange, sendTrackingEmail } from "@/lib/tracking";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -162,6 +163,7 @@ export async function createBespokeJob(
       newData: { job_number: numData, customer_id: customerId, title: jobData.title },
     });
     revalidateTag("dashboard", "default");
+    revalidateTag(CACHE_TAGS.workshop(tenantId), "default");
   });
 
   revalidatePath("/bespoke");
@@ -202,6 +204,7 @@ export async function updateBespokeJob(
       newData: buildJobData(formData),
     });
     revalidateTag("dashboard", "default");
+    revalidateTag(CACHE_TAGS.workshop(tenantId), "default");
   });
 
   revalidatePath("/bespoke");

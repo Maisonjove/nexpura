@@ -1,9 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { unstable_cache } from "next/cache";
 import { getAuthContext } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import InventoryClient from "./InventoryClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -36,65 +38,69 @@ export default async function InventoryPage({
     tenantId = headerTenantId;
   }
 
-  // Run auth (for permissions) AND all data queries IN PARALLEL.
-  // Previously auth had to finish before queries could start (~90-190ms sequential).
-  // Now both start at the same time — total time = max(auth, data) not auth + data.
-  const [auth, itemsResult, countResult, categories, suppliers, websiteConfig] =
+  // Items + count are now tag-cached per-tenant via the `inventory:{tenantId}`
+  // tag. Mutations in inventory/actions.ts (create/update/adjust-stock/delete)
+  // and sales/actions.ts (stock-decrement on sale) call revalidateTag so
+  // new/updated items appear on next nav.
+  const fetchInventoryPage = unstable_cache(
+    async () => {
+      const [itemsResult, countResult] = await Promise.all([
+        admin
+          .from("inventory")
+          .select(`
+            id,
+            sku,
+            name,
+            description,
+            item_type,
+            jewellery_type,
+            category_id,
+            quantity,
+            low_stock_threshold,
+            retail_price,
+            cost_price,
+            status,
+            is_featured,
+            primary_image,
+            stock_number,
+            is_consignment,
+            listed_on_website,
+            supplier_id,
+            metal_type,
+            stone_type,
+            metal_weight_grams,
+            barcode_value,
+            tags,
+            created_at,
+            stock_categories(name),
+            suppliers(name)
+          `)
+          .eq("tenant_id", tenantId)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .range(offset, offset + ITEMS_PER_PAGE - 1),
+        admin
+          .from("inventory")
+          .select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenantId)
+          .is("deleted_at", null),
+      ]);
+      return {
+        items: itemsResult.data ?? [],
+        count: countResult.count ?? 0,
+      };
+    },
+    ["inventory-list", tenantId, String(page)],
+    { tags: [CACHE_TAGS.inventory(tenantId)], revalidate: 3600 }
+  );
+
+  // Run auth + all support data in parallel with the cached list payload.
+  const [auth, listPayload, categories, suppliers, websiteConfig] =
     await Promise.all([
       // Auth: validates session and loads permissions from Redis cache
       isReviewMode ? Promise.resolve(null) : getAuthContext(),
 
-      // Items - paginated for performance (100 per page)
-      admin
-        .from("inventory")
-        .select(`
-          id,
-          sku,
-          name,
-          description,
-          item_type,
-          jewellery_type,
-          category_id,
-          quantity,
-          low_stock_threshold,
-          retail_price,
-          cost_price,
-          status,
-          is_featured,
-          primary_image,
-          stock_number,
-          is_consignment,
-          listed_on_website,
-          supplier_id,
-          metal_type,
-          stone_type,
-          metal_weight_grams,
-          barcode_value,
-          tags,
-          created_at,
-          stock_categories(name),
-          suppliers(name)
-        `)
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .range(offset, offset + ITEMS_PER_PAGE - 1),
-
-      // Total count for pagination — cached 30 s per tenant. Even head-only
-      // counts force an index scan on a large inventory table; this keeps
-      // repeat navs off the hot path entirely.
-      getCached(
-        tenantCacheKey(tenantId, "inventory-count"),
-        async () => {
-          const { count } = await admin
-            .from("inventory")
-            .select("id", { count: "exact", head: true })
-            .eq("tenant_id", tenantId)
-            .is("deleted_at", null);
-          return { count: count ?? 0 };
-        },
-        30
-      ),
+      fetchInventoryPage(),
 
       // Categories - cache for 5 minutes
       getCached(
@@ -145,7 +151,7 @@ export default async function InventoryPage({
   const canViewCost = isReviewMode ? true : (auth?.permissions.view_cost_price ?? false);
   const tenantName = auth?.tenantName ?? "Nexpura";
 
-  const safeItems = (itemsResult.data ?? []) as unknown as Array<{
+  const safeItems = (listPayload.items ?? []) as unknown as Array<{
     id: string;
     sku: string | null;
     name: string;
@@ -174,7 +180,7 @@ export default async function InventoryPage({
     suppliers: { name: string } | null;
   }>;
 
-  const totalItems = countResult.count ?? safeItems.length;
+  const totalItems = listPayload.count ?? safeItems.length;
   const lowStockCount = safeItems.filter(
     (i) => i.quantity <= (i.low_stock_threshold ?? 1)
   ).length;

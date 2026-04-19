@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { invalidateCache, tenantCacheKey } from "@/lib/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
@@ -152,6 +153,7 @@ export async function createCustomerInline(input: {
       .single();
 
     if (error) return { error: error.message };
+    revalidateTag(CACHE_TAGS.customers(tenantId), "default");
     return { id: customer.id, full_name: customer.full_name };
   } catch (err) {
     logger.error("[createCustomerInline] Error:", err);

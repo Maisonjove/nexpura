@@ -2,12 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { logActivity } from "@/lib/activity-log";
 import { notifyTaskAssignment } from "@/lib/whatsapp-notifications";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -196,6 +197,7 @@ export async function createTask(
     }
 
     revalidatePath("/tasks");
+    revalidateTag(CACHE_TAGS.tasks(tenantId), "default");
     return { id: task?.id };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error" };
@@ -303,6 +305,7 @@ export async function updateTask(
 
     revalidatePath("/tasks");
     revalidatePath(`/tasks/${taskId}`);
+    revalidateTag(CACHE_TAGS.tasks(tenantId), "default");
     return { success: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error" };
@@ -343,6 +346,7 @@ export async function deleteTask(
     });
 
     revalidatePath("/tasks");
+    revalidateTag(CACHE_TAGS.tasks(tenantId), "default");
     return { success: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error" };
