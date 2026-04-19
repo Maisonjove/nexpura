@@ -66,17 +66,20 @@ export function RoutePrefetcher({ tenantSlug }: Props) {
     const hot = HOT_ROUTES.map((r) => prefix + r);
     const warm = WARM_ROUTES.map((r) => prefix + r);
 
-    // Hot routes: 700 ms after mount — past the initial critical-path
-    // rendering window but before the user has had time to decide what
-    // to click next.
+    // Hot routes: 50 ms after mount — as early as possible, deferred just
+    // enough to let React settle the initial render. Previous 700 ms was
+    // leaving a ~650 ms window where the user could click before the
+    // prefetch even started. First-click-after-dashboard is where the
+    // remaining latency lives, so start warming immediately.
     const t1 = setTimeout(() => {
       for (const r of hot) router.prefetch(r);
-    }, 700);
+    }, 50);
 
-    // Warm routes: 2.5 s after mount — background fill-in.
+    // Warm routes: 1.5 s after mount — background fill-in, no longer
+    // throttled by a 2.5 s wait since hot-tier is firing earlier now.
     const t2 = setTimeout(() => {
       for (const r of warm) router.prefetch(r);
-    }, 2500);
+    }, 1500);
 
     return () => {
       clearTimeout(t1);
