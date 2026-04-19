@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
 import RepairCommandCenter from "./RepairCommandCenter";
+import type { OrderMessage } from "@/lib/messaging";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
@@ -95,7 +96,7 @@ export default async function RepairDetailPage({
   if (!repair) notFound();
 
   // Phase 2: Fetch repair-specific data in parallel
-  const [attachmentsResult, eventsResult, invoiceData] = await Promise.all([
+  const [attachmentsResult, eventsResult, invoiceData, messagesResult] = await Promise.all([
     adminClient
       .from("job_attachments")
       .select("*")
@@ -135,6 +136,16 @@ export default async function RepairDetailPage({
       }
       return null;
     })() : Promise.resolve(null),
+    // Customer ↔ staff thread for this repair, scoped by tenant_id to
+    // prevent cross-tenant leakage even if an attacker supplies a UUID
+    // from another tenant.
+    adminClient
+      .from("order_messages")
+      .select("*")
+      .eq("order_type", "repair")
+      .eq("order_id", id)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: true }),
   ]);
 
   const customer = Array.isArray(repair.customers) ? repair.customers[0] ?? null : repair.customers;
@@ -171,6 +182,7 @@ export default async function RepairDetailPage({
       readOnly={isReviewMode}
       attachments={attachmentsResult.data ?? []}
       events={eventsResult.data ?? []}
+      messages={(messagesResult.data ?? []) as OrderMessage[]}
       twilioConnected={tenantSettings.twilioConnected}
       businessName={tenantSettings.businessName}
       defaultSmsTemplate={defaultSmsTemplate}

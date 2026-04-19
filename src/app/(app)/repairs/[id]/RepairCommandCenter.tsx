@@ -45,6 +45,9 @@ import type {
   Payment,
 } from "./components/types";
 
+import OrderMessagesPanel from "@/components/orders/OrderMessagesPanel";
+import type { OrderMessage } from "@/lib/messaging";
+
 interface Props {
   repair: Repair;
   customer: Customer | null;
@@ -59,6 +62,7 @@ interface Props {
   businessName?: string;
   defaultSmsTemplate?: string;
   storeSubdomain?: string | null;
+  messages?: OrderMessage[];
 }
 
 function fmt(n: number | null | undefined, currency: string) {
@@ -80,6 +84,7 @@ export default function RepairCommandCenter({
   businessName = "",
   defaultSmsTemplate = "",
   storeSubdomain = null,
+  messages = [],
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -463,6 +468,17 @@ export default function RepairCommandCenter({
               isTerminal={isTerminal}
             />
           </div>
+
+          {/* Customer ↔ Staff messages — sits right next to the stage workflow
+              so amendment requests and questions are impossible to miss while
+              the jeweller is moving the job through stages. */}
+          {!readOnly && (
+            <OrderMessagesPanel
+              orderType="repair"
+              orderId={repair.id}
+              initialMessages={messages}
+            />
+          )}
 
           {/* 4. PhotosCard */}
           <PhotosCard

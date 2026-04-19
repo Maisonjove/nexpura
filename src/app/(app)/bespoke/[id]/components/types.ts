@@ -96,6 +96,8 @@ export interface BespokeJob {
   milestones?: BespokeMilestone[];
 }
 
+import type { OrderMessage } from "@/lib/messaging";
+
 export interface BespokeCommandCenterProps {
   job: BespokeJob;
   customer: Customer | null;
@@ -106,4 +108,5 @@ export interface BespokeCommandCenterProps {
   readOnly?: boolean;
   attachments?: JobAttachment[];
   events?: JobEvent[];
+  messages?: OrderMessage[];
 }
