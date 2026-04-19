@@ -31,6 +31,10 @@ interface Props {
   view: string;
   q: string;
   stageFilter: string;
+  /** Precomputed tenant-wide stage counts. Null on first-ever visit. */
+  precomputedStageCounts?: Record<string, number> | null;
+  /** Precomputed tenant-wide overdue count (non-ready non-completed). */
+  precomputedOverdueCount?: number | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -62,7 +66,14 @@ function getInitials(name: string | null) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function BespokeListClient({ jobs, view: _view, q, stageFilter }: Props) {
+export default function BespokeListClient({
+  jobs,
+  view: _view,
+  q,
+  stageFilter,
+  precomputedStageCounts,
+  precomputedOverdueCount,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -75,10 +86,17 @@ export default function BespokeListClient({ jobs, view: _view, q, stageFilter }:
   const [notifyResult, setNotifyResult] = useState<{ notified: number; skipped: number } | null>(null);
 
   const readyJobs = useMemo(() => jobs.filter(j => j.stage === "ready"), [jobs]);
-  const activeJobsCount = useMemo(
-    () => jobs.filter(j => !["collected", "cancelled"].includes(j.stage)).length,
-    [jobs]
-  );
+  // Loaded 200 gives us the ready-set for the notify-modal payload; for
+  // the header chips prefer the precomputed tenant-wide counts so they
+  // don't undercount when tenant has >200 jobs.
+  const readyDisplayCount = precomputedStageCounts?.ready ?? readyJobs.length;
+  const activeJobsCount = precomputedStageCounts
+    ? Object.entries(precomputedStageCounts)
+        .filter(([k]) => !["completed", "cancelled"].includes(k))
+        .reduce((s, [, n]) => s + n, 0)
+    : jobs.filter(j => !["completed", "cancelled"].includes(j.stage)).length;
+  const overdueDisplayCount = precomputedOverdueCount
+    ?? jobs.filter(j => j.due_date && new Date(j.due_date) < new Date(new Date().toDateString()) && !['completed','cancelled','ready'].includes(j.stage)).length;
   const visibleJobs = useMemo(
     () => (activeTab === "all" ? jobs : jobs.filter(j => j.stage === activeTab)),
     [jobs, activeTab]
@@ -183,9 +201,14 @@ export default function BespokeListClient({ jobs, view: _view, q, stageFilter }:
                     {activeJobsCount} Active
                   </Badge>
                 )}
-                {readyJobs.length > 0 && (
+                {readyDisplayCount > 0 && (
                   <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                    {readyJobs.length} Ready
+                    {readyDisplayCount} Ready
+                  </Badge>
+                )}
+                {overdueDisplayCount > 0 && (
+                  <Badge variant="outline" className="text-red-600 font-medium border-red-200 bg-red-50">
+                    {overdueDisplayCount} Overdue
                   </Badge>
                 )}
               </>
@@ -209,10 +232,18 @@ export default function BespokeListClient({ jobs, view: _view, q, stageFilter }:
         </div>
       </div>
 
-      {/* STAGE TABS */}
+      {/* STAGE TABS — labels include the precomputed tenant-wide count
+          when available. Falls back to label-only when stats row is
+          missing (first-ever visit). */}
       <div className="border-b border-stone-200 flex gap-6 overflow-x-auto whitespace-nowrap no-scrollbar">
         {ALL_STAGES.map((tab) => {
           const isActive = activeTab === tab.key;
+          const count =
+            tab.key === "all"
+              ? precomputedStageCounts
+                ? Object.values(precomputedStageCounts).reduce((s, n) => s + n, 0)
+                : null
+              : precomputedStageCounts?.[tab.key];
           return (
             <button
               key={tab.key}
@@ -224,6 +255,11 @@ export default function BespokeListClient({ jobs, view: _view, q, stageFilter }:
               }`}
             >
               {tab.label}
+              {count !== null && count !== undefined && count > 0 && (
+                <span className={`ml-1.5 text-xs ${isActive ? "text-amber-700" : "text-stone-400"}`}>
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}

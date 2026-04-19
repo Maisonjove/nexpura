@@ -59,11 +59,19 @@ export default async function RepairsPage({
     );
   }
 
-  // Run auth AND data query IN PARALLEL — no sequential waterfall.
-  // Previously auth (~20-40ms) had to complete before the DB query could start.
-  const [auth, { data: rawRepairs }] = await Promise.all([
+  // Run auth + list fetch + precomputed stats in parallel. The stats row
+  // gives accurate tenant-wide stage counts and overdue count, computed
+  // every 60 s by pg_cron (and eagerly refreshed after writes). Previous
+  // iteration had the client compute both from the 200-row fetch, which
+  // under-counted any tenant with >200 repairs.
+  const [auth, { data: rawRepairs }, statsResult] = await Promise.all([
     isReviewMode ? Promise.resolve(null) : getAuthContext(),
     query,
+    admin
+      .from("tenant_dashboard_stats")
+      .select("repairs_stage_counts, repairs_overdue_count")
+      .eq("tenant_id", tenantId)
+      .maybeSingle(),
   ]);
 
   if (!isReviewMode && !auth) redirect("/login");
@@ -92,6 +100,8 @@ export default async function RepairsPage({
       view={view}
       q={q}
       stageFilter={stageFilter}
+      precomputedStageCounts={(statsResult.data?.repairs_stage_counts as Record<string, number> | null) ?? null}
+      precomputedOverdueCount={(statsResult.data?.repairs_overdue_count as number | null) ?? null}
     />
   );
 }

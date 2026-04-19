@@ -43,6 +43,17 @@ interface Props {
   view: string;
   q: string;
   stageFilter: string;
+  /**
+   * Precomputed tenant-wide stage counts from `tenant_dashboard_stats`.
+   * Format: `{ stage_key: count }`. Covers ALL stages including the long
+   * tail of `collected`/`cancelled`, so tab labels are accurate for any
+   * tenant (the inline 200-row fetch would undercount once a tenant had
+   * >200 total repairs). Null when no stats row exists yet — we fall
+   * back to local-computed counts from the loaded rows.
+   */
+  precomputedStageCounts?: Record<string, number> | null;
+  /** Precomputed tenant-wide count of overdue (non-ready non-collected) repairs. */
+  precomputedOverdueCount?: number | null;
 }
 
 // ─── Stage data ───────────────────────────────────────────────────────────────
@@ -76,7 +87,14 @@ function getInitials(name: string | null) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function RepairsListClient({ repairs, view: _view, q, stageFilter }: Props) {
+export default function RepairsListClient({
+  repairs,
+  view: _view,
+  q,
+  stageFilter,
+  precomputedStageCounts,
+  precomputedOverdueCount,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [, startTransition] = useTransition();
@@ -92,7 +110,15 @@ export default function RepairsListClient({ repairs, view: _view, q, stageFilter
   const [notifyResult, setNotifyResult] = useState<{ notified: number; skipped: number } | null>(null);
 
   const readyRepairs = useMemo(() => repairs.filter(r => r.stage === "ready"), [repairs]);
-  const inProgressCount = useMemo(() => repairs.filter(r => r.stage === "in_progress").length, [repairs]);
+  // readyRepairs.length is always trustworthy for the *loaded* 200; use it
+  // for the "Notify" modal payload. But for the header chips that show a
+  // total "X Ready" / "X In Progress", prefer the precomputed tenant-wide
+  // count so the number doesn't lie when the tenant has >200 repairs.
+  const readyDisplayCount = precomputedStageCounts?.ready ?? readyRepairs.length;
+  const inProgressCount = precomputedStageCounts?.in_progress
+    ?? repairs.filter(r => r.stage === "in_progress").length;
+  const overdueDisplayCount = precomputedOverdueCount
+    ?? repairs.filter(r => r.due_date && new Date(r.due_date) < new Date(new Date().toDateString()) && !['collected','cancelled','ready'].includes(r.stage)).length;
 
   // Visible rows = apply current stage filter client-side. With the default
   // 200-row server cap, filtering this locally is ~1ms and feels instant.
@@ -228,9 +254,14 @@ export default function RepairsListClient({ repairs, view: _view, q, stageFilter
                     {inProgressCount} In Progress
                   </Badge>
                 )}
-                {readyRepairs.length > 0 && (
+                {readyDisplayCount > 0 && (
                   <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                    {readyRepairs.length} Ready
+                    {readyDisplayCount} Ready
+                  </Badge>
+                )}
+                {overdueDisplayCount > 0 && (
+                  <Badge variant="outline" className="text-red-600 font-medium border-red-200 bg-red-50">
+                    {overdueDisplayCount} Overdue
                   </Badge>
                 )}
               </>
@@ -279,21 +310,34 @@ export default function RepairsListClient({ repairs, view: _view, q, stageFilter
         </div>
       </div>
 
-      {/* STAGE TABS */}
-      <div className="border-b border-stone-200 flex gap-6">
+      {/* STAGE TABS — labels now show the precomputed tenant-wide count
+          next to each stage key when available. Falls back to label-only
+          when the stats row is missing (first-ever visit). */}
+      <div className="border-b border-stone-200 flex gap-6 overflow-x-auto">
         {ALL_REPAIR_STAGES.map((tab) => {
           const isActive = activeTab === tab.key;
+          const count =
+            tab.key === "all"
+              ? precomputedStageCounts
+                ? Object.values(precomputedStageCounts).reduce((s, n) => s + n, 0)
+                : null
+              : precomputedStageCounts?.[tab.key];
           return (
             <button
               key={tab.key}
               onClick={() => setStage(tab.key === "all" ? "" : tab.key)}
-              className={`pb-3 px-1 text-sm transition-colors ${
+              className={`pb-3 px-1 text-sm transition-colors whitespace-nowrap ${
                 isActive
                   ? "border-b-2 border-amber-600 text-stone-900 font-medium"
                   : "text-stone-400 hover:text-stone-600"
               }`}
             >
               {tab.label}
+              {count !== null && count !== undefined && count > 0 && (
+                <span className={`ml-1.5 text-xs ${isActive ? "text-amber-700" : "text-stone-400"}`}>
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}

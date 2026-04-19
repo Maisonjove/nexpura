@@ -64,7 +64,16 @@ export default async function BespokePage({
     query = query.or(`title.ilike.%${q}%,job_number.ilike.%${q}%`);
   }
 
-  const { data: rawJobs } = await query;
+  // Parallel: row list + precomputed stage counts. Stats row is refreshed
+  // every 60 s by pg_cron (and eagerly on writes).
+  const [{ data: rawJobs }, statsResult] = await Promise.all([
+    query,
+    admin
+      .from("tenant_dashboard_stats")
+      .select("bespoke_stage_counts, bespoke_overdue_count")
+      .eq("tenant_id", tenantId)
+      .maybeSingle(),
+  ]);
 
   const jobs = (rawJobs || []).map((j) => ({
     ...j,
@@ -77,6 +86,8 @@ export default async function BespokePage({
       view={view}
       q={q}
       stageFilter={stageFilter}
+      precomputedStageCounts={(statsResult.data?.bespoke_stage_counts as Record<string, number> | null) ?? null}
+      precomputedOverdueCount={(statsResult.data?.bespoke_overdue_count as number | null) ?? null}
     />
   );
 }
