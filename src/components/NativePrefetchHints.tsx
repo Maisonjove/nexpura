@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { tenantSlugFromPathname } from "@/lib/app-routes";
 
 /**
  * Emits browser-native `<link rel="prefetch">` hints for the hot
@@ -44,18 +45,10 @@ interface Props {
   tenantSlug?: string | null;
 }
 
-// Same URL heuristic as TopNav / RoutePrefetcher. See RoutePrefetcher for
-// the rationale.
-function detectTenantSlugFromPathname(pathname: string | null): string | null {
-  if (!pathname) return null;
-  const seg = pathname.split("/")[1];
-  if (!seg || seg.indexOf("-") < 0) return null;
-  return seg;
-}
-
 export function NativePrefetchHints({ tenantSlug }: Props) {
   const pathname = usePathname();
-  const effectiveSlug = tenantSlug ?? detectTenantSlugFromPathname(pathname);
+  // Shared slug helper — see src/lib/app-routes.ts.
+  const effectiveSlug = tenantSlug ?? tenantSlugFromPathname(pathname);
 
   useEffect(() => {
     const prefix = effectiveSlug ? `/${effectiveSlug}` : "";

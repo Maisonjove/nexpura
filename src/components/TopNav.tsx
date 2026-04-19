@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import NotificationBell from './NotificationBell';
 import LocationPicker from './LocationPicker';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { tenantSlugFromPathname } from '@/lib/app-routes';
+import { createClient } from '@/lib/supabase/client';
 
 // ─── Nav structure ─────────────────────────────────────────────────────────
 
@@ -169,29 +171,52 @@ interface TopNavProps {
   tenantSlug?: string;
 }
 
-// Heuristic: tenant slugs in Nexpura look like `maison-jove` or
-// `intake-1776553836` — they contain at least one hyphen. Non-tenant app
-// paths (/login, /signup, /dashboard when not prefixed, etc.) don't. This
-// lets the static layout render TopNav with the right prefix without
-// waiting on a server auth/profile fetch — the URL is the source of
-// truth for which tenant the user is viewing.
-function detectTenantSlugFromPathname(pathname: string | null): string | null {
-  if (!pathname) return null;
-  const seg = pathname.split('/')[1];
-  if (!seg || seg.indexOf('-') < 0) return null;
-  return seg;
-}
-
 export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
   const pathname = usePathname();
   // Prefer the explicit tenantSlug prop when provided (server-fetched).
   // Fall back to URL-derived slug so TopNav can render immediately during
   // the static layout shell — before any auth data has been fetched.
-  const effectiveSlug = tenantSlug ?? detectTenantSlugFromPathname(pathname);
+  // The helper identifies the slug by elimination (segment is NOT an
+  // app route) rather than the older hyphen-based heuristic, which broke
+  // for tenants with hyphen-less slugs (`test`, `maisonjove`, etc.).
+  const effectiveSlug = tenantSlug ?? tenantSlugFromPathname(pathname);
   const prefix = effectiveSlug ? `/${effectiveSlug}` : '';
   const [menuOpen, setMenuOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [scanFlash, setScanFlash] = useState(false);
+
+  // Client-side user fetch — (app)/layout.tsx no longer passes `user` as
+  // a prop, so without this the avatar would show 'NX' forever on every
+  // hard nav. One Supabase round-trip per session replaces what the
+  // layout used to do server-side. Cheap: browser Supabase reads from
+  // the auth cookie; the users query hits the cached `/rest/v1/users`
+  // that serves the user's own row by RLS. Typical: 30-80 ms post-hydration.
+  const [fetchedFullName, setFetchedFullName] = useState<string | null>(null);
+  const [fetchedEmail, setFetchedEmail] = useState<string | null>(null);
+  useEffect(() => {
+    if (user?.full_name || user?.email) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: authData } = await supabase.auth.getUser();
+        if (cancelled || !authData.user) return;
+        setFetchedEmail(authData.user.email ?? null);
+        const { data: profile } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', authData.user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (profile?.full_name) setFetchedFullName(profile.full_name as string);
+      } catch {
+        // swallow — avatar falls back to 'NX', not a blocking failure
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.full_name, user?.email]);
 
   useBarcodeScanner({
     onScan: () => {
@@ -200,9 +225,11 @@ export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
     },
   });
 
-  const initials = user?.full_name
-    ? (user.full_name as string).split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    : (user?.email as string)?.slice(0, 2).toUpperCase() || 'NX';
+  const effectiveFullName = (user?.full_name as string | undefined) ?? fetchedFullName;
+  const effectiveEmail = (user?.email as string | undefined) ?? fetchedEmail;
+  const initials = effectiveFullName
+    ? effectiveFullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    : effectiveEmail?.slice(0, 2).toUpperCase() || 'NX';
 
   // Close mobile menu on route change
   useEffect(() => {
