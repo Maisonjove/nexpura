@@ -12,6 +12,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { logStatusChange, sendTrackingEmail } from "@/lib/tracking";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -164,6 +165,7 @@ export async function createBespokeJob(
     });
     revalidateTag("dashboard", "default");
     revalidateTag(CACHE_TAGS.workshop(tenantId), "default");
+    after(() => refreshDashboardStatsAsync(tenantId));
   });
 
   revalidatePath("/bespoke");
@@ -205,6 +207,7 @@ export async function updateBespokeJob(
     });
     revalidateTag("dashboard", "default");
     revalidateTag(CACHE_TAGS.workshop(tenantId), "default");
+    after(() => refreshDashboardStatsAsync(tenantId));
   });
 
   revalidatePath("/bespoke");

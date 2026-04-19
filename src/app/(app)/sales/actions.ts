@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/lib/notifications";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "next/server";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -190,6 +192,7 @@ export async function createSale(
   revalidateTag("dashboard", "default");
   revalidateTag(CACHE_TAGS.invoices(tenantId), "default");
   revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
+  after(() => refreshDashboardStatsAsync(tenantId));
   revalidatePath("/sales");
 
   redirect(`/sales/${sale.id}`);
@@ -299,6 +302,7 @@ export async function updateSaleStatus(
           revalidateTag("dashboard", "default");
   revalidateTag(CACHE_TAGS.invoices(tenantId), "default");
   revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
+  after(() => refreshDashboardStatsAsync(tenantId));
           return { success: true, invoiceId: newInvoice.id };
         }
       }
@@ -309,6 +313,7 @@ export async function updateSaleStatus(
   revalidateTag("dashboard", "default");
   revalidateTag(CACHE_TAGS.invoices(tenantId), "default");
   revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
+  after(() => refreshDashboardStatsAsync(tenantId));
   return { success: true };
 }
 
@@ -388,6 +393,7 @@ export async function deleteSale(
   revalidateTag("dashboard", "default");
   revalidateTag(CACHE_TAGS.invoices(tenantId), "default");
   revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
+  after(() => refreshDashboardStatsAsync(tenantId));
   revalidatePath("/sales");
   redirect("/sales");
 }

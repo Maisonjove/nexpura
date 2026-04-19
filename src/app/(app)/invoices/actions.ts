@@ -19,7 +19,9 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "next/server";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 import { sendInvoiceEmail } from "@/lib/email/send";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import logger from "@/lib/logger";
@@ -224,6 +226,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
   // Invalidate dashboard cache
   revalidateTag("dashboard", "default");
   revalidateTag(CACHE_TAGS.invoices(tenantId), "default");
+  after(() => refreshDashboardStatsAsync(tenantId));
     return { id: invoice.id };
   } catch (err) {
     logger.error("[createInvoice] Error:", err);

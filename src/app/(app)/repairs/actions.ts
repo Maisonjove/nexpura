@@ -12,6 +12,7 @@ import { logStatusChange, sendTrackingEmail } from "@/lib/tracking";
 import logger from "@/lib/logger";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -152,6 +153,7 @@ export async function createRepair(
     });
     revalidateTag("dashboard", "default");
     revalidateTag(CACHE_TAGS.workshop(tenantId), "default");
+    after(() => refreshDashboardStatsAsync(tenantId));
   });
 
   revalidatePath("/repairs");
@@ -194,6 +196,7 @@ export async function updateRepair(
     });
     revalidateTag("dashboard", "default");
     revalidateTag(CACHE_TAGS.workshop(tenantId), "default");
+    after(() => refreshDashboardStatsAsync(tenantId));
   });
 
   revalidatePath("/repairs");
