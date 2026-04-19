@@ -41,6 +41,14 @@ export default async function BespokePage({
     );
   }
 
+  // Load the 200 most-recent bespoke jobs once. Stage filtering is now
+  // client-side — each tab click used to trigger a full RSC round-trip to
+  // re-run the same query with a different `.eq("stage", …)`. With 200 rows
+  // already in the client, filtering them via useMemo is ~1ms and instant.
+  // Matches the pattern shipped for /repairs in PR #30.
+  //
+  // Server-side `q` (search) stays so deep-links like `?q=…` can still look
+  // past the recent-200 cap.
   let query = admin
     .from("bespoke_jobs")
     .select(
@@ -49,13 +57,11 @@ export default async function BespokePage({
     )
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(200);
 
   if (q) {
     query = query.or(`title.ilike.%${q}%,job_number.ilike.%${q}%`);
-  }
-  if (stageFilter) {
-    query = query.eq("stage", stageFilter);
   }
 
   const { data: rawJobs } = await query;
