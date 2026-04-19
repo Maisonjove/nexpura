@@ -1,7 +1,12 @@
 // Nexpura Service Worker - PWA & Offline Support
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const STATIC_CACHE = `nexpura-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `nexpura-dynamic-${CACHE_VERSION}`;
+// Hot-route RSC prefetch cache — 15-second TTL, per-user via Vary: cookie
+// (middleware augments Vary on these responses; Cache API's match() honors
+// Vary, so different cookies get different cache entries).
+const RSC_PREFETCH_CACHE = `nexpura-rsc-prefetch-${CACHE_VERSION}`;
+const RSC_PREFETCH_TTL_MS = 15 * 1000;
 const OFFLINE_QUEUE_KEY = 'nexpura-offline-queue';
 
 // Assets to cache immediately on install — critical for app shell
@@ -63,7 +68,12 @@ self.addEventListener('activate', (event) => {
       caches.keys().then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key !== STATIC_CACHE && key !== DYNAMIC_CACHE)
+            .filter(
+              (key) =>
+                key !== STATIC_CACHE &&
+                key !== DYNAMIC_CACHE &&
+                key !== RSC_PREFETCH_CACHE
+            )
             .map((key) => {
               console.log('[SW] Removing old cache:', key);
               return caches.delete(key);
@@ -132,9 +142,117 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Hot-route RSC prefetch requests — short-TTL cache with per-user isolation.
+  // The pre-hydration warmup + Next's router.prefetch both fire the SAME
+  // URL+header shape for these routes (verified in e2e/prefetch-audit.spec.ts).
+  // By caching here with a 15s TTL we let the click-time fetch reuse the
+  // warmup response without a second round-trip, while the middleware-set
+  // `Vary: cookie` guarantees different users on the same browser get
+  // separate cache entries (logout/login → new cookie → cache miss).
+  if (
+    request.method === 'GET' &&
+    request.headers.get('rsc') === '1' &&
+    request.headers.get('next-router-prefetch') === '1' &&
+    isHotRoutePath(url.pathname)
+  ) {
+    event.respondWith(rscPrefetchStrategy(request));
+    return;
+  }
+
   // Static assets and pages: Cache first, network fallback
   event.respondWith(cacheFirstStrategy(request));
 });
+
+// Hot-route paths the pre-hydration warmup targets: /{slug}/{route} where
+// {route} is one of the hot jeweller pages. Matches URLs like
+// /test/customers, /maisonjove/repairs, etc. — NOT subpaths like
+// /test/customers/new.
+const HOT_ROUTE_SEGMENTS = new Set([
+  'customers',
+  'repairs',
+  'inventory',
+  'tasks',
+  'invoices',
+  'workshop',
+  'bespoke',
+  'intake',
+]);
+function isHotRoutePath(pathname) {
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts.length !== 2) return false;
+  return HOT_ROUTE_SEGMENTS.has(parts[1]);
+}
+
+// We store a parallel Map of cache-entry timestamps in IndexedDB so we can
+// expire entries after RSC_PREFETCH_TTL_MS. The Cache API has no native TTL.
+// Keyed by the raw request URL (the cookie component of Vary is handled by
+// the Cache API's own match() Vary semantics, so the timestamp is shared
+// across cookie variants of the same URL — stale cookies just mean the
+// Cache.match for the new cookie will miss anyway).
+async function getTsStore() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('nexpura-sw-meta', 1);
+    req.onerror = () => reject(req.error);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('ts')) db.createObjectStore('ts');
+    };
+    req.onsuccess = () => resolve(req.result);
+  });
+}
+async function readTs(url) {
+  try {
+    const db = await getTsStore();
+    return await new Promise((resolve) => {
+      const tx = db.transaction('ts', 'readonly');
+      const req = tx.objectStore('ts').get(url);
+      req.onsuccess = () => resolve(req.result ?? 0);
+      req.onerror = () => resolve(0);
+    });
+  } catch {
+    return 0;
+  }
+}
+async function writeTs(url, t) {
+  try {
+    const db = await getTsStore();
+    await new Promise((resolve) => {
+      const tx = db.transaction('ts', 'readwrite');
+      tx.objectStore('ts').put(t, url);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch {
+    // ignore
+  }
+}
+
+// Cache-with-TTL for hot-route RSC prefetches. Cache API's match() honors
+// the server's Vary header, and the middleware augments Vary with `cookie`,
+// so cache entries are automatically per-browser per-cookie-bundle.
+async function rscPrefetchStrategy(request) {
+  const url = request.url;
+  const cache = await caches.open(RSC_PREFETCH_CACHE);
+  const cached = await cache.match(request);
+  if (cached) {
+    const cachedAt = await readTs(url);
+    if (cachedAt && Date.now() - cachedAt < RSC_PREFETCH_TTL_MS) {
+      return cached;
+    }
+    // Stale — fall through to network.
+  }
+  try {
+    const response = await fetch(request);
+    if (response.ok && response.type === 'basic') {
+      cache.put(request, response.clone()).then(() => writeTs(url, Date.now()));
+    }
+    return response;
+  } catch (err) {
+    // Network failed — serve stale cache if we have one rather than error.
+    if (cached) return cached;
+    throw err;
+  }
+}
 
 // Cache-first strategy for static assets
 async function cacheFirstStrategy(request) {

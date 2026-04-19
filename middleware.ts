@@ -207,6 +207,59 @@ function isBypassRequest(req: NextRequest): boolean {
   ) as boolean;
 }
 
+// ─── Hot-route RSC prefetch cache-safety override ────────────────────────────
+// The Service Worker at public/sw.js caches fetches that come through its
+// fetch handler, using the Cache API. Cache.match respects the server's
+// Vary header when matching responses to requests. Next.js sets
+// `Vary: rsc, next-router-state-tree, next-router-prefetch,
+// next-router-segment-prefetch` on RSC responses — but NOT `cookie`.
+// Without `cookie` in Vary, the SW cache would happily serve User A's
+// cached customer/repair/… response to User B on the same browser after
+// a logout/login cycle. Cross-user leak.
+//
+// We augment the Vary header on hot-route RSC prefetch responses to
+// include `cookie`, so the SW cache (and any future browser HTTP cache
+// if Next ever relaxes the no-store default) partitions cleanly per
+// authenticated session. Logout/login rotates cookies → new Vary key →
+// cache miss → no stale user data served.
+//
+// Scope is narrow: only for the 8 hot tenant-prefixed routes AND only
+// when `rsc: 1` + `next-router-prefetch: 1` request headers are set.
+// All other responses are untouched.
+const HOT_ROUTE_SEGMENTS = new Set([
+  "customers",
+  "repairs",
+  "inventory",
+  "tasks",
+  "invoices",
+  "workshop",
+  "bespoke",
+  "intake",
+]);
+
+function isHotRoutePrefetchRequest(req: NextRequest): boolean {
+  const segments = req.nextUrl.pathname.split("/").filter(Boolean);
+  // tenant-prefixed: /{slug}/{route}
+  if (segments.length !== 2) return false;
+  if (!HOT_ROUTE_SEGMENTS.has(segments[1])) return false;
+  if (req.headers.get("rsc") !== "1") return false;
+  if (req.headers.get("next-router-prefetch") !== "1") return false;
+  return true;
+}
+
+function augmentVaryForHotPrefetch(
+  request: NextRequest,
+  response: NextResponse,
+): void {
+  if (!isHotRoutePrefetchRequest(request)) return;
+  const existing = response.headers.get("Vary") ?? "";
+  if (/\bcookie\b/i.test(existing)) return;
+  response.headers.set(
+    "Vary",
+    existing ? `${existing}, cookie` : "cookie",
+  );
+}
+
 function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set("X-Frame-Options", "DENY");
   const csp = [
@@ -231,11 +284,14 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 export async function middleware(request: NextRequest) {
   try {
     const response = await withTimeout(_proxyInner(request), 4500);
+    augmentVaryForHotPrefetch(request, response);
     return addSecurityHeaders(response);
   } catch (err) {
     const isTimeout = err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
     if (!isTimeout) console.error("[middleware] unexpected error -- passing through:", err);
-    return addSecurityHeaders(NextResponse.next());
+    const fallback = NextResponse.next();
+    augmentVaryForHotPrefetch(request, fallback);
+    return addSecurityHeaders(fallback);
   }
 }
 
