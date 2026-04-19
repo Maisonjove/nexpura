@@ -41,14 +41,12 @@ const HOT_ROUTES = [
 export function PrehydrationPrefetch() {
   const js = `
 (function(){try{
-  (window).__nxHydrateMark=performance.now();
   var seg=location.pathname.split('/')[1];
   if(!seg||seg.indexOf('-')<0)return;
   var h=${JSON.stringify(HOT_ROUTES)};
   for(var i=0;i<h.length;i++){
     fetch('/'+seg+'/'+h[i],{headers:{'rsc':'1','next-router-prefetch':'1'},credentials:'include'}).catch(function(){});
   }
-  (window).__nxHydrateFired=performance.now();
 }catch(e){}})()`.trim();
 
   return (
