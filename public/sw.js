@@ -46,19 +46,34 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate event - clean old caches
+// Activate event - clean old caches + enable navigation preload.
+//
+// navigation-preload tells the browser to START the network fetch for
+// navigation requests IN PARALLEL with the SW's fetch-handler boot
+// (~20-50ms saved per nav on Chromium). Without it, every authenticated
+// navigation pays the SW-boot penalty on top of server TTFB. With it,
+// the fetch is already in flight by the time our handler runs.
+//
+// Chromium: supported and defaults off.
+// Firefox: supported behind a flag.
+// Safari: partial support.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys
-          .filter((key) => key !== STATIC_CACHE && key !== DYNAMIC_CACHE)
-          .map((key) => {
-            console.log('[SW] Removing old cache:', key);
-            return caches.delete(key);
-          })
-      );
-    })
+    Promise.all([
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== STATIC_CACHE && key !== DYNAMIC_CACHE)
+            .map((key) => {
+              console.log('[SW] Removing old cache:', key);
+              return caches.delete(key);
+            })
+        )
+      ),
+      self.registration.navigationPreload
+        ? self.registration.navigationPreload.enable().catch(() => {})
+        : Promise.resolve(),
+    ])
   );
   self.clients.claim();
 });
@@ -71,9 +86,23 @@ self.addEventListener('fetch', (event) => {
   // Navigation requests: always fetch from network so the auth middleware
   // runs server-side on every page visit. Serving HTML from cache causes
   // stale auth state, ERR_FAILED, or showing the wrong page after login/logout.
+  //
+  // navigation-preload optimisation: when the activate handler has enabled
+  // preload, event.preloadResponse is an already-in-flight fetch started
+  // by the browser the moment it handed the request to our SW. Using it
+  // saves the SW-boot overhead (~20-50ms) on every nav.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match('/offline'))
+      (async () => {
+        try {
+          const preload = await event.preloadResponse;
+          if (preload) return preload;
+          return await fetch(request);
+        } catch {
+          const offline = await caches.match('/offline');
+          return offline || new Response('Offline', { status: 503 });
+        }
+      })()
     );
     return;
   }
