@@ -1,18 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, ArrowRight, Camera, Bell } from "lucide-react";
-import CameraScannerModal from "@/components/CameraScannerModal";
-import { ExportButtons } from "@/components/ExportButtons";
 import { formatDateForExport } from "@/lib/export";
 import { toast } from "sonner";
 import logger from "@/lib/logger";
+
+// CameraScannerModal pulls in camera + barcode-detection APIs; ExportButtons
+// bundles the XLSX writer. Neither renders on first paint — load on demand.
+const CameraScannerModal = dynamic(() => import("@/components/CameraScannerModal"), { ssr: false });
+const ExportButtons = dynamic(
+  () => import("@/components/ExportButtons").then((m) => ({ default: m.ExportButtons })),
+  { ssr: false, loading: () => <div className="w-[120px] h-9" /> }
+);
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -79,7 +86,22 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
   const [notifying, setNotifying] = useState(false);
   const [notifyResult, setNotifyResult] = useState<{ notified: number; skipped: number } | null>(null);
 
-  const readyRepairs = repairs.filter(r => r.stage === "ready");
+  const readyRepairs = useMemo(() => repairs.filter(r => r.stage === "ready"), [repairs]);
+  const inProgressCount = useMemo(() => repairs.filter(r => r.stage === "in_progress").length, [repairs]);
+  const exportRows = useMemo(() =>
+    repairs.map(r => ({
+      repair_number: r.repair_number,
+      customer: r.customers?.full_name || 'Unknown',
+      item_type: r.item_type,
+      description: r.item_description,
+      repair_type: r.repair_type,
+      stage: ALL_REPAIR_STAGES.find(s => s.key === r.stage)?.label || r.stage,
+      priority: r.priority,
+      due_date: formatDateForExport(r.due_date),
+      created_at: formatDateForExport(r.created_at),
+    })),
+    [repairs]
+  );
 
   async function handleBulkNotify() {
     setNotifying(true);
@@ -173,9 +195,9 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
           <div className="hidden sm:flex items-center gap-2">
             {repairs.length > 0 && (
               <>
-                {repairs.filter(r => r.stage === "in_progress").length > 0 && (
+                {inProgressCount > 0 && (
                   <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                    {repairs.filter(r => r.stage === "in_progress").length} In Progress
+                    {inProgressCount} In Progress
                   </Badge>
                 )}
                 {readyRepairs.length > 0 && (
@@ -199,17 +221,7 @@ export default function RepairsListClient({ repairs, view, q, stageFilter }: Pro
             </button>
           )}
           <ExportButtons
-            data={repairs.map(r => ({
-              repair_number: r.repair_number,
-              customer: r.customers?.full_name || 'Unknown',
-              item_type: r.item_type,
-              description: r.item_description,
-              repair_type: r.repair_type,
-              stage: ALL_REPAIR_STAGES.find(s => s.key === r.stage)?.label || r.stage,
-              priority: r.priority,
-              due_date: formatDateForExport(r.due_date),
-              created_at: formatDateForExport(r.created_at),
-            }))}
+            data={exportRows}
             columns={[
               { key: 'repair_number', label: 'Repair #' },
               { key: 'customer', label: 'Customer' },

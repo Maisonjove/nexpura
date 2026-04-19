@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { createRepair, updateRepair } from "./actions";
 import { CustomerAttachments } from "@/components/CustomerAttachments";
 
@@ -247,6 +247,11 @@ function CustomerSearch({
 export default function RepairForm({ customers, mode, repair, preselectedCustomerId }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Guards against a race where a fast user clicks submit before React has
+  // hydrated the onSubmit handler. Without this, the browser performs a
+  // native form POST (no server action fires) and the form silently fails.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -660,10 +665,12 @@ export default function RepairForm({ customers, mode, repair, preselectedCustome
         </a>
         <button
           type="submit"
-          disabled={isPending}
+          disabled={!hydrated || isPending}
           className="px-6 py-2.5 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
         >
-          {isPending
+          {!hydrated
+            ? "Preparing…"
+            : isPending
             ? mode === "create"
               ? "Creating…"
               : "Saving…"
