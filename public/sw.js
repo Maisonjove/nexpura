@@ -1,5 +1,5 @@
 // Nexpura Service Worker - PWA & Offline Support
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const STATIC_CACHE = `nexpura-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `nexpura-dynamic-${CACHE_VERSION}`;
 // Hot-route RSC prefetch cache — 15-second TTL, per-user via Vary: cookie
@@ -230,25 +230,64 @@ async function writeMeta(url, meta) {
     // ignore
   }
 }
-// Short SHA-256 prefix of the request's cookie header. 64 bits is plenty
+// Short SHA-256 prefix of the current session's cookie state, used as a
+// per-user cache key for hot-route RSC prefetch entries. 64 bits is plenty
 // for collision avoidance on a single browser; a cookie rotation (session
 // refresh or logout/login) changes the hash and invalidates the entry.
-async function hashCookie(cookieHeader) {
-  const buf = new TextEncoder().encode(cookieHeader || '');
-  const digest = await crypto.subtle.digest('SHA-256', buf);
-  const bytes = new Uint8Array(digest, 0, 8);
-  let hex = '';
-  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
-  return hex;
+//
+// Note: `request.headers.get('cookie')` returns null inside a SW fetch
+// event — `Cookie` is a forbidden request header in the Fetch spec, so
+// browsers strip it before the Request reaches the SW. We must read
+// cookies from `self.cookieStore` (Chromium / Edge; behind a flag in
+// Firefox, unsupported in Safari).
+//
+// If cookieStore is unavailable we return `null` to signal "cannot verify
+// isolation" — rscPrefetchStrategy then refuses to cache/serve, falling
+// through to plain network. That costs Safari users the cache-reuse win
+// but keeps isolation intact. Cache reuse is an optimisation, not a
+// correctness requirement.
+async function computeSessionCookieHash() {
+  try {
+    const store = self.cookieStore;
+    if (!store || typeof store.getAll !== 'function') return null;
+    const all = await store.getAll();
+    // Only hash cookies that matter for auth identity — Supabase session
+    // cookies and anything starting with nexpura-. Other cookies
+    // (analytics, etc.) would add noise and cause unnecessary cache busts.
+    const relevant = all
+      .filter((c) =>
+        c.name.startsWith('sb-') ||
+        c.name.startsWith('nexpura-') ||
+        c.name === 'session' ||
+        c.name === 'auth',
+      )
+      .map((c) => `${c.name}=${c.value}`)
+      .sort()
+      .join('\n');
+    const buf = new TextEncoder().encode(relevant);
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    const bytes = new Uint8Array(digest, 0, 8);
+    let hex = '';
+    for (const b of bytes) hex += b.toString(16).padStart(2, '0');
+    return hex;
+  } catch {
+    return null;
+  }
 }
 
 // Cache-with-TTL + explicit cookie keying for hot-route RSC prefetches.
 // Serve cached response only if (a) fresh within TTL AND (b) the cookie
-// that produced it still matches. Network-fail fallback also requires a
-// cookie match so a logged-out user cannot see a previous user's data.
+// state that produced it still matches. If we cannot read cookies from
+// the CookieStore API (unsupported browser), we DO NOT cache and DO NOT
+// serve from cache — pass-through to network to preserve isolation.
 async function rscPrefetchStrategy(request) {
   const url = request.url;
-  const currentCookieHash = await hashCookie(request.headers.get('cookie'));
+  const currentCookieHash = await computeSessionCookieHash();
+  if (currentCookieHash === null) {
+    // CookieStore unavailable — cannot verify per-user isolation.
+    // Pass-through and do NOT cache. (No perf win; correctness preserved.)
+    return fetch(request);
+  }
   const cache = await caches.open(RSC_PREFETCH_CACHE);
   const cached = await cache.match(request);
   if (cached) {
@@ -260,7 +299,7 @@ async function rscPrefetchStrategy(request) {
     ) {
       return cached;
     }
-    // Stale, or served under a different cookie → fall through to network.
+    // Stale, or a different session's cookie → fall through to network.
   }
   try {
     const response = await fetch(request);
@@ -277,8 +316,8 @@ async function rscPrefetchStrategy(request) {
     }
     return response;
   } catch (err) {
-    // Network failed — only serve stale cache if the cookie still matches
-    // the one that produced it. Never cross-user even on network failure.
+    // Network failed — only serve stale cache if the cookie state still
+    // matches. Never cross-user, even on network failure.
     if (cached) {
       const meta = await readMeta(url);
       if (meta && meta.cookieHash === currentCookieHash) return cached;

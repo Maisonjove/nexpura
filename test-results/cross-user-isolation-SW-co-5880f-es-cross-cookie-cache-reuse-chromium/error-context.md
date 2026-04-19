@@ -1,0 +1,189 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - navigation [ref=e5]:
+        - link "Nexpura" [ref=e6] [cursor=pointer]:
+          - /url: /test/dashboard
+        - generic [ref=e7]:
+          - link "+ Intake" [ref=e8] [cursor=pointer]:
+            - /url: /test/intake
+          - button "Sales" [ref=e10] [cursor=pointer]: Sales
+          - button "Inventory" [ref=e12] [cursor=pointer]: Inventory
+          - button "Customers" [ref=e14] [cursor=pointer]: Customers
+          - button "Workshop" [ref=e16] [cursor=pointer]: Workshop
+          - button "Finance" [ref=e18] [cursor=pointer]: Finance
+          - button "Marketing" [ref=e20] [cursor=pointer]: Marketing
+          - button "More" [ref=e22] [cursor=pointer]: More
+        - generic [ref=e23]:
+          - button "Notifications" [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+          - button "Admin settings" [ref=e29] [cursor=pointer]:
+            - img [ref=e30]
+          - link "T" [ref=e33] [cursor=pointer]:
+            - /url: /settings
+            - generic [ref=e34]: T
+    - main "Main content" [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - heading "Nexpura Admin" [level=1] [ref=e40]
+              - paragraph [ref=e41]: Overview of sales, workshop activity, inventory, customers, and daily operations
+            - generic [ref=e42]:
+              - paragraph [ref=e43]: Sunday 19 April
+              - paragraph [ref=e44]: 11:38 pm
+          - generic [ref=e45]:
+            - link "12 Active jobs" [ref=e46] [cursor=pointer]:
+              - /url: /workshop
+              - generic [ref=e47]: "12"
+              - text: Active jobs
+            - link "0 Overdue jobs" [ref=e48] [cursor=pointer]:
+              - /url: /repairs?filter=overdue
+              - generic [ref=e49]: "0"
+              - text: Overdue jobs
+            - link "0 Ready for pickup" [ref=e50] [cursor=pointer]:
+              - /url: /repairs?filter=ready
+              - generic [ref=e51]: "0"
+              - text: Ready for pickup
+            - link "0 Overdue invoices" [ref=e52] [cursor=pointer]:
+              - /url: /invoices?filter=overdue
+              - generic [ref=e53]: "0"
+              - text: Overdue invoices
+            - link "2 Low stock" [ref=e54] [cursor=pointer]:
+              - /url: /inventory
+              - generic [ref=e55]: "2"
+              - text: Low stock
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - heading "Needs Attention" [level=2] [ref=e58]
+              - generic [ref=e59]: 2 items
+            - generic [ref=e60]:
+              - link "SKU00001 TRACE_ITEM_1 Inventory Out of stock" [ref=e61] [cursor=pointer]:
+                - /url: /inventory
+                - generic [ref=e63]: SKU00001
+                - paragraph [ref=e65]: TRACE_ITEM_1
+                - generic [ref=e66]: Inventory
+                - generic [ref=e67]: Out of stock
+                - img [ref=e69]
+              - link "SKU00002 TRACE_ITEM_1 Inventory Out of stock" [ref=e71] [cursor=pointer]:
+                - /url: /inventory
+                - generic [ref=e73]: SKU00002
+                - paragraph [ref=e75]: TRACE_ITEM_1
+                - generic [ref=e76]: Inventory
+                - generic [ref=e77]: Out of stock
+                - img [ref=e79]
+          - generic [ref=e81]:
+            - button "Sales Sales, invoices, quotes & POS 0 sales recorded this month" [ref=e82] [cursor=pointer]:
+              - img [ref=e84]
+              - generic [ref=e86]:
+                - paragraph [ref=e87]: Sales
+                - paragraph [ref=e88]: Sales, invoices, quotes & POS
+              - paragraph [ref=e89]: 0 sales recorded this month
+            - button "Inventory Stock, suppliers & transfers 2 out of stock · 2 low" [ref=e90] [cursor=pointer]:
+              - img [ref=e92]
+              - generic [ref=e94]:
+                - paragraph [ref=e95]: Inventory
+                - paragraph [ref=e96]: Stock, suppliers & transfers
+              - paragraph [ref=e97]: 2 out of stock · 2 low
+            - button "Customers Profiles & communications No follow-ups due" [ref=e99] [cursor=pointer]:
+              - img [ref=e101]
+              - generic [ref=e103]:
+                - paragraph [ref=e104]: Customers
+                - paragraph [ref=e105]: Profiles & communications
+              - paragraph [ref=e106]: No follow-ups due
+            - button "Workshop Repairs, bespoke & appraisals 12 active jobs · 0 overdue" [ref=e107] [cursor=pointer]:
+              - img [ref=e109]
+              - generic [ref=e111]:
+                - paragraph [ref=e112]: Workshop
+                - paragraph [ref=e113]: Repairs, bespoke & appraisals
+              - paragraph [ref=e114]: 12 active jobs · 0 overdue
+            - button "Finance Expenses, reports & reconciliation No overdue invoices" [ref=e115] [cursor=pointer]:
+              - img [ref=e117]
+              - generic [ref=e119]:
+                - paragraph [ref=e120]: Finance
+                - paragraph [ref=e121]: Expenses, reports & reconciliation
+              - paragraph [ref=e122]: No overdue invoices
+            - button "Marketing Campaigns, email & SMS No active campaigns" [ref=e123] [cursor=pointer]:
+              - img [ref=e125]
+              - generic [ref=e127]:
+                - paragraph [ref=e128]: Marketing
+                - paragraph [ref=e129]: Campaigns, email & SMS
+              - paragraph [ref=e130]: No active campaigns
+            - button "Digital Website, integrations & migration All systems connected" [ref=e131] [cursor=pointer]:
+              - img [ref=e133]
+              - generic [ref=e135]:
+                - paragraph [ref=e136]: Digital
+                - paragraph [ref=e137]: Website, integrations & migration
+              - paragraph [ref=e138]: All systems connected
+            - button "Admin Settings, billing & team No tasks due" [ref=e139] [cursor=pointer]:
+              - img [ref=e141]
+              - generic [ref=e144]:
+                - paragraph [ref=e145]: Admin
+                - paragraph [ref=e146]: Settings, billing & team
+              - paragraph [ref=e147]: No tasks due
+        - complementary [ref=e148]:
+          - generic [ref=e149]:
+            - heading "Today" [level=3] [ref=e151]
+            - generic [ref=e152]:
+              - generic [ref=e153]:
+                - paragraph [ref=e154]: Tasks due
+                - paragraph [ref=e155]: No tasks due today
+              - generic [ref=e156]:
+                - paragraph [ref=e157]: Ready for pickup
+                - paragraph [ref=e158]: Nothing ready yet
+          - generic [ref=e159]:
+            - heading "Recent Activity" [level=3] [ref=e161]
+            - generic [ref=e162]:
+              - generic [ref=e163]:
+                - paragraph [ref=e164]: Sales
+                - paragraph [ref=e165]: No recent sales
+              - generic [ref=e166]:
+                - paragraph [ref=e167]: Repairs
+                - generic [ref=e168]:
+                  - link "RP11 QA_P2R_2026-04-18_Customer_1 QATest" [ref=e169] [cursor=pointer]:
+                    - /url: /repairs/3e011be9-a2e1-4cf1-b677-e652f8690698
+                    - generic [ref=e170]: RP11
+                    - generic [ref=e171]: QA_P2R_2026-04-18_Customer_1 QATest
+                  - link "RP10 QA_P1I_2026-04-18_Customer_4 QATest" [ref=e172] [cursor=pointer]:
+                    - /url: /repairs/1c22394e-cd27-4be3-8283-445c00aad7b3
+                    - generic [ref=e173]: RP10
+                    - generic [ref=e174]: QA_P1I_2026-04-18_Customer_4 QATest
+                  - link "RP09 QA_P1I_2026-04-18_Customer_3 QATest" [ref=e175] [cursor=pointer]:
+                    - /url: /repairs/55e2cde0-fcd6-4e44-92d1-e3cb7655e20b
+                    - generic [ref=e176]: RP09
+                    - generic [ref=e177]: QA_P1I_2026-04-18_Customer_3 QATest
+                  - link "RP08 QA_P1I_2026-04-18_Customer_2 QATest" [ref=e178] [cursor=pointer]:
+                    - /url: /repairs/f0cffc7b-04cb-4a76-bc04-6a3ddb1ef322
+                    - generic [ref=e179]: RP08
+                    - generic [ref=e180]: QA_P1I_2026-04-18_Customer_2 QATest
+  - region "Notifications alt+T"
+  - status [ref=e181]
+  - alert [ref=e182]
+  - alert [ref=e183]
+  - generic:
+    - button "Add feedback" [ref=e184] [cursor=pointer]:
+      - img [ref=e186]
+      - img [ref=e193]
+      - generic [ref=e195]: Add feedback
+    - button "Hide markers":
+      - img
+      - generic: Hide markers
+    - button "Open feedback list":
+      - img
+      - generic: Open feedback list
+    - complementary [ref=e196]:
+      - generic [ref=e197]:
+        - generic [ref=e198]:
+          - text: Feedbacks
+          - generic [ref=e199]: "0"
+        - button [ref=e200] [cursor=pointer]:
+          - img [ref=e201]
+  - generic:
+    - generic:
+      - img
+```
