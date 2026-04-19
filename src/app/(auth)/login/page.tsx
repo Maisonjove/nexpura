@@ -16,10 +16,13 @@ function LoginPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [showExpiredMessage, setShowExpiredMessage] = useState(false);
   
-  // Prefetch dashboard on mount so navigation is instant after login
-  useEffect(() => {
-    router.prefetch("/dashboard");
-  }, [router]);
+  // NOTE: We intentionally do NOT `router.prefetch("/dashboard")` here.
+  // On mount the user is unauthenticated, so middleware responds with a
+  // 307 redirect to /login — and Next.js caches *that* redirect in the
+  // router cache. A subsequent `router.replace("/dashboard")` after a
+  // successful login would then replay the cached redirect and land the
+  // user back on /login. The prefetch does more harm than good for the
+  // normal case (unauth → login → auth → dashboard).
 
   // Check if redirected due to session expiry
   useEffect(() => {
