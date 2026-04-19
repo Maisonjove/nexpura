@@ -166,6 +166,74 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // ─── Hot-route RSC prefetch — reusable private cache window ───
+      //
+      // BACKGROUND
+      // The pre-hydration inline script (src/components/PrehydrationPrefetch.tsx)
+      // fires fetch() for hot tenant-prefixed routes using the exact
+      // URL + header shape Next's router.prefetch later fires for the same
+      // routes. Without this rule, the authenticated RSC response comes back
+      // as `private, no-cache, no-store, max-age=0, must-revalidate` — so the
+      // browser's HTTP cache does not retain the response, and when the
+      // router's own prefetch fires at hydration time (or the user clicks),
+      // the second fetch has to round-trip to origin again. The warmup only
+      // warms server state, never the real response bytes.
+      //
+      // THIS RULE
+      // For RSC *prefetch* requests (rsc: 1 AND next-router-prefetch: 1) to
+      // hot routes under any tenant slug, override Cache-Control to
+      // `private, max-age=15, must-revalidate` and augment Vary so the cache
+      // entry is keyed per-browser per-cookie. This lets the warmup response
+      // be reused by the router's subsequent prefetch within a 15-second
+      // window — the only window that matters for first-click speed.
+      //
+      // SAFETY
+      // - `private` prevents any shared (CDN / proxy) cache from storing.
+      // - Match is gated on `rsc: 1` AND `next-router-prefetch: 1` request
+      //   headers, so HTML page loads and navigation fetches are UNAFFECTED.
+      //   Only the predictable, tenant-scoped prefetch payloads are
+      //   cacheable. Never cache a full HTML document.
+      // - `Vary: cookie` (augmented to Next's default vary) keys the cache
+      //   per cookie bundle. On logout/login, cookies change → new cache
+      //   key → no stale user's data served. A different user on the same
+      //   browser sees a fresh cache-miss response.
+      // - `must-revalidate` prevents stale-serve past the 15s TTL.
+      // - 15-second TTL bounds post-write staleness to ≤15s. Writes from
+      //   the user themselves invalidate via revalidatePath / revalidateTag
+      //   in server actions (already wired in mutating paths), which fires
+      //   a `no-store` Next-generated response on the next fetch anyway —
+      //   the cache is the *prefetch* response, and Next's render of the
+      //   route after a mutation produces fresh data, not cached HTML.
+      //
+      // SCOPE
+      // Hot routes only: customers, repairs, inventory, tasks, invoices,
+      // workshop, bespoke, intake. Other routes (settings, billing,
+      // marketing, etc.) are untouched and retain Next's default no-store.
+      {
+        source:
+          "/:slug/:route(customers|repairs|inventory|tasks|invoices|workshop|bespoke|intake){/:rest*}?",
+        has: [
+          { type: "header", key: "rsc", value: "1" },
+          { type: "header", key: "next-router-prefetch", value: "1" },
+        ],
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, max-age=15, must-revalidate",
+          },
+          {
+            // Augment Next's default Vary for these responses. Next already
+            // sets `rsc, next-router-state-tree, next-router-prefetch,
+            // next-router-segment-prefetch`; we add `cookie` to isolate
+            // cache entries per authenticated user. Duplicate header values
+            // are combined by the browser so this is additive, not
+            // overwriting.
+            key: "Vary",
+            value:
+              "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, cookie",
+          },
+        ],
+      },
     ];
   },
   // Enable gzip/brotli compression to reduce egress bandwidth
