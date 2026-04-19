@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -62,16 +62,27 @@ function getInitials(name: string | null) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function BespokeListClient({ jobs, view, q, stageFilter }: Props) {
+export default function BespokeListClient({ jobs, view: _view, q, stageFilter }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const [, startTransition] = useTransition();
+
+  // Stage filtering is entirely client-side — matches the /repairs pattern
+  // from PR #30. Every tab click used to trigger a `router.push` + full RSC
+  // round-trip; now it's local state + history.replaceState, ~0 network.
   const [activeTab, setActiveTab] = useState(stageFilter || "all");
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [notifying, setNotifying] = useState(false);
   const [notifyResult, setNotifyResult] = useState<{ notified: number; skipped: number } | null>(null);
 
-  const readyJobs = jobs.filter(j => j.stage === "ready");
+  const readyJobs = useMemo(() => jobs.filter(j => j.stage === "ready"), [jobs]);
+  const activeJobsCount = useMemo(
+    () => jobs.filter(j => !["collected", "cancelled"].includes(j.stage)).length,
+    [jobs]
+  );
+  const visibleJobs = useMemo(
+    () => (activeTab === "all" ? jobs : jobs.filter(j => j.stage === activeTab)),
+    [jobs, activeTab]
+  );
 
   async function handleBulkNotify() {
     setNotifying(true);
@@ -94,15 +105,17 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
     }
   }
 
-  function updateParams(updates: Record<string, string>) {
+  // Stage tab click: instant client-side filter + shallow URL sync so refresh
+  // and share-links still land on the right tab. No `router.push`, no RSC fetch.
+  function setStage(stage: string) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
-    if (stageFilter) params.set("stage", stageFilter);
-    Object.entries(updates).forEach(([k, v]) => {
-      if (v) params.set(k, v); else params.delete(k);
-    });
-    startTransition(() => router.push(`${pathname}?${params.toString()}`));
+    if (stage && stage !== "all") params.set("stage", stage);
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    setActiveTab(stage || "all");
+    if (typeof window !== "undefined") window.history.replaceState(null, "", nextUrl);
   }
+
 
   const getStageBadge = (stage: string) => {
     switch (stage.toLowerCase()) {
@@ -165,9 +178,9 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
           <div className="hidden sm:flex items-center gap-2">
             {jobs.length > 0 && (
               <>
-                {jobs.filter(j => !["collected", "cancelled"].includes(j.stage)).length > 0 && (
+                {activeJobsCount > 0 && (
                   <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                    {jobs.filter(j => !["collected", "cancelled"].includes(j.stage)).length} Active
+                    {activeJobsCount} Active
                   </Badge>
                 )}
                 {readyJobs.length > 0 && (
@@ -203,10 +216,7 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
           return (
             <button
               key={tab.key}
-              onClick={() => {
-                setActiveTab(tab.key);
-                updateParams({ stage: tab.key === "all" ? "" : tab.key });
-              }}
+              onClick={() => setStage(tab.key === "all" ? "" : tab.key)}
               className={`pb-3 px-1 text-sm transition-colors flex-shrink-0 ${
                 isActive
                   ? "border-b-2 border-amber-600 text-stone-900 font-medium"
@@ -233,14 +243,14 @@ export default function BespokeListClient({ jobs, view, q, stageFilter }: Props)
             </TableRow>
           </TableHeader>
           <TableBody>
-            {jobs.length === 0 ? (
+            {visibleJobs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-stone-500">
                   No jobs found.
                 </TableCell>
               </TableRow>
             ) : (
-              jobs.map((job) => {
+              visibleJobs.map((job) => {
                 const overdue = isOverdue(job.due_date);
                 const name = job.customers?.full_name || "Unknown";
                 return (
