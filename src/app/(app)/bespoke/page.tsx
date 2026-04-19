@@ -49,33 +49,63 @@ export default async function BespokePage({
   //
   // Server-side `q` (search) stays so deep-links like `?q=…` can still look
   // past the recent-200 cap.
-  let query = admin
-    .from("bespoke_jobs")
-    .select(
-      `id, job_number, title, stage, priority, due_date, created_at,
-       customers(id, full_name)`
-    )
+  // HOT PATH: no search → read the 200-row snapshot + stage counts from
+  // the precomputed tenant_dashboard_stats row (single indexed lookup).
+  // DEEP PATH: ?q= → live ILIKE so search can reach past the snapshot cap.
+  const statsPromise = admin
+    .from("tenant_dashboard_stats")
+    .select("bespoke_stage_counts, bespoke_overdue_count, bespoke_hot_rows, computed_at")
     .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(200);
+    .maybeSingle();
+
+  let rawJobs: unknown[] | null = null;
+  let statsResult: Awaited<typeof statsPromise>;
 
   if (q) {
-    query = query.or(`title.ilike.%${q}%,job_number.ilike.%${q}%`);
+    const liveQuery = admin
+      .from("bespoke_jobs")
+      .select(
+        `id, job_number, title, stage, priority, due_date, created_at,
+         customers(id, full_name)`
+      )
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .or(`title.ilike.%${q}%,job_number.ilike.%${q}%`)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const [liveRes, statsRes] = await Promise.all([liveQuery, statsPromise]);
+    rawJobs = liveRes.data as unknown[] | null;
+    statsResult = statsRes;
+  } else {
+    statsResult = await statsPromise;
+    const snapshot = statsResult.data?.bespoke_hot_rows as unknown[] | null;
+    const computedAt = statsResult.data?.computed_at as string | undefined;
+    const ageMs = computedAt ? Date.now() - new Date(computedAt).getTime() : Infinity;
+    const SNAPSHOT_MAX_AGE_MS = 5 * 60 * 1000;
+    if (snapshot && ageMs < SNAPSHOT_MAX_AGE_MS) {
+      rawJobs = snapshot;
+    } else {
+      const { data } = await admin
+        .from("bespoke_jobs")
+        .select(
+          `id, job_number, title, stage, priority, due_date, created_at,
+           customers(id, full_name)`
+        )
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      rawJobs = data as unknown[] | null;
+    }
   }
 
-  // Parallel: row list + precomputed stage counts. Stats row is refreshed
-  // every 60 s by pg_cron (and eagerly on writes).
-  const [{ data: rawJobs }, statsResult] = await Promise.all([
-    query,
-    admin
-      .from("tenant_dashboard_stats")
-      .select("bespoke_stage_counts, bespoke_overdue_count")
-      .eq("tenant_id", tenantId)
-      .maybeSingle(),
-  ]);
-
-  const jobs = (rawJobs || []).map((j) => ({
+  // Snapshot has customers inlined as object; live join may come as array.
+  type RawBespoke = {
+    id: string; job_number: string; title: string; stage: string; priority: string;
+    due_date: string | null; created_at: string;
+    customers: { id: string; full_name: string | null } | { id: string; full_name: string | null }[] | null;
+  };
+  const jobs = (rawJobs as RawBespoke[] | null ?? []).map((j) => ({
     ...j,
     customers: Array.isArray(j.customers) ? (j.customers[0] ?? null) : j.customers,
   }));

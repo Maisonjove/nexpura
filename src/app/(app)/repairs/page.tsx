@@ -33,46 +33,78 @@ export default async function RepairsPage({
     tenantId = headerTenantId;
   }
 
-  // Load the 200 most-recent repairs once. Stage filtering is now entirely
-  // client-side — previously each tab click triggered a full server round-trip
-  // (~3.5s observed) to re-query the same rows with a different `.eq("stage", …)`.
-  // With 200 rows already on the client, filtering them by stage via useMemo
-  // is ~1ms and feels instant.
+  // HOT PATH: no search query → read the 200-row snapshot + stage counts
+  // from the precomputed tenant_dashboard_stats row in a single query.
+  // One indexed row read replaces the full 200-row live fetch. pg_cron
+  // + write-trigger refreshes keep the snapshot <60 s stale at all times.
   //
-  // Server-side `q` (search) is preserved so deep-links like `?q=REP-047`
-  // and the camera-scanner fallback still work for repairs older than the
-  // recent 200.
-  let query = admin
-    .from("repairs")
-    .select(
-      `id, repair_number, item_type, item_description, repair_type, stage, priority, due_date, created_at,
-      customers(id, full_name)`
-    )
+  // DEEP PATH: `?q=` present → run the live ILIKE so search can reach
+  // past the 200-row snapshot cap (deep-link REP-047, camera scanner,
+  // old-repair lookup). Snapshot-side stage counts are still pulled
+  // in parallel from the same row.
+  const statsPromise = admin
+    .from("tenant_dashboard_stats")
+    .select("repairs_stage_counts, repairs_overdue_count, repairs_hot_rows, computed_at")
     .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(200);
+    .maybeSingle();
+
+  let rawRepairs: unknown[] | null = null;
+  let statsResult: Awaited<typeof statsPromise>;
+  const authPromise = isReviewMode ? Promise.resolve(null) : getAuthContext();
+  let auth: Awaited<ReturnType<typeof getAuthContext>> | null;
 
   if (q) {
-    query = query.or(
-      `repair_number.ilike.%${q}%,item_description.ilike.%${q}%,repair_type.ilike.%${q}%`
-    );
-  }
-
-  // Run auth + list fetch + precomputed stats in parallel. The stats row
-  // gives accurate tenant-wide stage counts and overdue count, computed
-  // every 60 s by pg_cron (and eagerly refreshed after writes). Previous
-  // iteration had the client compute both from the 200-row fetch, which
-  // under-counted any tenant with >200 repairs.
-  const [auth, { data: rawRepairs }, statsResult] = await Promise.all([
-    isReviewMode ? Promise.resolve(null) : getAuthContext(),
-    query,
-    admin
-      .from("tenant_dashboard_stats")
-      .select("repairs_stage_counts, repairs_overdue_count")
+    // Deep-search path: live fetch with ILIKE, still pull stats in parallel
+    // so tab-count chips remain accurate.
+    const liveQuery = admin
+      .from("repairs")
+      .select(
+        `id, repair_number, item_type, item_description, repair_type, stage, priority, due_date, created_at,
+        customers(id, full_name)`
+      )
       .eq("tenant_id", tenantId)
-      .maybeSingle(),
-  ]);
+      .is("deleted_at", null)
+      .or(
+        `repair_number.ilike.%${q}%,item_description.ilike.%${q}%,repair_type.ilike.%${q}%`
+      )
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const [authRes, liveRes, statsRes] = await Promise.all([authPromise, liveQuery, statsPromise]);
+    auth = authRes;
+    rawRepairs = liveRes.data as unknown[] | null;
+    statsResult = statsRes;
+  } else {
+    // Hot path: auth + single stats-row read.
+    const [authRes, statsRes] = await Promise.all([authPromise, statsPromise]);
+    auth = authRes;
+    statsResult = statsRes;
+
+    // Use the snapshot if it exists AND is <5 min old (conservative; the
+    // write-trigger + pg_cron flow keeps it <60 s normally, but if the
+    // scheduler lagged or a refresh failed, we'd rather fall back to a
+    // live fetch than show a multi-minute-old list).
+    const snapshot = statsResult.data?.repairs_hot_rows as unknown[] | null;
+    const computedAt = statsResult.data?.computed_at as string | undefined;
+    const ageMs = computedAt ? Date.now() - new Date(computedAt).getTime() : Infinity;
+    const SNAPSHOT_MAX_AGE_MS = 5 * 60 * 1000;
+    if (snapshot && ageMs < SNAPSHOT_MAX_AGE_MS) {
+      rawRepairs = snapshot;
+    } else {
+      // Fallback: live fetch when snapshot missing or unexpectedly stale.
+      const liveQuery = admin
+        .from("repairs")
+        .select(
+          `id, repair_number, item_type, item_description, repair_type, stage, priority, due_date, created_at,
+          customers(id, full_name)`
+        )
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      const { data } = await liveQuery;
+      rawRepairs = data as unknown[] | null;
+    }
+  }
 
   if (!isReviewMode && !auth) redirect("/login");
 
@@ -87,7 +119,15 @@ export default async function RepairsPage({
     );
   }
 
-  const repairs = (rawRepairs || []).map((r) => ({
+  // Snapshot already has customers inlined as an object (not array). Live
+  // Supabase joins sometimes come back as array. Normalise both shapes.
+  type RawRepair = {
+    id: string; repair_number: string; item_type: string; item_description: string;
+    repair_type: string; stage: string; priority: string;
+    due_date: string | null; created_at: string;
+    customers: { id: string; full_name: string | null } | { id: string; full_name: string | null }[] | null;
+  };
+  const repairs = (rawRepairs as RawRepair[] | null ?? []).map((r) => ({
     ...r,
     customers: Array.isArray(r.customers)
       ? (r.customers[0] ?? null)
