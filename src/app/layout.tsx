@@ -103,13 +103,13 @@ export default function RootLayout({
           name="apple-mobile-web-app-status-bar-style"
           content="default"
         />
+        {/* Pre-hydration hot-route prefetch — placed at the end of <head>
+            so the browser executes it the moment the head finishes parsing,
+            before the first painted body element. Reads tenant slug from
+            location.pathname at parse time. */}
+        <PrehydrationPrefetch />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
-        {/* Pre-hydration hot-route prefetch — fires during HTML parse in
-            the browser, populates HTTP cache so router.prefetch() later
-            serves from cache instead of round-tripping. Reads tenant
-            slug from location.pathname at parse time. */}
-        <PrehydrationPrefetch />
         <LiveRegionProvider>
           <PWAProvider>
             {children}
