@@ -210,8 +210,13 @@ const nextConfig: NextConfig = {
       // workshop, bespoke, intake. Other routes (settings, billing,
       // marketing, etc.) are untouched and retain Next's default no-store.
       {
+        // Base hot-route URLs (e.g. /test/customers, /maisonjove/repairs).
+        // These are exactly what the pre-hydration warmup + router.prefetch
+        // fire for a route-level cache miss. Subpaths (e.g.
+        // /test/customers/new) are NOT matched — their prefetches were
+        // never our target.
         source:
-          "/:slug/:route(customers|repairs|inventory|tasks|invoices|workshop|bespoke|intake){/:rest*}?",
+          "/:slug/:route(customers|repairs|inventory|tasks|invoices|workshop|bespoke|intake)",
         has: [
           { type: "header", key: "rsc", value: "1" },
           { type: "header", key: "next-router-prefetch", value: "1" },
@@ -222,12 +227,11 @@ const nextConfig: NextConfig = {
             value: "private, max-age=15, must-revalidate",
           },
           {
-            // Augment Next's default Vary for these responses. Next already
-            // sets `rsc, next-router-state-tree, next-router-prefetch,
+            // Augment Next's default Vary. Next already sets
+            // `rsc, next-router-state-tree, next-router-prefetch,
             // next-router-segment-prefetch`; we add `cookie` to isolate
-            // cache entries per authenticated user. Duplicate header values
-            // are combined by the browser so this is additive, not
-            // overwriting.
+            // cache entries per authenticated user so logout/login flips
+            // the cache key.
             key: "Vary",
             value:
               "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, cookie",
