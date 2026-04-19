@@ -35,6 +35,7 @@ import {
 import type { Milestone } from "./components/MilestoneCard";
 
 import type { BespokeCommandCenterProps, JobAttachment } from "./components/types";
+import OrderMessagesPanel from "@/components/orders/OrderMessagesPanel";
 
 export default function BespokeCommandCenter({
   job,
@@ -46,6 +47,7 @@ export default function BespokeCommandCenter({
   readOnly = false,
   attachments = [],
   events = [],
+  messages = [],
 }: BespokeCommandCenterProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -279,6 +281,17 @@ export default function BespokeCommandCenter({
             isPending={isPending}
             onStageChange={handleStageChange}
           />
+          {/* Customer ↔ Staff messages — sits right next to the stage
+              workflow so amendment requests and design feedback from the
+              customer are impossible to miss while the jeweller is moving
+              the job through CAD / approval / production stages. */}
+          {!readOnly && (
+            <OrderMessagesPanel
+              orderType="bespoke"
+              orderId={job.id}
+              initialMessages={messages}
+            />
+          )}
           <MilestoneCard
             jobId={job.id}
             tenantId={tenantId}

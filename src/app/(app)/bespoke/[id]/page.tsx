@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { getAuthContext } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
 import BespokeCommandCenter from "./BespokeCommandCenter";
+import type { OrderMessage } from "@/lib/messaging";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
@@ -95,7 +96,7 @@ export default async function BespokeJobDetailPage({
   if (!job) notFound();
 
   // Phase 2: Fetch job-specific data in parallel
-  const [attachmentsResult, eventsResult, invoiceData] = await Promise.all([
+  const [attachmentsResult, eventsResult, invoiceData, messagesResult] = await Promise.all([
     adminClient
       .from("job_attachments")
       .select("*")
@@ -135,6 +136,14 @@ export default async function BespokeJobDetailPage({
       }
       return null;
     })() : Promise.resolve(null),
+    // Customer ↔ staff thread for this bespoke job.
+    adminClient
+      .from("order_messages")
+      .select("*")
+      .eq("order_type", "bespoke")
+      .eq("order_id", id)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: true }),
   ]);
 
   const customer = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
@@ -181,6 +190,7 @@ export default async function BespokeJobDetailPage({
       readOnly={isReviewMode}
       attachments={attachmentsResult.data ?? []}
       events={eventsResult.data ?? []}
+      messages={(messagesResult.data ?? []) as OrderMessage[]}
     />
   );
 }

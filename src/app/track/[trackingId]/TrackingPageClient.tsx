@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import TrackingMessages from "@/components/tracking/TrackingMessages";
+import type { OrderMessage } from "@/lib/messaging";
 
 interface OrderData {
   id: string;
@@ -101,7 +103,13 @@ function getFileIcon(fileType: string | null): string {
   return "📄";
 }
 
-export default function TrackingPageClient({ order }: { order: OrderData }) {
+export default function TrackingPageClient({
+  order,
+  initialMessages,
+}: {
+  order: OrderData;
+  initialMessages: OrderMessage[];
+}) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const stages = order.order_type === "repair" ? REPAIR_STAGES : BESPOKE_STAGES;
@@ -382,6 +390,14 @@ export default function TrackingPageClient({ order }: { order: OrderData }) {
             </div>
           </div>
         )}
+
+        {/* Customer ↔ Jeweller messaging on this order */}
+        <TrackingMessages
+          trackingId={order.tracking_id}
+          orderType={order.order_type}
+          businessName={order.tenant.business_name}
+          initialMessages={initialMessages}
+        />
 
         {/* Footer */}
         <div className="text-center py-8">

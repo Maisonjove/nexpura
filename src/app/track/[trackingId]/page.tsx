@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import TrackingPageClient from "./TrackingPageClient";
+import { getTrackingThread } from "@/lib/messaging";
 
 // Revalidate tracking data every 30 seconds
 // This means updates show within 30s but pages load instantly from cache
@@ -197,7 +198,12 @@ export default async function TrackingPage({ params }: PageProps) {
     notFound();
   }
 
-  return <TrackingPageClient order={order} />;
+  // Messages are fetched fresh (not cached with the order) so new replies
+  // from the jeweller appear as soon as they're sent, without waiting on
+  // the 30s order-data revalidation window.
+  const messages = await getTrackingThread(trackingId);
+
+  return <TrackingPageClient order={order} initialMessages={messages} />;
 }
 
 export async function generateMetadata({ params }: PageProps) {
