@@ -1,5 +1,5 @@
 // Nexpura Service Worker - PWA & Offline Support
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const STATIC_CACHE = `nexpura-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `nexpura-dynamic-${CACHE_VERSION}`;
 // Hot-route RSC prefetch cache — 15-second TTL, per-user via Vary: cookie
@@ -183,42 +183,46 @@ function isHotRoutePath(pathname) {
   return HOT_ROUTE_SEGMENTS.has(parts[1]);
 }
 
-// We store a parallel Map of cache-entry timestamps in IndexedDB so we can
-// expire entries after RSC_PREFETCH_TTL_MS. The Cache API has no native TTL.
-// Keyed by the raw request URL (the cookie component of Vary is handled by
-// the Cache API's own match() Vary semantics, so the timestamp is shared
-// across cookie variants of the same URL — stale cookies just mean the
-// Cache.match for the new cookie will miss anyway).
-async function getTsStore() {
+// We store cache-entry metadata (timestamp + cookie hash) in IndexedDB so
+// we can (a) expire entries after RSC_PREFETCH_TTL_MS and (b) refuse to
+// serve a cached response across a cookie change (logout → login as User B).
+// The Cache API has no native TTL and — although Cache.match honors the
+// server's Vary header — Next's renderer overwrites middleware-set Vary on
+// authenticated 200 responses, so we cannot rely on `Vary: cookie` making
+// it into the response. Instead the SW enforces per-cookie isolation
+// itself by comparing a SHA-256 hash of the request's cookie header
+// against the hash stored when the entry was first cached.
+async function getMetaStore() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('nexpura-sw-meta', 1);
+    const req = indexedDB.open('nexpura-sw-meta', 2);
     req.onerror = () => reject(req.error);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains('ts')) db.createObjectStore('ts');
+      if (db.objectStoreNames.contains('ts')) db.deleteObjectStore('ts');
+      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
     };
     req.onsuccess = () => resolve(req.result);
   });
 }
-async function readTs(url) {
+async function readMeta(url) {
   try {
-    const db = await getTsStore();
+    const db = await getMetaStore();
     return await new Promise((resolve) => {
-      const tx = db.transaction('ts', 'readonly');
-      const req = tx.objectStore('ts').get(url);
-      req.onsuccess = () => resolve(req.result ?? 0);
-      req.onerror = () => resolve(0);
+      const tx = db.transaction('meta', 'readonly');
+      const req = tx.objectStore('meta').get(url);
+      req.onsuccess = () => resolve(req.result ?? null);
+      req.onerror = () => resolve(null);
     });
   } catch {
-    return 0;
+    return null;
   }
 }
-async function writeTs(url, t) {
+async function writeMeta(url, meta) {
   try {
-    const db = await getTsStore();
+    const db = await getMetaStore();
     await new Promise((resolve) => {
-      const tx = db.transaction('ts', 'readwrite');
-      tx.objectStore('ts').put(t, url);
+      const tx = db.transaction('meta', 'readwrite');
+      tx.objectStore('meta').put(meta, url);
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
     });
@@ -226,30 +230,59 @@ async function writeTs(url, t) {
     // ignore
   }
 }
+// Short SHA-256 prefix of the request's cookie header. 64 bits is plenty
+// for collision avoidance on a single browser; a cookie rotation (session
+// refresh or logout/login) changes the hash and invalidates the entry.
+async function hashCookie(cookieHeader) {
+  const buf = new TextEncoder().encode(cookieHeader || '');
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  const bytes = new Uint8Array(digest, 0, 8);
+  let hex = '';
+  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
+  return hex;
+}
 
-// Cache-with-TTL for hot-route RSC prefetches. Cache API's match() honors
-// the server's Vary header, and the middleware augments Vary with `cookie`,
-// so cache entries are automatically per-browser per-cookie-bundle.
+// Cache-with-TTL + explicit cookie keying for hot-route RSC prefetches.
+// Serve cached response only if (a) fresh within TTL AND (b) the cookie
+// that produced it still matches. Network-fail fallback also requires a
+// cookie match so a logged-out user cannot see a previous user's data.
 async function rscPrefetchStrategy(request) {
   const url = request.url;
+  const currentCookieHash = await hashCookie(request.headers.get('cookie'));
   const cache = await caches.open(RSC_PREFETCH_CACHE);
   const cached = await cache.match(request);
   if (cached) {
-    const cachedAt = await readTs(url);
-    if (cachedAt && Date.now() - cachedAt < RSC_PREFETCH_TTL_MS) {
+    const meta = await readMeta(url);
+    if (
+      meta &&
+      meta.cookieHash === currentCookieHash &&
+      Date.now() - meta.cachedAt < RSC_PREFETCH_TTL_MS
+    ) {
       return cached;
     }
-    // Stale — fall through to network.
+    // Stale, or served under a different cookie → fall through to network.
   }
   try {
     const response = await fetch(request);
     if (response.ok && response.type === 'basic') {
-      cache.put(request, response.clone()).then(() => writeTs(url, Date.now()));
+      const toStore = response.clone();
+      cache
+        .put(request, toStore)
+        .then(() =>
+          writeMeta(url, {
+            cookieHash: currentCookieHash,
+            cachedAt: Date.now(),
+          }),
+        );
     }
     return response;
   } catch (err) {
-    // Network failed — serve stale cache if we have one rather than error.
-    if (cached) return cached;
+    // Network failed — only serve stale cache if the cookie still matches
+    // the one that produced it. Never cross-user even on network failure.
+    if (cached) {
+      const meta = await readMeta(url);
+      if (meta && meta.cookieHash === currentCookieHash) return cached;
+    }
     throw err;
   }
 }
