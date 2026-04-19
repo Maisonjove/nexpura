@@ -79,17 +79,30 @@ export function RoutePrefetcher({ tenantSlug }: Props) {
     // the string literal. The router reads the string value directly.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const FULL = "full" as any;
-    const t1 = setTimeout(() => {
-      for (const r of hot) router.prefetch(r, { kind: FULL });
-    }, 50);
 
-    // Warm routes: 1.5 s after mount — background fill-in.
+    // Hot routes: fire on the very next microtask — the instant React has
+    // completed the initial commit of this layout. This is the earliest
+    // possible moment `router.prefetch` is callable. Previous setTimeout(50)
+    // was leaving a 50 ms "clicked-too-early" window where a fast jeweller
+    // could beat the prefetch entirely.
+    //
+    // If the user clicks during a still-in-flight prefetch, Next's router
+    // dedupes against the pending request and reuses its response — so even
+    // a mid-flight prefetch saves a full cold round-trip.
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      for (const r of hot) router.prefetch(r, { kind: FULL });
+    });
+
+    // Warm routes: 1.5 s after mount — background fill-in that doesn't
+    // compete with the hot tier for the initial network burst.
     const t2 = setTimeout(() => {
       for (const r of warm) router.prefetch(r, { kind: FULL });
     }, 1500);
 
     return () => {
-      clearTimeout(t1);
+      cancelled = true;
       clearTimeout(t2);
     };
   }, [router, tenantSlug]);
