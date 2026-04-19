@@ -10,6 +10,13 @@ import BespokeListClient from "./BespokeListClient";
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
+/**
+ * Synchronous top level: unwrap searchParams, return the shell tree with
+ * an async <BespokeBody> wrapped in Suspense. All server work — auth,
+ * tenant resolution, database reads — lives inside the body. React emits
+ * the shell's HTML as soon as the parent component returns; the body
+ * streams in later. See /repairs/page.tsx for the same pattern rationale.
+ */
 export default async function BespokePage({
   searchParams,
 }: {
@@ -19,15 +26,40 @@ export default async function BespokePage({
   const view = params.view || "pipeline";
   const q = params.q || "";
   const stageFilter = params.stage || "";
-
-  // Tenant + permission resolution must happen before the shell render
-  // so we can short-circuit the ACL-denied state without a Suspense
-  // round-trip. But it's all cache-backed (JWT fast path + Redis) so
-  // it's only a few ms of synchronous server time.
-  let tenantId: string | null = null;
-  let canView = false;
   const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
 
+  return (
+    <div className="space-y-6 max-w-[1400px]">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Bespoke Jobs</h1>
+        <Link
+          href="/bespoke/new"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2"
+        >
+          <Plus className="w-4 h-4 mr-2" /> New Job
+        </Link>
+      </div>
+
+      <Suspense key={`${q}:${stageFilter}`} fallback={<BespokeBodySkeleton />}>
+        <BespokeBody q={q} view={view} stageFilter={stageFilter} isReviewMode={isReviewMode} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function BespokeBody({
+  q,
+  view,
+  stageFilter,
+  isReviewMode,
+}: {
+  q: string;
+  view: string;
+  stageFilter: string;
+  isReviewMode: boolean;
+}) {
+  let tenantId: string | null = null;
+  let canView = false;
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
     canView = true;
@@ -47,38 +79,6 @@ export default async function BespokePage({
     );
   }
 
-  // Shell — paints immediately. The Suspense-wrapped body streams with
-  // the list data once the database read resolves.
-  return (
-    <div className="space-y-6 max-w-[1400px]">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Bespoke Jobs</h1>
-        <Link
-          href="/bespoke/new"
-          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2"
-        >
-          <Plus className="w-4 h-4 mr-2" /> New Job
-        </Link>
-      </div>
-
-      <Suspense key={`${q}:${stageFilter}`} fallback={<BespokeBodySkeleton />}>
-        <BespokeBody tenantId={tenantId} q={q} view={view} stageFilter={stageFilter} />
-      </Suspense>
-    </div>
-  );
-}
-
-async function BespokeBody({
-  tenantId,
-  q,
-  view,
-  stageFilter,
-}: {
-  tenantId: string;
-  q: string;
-  view: string;
-  stageFilter: string;
-}) {
   const admin = createAdminClient();
 
   const statsPromise = admin

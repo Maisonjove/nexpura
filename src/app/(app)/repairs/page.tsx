@@ -12,6 +12,21 @@ import RepairsListClient from "./RepairsListClient";
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
+/**
+ * Intentionally synchronous at the top level: we only unwrap searchParams
+ * (the one unavoidable await) then return the shell + Suspense tree. All
+ * remaining server work — auth header resolve, tenant_dashboard_stats
+ * read, hot-row snapshot handling — runs inside `<RepairsBody>`, wrapped
+ * in Suspense.
+ *
+ * Why: React 19 / Next 16 streams the rendered parent + emits the Suspense
+ * *fallback* the moment it encounters an unresolved async child. If we
+ * awaited anything at the parent level — including headers() / getAuth —
+ * React would hold the whole render until those resolved, collapsing
+ * shell + body into a single HTML chunk. Pushing every await into the
+ * child forces React to emit the shell immediately, then stream the body
+ * chunk later, even if the body is fast.
+ */
 export default async function RepairsPage({
   searchParams,
 }: {
@@ -21,30 +36,11 @@ export default async function RepairsPage({
   const view = params.view || "pipeline";
   const q = params.q || "";
   const stageFilter = params.stage || "";
-
   const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
 
-  // Tenant ID resolution is cheap (headers only, no DB). Do it here so the
-  // shell can include tenant-specific URLs if we ever need them later.
-  let tenantId: string;
-  if (isReviewMode) {
-    tenantId = DEMO_TENANT;
-  } else {
-    const headersList = await headers();
-    const headerTenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
-    if (!headerTenantId) redirect("/login");
-    tenantId = headerTenantId;
-  }
-
-  // Server-rendered SHELL — streams in the first HTML chunk.
-  // The h1, "New Repair" link, and empty stage tabs are interactive via
-  // vanilla links, not client-side onClick, so they work even before
-  // hydration completes. The Suspense boundary wraps the async body
-  // (list + counts + chips) so the user sees the page title + primary
-  // CTA before any database work has to finish.
   return (
     <div className="space-y-6 max-w-[1400px]">
-      {/* Shell: title + primary action — paints before any await fires */}
+      {/* Shell: paints in the very first HTML chunk */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Repairs</h1>
         <Link
@@ -55,35 +51,37 @@ export default async function RepairsPage({
         </Link>
       </div>
 
-      {/* Body streams — tabs + table + chips hydrate inside the client
-          component (tabs need local state for instant filtering). Shell
-          above paints before any database work has started. */}
+      {/* Body — streams. All database + auth work lives here. */}
       <Suspense key={`${q}:${stageFilter}`} fallback={<RepairsBodySkeleton />}>
-        <RepairsBody
-          tenantId={tenantId}
-          q={q}
-          view={view}
-          stageFilter={stageFilter}
-          isReviewMode={isReviewMode}
-        />
+        <RepairsBody q={q} view={view} stageFilter={stageFilter} isReviewMode={isReviewMode} />
       </Suspense>
     </div>
   );
 }
 
 async function RepairsBody({
-  tenantId,
   q,
   view,
   stageFilter,
   isReviewMode,
 }: {
-  tenantId: string;
   q: string;
   view: string;
   stageFilter: string;
   isReviewMode: boolean;
 }) {
+  // Auth resolve + tenant lookup are now here (inside Suspense), so the
+  // shell has already painted by the time this runs.
+  let tenantId: string;
+  if (isReviewMode) {
+    tenantId = DEMO_TENANT;
+  } else {
+    const headersList = await headers();
+    const headerTenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+    if (!headerTenantId) redirect("/login");
+    tenantId = headerTenantId;
+  }
+
   const admin = createAdminClient();
 
   const statsPromise = admin
@@ -183,15 +181,11 @@ async function RepairsBody({
 function RepairsBodySkeleton() {
   return (
     <div className="space-y-6">
-      {/* Tabs row placeholder — 8 evenly-sized slots matching the real
-          stage tab bar. */}
       <div className="border-b border-stone-200 flex gap-6 overflow-x-auto pb-3">
         {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton key={i} className="h-4 w-16 rounded-md flex-shrink-0" />
         ))}
       </div>
-      {/* Table with 10 skeleton rows — matches the real layout closely
-          enough that there's no visible jump when the real rows land. */}
       <div className="border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white">
         <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-stone-100 text-xs font-medium uppercase tracking-wider text-stone-400">
           <span className="col-span-3">Customer</span>
