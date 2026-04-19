@@ -1,6 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getAuthContext } from "@/lib/auth-context";
+import { Skeleton } from "@/components/ui/skeleton";
 import BespokeListClient from "./BespokeListClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -15,9 +19,11 @@ export default async function BespokePage({
   const view = params.view || "pipeline";
   const q = params.q || "";
   const stageFilter = params.stage || "";
-  const admin = createAdminClient();
 
-  // Check for review mode or auth
+  // Tenant + permission resolution must happen before the shell render
+  // so we can short-circuit the ACL-denied state without a Suspense
+  // round-trip. But it's all cache-backed (JWT fast path + Redis) so
+  // it's only a few ms of synchronous server time.
   let tenantId: string | null = null;
   let canView = false;
   const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
@@ -41,17 +47,40 @@ export default async function BespokePage({
     );
   }
 
-  // Load the 200 most-recent bespoke jobs once. Stage filtering is now
-  // client-side — each tab click used to trigger a full RSC round-trip to
-  // re-run the same query with a different `.eq("stage", …)`. With 200 rows
-  // already in the client, filtering them via useMemo is ~1ms and instant.
-  // Matches the pattern shipped for /repairs in PR #30.
-  //
-  // Server-side `q` (search) stays so deep-links like `?q=…` can still look
-  // past the recent-200 cap.
-  // HOT PATH: no search → read the 200-row snapshot + stage counts from
-  // the precomputed tenant_dashboard_stats row (single indexed lookup).
-  // DEEP PATH: ?q= → live ILIKE so search can reach past the snapshot cap.
+  // Shell — paints immediately. The Suspense-wrapped body streams with
+  // the list data once the database read resolves.
+  return (
+    <div className="space-y-6 max-w-[1400px]">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Bespoke Jobs</h1>
+        <Link
+          href="/bespoke/new"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2"
+        >
+          <Plus className="w-4 h-4 mr-2" /> New Job
+        </Link>
+      </div>
+
+      <Suspense key={`${q}:${stageFilter}`} fallback={<BespokeBodySkeleton />}>
+        <BespokeBody tenantId={tenantId} q={q} view={view} stageFilter={stageFilter} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function BespokeBody({
+  tenantId,
+  q,
+  view,
+  stageFilter,
+}: {
+  tenantId: string;
+  q: string;
+  view: string;
+  stageFilter: string;
+}) {
+  const admin = createAdminClient();
+
   const statsPromise = admin
     .from("tenant_dashboard_stats")
     .select("bespoke_stage_counts, bespoke_overdue_count, bespoke_hot_rows, computed_at")
@@ -99,7 +128,6 @@ export default async function BespokePage({
     }
   }
 
-  // Snapshot has customers inlined as object; live join may come as array.
   type RawBespoke = {
     id: string; job_number: string; title: string; stage: string; priority: string;
     due_date: string | null; created_at: string;
@@ -118,6 +146,45 @@ export default async function BespokePage({
       stageFilter={stageFilter}
       precomputedStageCounts={(statsResult.data?.bespoke_stage_counts as Record<string, number> | null) ?? null}
       precomputedOverdueCount={(statsResult.data?.bespoke_overdue_count as number | null) ?? null}
+      hideTitleBlock
     />
+  );
+}
+
+function BespokeBodySkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="border-b border-stone-200 flex gap-6 overflow-x-auto pb-3">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-4 w-20 rounded-md flex-shrink-0" />
+        ))}
+      </div>
+      <div className="border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white">
+        <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-stone-100 text-xs font-medium uppercase tracking-wider text-stone-400">
+          <span className="col-span-3">Customer</span>
+          <span className="col-span-4">Title</span>
+          <span className="col-span-2">Stage</span>
+          <span className="col-span-2">Due</span>
+          <span className="col-span-1"></span>
+        </div>
+        <div className="divide-y divide-stone-100">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="grid grid-cols-12 gap-4 px-6 py-3 items-center">
+              <div className="col-span-3 flex items-center gap-3">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <div className="col-span-4">
+                <Skeleton className="h-4 w-28 mb-1" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+              <div className="col-span-2"><Skeleton className="h-5 w-24 rounded-full" /></div>
+              <div className="col-span-2"><Skeleton className="h-4 w-16" /></div>
+              <div className="col-span-1 flex justify-center"><Skeleton className="h-4 w-4" /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

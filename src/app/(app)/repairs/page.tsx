@@ -1,8 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { Suspense } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getAuthContext } from "@/lib/auth-context";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
+import { Skeleton } from "@/components/ui/skeleton";
 import RepairsListClient from "./RepairsListClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
@@ -17,12 +21,11 @@ export default async function RepairsPage({
   const view = params.view || "pipeline";
   const q = params.q || "";
   const stageFilter = params.stage || "";
-  const admin = createAdminClient();
 
   const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
 
-  // Resolve tenantId instantly from middleware headers (no Supabase round-trip).
-  // For review mode: use the demo tenant constant.
+  // Tenant ID resolution is cheap (headers only, no DB). Do it here so the
+  // shell can include tenant-specific URLs if we ever need them later.
   let tenantId: string;
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
@@ -33,15 +36,56 @@ export default async function RepairsPage({
     tenantId = headerTenantId;
   }
 
-  // HOT PATH: no search query → read the 200-row snapshot + stage counts
-  // from the precomputed tenant_dashboard_stats row in a single query.
-  // One indexed row read replaces the full 200-row live fetch. pg_cron
-  // + write-trigger refreshes keep the snapshot <60 s stale at all times.
-  //
-  // DEEP PATH: `?q=` present → run the live ILIKE so search can reach
-  // past the 200-row snapshot cap (deep-link REP-047, camera scanner,
-  // old-repair lookup). Snapshot-side stage counts are still pulled
-  // in parallel from the same row.
+  // Server-rendered SHELL — streams in the first HTML chunk.
+  // The h1, "New Repair" link, and empty stage tabs are interactive via
+  // vanilla links, not client-side onClick, so they work even before
+  // hydration completes. The Suspense boundary wraps the async body
+  // (list + counts + chips) so the user sees the page title + primary
+  // CTA before any database work has to finish.
+  return (
+    <div className="space-y-6 max-w-[1400px]">
+      {/* Shell: title + primary action — paints before any await fires */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Repairs</h1>
+        <Link
+          href="/repairs/new"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2"
+        >
+          <Plus className="w-4 h-4 mr-2" /> New Repair
+        </Link>
+      </div>
+
+      {/* Body streams — tabs + table + chips hydrate inside the client
+          component (tabs need local state for instant filtering). Shell
+          above paints before any database work has started. */}
+      <Suspense key={`${q}:${stageFilter}`} fallback={<RepairsBodySkeleton />}>
+        <RepairsBody
+          tenantId={tenantId}
+          q={q}
+          view={view}
+          stageFilter={stageFilter}
+          isReviewMode={isReviewMode}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
+async function RepairsBody({
+  tenantId,
+  q,
+  view,
+  stageFilter,
+  isReviewMode,
+}: {
+  tenantId: string;
+  q: string;
+  view: string;
+  stageFilter: string;
+  isReviewMode: boolean;
+}) {
+  const admin = createAdminClient();
+
   const statsPromise = admin
     .from("tenant_dashboard_stats")
     .select("repairs_stage_counts, repairs_overdue_count, repairs_hot_rows, computed_at")
@@ -54,8 +98,6 @@ export default async function RepairsPage({
   let auth: Awaited<ReturnType<typeof getAuthContext>> | null;
 
   if (q) {
-    // Deep-search path: live fetch with ILIKE, still pull stats in parallel
-    // so tab-count chips remain accurate.
     const liveQuery = admin
       .from("repairs")
       .select(
@@ -74,15 +116,10 @@ export default async function RepairsPage({
     rawRepairs = liveRes.data as unknown[] | null;
     statsResult = statsRes;
   } else {
-    // Hot path: auth + single stats-row read.
     const [authRes, statsRes] = await Promise.all([authPromise, statsPromise]);
     auth = authRes;
     statsResult = statsRes;
 
-    // Use the snapshot if it exists AND is <5 min old (conservative; the
-    // write-trigger + pg_cron flow keeps it <60 s normally, but if the
-    // scheduler lagged or a refresh failed, we'd rather fall back to a
-    // live fetch than show a multi-minute-old list).
     const snapshot = statsResult.data?.repairs_hot_rows as unknown[] | null;
     const computedAt = statsResult.data?.computed_at as string | undefined;
     const ageMs = computedAt ? Date.now() - new Date(computedAt).getTime() : Infinity;
@@ -90,8 +127,7 @@ export default async function RepairsPage({
     if (snapshot && ageMs < SNAPSHOT_MAX_AGE_MS) {
       rawRepairs = snapshot;
     } else {
-      // Fallback: live fetch when snapshot missing or unexpectedly stale.
-      const liveQuery = admin
+      const { data } = await admin
         .from("repairs")
         .select(
           `id, repair_number, item_type, item_description, repair_type, stage, priority, due_date, created_at,
@@ -101,7 +137,6 @@ export default async function RepairsPage({
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(200);
-      const { data } = await liveQuery;
       rawRepairs = data as unknown[] | null;
     }
   }
@@ -119,8 +154,6 @@ export default async function RepairsPage({
     );
   }
 
-  // Snapshot already has customers inlined as an object (not array). Live
-  // Supabase joins sometimes come back as array. Normalise both shapes.
   type RawRepair = {
     id: string; repair_number: string; item_type: string; item_description: string;
     repair_type: string; stage: string; priority: string;
@@ -142,6 +175,49 @@ export default async function RepairsPage({
       stageFilter={stageFilter}
       precomputedStageCounts={(statsResult.data?.repairs_stage_counts as Record<string, number> | null) ?? null}
       precomputedOverdueCount={(statsResult.data?.repairs_overdue_count as number | null) ?? null}
+      hideTitleBlock
     />
+  );
+}
+
+function RepairsBodySkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Tabs row placeholder — 8 evenly-sized slots matching the real
+          stage tab bar. */}
+      <div className="border-b border-stone-200 flex gap-6 overflow-x-auto pb-3">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-4 w-16 rounded-md flex-shrink-0" />
+        ))}
+      </div>
+      {/* Table with 10 skeleton rows — matches the real layout closely
+          enough that there's no visible jump when the real rows land. */}
+      <div className="border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white">
+        <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-stone-100 text-xs font-medium uppercase tracking-wider text-stone-400">
+          <span className="col-span-3">Customer</span>
+          <span className="col-span-4">Item &amp; Issue</span>
+          <span className="col-span-2">Status</span>
+          <span className="col-span-2">Due</span>
+          <span className="col-span-1"></span>
+        </div>
+        <div className="divide-y divide-stone-100">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="grid grid-cols-12 gap-4 px-6 py-3 items-center">
+              <div className="col-span-3 flex items-center gap-3">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <div className="col-span-4">
+                <Skeleton className="h-4 w-20 mb-1" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+              <div className="col-span-2"><Skeleton className="h-5 w-20 rounded-full" /></div>
+              <div className="col-span-2"><Skeleton className="h-4 w-16" /></div>
+              <div className="col-span-1 flex justify-center"><Skeleton className="h-4 w-4" /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

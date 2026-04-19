@@ -36,6 +36,8 @@ interface Props {
   precomputedStageCounts?: Record<string, number> | null;
   /** Precomputed tenant-wide overdue count (non-ready non-completed). */
   precomputedOverdueCount?: number | null;
+  /** When true, skip the h1 + primary-action block (rendered by page shell). */
+  hideTitleBlock?: boolean;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -66,6 +68,7 @@ export default function BespokeListClient({
   stageFilter,
   precomputedStageCounts,
   precomputedOverdueCount,
+  hideTitleBlock = false,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -171,48 +174,50 @@ export default function BespokeListClient({
         </div>
       )}
     <div className="space-y-6 max-w-[1400px]">
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Bespoke Jobs</h1>
-          <div className="hidden sm:flex items-center gap-2">
-            {jobs.length > 0 && (
-              <>
-                {activeJobsCount > 0 && (
-                  <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                    {activeJobsCount} Active
-                  </Badge>
-                )}
-                {readyDisplayCount > 0 && (
-                  <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                    {readyDisplayCount} Ready
-                  </Badge>
-                )}
-                {overdueDisplayCount > 0 && (
-                  <Badge variant="outline" className="text-red-600 font-medium border-red-200 bg-red-50">
-                    {overdueDisplayCount} Overdue
-                  </Badge>
-                )}
-              </>
+      {/* HEADER — skipped when page.tsx rendered a server shell above. */}
+      {!hideTitleBlock && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Bespoke Jobs</h1>
+            <div className="hidden sm:flex items-center gap-2">
+              {jobs.length > 0 && (
+                <>
+                  {activeJobsCount > 0 && (
+                    <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
+                      {activeJobsCount} Active
+                    </Badge>
+                  )}
+                  {readyDisplayCount > 0 && (
+                    <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
+                      {readyDisplayCount} Ready
+                    </Badge>
+                  )}
+                  {overdueDisplayCount > 0 && (
+                    <Badge variant="outline" className="text-red-600 font-medium border-red-200 bg-red-50">
+                      {overdueDisplayCount} Overdue
+                    </Badge>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {readyJobs.length > 0 && (
+              <button
+                onClick={() => setShowNotifyModal(true)}
+                className="inline-flex items-center gap-1.5 h-9 px-3 border border-emerald-300 bg-emerald-50 rounded-md text-sm text-emerald-700 hover:bg-emerald-100 transition-colors font-medium"
+                title={`Notify ${readyJobs.length} ready customer${readyJobs.length !== 1 ? "s" : ""}`}
+              >
+                <Bell className="w-4 h-4" />
+                Notify All Ready
+              </button>
             )}
+            <Link href="/bespoke/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
+              <Plus className="w-4 h-4 mr-2" /> New Job
+            </Link>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {readyJobs.length > 0 && (
-            <button
-              onClick={() => setShowNotifyModal(true)}
-              className="inline-flex items-center gap-1.5 h-9 px-3 border border-emerald-300 bg-emerald-50 rounded-md text-sm text-emerald-700 hover:bg-emerald-100 transition-colors font-medium"
-              title={`Notify ${readyJobs.length} ready customer${readyJobs.length !== 1 ? "s" : ""}`}
-            >
-              <Bell className="w-4 h-4" />
-              Notify All Ready
-            </button>
-          )}
-          <Link href="/bespoke/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
-            <Plus className="w-4 h-4 mr-2" /> New Job
-          </Link>
-        </div>
-      </div>
+      )}
 
       {/* STAGE TABS — labels include the precomputed tenant-wide count
           when available. Falls back to label-only when stats row is

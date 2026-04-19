@@ -55,6 +55,16 @@ interface Props {
   precomputedStageCounts?: Record<string, number> | null;
   /** Precomputed tenant-wide count of overdue (non-ready non-collected) repairs. */
   precomputedOverdueCount?: number | null;
+  /**
+   * When true, skip rendering the h1 + primary-action button AND the
+   * stage tabs because page.tsx rendered them synchronously as a server
+   * shell above the Suspense boundary that wraps this client. Prevents
+   * duplicate title / tab flashes when the list streams in. The client
+   * still owns tab *interactivity* — switching tabs works via the same
+   * local state + history.replaceState model as before; the server tabs
+   * are non-interactive anchor-links that only serve the initial paint.
+   */
+  hideTitleBlock?: boolean;
 }
 
 // ─── Stage data ───────────────────────────────────────────────────────────────
@@ -84,6 +94,7 @@ export default function RepairsListClient({
   stageFilter,
   precomputedStageCounts,
   precomputedOverdueCount,
+  hideTitleBlock = false,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -225,73 +236,76 @@ export default function RepairsListClient({
         </div>
       )}
     <div className="space-y-6 max-w-[1400px]">
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Repairs</h1>
-          <div className="hidden sm:flex items-center gap-2">
-            {repairs.length > 0 && (
-              <>
-                {inProgressCount > 0 && (
-                  <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                    {inProgressCount} In Progress
-                  </Badge>
-                )}
-                {readyDisplayCount > 0 && (
-                  <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                    {readyDisplayCount} Ready
-                  </Badge>
-                )}
-                {overdueDisplayCount > 0 && (
-                  <Badge variant="outline" className="text-red-600 font-medium border-red-200 bg-red-50">
-                    {overdueDisplayCount} Overdue
-                  </Badge>
-                )}
-              </>
+      {/* HEADER — skipped when page.tsx renders a server shell above.
+          Kept inline for standalone use (tests, other entry points). */}
+      {!hideTitleBlock && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Repairs</h1>
+            <div className="hidden sm:flex items-center gap-2">
+              {repairs.length > 0 && (
+                <>
+                  {inProgressCount > 0 && (
+                    <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
+                      {inProgressCount} In Progress
+                    </Badge>
+                  )}
+                  {readyDisplayCount > 0 && (
+                    <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
+                      {readyDisplayCount} Ready
+                    </Badge>
+                  )}
+                  {overdueDisplayCount > 0 && (
+                    <Badge variant="outline" className="text-red-600 font-medium border-red-200 bg-red-50">
+                      {overdueDisplayCount} Overdue
+                    </Badge>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {readyRepairs.length > 0 && (
+              <button
+                onClick={() => setShowNotifyModal(true)}
+                className="inline-flex items-center gap-1.5 h-9 px-3 border border-emerald-300 bg-emerald-50 rounded-md text-sm text-emerald-700 hover:bg-emerald-100 transition-colors font-medium"
+                title={`Notify ${readyRepairs.length} ready customer${readyRepairs.length !== 1 ? "s" : ""}`}
+              >
+                <Bell className="w-4 h-4" />
+                Notify All Ready
+              </button>
             )}
+            <ExportButtons
+              data={exportRows}
+              columns={[
+                { key: 'repair_number', label: 'Repair #' },
+                { key: 'customer', label: 'Customer' },
+                { key: 'item_type', label: 'Item Type' },
+                { key: 'description', label: 'Description' },
+                { key: 'repair_type', label: 'Repair Type' },
+                { key: 'stage', label: 'Status' },
+                { key: 'priority', label: 'Priority' },
+                { key: 'due_date', label: 'Due Date' },
+                { key: 'created_at', label: 'Created' },
+              ]}
+              filename={`repairs-export-${new Date().toISOString().split('T')[0]}`}
+              sheetName="Repairs"
+              size="sm"
+            />
+            <button
+              onClick={() => setShowCameraScanner(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3 border border-stone-200 rounded-md text-sm text-stone-600 hover:bg-stone-50 transition-colors"
+              title="Scan repair ticket barcode"
+            >
+              <Camera className="w-4 h-4" />
+              Scan
+            </button>
+            <Link href="/repairs/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
+              <Plus className="w-4 h-4 mr-2" /> New Repair
+            </Link>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {readyRepairs.length > 0 && (
-            <button
-              onClick={() => setShowNotifyModal(true)}
-              className="inline-flex items-center gap-1.5 h-9 px-3 border border-emerald-300 bg-emerald-50 rounded-md text-sm text-emerald-700 hover:bg-emerald-100 transition-colors font-medium"
-              title={`Notify ${readyRepairs.length} ready customer${readyRepairs.length !== 1 ? "s" : ""}`}
-            >
-              <Bell className="w-4 h-4" />
-              Notify All Ready
-            </button>
-          )}
-          <ExportButtons
-            data={exportRows}
-            columns={[
-              { key: 'repair_number', label: 'Repair #' },
-              { key: 'customer', label: 'Customer' },
-              { key: 'item_type', label: 'Item Type' },
-              { key: 'description', label: 'Description' },
-              { key: 'repair_type', label: 'Repair Type' },
-              { key: 'stage', label: 'Status' },
-              { key: 'priority', label: 'Priority' },
-              { key: 'due_date', label: 'Due Date' },
-              { key: 'created_at', label: 'Created' },
-            ]}
-            filename={`repairs-export-${new Date().toISOString().split('T')[0]}`}
-            sheetName="Repairs"
-            size="sm"
-          />
-          <button
-            onClick={() => setShowCameraScanner(true)}
-            className="inline-flex items-center gap-1.5 h-9 px-3 border border-stone-200 rounded-md text-sm text-stone-600 hover:bg-stone-50 transition-colors"
-            title="Scan repair ticket barcode"
-          >
-            <Camera className="w-4 h-4" />
-            Scan
-          </button>
-          <Link href="/repairs/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
-            <Plus className="w-4 h-4 mr-2" /> New Repair
-          </Link>
-        </div>
-      </div>
+      )}
 
       {/* STAGE TABS — labels now show the precomputed tenant-wide count
           next to each stage key when available. Falls back to label-only
