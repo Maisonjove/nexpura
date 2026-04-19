@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Drill-down data panels only render when the user clicks a category card —
@@ -643,138 +642,122 @@ export default function DashboardClient({
         </div>
 
         {/* Needs attention */}
-        <AnimatePresence>
-          {attentionItems.length > 0 && !activeCategory && (
-            <motion.section
-              key="attention"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-[0.6875rem] font-semibold tracking-[0.12em] uppercase text-stone-400">Needs Attention</h2>
-                <span className="text-[0.75rem] text-stone-400">{attentionItems.length} item{attentionItems.length !== 1 ? "s" : ""}</span>
-              </div>
-              <div className="bg-[#FAFAF8] border border-[#E8E4DF] rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)] divide-y divide-[#F0EDE9]">
-                {attentionItems.map((item) => (
-                  <TableRow key={item.key} href={item.href}>
-                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor[item.dot]}`} />
-                    <span className="text-[0.7rem] font-mono text-stone-300 w-[5rem] truncate flex-shrink-0">{item.id}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[0.8125rem] text-stone-800 font-medium truncate">{item.label}</p>
-                      {item.sub && <p className="text-[0.75rem] text-stone-400 truncate">{item.sub}</p>}
-                    </div>
-                    <span className="text-[0.75rem] text-stone-400 flex-shrink-0 hidden sm:block">{item.type}</span>
-                    <span className={`text-[0.75rem] font-medium flex-shrink-0 ${item.statusColor}`}>{item.status}</span>
-                  </TableRow>
-                ))}
-              </div>
-            </motion.section>
-          )}
-        </AnimatePresence>
+        {attentionItems.length > 0 && !activeCategory && (
+          <section
+            key="attention"
+            className="animate-in fade-in slide-in-from-bottom-1 duration-200"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-[0.6875rem] font-semibold tracking-[0.12em] uppercase text-stone-400">Needs Attention</h2>
+              <span className="text-[0.75rem] text-stone-400">{attentionItems.length} item{attentionItems.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="bg-[#FAFAF8] border border-[#E8E4DF] rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)] divide-y divide-[#F0EDE9]">
+              {attentionItems.map((item) => (
+                <TableRow key={item.key} href={item.href}>
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor[item.dot]}`} />
+                  <span className="text-[0.7rem] font-mono text-stone-300 w-[5rem] truncate flex-shrink-0">{item.id}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[0.8125rem] text-stone-800 font-medium truncate">{item.label}</p>
+                    {item.sub && <p className="text-[0.75rem] text-stone-400 truncate">{item.sub}</p>}
+                  </div>
+                  <span className="text-[0.75rem] text-stone-400 flex-shrink-0 hidden sm:block">{item.type}</span>
+                  <span className={`text-[0.75rem] font-medium flex-shrink-0 ${item.statusColor}`}>{item.status}</span>
+                </TableRow>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Category grid / drill-down */}
-        <AnimatePresence mode="wait">
-          {!activeCategory ? (
-            <motion.div
-              key="grid"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.1 }}
-              className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"
+        {!activeCategory ? (
+          <div
+            key="grid"
+            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 animate-in fade-in duration-150"
+          >
+            {SECTIONS.map((section, i) => {
+              const { text, alert } = getStatus(section.id);
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveCategory(section.id)}
+                  style={{ animationDelay: `${i * 15}ms`, animationFillMode: "backwards" }}
+                  className="group flex flex-col gap-3 bg-[#FAFAF8] border border-[#E8E4DF] rounded-xl p-5 text-left
+                    hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.07)] hover:border-stone-300 hover:-translate-y-0.5
+                    transition-all duration-200 cursor-pointer
+                    animate-in fade-in slide-in-from-bottom-1 duration-200"
+                >
+                  {/* Icon */}
+                  <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-stone-100
+                    group-hover:bg-stone-900 transition-colors duration-200 text-stone-500 group-hover:text-white">
+                    {section.icon}
+                  </div>
+                  {/* Title + desc */}
+                  <div>
+                    <p className="text-[0.9375rem] font-semibold text-stone-900 leading-snug">{section.title}</p>
+                    <p className="text-[0.75rem] text-stone-400 mt-0.5 leading-relaxed">{section.description}</p>
+                  </div>
+                  {/* Status line */}
+                  <p className={`text-[0.75rem] font-medium leading-relaxed ${alert ? "text-[#9B7A4A]" : "text-stone-400"}`}>
+                    {alert && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C4924A] mr-1.5 mb-px" />}
+                    {text}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        ) : (() => {
+          const section = SECTIONS.find((s) => s.id === activeCategory)!;
+          return (
+            <section
+              key={`drill-${activeCategory}`}
+              className="animate-in fade-in slide-in-from-right-2 duration-150"
             >
-              {SECTIONS.map((section, i) => {
-                const { text, alert } = getStatus(section.id);
-                return (
-                  <motion.button
-                    key={section.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.1, delay: i * 0.015 }}
-                    onClick={() => setActiveCategory(section.id)}
-                    className="group flex flex-col gap-3 bg-[#FAFAF8] border border-[#E8E4DF] rounded-xl p-5 text-left
-                      hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.07)] hover:border-stone-300 hover:-translate-y-0.5
-                      transition-all duration-200 cursor-pointer"
-                  >
-                    {/* Icon */}
-                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-stone-100
-                      group-hover:bg-stone-900 transition-colors duration-200 text-stone-500 group-hover:text-white">
-                      {section.icon}
-                    </div>
-                    {/* Title + desc */}
-                    <div>
-                      <p className="text-[0.9375rem] font-semibold text-stone-900 leading-snug">{section.title}</p>
-                      <p className="text-[0.75rem] text-stone-400 mt-0.5 leading-relaxed">{section.description}</p>
-                    </div>
-                    {/* Status line */}
-                    <p className={`text-[0.75rem] font-medium leading-relaxed ${alert ? "text-[#9B7A4A]" : "text-stone-400"}`}>
-                      {alert && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C4924A] mr-1.5 mb-px" />}
-                      {text}
-                    </p>
-                  </motion.button>
-                );
-              })}
-            </motion.div>
-          ) : (() => {
-            const section = SECTIONS.find((s) => s.id === activeCategory)!;
-            return (
-              <motion.section
-                key={`drill-${activeCategory}`}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.1 }}
-              >
-                {/* Breadcrumb */}
-                <div className="flex items-center gap-3 mb-5">
-                  <button
-                    onClick={() => setActiveCategory(null)}
-                    className="flex items-center gap-1.5 text-[0.8125rem] text-stone-400 hover:text-stone-900 transition-colors duration-150 cursor-pointer"
-                  >
-                    {icons.chevronLeft}
-                    Dashboard
-                  </button>
-                  <span className="text-stone-300">/</span>
-                  <h2 className="font-serif text-[1.25rem] text-stone-900 font-normal">{section.title}</h2>
-                </div>
+              {/* Breadcrumb */}
+              <div className="flex items-center gap-3 mb-5">
+                <button
+                  onClick={() => setActiveCategory(null)}
+                  className="flex items-center gap-1.5 text-[0.8125rem] text-stone-400 hover:text-stone-900 transition-colors duration-150 cursor-pointer"
+                >
+                  {icons.chevronLeft}
+                  Dashboard
+                </button>
+                <span className="text-stone-300">/</span>
+                <h2 className="font-serif text-[1.25rem] text-stone-900 font-normal">{section.title}</h2>
+              </div>
 
-                {/* Data panel */}
-                <ModuleDataPanel
-                  sectionId={activeCategory}
-                  bp={bp}
-                  salesThisMonthCount={salesThisMonthCount}
-                  currency={currency}
-                  lowStockItems={lowStockItems}
-                  overdueRepairs={overdueRepairs}
-                  readyForPickup={readyForPickup}
-                  activeRepairs={activeRepairs}
-                  activeBespokeJobs={activeBespokeJobs}
-                  recentSales={recentSales}
-                  overdueInvoiceCount={overdueInvoiceCount}
-                  totalOutstanding={totalOutstanding}
-                  myTasks={myTasks}
-                />
+              {/* Data panel */}
+              <ModuleDataPanel
+                sectionId={activeCategory}
+                bp={bp}
+                salesThisMonthCount={salesThisMonthCount}
+                currency={currency}
+                lowStockItems={lowStockItems}
+                overdueRepairs={overdueRepairs}
+                readyForPickup={readyForPickup}
+                activeRepairs={activeRepairs}
+                activeBespokeJobs={activeBespokeJobs}
+                recentSales={recentSales}
+                overdueInvoiceCount={overdueInvoiceCount}
+                totalOutstanding={totalOutstanding}
+                myTasks={myTasks}
+              />
 
-                {/* Quick actions */}
-                <h3 className="text-[0.6875rem] font-semibold tracking-[0.1em] uppercase text-stone-400 mb-3">Quick Actions</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
-                  {section.items.map((item, i) => (
-                    <motion.div
-                      key={item.href}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.08, delay: i * 0.012 }}
-                    >
-                      <ActionCard title={item.title} description={item.description} icon={item.icon} href={item.href} />
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.section>
-            );
-          })()}
-        </AnimatePresence>
+              {/* Quick actions */}
+              <h3 className="text-[0.6875rem] font-semibold tracking-[0.1em] uppercase text-stone-400 mb-3">Quick Actions</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+                {section.items.map((item, i) => (
+                  <div
+                    key={item.href}
+                    style={{ animationDelay: `${i * 12}ms`, animationFillMode: "backwards" }}
+                    className="animate-in fade-in slide-in-from-bottom-1 duration-200"
+                  >
+                    <ActionCard title={item.title} description={item.description} icon={item.icon} href={item.href} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
       </div>
 
       {/* ── Right Sidebar ─────────────────────────────────────────────────── */}
