@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { adjustStock } from "../actions";
+import { useFormHydrated } from "@/components/ui/submit-button";
 
 interface StockAdjustModalProps {
   inventoryId: string;
@@ -24,6 +25,7 @@ export default function StockAdjustModal({ inventoryId, currentQty, onClose }: S
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const hydrated = useFormHydrated();
 
   const quantityChange = quantity ? (direction === "add" ? parseInt(quantity) : -parseInt(quantity)) : 0;
   const newQty = currentQty + quantityChange;
@@ -151,10 +153,10 @@ export default function StockAdjustModal({ inventoryId, currentQty, onClose }: S
             </button>
             <button
               type="submit"
-              disabled={isPending || !quantity || parseInt(quantity) <= 0 || newQty < 0}
+              disabled={!hydrated || isPending || !quantity || parseInt(quantity) <= 0 || newQty < 0}
               className="flex-1 py-2.5 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
             >
-              {isPending ? (
+              {!hydrated ? "Preparing…" : isPending ? (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

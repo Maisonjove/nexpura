@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { X, Search, Package, Plus, Minus, ArrowRight, AlertCircle } from "lucide-react";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 interface Location {
   id: string;
@@ -383,13 +384,13 @@ export default function NewTransferModal({
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={loading || items.length === 0}
+              <SubmitButton
+                isPending={loading}
+                disabled={items.length === 0}
+                idleLabel="Create Transfer"
+                pendingLabel="Creating..."
                 className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Creating..." : "Create Transfer"}
-              </button>
+              />
             </div>
           </div>
         </form>

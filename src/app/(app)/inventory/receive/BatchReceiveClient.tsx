@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { batchReceiveStock } from "./actions";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 interface Supplier {
   id: string;
@@ -230,13 +231,13 @@ export default function BatchReceiveClient({ tenantId, userId, suppliers, invent
         </div>
 
         <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={isPending || lines.length === 0}
+          <SubmitButton
+            isPending={isPending}
+            disabled={lines.length === 0}
+            idleLabel={`Receive ${lines.length} Item${lines.length !== 1 ? "s" : ""}`}
+            pendingLabel="Receiving…"
             className="flex-1 py-3 bg-amber-700 text-white rounded-xl font-semibold text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
-          >
-            {isPending ? "Receiving…" : `Receive ${lines.length} Item${lines.length !== 1 ? "s" : ""}`}
-          </button>
+          />
           <Link
             href="/inventory"
             className="px-5 py-3 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50 transition-colors"

@@ -6,6 +6,7 @@ import { Plus, Trash2, Save } from "lucide-react";
 import { createQuote, type QuoteItem } from "./actions-server";
 import { toast } from "sonner";
 import logger from "@/lib/logger";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 interface Customer {
   id: string;
@@ -91,14 +92,13 @@ export default function QuoteForm({ tenantId, customers }: Props) {
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={loading}
+          <SubmitButton
+            isPending={loading}
+            idleLabel={<><Save size={18} /> Save Quote</>}
+            pendingLabel={<><Save size={18} /> Saving...</>}
+            preparingLabel={<><Save size={18} /> Preparing…</>}
             className="flex items-center gap-2 bg-amber-700 text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium disabled:opacity-50"
-          >
-            <Save size={18} />
-            {loading ? "Saving..." : "Save Quote"}
-          </button>
+          />
         </div>
       </div>
 

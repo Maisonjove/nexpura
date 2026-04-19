@@ -7,6 +7,7 @@ import Image from "next/image";
 import { createTask, updateTask, deleteTask, getTaskComments, addTaskComment, getTaskAttachments, deleteTaskAttachment } from "./actions";
 import type { StaffTask, TaskComment, TaskAttachment } from "./actions";
 import TaskKanbanView from "./TaskKanbanView";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 const PRIORITY_COLOURS: Record<string, string> = {
   low: "bg-stone-100 text-stone-500",
@@ -501,13 +502,12 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                 </div>
               )}
               <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={isPending}
+                <SubmitButton
+                  isPending={isPending}
+                  idleLabel="Create Task"
+                  pendingLabel="Creating…"
                   className="flex-1 py-2.5 bg-amber-700 text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
-                >
-                  {isPending ? "Creating…" : "Create Task"}
-                </button>
+                />
                 <button
                   type="button"
                   onClick={() => setShowNewTask(false)}

@@ -3,6 +3,7 @@
 import { useState, useCallback, useTransition } from "react";
 import { createInvoiceAndRedirect, updateInvoiceAndRedirect } from "./actions";
 import type { LineItemInput } from "./actions";
+import { useFormHydrated } from "@/components/ui/submit-button";
 
 interface Customer {
   id: string;
@@ -101,6 +102,7 @@ export default function InvoiceForm({
   const isEdit = !!existing;
 
   const [isPending, startTransition] = useTransition();
+  const hydrated = useFormHydrated();
   const [error, setError] = useState<string | null>(null);
   const [showInventorySearch, setShowInventorySearch] = useState(false);
   const [inventoryQuery, setInventoryQuery] = useState("");
@@ -766,19 +768,19 @@ export default function InvoiceForm({
           </a>
           <button
             type="button"
-            disabled={isPending}
+            disabled={!hydrated || isPending}
             onClick={() => handleSubmit("draft")}
             className="px-4 py-2 text-sm border border-stone-900 text-stone-900 rounded-lg hover:bg-stone-900/5 transition-colors disabled:opacity-50"
           >
-            {isPending ? "Saving…" : "Save as Draft"}
+            {!hydrated ? "Preparing…" : isPending ? "Saving…" : "Save as Draft"}
           </button>
           <button
             type="button"
-            disabled={isPending}
+            disabled={!hydrated || isPending}
             onClick={() => handleSubmit("sent")}
             className="px-4 py-2 text-sm bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
           >
-            {isPending ? "Saving…" : "Save & Send"}
+            {!hydrated ? "Preparing…" : isPending ? "Saving…" : "Save & Send"}
           </button>
         </div>
       )}

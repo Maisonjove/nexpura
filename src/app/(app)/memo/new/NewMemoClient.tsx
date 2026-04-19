@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createMemoItem } from "../actions";
 import { ArrowLeft } from "lucide-react";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 interface Customer {
   id: string;
@@ -182,13 +183,12 @@ export default function NewMemoClient({ memoType, customers, suppliers }: Props)
 
           {/* Actions */}
           <div className="flex items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={isPending}
+            <SubmitButton
+              isPending={isPending}
+              idleLabel={`Create ${isMemo ? "Memo" : "Consignment"}`}
+              pendingLabel="Creating..."
               className="flex-1 py-3 bg-amber-700 text-white rounded-xl text-sm font-semibold hover:bg-amber-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isPending ? "Creating..." : `Create ${isMemo ? "Memo" : "Consignment"}`}
-            </button>
+            />
             <Link
               href="/memo"
               className="px-6 py-3 border border-stone-200 text-stone-600 rounded-xl text-sm font-medium hover:bg-stone-50 transition-colors"
