@@ -4,12 +4,18 @@ import { getDashboardCriticalData, getDashboardStats } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
 import logger from "@/lib/logger";
 
+// Dynamic rendering is explicit here. Removing the top-level await on
+// getDashboardCriticalData (which reads cookies via requireAuth) means
+// Next.js would otherwise attempt to prerender this page at build time
+// and hit "Not authenticated" inside the Suspense child. force-dynamic
+// tells Next.js: skip build-time prerender, render at request time,
+// keep the streaming Suspense shell.
+export const dynamic = "force-dynamic";
+
 // The page below is synchronous at the top level so the shell (Suspense
 // fallback) emits in the first streamed HTML chunk on hard-nav, before
-// the dynamic body (auth + critical data + stats) resolves. This also
-// leaves the page correctly shaped for future migration to Next 16's
-// cacheComponents / unstable_instant model, which will ship the shell
-// from the CDN edge.
+// the dynamic body (auth + critical data + stats) resolves. Shaped for
+// future migration to Next 16's cacheComponents / unstable_instant model.
 
 export default function DashboardPage() {
   return (

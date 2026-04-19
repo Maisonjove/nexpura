@@ -12,11 +12,14 @@ import RepairsListClient from "./RepairsListClient";
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
+// Dynamic rendering is explicit — the page reads searchParams, auth,
+// and DB inside its Suspense child. Making that explicit prevents Next
+// from trying to prerender + failing on auth.
+export const dynamic = "force-dynamic";
+
 // Synchronous top level — the shell (title + New Repair button + Suspense
 // fallback skeleton) emits in the first streamed HTML chunk on hard-nav
-// before the dynamic body (searchParams, auth, DB reads) resolves. Shaped
-// for future migration to Next 16's cacheComponents / unstable_instant
-// model, which will ship the shell from the CDN edge.
+// before the dynamic body (searchParams, auth, DB reads) resolves.
 //
 // searchParams is a Promise, passed by value into `<RepairsBody>` and
 // awaited there inside the Suspense boundary. Awaiting it here would
