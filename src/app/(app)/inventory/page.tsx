@@ -80,12 +80,21 @@ export default async function InventoryPage({
         .order("created_at", { ascending: false })
         .range(offset, offset + ITEMS_PER_PAGE - 1),
 
-      // Total count for pagination
-      admin
-        .from("inventory")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null),
+      // Total count for pagination — cached 30 s per tenant. Even head-only
+      // counts force an index scan on a large inventory table; this keeps
+      // repeat navs off the hot path entirely.
+      getCached(
+        tenantCacheKey(tenantId, "inventory-count"),
+        async () => {
+          const { count } = await admin
+            .from("inventory")
+            .select("id", { count: "exact", head: true })
+            .eq("tenant_id", tenantId)
+            .is("deleted_at", null);
+          return { count: count ?? 0 };
+        },
+        30
+      ),
 
       // Categories - cache for 5 minutes
       getCached(

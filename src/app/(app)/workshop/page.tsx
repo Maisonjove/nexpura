@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth-context";
+import { getCached, tenantCacheKey } from "@/lib/cache";
 import { Wrench, ClipboardList, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
@@ -12,8 +13,45 @@ export default async function WorkshopPage() {
   const admin = createAdminClient();
   const today = new Date();
 
-  // Fetch both repair and bespoke in parallel
-  const [repairsResult, jobsResult] = await Promise.all([
+  // List queries are bounded to 50 rows each (UI renders 8). The summary
+  // counters used to be computed from those 50 rows — which was silently
+  // wrong for any tenant with >50 active items. Replace with accurate
+  // head-only counts, bundled + cached 30 s per tenant so we amortise the
+  // 6 head queries across navs.
+  const todayIso = today.toISOString().split("T")[0];
+  const statsPromise = getCached(
+    tenantCacheKey(tenantId, "workshop-stats", todayIso),
+    async () => {
+      const [ar, aj, ipr, ipj, odr, odj] = await Promise.all([
+        admin.from("repairs").select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenantId).is("deleted_at", null)
+          .not("stage", "in", '("collected","cancelled")'),
+        admin.from("bespoke_jobs").select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenantId).is("deleted_at", null)
+          .not("stage", "in", '("completed","cancelled")'),
+        admin.from("repairs").select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenantId).is("deleted_at", null)
+          .not("stage", "in", '("intake","collected","cancelled")'),
+        admin.from("bespoke_jobs").select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenantId).is("deleted_at", null)
+          .not("stage", "in", '("enquiry","completed","cancelled")'),
+        admin.from("repairs").select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenantId).is("deleted_at", null)
+          .not("stage", "in", '("collected","cancelled")').lt("due_date", todayIso),
+        admin.from("bespoke_jobs").select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenantId).is("deleted_at", null)
+          .not("stage", "in", '("completed","cancelled")').lt("due_date", todayIso),
+      ]);
+      return {
+        totalActive: (ar.count ?? 0) + (aj.count ?? 0),
+        inProgressCount: (ipr.count ?? 0) + (ipj.count ?? 0),
+        overdueCount: (odr.count ?? 0) + (odj.count ?? 0),
+      };
+    },
+    30
+  );
+
+  const [repairsResult, jobsResult, stats] = await Promise.all([
     admin
       .from("repairs")
       .select("id, item_description, stage, due_date, customers(full_name)")
@@ -30,18 +68,13 @@ export default async function WorkshopPage() {
       .not("stage", "in", '("completed","cancelled")')
       .order("due_date", { ascending: true })
       .limit(50),
+    statsPromise,
   ]);
 
   const activeRepairs = repairsResult.data ?? [];
   const activeJobs = jobsResult.data ?? [];
 
-  const totalActive = activeRepairs.length + activeJobs.length;
-  const inProgressCount = [...activeRepairs, ...activeJobs].filter(
-    i => i.stage !== 'intake' && i.stage !== 'enquiry'
-  ).length;
-  const overdueCount = [...activeRepairs, ...activeJobs].filter(
-    item => item.due_date && new Date(item.due_date) < today
-  ).length;
+  const { totalActive, inProgressCount, overdueCount } = stats;
 
   return (
     <div className="space-y-6 nx-fade-in">
