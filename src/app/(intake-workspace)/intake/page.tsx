@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
@@ -102,6 +103,31 @@ export default async function IntakePage() {
 
   return (
     <div className="max-w-6xl mx-auto">
+      {/* Local workspace header — replaces the standard TopNav for this route.
+          Middleware rewrites /dashboard → /{slug}/dashboard, so a plain
+          "/dashboard" href stays tenant-correct without threading the slug. */}
+      <div className="mb-6 flex items-center justify-between gap-4 border-b border-stone-200 pb-5">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900 transition-colors group"
+          aria-label="Exit intake workspace and return to dashboard"
+        >
+          <svg
+            className="w-4 h-4 transition-transform group-hover:-translate-x-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Exit Intake
+        </Link>
+        <span className="text-[0.6875rem] font-semibold tracking-[0.12em] uppercase text-stone-400">
+          Workspace
+        </span>
+      </div>
+
       {/* Page Header — Premium Style */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-3">
