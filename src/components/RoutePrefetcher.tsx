@@ -67,18 +67,25 @@ export function RoutePrefetcher({ tenantSlug }: Props) {
     const warm = WARM_ROUTES.map((r) => prefix + r);
 
     // Hot routes: 50 ms after mount — as early as possible, deferred just
-    // enough to let React settle the initial render. Previous 700 ms was
-    // leaving a ~650 ms window where the user could click before the
-    // prefetch even started. First-click-after-dashboard is where the
-    // remaining latency lives, so start warming immediately.
+    // enough to let React settle the initial render.
+    //
+    // CRITICAL: `kind: 'full'` is required. Without options, router.prefetch()
+    // defaults to `kind: 'auto'`, which for dynamic (authenticated, per-tenant)
+    // routes only prefetches the loading.tsx shell — the page DATA is still
+    // fetched fresh on click, burning ~1.6 s of TTFB. `kind: 'full'` forces
+    // the full RSC payload into the router cache so the click is a true
+    // cache-hit.
+    // PrefetchKind is not exported from next/navigation's public API; cast
+    // the string literal. The router reads the string value directly.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const FULL = "full" as any;
     const t1 = setTimeout(() => {
-      for (const r of hot) router.prefetch(r);
+      for (const r of hot) router.prefetch(r, { kind: FULL });
     }, 50);
 
-    // Warm routes: 1.5 s after mount — background fill-in, no longer
-    // throttled by a 2.5 s wait since hot-tier is firing earlier now.
+    // Warm routes: 1.5 s after mount — background fill-in.
     const t2 = setTimeout(() => {
-      for (const r of warm) router.prefetch(r);
+      for (const r of warm) router.prefetch(r, { kind: FULL });
     }, 1500);
 
     return () => {
