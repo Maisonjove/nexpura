@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Sparkles, Calendar, DollarSign, ReceiptText, AlertCircle, TrendingDown, BarChart3 } from 'lucide-react';
 
@@ -37,8 +37,14 @@ export default function FinancialsClient({
   const [metrics] = useState<MetricsData | null>(initialMetrics);
   const loadingMetrics = false;
 
-  const now = new Date();
-  const monthLabel = now.toLocaleString('en-AU', { month: 'long', year: 'numeric' });
+  // `new Date()` during client-component render is non-deterministic under
+  // cacheComponents. Defer the month-label computation to post-hydration
+  // state; renders as empty (non-breaking-space keeps the line height
+  // stable) until the effect fires on the client.
+  const [monthLabel, setMonthLabel] = useState<string>('\u00a0');
+  useEffect(() => {
+    setMonthLabel(new Date().toLocaleString('en-AU', { month: 'long', year: 'numeric' }));
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">

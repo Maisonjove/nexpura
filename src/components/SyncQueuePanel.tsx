@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Cloud,
   CloudOff,
@@ -27,17 +27,26 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-function formatTimestamp(ts: number): string {
+/**
+ * `now` is passed in from a post-hydration useState so this function never
+ * calls `new Date()` during SSR/prerender — Next's cacheComponents flags
+ * render-time non-determinism, and "Just now / Xm ago" is relative-time
+ * UX that's only meaningful on the client anyway. When `now` is null
+ * (first render, pre-hydration), we fall back to the absolute-date format
+ * which IS deterministic for a given timestamp.
+ */
+function formatTimestamp(ts: number, now: Date | null): string {
   const date = new Date(ts);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  
+  if (now) {
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+  }
+
   return date.toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -65,11 +74,13 @@ function QueueItem({
   onRetry,
   onRemove,
   isRetrying,
+  now,
 }: {
   item: QueuedItem;
   onRetry: () => void;
   onRemove: () => void;
   isRetrying: boolean;
+  now: Date | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasError = !!item.lastError;
@@ -93,7 +104,7 @@ function QueueItem({
             {getItemDescription(item)}
           </span>
           <span className="text-xs text-gray-500 flex-shrink-0">
-            {formatTimestamp(item.timestamp)}
+            {formatTimestamp(item.timestamp, now)}
           </span>
         </div>
         
@@ -173,7 +184,17 @@ export function SyncQueuePanel() {
   
   const [confirmClear, setConfirmClear] = useState(false);
   const [retryingItem, setRetryingItem] = useState<number | null>(null);
-  
+  // Client-only "now" for relative timestamps. Initialised post-mount to
+  // avoid a non-deterministic `new Date()` during the SSR render of this
+  // client component (cacheComponents flags it). Updated every minute so
+  // "Xm ago" labels stay fresh while the panel is open.
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
   const handleRetryItem = async (timestamp: number) => {
     setRetryingItem(timestamp);
     await retryItem(timestamp);
@@ -260,6 +281,7 @@ export function SyncQueuePanel() {
               onRetry={() => handleRetryItem(item.timestamp)}
               onRemove={() => retryItem(item.timestamp)}
               isRetrying={retryingItem === item.timestamp}
+              now={now}
             />
           ))
         )}
