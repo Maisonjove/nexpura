@@ -105,3 +105,4 @@ The application is deployed on Vercel with automatic deployments from the main b
 ## License
 
 Proprietary - All rights reserved.
+
