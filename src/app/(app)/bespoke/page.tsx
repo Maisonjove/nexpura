@@ -10,9 +10,8 @@ import BespokeListClient from "./BespokeListClient";
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
-// Dynamic rendering is explicit — see /repairs/page.tsx for the same
-// pattern and rationale.
-export const dynamic = "force-dynamic";
+// Cache Components — see /repairs/page.tsx for the same pattern
+// and rationale.
 
 export default function BespokePage({
   searchParams,

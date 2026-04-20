@@ -1,6 +1,5 @@
 import QAPreviewClient from "./QAPreviewClient";
 
-export const dynamic = "force-dynamic";
 
 // Mock data for preview/screenshot purposes
 const mockCategories = [

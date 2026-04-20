@@ -2,8 +2,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import QADashboardClient from "./QADashboardClient";
 import logger from "@/lib/logger";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 // Mock data for when database tables don't exist
 const mockCategories = [

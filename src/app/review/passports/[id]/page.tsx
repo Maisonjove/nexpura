@@ -5,9 +5,6 @@ import PassportDetailClient from "@/app/(app)/passports/[id]/PassportDetailClien
 import PassportPhotos from "@/app/(app)/passports/[id]/PassportPhotos";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = "force-no-store";
 
 interface Passport {
   id: string; passport_uid: string; title: string; jewellery_type: string | null;

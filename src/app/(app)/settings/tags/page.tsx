@@ -1,7 +1,6 @@
 import { getTagTemplates } from "./actions"
 import TagTemplateManager from "./TagTemplateManager"
 
-export const dynamic = "force-dynamic"
 
 export default async function StockTagsSettingsPage() {
   const templates = await getTagTemplates()

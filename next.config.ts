@@ -42,6 +42,35 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // ─── Cache Components (Next 16) ─────────────────────────────────────────
+  // This is the replacement model for the old `experimental.ppr`. Every
+  // route is dynamic by default; the prerender pipeline automatically
+  // emits a static shell for any synchronous top-level code path (the
+  // parts not reading runtime APIs), and Suspense boundaries mark where
+  // dynamic streaming happens. Components that should be cached use the
+  // `'use cache'` directive inline.
+  //
+  // Enabling it as a config-level flag (rather than per-route opt-in)
+  // lets /dashboard, /repairs, /bespoke — and any other route shaped
+  // with a synchronous top-level + Suspense-wrapped async child — serve
+  // their static shell from the Vercel Edge before the runtime Lambda
+  // even starts processing. On a cold visit this cuts first-shell-
+  // visible TTFB from ~1.5-3s (Lambda cold) to CDN-edge latency (~50-
+  // 150 ms), while the dynamic body streams in behind the Suspense
+  // fallback as before.
+  //
+  // Prerequisite (all satisfied prior to enabling):
+  //   - (app)/layout.tsx is fully synchronous — no headers()/cookies()
+  //     at the layout level. Completed in commit 67fdbb7.
+  //   - /dashboard, /repairs, /bespoke are synchronous at the top with
+  //     every await inside a Suspense boundary. Completed 2ffcfe3 +
+  //     c622200.
+  //   - `force-dynamic` exports are REMOVED from these three routes
+  //     in this commit — Cache Components makes dynamic the default,
+  //     and force-dynamic would suppress the shell extraction.
+  //   - Edge runtime (cacheComponents does NOT support `runtime: edge`)
+  //     is not used on any route. Verified.
+  cacheComponents: true,
   experimental: {
     clientTraceMetadata: ["baggage", "sentry-trace"],
     // NOTE: Next 16 replaced `experimental.ppr` with a different caching

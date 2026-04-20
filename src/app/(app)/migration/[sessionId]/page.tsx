@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getAuthOrReviewContext } from "@/lib/auth/review";
 
-export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ sessionId: string }>;

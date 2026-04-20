@@ -3,7 +3,6 @@ import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { ArrowRight, Upload, HeartHandshake, CheckCircle, Clock, XCircle, Package } from 'lucide-react';
 import { TrustBadges } from './_components/TrustBadges';
 
-export const dynamic = 'force-dynamic';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   draft: { label: 'Draft', color: 'bg-stone-100 text-stone-600', icon: <Clock className="w-3 h-3" /> },
