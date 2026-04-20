@@ -8,6 +8,8 @@ import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import InventoryClient from "./InventoryClient";
 
+export const metadata = { title: "Inventory — Nexpura" };
+
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 const ITEMS_PER_PAGE = 100; // Initial load limit for performance

@@ -8,6 +8,8 @@ import { Wrench, ClipboardList, Clock, CheckCircle2, AlertTriangle } from "lucid
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 
+export const metadata = { title: "Workshop — Nexpura" };
+
 export default async function WorkshopPage() {
   const auth = await getAuthContext();
   if (!auth) redirect("/login");

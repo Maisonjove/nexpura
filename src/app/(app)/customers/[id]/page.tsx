@@ -1,10 +1,27 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getAuthContext } from "@/lib/auth-context";
 import CustomerDetailClient from "./CustomerDetailClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("customers")
+    .select("full_name")
+    .eq("id", id)
+    .maybeSingle();
+  const name = (data?.full_name as string | null) ?? null;
+  return { title: name ? `${name} — Nexpura` : "Customer — Nexpura" };
+}
 
 export default async function CustomerDetailPage({
   params,

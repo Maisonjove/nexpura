@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getAuthContext } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
 import BespokeCommandCenter from "./BespokeCommandCenter";
@@ -7,6 +8,25 @@ import type { OrderMessage } from "@/lib/messaging";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("bespoke_jobs")
+    .select("job_number, title")
+    .eq("id", id)
+    .maybeSingle();
+  const num = (data?.job_number as string | null) ?? null;
+  const title = (data?.title as string | null) ?? null;
+  if (num && title) return { title: `${num} · ${title} — Nexpura` };
+  if (num) return { title: `Bespoke ${num} — Nexpura` };
+  return { title: "Bespoke Job — Nexpura" };
+}
 
 export default async function BespokeJobDetailPage({
   params,

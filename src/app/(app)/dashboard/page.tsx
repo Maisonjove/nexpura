@@ -4,6 +4,8 @@ import { getDashboardCriticalData, getDashboardStats } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
 import logger from "@/lib/logger";
 
+export const metadata = { title: "Dashboard — Nexpura" };
+
 // Dynamic rendering is explicit here. Removing the top-level await on
 // getDashboardCriticalData (which reads cookies via requireAuth) means
 // Next.js would otherwise attempt to prerender this page at build time

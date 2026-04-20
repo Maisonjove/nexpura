@@ -1,11 +1,28 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import InvoiceDetailClient from "./InvoiceDetailClient";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("invoices")
+    .select("invoice_number")
+    .eq("id", id)
+    .maybeSingle();
+  const num = (data?.invoice_number as string | null) ?? null;
+  return { title: num ? `Invoice ${num} — Nexpura` : "Invoice — Nexpura" };
+}
 
 export default async function InvoiceDetailPage({
   params,

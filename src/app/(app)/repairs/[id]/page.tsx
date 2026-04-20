@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { getAuthContext } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
 import RepairCommandCenter from "./RepairCommandCenter";
@@ -7,6 +8,22 @@ import type { OrderMessage } from "@/lib/messaging";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("repairs")
+    .select("repair_number")
+    .eq("id", id)
+    .maybeSingle();
+  const num = (data?.repair_number as string | null) ?? null;
+  return { title: num ? `Repair ${num} — Nexpura` : "Repair — Nexpura" };
+}
 
 export default async function RepairDetailPage({
   params,

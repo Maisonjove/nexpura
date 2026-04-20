@@ -6,6 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import logger from "@/lib/logger";
 import TagTemplateManager from "./TagTemplateManager";
 
+export const metadata = { title: "Tag Templates — Nexpura" };
+
 /**
  * /settings/tags — first route-by-route cacheComponents migration template.
  *

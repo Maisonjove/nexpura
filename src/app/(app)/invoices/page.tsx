@@ -8,6 +8,8 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import { Skeleton } from "@/components/ui/skeleton";
 import InvoiceListClient from "./InvoiceListClient";
 
+export const metadata = { title: "Invoices — Nexpura" };
+
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
