@@ -73,7 +73,7 @@ const nextConfig: NextConfig = {
   // revalidate, fetchCache, runtime) removed — they are no-ops under
   // the current Next 16 default behavior and are a prerequisite for
   // the eventual cacheComponents flip.
-  // cacheComponents: true,  // DISABLED — see comment above.
+  // cacheComponents: true,  // DISABLED — see above.
   experimental: {
     clientTraceMetadata: ["baggage", "sentry-trace"],
     // NOTE: Next 16 replaced `experimental.ppr` with a different caching
