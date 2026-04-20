@@ -43,34 +43,37 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   // ─── Cache Components (Next 16) ─────────────────────────────────────────
-  // This is the replacement model for the old `experimental.ppr`. Every
-  // route is dynamic by default; the prerender pipeline automatically
-  // emits a static shell for any synchronous top-level code path (the
-  // parts not reading runtime APIs), and Suspense boundaries mark where
-  // dynamic streaming happens. Components that should be cached use the
-  // `'use cache'` directive inline.
+  // INTENTIONALLY DISABLED. The attempt to enable `cacheComponents: true`
+  // surfaced ~100+ build errors across the codebase: admin pages, API
+  // route handlers, and /settings/tags all access `cookies()` /
+  // `request.headers` / `request.cookies` directly outside any Suspense
+  // boundary. Under Cache Components the prerender pipeline rejects
+  // such access unless it is (a) inside a `<Suspense>` boundary or
+  // (b) wrapped in a `'use cache'` directive.
   //
-  // Enabling it as a config-level flag (rather than per-route opt-in)
-  // lets /dashboard, /repairs, /bespoke — and any other route shaped
-  // with a synchronous top-level + Suspense-wrapped async child — serve
-  // their static shell from the Vercel Edge before the runtime Lambda
-  // even starts processing. On a cold visit this cuts first-shell-
-  // visible TTFB from ~1.5-3s (Lambda cold) to CDN-edge latency (~50-
-  // 150 ms), while the dynamic body streams in behind the Suspense
-  // fallback as before.
+  // The architectural prerequisites FOR the three hot target routes
+  // (/dashboard, /repairs, /bespoke) were completed across prior passes
+  // (synchronous layout, synchronous page tops, Suspense-wrapped async
+  // children) — those three would serve a prerendered shell from
+  // Vercel Edge on the day this flag is flipped. But the flag is
+  // GLOBAL: it can't be opt-in per route. Flipping it without first
+  // fixing every offending route in the app would ship a broken build.
   //
-  // Prerequisite (all satisfied prior to enabling):
-  //   - (app)/layout.tsx is fully synchronous — no headers()/cookies()
-  //     at the layout level. Completed in commit 67fdbb7.
-  //   - /dashboard, /repairs, /bespoke are synchronous at the top with
-  //     every await inside a Suspense boundary. Completed 2ffcfe3 +
-  //     c622200.
-  //   - `force-dynamic` exports are REMOVED from these three routes
-  //     in this commit — Cache Components makes dynamic the default,
-  //     and force-dynamic would suppress the shell extraction.
-  //   - Edge runtime (cacheComponents does NOT support `runtime: edge`)
-  //     is not used on any route. Verified.
-  cacheComponents: true,
+  // The honest migration path is:
+  //   1. Audit every route currently using `dynamic = 'force-dynamic'`,
+  //      `revalidate = N`, `fetchCache = ...`, `runtime = 'nodejs'`
+  //      (all removed in this commit) and every `cookies()` /
+  //      `request.headers` access.
+  //   2. Wrap each in a `<Suspense>` boundary or convert to a cacheable
+  //      `'use cache'` function, route by route.
+  //   3. Only then flip `cacheComponents: true`.
+  //
+  // That is a multi-pass migration, not a single-commit flip. This
+  // commit leaves the removed segment-config exports (force-dynamic,
+  // revalidate, fetchCache, runtime) removed — they are no-ops under
+  // the current Next 16 default behavior and are a prerequisite for
+  // the eventual cacheComponents flip.
+  // cacheComponents: true,  // DISABLED — see above.
   experimental: {
     clientTraceMetadata: ["baggage", "sentry-trace"],
     // NOTE: Next 16 replaced `experimental.ppr` with a different caching
