@@ -1,14 +1,29 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+/**
+ * /embed/[tenantId]/appointment — iframe-embeddable appointment form. CC-ready.
+ *
+ * Same pattern as the enquiry embed: sync wrapper → Suspense → async body
+ * that resolves the tenantId and looks up the business name, then renders
+ * a standalone <html> document. Loader is pure w.r.t. tenantId input.
+ */
 
 interface Props {
   params: Promise<{ tenantId: string }>;
 }
 
-export default async function EmbedAppointmentPage({ params }: Props) {
-  const { tenantId } = await params;
-  const admin = createAdminClient();
-  const { data: tenant } = await admin.from("tenants").select("business_name, name").eq("id", tenantId).single();
-  const businessName = tenant?.business_name || tenant?.name || "Jewellery Store";
+export default function EmbedAppointmentPage({ params }: Props) {
+  return (
+    <Suspense fallback={null}>
+      <AppointmentBody paramsPromise={params} />
+    </Suspense>
+  );
+}
+
+async function AppointmentBody({ paramsPromise }: { paramsPromise: Promise<{ tenantId: string }> }) {
+  const { tenantId } = await paramsPromise;
+  const businessName = await loadBusinessName(tenantId);
 
   return (
     <html lang="en">
@@ -47,7 +62,7 @@ export default async function EmbedAppointmentPage({ params }: Props) {
                 <input type="email" name="email" required placeholder="john@example.com" />
               </div>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <label>Phone</label>
@@ -120,4 +135,14 @@ export default async function EmbedAppointmentPage({ params }: Props) {
       </body>
     </html>
   );
+}
+
+async function loadBusinessName(tenantId: string): Promise<string> {
+  const admin = createAdminClient();
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("business_name, name")
+    .eq("id", tenantId)
+    .single();
+  return tenant?.business_name || tenant?.name || "Jewellery Store";
 }

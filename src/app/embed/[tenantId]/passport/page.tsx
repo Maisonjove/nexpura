@@ -1,14 +1,28 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+/**
+ * /embed/[tenantId]/passport — iframe-embeddable passport verifier. CC-ready.
+ *
+ * Same pattern as the other embed pages: sync wrapper → Suspense → async body.
+ * Renders a standalone <html> document. Loader is pure w.r.t. tenantId.
+ */
 
 interface Props {
   params: Promise<{ tenantId: string }>;
 }
 
-export default async function EmbedPassportPage({ params }: Props) {
-  const { tenantId } = await params;
-  const admin = createAdminClient();
-  const { data: tenant } = await admin.from("tenants").select("business_name, name").eq("id", tenantId).single();
-  const businessName = tenant?.business_name || tenant?.name || "Jewellery Store";
+export default function EmbedPassportPage({ params }: Props) {
+  return (
+    <Suspense fallback={null}>
+      <PassportBody paramsPromise={params} />
+    </Suspense>
+  );
+}
+
+async function PassportBody({ paramsPromise }: { paramsPromise: Promise<{ tenantId: string }> }) {
+  const { tenantId } = await paramsPromise;
+  const businessName = await loadBusinessName(tenantId);
 
   return (
     <html lang="en">
@@ -82,4 +96,14 @@ export default async function EmbedPassportPage({ params }: Props) {
       </body>
     </html>
   );
+}
+
+async function loadBusinessName(tenantId: string): Promise<string> {
+  const admin = createAdminClient();
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("business_name, name")
+    .eq("id", tenantId)
+    .single();
+  return tenant?.business_name || tenant?.name || "Jewellery Store";
 }
