@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import TopNav from "@/components/TopNav";
 import { SkipToContent } from "@/components/SkipToContent";
 import { LocationProvider } from "@/contexts/LocationContext";
@@ -56,7 +57,20 @@ export default function AppLayout({
     <LocationProvider>
       <SkipToContent />
       <div className="min-h-screen bg-stone-50 font-sans">
-        <TopNav />
+        {/*
+          Three client components in this layout use URL-reactive hooks
+          (usePathname / useRouter) which CacheComponents classes as
+          "uncached dynamic data". Each is wrapped in its own Suspense
+          boundary (fallback={null}) so the CC prerender pipeline can
+          treat them as dynamic without bailing the entire shell. Fallback
+          is null because these are either navigation chrome that can
+          pop in on hydration (TopNav is visually-stable anyway since it
+          derives its slug from the URL at hydration time) or invisible
+          effect-only components (RoutePrefetcher + NativePrefetchHints).
+        */}
+        <Suspense fallback={null}>
+          <TopNav />
+        </Suspense>
         <ErrorBoundary section="main-content">
           <main
             id="main-content"
@@ -70,8 +84,12 @@ export default function AppLayout({
         </ErrorBoundary>
         <LazyOverlays />
         <SessionExpiryModal />
-        <RoutePrefetcher />
-        <NativePrefetchHints />
+        <Suspense fallback={null}>
+          <RoutePrefetcher />
+        </Suspense>
+        <Suspense fallback={null}>
+          <NativePrefetchHints />
+        </Suspense>
       </div>
     </LocationProvider>
   );
