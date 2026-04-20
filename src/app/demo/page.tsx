@@ -4,19 +4,22 @@ import { useState, useEffect } from "react";
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
 
+// Intentionally obvious sample data — names are clearly placeholders so a
+// prospect cannot mistake the demo for a real tenant's customer list, and
+// no real customer's name appears on the public /demo page.
 const RECENT_SALES = [
-  { id: "6524", customer: "Josh Portlock" },
-  { id: "6523", customer: "Sukhamoy Kangsha Banik" },
-  { id: "6522", customer: "Jacinda Manettas" },
-  { id: "6521", customer: "Alvin Buensuceso" },
-  { id: "6520", customer: "Roberta Di Vico" },
+  { id: "6524", customer: "Alex Sample" },
+  { id: "6523", customer: "Morgan Example" },
+  { id: "6522", customer: "Jordan Demo" },
+  { id: "6521", customer: "Taylor Preview" },
+  { id: "6520", customer: "Casey Sample" },
 ];
 
 const RECENT_REPAIRS = [
-  { id: "3830", customer: "Matthew Robbins" },
-  { id: "3771", customer: "Amarendra Singh" },
-  { id: "3716", customer: "Kurt James Roughley" },
-  { id: "2", customer: "Jack Germani" },
+  { id: "3830", customer: "Sam Example" },
+  { id: "3771", customer: "Jamie Demo" },
+  { id: "3716", customer: "Riley Sample" },
+  { id: "2", customer: "Avery Preview" },
 ];
 
 // ─── Action Card ────────────────────────────────────────────────────────────
@@ -30,9 +33,14 @@ function ActionCard({
   description: string;
   icon: React.ReactNode;
 }) {
+  // Every "action" on the demo page routes to /signup. The demo is a static
+  // preview, not a live sandbox — previously every card linked to /demo,
+  // which meant clicking any action was a dead reload. Now every click
+  // converts into a trial-signup, matching the "Start free trial →" CTA in
+  // the demo banner.
   return (
     <a
-      href="/demo"
+      href="/signup"
       className="group flex items-center gap-5 bg-white border border-stone-200 rounded-2xl px-6 py-5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400 cursor-pointer"
     >
       <div className="flex-shrink-0 text-stone-400 group-hover:text-[#8B7355] transition-colors duration-400">
@@ -66,7 +74,7 @@ function SidePanel({
         {items.map((item) => (
           <a
             key={item.id}
-            href="/demo"
+            href="/signup"
             className="flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-stone-50 transition-colors duration-200"
           >
             <span className="text-[0.8125rem] font-mono text-stone-400 w-10 tabular-nums">
@@ -246,13 +254,13 @@ export default function DemoPage() {
           </h3>
           <div className="space-y-0.5">
             {[
-              { number: "REP-1038", label: "Clasp Replacement", customer: "Emma Clarke" },
-              { number: "REP-1040", label: "Chain Solder & Polish", customer: "David Chen" },
-              { number: "BSP-0087", label: "Engagement Ring", customer: "James Taylor" },
+              { number: "REP-1038", label: "Clasp Replacement", customer: "Alex Sample" },
+              { number: "REP-1040", label: "Chain Solder & Polish", customer: "Morgan Example" },
+              { number: "BSP-0087", label: "Engagement Ring", customer: "Taylor Preview" },
             ].map((item) => (
               <a
                 key={item.number}
-                href="/demo"
+                href="/signup"
                 className="block py-2.5 px-2 -mx-2 rounded-xl hover:bg-stone-50 transition-colors duration-200"
               >
                 <p className="text-[0.875rem] text-stone-900">{item.label}</p>

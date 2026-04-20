@@ -535,14 +535,19 @@ export default function InventoryClient({
               <Diamond className="w-8 h-8 text-amber-600" />
             </div>
             <h3 className="font-semibold text-lg text-stone-900">
-              {items.length === 0 ? "No inventory yet" : "No items match your filters"}
+              {/* Gate on the authoritative tenant-wide count, not on the current
+                  page's items array. items.length can be 0 while totalItems > 0
+                  (empty page past the last, filtered-out subset, cache skew),
+                  which previously produced a contradiction: top counter said
+                  "1 Total Items" while the empty-state said "No inventory yet". */}
+              {totalItems === 0 ? "No inventory yet" : "No items match your filters"}
             </h3>
             <p className="text-stone-500 mt-1 text-sm">
-              {items.length === 0 
-                ? "Add your first item to start tracking stock." 
+              {totalItems === 0
+                ? "Add your first item to start tracking stock."
                 : "Try adjusting your search or filters."}
             </p>
-            {items.length === 0 && (
+            {totalItems === 0 && (
               <Link
                 href="/inventory/new"
                 className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-xl hover:bg-amber-700 transition-colors"

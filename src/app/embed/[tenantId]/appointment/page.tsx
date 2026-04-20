@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -24,6 +25,9 @@ export default function EmbedAppointmentPage({ params }: Props) {
 async function AppointmentBody({ paramsPromise }: { paramsPromise: Promise<{ tenantId: string }> }) {
   const { tenantId } = await paramsPromise;
   const businessName = await loadBusinessName(tenantId);
+  // Consistent with /embed/[tenantId] (catalogue) — don't render a
+  // submittable form for a non-existent tenant.
+  if (businessName === null) notFound();
 
   return (
     <html lang="en">
@@ -137,12 +141,13 @@ async function AppointmentBody({ paramsPromise }: { paramsPromise: Promise<{ ten
   );
 }
 
-async function loadBusinessName(tenantId: string): Promise<string> {
+async function loadBusinessName(tenantId: string): Promise<string | null> {
   const admin = createAdminClient();
   const { data: tenant } = await admin
     .from("tenants")
     .select("business_name, name")
     .eq("id", tenantId)
-    .single();
-  return tenant?.business_name || tenant?.name || "Jewellery Store";
+    .maybeSingle();
+  if (!tenant) return null;
+  return (tenant.business_name as string | null) || (tenant.name as string | null) || "Jewellery Store";
 }

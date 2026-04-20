@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -30,6 +31,11 @@ export default function EmbedEnquiryPage({ params }: Props) {
 async function EnquiryBody({ paramsPromise }: { paramsPromise: Promise<{ tenantId: string }> }) {
   const { tenantId } = await paramsPromise;
   const businessName = await loadBusinessName(tenantId);
+  // Don't render a fake-looking enquiry form for a non-existent tenant —
+  // matches /embed/[tenantId] (catalogue) behaviour. Customers who see this
+  // in an embedded iframe on a misconfigured jeweller site get the iframe's
+  // not-found fallback instead of a form that submits into the void.
+  if (businessName === null) notFound();
 
   return (
     <html lang="en">
@@ -107,12 +113,13 @@ async function EnquiryBody({ paramsPromise }: { paramsPromise: Promise<{ tenantI
 // ─────────────────────────────────────────────────────────────────────────
 // Cacheable per tenant. Pure w.r.t. tenantId input.
 // ─────────────────────────────────────────────────────────────────────────
-async function loadBusinessName(tenantId: string): Promise<string> {
+async function loadBusinessName(tenantId: string): Promise<string | null> {
   const admin = createAdminClient();
   const { data: tenant } = await admin
     .from("tenants")
     .select("business_name, name")
     .eq("id", tenantId)
-    .single();
-  return tenant?.business_name || tenant?.name || "Jewellery Store";
+    .maybeSingle();
+  if (!tenant) return null;
+  return (tenant.business_name as string | null) || (tenant.name as string | null) || "Jewellery Store";
 }

@@ -87,7 +87,7 @@ function NavDropdown({ item }: { item: (typeof NAV_ITEMS)[number] }) {
           {item.children.map((child) => (
             <a
               key={child.label}
-              href="/demo"
+              href="/signup"
               className="flex flex-col px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors duration-200"
             >
               <span className="text-[0.875rem] font-medium text-stone-900">{child.label}</span>
@@ -162,7 +162,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
           <div className={`lg:hidden overflow-hidden transition-all duration-300 ease-out ${menuOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}`}>
             <div className="flex flex-col gap-1 px-6 sm:px-10 py-4 bg-white/97 border-t border-black/[0.04]">
               {NAV_ITEMS.map((item) => (
-                <a key={item.label} href="/demo" className="text-[0.9375rem] text-stone-900 py-2.5 hover:opacity-70 transition-opacity duration-300">
+                <a key={item.label} href="/signup" className="text-[0.9375rem] text-stone-900 py-2.5 hover:opacity-70 transition-opacity duration-300">
                   {item.label}
                 </a>
               ))}
