@@ -49,19 +49,56 @@ import { getSelectedLocationIdFromCookie } from "@/lib/locations";
  *     skeleton is already visible.
  */
 
-export default async function AppLayout({
+export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // The cookie read that resolves initialCurrentLocationId is wrapped in
+  // its own Suspense boundary: cacheComponents (enabled globally) requires
+  // every access to uncached dynamic data (cookies/headers) to sit under
+  // a Suspense, otherwise the build fails on static-prerender-capable
+  // pages under this layout (e.g. /settings/task-templates). Keeping the
+  // boundary tight means the rest of the shell (TopNav, main, overlays)
+  // remains prerender-eligible.
+  return (
+    <Suspense fallback={<UnlocatedShell>{children}</UnlocatedShell>}>
+      <LocatedShell>{children}</LocatedShell>
+    </Suspense>
+  );
+}
+
+async function LocatedShell({ children }: { children: React.ReactNode }) {
   // Read the cookie-set location selection so LocationProvider hydrates
   // with the same value the server already sees in cookies(). Without this,
   // the first hydrated render uses LocationProvider's null default,
   // DashboardWrapper computes locationKey="all", and SWR overwrites the
   // server-rendered location-scoped data with tenant-wide data before the
-  // localStorage-restore useEffect ever runs. The cookie read is cheap
-  // (microseconds) — small TTFB cost, large correctness win.
+  // localStorage-restore useEffect ever runs.
   const initialCurrentLocationId = await getSelectedLocationIdFromCookie();
+  return (
+    <ShellBody initialCurrentLocationId={initialCurrentLocationId}>
+      {children}
+    </ShellBody>
+  );
+}
+
+// Fallback used while LocatedShell is suspended on the async cookie read.
+// Renders the same visual shell with the LocationProvider's null default —
+// LocationProvider's own localStorage-restore useEffect then converges on
+// the correct value once the client hydrates. This is only shown briefly
+// at the streaming boundary; the resolved shell replaces it inline.
+function UnlocatedShell({ children }: { children: React.ReactNode }) {
+  return <ShellBody initialCurrentLocationId={null}>{children}</ShellBody>;
+}
+
+function ShellBody({
+  children,
+  initialCurrentLocationId,
+}: {
+  children: React.ReactNode;
+  initialCurrentLocationId: string | null;
+}) {
   return (
     <LocationProvider initialCurrentLocationId={initialCurrentLocationId}>
       <SkipToContent />
@@ -71,11 +108,7 @@ export default async function AppLayout({
           (usePathname / useRouter) which CacheComponents classes as
           "uncached dynamic data". Each is wrapped in its own Suspense
           boundary (fallback={null}) so the CC prerender pipeline can
-          treat them as dynamic without bailing the entire shell. Fallback
-          is null because these are either navigation chrome that can
-          pop in on hydration (TopNav is visually-stable anyway since it
-          derives its slug from the URL at hydration time) or invisible
-          effect-only components (RoutePrefetcher + NativePrefetchHints).
+          treat them as dynamic without bailing the entire shell.
         */}
         <Suspense fallback={null}>
           <TopNav />
