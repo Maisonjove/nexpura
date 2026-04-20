@@ -1,5 +1,17 @@
 "use client";
 
+// Directive kept deliberately: DashboardSidebar is imported (via
+// next/dynamic) from the client component DashboardClient. React's
+// RSC model forbids importing a server component into a client module.
+// Client directives propagate across imports.
+//
+// The sidebar has no hooks and no interactive state — it's structurally
+// a server-like component rendering Links + Skeletons. The "use client"
+// tag doesn't add hydration logic of its own (nothing to wire up beyond
+// what Link already handles), but the file ships to the client bundle.
+//
+// The larger hydration win is in the grid split (see
+// DashboardCategoryGrid.tsx).
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 
