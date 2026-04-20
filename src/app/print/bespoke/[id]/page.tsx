@@ -1,8 +1,17 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 
-export default async function PrintBespokePage({
+export default function PrintBespokePageWrapper(props: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={null}>
+      <PrintBespokePage {...props} />
+    </Suspense>
+  );
+}
+
+async function PrintBespokePage({
   params,
 }: {
   params: Promise<{ id: string }>;

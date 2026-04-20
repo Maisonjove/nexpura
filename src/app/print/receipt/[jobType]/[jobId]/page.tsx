@@ -1,8 +1,17 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 
-export default async function PrintReceiptPage({
+export default function PrintReceiptPageWrapper(props: { params: Promise<{ jobType: string; jobId: string }> }) {
+  return (
+    <Suspense fallback={null}>
+      <PrintReceiptPage {...props} />
+    </Suspense>
+  );
+}
+
+async function PrintReceiptPage({
   params,
 }: {
   params: Promise<{ jobType: string; jobId: string }>;
