@@ -1,5 +1,3 @@
-'use client'
-import { motion } from 'framer-motion'
 import Link from 'next/link'
 
 const steps = [
@@ -24,57 +22,41 @@ export default function LandingMigration() {
   return (
     <section id="migration" className="bg-white py-20 lg:py-36 px-6 sm:px-10 lg:px-20">
       <div className="max-w-[1200px] mx-auto">
-        <motion.h2
-          initial={{ opacity: 0, filter: 'blur(6px)' }}
-          whileInView={{ opacity: 1, filter: 'blur(0px)' }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-          className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-4"
+        <h2
+          className="nx-fade-in-blur font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-4"
         >
           Switch without the stress
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, delay: 0.1 }}
-          className="text-center text-stone-500 text-[0.9375rem] mb-16 max-w-xl mx-auto"
+        </h2>
+        <p
+          style={{ animationDelay: '0.1s' }}
+          className="nx-fade-in text-center text-stone-500 text-[0.9375rem] mb-16 max-w-xl mx-auto"
         >
           We guide the move from your current setup to Nexpura with migration, onboarding, and practical support from day one.
-        </motion.p>
+        </p>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {steps.map((step, i) => (
-            <motion.div
+            <div
               key={step.n}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: i * 0.1 }}
-              className="border border-stone-100 rounded-2xl p-8"
+              style={{ animationDelay: `${i * 0.1}s` }}
+              className="nx-fade-in-up border border-stone-100 rounded-2xl p-8"
             >
               <span className="text-xs tabular-nums text-stone-300 font-medium block mb-4">{step.n}</span>
               <h3 className="font-serif text-xl text-stone-900 mb-3">{step.title}</h3>
               <p className="text-[0.9375rem] leading-relaxed text-stone-500">{step.body}</p>
-            </motion.div>
+            </div>
           ))}
         </div>
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
-          className="bg-stone-50 border border-stone-100 rounded-2xl p-8 text-center mb-10"
+        <div
+          style={{ animationDelay: '0.3s' }}
+          className="nx-fade-in-up bg-stone-50 border border-stone-100 rounded-2xl p-8 text-center mb-10"
         >
           <p className="font-serif text-xl text-stone-900">
             Guided migration included with every plan · No setup fees · No unnecessary downtime
           </p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1, delay: 0.4 }}
-          className="text-center"
+        </div>
+        <div
+          style={{ animationDelay: '0.4s' }}
+          className="nx-fade-in text-center"
         >
           <Link
             href="/contact"
@@ -83,7 +65,7 @@ export default function LandingMigration() {
             <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
             <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">Book a Demo</span>
           </Link>
-        </motion.div>
+        </div>
       </div>
     </section>
   )

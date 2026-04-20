@@ -496,14 +496,28 @@ function SignupContent() {
             <button
               type="button"
               onClick={async () => {
-                const supabase = createClient();
-                await supabase.auth.signInWithOAuth({
-                  provider: "google",
-                  options: {
-                    redirectTo: `${window.location.origin}/auth/confirm`,
-                    queryParams: { access_type: "offline", prompt: "consent" },
-                  },
-                });
+                setError(null);
+                try {
+                  const supabase = createClient();
+                  const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+                    provider: "google",
+                    options: {
+                      redirectTo: `${window.location.origin}/auth/confirm`,
+                      queryParams: { access_type: "offline", prompt: "consent" },
+                    },
+                  });
+                  if (oauthError) {
+                    console.error("[google-oauth] signInWithOAuth error", oauthError);
+                    setError(`Google sign-up failed: ${oauthError.message}`);
+                    return;
+                  }
+                  if (data?.url && typeof window !== "undefined" && window.location.href !== data.url) {
+                    window.location.href = data.url;
+                  }
+                } catch (err) {
+                  console.error("[google-oauth] unexpected error", err);
+                  setError(err instanceof Error ? `Google sign-up failed: ${err.message}` : "Google sign-up failed. Please try again.");
+                }
               }}
               className="w-full flex items-center justify-center gap-3 border border-stone-200 rounded-full py-3 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
             >

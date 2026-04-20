@@ -1,6 +1,3 @@
-'use client'
-import { motion } from 'framer-motion'
-
 const before = [
   'Inventory tracked in spreadsheets',
   'Generic POS not built for jewellery workflows',
@@ -25,22 +22,14 @@ export default function LandingComparison() {
   return (
     <section className="bg-stone-50 py-20 lg:py-36 px-6 sm:px-10 lg:px-20">
       <div className="max-w-[1200px] mx-auto">
-        <motion.h2
-          initial={{ opacity: 0, filter: 'blur(6px)' }}
-          whileInView={{ opacity: 1, filter: 'blur(0px)' }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-          className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-16"
+        <h2
+          className="nx-fade-in-blur font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-16"
         >
           Built for jewellers — not just adapted for them
-        </motion.h2>
+        </h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <motion.div
-            initial={{ opacity: 0, x: -16 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-            className="bg-white border border-stone-100 rounded-2xl p-8"
+          <div
+            className="nx-fade-in bg-white border border-stone-100 rounded-2xl p-8"
           >
             <h3 className="text-[0.9375rem] font-medium text-stone-400 uppercase tracking-wider mb-6">
               What generic systems leave you with
@@ -53,13 +42,10 @@ export default function LandingComparison() {
                 </li>
               ))}
             </ul>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, x: 16 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-            className="bg-stone-900 rounded-2xl p-8"
+          </div>
+          <div
+            style={{ animationDelay: '0.1s' }}
+            className="nx-fade-in bg-stone-900 rounded-2xl p-8"
           >
             <h3 className="text-[0.9375rem] font-medium text-stone-400 uppercase tracking-wider mb-6">
               What Nexpura gives you instead
@@ -72,7 +58,7 @@ export default function LandingComparison() {
                 </li>
               ))}
             </ul>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

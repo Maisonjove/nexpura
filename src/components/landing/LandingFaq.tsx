@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 
 const faqs = [
   {
@@ -32,21 +31,15 @@ export default function LandingFaq() {
   return (
     <section className="bg-stone-50 py-20 lg:py-36 px-6 sm:px-10 lg:px-20">
       <div className="max-w-[720px] mx-auto">
-        <motion.h2
-          initial={{ opacity: 0, filter: 'blur(6px)' }}
-          whileInView={{ opacity: 1, filter: 'blur(0px)' }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-          className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-16"
+        <h2
+          className="nx-fade-in-blur font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-16"
         >
           Questions About Switching to Nexpura
-        </motion.h2>
+        </h2>
 
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+        <div
+          style={{ animationDelay: '0.1s' }}
+          className="nx-fade-in-up"
         >
           {faqs.map((faq, i) => (
             <div key={faq.q} className="border-t border-stone-200 last:border-b last:border-stone-200">
@@ -68,25 +61,22 @@ export default function LandingFaq() {
                 </span>
               </button>
 
-              <AnimatePresence initial={false}>
-                {open === i && (
-                  <motion.div
-                    key="answer"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                    className="overflow-hidden"
-                  >
-                    <p className="text-[0.9375rem] leading-relaxed text-stone-500 pb-7">
-                      {faq.a}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <div
+                className="grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{
+                  gridTemplateRows: open === i ? '1fr' : '0fr',
+                  opacity: open === i ? 1 : 0,
+                }}
+              >
+                <div className="min-h-0">
+                  <p className="text-[0.9375rem] leading-relaxed text-stone-500 pb-7">
+                    {faq.a}
+                  </p>
+                </div>
+              </div>
             </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   )

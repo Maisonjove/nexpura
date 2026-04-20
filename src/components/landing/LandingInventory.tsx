@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useCallback } from 'react'
-import { motion } from 'framer-motion'
 import Link from 'next/link'
 
 const bulletPoints = [
@@ -52,44 +51,32 @@ export default function LandingInventory() {
 
         {/* Content */}
         <div className="text-center md:text-left">
-          <motion.h2
-            initial={{ opacity: 0, filter: 'blur(6px)' }}
-            whileInView={{ opacity: 1, filter: 'blur(0px)' }}
-            viewport={{ once: true }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-            className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-6"
+          <h2
+            className="nx-fade-in-blur font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-6"
           >
             Inventory Intelligence
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, filter: 'blur(6px)' }}
-            whileInView={{ opacity: 1, filter: 'blur(0px)' }}
-            viewport={{ once: true }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-            className="text-base lg:text-[1.0625rem] leading-relaxed text-stone-500 max-w-[480px] mx-auto md:mx-0 mb-6"
+          </h2>
+          <p
+            style={{ animationDelay: '0.1s' }}
+            className="nx-fade-in-blur text-base lg:text-[1.0625rem] leading-relaxed text-stone-500 max-w-[480px] mx-auto md:mx-0 mb-6"
           >
             Track every piece, stone, metal, and component with live stock status, reservation tracking, location visibility, and full item history.
-          </motion.p>
+          </p>
           <ul className="space-y-3 mb-8 text-left max-w-[480px] mx-auto md:mx-0">
             {bulletPoints.map((point, i) => (
-              <motion.li
+              <li
                 key={point}
-                initial={{ opacity: 0, x: -12 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 + i * 0.07 }}
-                className="flex items-start gap-3 text-[0.9375rem] text-stone-600 leading-relaxed"
+                style={{ animationDelay: `${0.15 + i * 0.07}s` }}
+                className="nx-fade-in flex items-start gap-3 text-[0.9375rem] text-stone-600 leading-relaxed"
               >
                 <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0" />
                 {point}
-              </motion.li>
+              </li>
             ))}
           </ul>
-          <motion.div
-            initial={{ opacity: 0, filter: 'blur(4px)', y: 16 }}
-            whileInView={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}
+          <div
+            style={{ animationDelay: '0.35s' }}
+            className="nx-fade-in-blur-up"
           >
             <Link
               ref={ctaRef}
@@ -113,7 +100,7 @@ export default function LandingInventory() {
                 See inventory workflows
               </span>
             </Link>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

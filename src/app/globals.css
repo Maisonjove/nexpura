@@ -211,12 +211,47 @@
 
   /* Fade-in animation utility */
   .nx-fade-in {
-    animation: fadeIn 0.5s ease-out forwards;
+    opacity: 0;
+    animation: fadeIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
   .nx-fade-in-up {
-    animation: fadeInUp 0.5s ease-out forwards;
+    opacity: 0;
+    animation: fadeInUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
+
+  .nx-fade-in-blur {
+    opacity: 0;
+    filter: blur(6px);
+    animation: fadeInBlur 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .nx-fade-in-blur-up {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(12px);
+    animation: fadeInBlurUp 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInBlur {
+  from { opacity: 0; filter: blur(6px); }
+  to { opacity: 1; filter: blur(0); }
+}
+
+@keyframes fadeInBlurUp {
+  from { opacity: 0; filter: blur(4px); transform: translateY(12px); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
 }
 
 @keyframes shimmer {

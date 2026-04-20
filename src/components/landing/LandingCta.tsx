@@ -1,26 +1,16 @@
-'use client'
-
-import { motion } from 'framer-motion'
 import Link from 'next/link'
 
 export default function LandingCta() {
   return (
     <section className="bg-white py-20 lg:py-36 px-6 sm:px-10 lg:px-20 text-center">
-      <motion.h2
-        initial={{ opacity: 0, filter: 'blur(6px)' }}
-        whileInView={{ opacity: 1, filter: 'blur(0px)' }}
-        viewport={{ once: true }}
-        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-        className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-10 italic"
+      <h2
+        className="nx-fade-in-blur font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-10 italic"
       >
         See how Nexpura fits your business
-      </motion.h2>
-      <motion.div
-        initial={{ opacity: 0, filter: 'blur(4px)', y: 16 }}
-        whileInView={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-        className="flex flex-col items-center gap-4"
+      </h2>
+      <div
+        style={{ animationDelay: '0.1s' }}
+        className="nx-fade-in-blur-up flex flex-col items-center gap-4"
       >
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
@@ -65,7 +55,7 @@ export default function LandingCta() {
         <p className="text-sm text-stone-400 mt-2">
           30 minutes · Personalised walkthrough · Migration included
         </p>
-      </motion.div>
+      </div>
     </section>
   )
 }

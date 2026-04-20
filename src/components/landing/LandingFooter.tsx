@@ -1,7 +1,4 @@
-'use client'
-
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { InstagramIcon, Facebook01Icon, Linkedin01Icon, NewTwitterIcon } from '@hugeicons/core-free-icons'
 
@@ -53,12 +50,8 @@ export default function LandingFooter() {
     <footer className="bg-white border-t border-black/[0.06] pt-12 pb-10 px-6 sm:px-10 lg:px-20">
       <div className="max-w-[1200px] mx-auto">
         {/* Logo */}
-        <motion.div
-          initial={{ opacity: 0, filter: 'blur(6px)' }}
-          whileInView={{ opacity: 1, filter: 'blur(0px)' }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center mb-10"
+        <div
+          className="nx-fade-in-blur text-center mb-10"
         >
           <Link
             href="/"
@@ -69,15 +62,12 @@ export default function LandingFooter() {
           <p className="text-sm text-stone-500 mt-2">
             The operating system for jewellery retail, repairs, bespoke, and inventory.
           </p>
-        </motion.div>
+        </div>
 
         {/* Link columns */}
-        <motion.div
-          initial={{ opacity: 0, filter: 'blur(4px)', y: 16 }}
-          whileInView={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-6 mb-10"
+        <div
+          style={{ animationDelay: '0.1s' }}
+          className="nx-fade-in-blur-up grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-6 mb-10"
         >
           {columns.map((col) => (
             <div key={col.title}>
@@ -98,15 +88,12 @@ export default function LandingFooter() {
               </ul>
             </div>
           ))}
-        </motion.div>
+        </div>
 
         {/* Social icons */}
-        <motion.div
-          initial={{ opacity: 0, filter: 'blur(6px)' }}
-          whileInView={{ opacity: 1, filter: 'blur(0px)' }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
-          className="flex items-center justify-center gap-6"
+        <div
+          style={{ animationDelay: '0.25s' }}
+          className="nx-fade-in-blur flex items-center justify-center gap-6"
         >
           {socials.map((social) => (
             <a
@@ -118,7 +105,7 @@ export default function LandingFooter() {
               <HugeiconsIcon icon={social.icon} size={20} strokeWidth={1.5} />
             </a>
           ))}
-        </motion.div>
+        </div>
       </div>
     </footer>
   )

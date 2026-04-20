@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useCallback } from 'react'
-import { motion } from 'framer-motion'
 
 export default function LandingHero() {
   const ctaRef = useRef<HTMLAnchorElement>(null)
@@ -34,27 +33,21 @@ export default function LandingHero() {
     <section className="grid grid-cols-1 lg:grid-cols-2 min-h-0 pt-28 pb-16 lg:min-h-screen lg:pt-[72px] lg:pb-0">
       {/* Content */}
       <div className="flex flex-col justify-center px-6 sm:px-10 lg:pl-24 lg:pr-12 text-center lg:text-left pb-12 lg:pb-0">
-        <motion.h1
-          initial={{ opacity: 0, filter: 'blur(6px)' }}
-          animate={{ opacity: 1, filter: 'blur(0px)' }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-          className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.5rem,4.5vw,4.25rem)] font-normal leading-[1.08] tracking-[-0.01em] text-stone-900 mb-7"
+        <h1
+          style={{ animationDelay: '0.15s' }}
+          className="nx-fade-in-blur font-serif text-4xl sm:text-5xl lg:text-[clamp(2.5rem,4.5vw,4.25rem)] font-normal leading-[1.08] tracking-[-0.01em] text-stone-900 mb-7"
         >
           The Operating System for Modern Jewellers
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, filter: 'blur(6px)' }}
-          animate={{ opacity: 1, filter: 'blur(0px)' }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
-          className="text-base lg:text-lg font-normal leading-relaxed text-stone-500 max-w-[520px] mb-10 mx-auto lg:mx-0"
+        </h1>
+        <p
+          style={{ animationDelay: '0.4s' }}
+          className="nx-fade-in-blur text-base lg:text-lg font-normal leading-relaxed text-stone-500 max-w-[520px] mb-10 mx-auto lg:mx-0"
         >
           Run repairs, bespoke orders, inventory, sales, and customer records in one connected platform built specifically for jewellery businesses.
-        </motion.p>
-        <motion.div
-          initial={{ opacity: 0, filter: 'blur(4px)', y: 12 }}
-          animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.65 }}
-          className="flex items-center flex-wrap gap-6 self-center lg:self-start"
+        </p>
+        <div
+          style={{ animationDelay: '0.65s' }}
+          className="nx-fade-in-blur-up flex items-center flex-wrap gap-6 self-center lg:self-start"
         >
           <a
             ref={ctaRef}
@@ -84,7 +77,7 @@ export default function LandingHero() {
           >
             See the Platform
           </a>
-        </motion.div>
+        </div>
       </div>
 
       {/* Media */}

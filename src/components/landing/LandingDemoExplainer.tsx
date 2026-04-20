@@ -1,5 +1,3 @@
-'use client'
-import { motion } from 'framer-motion'
 import Link from 'next/link'
 
 const steps = [
@@ -14,48 +12,35 @@ export default function LandingDemoExplainer() {
   return (
     <section className="bg-white py-20 lg:py-36 px-6 sm:px-10 lg:px-20">
       <div className="max-w-[700px] mx-auto text-center">
-        <motion.h2
-          initial={{ opacity: 0, filter: 'blur(6px)' }}
-          whileInView={{ opacity: 1, filter: 'blur(0px)' }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-          className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-4"
+        <h2
+          className="nx-fade-in-blur font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-4"
         >
           What happens in a demo
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, delay: 0.1 }}
-          className="text-stone-500 text-[0.9375rem] mb-14"
+        </h2>
+        <p
+          style={{ animationDelay: '0.1s' }}
+          className="nx-fade-in text-stone-500 text-[0.9375rem] mb-14"
         >
           Book 30 minutes and we'll show you exactly how Nexpura fits your business.
-        </motion.p>
+        </p>
         <div className="text-left space-y-0 mb-14">
           {steps.map((step, i) => (
-            <motion.div
+            <div
               key={step.n}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: i * 0.08 }}
-              className="flex gap-6 py-4 border-b border-stone-100 last:border-b-0"
+              style={{ animationDelay: `${i * 0.08}s` }}
+              className="nx-fade-in-up flex gap-6 py-4 border-b border-stone-100 last:border-b-0"
             >
               <span className="text-[0.625rem] font-mono tabular-nums tracking-[0.15em] text-stone-300 pt-1 shrink-0 w-6">{step.n}</span>
               <div>
                 <h3 className="font-serif text-lg text-stone-900 mb-1">{step.title}</h3>
                 <p className="text-[0.9375rem] text-stone-500 leading-relaxed">{step.body}</p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
-          className="flex flex-col sm:flex-row gap-4 items-center"
+        <div
+          style={{ animationDelay: '0.4s' }}
+          className="nx-fade-in-up flex flex-col sm:flex-row gap-4 items-center"
         >
           <Link
             href="/contact"
@@ -70,7 +55,7 @@ export default function LandingDemoExplainer() {
           >
             Contact Us
           </Link>
-        </motion.div>
+        </div>
       </div>
     </section>
   )

@@ -228,13 +228,30 @@ function LoginPageContent() {
         <button
           type="button"
           onClick={async () => {
-            const supabase = createClient();
-            await supabase.auth.signInWithOAuth({
-              provider: "google",
-              options: {
-                redirectTo: `${window.location.origin}/auth/confirm`,
-              },
-            });
+            setError(null);
+            try {
+              const supabase = createClient();
+              const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: {
+                  redirectTo: `${window.location.origin}/auth/confirm`,
+                },
+              });
+              if (oauthError) {
+                console.error("[google-oauth] signInWithOAuth error", oauthError);
+                setError(`Google sign-in failed: ${oauthError.message}`);
+                return;
+              }
+              // Fallback: if Supabase returns a URL but the automatic redirect did
+              // not fire (extension, popup-blocker, or race), navigate manually so
+              // the user isn't left on a silently-unresponsive button.
+              if (data?.url && typeof window !== "undefined" && window.location.href !== data.url) {
+                window.location.href = data.url;
+              }
+            } catch (err) {
+              console.error("[google-oauth] unexpected error", err);
+              setError(err instanceof Error ? `Google sign-in failed: ${err.message}` : "Google sign-in failed. Please try again.");
+            }
           }}
           className="w-full flex items-center justify-center gap-3 border border-stone-200 rounded-full py-3 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2"
           aria-label="Sign in with Google"
