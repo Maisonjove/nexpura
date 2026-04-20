@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -8,7 +9,15 @@ interface Props {
   params: Promise<{ subdomain: string; itemId: string }>;
 }
 
-export default async function ItemDetailPage({ params }: Props) {
+export default function ItemDetailPageWrapper(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <ItemDetailPage {...props} />
+    </Suspense>
+  );
+}
+
+async function ItemDetailPage({ params }: Props) {
   const { subdomain, itemId } = await params;
   const supabase = createAdminClient();
 

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import RepairEnquiryForm from "./RepairEnquiryForm";
@@ -6,7 +7,15 @@ interface Props {
   params: Promise<{ subdomain: string }>;
 }
 
-export default async function RepairEnquiryPage({ params }: Props) {
+export default function RepairEnquiryPageWrapper(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <RepairEnquiryPage {...props} />
+    </Suspense>
+  );
+}
+
+async function RepairEnquiryPage({ params }: Props) {
   const { subdomain } = await params;
   const supabase = createAdminClient();
 

@@ -1,54 +1,48 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Appointment Confirmed" };
 
-export default async function AppointmentConfirmationPage({
-  params,
-  searchParams,
-}: {
+interface Props {
   params: Promise<{ subdomain: string }>;
   searchParams: Promise<{ ref?: string; name?: string; date?: string; time?: string; type?: string }>;
+}
+
+export default function AppointmentConfirmationPage({ params, searchParams }: Props) {
+  return (
+    <Suspense fallback={null}>
+      <ConfirmationBody paramsPromise={params} searchParamsPromise={searchParams} />
+    </Suspense>
+  );
+}
+
+async function ConfirmationBody({
+  paramsPromise,
+  searchParamsPromise,
+}: {
+  paramsPromise: Promise<{ subdomain: string }>;
+  searchParamsPromise: Promise<{ ref?: string; name?: string; date?: string; time?: string; type?: string }>;
 }) {
-  const { subdomain } = await params;
-  const sp = await searchParams;
+  const { subdomain } = await paramsPromise;
+  const sp = await searchParamsPromise;
   const name = sp.name ?? "";
   const ref = sp.ref ?? "";
   const date = sp.date ?? "";
   const time = sp.time ?? "";
   const type = sp.type ?? "Appointment";
 
-  // Fetch store contact details for branding
-  const admin = createAdminClient();
-  const { data: config } = await admin
-    .from("website_config")
-    .select("business_name, tenant_id")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
-  let storePhone: string | null = null;
-  let storeEmail: string | null = null;
-  if (config?.tenant_id) {
-    const { data: tenant } = await admin
-      .from("tenants")
-      .select("phone, email")
-      .eq("id", config.tenant_id)
-      .maybeSingle();
-    storePhone = tenant?.phone ?? null;
-    storeEmail = tenant?.email ?? null;
-  }
-  const storeName = (config?.business_name as string | null) || null;
+  const { storePhone, storeEmail, storeName } = await loadStoreContact(subdomain);
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center space-y-6">
-        {/* Success icon */}
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
           <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
 
-        {/* Heading */}
         <div>
           <h1 className="text-2xl font-semibold text-stone-900 mb-2">Appointment Confirmed!</h1>
           <p className="text-stone-500">
@@ -56,7 +50,6 @@ export default async function AppointmentConfirmationPage({
           </p>
         </div>
 
-        {/* Details card */}
         <div className="bg-white border border-stone-200 rounded-2xl p-6 text-left space-y-3">
           {ref && (
             <div className="flex justify-between items-center">
@@ -114,4 +107,30 @@ export default async function AppointmentConfirmationPage({
       </div>
     </div>
   );
+}
+
+async function loadStoreContact(subdomain: string): Promise<{
+  storePhone: string | null;
+  storeEmail: string | null;
+  storeName: string | null;
+}> {
+  const admin = createAdminClient();
+  const { data: config } = await admin
+    .from("website_config")
+    .select("business_name, tenant_id")
+    .eq("subdomain", subdomain)
+    .maybeSingle();
+  if (!config?.tenant_id) {
+    return { storePhone: null, storeEmail: null, storeName: null };
+  }
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("phone, email")
+    .eq("id", config.tenant_id)
+    .maybeSingle();
+  return {
+    storePhone: (tenant?.phone as string | null) ?? null,
+    storeEmail: (tenant?.email as string | null) ?? null,
+    storeName: (config.business_name as string | null) ?? null,
+  };
 }

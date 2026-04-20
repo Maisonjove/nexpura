@@ -1,16 +1,30 @@
+import { Suspense } from "react";
 import Link from "next/link";
 
 export const metadata = { title: "Enquiry Received" };
 
-export default async function EnquiryConfirmationPage({
-  params,
-  searchParams,
-}: {
+interface Props {
   params: Promise<{ subdomain: string }>;
   searchParams: Promise<{ ref?: string; name?: string; type?: string }>;
+}
+
+export default function EnquiryConfirmationPage({ params, searchParams }: Props) {
+  return (
+    <Suspense fallback={null}>
+      <EnquiryConfirmationBody paramsPromise={params} searchParamsPromise={searchParams} />
+    </Suspense>
+  );
+}
+
+async function EnquiryConfirmationBody({
+  paramsPromise,
+  searchParamsPromise,
+}: {
+  paramsPromise: Promise<{ subdomain: string }>;
+  searchParamsPromise: Promise<{ ref?: string; name?: string; type?: string }>;
 }) {
-  const { subdomain } = await params;
-  const sp = await searchParams;
+  const { subdomain } = await paramsPromise;
+  const sp = await searchParamsPromise;
   const name = sp.name ?? "";
   const ref = sp.ref ?? "";
   const type = sp.type ?? "custom";
@@ -20,7 +34,6 @@ export default async function EnquiryConfirmationPage({
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center space-y-6">
-        {/* Icon */}
         <div className="w-16 h-16 bg-amber-700/10 rounded-full flex items-center justify-center mx-auto">
           <span className="text-3xl">💎</span>
         </div>

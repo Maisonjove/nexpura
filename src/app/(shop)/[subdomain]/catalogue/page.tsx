@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -8,7 +9,15 @@ interface Props {
   searchParams: Promise<{ category?: string; metal?: string; stone?: string }>;
 }
 
-export default async function CataloguePage({ params, searchParams }: Props) {
+export default function CataloguePageWrapper(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <CataloguePage {...props} />
+    </Suspense>
+  );
+}
+
+async function CataloguePage({ params, searchParams }: Props) {
   const { subdomain } = await params;
   const { category, metal, stone } = await searchParams;
   const supabase = createAdminClient();
