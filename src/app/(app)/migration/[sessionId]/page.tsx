@@ -53,7 +53,7 @@ async function SessionRedirectBody({
 }: {
   paramsPromise: Promise<{ sessionId: string }>;
   searchParamsPromise: Promise<{ rt?: string }>;
-}) {
+}): Promise<null> {
   const { sessionId } = await paramsPromise;
   const { rt } = await searchParamsPromise;
   const { tenantId, admin } = await getAuthOrReviewContext(rt);
@@ -72,4 +72,7 @@ async function SessionRedirectBody({
   const step = getRedirectStep(session.status);
   const rtSuffix = rt ? `?rt=${rt}` : '';
   redirect(`/migration/${sessionId}/${step}${rtSuffix}`);
+  // Unreachable — redirect() throws NEXT_REDIRECT. Kept for TS to accept
+  // this function as a valid JSX-component body (Promise<ReactNode>).
+  return null;
 }
