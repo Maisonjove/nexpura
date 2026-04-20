@@ -368,25 +368,15 @@ async function _updateSessionInner(request: NextRequest) {
     return authResponse;
   }
 
-  const isProtectedRoute =
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/bespoke") ||
-    pathname.startsWith("/repairs") ||
-    pathname.startsWith("/inventory") ||
-    pathname.startsWith("/customers") ||
-    pathname.startsWith("/invoices") ||
-    pathname.startsWith("/passports") ||
-    pathname.startsWith("/billing") ||
-    pathname.startsWith("/suspended") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/sales") ||
-    pathname.startsWith("/suppliers") ||
-    pathname.startsWith("/expenses") ||
-    pathname.startsWith("/communications") ||
-    pathname.startsWith("/reports") ||
-    pathname.startsWith("/marketing") ||
-    pathname.startsWith("/ai") ||
-    pathname.startsWith("/pos");
+  // Any flat /{route} where the first segment is a known app route needs
+  // auth redirect in middleware — otherwise the (app) layout streams its
+  // nav shell before the page's async auth guard throws NEXT_REDIRECT,
+  // giving unauth users a ~1s flash of the app chrome before /login.
+  // Using TENANT_APP_ROUTES as the single source of truth also covers
+  // /tasks, /workshop, /financials, /notifications, /integrations, etc.
+  // (routes previously missed by the hand-rolled startsWith chain).
+  const firstSegment = pathname.split("/").filter(Boolean)[0];
+  const isProtectedRoute = !!firstSegment && TENANT_APP_ROUTES.has(firstSegment);
 
   if (isProtectedRoute) {
     if (!user) {
