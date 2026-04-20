@@ -13,7 +13,6 @@ import logger from "@/lib/logger";
  * with a Suspense-wrapped async body. All DB work + support-access
  * lookup lives inside the body; auth is handled by the (admin) layout.
  *
- * TODO(cacheComponents-flag): when the flag is flipped, delete the
  * three segment-config exports below (all rejected under CC) and add
  *   'use cache';
  *   cacheLife('minutes');
@@ -22,10 +21,6 @@ import logger from "@/lib/logger";
  * subscription webhook / tenant signup writes.
  */
 
-// TODO(cacheComponents-flag): DELETE these three when the flag is flipped.
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = "force-no-store";
 
 const PLAN_PRICES: Record<string, number> = {
   boutique: 89,

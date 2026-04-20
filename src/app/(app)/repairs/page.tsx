@@ -15,7 +15,6 @@ const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 // Dynamic rendering is explicit — the page reads searchParams, auth,
 // and DB inside its Suspense child. Making that explicit prevents Next
 // from trying to prerender + failing on auth.
-export const dynamic = "force-dynamic";
 
 // Synchronous top level — the shell (title + New Repair button + Suspense
 // fallback skeleton) emits in the first streamed HTML chunk on hard-nav

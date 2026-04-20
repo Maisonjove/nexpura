@@ -11,17 +11,12 @@ import logger from "@/lib/logger";
  * async body wrapped in Suspense. All Supabase reads are inside the
  * async body; no cookies/headers are read anywhere.
  *
- * TODO(cacheComponents-flag): delete the three segment-config exports
  * below (force-dynamic / revalidate / fetchCache — all rejected under
  * CC) and move the KPI body to `'use cache'` with
  * `cacheTag('admin-revenue')` + `cacheLife('minutes')`. Revalidation
  * happens on subscription webhook writes via `revalidateTag`.
  */
 
-// TODO(cacheComponents-flag): DELETE these three when the flag is flipped.
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = "force-no-store";
 
 const PLAN_PRICES: Record<string, number> = {
   boutique: 89,

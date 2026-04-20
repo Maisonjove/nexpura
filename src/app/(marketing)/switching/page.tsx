@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { CheckCircle, ArrowRight, Database, Shield, Users, Package, Wrench, FileText } from "lucide-react";
 
-export const dynamic = "force-static";
 export const metadata = { title: "Switch to Nexpura — Migration Hub", description: "Migrate from your current system to Nexpura with zero data loss. Guided migration for jewellery businesses." };
 
 const sources = [
