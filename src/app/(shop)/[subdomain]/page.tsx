@@ -27,8 +27,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq("subdomain", subdomain)
     .maybeSingle();
 
+  const displayName =
+    (config?.meta_title as string | null) ||
+    (config?.business_name as string | null) ||
+    (subdomain.charAt(0).toUpperCase() + subdomain.slice(1));
   return {
-    title: config?.meta_title || config?.business_name || subdomain,
+    title: displayName,
     description: config?.meta_description || undefined,
   };
 }

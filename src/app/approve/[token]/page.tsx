@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notFound } from "next/navigation";
 import ApprovalClient from "./ApprovalClient";
 
 export const metadata = {
@@ -43,7 +42,11 @@ export default function ApprovalPage({ params }: Props) {
 async function ApprovalBody({ paramsPromise }: { paramsPromise: Promise<{ token: string }> }) {
   const { token } = await paramsPromise;
   const data = await loadJobByToken(token);
-  if (!data) notFound();
+  if (!data) {
+    // Customer-facing invalid-state: branded card (not the generic Next.js
+    // 404 fallback). Mirrors /invite/[token] and /support-access/{approve,deny}.
+    return <ApprovalInvalid />;
+  }
 
   const { job, attachments } = data;
   const customer = Array.isArray(job.customers) ? job.customers[0] : job.customers;
@@ -130,6 +133,27 @@ async function loadJobByToken(
   }));
 
   return { job, attachments: normalised };
+}
+
+function ApprovalInvalid() {
+  return (
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-8 max-w-md w-full text-center">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>
+        <h1 className="text-xl font-semibold text-stone-900 mb-2">Invalid or Expired Approval Link</h1>
+        <p className="text-stone-500 mb-6">
+          This approval link is no longer valid. Please contact the store you&apos;re working with for an updated link.
+        </p>
+        <a href="/" className="text-amber-700 hover:text-amber-800 font-medium">
+          Go to Nexpura →
+        </a>
+      </div>
+    </div>
+  );
 }
 
 function ApprovalSkeleton() {

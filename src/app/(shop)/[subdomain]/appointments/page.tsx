@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getShopDisplayName } from "@/lib/shop/display-name";
 import AppointmentForm from "./AppointmentForm";
 
 /**
@@ -29,6 +31,12 @@ import AppointmentForm from "./AppointmentForm";
 
 interface PageProps {
   params: Promise<{ subdomain: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { subdomain } = await params;
+  const name = await getShopDisplayName(subdomain);
+  return { title: `Book an Appointment — ${name}` };
 }
 
 export default function AppointmentPage({ params }: PageProps) {

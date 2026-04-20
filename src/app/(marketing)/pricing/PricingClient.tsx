@@ -26,6 +26,7 @@ const plans = [
     price: 89,
     description: 'For single-store jewellers who need one connected system for sales, repairs, bespoke, and stock.',
     cta: 'Start Free Trial',
+    ctaHref: '/signup',
     highlights: [
       'POS, inventory, repairs, and bespoke workflows',
       'Customers CRM and invoicing',
@@ -40,6 +41,7 @@ const plans = [
     price: 179,
     description: 'For growing jewellery businesses that need deeper reporting, branding, and team visibility across locations.',
     cta: 'Book a Demo',
+    ctaHref: '/contact',
     highlights: [
       'Everything in Boutique',
       'Full analytics dashboard',
@@ -54,6 +56,7 @@ const plans = [
     price: 299,
     description: 'For multi-store jewellery businesses and high-volume workshops needing advanced support, analytics, and scale.',
     cta: 'Talk to Sales',
+    ctaHref: '/contact',
     highlights: [
       'Everything in Studio',
       'Unlimited staff and stores',
@@ -185,7 +188,7 @@ export default function PricingClient() {
               </div>
 
               <Link
-                href="/contact"
+                href={plan.ctaHref}
                 className={`w-full text-center py-3.5 mb-10 text-[0.875rem] font-medium transition-colors duration-300 ${
                   plan.featured
                     ? 'bg-stone-900 text-white hover:bg-stone-800'

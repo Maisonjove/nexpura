@@ -2,11 +2,19 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getShopDisplayName } from "@/lib/shop/display-name";
 
 interface Props {
   params: Promise<{ subdomain: string }>;
   searchParams: Promise<{ category?: string; metal?: string; stone?: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { subdomain } = await params;
+  const name = await getShopDisplayName(subdomain);
+  return { title: `Catalogue — ${name}` };
 }
 
 export default function CataloguePageWrapper(props: Props) {

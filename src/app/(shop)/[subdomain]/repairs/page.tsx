@@ -1,10 +1,18 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getShopDisplayName } from "@/lib/shop/display-name";
 import RepairEnquiryForm from "./RepairEnquiryForm";
 
 interface Props {
   params: Promise<{ subdomain: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { subdomain } = await params;
+  const name = await getShopDisplayName(subdomain);
+  return { title: `Book a Repair — ${name}` };
 }
 
 export default function RepairEnquiryPageWrapper(props: Props) {

@@ -2,12 +2,20 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getShopDisplayName } from "@/lib/shop/display-name";
 import EnquiryForm from "./EnquiryForm";
 
 interface Props {
   params: Promise<{ subdomain: string }>;
   searchParams: Promise<{ item?: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { subdomain } = await params;
+  const name = await getShopDisplayName(subdomain);
+  return { title: `Contact — ${name}` };
 }
 
 export default function EnquiryPageWrapper(props: Props) {

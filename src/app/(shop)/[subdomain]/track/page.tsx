@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Metadata } from "next";
+import { getShopDisplayName } from "@/lib/shop/display-name";
 import TrackRepairClient from "./TrackRepairClient";
 
 interface Props {
@@ -17,13 +18,7 @@ export default function TrackRepairPageWrapper(props: Props) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain } = await params;
-  const admin = createAdminClient();
-  const { data: config } = await admin
-    .from("website_config")
-    .select("business_name")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
-  const name = (config?.business_name as string) || "Store";
+  const name = await getShopDisplayName(subdomain);
   return { title: `Track Your Repair — ${name}` };
 }
 

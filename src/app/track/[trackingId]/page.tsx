@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import TrackingPageClient from "./TrackingPageClient";
 import { getTrackingThread } from "@/lib/messaging";
@@ -203,7 +202,10 @@ async function TrackingPage({ params }: PageProps) {
   const order = await getOrderByTrackingId(trackingId);
 
   if (!order) {
-    notFound();
+    // Customer-facing invalid-state: branded card (not the generic Next.js
+    // 404 fallback). Covers both invalid format (regex reject in
+    // fetchOrderData) and unknown/valid-format-but-no-row lookups.
+    return <TrackOrderNotFound trackingId={trackingId} />;
   }
 
   // Messages are fetched fresh (not cached with the order) so new replies
@@ -214,10 +216,41 @@ async function TrackingPage({ params }: PageProps) {
   return <TrackingPageClient order={order} initialMessages={messages} />;
 }
 
+function TrackOrderNotFound({ trackingId }: { trackingId: string }) {
+  return (
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-8 max-w-md w-full text-center">
+        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 110-16 8 8 0 010 16z" />
+          </svg>
+        </div>
+        <h1 className="text-xl font-semibold text-stone-900 mb-2">Order Not Found</h1>
+        <p className="text-stone-500 mb-2">
+          We couldn&apos;t find an order with the tracking ID{" "}
+          <span className="font-mono text-stone-700">{trackingId}</span>.
+        </p>
+        <p className="text-stone-500 mb-6 text-sm">
+          Please double-check the ID in your email or text from the store. Tracking IDs look like{" "}
+          <span className="font-mono text-stone-700">RPR-XXXXXXXX</span> or{" "}
+          <span className="font-mono text-stone-700">BSP-XXXXXXXX</span>.
+        </p>
+        <a
+          href="/"
+          className="inline-block text-amber-700 hover:text-amber-800 font-medium"
+        >
+          Go to Nexpura →
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export async function generateMetadata({ params }: PageProps) {
   const { trackingId } = await params;
   return {
     title: `Track Order ${trackingId} | Nexpura`,
     description: "Track the status of your jewellery order",
+    robots: { index: false, follow: false },
   };
 }
