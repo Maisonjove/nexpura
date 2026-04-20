@@ -43,30 +43,40 @@ const fetcher = async (key: string): Promise<DashboardStatsData> => {
 interface DashboardWrapperProps {
   criticalData: DashboardCriticalData;
   /**
-   * Stats fetched server-side in parallel with critical data. Used as SWR
-   * fallbackData so the dashboard paints fully populated on first load
-   * without a post-hydration round-trip. Fetched with null (all locations);
-   * if the user's LocationContext defaults to a specific location, SWR
-   * revalidates with the correct key on mount.
+   * Stats fetched server-side in parallel with critical data, scoped to
+   * `initialLocationKey`. Used as SWR fallbackData when the client's
+   * current location selection still matches the server render — gives an
+   * instant first paint without a post-hydration round-trip. When the
+   * client selection has diverged (e.g. localStorage changed before cookie
+   * caught up), SWR re-fetches and we don't show the stale server slice.
    */
   initialStats: DashboardStatsData | null;
+  /**
+   * The location key used by the server when computing initialStats:
+   * either "all" or a comma-joined sorted list of location IDs. The client
+   * compares its own derived locationKey against this to decide whether
+   * initialStats is still applicable.
+   */
+  initialLocationKey: string;
 }
 
-export default function DashboardWrapper({ criticalData, initialStats }: DashboardWrapperProps) {
+export default function DashboardWrapper({ criticalData, initialStats, initialLocationKey }: DashboardWrapperProps) {
   const { getFilterLocationIds } = useLocation();
 
   // Get location IDs for the cache key
   const locationIds = getFilterLocationIds();
   const locationKey = locationIds?.sort().join(",") || "all";
+  const initialStatsApplicable = locationKey === initialLocationKey && !!initialStats;
 
   const { data: stats, isLoading } = useSWR<DashboardStatsData>(
     `dashboard-stats:${locationKey}`,
     fetcher,
     {
-      // Pre-populate with server-rendered stats so the dashboard paints
-      // populated instantly — SWR still revalidates in the background to keep
-      // data fresh, but the first frame has real numbers.
-      fallbackData: locationKey === "all" && initialStats ? initialStats : undefined,
+      // Only seed SWR with the server-rendered stats when the client is
+      // viewing the same location slice the server rendered. Otherwise the
+      // dashboard would briefly paint with the wrong location's numbers
+      // before SWR's background fetch returns.
+      fallbackData: initialStatsApplicable ? (initialStats ?? undefined) : undefined,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 30000, // 30 seconds deduplication
@@ -74,9 +84,11 @@ export default function DashboardWrapper({ criticalData, initialStats }: Dashboa
     }
   );
 
-  // Use stats if available, otherwise empty (skeleton shown in sidebar)
-  const currentStats = stats ?? initialStats ?? emptyStats;
-  const showStatsLoading = isLoading && !stats && !initialStats;
+  // Use freshly-fetched stats if available; otherwise the server-rendered
+  // initialStats only when it matches the current location; otherwise the
+  // empty placeholder while the loading skeleton shows.
+  const currentStats = stats ?? (initialStatsApplicable ? initialStats : null) ?? emptyStats;
+  const showStatsLoading = isLoading && !stats && !initialStatsApplicable;
 
   return (
     <DashboardClient

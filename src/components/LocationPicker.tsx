@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { MapPin, ChevronDown, Check, Building2, Layers, Info } from "lucide-react";
 import { useLocation } from "@/contexts/LocationContext";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Props {
   showAllOption?: boolean;
@@ -12,16 +13,17 @@ interface Props {
 }
 
 export default function LocationPicker({ showAllOption = true, compact = false, showDetailsLink = true }: Props) {
-  const { 
-    locations, 
-    currentLocation, 
-    currentLocationId, 
-    setCurrentLocationId, 
-    hasMultipleLocations, 
+  const {
+    locations,
+    currentLocation,
+    currentLocationId,
+    setCurrentLocationId,
+    hasMultipleLocations,
     isLoading,
     viewMode,
-    setViewMode 
+    setViewMode
   } = useLocation();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -83,6 +85,12 @@ export default function LocationPicker({ showAllOption = true, compact = false, 
                   setViewMode("all");
                   setCurrentLocationId(null);
                   setOpen(false);
+                  // Re-render server components so the dashboard / lists
+                  // re-fetch with the cleared location cookie. Without this
+                  // the picker visually changes but server-rendered data
+                  // (initial dashboard stats) keeps showing whatever was
+                  // selected before.
+                  router.refresh();
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-stone-50 transition-colors ${
                   isAllLocationsView ? "bg-amber-50" : ""
@@ -120,6 +128,7 @@ export default function LocationPicker({ showAllOption = true, compact = false, 
                     setViewMode("single");
                     setCurrentLocationId(location.id);
                     setOpen(false);
+                    router.refresh();
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-stone-50 transition-colors ${
                     isSelected ? "bg-amber-50" : ""

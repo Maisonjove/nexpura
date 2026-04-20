@@ -3,6 +3,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getDashboardCriticalData, getDashboardStats } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
 import logger from "@/lib/logger";
+import {
+  getSelectedLocationIdFromCookie,
+  hasLocationAccess,
+} from "@/lib/locations";
+import { requireAuth } from "@/lib/auth-context";
 
 export const metadata = { title: "Dashboard — Nexpura" };
 
@@ -32,12 +37,33 @@ export default function DashboardPage() {
 
 async function DashboardStatsStream() {
   const criticalData = await getDashboardCriticalData();
-  const initialStats = await getDashboardStats(null).catch((err) => {
+
+  // Read the user's selected location from the cookie so the very first
+  // server render of the dashboard already reflects the chosen location —
+  // no flash of tenant-wide data before the client-side context hydrates.
+  // Validate access before trusting the cookie value: a stale or tampered
+  // cookie pointing at a location the user can't see falls back to "all".
+  const cookieLocationId = await getSelectedLocationIdFromCookie();
+  let initialLocationIds: string[] | null = null;
+  if (cookieLocationId) {
+    const auth = await requireAuth();
+    const allowed = await hasLocationAccess(auth.userId, auth.tenantId, cookieLocationId);
+    if (allowed) initialLocationIds = [cookieLocationId];
+  }
+  const initialLocationKey = initialLocationIds?.sort().join(",") ?? "all";
+
+  const initialStats = await getDashboardStats(initialLocationIds).catch((err) => {
     logger.error("[DashboardPage] initial stats fetch failed, falling back to client-side fetch:", err);
     return null;
   });
 
-  return <DashboardWrapper criticalData={criticalData} initialStats={initialStats} />;
+  return (
+    <DashboardWrapper
+      criticalData={criticalData}
+      initialStats={initialStats}
+      initialLocationKey={initialLocationKey}
+    />
+  );
 }
 
 /**

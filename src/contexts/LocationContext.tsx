@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { writeLocationCookie } from "@/lib/location-cookie";
 
 interface Location {
   id: string;
@@ -80,14 +81,19 @@ export function LocationProvider({
           // Stored location still exists — restore it
           setCurrentLocationIdState(storedId);
           if (!storedMode) setViewModeState("single");
+          // Sync cookie with restored localStorage selection so server-side
+          // reads agree with client-side state on the next navigation.
+          writeLocationCookie(storedId);
         } else {
           // Stale or missing — clear the invalid stored ID
           if (storedId) localStorage.removeItem(STORAGE_KEY);
+          writeLocationCookie(null);
 
           if (data.length === 1) {
             // Auto-select if only one location
             setCurrentLocationIdState(data[0].id);
             setViewModeState("single");
+            writeLocationCookie(data[0].id);
           }
         }
       }
@@ -110,9 +116,11 @@ export function LocationProvider({
       if (storedId && initialLocations.find(l => l.id === storedId)) {
         // Stored location still valid
         setCurrentLocationIdState(storedId);
+        writeLocationCookie(storedId);
       } else if (storedId) {
         // Location no longer exists (deleted/deactivated) — clear stale entry
         localStorage.removeItem(STORAGE_KEY);
+        writeLocationCookie(null);
       }
     }
   }, [initialLocations]);
@@ -124,6 +132,11 @@ export function LocationProvider({
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
+    // Mirror to cookie so RSC + server actions can read the selection on the
+    // very next request without waiting for client hydration. Without this
+    // the dashboard's server-rendered initial stats are tenant-wide and the
+    // location filter only takes effect after a client-side re-fetch.
+    writeLocationCookie(id);
   }
 
   function setViewMode(mode: ViewMode) {

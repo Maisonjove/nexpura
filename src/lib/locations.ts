@@ -1,4 +1,23 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cookies } from "next/headers";
+import { LOCATION_COOKIE } from "@/lib/location-cookie";
+
+// Server-side: read the user's selected location from the cookie. Returns
+// null when no location is selected ("All Locations" view) or when the
+// cookie is empty/missing. Caller is responsible for validating that the
+// authenticated user has access to the returned ID before using it as a
+// query filter.
+export async function getSelectedLocationIdFromCookie(): Promise<string | null> {
+  try {
+    const store = await cookies();
+    const raw = store.get(LOCATION_COOKIE)?.value;
+    if (!raw) return null;
+    const decoded = decodeURIComponent(raw);
+    return decoded.length > 0 ? decoded : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface Location {
   id: string;
