@@ -153,7 +153,12 @@ export default function DemoPage() {
     return () => clearInterval(t);
   }, []);
 
-  const d = now || new Date();
+  // Under cacheComponents, `new Date()` during client-component render is
+  // flagged as non-deterministic (the prerendered HTML would embed whatever
+  // moment the build happens to run). We render `null` for the date/time
+  // block until the post-hydration useEffect populates `now`. The rest of
+  // the page renders its deterministic shell immediately.
+  const d = now;
 
   return (
     <div className="flex gap-8 items-start">
@@ -171,10 +176,10 @@ export default function DemoPage() {
           </div>
           <div className="text-right flex-shrink-0 pt-1">
             <p className="text-[0.875rem] font-medium text-stone-900">
-              {d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
+              {d ? d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" }) : "\u00a0"}
             </p>
             <p className="text-[0.875rem] text-stone-400 tabular-nums mt-0.5">
-              {d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
+              {d ? d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }) : "\u00a0"}
             </p>
           </div>
         </div>
