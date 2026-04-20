@@ -15,21 +15,17 @@ async function getTenantId() {
   return { supabase, tenantId: data.tenant_id as string }
 }
 
-export async function getTagTemplates() {
-  try {
-    const { supabase, tenantId } = await getTenantId()
-    const { data } = await supabase
-      .from("stock_tag_templates")
-      .select("*")
-      .eq("tenant_id", tenantId)
-      .order("is_default", { ascending: false })
-      .order("created_at", { ascending: true })
-    return data ?? []
-  } catch (error) {
-    logger.error("getTagTemplates failed", { error })
-    return []
-  }
-}
+// Note: `getTagTemplates()` was removed in the cacheComponents-migration
+// refactor of page.tsx. The same read is now split into
+// `resolveTenantId()` + `loadTagTemplatesByTenant(tenantId)` inside
+// page.tsx — this separates the request-time cookies/auth access from
+// the per-tenant DB read, so the latter can be marked `'use cache'`
+// once the global cacheComponents flag is flipped. The server actions
+// below (create/update/delete/setDefault) continue to use the single
+// `getTenantId()` helper because they run at request time via
+// formAction/startTransition from the client, not during the page
+// render. Their cookie access is therefore safe under cacheComponents
+// already.
 
 export async function createTagTemplate(formData: FormData) {
   try {
