@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getSupportAccessByToken } from "@/lib/support-access";
 import ApproveClient from "./ApproveClient";
 
@@ -7,7 +8,15 @@ interface Props {
   params: Promise<{ token: string }>;
 }
 
-export default async function ApprovePage({ params }: Props) {
+export default function ApprovePageWrapper(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <ApprovePage {...props} />
+    </Suspense>
+  );
+}
+
+async function ApprovePage({ params }: Props) {
   const { token } = await params;
   const request = await getSupportAccessByToken(token);
 

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getSupportAccessByToken } from "@/lib/support-access";
 import DenyClient from "./DenyClient";
 
@@ -7,7 +8,15 @@ interface Props {
   params: Promise<{ token: string }>;
 }
 
-export default async function DenyPage({ params }: Props) {
+export default function DenyPageWrapper(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <DenyPage {...props} />
+    </Suspense>
+  );
+}
+
+async function DenyPage({ params }: Props) {
   const { token } = await params;
   const request = await getSupportAccessByToken(token);
 
