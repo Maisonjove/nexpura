@@ -1,6 +1,24 @@
+import { Suspense } from "react";
 import { redirect } from 'next/navigation';
 import { getAuthOrReviewContext } from "@/lib/auth/review";
 
+/**
+ * /migration/[sessionId] — CC-ready redirect-only page.
+ *
+ * Whole page body is a redirect chain (resolve session → pick next step →
+ * redirect). Under CC the top-level `await params` + `await searchParams` +
+ * `await getAuthOrReviewContext()` (cookie read) would fire a HANGING_PROMISE
+ * on the prerender pipeline. Wrapping in Suspense tells CC this subtree is
+ * dynamic at request time. No visual skeleton because the user never sees
+ * any rendered content — redirect() fires before any HTML flushes.
+ *
+ * TODO(cacheComponents-flag): when the flag is flipped, delete the
+ * `force-dynamic` export below. No cacheable data here — the session-status
+ * read and the subsequent redirect depend on request-time auth. Leave the
+ * async logic as-is.
+ */
+
+// TODO(cacheComponents-flag): DELETE when the flag is flipped.
 export const dynamic = 'force-dynamic';
 
 interface Props {
@@ -22,11 +40,28 @@ function getRedirectStep(status: string): string {
   return map[status] || 'files';
 }
 
-export default async function SessionPage({ params, searchParams }: Props) {
-  const { sessionId } = await params;
-  const { rt } = await searchParams;
+export default function SessionPage({ params, searchParams }: Props) {
+  return (
+    <Suspense fallback={null}>
+      <SessionRedirectBody paramsPromise={params} searchParamsPromise={searchParams} />
+    </Suspense>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Dynamic body. Resolves params + auth, performs the status-based redirect.
+// ─────────────────────────────────────────────────────────────────────────
+async function SessionRedirectBody({
+  paramsPromise,
+  searchParamsPromise,
+}: {
+  paramsPromise: Promise<{ sessionId: string }>;
+  searchParamsPromise: Promise<{ rt?: string }>;
+}): Promise<null> {
+  const { sessionId } = await paramsPromise;
+  const { rt } = await searchParamsPromise;
   const { tenantId, admin } = await getAuthOrReviewContext(rt);
-  
+
   if (!tenantId) redirect('/login');
 
   const { data: session } = await admin
@@ -41,4 +76,7 @@ export default async function SessionPage({ params, searchParams }: Props) {
   const step = getRedirectStep(session.status);
   const rtSuffix = rt ? `?rt=${rt}` : '';
   redirect(`/migration/${sessionId}/${step}${rtSuffix}`);
+  // Unreachable — redirect() throws NEXT_REDIRECT. Kept for TS to accept
+  // this function as a valid JSX-component body (Promise<ReactNode>).
+  return null;
 }
