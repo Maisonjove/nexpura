@@ -1,10 +1,34 @@
 /**
  * GET /api/integrations/shopify/callback
- * 
- * OAuth callback from Shopify
+ *
+ * OAuth callback from Shopify — exchanges the auth code for an access
+ * token and stores credentials.
+ *
+ * ── cacheComponents migration notes ─────────────────────────────────────
+ *
+ * Blocker under global CC:
+ *   Top-of-GET reads `req.headers.get("x-forwarded-for")` and
+ *   `req.nextUrl.searchParams`, both request-scoped. Under CC the
+ *   prerender pipeline enters the handler, bails on the header read,
+ *   and the continuation (rate-limit Redis fetch, token exchange,
+ *   upsertIntegration DB write) hangs post-prerender →
+ *   HANGING_PROMISE_REJECTION.
+ *
+ * Fix: `await connection()` from `next/server` as the first statement
+ * of GET. Same one-line template proven on /api/check-subdomain,
+ * /api/health/concurrency, /api/warm, and the /connect initiators.
+ *
+ * OAuth safety:
+ *   - state → tenantId decode is unchanged.
+ *   - Code→token exchange unchanged. Shopify client creds stay
+ *     server-side; nothing touches request cookies directly.
+ *   - All redirect destinations unchanged.
+ *   - No segment-config exports present on this route — nothing to
+ *     remove.
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { connection } from "next/server";
 import { upsertIntegration } from "@/lib/integrations";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -13,6 +37,10 @@ const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID!;
 const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET!;
 
 export async function GET(req: NextRequest) {
+  // CC-migration marker: defer to request time before any header/query
+  // read. No-op under the current pre-CC model.
+  await connection();
+
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "webhook");
   if (!success) {

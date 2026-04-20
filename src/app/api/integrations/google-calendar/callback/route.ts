@@ -1,11 +1,26 @@
 /**
  * GET /api/integrations/google-calendar/callback
- * 
- * OAuth callback from Google.
- * Exchanges code for tokens and stores them.
+ *
+ * OAuth callback from Google. Exchanges code for tokens and stores
+ * them alongside the primary calendar identifiers.
+ *
+ * ── cacheComponents migration notes ─────────────────────────────────────
+ *
+ * Twin to /api/integrations/shopify/callback. Same blocker shape:
+ * top-of-GET reads request headers + query params, then performs an
+ * async token exchange + Google API fetch + DB upsert. Under CC the
+ * prerender pipeline would hit the header read, bail, and leak the
+ * continuation as a hanging promise.
+ *
+ * Fix: `await connection()` as the first statement. OAuth correctness
+ * unchanged — state decode, token exchange, calendar identifier fetch,
+ * redirect destinations all preserved byte-for-byte.
+ *
+ * No segment-config exports present.
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { connection } from "next/server";
 import { upsertIntegration } from "@/lib/integrations";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -15,6 +30,10 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET!;
 const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google-calendar/callback`;
 
 export async function GET(req: NextRequest) {
+  // CC-migration marker: defer to request time before any header/query
+  // read. No-op under the current pre-CC model.
+  await connection();
+
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "webhook");
   if (!success) {

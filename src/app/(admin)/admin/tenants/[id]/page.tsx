@@ -1,9 +1,24 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { Skeleton } from "@/components/ui/skeleton";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import TenantActions from "./TenantActions";
 
-// Force dynamic rendering - don't pre-render at build time
+/**
+ * /admin/tenants/[id] — CC-ready page-route (admin-cluster cleanup pass).
+ *
+ * Sync top-level → Suspense → async body. Body awaits the dynamic `params`
+ * promise and then calls the pure `loadTenantDetail(id)` loader. The static
+ * "Back to Tenants" link is lifted to the shell so it can prerender.
+ *
+ * TODO(cacheComponents-flag): delete the `force-dynamic` export below and
+ * add `'use cache' + cacheLife('minutes') + cacheTag('admin-tenant:' + id)`
+ * to `loadTenantDetail`. Invalidate via `revalidateTag` whenever tenant /
+ * subscription / staff data mutates on the admin side.
+ */
+
+// TODO(cacheComponents-flag): DELETE when the flag is flipped.
 export const dynamic = "force-dynamic";
 
 function formatDate(dateStr: string | null | undefined) {
@@ -56,68 +71,14 @@ function PlanBadge({ plan }: { plan: string | null | undefined }) {
   );
 }
 
-export default async function TenantDetailPage({
+export default function TenantDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const adminClient = createAdminClient();
-
-  // Fetch tenant with all columns including new ones
-  const { data: tenant } = await adminClient
-    .from("tenants")
-    .select("id, name, slug, business_type, created_at, is_free_forever, subscription_status, grace_period_ends_at, admin_notes, deleted_at")
-    .eq("id", id)
-    .single();
-
-  if (!tenant) notFound();
-
-  // Fetch subscription
-  const { data: sub } = await adminClient
-    .from("subscriptions")
-    .select("*")
-    .eq("tenant_id", id)
-    .single();
-
-  // Fetch owner
-  const { data: owner } = await adminClient
-    .from("users")
-    .select("full_name, email")
-    .eq("tenant_id", id)
-    .eq("role", "owner")
-    .single();
-
-  // Count users
-  const { count: userCount } = await adminClient
-    .from("users")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", id);
-
-  // Count customers
-  const { count: customerCount } = await adminClient
-    .from("customers")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", id);
-
-  // Count inventory, repairs, invoices
-  const [{ count: inventoryCount }, { count: repairCount }, { count: invoiceCount }] = await Promise.all([
-    adminClient.from("inventory_items").select("id", { count: "exact", head: true }).eq("tenant_id", id),
-    adminClient.from("repairs").select("id", { count: "exact", head: true }).eq("tenant_id", id),
-    adminClient.from("invoices").select("id", { count: "exact", head: true }).eq("tenant_id", id),
-  ]);
-
-  // Fetch last 20 activity logs
-  const { data: activityLogs } = await adminClient
-    .from("staff_activity_logs")
-    .select("id, action, entity_type, entity_id, created_at, users(full_name)")
-    .eq("tenant_id", id)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Back */}
+      {/* Shell — back link + section scaffolding are safe to prerender. */}
       <Link
         href="/admin/tenants"
         className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900 transition-colors"
@@ -127,7 +88,29 @@ export default async function TenantDetailPage({
         </svg>
         Back to Tenants
       </Link>
+      <Suspense fallback={<TenantDetailSkeleton />}>
+        <TenantDetailBody paramsPromise={params} />
+      </Suspense>
+    </div>
+  );
+}
 
+// ─────────────────────────────────────────────────────────────────────────
+// Dynamic body. Resolves the `params` promise, then loads tenant data.
+// ─────────────────────────────────────────────────────────────────────────
+async function TenantDetailBody({
+  paramsPromise,
+}: {
+  paramsPromise: Promise<{ id: string }>;
+}) {
+  const { id } = await paramsPromise;
+  const data = await loadTenantDetail(id);
+  if (!data.tenant) notFound();
+
+  const { tenant, sub, owner, userCount, customerCount, inventoryCount, repairCount, invoiceCount, activityLogs } = data;
+
+  return (
+    <>
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -213,7 +196,7 @@ export default async function TenantDetailPage({
         {/* Right col: Actions */}
         <div>
           <TenantActions
-            tenantId={id}
+            tenantId={tenant.id}
             currentPlan={sub?.plan ?? "boutique"}
             currentStatus={sub?.status ?? "trialing"}
             isFreeForever={!!tenant.is_free_forever}
@@ -221,6 +204,116 @@ export default async function TenantDetailPage({
             adminNotes={tenant.admin_notes as string | null}
             ownerEmail={owner?.email ?? null}
           />
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Cacheable data loader. Parameterised by tenant id — safe for per-tenant
+// cacheTag under CC.
+// ─────────────────────────────────────────────────────────────────────────
+interface ActivityLog {
+  id: string;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  created_at: string;
+}
+
+async function loadTenantDetail(id: string) {
+  const adminClient = createAdminClient();
+
+  const { data: tenant } = await adminClient
+    .from("tenants")
+    .select("id, name, slug, business_type, created_at, is_free_forever, subscription_status, grace_period_ends_at, admin_notes, deleted_at")
+    .eq("id", id)
+    .single();
+
+  if (!tenant) {
+    return {
+      tenant: null,
+      sub: null,
+      owner: null,
+      userCount: 0,
+      customerCount: 0,
+      inventoryCount: 0,
+      repairCount: 0,
+      invoiceCount: 0,
+      activityLogs: [] as ActivityLog[],
+    };
+  }
+
+  const [
+    { data: sub },
+    { data: owner },
+    { count: userCount },
+    { count: customerCount },
+    { count: inventoryCount },
+    { count: repairCount },
+    { count: invoiceCount },
+    { data: activityLogs },
+  ] = await Promise.all([
+    adminClient.from("subscriptions").select("*").eq("tenant_id", id).single(),
+    adminClient
+      .from("users")
+      .select("full_name, email")
+      .eq("tenant_id", id)
+      .eq("role", "owner")
+      .single(),
+    adminClient.from("users").select("id", { count: "exact", head: true }).eq("tenant_id", id),
+    adminClient.from("customers").select("id", { count: "exact", head: true }).eq("tenant_id", id),
+    adminClient.from("inventory_items").select("id", { count: "exact", head: true }).eq("tenant_id", id),
+    adminClient.from("repairs").select("id", { count: "exact", head: true }).eq("tenant_id", id),
+    adminClient.from("invoices").select("id", { count: "exact", head: true }).eq("tenant_id", id),
+    adminClient
+      .from("staff_activity_logs")
+      .select("id, action, entity_type, entity_id, created_at, users(full_name)")
+      .eq("tenant_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  return {
+    tenant,
+    sub,
+    owner,
+    userCount,
+    customerCount,
+    inventoryCount,
+    repairCount,
+    invoiceCount,
+    activityLogs: (activityLogs ?? []) as ActivityLog[],
+  };
+}
+
+function TenantDetailSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-40" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-6 w-16 rounded-full" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+      </div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm space-y-3">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+        </div>
+        <div>
+          <Skeleton className="h-96 w-full rounded-xl" />
         </div>
       </div>
     </div>

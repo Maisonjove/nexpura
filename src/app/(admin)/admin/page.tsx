@@ -1,10 +1,28 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantAccessStatuses } from "@/lib/support-access";
+import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import AdminTenantsClient from "./AdminTenantsClient";
 import logger from "@/lib/logger";
 
-// Force dynamic rendering - don't pre-render at build time
+/**
+ * /admin — CC-ready page-route (admin-cluster cleanup pass).
+ *
+ * Same shape as /admin/qa: sync top-level shell (title + description)
+ * with a Suspense-wrapped async body. All DB work + support-access
+ * lookup lives inside the body; auth is handled by the (admin) layout.
+ *
+ * TODO(cacheComponents-flag): when the flag is flipped, delete the
+ * three segment-config exports below (all rejected under CC) and add
+ *   'use cache';
+ *   cacheLife('minutes');
+ *   cacheTag('admin-dashboard');
+ * to `loadAdminDashboardData()`. Invalidation via `revalidateTag` on
+ * subscription webhook / tenant signup writes.
+ */
+
+// TODO(cacheComponents-flag): DELETE these three when the flag is flipped.
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
@@ -20,52 +38,26 @@ const PLAN_PRICES: Record<string, number> = {
   ultimate: 299,
 };
 
-export default async function AdminDashboardPage() {
-  // Handle build-time or when Supabase is down
-  let tenants: { id: string; name: string; created_at: string }[] | null = null;
-  let subscriptions: { tenant_id: string; plan: string; status: string; trial_ends_at: string | null; current_period_end: string | null }[] | null = null;
-  
-  try {
-    const adminClient = createAdminClient();
-
-    // Fetch all tenants (exclude deleted)
-    const tenantsRes = await adminClient
-      .from("tenants")
-      .select("id, name, created_at, deleted_at")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
-    tenants = tenantsRes.data;
-
-    // Fetch all subscriptions
-    const subsRes = await adminClient
-      .from("subscriptions")
-      .select("tenant_id, plan, status, trial_ends_at, current_period_end");
-    subscriptions = subsRes.data;
-  } catch (error) {
-    logger.error("Failed to fetch admin data:", error);
-    // Return empty state if Supabase is unavailable
-    tenants = [];
-    subscriptions = [];
-  }
-
-  const subMap = new Map(
-    (subscriptions ?? []).map((s) => [s.tenant_id, s])
+export default function AdminDashboardPage() {
+  return (
+    <div className="max-w-6xl mx-auto space-y-8">
+      {/* Shell — pure static JSX. Prerenderable under CC. */}
+      <div>
+        <h1 className="text-2xl font-semibold text-stone-900">Admin Dashboard</h1>
+        <p className="text-sm text-stone-500 mt-1">Platform overview and key metrics</p>
+      </div>
+      <Suspense fallback={<AdminDashboardSkeleton />}>
+        <AdminDashboardBody />
+      </Suspense>
+    </div>
   );
+}
 
-  // Fetch support access statuses
-  const tenantIds = (tenants ?? []).map((t) => t.id);
-  const accessStatuses: Record<string, { status: "pending" | "approved"; expiresAt?: string }> = {};
-  try {
-    const accessStatusMap = await getTenantAccessStatuses(tenantIds);
-    accessStatusMap.forEach((value, key) => {
-      accessStatuses[key] = {
-        status: value.status as "pending" | "approved",
-        expiresAt: value.expiresAt,
-      };
-    });
-  } catch {
-    // Ignore if support access check fails
-  }
+// ─────────────────────────────────────────────────────────────────────────
+// Dynamic body. DB reads only; admin auth handled by (admin) layout.
+// ─────────────────────────────────────────────────────────────────────────
+async function AdminDashboardBody() {
+  const { tenants, subscriptions, accessStatuses } = await loadAdminDashboardData();
 
   const totalTenants = tenants?.length ?? 0;
 
@@ -99,13 +91,7 @@ export default async function AdminDashboardPage() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-900">Admin Dashboard</h1>
-        <p className="text-sm text-stone-500 mt-1">Platform overview and key metrics</p>
-      </div>
-
+    <>
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {stats.map((stat) => (
@@ -135,6 +121,88 @@ export default async function AdminDashboardPage() {
           accessStatuses={accessStatuses}
         />
       </div>
-    </div>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Cacheable data loader. No inputs; admin-wide view.
+// ─────────────────────────────────────────────────────────────────────────
+interface TenantRow {
+  id: string;
+  name: string;
+  created_at: string;
+}
+interface SubRow {
+  tenant_id: string;
+  plan: string;
+  status: string;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+}
+
+async function loadAdminDashboardData(): Promise<{
+  tenants: TenantRow[] | null;
+  subscriptions: SubRow[] | null;
+  accessStatuses: Record<string, { status: "pending" | "approved"; expiresAt?: string }>;
+}> {
+  let tenants: TenantRow[] | null = null;
+  let subscriptions: SubRow[] | null = null;
+
+  try {
+    const adminClient = createAdminClient();
+
+    const tenantsRes = await adminClient
+      .from("tenants")
+      .select("id, name, created_at, deleted_at")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+    tenants = tenantsRes.data;
+
+    const subsRes = await adminClient
+      .from("subscriptions")
+      .select("tenant_id, plan, status, trial_ends_at, current_period_end");
+    subscriptions = subsRes.data;
+  } catch (error) {
+    logger.error("[admin] loadAdminDashboardData failed", error);
+    tenants = [];
+    subscriptions = [];
+  }
+
+  const tenantIds = (tenants ?? []).map((t) => t.id);
+  const accessStatuses: Record<string, { status: "pending" | "approved"; expiresAt?: string }> = {};
+  try {
+    const accessStatusMap = await getTenantAccessStatuses(tenantIds);
+    accessStatusMap.forEach((value, key) => {
+      accessStatuses[key] = {
+        status: value.status as "pending" | "approved",
+        expiresAt: value.expiresAt,
+      };
+    });
+  } catch {
+    // Ignore if support access check fails — shown as empty in UI.
+  }
+
+  return { tenants, subscriptions, accessStatuses };
+}
+
+function AdminDashboardSkeleton() {
+  return (
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm">
+            <Skeleton className="h-3 w-20 mb-2" />
+            <Skeleton className="h-7 w-16" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
+        <Skeleton className="h-14 w-full" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-14 w-full border-t border-stone-100" />
+        ))}
+      </div>
+    </>
   );
 }

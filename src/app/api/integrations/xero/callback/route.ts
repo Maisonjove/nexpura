@@ -1,11 +1,28 @@
 /**
  * GET /api/integrations/xero/callback
  *
- * Xero OAuth 2.0 callback — exchanges auth code for tokens,
- * fetches connected tenant info, and persists to DB.
+ * Xero OAuth 2.0 callback — exchanges auth code for tokens, fetches
+ * connected tenant info (organisation in Xero's terminology), and
+ * persists to DB.
+ *
+ * ── cacheComponents migration notes ─────────────────────────────────────
+ *
+ * Superset blocker: reads request headers (x-forwarded-for) AND calls
+ * `getAuthContext()` which hits `supabase.auth.getUser()` (cookies)
+ * inside the try block. Under CC both are request-scoped dynamic reads
+ * that would fire the prerender-bail and hang the subsequent token
+ * exchange + upsert.
+ *
+ * Fix: `await connection()` as the first statement of GET. All
+ * existing OAuth correctness preserved — code→token exchange,
+ * organisation fetch, and the `?xero=connected&org=...` / `?xero=error`
+ * redirect destinations are unchanged.
+ *
+ * No segment-config exports present on this route.
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { connection } from "next/server";
 import { getAuthContext, upsertIntegration } from "@/lib/integrations";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -15,6 +32,10 @@ const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com";
 
 export async function GET(req: NextRequest) {
+  // CC-migration marker: defer to request time before any header/cookie
+  // read. No-op under the current pre-CC model.
+  await connection();
+
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "webhook");
   if (!success) {
