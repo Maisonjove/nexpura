@@ -54,7 +54,12 @@ export default async function RepairDetailPage({
   const [repairResult, inventory, tenantSettings] = await Promise.all([
     adminClient
       .from("repairs")
-      .select("*, customers(id, full_name, email, mobile)")
+      // Pull customers.deleted_at so the mapper below can null the customer
+      // out if the linked customer row has been soft-deleted — otherwise the
+      // repair detail page renders a live-looking "View Customer →" link
+      // pointing at a page that will 404, plus a name that's technically
+      // been retired from the CRM.
+      .select("*, customers(id, full_name, email, mobile, deleted_at)")
       .eq("id", id)
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
@@ -165,7 +170,12 @@ export default async function RepairDetailPage({
       .order("created_at", { ascending: true }),
   ]);
 
-  const customer = Array.isArray(repair.customers) ? repair.customers[0] ?? null : repair.customers;
+  const customerRaw = Array.isArray(repair.customers) ? repair.customers[0] ?? null : repair.customers;
+  // Treat a soft-deleted customer as no customer — otherwise RepairCommandCenter
+  // renders the name + an active "View Customer →" link pointing at a page
+  // that will 404, and the Checklist counts "Customer linked" as done even
+  // though the linked record has been retired from the CRM.
+  const customer = customerRaw && !customerRaw.deleted_at ? customerRaw : null;
   const defaultSmsTemplate = tenantSettings.smsTemplates.job_ready || 
     "Hi {{customer_name}}, great news! Your {{job_type}} is ready for pickup at {{business_name}}. See you soon!";
 

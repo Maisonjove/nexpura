@@ -14,10 +14,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const admin = createAdminClient();
+  // Filter deleted_at IS NULL so a soft-deleted customer's name doesn't
+  // leak into the browser tab via <title>. The page body already
+  // notFound()s on deleted_at != null (line 53 below), but the metadata
+  // callback runs independently and didn't share that filter.
   const { data } = await admin
     .from("customers")
     .select("full_name")
     .eq("id", id)
+    .is("deleted_at", null)
     .maybeSingle();
   const name = (data?.full_name as string | null) ?? null;
   return { title: name ? `${name} — Nexpura` : "Customer — Nexpura" };
