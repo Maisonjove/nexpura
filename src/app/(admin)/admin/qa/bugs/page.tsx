@@ -51,13 +51,15 @@ async function BugListBody() {
 // ─────────────────────────────────────────────────────────────────────────
 // Cacheable data loader. Takes no inputs; admin-wide view.
 // ─────────────────────────────────────────────────────────────────────────
+type BugPriority = "critical" | "high" | "medium" | "low";
+
 interface Bug {
   id: string;
   title: string;
   description: string | null;
   category: string;
   categoryIcon: string | null;
-  priority: string;
+  priority: BugPriority;
   route: string | null;
   testingGuidance: string | null;
   notes: string | null;
@@ -80,15 +82,24 @@ async function loadBugsData(): Promise<Bug[]> {
       .order("priority")
       .order("sort_order");
 
+    const validPriorities: ReadonlySet<BugPriority> = new Set([
+      "critical",
+      "high",
+      "medium",
+      "low",
+    ]);
+
     return (items || [])
       .filter((item) => item.qa_test_results?.[0]?.status === "fail")
-      .map((item) => ({
+      .map<Bug>((item) => ({
         id: item.id,
         title: item.title,
         description: item.description,
         category: item.qa_categories?.name || "Unknown",
         categoryIcon: item.qa_categories?.icon,
-        priority: item.priority,
+        priority: validPriorities.has(item.priority as BugPriority)
+          ? (item.priority as BugPriority)
+          : "medium",
         route: item.route,
         testingGuidance: item.testing_guidance,
         notes: item.qa_test_results?.[0]?.notes,
