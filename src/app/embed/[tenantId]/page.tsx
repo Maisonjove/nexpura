@@ -1,41 +1,59 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+/**
+ * /embed/[tenantId] — iframe-embeddable catalogue. CC-ready.
+ *
+ * Sync top-level → Suspense → async body → pure per-tenant loader. Same
+ * template as /settings/tags + /[subdomain]/appointments. No cookies,
+ * no auth — these embed URLs are public iframe sources referenced by
+ * tenant websites.
+ *
+ * TODO(cacheComponents-flag): once the flag is flipped, add inside
+ * `loadCatalogueData`:
+ *   'use cache';
+ *   cacheLife('minutes');
+ *   cacheTag(`embed-catalogue:${tenantId}:${category ?? "all"}`);
+ * and call `revalidateTag(`embed-catalogue:${tenantId}:*`)` from inventory
+ * server actions when stock or published items change.
+ */
 
 interface Props {
   params: Promise<{ tenantId: string }>;
   searchParams: Promise<{ mode?: string; theme?: string; category?: string }>;
 }
 
-export default async function EmbedCataloguePage({ params, searchParams }: Props) {
-  const { tenantId } = await params;
-  const { category } = await searchParams;
-  const supabase = createAdminClient();
+export default function EmbedCataloguePage({ params, searchParams }: Props) {
+  return (
+    <Suspense fallback={null}>
+      <CatalogueBody paramsPromise={params} searchParamsPromise={searchParams} />
+    </Suspense>
+  );
+}
 
-  const { data: config } = await supabase
-    .from("website_config")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
+// ─────────────────────────────────────────────────────────────────────────
+// Dynamic body. Resolves both promises then loads the published config
+// and inventory for this tenant.
+// ─────────────────────────────────────────────────────────────────────────
+async function CatalogueBody({
+  paramsPromise,
+  searchParamsPromise,
+}: {
+  paramsPromise: Promise<{ tenantId: string }>;
+  searchParamsPromise: Promise<{ mode?: string; theme?: string; category?: string }>;
+}) {
+  const { tenantId } = await paramsPromise;
+  const { category } = await searchParamsPromise;
 
-  if (!config) notFound();
+  const data = await loadCatalogueData(tenantId, category);
+  if (!data) notFound();
 
+  const { config, items } = data;
   const primaryColor = config.primary_color || "amber-700";
   const font = config.font || "Inter";
   const showPrices = config.mode !== "A" && config.show_prices;
-
-  let query = supabase
-    .from("inventory")
-    .select("id, name, images, metal, stone, retail_price, category")
-    .eq("tenant_id", tenantId)
-    .eq("status", "in_stock")
-    .gt("quantity", 0)
-    .order("created_at", { ascending: false });
-
-  if (category) query = query.eq("category", category);
-
-  const { data: items } = await query.limit(60);
-
   const subdomain = config.subdomain;
 
   return (
@@ -137,4 +155,56 @@ export default async function EmbedCataloguePage({ params, searchParams }: Props
       </div>
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Cacheable per tenant (and optionally per category). Both inputs are
+// plain parameters so this loader is safe to wrap in `'use cache'` later.
+// ─────────────────────────────────────────────────────────────────────────
+interface EmbedConfig {
+  primary_color: string | null;
+  font: string | null;
+  mode: string | null;
+  show_prices: boolean | null;
+  subdomain: string | null;
+  business_name: string | null;
+}
+
+interface EmbedItem {
+  id: string;
+  name: string;
+  images: string[] | null;
+  metal: string | null;
+  stone: string | null;
+  retail_price: number | null;
+  category: string | null;
+}
+
+async function loadCatalogueData(
+  tenantId: string,
+  category: string | undefined
+): Promise<{ config: EmbedConfig; items: EmbedItem[] | null } | null> {
+  const supabase = createAdminClient();
+
+  const { data: config } = await supabase
+    .from("website_config")
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  if (!config) return null;
+
+  let query = supabase
+    .from("inventory")
+    .select("id, name, images, metal, stone, retail_price, category")
+    .eq("tenant_id", tenantId)
+    .eq("status", "in_stock")
+    .gt("quantity", 0)
+    .order("created_at", { ascending: false });
+
+  if (category) query = query.eq("category", category);
+
+  const { data: items } = await query.limit(60);
+
+  return { config: config as EmbedConfig, items: items as EmbedItem[] | null };
 }

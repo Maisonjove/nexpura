@@ -1,14 +1,35 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+/**
+ * /embed/[tenantId]/enquiry — iframe-embeddable enquiry form. CC-ready.
+ *
+ * Renders its own <html> shell (this route is meant to be iframed from
+ * tenant websites as a standalone document, not wrapped by the Nexpura
+ * root chrome). Sync top-level → Suspense → async body. The body resolves
+ * the tenantId + looks up the business name, then renders the full
+ * standalone document.
+ *
+ * TODO(cacheComponents-flag): `loadBusinessName(tenantId)` can be marked
+ * with `'use cache' + cacheTag(`tenant-name:${tenantId}`)` once the flag
+ * flips. Invalidate from the tenant business-settings server action.
+ */
 
 interface Props {
   params: Promise<{ tenantId: string }>;
 }
 
-export default async function EmbedEnquiryPage({ params }: Props) {
-  const { tenantId } = await params;
-  const admin = createAdminClient();
-  const { data: tenant } = await admin.from("tenants").select("business_name, name").eq("id", tenantId).single();
-  const businessName = tenant?.business_name || tenant?.name || "Jewellery Store";
+export default function EmbedEnquiryPage({ params }: Props) {
+  return (
+    <Suspense fallback={null}>
+      <EnquiryBody paramsPromise={params} />
+    </Suspense>
+  );
+}
+
+async function EnquiryBody({ paramsPromise }: { paramsPromise: Promise<{ tenantId: string }> }) {
+  const { tenantId } = await paramsPromise;
+  const businessName = await loadBusinessName(tenantId);
 
   return (
     <html lang="en">
@@ -81,4 +102,17 @@ export default async function EmbedEnquiryPage({ params }: Props) {
       </body>
     </html>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Cacheable per tenant. Pure w.r.t. tenantId input.
+// ─────────────────────────────────────────────────────────────────────────
+async function loadBusinessName(tenantId: string): Promise<string> {
+  const admin = createAdminClient();
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("business_name, name")
+    .eq("id", tenantId)
+    .single();
+  return tenant?.business_name || tenant?.name || "Jewellery Store";
 }
