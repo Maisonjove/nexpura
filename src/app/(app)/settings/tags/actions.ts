@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { logger } from "@/lib/logger"
 
 async function getTenantId() {
@@ -52,7 +52,7 @@ export async function createTagTemplate(formData: FormData) {
     })
     if (error) return { error: error.message }
     revalidatePath("/settings/tags")
-    revalidateTag(`tag-templates:${tenantId}`)
+    updateTag(`tag-templates:${tenantId}`)
     return { success: true }
   } catch (error) {
     logger.error("createTagTemplate failed", { error })
@@ -87,7 +87,7 @@ export async function updateTagTemplate(id: string, formData: FormData) {
       .eq("tenant_id", tenantId)
     if (error) return { error: error.message }
     revalidatePath("/settings/tags")
-    revalidateTag(`tag-templates:${tenantId}`)
+    updateTag(`tag-templates:${tenantId}`)
     return { success: true }
   } catch (error) {
     logger.error("updateTagTemplate failed", { error })
@@ -113,7 +113,7 @@ export async function deleteTagTemplate(id: string): Promise<{ success?: boolean
       .eq("tenant_id", tenantId)
     if (error) return { error: error.message }
     revalidatePath("/settings/tags")
-    revalidateTag(`tag-templates:${tenantId}`)
+    updateTag(`tag-templates:${tenantId}`)
     return { success: true }
   } catch (error) {
     logger.error("deleteTagTemplate failed", { error })
@@ -138,7 +138,7 @@ export async function setDefaultTemplate(id: string): Promise<{ success?: boolea
       .eq("tenant_id", tenantId)
     if (error) return { error: error.message }
     revalidatePath("/settings/tags")
-    revalidateTag(`tag-templates:${tenantId}`)
+    updateTag(`tag-templates:${tenantId}`)
     return { success: true }
   } catch (error) {
     logger.error("setDefaultTemplate failed", { error })
