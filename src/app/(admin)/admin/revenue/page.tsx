@@ -1,8 +1,24 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import logger from "@/lib/logger";
 
-// Force dynamic rendering - don't pre-render at build time
+/**
+ * /admin/revenue — CC-ready page-route (admin cluster, third of four).
+ *
+ * Split: synchronous shell (header + "Revenue Overview" title) with an
+ * async body wrapped in Suspense. All Supabase reads are inside the
+ * async body; no cookies/headers are read anywhere.
+ *
+ * TODO(cacheComponents-flag): delete the three segment-config exports
+ * below (force-dynamic / revalidate / fetchCache — all rejected under
+ * CC) and move the KPI body to `'use cache'` with
+ * `cacheTag('admin-revenue')` + `cacheLife('minutes')`. Revalidation
+ * happens on subscription webhook writes via `revalidateTag`.
+ */
+
+// TODO(cacheComponents-flag): DELETE these three when the flag is flipped.
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
@@ -28,28 +44,31 @@ function fmtDate(d: string) {
 
 export const metadata = { title: "Revenue — Nexpura Admin" };
 
-export default async function RevenueAdminPage() {
-  let subs: { tenant_id: string; plan: string; status: string; trial_ends_at: string | null; current_period_end: string | null; created_at: string }[] | null = null;
-  let tenants: { id: string; name: string; created_at: string; is_free_forever: boolean | null }[] | null = null;
+export default function RevenueAdminPage() {
+  return (
+    <div className="max-w-5xl mx-auto py-10 px-4">
+      {/* Shell — pure static JSX. No awaits, no DB. Paints in the first
+          streamed chunk; prerenderable under cacheComponents. */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <Link href="/admin" className="text-sm text-stone-400 hover:text-stone-600 mb-1 inline-block">← Admin</Link>
+          <h1 className="text-2xl font-semibold text-stone-900">Revenue Overview</h1>
+          <p className="text-sm text-stone-500 mt-0.5">Live MRR, ARR, plan breakdown, and subscription metrics</p>
+        </div>
+      </div>
+      <Suspense fallback={<RevenueBodySkeleton />}>
+        <RevenueBody />
+      </Suspense>
+    </div>
+  );
+}
 
-  try {
-    const admin = createAdminClient();
-
-    const subsRes = await admin
-      .from("subscriptions")
-      .select("tenant_id, plan, status, trial_ends_at, current_period_end, created_at");
-    subs = subsRes.data;
-
-    const tenantsRes = await admin
-      .from("tenants")
-      .select("id, name, created_at, is_free_forever")
-      .is("deleted_at", null);
-    tenants = tenantsRes.data;
-  } catch (error) {
-    logger.error("Failed to fetch revenue data:", error);
-    subs = [];
-    tenants = [];
-  }
+// ─────────────────────────────────────────────────────────────────────────
+// Dynamic body. DB reads only; no request-scoped access (auth handled
+// by the (admin) layout).
+// ─────────────────────────────────────────────────────────────────────────
+async function RevenueBody() {
+  const { subs, tenants } = await loadRevenueData();
 
   const tenantMap = new Map((tenants ?? []).map((t) => [t.id, t]));
 
@@ -85,16 +104,7 @@ export default async function RevenueAdminPage() {
   const newTenants = (tenants ?? []).filter((t) => t.created_at > thirtyDaysAgo).length;
 
   return (
-    <div className="max-w-5xl mx-auto py-10 px-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <Link href="/admin" className="text-sm text-stone-400 hover:text-stone-600 mb-1 inline-block">← Admin</Link>
-          <h1 className="text-2xl font-semibold text-stone-900">Revenue Overview</h1>
-          <p className="text-sm text-stone-500 mt-0.5">Live MRR, ARR, plan breakdown, and subscription metrics</p>
-        </div>
-      </div>
-
+    <>
       {/* Top KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
@@ -244,6 +254,87 @@ export default async function RevenueAdminPage() {
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Cacheable data loader. Takes no inputs; admin-wide view.
+// ─────────────────────────────────────────────────────────────────────────
+interface SubRow {
+  tenant_id: string;
+  plan: string;
+  status: string;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  created_at: string;
+}
+interface TenantRow {
+  id: string;
+  name: string;
+  created_at: string;
+  is_free_forever: boolean | null;
+}
+
+async function loadRevenueData(): Promise<{ subs: SubRow[] | null; tenants: TenantRow[] | null }> {
+  try {
+    const admin = createAdminClient();
+
+    const subsRes = await admin
+      .from("subscriptions")
+      .select("tenant_id, plan, status, trial_ends_at, current_period_end, created_at");
+
+    const tenantsRes = await admin
+      .from("tenants")
+      .select("id, name, created_at, is_free_forever")
+      .is("deleted_at", null);
+
+    return { subs: subsRes.data, tenants: tenantsRes.data };
+  } catch (error) {
+    logger.error("[admin/revenue] loadRevenueData failed", error);
+    return { subs: [], tenants: [] };
+  }
+}
+
+function RevenueBodySkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+            <Skeleton className="h-6 w-6 mb-2" />
+            <Skeleton className="h-7 w-24 mb-1" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm">
+            <Skeleton className="h-6 w-16 mb-1" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm space-y-3">
+            <Skeleton className="h-4 w-40 mb-4" />
+            {Array.from({ length: 3 }).map((__, j) => (
+              <div key={j}>
+                <Skeleton className="h-3 w-full mb-1" />
+                <Skeleton className="h-2 w-full rounded-full" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
+        <Skeleton className="h-12 w-full" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full border-t border-stone-100" />
+        ))}
+      </div>
     </div>
   );
 }

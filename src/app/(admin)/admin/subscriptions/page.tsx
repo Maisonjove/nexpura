@@ -1,7 +1,23 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import logger from "@/lib/logger";
 
-// Force dynamic rendering - don't pre-render at build time
+/**
+ * /admin/subscriptions — CC-ready page-route (admin cluster, fourth of four).
+ *
+ * Same shape as the rest: sync top-level shell → Suspense → async body
+ * → pure loader. No cookies/headers; admin auth is the (admin) layout's
+ * job.
+ *
+ * TODO(cacheComponents-flag): delete the `force-dynamic` export below
+ * and add `'use cache' + cacheLife('minutes') + cacheTag('admin-subs')`
+ * to `loadSubscriptionsData()`. Revalidate via `revalidateTag` on
+ * Stripe webhook writes.
+ */
+
+// TODO(cacheComponents-flag): DELETE when the flag is flipped.
 export const dynamic = "force-dynamic";
 
 function StatusBadge({ status }: { status: string | null | undefined }) {
@@ -45,20 +61,31 @@ function formatDate(dateStr: string | null | undefined) {
   });
 }
 
-export default async function SubscriptionsPage() {
-  const adminClient = createAdminClient();
-
-  const { data: subs } = await adminClient
-    .from("subscriptions")
-    .select("*, tenants(id, name)")
-    .order("created_at", { ascending: false });
-
+export default function SubscriptionsPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      {/* Shell — static JSX. Prerenderable under CC. The "{n}
+          subscriptions" count lives inside the dynamic body so it
+          reflects live data. */}
       <div>
         <h1 className="text-2xl font-semibold text-stone-900">Subscriptions</h1>
-        <p className="text-sm text-stone-500 mt-1">{subs?.length ?? 0} subscriptions</p>
       </div>
+      <Suspense fallback={<SubscriptionsBodySkeleton />}>
+        <SubscriptionsBody />
+      </Suspense>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Dynamic body. DB reads only; no request-scoped access.
+// ─────────────────────────────────────────────────────────────────────────
+async function SubscriptionsBody() {
+  const subs = await loadSubscriptionsData();
+
+  return (
+    <>
+      <p className="text-sm text-stone-500 -mt-4">{subs?.length ?? 0} subscriptions</p>
 
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
@@ -104,6 +131,49 @@ export default async function SubscriptionsPage() {
           </table>
         </div>
       </div>
-    </div>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Cacheable data loader. No inputs; admin-wide view.
+// ─────────────────────────────────────────────────────────────────────────
+interface SubscriptionRow {
+  id: string;
+  plan: string | null;
+  status: string | null;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  stripe_customer_id: string | null;
+  tenants: { id: string; name: string } | null;
+}
+
+async function loadSubscriptionsData(): Promise<SubscriptionRow[]> {
+  try {
+    const adminClient = createAdminClient();
+
+    const { data } = await adminClient
+      .from("subscriptions")
+      .select("*, tenants(id, name)")
+      .order("created_at", { ascending: false });
+
+    return (data as SubscriptionRow[] | null) ?? [];
+  } catch (error) {
+    logger.error("[admin/subscriptions] loadSubscriptionsData failed", error);
+    return [];
+  }
+}
+
+function SubscriptionsBodySkeleton() {
+  return (
+    <>
+      <Skeleton className="h-3 w-32 -mt-4" />
+      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
+        <Skeleton className="h-12 w-full" />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full border-t border-stone-100" />
+        ))}
+      </div>
+    </>
   );
 }

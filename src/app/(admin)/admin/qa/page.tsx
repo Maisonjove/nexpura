@@ -1,7 +1,40 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { Skeleton } from "@/components/ui/skeleton";
 import QADashboardClient from "./QADashboardClient";
 import logger from "@/lib/logger";
 
+/**
+ * /admin/qa — CC-ready page-route template (admin cluster, first of four).
+ *
+ * Follows the /settings/tags template: default export is SYNCHRONOUS and
+ * returns a Suspense boundary; all request-bound async work lives inside
+ * the async body component. Data fetch is a pure loader that takes no
+ * request-scoped inputs (the (admin) layout handles auth + admin-gate),
+ * so it's trivially cacheable under CC via `'use cache'`.
+ *
+ * Dynamic vs cacheable split:
+ *   - Dynamic: none at page level. Auth runs in (admin) layout, which
+ *     is already CC-ready via `await connection()`.
+ *   - Cacheable later: `loadQADashboardData()` — admin-client DB reads
+ *     for qa_categories + qa_checklist_items. No tenant param (this is
+ *     a platform-admin view), so a single cache entry covers all admin
+ *     users. Falls back to mock data if tables don't exist (42P01).
+ *
+ * TODO(cacheComponents-flag):
+ *   When `cacheComponents: true` is set globally:
+ *     1. Delete `force-dynamic` + `revalidate = 0` exports below —
+ *        rejected at build under CC.
+ *     2. Inside `loadQADashboardData`, add:
+ *          'use cache';
+ *          cacheLife('minutes');
+ *          cacheTag('qa-dashboard');
+ *        Import `cacheLife` + `cacheTag` from 'next/cache'. Add matching
+ *        `revalidateTag('qa-dashboard')` in any server action that
+ *        mutates qa_test_results / qa_categories / qa_checklist_items.
+ */
+
+// TODO(cacheComponents-flag): DELETE these when the flag is flipped.
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -99,44 +132,21 @@ const mockItems = [
   { id: 'bill2', category_id: '11111111-1111-1111-1111-111111111120', title: 'Trial expiration handling', description: 'Trial end prompts upgrade', route: '/dashboard', testing_guidance: 'Trial expires. Prompted to subscribe.', priority: 'critical', sort_order: 5, qa_test_results: [{ status: 'fail', notes: 'Banner not showing for expired trials' }] },
 ];
 
-export default async function QADashboardPage() {
-  let categories: any[] = [];
-  let items: any[] = [];
-  let useMockData = false;
+export default function QADashboardPage() {
+  return (
+    <Suspense fallback={<QADashboardSkeleton />}>
+      <QADashboardBody />
+    </Suspense>
+  );
+}
 
-  try {
-    const adminClient = createAdminClient();
-
-    const { data: catData, error: catError } = await adminClient
-      .from("qa_categories")
-      .select("*")
-      .order("sort_order");
-
-    if (catError && catError.code === "42P01") {
-      // Table doesn't exist, use mock data
-      useMockData = true;
-    } else {
-      const { data: itemData } = await adminClient
-        .from("qa_checklist_items")
-        .select(`
-          *,
-          qa_test_results (*)
-        `)
-        .order("sort_order");
-
-      categories = catData || [];
-      items = itemData || [];
-    }
-  } catch (error) {
-    logger.error("Failed to fetch QA data:", error);
-    useMockData = true;
-  }
-
-  // Use mock data if database tables don't exist
-  if (useMockData || categories.length === 0) {
-    categories = mockCategories;
-    items = mockItems;
-  }
+// ─────────────────────────────────────────────────────────────────────────
+// Dynamic body. No cookies/headers here — admin auth is handled by the
+// (admin) layout. This subtree does DB reads only; safe to stream in
+// under a Suspense boundary.
+// ─────────────────────────────────────────────────────────────────────────
+async function QADashboardBody() {
+  const { categories, items } = await loadQADashboardData();
 
   // Group items by category
   const categorizedData = categories.map(cat => ({
@@ -197,5 +207,76 @@ export default async function QADashboardPage() {
       categoryStats={categoryStats}
       launchBlockers={launchBlockers}
     />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Cacheable data loader. Takes no inputs; admin-wide view. Ready for
+// 'use cache' once cacheComponents is flipped — see file header TODO.
+// ─────────────────────────────────────────────────────────────────────────
+async function loadQADashboardData(): Promise<{ categories: any[]; items: any[] }> {
+  try {
+    const adminClient = createAdminClient();
+
+    const { data: catData, error: catError } = await adminClient
+      .from("qa_categories")
+      .select("*")
+      .order("sort_order");
+
+    if (catError && catError.code === "42P01") {
+      // Table doesn't exist — fall back to mock data.
+      return { categories: mockCategories, items: mockItems };
+    }
+
+    const { data: itemData } = await adminClient
+      .from("qa_checklist_items")
+      .select(`
+        *,
+        qa_test_results (*)
+      `)
+      .order("sort_order");
+
+    const categories = catData || [];
+    const items = itemData || [];
+
+    if (categories.length === 0) {
+      return { categories: mockCategories, items: mockItems };
+    }
+
+    return { categories, items };
+  } catch (error) {
+    logger.error("[admin/qa] loadQADashboardData failed", error);
+    return { categories: mockCategories, items: mockItems };
+  }
+}
+
+function QADashboardSkeleton() {
+  return (
+    <div className="max-w-7xl mx-auto py-10 px-4 space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <Skeleton className="h-8 w-56 mb-2" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <Skeleton className="h-10 w-32 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
+            <Skeleton className="h-3 w-16 mb-2" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm space-y-3">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
