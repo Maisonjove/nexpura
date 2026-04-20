@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -133,8 +134,21 @@ export default function RootLayout({
               so its useEffect fires during the root-layout render cycle
               rather than waiting on the heavy (app)-layout subtree
               commit path the legacy RoutePrefetcher is gated behind.
+
+              Wrapped in <Suspense fallback={null}> because the component
+              reads `useRouter()` + `usePathname()` — both report the
+              current request URL, which CacheComponents classes as
+              "uncached dynamic data". Under CC the prerender pipeline
+              needs a Suspense boundary to know this region is intentionally
+              dynamic; without one the whole /[subdomain]/... and /admin/*
+              tree fails the "Uncached data accessed outside of <Suspense>"
+              check. Timing unchanged: the client island still commits at
+              root-layout render cycle, the useEffect still fires at the
+              same point. Fallback is null → zero visual impact.
             */}
-            <HotRouteBootstrap />
+            <Suspense fallback={null}>
+              <HotRouteBootstrap />
+            </Suspense>
             {children}
             <OfflineIndicator />
           </PWAProvider>
