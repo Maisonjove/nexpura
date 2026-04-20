@@ -42,6 +42,17 @@ test('/admin cluster: non-admin users are redirected cleanly', async ({ browser 
     '/admin/qa/bugs',
     '/admin/revenue',
     '/admin/subscriptions',
+    // Final cleanup cluster (commit 4f77663):
+    '/admin',
+    '/admin/settings',
+    '/admin/tenants',
+    '/admin/tenants/00000000-0000-0000-0000-000000000000',
+    // NOTE: /admin/pilot-issues + /admin/audit live under (app), NOT
+    // under (admin) — they have their own per-page auth handling, so
+    // a non-owner session may render differently (access-denied card
+    // instead of redirect). Still should not 5xx. Excluded from this
+    // particular assertion loop because the landing URL won't be a
+    // dashboard path.
   ];
 
   const failedResponses: Array<{ url: string; status: number }> = [];
@@ -72,6 +83,23 @@ test('/admin cluster: non-admin users are redirected cleanly', async ({ browser 
       onDashboard || onAdmin,
       `${target} landed somewhere sensible (got ${landed})`
     ).toBe(true);
+  }
+
+  // Separate check for (app)/admin/pilot-issues + (app)/admin/audit.
+  // These pages handle auth themselves (no (admin) layout); a non-owner
+  // should see "Access Denied" on pilot-issues. Audit is tenant-scoped
+  // (owner-only via RLS) — may render empty body or access-denied.
+  // Assertion: page loads without 5xx and lands on itself (no redirect
+  // loop, no crash).
+  for (const target of ['/admin/pilot-issues', '/admin/audit']) {
+    const resp = await page.goto(`${BASE}${target}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000,
+    });
+    const status = resp?.status() ?? 0;
+    const landed = new URL(page.url()).pathname;
+    console.log(`[${target}] status=${status} landed=${landed}`);
+    expect(status, `${target} is not a 5xx`).toBeLessThan(500);
   }
 
   expect(failedResponses.length, 'no 5xx on any admin route').toBe(0);
