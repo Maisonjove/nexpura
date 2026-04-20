@@ -42,6 +42,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // PREVIEW-ONLY cacheComponents flip (branch: cc-preview-flip-inventory).
+  // Goal is to let Vercel's build surface the fresh blocker list after
+  // all the route-by-route migration work. DO NOT MERGE this toggle to
+  // main until the blocker inventory is walked to zero.
+  cacheComponents: true,
   experimental: {
     clientTraceMetadata: ["baggage", "sentry-trace"],
     // NOTE: Next 16 replaced `experimental.ppr` with a different caching
