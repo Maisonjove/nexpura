@@ -10,6 +10,14 @@ export const metadata = {
   description: "Create repairs, bespoke jobs, and stock item sales",
 };
 
+// Auth-protected: requireAuth() reads cookies which forces dynamic
+// rendering anyway. This explicit export prevents Next's static-prerender
+// attempt (which would throw "Not authenticated" at build time now that
+// the layout's async auth guard is wrapped in Suspense rather than being
+// the layout's own top-level await).
+// TODO(cacheComponents-flag): DELETE when the flag is flipped.
+export const dynamic = "force-dynamic";
+
 async function getPageData() {
   const auth = await requireAuth();
   const { tenantId, taxRate, taxName, taxInclusive, currency } = auth;
