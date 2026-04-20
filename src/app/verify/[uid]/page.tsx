@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Image from "next/image";
 
@@ -75,7 +76,15 @@ const EVENT_COLOURS: Record<string, string> = {
   updated: "bg-gray-100 text-gray-500",
 };
 
-export default async function VerifyPage({
+export default function VerifyPageWrapper(props: { params: Promise<{ uid: string }> }) {
+  return (
+    <Suspense fallback={null}>
+      <VerifyPage {...props} />
+    </Suspense>
+  );
+}
+
+async function VerifyPage({
   params,
 }: {
   params: Promise<{ uid: string }>;
