@@ -7,6 +7,7 @@ import { PWAProvider } from "@/components/PWAProvider";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { LiveRegionProvider } from "@/components/LiveRegion";
 import { PrehydrationPrefetch } from "@/components/PrehydrationPrefetch";
+import { HotRouteBootstrap } from "@/components/HotRouteBootstrap";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -125,6 +126,15 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans antialiased">
         <LiveRegionProvider>
           <PWAProvider>
+            {/*
+              Tiny client island mounted BEFORE {children}. See the file
+              header in src/components/HotRouteBootstrap.tsx for the
+              rationale. This is intentionally sibling-ahead-of-children
+              so its useEffect fires during the root-layout render cycle
+              rather than waiting on the heavy (app)-layout subtree
+              commit path the legacy RoutePrefetcher is gated behind.
+            */}
+            <HotRouteBootstrap />
             {children}
             <OfflineIndicator />
           </PWAProvider>

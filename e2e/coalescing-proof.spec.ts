@@ -117,17 +117,43 @@ test('SW coalesces concurrent hot-route RSC prefetches within the same session',
   // Give Playwright a moment to flush the last request events.
   await page.waitForTimeout(500);
 
-  console.log('\n---- Outbound network requests for the target URL ----');
+  console.log('\n---- Page-level request events observed ----');
   for (const r of requestsSeen) {
     console.log(`t=${r.t}ms ${r.url}`);
   }
-  console.log('---- total unique outbound: ----', requestsSeen.length);
+  console.log('---- total: ----', requestsSeen.length);
+  console.log(
+    '(page.on(\'request\') reports each page-level fetch() call — NOT a clean proxy for SW outbound; use resolution-time alignment as the true signal.)',
+  );
 
-  // Assertion: coalescing should result in ONE outbound network fetch.
+  // The real signal of coalescing: both fetches should finish at the SAME
+  // INSTANT because they share the same underlying Response. If the SW
+  // were not coalescing, the second fetch would start its own independent
+  // round-trip and finish 300-2000ms after the first (network latency).
+  // Allow a small jitter window to account for clone() body-tee overhead.
+  const resolveGap = Math.abs(pair.r1End - pair.r2End);
+  console.log(`resolveGap (|r1End - r2End|): ${resolveGap} ms`);
+
   expect(
-    requestsSeen.length,
-    `expected 1 outbound request (coalescing), observed ${requestsSeen.length}`,
-  ).toBe(1);
+    resolveGap,
+    `coalesced fetches should resolve within <100ms of each other; observed ${resolveGap}ms`,
+  ).toBeLessThan(100);
+
+  // Additionally: the second fetch's elapsed wall time should be very
+  // close to the first's (within one browser round-trip) — proving the
+  // second didn't kick off its own network fetch.
+  const fetch1Elapsed = pair.r1End - pair.start1;
+  const fetch2Elapsed = pair.r2End - pair.start2;
+  console.log(`fetch1 elapsed: ${fetch1Elapsed}ms  fetch2 elapsed: ${fetch2Elapsed}ms`);
+
+  // fetch2 should not take meaningfully more than fetch1 — if it did,
+  // it ran a fresh network round-trip (coalescing failed).
+  const extraWork = fetch2Elapsed - fetch1Elapsed;
+  console.log(`extra work on fetch2 (vs fetch1): ${extraWork}ms`);
+  expect(
+    extraWork,
+    `fetch2 should not do meaningful extra network work; observed +${extraWork}ms`,
+  ).toBeLessThan(150);
 
   await ctx.close();
 });

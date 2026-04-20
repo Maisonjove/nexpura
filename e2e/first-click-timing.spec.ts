@@ -26,6 +26,8 @@ type Sample = {
   firstContentful: number | null;
   nxWarmupFired: number | null;
   nxWarmupFiredCount: number | null;
+  nxBootstrapMount: number | null;
+  nxBootstrapFire: number | null;
   nxRPMount: number | null;
   nxRPFireHot: number | null;
   click: { target: string; href: string; ms: number } | null;
@@ -145,6 +147,8 @@ test('first-click race timeline + click latency', async ({ browser }) => {
                 ?.replace('nx_warmup_fired_', ''),
             )
           : null,
+      nxBootstrapMount: pre.marks['nx_bootstrap_mount'] ?? null,
+      nxBootstrapFire: pre.marks['nx_bootstrap_fire'] ?? null,
       nxRPMount: pre.marks['nx_routeprefetcher_mount'] ?? null,
       nxRPFireHot: pre.marks['nx_routeprefetcher_fire_hot'] ?? null,
       click: { target: click.target, href: href ?? '?', ms: clickMs },
@@ -157,16 +161,17 @@ test('first-click race timeline + click latency', async ({ browser }) => {
   console.log(JSON.stringify({ label: LABEL, base: BASE, samples }, null, 2));
   console.log('=====================================\n');
 
-  console.log('route        FP    FCP   warmup@  warmupN  RPmount@  RPfire@   clickMs  href');
+  console.log('route        FP    FCP   wu@   bootMnt@ bootFire@ RPmount@ RPfire@  clickMs  href');
   for (const s of samples) {
     const line =
       s.route.padEnd(12) +
       String(s.firstPaint ?? '-').padStart(5) + ' ' +
       String(s.firstContentful ?? '-').padStart(5) + ' ' +
-      String(s.nxWarmupFired ?? '-').padStart(8) + ' ' +
-      String(s.nxWarmupFiredCount ?? '-').padStart(8) + ' ' +
-      String(s.nxRPMount ?? '-').padStart(9) + ' ' +
-      String(s.nxRPFireHot ?? '-').padStart(8) + ' ' +
+      String(s.nxWarmupFired ?? '-').padStart(5) + ' ' +
+      String(s.nxBootstrapMount ?? '-').padStart(8) + ' ' +
+      String(s.nxBootstrapFire ?? '-').padStart(9) + ' ' +
+      String(s.nxRPMount ?? '-').padStart(8) + ' ' +
+      String(s.nxRPFireHot ?? '-').padStart(7) + ' ' +
       String(s.click?.ms ?? '-').padStart(8) + ' ' +
       (s.click?.href ?? '-');
     console.log(line);
