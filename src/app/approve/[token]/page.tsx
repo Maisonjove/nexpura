@@ -3,6 +3,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import ApprovalClient from "./ApprovalClient";
 
+export const metadata = {
+  title: "Bespoke Approval — Nexpura",
+  description: "Review and approve your bespoke jewellery design.",
+  robots: { index: false, follow: false },
+};
+
 /**
  * /approve/[token] — CC-ready bespoke-job approval page.
  *

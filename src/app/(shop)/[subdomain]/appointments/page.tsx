@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -99,6 +100,9 @@ interface WebsiteConfig {
 }
 
 async function loadPublishedConfig(subdomain: string): Promise<WebsiteConfig | null> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`website-config:${subdomain}`);
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("website_config")

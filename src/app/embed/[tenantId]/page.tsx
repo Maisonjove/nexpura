@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -184,6 +185,9 @@ async function loadCatalogueData(
   tenantId: string,
   category: string | undefined
 ): Promise<{ config: EmbedConfig; items: EmbedItem[] | null } | null> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`embed-catalogue:${tenantId}`);
   const supabase = createAdminClient();
 
   const { data: config } = await supabase

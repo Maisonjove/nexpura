@@ -2,6 +2,11 @@ import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Image from "next/image";
 
+export const metadata = {
+  title: "Jewellery Passport — Nexpura",
+  description: "Verify the authenticity and provenance of your jewellery piece.",
+  robots: { index: false, follow: false },
+};
 
 interface Passport {
   id: string;

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -122,16 +123,9 @@ async function resolveTenantId(): Promise<string | null> {
 // the file header for the exact two lines to add when the flag flips.
 // ─────────────────────────────────────────────────────────────────────────
 async function loadTagTemplatesByTenant(tenantId: string) {
-  // ADD these three lines at the top of this function body:
-  //
-  //   'use cache';
-  //   cacheLife('minutes');
-  //   cacheTag(`tag-templates:${tenantId}`);
-  //
-  // And import `cacheLife` + `cacheTag` from 'next/cache' at the top
-  // of this file. Mutating server actions in ./actions.ts already call
-  // revalidatePath('/settings/tags'), but per-tenant tag invalidation
-  // via cacheTag is tighter.
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`tag-templates:${tenantId}`);
   try {
     const admin = createAdminClient();
     const { data } = await admin
