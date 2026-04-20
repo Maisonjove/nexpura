@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -9,40 +10,74 @@ import AdminSidebar from "./AdminSidebar";
  *
  * ── cacheComponents migration notes ─────────────────────────────────────
  *
- * Same one-line `await connection()` template that worked on the API
- * routes (check-subdomain, health/concurrency, warm, integrations/connect).
+ * First pass (previous commit, the connection() one-liner) turned out to
+ * be INSUFFICIENT under a real global CC flip. The preview build
+ * (dpl_CM3qKXR12NSMZt5zLnvMJAaS7rrE @ d9a54af) failed on /admin/qa with:
  *
- * Blocker under global cacheComponents:
- *   Every /admin/* page inherits this layout's prerender behaviour.
- *   Without `connection()`, the prerender pipeline enters the layout
- *   body, bails on the `supabase.auth.getUser()` cookie read, and the
- *   following super_admins fetch continues in the background — classic
- *   HANGING_PROMISE_REJECTION, one entry per admin page (/admin/qa,
- *   /admin/qa/bugs, /admin/revenue, /admin/subscriptions, ...).
+ *   Route "/admin/qa": Uncached data was accessed outside of <Suspense>.
+ *   This delays the entire page from rendering.
+ *     at PWAProvider → LiveRegion → body → html
  *
- * Fix:
- *   `await connection()` as the very first statement. Under CC the
- *   layout never prerenders — it runs at request time, identically to
- *   today. Under the current pre-CC model it resolves immediately
- *   (no-op).
+ * The stack trace ending at PWAProvider/body/html (no page-specific
+ * frame) means the uncached access was at the LAYOUT level — specifically
+ * the async auth guard body here, even with connection() at the top.
+ * connection() defers the work to request time but CC still classifies
+ * the layout itself as "dynamic at the top" which blocks the shell
+ * extraction.
  *
- * Why here instead of Suspense-wrapping the body:
- *   The auth guard calls `redirect()`, which must run before any admin
- *   chrome renders — otherwise a non-admin briefly sees the sidebar
- *   shell. `connection()` preserves the current control flow exactly;
- *   Suspense-wrapping would stream the shell before the redirect check.
+ * Final fix: keep the outer shell (the flex container) synchronous so
+ * CC can prerender it as part of the static shell, and move the async
+ * auth guard + sidebar + main content into a Suspense-wrapped async
+ * child. Control flow is unchanged at request time: the auth guard
+ * still runs + redirects BEFORE any admin chrome streams to the
+ * client, because redirect() throws synchronously during the async
+ * body's render (Next handles NEXT_REDIRECT at the streaming layer).
+ *
+ * Under current pre-CC model:
+ *   - connection() still resolves immediately.
+ *   - Suspense boundary resolves immediately (body awaits chain fully
+ *     before the parent render commits), so there's no visible
+ *     fallback flash for authenticated admins.
+ *   - redirect() semantics for non-admin / unauth users are unchanged —
+ *     Next's streaming renderer holds the response until the first
+ *     content flush, and redirect() thrown during that window
+ *     converts to an HTTP redirect with no partial body sent.
+ *
+ * Under CC (flag flipped):
+ *   - The outer <div> shell prerenders.
+ *   - Request-time: auth guard runs in the Suspense boundary, either
+ *     redirects (same behaviour) or streams the admin content.
  */
 
-export default async function AdminLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // CC-migration marker: defer to request time. Prevents the prerender
-  // pipeline from entering the cookie-backed auth guard below.
+  return (
+    <div className="flex h-screen overflow-hidden bg-stone-50">
+      <Suspense fallback={<AdminLayoutFallback />}>
+        <AdminAuthenticatedShell>{children}</AdminAuthenticatedShell>
+      </Suspense>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Authenticated admin shell. All async work (cookies, super_admins check,
+// redirects) happens here inside the Suspense boundary.
+// ─────────────────────────────────────────────────────────────────────────
+async function AdminAuthenticatedShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  // Defer to request time. Prevents CC's prerender pipeline from entering
+  // the cookie-backed auth guard below. No-op under the current pre-CC
+  // model.
   await connection();
 
-  // Get the logged-in user via normal (anon) client
+  // Get the logged-in user via the request-scoped (anon) client.
   const supabase = await createClient();
   const {
     data: { user },
@@ -52,7 +87,7 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
-  // Check super_admins table via service role (bypasses RLS)
+  // Check super_admins table via service role (bypasses RLS).
   const adminClient = createAdminClient();
   const { data: superAdmin } = await adminClient
     .from("super_admins")
@@ -65,11 +100,29 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-stone-50">
+    <>
       <AdminSidebar userEmail={user.email ?? ""} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
-    </div>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Fallback while the auth guard resolves. Under current pre-CC behaviour
+// this is effectively invisible (Next buffers the response until the
+// first content flush, so authenticated admins never see it and unauth
+// users get the redirect headers directly). Under CC this paints
+// briefly during streaming then gets replaced with the real shell.
+// ─────────────────────────────────────────────────────────────────────────
+function AdminLayoutFallback() {
+  return (
+    <>
+      <div className="w-64 bg-white border-r border-stone-200 flex-shrink-0" />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <main className="flex-1 overflow-y-auto p-6" />
+      </div>
+    </>
   );
 }
