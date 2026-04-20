@@ -3,6 +3,8 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { DashboardClock } from "./DashboardClock";
+import { useLocation } from "@/contexts/LocationContext";
+import { MapPin, Layers } from "lucide-react";
 
 /**
  * Thin orchestrator for the dashboard shell.
@@ -170,6 +172,31 @@ const chevronRight = (
   </svg>
 );
 
+// Visible indicator of which location's data the dashboard is currently
+// scoped to. Reads the same LocationContext that DashboardWrapper uses
+// for its SWR key, so by construction the chip and the displayed numbers
+// reflect the same filter — no risk of "the chip says A but the cards
+// show All". Hidden when the tenant has at most one location.
+function DashboardLocationChip() {
+  const { currentLocation, hasMultipleLocations, isLoading } = useLocation();
+  if (isLoading || !hasMultipleLocations) return null;
+  return (
+    <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-100 text-[0.7rem] text-amber-800">
+      {currentLocation ? (
+        <>
+          <MapPin size={11} className="text-amber-700" />
+          <span>Showing data for <strong className="font-semibold">{currentLocation.name}</strong></span>
+        </>
+      ) : (
+        <>
+          <Layers size={11} className="text-amber-700" />
+          <span>Showing data for <strong className="font-semibold">all locations</strong></span>
+        </>
+      )}
+    </div>
+  );
+}
+
 function AttentionRow({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link
@@ -279,6 +306,7 @@ export default function DashboardClient({
             <p className="text-[0.8rem] text-stone-400 mt-1 leading-relaxed">
               Overview of sales, workshop activity, inventory, customers, and daily operations
             </p>
+            <DashboardLocationChip />
           </div>
           <DashboardClock />
         </div>

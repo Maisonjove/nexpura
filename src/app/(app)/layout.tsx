@@ -7,6 +7,7 @@ import { LazyOverlays } from "@/components/LazyOverlays";
 import { SessionExpiryModal } from "@/components/SessionExpiryModal";
 import { RoutePrefetcher } from "@/components/RoutePrefetcher";
 import { NativePrefetchHints } from "@/components/NativePrefetchHints";
+import { getSelectedLocationIdFromCookie } from "@/lib/locations";
 
 /**
  * Static, auth-agnostic app shell — enables Partial Prerendering.
@@ -48,13 +49,21 @@ import { NativePrefetchHints } from "@/components/NativePrefetchHints";
  *     skeleton is already visible.
  */
 
-export default function AppLayout({
+export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Read the cookie-set location selection so LocationProvider hydrates
+  // with the same value the server already sees in cookies(). Without this,
+  // the first hydrated render uses LocationProvider's null default,
+  // DashboardWrapper computes locationKey="all", and SWR overwrites the
+  // server-rendered location-scoped data with tenant-wide data before the
+  // localStorage-restore useEffect ever runs. The cookie read is cheap
+  // (microseconds) — small TTFB cost, large correctness win.
+  const initialCurrentLocationId = await getSelectedLocationIdFromCookie();
   return (
-    <LocationProvider>
+    <LocationProvider initialCurrentLocationId={initialCurrentLocationId}>
       <SkipToContent />
       <div className="min-h-screen bg-stone-50 font-sans">
         {/*

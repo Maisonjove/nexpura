@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { MapPin, ChevronDown, Check, Building2, Layers, Info } from "lucide-react";
+import { useState, useRef, useEffect, useTransition } from "react";
+import { MapPin, ChevronDown, Check, Building2, Layers, Info, Loader2 } from "lucide-react";
 import { useLocation } from "@/contexts/LocationContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { setSelectedLocation } from "@/app/(app)/location-actions";
 
 interface Props {
   showAllOption?: boolean;
@@ -25,7 +26,27 @@ export default function LocationPicker({ showAllOption = true, compact = false, 
   } = useLocation();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
+
+  // Apply a location selection authoritatively: optimistic client update for
+  // an instant UI response, then a server action to set the cookie + run
+  // revalidatePath so the server-rendered slices (dashboard stats, list
+  // pages) genuinely re-fetch with the new filter on the next render.
+  function applySelection(nextLocationId: string | null) {
+    if (nextLocationId === null) {
+      setViewMode("all");
+      setCurrentLocationId(null);
+    } else {
+      setViewMode("single");
+      setCurrentLocationId(nextLocationId);
+    }
+    setOpen(false);
+    startTransition(async () => {
+      await setSelectedLocation(nextLocationId);
+      router.refresh();
+    });
+  }
 
   // Close on click outside
   useEffect(() => {
@@ -68,7 +89,11 @@ export default function LocationPicker({ showAllOption = true, compact = false, 
             </span>
           </>
         )}
-        <ChevronDown size={14} className={`text-stone-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        {isPending ? (
+          <Loader2 size={14} className="text-stone-400 animate-spin" />
+        ) : (
+          <ChevronDown size={14} className={`text-stone-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        )}
       </button>
 
       {open && (
@@ -81,17 +106,7 @@ export default function LocationPicker({ showAllOption = true, compact = false, 
           {showAllOption && (
             <>
               <button
-                onClick={() => {
-                  setViewMode("all");
-                  setCurrentLocationId(null);
-                  setOpen(false);
-                  // Re-render server components so the dashboard / lists
-                  // re-fetch with the cleared location cookie. Without this
-                  // the picker visually changes but server-rendered data
-                  // (initial dashboard stats) keeps showing whatever was
-                  // selected before.
-                  router.refresh();
-                }}
+                onClick={() => applySelection(null)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-stone-50 transition-colors ${
                   isAllLocationsView ? "bg-amber-50" : ""
                 }`}
@@ -124,12 +139,7 @@ export default function LocationPicker({ showAllOption = true, compact = false, 
               return (
                 <button
                   key={location.id}
-                  onClick={() => {
-                    setViewMode("single");
-                    setCurrentLocationId(location.id);
-                    setOpen(false);
-                    router.refresh();
-                  }}
+                  onClick={() => applySelection(location.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-stone-50 transition-colors ${
                     isSelected ? "bg-amber-50" : ""
                   }`}

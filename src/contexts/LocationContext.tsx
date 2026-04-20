@@ -44,7 +44,12 @@ export function LocationProvider({
 }) {
   const [locations, setLocations] = useState<Location[]>(initialLocations);
   const [currentLocationId, setCurrentLocationIdState] = useState<string | null>(initialCurrentLocationId);
-  const [viewMode, setViewModeState] = useState<ViewMode>("all");
+  // Default viewMode to "single" whenever a specific location was passed in
+  // from the server (cookie-derived). Without this the very first hydrated
+  // render would compute viewMode="all" → getFilterLocationIds() returns
+  // null → the dashboard's SWR fetch immediately overwrites the
+  // server-rendered location-scoped data with tenant-wide data.
+  const [viewMode, setViewModeState] = useState<ViewMode>(initialCurrentLocationId ? "single" : "all");
   const [isLoading, setIsLoading] = useState(!initialLocations.length);
 
   const supabase = createClient();
@@ -148,17 +153,19 @@ export function LocationProvider({
     }
   }
 
-  // Get location IDs to use in queries
+  // Get location IDs to use in queries.
+  //
+  // Rule: a specific currentLocationId always wins. Only when no location
+  // is selected do we fall back to the user's allowedLocationIds (null =
+  // unrestricted, "All Locations" view). Previously this gated on viewMode
+  // first, which meant a single useEffect-tick window where currentLocationId
+  // was hydrated but viewMode was still its "all" default produced an
+  // unfiltered query — and on the dashboard, that one tick was enough for
+  // SWR to fetch tenant-wide data and overwrite the correct server render.
   function getFilterLocationIds(): string[] | null {
-    if (viewMode === "all") {
-      // Return all allowed locations (null means no filter)
-      return allowedLocationIds;
-    }
-    // Single location mode
     if (currentLocationId) {
       return [currentLocationId];
     }
-    // Fallback to all allowed
     return allowedLocationIds;
   }
 
