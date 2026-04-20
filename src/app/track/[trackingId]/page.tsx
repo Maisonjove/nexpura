@@ -7,7 +7,6 @@ import { getTrackingThread } from "@/lib/messaging";
 
 // Revalidate tracking data every 30 seconds
 // This means updates show within 30s but pages load instantly from cache
-export const revalidate = 30;
 
 interface PageProps {
   params: Promise<{ trackingId: string }>;

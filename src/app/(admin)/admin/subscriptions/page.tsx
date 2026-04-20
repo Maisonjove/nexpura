@@ -11,14 +11,11 @@ import logger from "@/lib/logger";
  * → pure loader. No cookies/headers; admin auth is the (admin) layout's
  * job.
  *
- * TODO(cacheComponents-flag): delete the `force-dynamic` export below
  * and add `'use cache' + cacheLife('minutes') + cacheTag('admin-subs')`
  * to `loadSubscriptionsData()`. Revalidate via `revalidateTag` on
  * Stripe webhook writes.
  */
 
-// TODO(cacheComponents-flag): DELETE when the flag is flipped.
-export const dynamic = "force-dynamic";
 
 function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();

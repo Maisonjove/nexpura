@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
-export const dynamic = "force-dynamic";
 
 // GET /api/qa - Fetch all QA data
 export async function GET(req: NextRequest) {

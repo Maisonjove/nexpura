@@ -11,7 +11,6 @@ import logger from "@/lib/logger";
  * pure loader. Admin auth is handled by the (admin) layout; this page
  * does no cookie/header access.
  *
- * TODO(cacheComponents-flag): When `cacheComponents: true` is enabled,
  * delete the `force-dynamic` + `revalidate` exports below and add
  *   'use cache';
  *   cacheLife('minutes');
@@ -20,9 +19,6 @@ import logger from "@/lib/logger";
  * `revalidateTag('qa-bugs')` when qa_test_results fail-state changes.
  */
 
-// TODO(cacheComponents-flag): DELETE these when the flag is flipped.
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export default function BugListPage() {
   return (

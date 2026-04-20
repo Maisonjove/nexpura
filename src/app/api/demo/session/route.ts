@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
-export const dynamic = "force-dynamic";
 
 /**
  * GET /api/demo/session

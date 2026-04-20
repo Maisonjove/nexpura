@@ -23,7 +23,6 @@ import TagTemplateManager from "./TagTemplateManager";
  *     to be marked `'use cache'` the moment cacheComponents is flipped
  *     globally — `tenantId` becomes part of the cache key automatically.
  *
- * TODO(cacheComponents-flag):
  *   When `cacheComponents: true` is set globally in next.config.ts:
  *
  *     1. Delete the `export const dynamic = "force-dynamic"` line below.
@@ -49,10 +48,8 @@ import TagTemplateManager from "./TagTemplateManager";
  * whole page blocking on the top-level await it used to do.
  */
 
-// TODO(cacheComponents-flag): DELETE this line when the flag is flipped
 // globally. Cache Components replaces `force-dynamic` with dynamic-by-
 // default, and the export is rejected at build time.
-export const dynamic = "force-dynamic";
 
 export default function StockTagsSettingsPage() {
   return (
@@ -125,7 +122,6 @@ async function resolveTenantId(): Promise<string | null> {
 // the file header for the exact two lines to add when the flag flips.
 // ─────────────────────────────────────────────────────────────────────────
 async function loadTagTemplatesByTenant(tenantId: string) {
-  // TODO(cacheComponents-flag): once cacheComponents is globally enabled,
   // ADD these three lines at the top of this function body:
   //
   //   'use cache';

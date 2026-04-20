@@ -21,7 +21,6 @@ import logger from "@/lib/logger";
  *     a platform-admin view), so a single cache entry covers all admin
  *     users. Falls back to mock data if tables don't exist (42P01).
  *
- * TODO(cacheComponents-flag):
  *   When `cacheComponents: true` is set globally:
  *     1. Delete `force-dynamic` + `revalidate = 0` exports below —
  *        rejected at build under CC.
@@ -34,9 +33,6 @@ import logger from "@/lib/logger";
  *        mutates qa_test_results / qa_categories / qa_checklist_items.
  */
 
-// TODO(cacheComponents-flag): DELETE these when the flag is flipped.
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 // Mock data for when database tables don't exist
 const mockCategories = [

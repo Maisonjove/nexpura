@@ -10,7 +10,6 @@ import logger from "@/lib/logger";
 // and hit "Not authenticated" inside the Suspense child. force-dynamic
 // tells Next.js: skip build-time prerender, render at request time,
 // keep the streaming Suspense shell.
-export const dynamic = "force-dynamic";
 
 // The page below is synchronous at the top level so the shell (Suspense
 // fallback) emits in the first streamed HTML chunk on hard-nav, before

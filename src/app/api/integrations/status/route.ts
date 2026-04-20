@@ -8,7 +8,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Cache for 30 seconds with stale-while-revalidate — integration status rarely changes
-export const revalidate = 30;
 import { getAuthContext, getAllIntegrations } from "@/lib/integrations";
 import { checkRateLimit } from "@/lib/rate-limit";
 

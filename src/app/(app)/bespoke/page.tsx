@@ -12,7 +12,6 @@ const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 // Dynamic rendering is explicit — see /repairs/page.tsx for the same
 // pattern and rationale.
-export const dynamic = "force-dynamic";
 
 export default function BespokePage({
   searchParams,

@@ -4,7 +4,6 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { checkRateLimit } from '@/lib/rate-limit';
 import logger from "@/lib/logger";
 
-export const runtime = 'nodejs';
 
 // Simple CSV parser (header + sample only)
 function parseCSVSample(text: string): { headers: string[]; rows: unknown[][]; rowCount: number } {

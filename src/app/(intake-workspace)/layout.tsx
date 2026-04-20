@@ -9,9 +9,8 @@ import { SkipToContent } from "@/components/SkipToContent";
 import { AUTH_HEADERS, getCachedUserProfile } from "@/lib/cached-auth";
 
 // Same revalidate as (app) — user/tenant data is cached via Redis.
-// TODO(cacheComponents-flag): DELETE when the flag is flipped (stripped
-// as part of the 105-export cleanup pass).
-export const revalidate = 60;
+// (The `export const revalidate = 60` has been stripped on this preview
+// branch as part of the 105-export CC cleanup; on main it still ships.)
 
 /**
  * Focused-workspace layout for /intake. Same CC-compliance shape as the

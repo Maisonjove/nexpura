@@ -12,14 +12,11 @@ import TenantActions from "./TenantActions";
  * promise and then calls the pure `loadTenantDetail(id)` loader. The static
  * "Back to Tenants" link is lifted to the shell so it can prerender.
  *
- * TODO(cacheComponents-flag): delete the `force-dynamic` export below and
  * add `'use cache' + cacheLife('minutes') + cacheTag('admin-tenant:' + id)`
  * to `loadTenantDetail`. Invalidate via `revalidateTag` whenever tenant /
  * subscription / staff data mutates on the admin side.
  */
 
-// TODO(cacheComponents-flag): DELETE when the flag is flipped.
-export const dynamic = "force-dynamic";
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return "—";

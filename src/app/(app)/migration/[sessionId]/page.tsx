@@ -12,14 +12,10 @@ import { getAuthOrReviewContext } from "@/lib/auth/review";
  * dynamic at request time. No visual skeleton because the user never sees
  * any rendered content — redirect() fires before any HTML flushes.
  *
- * TODO(cacheComponents-flag): when the flag is flipped, delete the
- * `force-dynamic` export below. No cacheable data here — the session-status
+ * TODO(cacheComponents-flag): no cacheable data here — the session-status
  * read and the subsequent redirect depend on request-time auth. Leave the
- * async logic as-is.
+ * async logic as-is when the flag flips.
  */
-
-// TODO(cacheComponents-flag): DELETE when the flag is flipped.
-export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ sessionId: string }>;

@@ -11,15 +11,12 @@ import logger from "@/lib/logger";
  * promise (filters) then calls a pure loader. The `searchParams` awaiting
  * is a request-scoped op under CC, so it correctly lives inside the body.
  *
- * TODO(cacheComponents-flag): delete the `force-dynamic` export below.
  * `loadTenantsData()` takes the full raw query as a param — with
  * cacheComponents on, it's still dynamic-by-default per-query. If we
  * later want to pre-cache the filterless view, split the base query
  * from the client-side filter.
  */
 
-// TODO(cacheComponents-flag): DELETE when the flag is flipped.
-export const dynamic = "force-dynamic";
 
 interface SearchParams {
   q?: string;

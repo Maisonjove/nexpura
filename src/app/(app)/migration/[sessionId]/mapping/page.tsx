@@ -5,7 +5,6 @@ import { ArrowLeft } from 'lucide-react';
 import { MigrationStepper } from '../../_components/MigrationStepper';
 import { MappingTableWrapper } from './MappingTableWrapper';
 
-export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ sessionId: string }>;

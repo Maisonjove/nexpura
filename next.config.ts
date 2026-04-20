@@ -42,6 +42,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // cacheComponents enabled globally. Preview branch proved 360/360 pages
+  // generate cleanly with this flag and the segment-config exports stripped.
+  cacheComponents: true,
   experimental: {
     clientTraceMetadata: ["baggage", "sentry-trace"],
     // NOTE: Next 16 replaced `experimental.ppr` with a different caching
