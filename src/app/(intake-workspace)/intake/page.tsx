@@ -98,7 +98,15 @@ function LoadingSkeleton() {
   );
 }
 
-export default async function IntakePage() {
+export default function IntakePageWrapper() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <IntakePage />
+    </Suspense>
+  );
+}
+
+async function IntakePage() {
   const data = await getPageData();
 
   return (

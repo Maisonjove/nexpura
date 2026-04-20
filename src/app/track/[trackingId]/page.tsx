@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
@@ -189,7 +190,15 @@ const getOrderByTrackingId = unstable_cache(
   { revalidate: 30, tags: ["tracking"] }
 );
 
-export default async function TrackingPage({ params }: PageProps) {
+export default function TrackingPageWrapper(props: PageProps) {
+  return (
+    <Suspense fallback={null}>
+      <TrackingPage {...props} />
+    </Suspense>
+  );
+}
+
+async function TrackingPage({ params }: PageProps) {
   const { trackingId } = await params;
   const order = await getOrderByTrackingId(trackingId);
 
