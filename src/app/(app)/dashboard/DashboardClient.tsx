@@ -188,6 +188,7 @@ function AttentionRow({ href, children }: { href: string; children: React.ReactN
 
 export default function DashboardClient({
   basePath = "",
+  tenantName,
   activeRepairsCount,
   activeJobsCount,
   overdueInvoiceCount,
@@ -273,7 +274,7 @@ export default function DashboardClient({
         <div className="flex items-start justify-between">
           <div>
             <h1 className="font-serif text-[1.625rem] font-normal tracking-[-0.015em] text-stone-900 leading-tight">
-              Nexpura Admin
+              {tenantName?.trim() || "Dashboard"}
             </h1>
             <p className="text-[0.8rem] text-stone-400 mt-1 leading-relaxed">
               Overview of sales, workshop activity, inventory, customers, and daily operations

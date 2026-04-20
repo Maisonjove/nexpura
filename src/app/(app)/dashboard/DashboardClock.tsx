@@ -24,17 +24,18 @@ export function DashboardClock() {
   }, []);
 
   if (!now) {
-    // Reserve the same DOM shape as the populated state so there is no
-    // layout shift when the client hydrates. Placeholder text is picked
-    // to roughly match the widest realistic value so the alignment of
-    // the sibling header column doesn't jump.
+    // Reserve layout space via non-breaking-space characters sized to the
+    // widest realistic value, but don't render any nonsense text (was
+    // "Monday 00 January 00:00 AM" previously — CSS-invisible but still
+    // present in the DOM, which surfaced in text scrapers, screen-reader
+    // buffers on some UAs, and copy-paste of the dashboard header).
     return (
       <div className="text-right flex-shrink-0 pl-4" aria-hidden>
         <p className="text-[0.8125rem] font-medium text-stone-700 tabular-nums invisible">
-          Monday 00 January
+          {"\u00A0".repeat(17)}
         </p>
         <p className="text-[0.8125rem] text-stone-400 tabular-nums mt-0.5 invisible">
-          00:00 AM
+          {"\u00A0".repeat(8)}
         </p>
       </div>
     );

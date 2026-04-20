@@ -173,6 +173,7 @@ export default async function RepairDetailPage({
         due_date: repair.due_date ?? null,
         invoice_id: repair.invoice_id ?? null,
         tracking_id: repair.tracking_id ?? null,
+        created_at: (repair.created_at as string | null) ?? undefined,
       }}
       customer={customer}
       invoice={invoiceData}
