@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,7 +10,15 @@ interface Props {
   searchParams: Promise<{ item?: string }>;
 }
 
-export default async function EnquiryPage({ params, searchParams }: Props) {
+export default function EnquiryPageWrapper(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <EnquiryPage {...props} />
+    </Suspense>
+  );
+}
+
+async function EnquiryPage({ params, searchParams }: Props) {
   const { subdomain } = await params;
   const { item } = await searchParams;
   const supabase = createAdminClient();

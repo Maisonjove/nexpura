@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -7,6 +8,14 @@ import type { Metadata } from "next";
 interface Props {
   params: Promise<{ subdomain: string }>;
   searchParams: Promise<{ preview?: string }>;
+}
+
+export default function ShopHomePageWrapper(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <ShopHomePage {...props} />
+    </Suspense>
+  );
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ShopHomePage({ params, searchParams }: Props) {
+async function ShopHomePage({ params, searchParams }: Props) {
   const { subdomain } = await params;
   const { preview } = await searchParams;
   const supabase = createAdminClient();

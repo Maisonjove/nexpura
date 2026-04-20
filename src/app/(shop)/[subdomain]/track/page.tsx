@@ -1,9 +1,18 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Metadata } from "next";
 import TrackRepairClient from "./TrackRepairClient";
 
 interface Props {
   params: Promise<{ subdomain: string }>;
+}
+
+export default function TrackRepairPageWrapper(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <TrackRepairPage {...props} />
+    </Suspense>
+  );
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -18,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: `Track Your Repair — ${name}` };
 }
 
-export default async function TrackRepairPage({ params }: Props) {
+async function TrackRepairPage({ params }: Props) {
   const { subdomain } = await params;
   const admin = createAdminClient();
 

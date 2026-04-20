@@ -1,45 +1,40 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Repair Enquiry Received" };
 
-export default async function RepairConfirmationPage({
-  params,
-  searchParams,
-}: {
+interface Props {
   params: Promise<{ subdomain: string }>;
   searchParams: Promise<{ ref?: string; name?: string; item?: string }>;
+}
+
+export default function RepairConfirmationPage({ params, searchParams }: Props) {
+  return (
+    <Suspense fallback={null}>
+      <RepairConfirmationBody paramsPromise={params} searchParamsPromise={searchParams} />
+    </Suspense>
+  );
+}
+
+async function RepairConfirmationBody({
+  paramsPromise,
+  searchParamsPromise,
+}: {
+  paramsPromise: Promise<{ subdomain: string }>;
+  searchParamsPromise: Promise<{ ref?: string; name?: string; item?: string }>;
 }) {
-  const { subdomain } = await params;
-  const sp = await searchParams;
+  const { subdomain } = await paramsPromise;
+  const sp = await searchParamsPromise;
   const name = sp.name ?? "";
   const ref = sp.ref ?? "";
   const item = sp.item ?? "";
 
-  // Fetch store contact details for branding
-  const admin = createAdminClient();
-  const { data: config } = await admin
-    .from("website_config")
-    .select("business_name, tenant_id")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
-  let storePhone: string | null = null;
-  let storeEmail: string | null = null;
-  if (config?.tenant_id) {
-    const { data: tenant } = await admin
-      .from("tenants")
-      .select("phone, email")
-      .eq("id", config.tenant_id)
-      .maybeSingle();
-    storePhone = tenant?.phone ?? null;
-    storeEmail = tenant?.email ?? null;
-  }
-  const storeName = (config?.business_name as string | null) || null;
+  const { storePhone, storeEmail, storeName } = await loadStoreContact(subdomain);
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center space-y-6">
-        {/* Icon */}
         <div className="w-16 h-16 bg-amber-700/10 rounded-full flex items-center justify-center mx-auto">
           <svg className="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -101,4 +96,30 @@ export default async function RepairConfirmationPage({
       </div>
     </div>
   );
+}
+
+async function loadStoreContact(subdomain: string): Promise<{
+  storePhone: string | null;
+  storeEmail: string | null;
+  storeName: string | null;
+}> {
+  const admin = createAdminClient();
+  const { data: config } = await admin
+    .from("website_config")
+    .select("business_name, tenant_id")
+    .eq("subdomain", subdomain)
+    .maybeSingle();
+  if (!config?.tenant_id) {
+    return { storePhone: null, storeEmail: null, storeName: null };
+  }
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("phone, email")
+    .eq("id", config.tenant_id)
+    .maybeSingle();
+  return {
+    storePhone: (tenant?.phone as string | null) ?? null,
+    storeEmail: (tenant?.email as string | null) ?? null,
+    storeName: (config.business_name as string | null) ?? null,
+  };
 }

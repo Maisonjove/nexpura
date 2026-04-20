@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -6,6 +7,14 @@ import { CheckCircle2, Clock, AlertCircle, Phone, Mail, MapPin, Wrench, Camera }
 
 interface Props {
   params: Promise<{ subdomain: string; repairId: string }>;
+}
+
+export default function RepairTrackingPageWrapper({ params }: Props) {
+  return (
+    <Suspense fallback={null}>
+      <RepairTrackingPage params={params} />
+    </Suspense>
+  );
 }
 
 const STAGE_ORDER = [
@@ -109,7 +118,7 @@ function StageTimeline({ stage }: { stage: string }) {
   );
 }
 
-export default async function RepairTrackingPage({ params }: Props) {
+async function RepairTrackingPage({ params }: Props) {
   const { subdomain, repairId } = await params;
   const admin = createAdminClient();
 
