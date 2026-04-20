@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { checkDatabaseHealth } from "@/lib/high-scale";
 
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
 
 /**
  * Health check endpoint for load balancers and monitoring.

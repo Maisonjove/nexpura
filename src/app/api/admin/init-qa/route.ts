@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
+export const dynamic = "force-dynamic";
 
 // POST /api/admin/init-qa - Initialize QA tables and seed data
 // SECURITY: This is a super admin only endpoint

@@ -9,6 +9,7 @@ import Header from "@/components/Header";
  * 
  * To enable review mode in development, set ENABLE_REVIEW_MODE=true in env.
  */
+export const dynamic = "force-dynamic";
 
 const DEMO_USER = {
   id: "demo",

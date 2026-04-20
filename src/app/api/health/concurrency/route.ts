@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkIdempotencyHealth } from "@/lib/idempotency";
 
+export const runtime = 'edge';
 
 export async function GET() {
   // Minimal health check - do not expose implementation details

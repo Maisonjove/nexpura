@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Nexpura",

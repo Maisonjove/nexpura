@@ -16,6 +16,7 @@ import {
 } from '@/lib/migration/engine';
 import logger from "@/lib/logger";
 
+export const runtime = 'nodejs';
 
 type EntityType = 'customers' | 'inventory' | 'repairs' | 'bespoke' | 'invoices' | 'payments' | 'unknown';
 

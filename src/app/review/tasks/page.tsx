@@ -3,6 +3,9 @@ import Link from "next/link";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 const PRIORITY_LABEL: Record<string, string> = {
   high: "High",

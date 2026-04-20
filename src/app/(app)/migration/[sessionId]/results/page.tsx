@@ -5,6 +5,7 @@ import { CheckCircle, AlertCircle, XCircle, ArrowRight, Download, Users, Package
 import { MigrationStepper } from '../../_components/MigrationStepper';
 import { GoLiveChecklist } from '../../_components/GoLiveChecklist';
 
+export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ sessionId: string }>;

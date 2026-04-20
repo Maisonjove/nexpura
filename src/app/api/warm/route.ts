@@ -31,6 +31,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * - Uses the Node runtime explicitly so the warm target matches the
  *   runtime that /dashboard, /customers, /repairs etc. run on.
  */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const runtimeStart = Date.now();

@@ -4,6 +4,7 @@ import Link from "next/link";
 import TenantActions from "./TenantActions";
 
 // Force dynamic rendering - don't pre-render at build time
+export const dynamic = "force-dynamic";
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return "—";

@@ -5,6 +5,9 @@ import AdminTenantsClient from "./AdminTenantsClient";
 import logger from "@/lib/logger";
 
 // Force dynamic rendering - don't pre-render at build time
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 const PLAN_PRICES: Record<string, number> = {
   boutique: 89,

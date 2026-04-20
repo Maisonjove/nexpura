@@ -8,6 +8,7 @@ import { SkipToContent } from "@/components/SkipToContent";
 import { AUTH_HEADERS, getCachedUserProfile } from "@/lib/cached-auth";
 
 // Same revalidate as (app) — user/tenant data is cached via Redis.
+export const revalidate = 60;
 
 /**
  * Focused-workspace layout for /intake.

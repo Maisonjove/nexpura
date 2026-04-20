@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, CheckCircle, Clock, XCircle } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   draft: { label: 'Draft', color: 'bg-stone-100 text-stone-600', icon: <Clock className="w-3 h-3" /> },

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
 import CampaignDetailClient from "./CampaignDetailClient";
 
+export const dynamic = "force-dynamic";
 
 export default async function CampaignDetailPage({
   params,

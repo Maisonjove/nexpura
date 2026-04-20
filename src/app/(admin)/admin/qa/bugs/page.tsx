@@ -2,6 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import BugListClient from "./BugListClient";
 import logger from "@/lib/logger";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function BugListPage() {
   let bugs: any[] = [];

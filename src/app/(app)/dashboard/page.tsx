@@ -4,13 +4,18 @@ import { getDashboardCriticalData, getDashboardStats } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
 import logger from "@/lib/logger";
 
-// Cache Components handles the static-shell / dynamic-body split
-// automatically. The synchronous top-level below is prerendered at
-// build time and served from Vercel Edge; the Suspense-wrapped async
-// child (DashboardStatsStream) remains request-time dynamic and
-// streams in from the Lambda. No `force-dynamic` export is needed —
-// that would suppress the shell extraction. See next.config.ts
-// `cacheComponents: true`.
+// Dynamic rendering is explicit here. Removing the top-level await on
+// getDashboardCriticalData (which reads cookies via requireAuth) means
+// Next.js would otherwise attempt to prerender this page at build time
+// and hit "Not authenticated" inside the Suspense child. force-dynamic
+// tells Next.js: skip build-time prerender, render at request time,
+// keep the streaming Suspense shell.
+export const dynamic = "force-dynamic";
+
+// The page below is synchronous at the top level so the shell (Suspense
+// fallback) emits in the first streamed HTML chunk on hard-nav, before
+// the dynamic body (auth + critical data + stats) resolves. Shaped for
+// future migration to Next 16's cacheComponents / unstable_instant model.
 
 export default function DashboardPage() {
   return (

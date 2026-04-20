@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+export const dynamic = "force-dynamic";
 
 // POST /api/qa/reset - Reset all or category test results
 export async function POST(request: NextRequest) {
