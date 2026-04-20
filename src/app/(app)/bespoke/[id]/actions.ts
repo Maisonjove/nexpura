@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
+import { generateDraftInvoiceNumber } from "@/lib/invoices/draft-number";
 import logger from "@/lib/logger";
 
 async function getAuthContext() {
@@ -47,7 +48,7 @@ export async function addBespokeLineItem(
   if (!invoiceId) {
     const { data: inv, error: invErr } = await admin.from("invoices").insert({
       tenant_id: tenantId,
-      invoice_number: `DRAFT-${Date.now()}`,
+      invoice_number: generateDraftInvoiceNumber(),
       customer_id: jobRow?.customer_id ?? null,
       reference_type: "bespoke",
       reference_id: jobId,
@@ -184,7 +185,7 @@ export async function generateBespokeInvoice(
 
   const { data: inv, error } = await admin.from("invoices").insert({
     tenant_id: tenantId,
-    invoice_number: `DRAFT-${Date.now()}`,
+    invoice_number: generateDraftInvoiceNumber(),
     customer_id: job.customer_id,
     reference_type: "bespoke",
     reference_id: jobId,

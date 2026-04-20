@@ -176,9 +176,13 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Static header — renders on SSR so the page never looks blank */}
+        <div>
+          <h1 className="font-semibold text-2xl text-stone-900">Settings</h1>
+          <p className="text-stone-500 mt-1 text-sm">Manage your business profile and preferences</p>
+        </div>
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-stone-200 rounded w-48" />
           <div className="h-12 bg-stone-200 rounded" />
           <div className="h-64 bg-stone-200 rounded" />
         </div>
@@ -190,7 +194,7 @@ export default function SettingsPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Settings</h1>
+        <h1 className="font-semibold text-2xl text-stone-900">Settings</h1>
         <p className="text-stone-500 mt-1 text-sm">Manage your business profile and preferences</p>
       </div>
 

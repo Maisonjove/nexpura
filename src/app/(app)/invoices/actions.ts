@@ -418,9 +418,31 @@ export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: s
   try {
     const { supabase, tenantId } = await getAuthContext();
 
+  // If this draft was created via a repair/bespoke auto-invoice flow it has a
+  // placeholder `DRAFT-XXXXXXXX` number. Upgrade to the canonical INV-####
+  // sequence at send-time via the same RPC the /invoices flow uses, so every
+  // sent invoice has the proper sequential number and the customer never sees
+  // a "DRAFT-..." identifier on their received invoice.
+  const { data: current } = await supabase
+    .from("invoices")
+    .select("invoice_number")
+    .eq("id", invoiceId)
+    .eq("tenant_id", tenantId)
+    .eq("status", "draft")
+    .single();
+
+  if (!current) throw new Error("Draft invoice not found");
+
+  const updatePayload: { status: "unpaid"; invoice_number?: string } = { status: "unpaid" };
+  if (current.invoice_number?.startsWith("DRAFT-")) {
+    const { data: nextNum, error: numErr } = await supabase.rpc("next_invoice_number", { p_tenant_id: tenantId });
+    if (numErr) throw new Error(`Failed to generate invoice number: ${numErr.message}`);
+    updatePayload.invoice_number = nextNum as string;
+  }
+
   const { error } = await supabase
     .from("invoices")
-    .update({ status: "unpaid" })
+    .update(updatePayload)
     .eq("id", invoiceId)
     .eq("tenant_id", tenantId)
     .eq("status", "draft");

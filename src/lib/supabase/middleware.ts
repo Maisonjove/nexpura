@@ -115,6 +115,13 @@ const TENANT_APP_ROUTES = new Set([
   "actions",
 ]);
 
+// Tenant-prefixed routes that ALSO have a matching (shop)/[subdomain]/<route>
+// public page. For these, an unauth visitor on /{slug}/<route> must be allowed
+// through so Next.js serves the public shop version instead of being redirected
+// to /login. An authed jeweller on the same URL still gets the admin rewrite
+// to the flat /<route> (app) route, preserving bookmarkable tenant URLs.
+const PUBLIC_SHOP_TENANT_ROUTES = new Set(["repairs"]);
+
 function parseTenantSlugPath(
   pathname: string
 ): { slug: string; route: string } | null {
@@ -282,6 +289,15 @@ async function _updateSessionInner(request: NextRequest) {
   const tenantParsed = parseTenantSlugPath(pathname);
   if (tenantParsed !== null) {
     if (!user) {
+      // Routes with a public (shop)/[subdomain]/<route> page must not redirect
+      // unauth visitors to /login — they're intended to render the jeweller's
+      // public shop. Currently only /repairs needs this bridge (catalogue,
+      // enquiry, appointments, track are already absent from TENANT_APP_ROUTES
+      // so they pass through naturally). Pass through without rewriting so
+      // Next.js matches the (shop) group for this URL.
+      if (PUBLIC_SHOP_TENANT_ROUTES.has(tenantParsed.route.slice(1))) {
+        return supabaseResponse;
+      }
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       return redirectWithCookies(loginUrl, supabaseResponse);
