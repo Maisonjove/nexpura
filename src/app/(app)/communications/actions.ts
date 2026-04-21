@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resend } from "@/lib/email/resend";
+import { escapeHtml } from "@/lib/sanitize";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -40,6 +42,27 @@ export async function getCommunications() {
   return { data, error: error?.message ?? null };
 }
 
+/**
+ * Verify that a customer_email truly belongs to the caller's tenant before
+ * emailing it. Otherwise a staff user could send a message to any email
+ * that exists on another tenant's customer record by passing the address
+ * directly in the form. W5-CRIT-005 audit finding.
+ */
+async function customerEmailBelongsToTenant(
+  tenantId: string,
+  email: string,
+): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("customers")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("email", email)
+    .limit(1)
+    .maybeSingle();
+  return !!data;
+}
+
 export async function sendCommunication(
   formData: FormData
 ): Promise<{ id?: string; error?: string }> {
@@ -64,20 +87,34 @@ export async function sendCommunication(
   if (type === "email") {
     const customerEmail = str("customer_email");
     if (customerEmail) {
+      // W5-CRIT-005: verify the provided email actually belongs to a
+      // customer in the caller's tenant. Otherwise staff could email
+      // arbitrary addresses (including other tenants' customers) via
+      // the direct form submit.
+      const belongs = await customerEmailBelongsToTenant(tenantId, customerEmail);
+      if (!belongs) {
+        return { error: "Customer email not found for this tenant" };
+      }
+
       try {
         const admin = createAdminClient();
         const { data: tenant } = await admin.from("tenants").select("name, business_name").eq("id", tenantId).single();
         const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
         const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
-        
-        const { resend } = await import("@/lib/email/resend");
+
         const subject = str("subject") || "Message from your jeweller";
         const customerName = str("customer_name") || "Valued Customer";
+        // W5-CRIT-005: escape user-supplied fields before interpolating into HTML.
+        // Previously `${customerName}` / `${body}` were raw, allowing a staff
+        // user to inject arbitrary HTML (including tracking pixels or
+        // phishing links in the rendered email).
+        const safeCustomerName = escapeHtml(customerName);
+        const safeBody = escapeHtml(body).replace(/\n/g, "<br/>");
         const { error: sendError } = await resend.emails.send({
           from: `${businessName} <${fromEmail}>`,
           to: [customerEmail],
           subject,
-          html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto"><p>Hi ${customerName},</p><div style="white-space:pre-wrap">${body.replace(/\n/g, "<br/>")}</div></div>`,
+          html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto"><p>Hi ${safeCustomerName},</p><div style="white-space:pre-wrap">${safeBody}</div></div>`,
         });
         if (sendError) status = "failed";
       } catch {
@@ -131,19 +168,19 @@ export async function resendEmailLog(logId: string) {
     const { data: tenant } = await admin.from("tenants").select("name, business_name").eq("id", tenantId).single();
     const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
     const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
-    
-    const { resend } = await import("@/lib/email/resend");
+
+    const safeSubject = log.subject ? escapeHtml(log.subject) : "";
     const { error: sendError } = await resend.emails.send({
       from: `${businessName} <${fromEmail}>`,
       to: [log.recipient_email],
       subject: log.subject || "Re-sent message",
-      html: `<div><p>Re-sending previous message:</p><hr/><p>${log.subject}</p></div>`,
+      html: `<div><p>Re-sending previous message:</p><hr/><p>${safeSubject}</p></div>`,
     });
     if (sendError) return { error: sendError.message };
-    
+
     // Log re-send
     await supabase.from("email_logs").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", logId);
-    
+
     return { success: true };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
