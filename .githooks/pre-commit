@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Pre-commit: block commits that introduce secret-shaped strings.
+# Activated by: scripts/install-git-hooks.sh (sets core.hooksPath=.githooks)
+# See SECURITY.md for details, allowlist marker, and rotation procedure.
+
+set -e
+exec bash "$(git rev-parse --show-toplevel)/scripts/check-secrets.sh" --staged

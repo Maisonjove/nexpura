@@ -16,7 +16,10 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "check:secrets": "bash scripts/check-secrets.sh --all",
+    "install:hooks": "bash scripts/install-git-hooks.sh",
+    "prepare": "bash scripts/install-git-hooks.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",
