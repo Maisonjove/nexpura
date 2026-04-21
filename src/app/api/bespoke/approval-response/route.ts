@@ -70,8 +70,11 @@ export async function POST(req: NextRequest) {
 
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 
-    // Log the event (non-critical, don't await)
-    admin.from("job_events").insert({
+    // Log the event. Previously fire-and-forget — but on Vercel Lambda the
+    // function returns before the insert promise resolves and the log row
+    // gets dropped, leaving the audit trail silent for every customer
+    // approval. Await so the row actually lands.
+    await admin.from("job_events").insert({
       tenant_id: job.tenant_id,
       job_type: "bespoke",
       job_id: job.id,
