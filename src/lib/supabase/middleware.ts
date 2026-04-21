@@ -51,6 +51,13 @@ function isPublicPath(pathname: string): boolean {
     pathname.startsWith("/signup") ||
     pathname.startsWith("/verify") ||
     pathname.startsWith("/track") ||
+    // Customer-facing approval flow (bespoke). /approve/[token] is the
+    // canonical path; /bespoke/approve/[token] is the compatibility alias
+    // for old bookmarks / hand-typed URLs. Both are per-token public pages
+    // — auth middleware must not redirect them to /login or the customer
+    // gets dumped on the staff login form.
+    pathname.startsWith("/approve") ||
+    pathname.startsWith("/bespoke/approve") ||
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/reset-password") ||
     pathname.startsWith("/support-access") ||
