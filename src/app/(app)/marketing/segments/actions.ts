@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { updateSegmentCount } from "@/lib/marketing/segments";
 import { logger } from "@/lib/logger";
+import { requireAuth } from "@/lib/auth-context";
 
 interface SegmentData {
   name: string;
@@ -107,6 +108,12 @@ export async function updateSegment(id: string, data: Partial<SegmentData>) {
 
 export async function deleteSegment(id: string) {
   try {
+    // RBAC: segments scope marketing sends; destructive removal is
+    // owner/manager only to prevent accidental/unauthorized send-list wipes.
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete customer segments." };
+    }
     const supabase = await createClient();
     const {
       data: { user },

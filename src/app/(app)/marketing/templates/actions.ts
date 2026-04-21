@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
+import { requireAuth } from "@/lib/auth-context";
 
 interface TemplateData {
   name: string;
@@ -99,6 +100,11 @@ export async function updateTemplate(id: string, data: Partial<TemplateData>) {
 
 export async function deleteTemplate(id: string) {
   try {
+    // RBAC: templates drive customer-facing emails. Owner/manager only.
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete email templates." };
+    }
     const supabase = await createClient();
     const {
       data: { user },

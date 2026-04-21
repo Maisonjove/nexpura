@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { requireAuth } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -222,6 +223,12 @@ export async function deleteSitePage(pageId: string): Promise<{ error?: string; 
       return { error: "Invalid page ID" };
     }
 
+    // RBAC: destructive on customer-facing site content. Owner/manager only.
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete site pages." };
+    }
+
     const { tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
@@ -339,6 +346,13 @@ export async function saveSections(pageId: string, sections: Omit<SiteSection, "
 
 export async function deleteSection(sectionId: string): Promise<{ error?: string }> {
   try {
+    // RBAC: removing a section from a published/draft page mutates
+    // public-facing content. Owner/manager only.
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete site sections." };
+    }
+
     const { tenantId } = await getAuthContext();
     const admin = createAdminClient();
     const { error } = await admin

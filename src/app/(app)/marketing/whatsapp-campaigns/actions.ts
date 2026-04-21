@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 import logger from "@/lib/logger";
+import { requireAuth } from "@/lib/auth-context";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-02-25.clover",
@@ -198,6 +199,15 @@ export async function retryCampaignPayment(campaignId: string): Promise<{
 }
 
 export async function deleteCampaign(campaignId: string): Promise<{ error?: string }> {
+  // RBAC: destructive on customer-facing marketing artifact. Owner/manager only.
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete campaigns." };
+    }
+  } catch {
+    return { error: "Not authenticated" };
+  }
   const supabase = await createClient();
   const {
     data: { user },
