@@ -5,6 +5,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { executeWithSafety, TransactionStep } from "@/lib/transaction-safety";
 import logger from "@/lib/logger";
 import { revalidateTag } from "next/cache";
+import { getSelectedLocationIdFromCookie, hasLocationAccess } from "@/lib/locations";
+
+// POSWrapper already gates the UI on a specific location being chosen (see
+// the "Select a Location" guard), so every POS sale has the picker cookie
+// set. Stamp the resolved id onto both the sale and its auto-generated
+// invoice so the dashboard's per-location numbers stay consistent with
+// what was actually sold where.
+async function resolvePOSLocationId(tenantId: string, userId: string): Promise<string | null> {
+  const cookieLoc = await getSelectedLocationIdFromCookie();
+  if (!cookieLoc) return null;
+  const allowed = await hasLocationAccess(userId, tenantId, cookieLoc);
+  return allowed ? cookieLoc : null;
+}
 
 interface CartItem {
   inventoryId: string;
@@ -196,10 +209,12 @@ export async function createPOSSale(
     {
       name: "create_sale",
       execute: async () => {
+        const posLocationId = await resolvePOSLocationId(params.tenantId, params.userId);
         const { data: sale, error } = await admin
           .from("sales")
           .insert({
             tenant_id: params.tenantId,
+            location_id: posLocationId,
             sale_number: saleNumber,
             customer_id: params.customerId,
             customer_name: params.customerName,
@@ -359,10 +374,12 @@ export async function createPOSSale(
             p_tenant_id: params.tenantId,
           });
           
+          const posLocationIdInv = await resolvePOSLocationId(params.tenantId, params.userId);
           const { data: newInvoice } = await admin
             .from("invoices")
             .insert({
               tenant_id: params.tenantId,
+              location_id: posLocationIdInv,
               invoice_number: invoiceNumberData ?? `INV-${Date.now()}`,
               customer_id: params.customerId,
               customer_name: params.customerName,
@@ -515,10 +532,12 @@ export async function createLaybySale(
   const saleNumber = `S-${String((count ?? 0) + 1).padStart(4, "0")}`;
 
   // Create layby sale record (status='layby', inventory NOT yet deducted)
+  const laybyLocationId = await resolvePOSLocationId(params.tenantId, params.userId);
   const { data: sale, error: saleErr } = await admin
     .from("sales")
     .insert({
       tenant_id: params.tenantId,
+      location_id: laybyLocationId,
       sale_number: saleNumber,
       customer_id: params.customerId,
       customer_name: params.customerName,
