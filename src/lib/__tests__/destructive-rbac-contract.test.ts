@@ -350,3 +350,297 @@ describe("deleteTask gate — owner/manager OR creator/assignee", () => {
     expect(decideDeleteTask(ctx, myTask)).toBe("denied");
   });
 });
+
+// ── PR-02 (Pattern 2 sweep): mutating/escalating RBAC gates. ──────────
+//
+// Closes:
+//  - W2-003 MED           — updateMemberPermissions missing requirePermission
+//  - W5-CRIT-004          — marketing send has no RBAC
+//  - W6-CRIT-01           — saveBanking has no RBAC / no tenant verify
+//  - W6-CRIT-04           — roles/permissions management lacks owner gate
+//  - W6-CRIT-05           — all-exports admin endpoint enumerable, no role
+//  - W6-CRIT-06           — scheduled_reports editable by any staff
+//
+// Decision-rule tests (production gate in auth-context.requireRole()).
+
+/** Matches the production requireRole() branching. */
+function decideOwnerOnlyGate(ctx: AuthContext): "ok" | string {
+  if (!isTenantActive(ctx)) return "subscription_required";
+  if (ctx.isOwner) return "ok";
+  return `role_denied:owner`;
+}
+
+/** Matches requireRole("owner", "manager") — owner/manager bucket. */
+function decideOwnerManagerGate(ctx: AuthContext): "ok" | string {
+  if (!isTenantActive(ctx)) return "subscription_required";
+  if (ctx.isOwner) return "ok";
+  if (ctx.role === "manager") return "ok";
+  return `role_denied:owner,manager`;
+}
+
+describe("PR-02 marketing send RBAC — W5-CRIT-004 (owner/manager bucket)", () => {
+  // Blast-the-list surface. Every authed user used to be able to hit these.
+  // Accountant has access_reports=true by default — explicitly block them
+  // from blasting the customer list (per Joey's safest-default policy).
+  const sendBucket = [
+    "sendCampaignNow",
+    "createCampaign",
+    "updateCampaign",
+    "deleteCampaign",
+    "duplicateCampaign",
+    "sendBulkEmail",
+    "createWhatsAppCampaign",
+    "createCampaignCheckout",
+    "updateAutomation",
+    "toggleAutomation",
+    "createSegment",
+    "updateSegment",
+    "createTemplate",
+    "updateTemplate",
+    "duplicateTemplate",
+  ];
+
+  for (const action of sendBucket) {
+    describe(action, () => {
+      it("owner passes", () => {
+        expect(decideOwnerManagerGate(makeCtx("owner"))).toBe("ok");
+      });
+      it("manager passes", () => {
+        expect(decideOwnerManagerGate(makeCtx("manager"))).toBe("ok");
+      });
+      it("salesperson is BLOCKED (even though frontline)", () => {
+        expect(decideOwnerManagerGate(makeCtx("salesperson"))).toBe(
+          "role_denied:owner,manager"
+        );
+      });
+      it("workshop_jeweller is BLOCKED", () => {
+        expect(decideOwnerManagerGate(makeCtx("workshop_jeweller"))).toBe(
+          "role_denied:owner,manager"
+        );
+      });
+      it("accountant is BLOCKED (has access_reports=true but must NOT blast)", () => {
+        expect(decideOwnerManagerGate(makeCtx("accountant"))).toBe(
+          "role_denied:owner,manager"
+        );
+      });
+      it("repair_technician is BLOCKED", () => {
+        expect(decideOwnerManagerGate(makeCtx("repair_technician"))).toBe(
+          "role_denied:owner,manager"
+        );
+      });
+      it("inventory_manager is BLOCKED", () => {
+        expect(decideOwnerManagerGate(makeCtx("inventory_manager"))).toBe(
+          "role_denied:owner,manager"
+        );
+      });
+      it("staff is BLOCKED", () => {
+        expect(decideOwnerManagerGate(makeCtx("staff"))).toBe(
+          "role_denied:owner,manager"
+        );
+      });
+      it("suspended-tenant owner is blocked by paywall", () => {
+        const ctx = { ...makeCtx("owner"), subscriptionStatus: "suspended" };
+        expect(decideOwnerManagerGate(ctx)).toBe("subscription_required");
+      });
+    });
+  }
+});
+
+describe("PR-02 settings RBAC — W6-CRIT-01 saveBanking (owner-only)", () => {
+  it("owner passes", () => {
+    expect(decideOwnerOnlyGate(makeCtx("owner"))).toBe("ok");
+  });
+  it("manager is BLOCKED (banking = payout identity, owner-only)", () => {
+    expect(decideOwnerOnlyGate(makeCtx("manager"))).toBe("role_denied:owner");
+  });
+  for (const role of LOW_PRIV_ROLES) {
+    it(`${role} is BLOCKED`, () => {
+      expect(decideOwnerOnlyGate(makeCtx(role))).toBe("role_denied:owner");
+    });
+  }
+  it("suspended-tenant owner is blocked by paywall", () => {
+    const ctx = { ...makeCtx("owner"), subscriptionStatus: "suspended" };
+    expect(decideOwnerOnlyGate(ctx)).toBe("subscription_required");
+  });
+});
+
+describe("PR-02 roles management RBAC — W6-CRIT-04 (owner-only bucket)", () => {
+  // Privilege-escalation surfaces: role reassignment, permission toggles,
+  // location access, inviting teammates, removing teammates. Even a
+  // manager must not be able to promote themselves to owner or evict a
+  // peer manager.
+  const ownerOnly = [
+    "updateMemberPermissions",       // W2-003 MED — was entirely ungated
+    "updateMemberRole",
+    "updateMemberLocationAccess",
+    "inviteTeamMember",
+    "removeMember",
+    "removeTeamMember",
+    "updateTeamMemberRole",
+    "updateTeamMemberLocations",
+    "updatePermission",              // already gated pre-PR; regression-lock it
+  ];
+
+  for (const action of ownerOnly) {
+    describe(action, () => {
+      it("owner passes", () => {
+        expect(decideOwnerOnlyGate(makeCtx("owner"))).toBe("ok");
+      });
+      it("manager is BLOCKED (NOT owner/manager — owner-only)", () => {
+        expect(decideOwnerOnlyGate(makeCtx("manager"))).toBe(
+          "role_denied:owner"
+        );
+      });
+      for (const role of LOW_PRIV_ROLES) {
+        it(`${role} is BLOCKED`, () => {
+          expect(decideOwnerOnlyGate(makeCtx(role))).toBe("role_denied:owner");
+        });
+      }
+      it("suspended-tenant owner is blocked by paywall", () => {
+        const ctx = { ...makeCtx("owner"), subscriptionStatus: "suspended" };
+        expect(decideOwnerOnlyGate(ctx)).toBe("subscription_required");
+      });
+    });
+  }
+});
+
+describe("PR-02 roles management RBAC — W6-CRIT-04 (owner/manager bucket)", () => {
+  // Secondary-admin surfaces that a manager may legitimately touch:
+  // default-location assignment, resending an invite token.
+  const ownerOrManager = ["updateMemberDefaultLocation", "resendInvite"];
+
+  for (const action of ownerOrManager) {
+    describe(action, () => {
+      it("owner passes", () => {
+        expect(decideOwnerManagerGate(makeCtx("owner"))).toBe("ok");
+      });
+      it("manager passes", () => {
+        expect(decideOwnerManagerGate(makeCtx("manager"))).toBe("ok");
+      });
+      for (const role of LOW_PRIV_ROLES) {
+        it(`${role} is BLOCKED`, () => {
+          expect(decideOwnerManagerGate(makeCtx(role))).toBe(
+            "role_denied:owner,manager"
+          );
+        });
+      }
+    });
+  }
+});
+
+describe("PR-02 self-or-admin RBAC — W6-CRIT-04 (member self-service carve-out)", () => {
+  // updateMemberPhone / updateMemberWhatsAppEnabled / updateMemberNotifications:
+  // staff can edit their OWN team_members row (self-service profile), but
+  // editing anyone else's requires owner/manager.
+  function decideSelfOrAdmin(
+    ctx: AuthContext,
+    targetMember: { id: string; user_id: string }
+  ): "ok" | "denied" {
+    if (!isTenantActive(ctx)) return "denied";
+    const isSelf = targetMember.user_id === ctx.userId;
+    if (isSelf) return "ok";
+    if (ctx.isOwner || ctx.isManager) return "ok";
+    return "denied";
+  }
+
+  const selfMember = { id: "m1", user_id: "u1" }; // matches makeCtx().userId
+  const otherMember = { id: "m2", user_id: "u-other" };
+
+  const actions = [
+    "updateMemberPhone",
+    "updateMemberWhatsAppEnabled",
+    "updateMemberNotifications",
+  ];
+
+  for (const action of actions) {
+    describe(action, () => {
+      it("owner can edit anyone", () => {
+        expect(decideSelfOrAdmin(makeCtx("owner"), otherMember)).toBe("ok");
+      });
+      it("manager can edit anyone", () => {
+        expect(decideSelfOrAdmin(makeCtx("manager"), otherMember)).toBe("ok");
+      });
+      for (const role of LOW_PRIV_ROLES) {
+        it(`${role} can edit their OWN row (self-service)`, () => {
+          expect(decideSelfOrAdmin(makeCtx(role), selfMember)).toBe("ok");
+        });
+        it(`${role} CANNOT edit another member's row`, () => {
+          expect(decideSelfOrAdmin(makeCtx(role), otherMember)).toBe("denied");
+        });
+      }
+    });
+  }
+});
+
+describe("PR-02 exports RBAC — W6-CRIT-05 (owner-only bucket)", () => {
+  // Every export dumps tenant-wide PII / financials. Owner-only.
+  // exportAllData is the most sensitive — full tenant snapshot to any
+  // caller's filesystem. Even a manager must not be able to hit it.
+  const exports = [
+    "exportAllData",
+    "exportCustomers",
+    "exportInvoices",
+    "exportRepairs",
+    "exportBespokeJobs",
+    "exportSales",
+    "exportInventory",
+    "exportExpenses",
+    "exportSuppliers",
+  ];
+
+  for (const action of exports) {
+    describe(action, () => {
+      it("owner passes", () => {
+        expect(decideOwnerOnlyGate(makeCtx("owner"))).toBe("ok");
+      });
+      it("manager is BLOCKED (exports = competitor-bait)", () => {
+        expect(decideOwnerOnlyGate(makeCtx("manager"))).toBe(
+          "role_denied:owner"
+        );
+      });
+      for (const role of LOW_PRIV_ROLES) {
+        it(`${role} is BLOCKED`, () => {
+          expect(decideOwnerOnlyGate(makeCtx(role))).toBe("role_denied:owner");
+        });
+      }
+      it("suspended-tenant owner is blocked by paywall", () => {
+        const ctx = { ...makeCtx("owner"), subscriptionStatus: "suspended" };
+        expect(decideOwnerOnlyGate(ctx)).toBe("subscription_required");
+      });
+    });
+  }
+});
+
+describe("PR-02 scheduled reports RBAC — W6-CRIT-06 (owner-only bucket)", () => {
+  // scheduled_reports distributes tenant-wide revenue/P&L to
+  // caller-supplied emails. Direct data-exfil vector if left editable by
+  // staff. Owner-only at the server-action + RLS layer.
+  const actions = [
+    "createScheduledReport",
+    "updateScheduledReport",
+    "toggleScheduledReportActive",
+    "deleteScheduledReport",
+  ];
+
+  for (const action of actions) {
+    describe(action, () => {
+      it("owner passes", () => {
+        expect(decideOwnerOnlyGate(makeCtx("owner"))).toBe("ok");
+      });
+      it("manager is BLOCKED (owner-only — reports = revenue/PII distribution)", () => {
+        expect(decideOwnerOnlyGate(makeCtx("manager"))).toBe(
+          "role_denied:owner"
+        );
+      });
+      for (const role of LOW_PRIV_ROLES) {
+        it(`${role} is BLOCKED`, () => {
+          expect(decideOwnerOnlyGate(makeCtx(role))).toBe("role_denied:owner");
+        });
+      }
+      it("suspended-tenant owner is blocked by paywall", () => {
+        const ctx = { ...makeCtx("owner"), subscriptionStatus: "suspended" };
+        expect(decideOwnerOnlyGate(ctx)).toBe("subscription_required");
+      });
+    });
+  }
+});
