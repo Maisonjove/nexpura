@@ -1,23 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyResendSvixSignature } from "@/lib/webhook-security";
 import logger from "@/lib/logger";
-import crypto from "crypto";
 
 /**
  * Resend Webhook Handler
- * 
+ *
  * Handles email delivery events from Resend:
- * - email.delivered — email successfully delivered
- * - email.bounced — email bounced (invalid address)
- * - email.complained — recipient marked as spam
- * 
- * Setup: Configure webhook in Resend dashboard with signing secret
+ *  - email.delivered — successfully delivered
+ *  - email.bounced   — invalid address
+ *  - email.complained — recipient marked as spam
+ *
+ * W7-CRIT-01 fix: the previous handler fell back to `return no-secret => valid`
+ * when `RESEND_WEBHOOK_SECRET` was unset, which meant prod traffic was never
+ * authenticated. Runtime QA proved a forged body returned 200 `{received:true}`.
+ *
+ * New contract:
+ *  - In production the secret MUST be set; missing secret => 503.
+ *  - Missing / invalid signature => 401. Never 200.
+ *  - Replayed event ids => idempotent 200 with `{duplicate:true}`.
  */
 
-const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET;
+const IS_PROD = process.env.NODE_ENV === "production";
+// In prod/staging we require the signing secret. Dev/test keeps a clear log.
+function getResendSecret(): string | null {
+  return process.env.RESEND_WEBHOOK_SECRET || null;
+}
 
 interface ResendWebhookEvent {
-  type: "email.sent" | "email.delivered" | "email.bounced" | "email.complained" | "email.opened" | "email.clicked";
+  type:
+    | "email.sent"
+    | "email.delivered"
+    | "email.bounced"
+    | "email.complained"
+    | "email.opened"
+    | "email.clicked";
   created_at: string;
   data: {
     email_id: string;
@@ -30,41 +47,32 @@ interface ResendWebhookEvent {
   };
 }
 
-// Verify webhook signature from Resend
-function verifySignature(payload: string, signature: string | null): boolean {
-  if (!RESEND_WEBHOOK_SECRET || !signature) {
-    // If no secret configured, skip verification (dev mode)
-    return !RESEND_WEBHOOK_SECRET;
-  }
-  
-  try {
-    const [timestamp, signatureHash] = signature.split(",").map(part => {
-      const [, value] = part.split("=");
-      return value;
-    });
-    
-    const signedPayload = `${timestamp}.${payload}`;
-    const expectedSignature = crypto
-      .createHmac("sha256", RESEND_WEBHOOK_SECRET)
-      .update(signedPayload)
-      .digest("hex");
-    
-    return crypto.timingSafeEqual(
-      Buffer.from(signatureHash),
-      Buffer.from(expectedSignature)
-    );
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(request: NextRequest) {
   const body = await request.text();
-  const signature = request.headers.get("svix-signature");
-  
-  // Verify signature in production
-  if (RESEND_WEBHOOK_SECRET && !verifySignature(body, signature)) {
-    logger.warn("[resend-webhook] Invalid signature");
+
+  const secret = getResendSecret();
+  if (!secret) {
+    if (IS_PROD) {
+      logger.error("[resend-webhook] RESEND_WEBHOOK_SECRET missing in production — refusing request");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    }
+    // Non-prod fallback: loud log, still reject so tests can't pass accidentally.
+    logger.warn("[resend-webhook] RESEND_WEBHOOK_SECRET unset — rejecting (dev)");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+  }
+
+  const svixId = request.headers.get("svix-id");
+  const svixTimestamp = request.headers.get("svix-timestamp");
+  const svixSignature = request.headers.get("svix-signature");
+
+  const signatureOk = verifyResendSvixSignature(
+    body,
+    { id: svixId, timestamp: svixTimestamp, signature: svixSignature },
+    secret,
+  );
+
+  if (!signatureOk) {
+    logger.warn("[resend-webhook] Invalid or missing signature");
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -77,36 +85,52 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // Atomic idempotency on Svix message-id. Two simultaneous retries of the
+  // same event can only enter the mutation block once.
+  if (svixId) {
+    const { error: lockError } = await supabase
+      .from("idempotency_locks")
+      .insert({
+        key: `resend_event:${svixId}`,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString(),
+      });
+    if (lockError?.code === "23505") {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    if (lockError) {
+      // Don't drop the event on lock failure — but log loudly.
+      logger.warn("[resend-webhook] idempotency lock unavailable, proceeding", { error: lockError });
+    }
+  }
+
   try {
     switch (event.type) {
       case "email.bounced": {
         const emails = event.data.to;
         logger.info(`[resend-webhook] Email bounced for: ${emails.join(", ")}`);
-        
-        // Mark customers with this email as having bounced
+
         for (const email of emails) {
-          // Update customer record
           const { data: customers } = await supabase
             .from("customers")
             .select("id, email_status")
             .ilike("email", email);
-          
+
           if (customers && customers.length > 0) {
             await supabase
               .from("customers")
-              .update({ 
+              .update({
                 email_status: "bounced",
                 email_bounced_at: new Date().toISOString(),
               })
               .in("id", customers.map(c => c.id));
-            
+
             logger.info(`[resend-webhook] Marked ${customers.length} customer(s) as bounced: ${email}`);
           }
-          
-          // Also update email_logs if we track resend_id
+
           await supabase
             .from("email_logs")
-            .update({ 
+            .update({
               status: "bounced",
               bounce_reason: event.data.bounce?.message || "Email bounced",
             })
@@ -114,43 +138,41 @@ export async function POST(request: NextRequest) {
         }
         break;
       }
-      
+
       case "email.complained": {
         const emails = event.data.to;
         logger.info(`[resend-webhook] Spam complaint from: ${emails.join(", ")}`);
-        
-        // Mark customers as having complained — stop sending them emails
+
         for (const email of emails) {
           const { data: customers } = await supabase
             .from("customers")
             .select("id")
             .ilike("email", email);
-          
+
           if (customers && customers.length > 0) {
             await supabase
               .from("customers")
-              .update({ 
+              .update({
                 email_status: "complained",
                 email_opted_out: true,
                 email_opted_out_at: new Date().toISOString(),
               })
               .in("id", customers.map(c => c.id));
-            
+
             logger.warn(`[resend-webhook] Marked ${customers.length} customer(s) as opted-out due to spam complaint: ${email}`);
           }
         }
         break;
       }
-      
+
       case "email.delivered": {
-        // Update email_logs status to delivered
         await supabase
           .from("email_logs")
           .update({ status: "delivered" })
           .eq("resend_id", event.data.email_id);
         break;
       }
-      
+
       default:
         // Ignore other events (sent, opened, clicked)
         break;
