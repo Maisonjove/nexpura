@@ -7,7 +7,7 @@ import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import { generateDraftInvoiceNumber } from "@/lib/invoices/draft-number";
 import logger from "@/lib/logger";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
-import { requirePermission } from "@/lib/auth-context";
+import { requireAuth, requirePermission } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -111,6 +111,16 @@ export async function removeBespokeLineItem(
   jobId: string,
   tenantId: string
 ): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: line-item removal on a shared bespoke job mutates a customer
+  // invoice. Owner/manager only — matches removeRepairLineItem.
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can remove bespoke line items." };
+    }
+  } catch {
+    return { error: "Not authenticated" };
+  }
   let ctx;
   try { ctx = await requireBespokeEditContext(); } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -430,6 +440,16 @@ export async function deleteJobAttachment(
   jobType: "repair" | "bespoke",
   jobId: string
 ): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: attachments can contain signed forms, customer IDs, and
+  // evidence. Deletion on shared job entities is owner/manager only.
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete job attachments." };
+    }
+  } catch {
+    return { error: "Not authenticated" };
+  }
   let ctx;
   try { ctx = await requireBespokeEditContext(); } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

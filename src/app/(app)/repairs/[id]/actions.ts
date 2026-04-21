@@ -8,6 +8,7 @@ import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import { isAustralianNumber, normalizePhoneNumber } from "@/lib/twilio-sms";
 import { generateDraftInvoiceNumber } from "@/lib/invoices/draft-number";
 import logger from "@/lib/logger";
+import { requireAuth } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -99,6 +100,16 @@ export async function removeRepairLineItem(
   repairId: string,
   tenantId: string
 ): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: removing a line item from a shared invoice directly alters a
+  // customer's bill — destructive on shared-entity data. Owner/manager only.
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can remove repair line items." };
+    }
+  } catch {
+    return { error: "Not authenticated" };
+  }
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin } = ctx;
