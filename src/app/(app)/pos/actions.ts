@@ -373,34 +373,42 @@ export async function createPOSSale(
           const { data: invoiceNumberData } = await admin.rpc("next_invoice_number", {
             p_tenant_id: params.tenantId,
           });
-          
+
           const posLocationIdInv = await resolvePOSLocationId(params.tenantId, params.userId);
-          const { data: newInvoice } = await admin
-            .from("invoices")
-            .insert({
-              tenant_id: params.tenantId,
-              location_id: posLocationIdInv,
-              invoice_number: invoiceNumberData ?? `INV-${Date.now()}`,
-              customer_id: params.customerId,
-              customer_name: params.customerName,
-              customer_email: params.customerEmail,
-              sale_id: saleId,
-              invoice_date: new Date().toISOString().split("T")[0],
-              subtotal: params.subtotal,
-              discount_amount: params.discountAmount,
-              tax_name: params.taxName || "GST",
-              tax_rate: params.taxRate ?? 0.1,
-              tax_inclusive: true,
-              tax_amount: params.taxAmount,
-              total: params.total,
-              amount_paid: params.total,
-              status: "paid",
-              paid_at: new Date().toISOString(),
-              created_by: params.userId,
-            })
-            .select("id")
-            .single();
-          
+          // Full payload — includes sale_id linkage. On schemas where the
+          // sale_id column hasn't been added yet (older tenants), PostgREST
+          // rejects with "column not found", so we retry without that one
+          // optional field. The sale still completes, the invoice still
+          // lands, and the link gets restored on the next visit once the
+          // accompanying migration lands.
+          const basePayload: Record<string, unknown> = {
+            tenant_id: params.tenantId,
+            location_id: posLocationIdInv,
+            invoice_number: invoiceNumberData ?? `INV-${Date.now()}`,
+            customer_id: params.customerId,
+            customer_name: params.customerName,
+            customer_email: params.customerEmail,
+            invoice_date: new Date().toISOString().split("T")[0],
+            subtotal: params.subtotal,
+            discount_amount: params.discountAmount,
+            tax_name: params.taxName || "GST",
+            tax_rate: params.taxRate ?? 0.1,
+            tax_inclusive: true,
+            tax_amount: params.taxAmount,
+            total: params.total,
+            amount_paid: params.total,
+            status: "paid",
+            paid_at: new Date().toISOString(),
+            created_by: params.userId,
+          };
+          let ins = await admin.from("invoices").insert({ ...basePayload, sale_id: saleId }).select("id").single();
+          if (ins.error && /sale_id|schema cache/i.test(ins.error.message)) {
+            // Retry without sale_id so POS invoice creation doesn't silently
+            // disappear on schemas missing the column.
+            ins = await admin.from("invoices").insert(basePayload).select("id").single();
+          }
+          const newInvoice = ins.data;
+
           if (newInvoice) {
             invoiceId = newInvoice.id;
             await admin.from("invoice_line_items").insert(
@@ -414,9 +422,11 @@ export async function createPOSSale(
                 sort_order: idx,
               }))
             );
+          } else if (ins.error) {
+            logger.warn("POS invoice insert failed", { err: ins.error.message });
           }
-        } catch {
-          // Invoice creation is non-critical — don't fail the sale
+        } catch (err) {
+          logger.warn("POS invoice creation threw", { err: (err as Error).message });
         }
         
         return { success: true, data: { invoiceId } };
