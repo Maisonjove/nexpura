@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { jobEventSchema } from "@/lib/schemas";
+import { reportServerError } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
     const { tenantId, jobType, jobId, eventType, description, actor } = parseResult.data;
     const admin = createAdminClient();
-    await admin.from("job_events").insert({
+    const { error: insertErr } = await admin.from("job_events").insert({
       tenant_id: tenantId,
       job_type: jobType,
       job_id: jobId,
@@ -34,9 +35,13 @@ export async function POST(req: NextRequest) {
       description,
       actor: actor ?? user.email ?? "system",
     });
+    if (insertErr) {
+      reportServerError("job-event:insert", insertErr, { tenantId, jobType, jobId, eventType });
+      return NextResponse.json({ error: "Event logging failed" }, { status: 500 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[job-event] Error:", error);
+    reportServerError("job-event:POST", error);
     return NextResponse.json({ error: "Event logging failed" }, { status: 500 });
   }
 }

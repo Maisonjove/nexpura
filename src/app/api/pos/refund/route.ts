@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { validateCSRFForRequest } from "@/lib/csrf";
 import { posRefundSchema } from "@/lib/schemas";
+import { reportServerError } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   // SECURITY: Require authentication
@@ -86,13 +87,18 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (refundErr) {
+    reportServerError("pos/refund:refunds.insert", refundErr, { saleId, tenantId });
     return NextResponse.json({ error: refundErr.message }, { status: 500 });
   }
 
-  // Create refund items and restore inventory
+  // Create refund items and restore inventory.
+  // Each mutation's error is now captured and reported — previously the
+  // awaited calls discarded their { error } return so a failed refund_items
+  // insert or inventory update still led to a "success" response.
   for (const item of items as Array<{ saleItemId: string; quantity: number; unitPrice: number }>) {
-    // Insert refund item
-    await admin.from("refund_items").insert({
+    // Insert refund item — this is load-bearing: without it the refund
+    // record has no line items and the audit/accounting trail is broken.
+    const { error: refundItemErr } = await admin.from("refund_items").insert({
       tenant_id: tenantId,
       refund_id: refund.id,
       sale_item_id: item.saleItemId,
@@ -100,6 +106,17 @@ export async function POST(req: NextRequest) {
       unit_price: item.unitPrice,
       total: item.quantity * item.unitPrice,
     });
+    if (refundItemErr) {
+      reportServerError("pos/refund:refund_items.insert", refundItemErr, {
+        refundId: refund.id,
+        saleItemId: item.saleItemId,
+        tenantId,
+      });
+      return NextResponse.json(
+        { error: "Failed to record refund item. Refund has been halted — please retry." },
+        { status: 500 },
+      );
+    }
 
     // Get the original sale item to find inventory_id
     const { data: saleItem } = await admin
@@ -117,13 +134,23 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (inv) {
-        await admin
+        const { error: invUpdateErr } = await admin
           .from("inventory")
           .update({ quantity: (inv.quantity || 0) + item.quantity })
           .eq("id", saleItem.inventory_id);
+        if (invUpdateErr) {
+          // Inventory miscount is recoverable (stock can be re-audited) so
+          // we don't hard-fail the whole refund, but page Sentry loudly —
+          // this quietly drifting is exactly how stock counts get broken.
+          reportServerError("pos/refund:inventory.update", invUpdateErr, {
+            inventoryId: saleItem.inventory_id,
+            tenantId,
+            refundId: refund.id,
+          });
+        }
 
         // Log stock movement
-        await admin.from("stock_movements").insert({
+        const { error: stockMoveErr } = await admin.from("stock_movements").insert({
           tenant_id: tenantId,
           inventory_id: saleItem.inventory_id,
           movement_type: "return",
@@ -131,6 +158,13 @@ export async function POST(req: NextRequest) {
           quantity_after: (inv.quantity || 0) + item.quantity,
           notes: `Refund ${refundNumber}`,
         });
+        if (stockMoveErr) {
+          reportServerError("pos/refund:stock_movements.insert", stockMoveErr, {
+            inventoryId: saleItem.inventory_id,
+            tenantId,
+            refundId: refund.id,
+          });
+        }
       }
     }
   }
@@ -142,12 +176,26 @@ export async function POST(req: NextRequest) {
       .select("store_credit")
       .eq("id", sale.customer_id)
       .single();
-    
+
     if (customer) {
-      await admin
+      // Critical: if this fails, customer is owed money with no balance
+      // to draw from — return 500 so the till can surface the error.
+      const { error: storeCreditErr } = await admin
         .from("customers")
         .update({ store_credit: (customer.store_credit || 0) + total })
         .eq("id", sale.customer_id);
+      if (storeCreditErr) {
+        reportServerError("pos/refund:customers.store_credit.update", storeCreditErr, {
+          customerId: sale.customer_id,
+          tenantId,
+          refundId: refund.id,
+          amount: total,
+        });
+        return NextResponse.json(
+          { error: "Failed to apply store credit. Refund record exists but credit was not added — please contact support." },
+          { status: 500 },
+        );
+      }
     }
   }
 

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { jobAttachmentSchema } from "@/lib/schemas";
+import { reportServerError } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ attachment: data });
   } catch (error) {
-    console.error("[job-attachment] Error:", error);
+    reportServerError("job-attachment:POST", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }

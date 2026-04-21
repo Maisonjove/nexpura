@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthContext } from "@/lib/auth-context";
+import { reportServerError } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({ milestones: data });
   } catch (error) {
-    console.error("[bespoke/milestones] GET Error:", error);
+    reportServerError("bespoke/milestones:GET", error);
     return NextResponse.json({ error: "Failed to fetch milestones" }, { status: 500 });
   }
 }
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ milestone: data });
   } catch (error) {
-    console.error("[bespoke/milestones] POST Error:", error);
+    reportServerError("bespoke/milestones:POST", error);
     return NextResponse.json({ error: "Failed to create milestone" }, { status: 500 });
   }
 }

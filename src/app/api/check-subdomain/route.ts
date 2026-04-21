@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkSubdomainQuerySchema } from "@/lib/schemas";
+import { reportServerError } from "@/lib/logger";
 
 /**
  * /api/check-subdomain — second route-by-route cacheComponents migration
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
       subdomain: normalized,
     });
   } catch (error) {
-    console.error("[check-subdomain] Error:", error);
+    reportServerError("check-subdomain:GET", error);
     return NextResponse.json({ available: false, error: "Check failed" }, { status: 500 });
   }
 }

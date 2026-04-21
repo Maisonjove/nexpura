@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSessions, revokeAllOtherSessions } from '@/lib/session-manager';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { reportServerError } from '@/lib/logger';
 
 export async function GET(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     
     return NextResponse.json({ sessions });
   } catch (error) {
-    console.error('[sessions] GET error:', error);
+    reportServerError('auth/sessions:GET', error);
     return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
   }
 }
@@ -57,7 +58,7 @@ export async function DELETE(req: NextRequest) {
     
     return NextResponse.json({ revoked, message: `Revoked ${revoked} session(s)` });
   } catch (error) {
-    console.error('[sessions] DELETE error:', error);
+    reportServerError('auth/sessions:DELETE', error);
     return NextResponse.json({ error: 'Failed to revoke sessions' }, { status: 500 });
   }
 }

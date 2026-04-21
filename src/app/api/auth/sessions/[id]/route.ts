@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { revokeSession } from '@/lib/session-manager';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { reportServerError } from '@/lib/logger';
 
 export async function DELETE(
   req: NextRequest,
@@ -39,7 +40,7 @@ export async function DELETE(
     
     return NextResponse.json({ success: true, message: 'Session revoked' });
   } catch (error) {
-    console.error('[sessions] DELETE [id] error:', error);
+    reportServerError('auth/sessions/[id]:DELETE', error);
     return NextResponse.json({ error: 'Failed to revoke session' }, { status: 500 });
   }
 }

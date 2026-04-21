@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { reportServerError } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[bespoke/approval-response] Error:", error);
+    reportServerError("bespoke/approval-response:POST", error);
     return NextResponse.json({ error: "Approval processing failed" }, { status: 500 });
   }
 }
