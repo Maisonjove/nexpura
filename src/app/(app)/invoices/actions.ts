@@ -27,6 +27,7 @@ import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
+import { requirePermission } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -480,6 +481,9 @@ export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: s
 
 export async function voidInvoice(invoiceId: string): Promise<{ error?: string }> {
   try {
+  // RBAC: voiding an invoice is a financial-destructive action. Gate
+  // on create_invoices (same as refunds) — owners bypass.
+  await requirePermission("create_invoices");
   const { supabase, tenantId, userId } = await getAuthContext();
 
   const { data: invoice } = await supabase

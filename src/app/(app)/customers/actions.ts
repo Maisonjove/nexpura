@@ -10,6 +10,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { customerCreateSchema } from "@/lib/schemas/customers";
+import { requireAuth } from "@/lib/auth-context";
 
 export type CustomerListRow = {
   id: string;
@@ -314,6 +315,13 @@ export async function updateCustomer(
 
 export async function archiveCustomer(id: string): Promise<{ success?: boolean; error?: string }> {
   try {
+    // RBAC: archive is a destructive action — require owner or manager.
+    // Low-privilege roles (salesperson, workshop, inventory, accountant)
+    // can still create + update customers but cannot soft-delete them.
+    const ctx = await requireAuth();
+    if (!ctx.isManager && !ctx.isOwner) {
+      return { error: "Only owner or manager can archive customers." };
+    }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
