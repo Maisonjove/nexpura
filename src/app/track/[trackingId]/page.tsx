@@ -72,6 +72,7 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
         estimated_completion_date,
         created_at,
         tenant_id,
+        tracking_revoked_at,
         tenants!inner (
           business_name,
           logo_url
@@ -81,7 +82,9 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
       .is("deleted_at", null)
       .single();
 
-    if (error || !repair) return null;
+    // tracking_revoked_at kill-switch: treat a revoked link as not-found.
+    // See migration 20260421_tracking_revoked_at.sql.
+    if (error || !repair || repair.tracking_revoked_at) return null;
 
     // Fetch attachments and history in parallel for better performance
     const [attachmentsResult, historyResult] = await Promise.all([
@@ -138,6 +141,7 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
         estimated_completion_date,
         created_at,
         tenant_id,
+        tracking_revoked_at,
         tenants!inner (
           business_name,
           logo_url
@@ -147,7 +151,8 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
       .is("deleted_at", null)
       .single();
 
-    if (error || !bespoke) return null;
+    // tracking_revoked_at kill-switch. See migration 20260421_tracking_revoked_at.sql.
+    if (error || !bespoke || bespoke.tracking_revoked_at) return null;
 
     // Fetch attachments and history in parallel for better performance
     const [attachmentsResult, historyResult] = await Promise.all([

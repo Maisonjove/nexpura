@@ -242,6 +242,15 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<{ id?: str
       created_by: user.id
     };
 
+    // Atomicity: previously this did insert-invoice → insert-items →
+    // update-quote in sequence, with each step's failure leaving the
+    // previous steps committed. A line-items failure would strand an
+    // invoice with zero rows and no owner action to reconcile it.
+    //
+    // New shape: insert invoice, attempt line items, COMPENSATE by
+    // deleting the invoice if items fail. Quote status update is still
+    // non-fatal (an unconverted-but-invoiced quote is cosmetic, not
+    // data-corrupting).
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
       .insert(invoiceData)
@@ -267,15 +276,28 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<{ id?: str
       .insert(lineItems);
 
     if (itemsError) {
-      logger.error("[convertQuoteToInvoice] Failed to add line items:", itemsError);
+      logger.error("[convertQuoteToInvoice] Failed to add line items — rolling back invoice:", itemsError);
+      // Compensating rollback: delete the orphan invoice so it doesn't
+      // sit in the list showing a $0 or wrong-total header with no
+      // backing line items.
+      const { error: rollbackError } = await supabase
+        .from("invoices")
+        .delete()
+        .eq("id", invoice.id)
+        .eq("tenant_id", tenantId);
+      if (rollbackError) {
+        logger.error("[convertQuoteToInvoice] CRITICAL: rollback failed, orphan invoice left:", {
+          invoiceId: invoice.id,
+          error: rollbackError,
+        });
+      }
       return { error: "Failed to add invoice line items" };
     }
 
-    // Update quote status
+    // Update quote status — non-fatal; invoice is committed.
     const { error: updateError } = await supabase.from("quotes").update({ status: "converted" }).eq("id", quoteId);
     if (updateError) {
       logger.error("[convertQuoteToInvoice] Failed to update quote status:", updateError);
-      // Non-fatal - invoice was created successfully
     }
 
     revalidatePath("/quotes");

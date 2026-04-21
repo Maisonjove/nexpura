@@ -9,6 +9,7 @@ import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
+import { customerCreateSchema } from "@/lib/schemas/customers";
 
 export type CustomerListRow = {
   id: string;
@@ -120,6 +121,33 @@ export async function createCustomer(formData: FormData): Promise<{ id?: string;
       .single();
 
     if (!userData?.tenant_id) return { error: "No tenant found" };
+
+    // Validate the raw FormData via Zod before it touches the DB —
+    // catches malformed emails, over-long fields, non-numeric phones.
+    // See src/lib/schemas/customers.ts.
+    const rawFields: Record<string, unknown> = {
+      first_name: formData.get("first_name"),
+      last_name: formData.get("last_name"),
+      email: formData.get("email"),
+      mobile: formData.get("mobile"),
+      phone: formData.get("phone"),
+      address_line1: formData.get("address_line1"),
+      suburb: formData.get("suburb"),
+      state: formData.get("state"),
+      postcode: formData.get("postcode"),
+      country: formData.get("country"),
+      ring_size: formData.get("ring_size"),
+      preferred_metal: formData.get("preferred_metal"),
+      birthday: formData.get("birthday"),
+      anniversary: formData.get("anniversary"),
+      notes: formData.get("notes"),
+      tags: formData.getAll("tags"),
+    };
+    const validation = customerCreateSchema.safeParse(rawFields);
+    if (!validation.success) {
+      const firstIssue = validation.error.issues[0];
+      return { error: `${firstIssue.path.join(".")}: ${firstIssue.message}` };
+    }
 
     const customerData = buildCustomerData(formData, userData.tenant_id, user.id);
 
