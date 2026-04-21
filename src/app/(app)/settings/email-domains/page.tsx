@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 // /settings/team: a bookmarked plural URL shouldn't surface the generic
 // "Page not found" body on a settings surface.
 
+export const dynamic = "force-dynamic";
+
 export default function EmailDomainsSettingsAlias() {
   redirect("/settings/email-domain");
 }

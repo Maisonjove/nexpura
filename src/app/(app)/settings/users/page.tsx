@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 // stub redirects any old bookmark / email link so the jeweller never
 // sees the bare "Page not found" state on a settings URL.
 
+export const dynamic = "force-dynamic";
+
 export default function UsersSettingsAlias() {
   redirect("/settings/team");
 }

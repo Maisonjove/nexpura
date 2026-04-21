@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 // fields live in the main /settings overview. Redirect old bookmarks
 // there instead of showing a "Page not found".
 
+export const dynamic = "force-dynamic";
+
 export default function ProfileSettingsAlias() {
   redirect("/settings");
 }

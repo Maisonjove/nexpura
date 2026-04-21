@@ -7,6 +7,14 @@ import { redirect } from "next/navigation";
 // customer onto the jeweller login form — which looks like a broken
 // product. Redirect preserves the token so valid links Just Work, and
 // invalid tokens get the branded invalid-state at /approve/[token].
+//
+// force-dynamic: params is async and the only thing this page does with
+// it is redirect. Under cacheComponents=true, Next.js refuses to prerender
+// a page that reads uncached data outside <Suspense>. Marking this route
+// dynamic skips prerender entirely — correct, because the token changes
+// every request.
+
+export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ token: string }>;
