@@ -106,6 +106,29 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  async redirects() {
+    // Legacy / aliased URLs — handled at the edge before middleware so
+    // neither auth redirects nor cacheComponents prerender logic can
+    // interfere. Each pair exists for both the flat and tenant-prefixed
+    // shape because TopNav / Supabase middleware rewrite `/{slug}/{route}`
+    // to `/{route}` internally, but the user-typed URL is whatever they
+    // bookmarked and we want every shape to land somewhere sensible.
+    return [
+      // /bespoke/approve/{token} — legacy path for the bespoke approval
+      // link. Canonical route is /approve/{token}. Without this redirect
+      // the request falls through Supabase auth middleware (which treats
+      // "bespoke" as a tenant app route) and dumps the customer on the
+      // staff login form.
+      { source: "/bespoke/approve/:token", destination: "/approve/:token", permanent: false },
+      // Settings aliases — orphan URLs that used to look like 404s.
+      { source: "/settings/users", destination: "/settings/team", permanent: false },
+      { source: "/:slug/settings/users", destination: "/:slug/settings/team", permanent: false },
+      { source: "/settings/profile", destination: "/settings", permanent: false },
+      { source: "/:slug/settings/profile", destination: "/:slug/settings", permanent: false },
+      { source: "/settings/email-domains", destination: "/settings/email-domain", permanent: false },
+      { source: "/:slug/settings/email-domains", destination: "/:slug/settings/email-domain", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {
