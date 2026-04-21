@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { PLAN_FEATURES, canAddStaff, type PlanId } from "@/lib/plans";
-import { requireAuth } from "@/lib/auth-context";
+import { requireRole } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -41,6 +41,9 @@ export async function getTeamMembers() {
 
 export async function inviteTeamMember(formData: FormData) {
   try {
+    // W6-CRIT-04: adding teammates is a privilege-granting action.
+    // Owner-only, matching the parallel surface in /settings/roles/actions.
+    await requireRole("owner");
     const { admin, userId, tenantId } = await getAuthContext();
 
     const name = (formData.get("name") as string).trim();
@@ -123,6 +126,8 @@ export async function inviteTeamMember(formData: FormData) {
 
 export async function updateTeamMemberRole(memberId: string, role: string) {
   try {
+    // W6-CRIT-04: role changes are privilege escalation. Owner-only.
+    await requireRole("owner");
     const { admin, userId, tenantId } = await getAuthContext();
 
     // Get old role for audit
@@ -161,11 +166,10 @@ export async function updateTeamMemberRole(memberId: string, role: string) {
 
 export async function removeTeamMember(memberId: string) {
   try {
-    // RBAC: staff removal is a high-impact destructive action. Owner/manager only.
-    const authCtx = await requireAuth();
-    if (!authCtx.isManager && !authCtx.isOwner) {
-      return { error: "Only owner or manager can remove team members." };
-    }
+    // W6-CRIT-04: tightened from owner/manager to owner-only — peer
+    // managers should not be able to evict each other. Aligns with
+    // removeMember() in /settings/roles/actions.
+    await requireRole("owner");
     const { admin, userId, tenantId } = await getAuthContext();
 
     // Get member data for audit
@@ -309,6 +313,9 @@ export async function updateTeamMemberLocations(
   locationIds: string[] | null // null means all locations
 ) {
   try {
+    // W6-CRIT-04: location grants are privilege escalation. Owner-only,
+    // matching updateMemberLocationAccess() in /settings/roles/actions.
+    await requireRole("owner");
     const { admin, userId, tenantId } = await getAuthContext();
 
     // Get old data for audit

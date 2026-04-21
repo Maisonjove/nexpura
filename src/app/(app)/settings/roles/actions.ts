@@ -7,7 +7,7 @@ import { Resend } from "resend";
 import { getTenantEmailSender } from "../email/actions";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth-context";
+import { requireAuth, requireRole } from "@/lib/auth-context";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -111,6 +111,13 @@ export async function updateMemberPermissions(
   memberId: string,
   permissions: Partial<PermissionSet>
 ): Promise<{ success?: boolean; error?: string }> {
+  // W6-CRIT-04 + W2-003: per-member permission overrides are a privilege-
+  // escalation surface. Owner-only.
+  try {
+    await requireRole("owner");
+  } catch {
+    return { error: "Only the account owner can change team member permissions." };
+  }
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
 
@@ -130,11 +137,18 @@ export async function updateMemberRole(
   memberId: string,
   role: string
 ): Promise<{ success?: boolean; error?: string }> {
+  // W6-CRIT-04: promoting/demoting teammates is tenant-admin territory.
+  // Owner-only so a manager can't escalate themselves (or a friend) to owner.
+  try {
+    await requireRole("owner");
+  } catch {
+    return { error: "Only the account owner can change team member roles." };
+  }
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
 
   const admin = createAdminClient();
-  
+
   // Update role and set default permissions for that role
   const defaultPerms = DEFAULT_PERMISSIONS[role] || DEFAULT_PERMISSIONS.staff;
   
@@ -152,6 +166,13 @@ export async function updateMemberLocationAccess(
   memberId: string,
   allowedLocationIds: string[] | null // null = all locations
 ): Promise<{ success?: boolean; error?: string }> {
+  // W6-CRIT-04: location-access grants are privilege escalation (can unlock
+  // stores the staffer was never allowed into). Owner-only.
+  try {
+    await requireRole("owner");
+  } catch {
+    return { error: "Only the account owner can change location access." };
+  }
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
 
@@ -171,6 +192,13 @@ export async function updateMemberDefaultLocation(
   memberId: string,
   defaultLocationId: string | null
 ): Promise<{ success?: boolean; error?: string }> {
+  // W6-CRIT-04: default-location assignment changes what the teammate
+  // sees/writes by default — owner/manager bucket.
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can change default location." };
+  }
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
 
@@ -193,6 +221,12 @@ export async function inviteTeamMember(
   allowedLocationIds: string[] | null,
   phoneNumber?: string | null
 ): Promise<{ success?: boolean; error?: string; inviteToken?: string }> {
+  // W6-CRIT-04: adding teammates is a privilege-granting action. Owner-only.
+  try {
+    await requireRole("owner");
+  } catch {
+    return { error: "Only the account owner can invite team members." };
+  }
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
 
@@ -305,6 +339,13 @@ export async function inviteTeamMember(
 }
 
 export async function resendInvite(memberId: string): Promise<{ success?: boolean; error?: string }> {
+  // W6-CRIT-04: re-issuing an invite rotates the token and is part of the
+  // staff-admin surface. Owner/manager only.
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can resend invites." };
+  }
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
 
@@ -395,14 +436,12 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
 }
 
 export async function removeMember(memberId: string): Promise<{ success?: boolean; error?: string }> {
-  // RBAC: staff removal is a high-impact destructive action. Owner/manager only.
+  // W6-CRIT-04: staff removal is privilege-management. Owner-only.
+  // Previously allowed managers; tightened so managers can't evict peers.
   try {
-    const authCtx = await requireAuth();
-    if (!authCtx.isManager && !authCtx.isOwner) {
-      return { error: "Only owner or manager can remove team members." };
-    }
+    await requireRole("owner");
   } catch {
-    return { error: "Not authenticated" };
+    return { error: "Only the account owner can remove team members." };
   }
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
@@ -441,49 +480,90 @@ export async function removeMember(memberId: string): Promise<{ success?: boolea
 }
 
 export async function updateMemberPhone(
-  memberId: string, 
+  memberId: string,
   phoneNumber: string | null
 ): Promise<{ success?: boolean; error?: string }> {
-  let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  // W6-CRIT-04: editing a teammate's contact phone is staff-admin. Staff
+  // may update their own row (self-service profile), anyone else requires
+  // owner/manager.
+  let authCtx;
+  try {
+    authCtx = await requireAuth();
+  } catch {
+    return { error: "Not authenticated" };
+  }
 
   const admin = createAdminClient();
-  
+
+  // Resolve the acting user's own team_members row (if any) to compare
+  // against the target id for the self-service carve-out.
+  const { data: selfRow } = await admin
+    .from("team_members")
+    .select("id")
+    .eq("tenant_id", authCtx.tenantId)
+    .eq("user_id", authCtx.userId)
+    .maybeSingle();
+
+  const isSelf = selfRow?.id === memberId;
+  if (!isSelf && !authCtx.isOwner && !authCtx.isManager) {
+    return { error: "Only owner or manager can change another member's phone." };
+  }
+
   const { error } = await admin
     .from("team_members")
-    .update({ 
+    .update({
       phone_number: phoneNumber,
       updated_at: new Date().toISOString()
     })
     .eq("id", memberId)
-    .eq("tenant_id", ctx.tenantId);
+    .eq("tenant_id", authCtx.tenantId);
 
   if (error) return { error: error.message };
-  
+
   revalidatePath("/settings/roles");
   return { success: true };
 }
 
 export async function updateMemberWhatsAppEnabled(
-  memberId: string, 
+  memberId: string,
   enabled: boolean
 ): Promise<{ success?: boolean; error?: string }> {
-  let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  // W6-CRIT-04: self-service for own row; owner/manager for anyone else.
+  let authCtx;
+  try {
+    authCtx = await requireAuth();
+  } catch {
+    return { error: "Not authenticated" };
+  }
 
   const admin = createAdminClient();
-  
+
+  const { data: selfRow } = await admin
+    .from("team_members")
+    .select("id")
+    .eq("tenant_id", authCtx.tenantId)
+    .eq("user_id", authCtx.userId)
+    .maybeSingle();
+
+  const isSelf = selfRow?.id === memberId;
+  if (!isSelf && !authCtx.isOwner && !authCtx.isManager) {
+    return {
+      error:
+        "Only owner or manager can change another member's WhatsApp settings.",
+    };
+  }
+
   const { error } = await admin
     .from("team_members")
-    .update({ 
+    .update({
       whatsapp_notifications_enabled: enabled,
       updated_at: new Date().toISOString()
     })
     .eq("id", memberId)
-    .eq("tenant_id", ctx.tenantId);
+    .eq("tenant_id", authCtx.tenantId);
 
   if (error) return { error: error.message };
-  
+
   revalidatePath("/settings/roles");
   return { success: true };
 }
@@ -500,11 +580,34 @@ export async function updateMemberNotifications(
   memberId: string,
   notifications: Partial<NotificationPreferences>
 ): Promise<{ success?: boolean; error?: string }> {
+  // W6-CRIT-04: self-service for own row; owner/manager for anyone else.
+  let authCtx;
+  try {
+    authCtx = await requireAuth();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
 
   const admin = createAdminClient();
-  
+
+  const { data: selfRow } = await admin
+    .from("team_members")
+    .select("id")
+    .eq("tenant_id", authCtx.tenantId)
+    .eq("user_id", authCtx.userId)
+    .maybeSingle();
+
+  const isSelf = selfRow?.id === memberId;
+  if (!isSelf && !authCtx.isOwner && !authCtx.isManager) {
+    return {
+      error:
+        "Only owner or manager can change another member's notification preferences.",
+    };
+  }
+
   // Get current permissions to merge with
   const { data: member } = await admin
     .from("team_members")
@@ -512,7 +615,7 @@ export async function updateMemberNotifications(
     .eq("id", memberId)
     .eq("tenant_id", ctx.tenantId)
     .single();
-  
+
   if (!member) return { error: "Member not found" };
   
   // Merge notifications into permissions object

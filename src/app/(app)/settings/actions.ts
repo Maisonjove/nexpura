@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { requireRole } from "@/lib/auth-context";
 
 async function verifyTenantOwnership(supabase: Awaited<ReturnType<typeof createClient>>, tenantId: string): Promise<{ error?: string }> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -114,11 +115,25 @@ export async function saveTaxCurrency(tenantId: string, formData: FormData) {
 
 export async function saveBanking(tenantId: string, formData: FormData) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // W6-CRIT-01: banking details (BSB/account that customers see on
+    // invoices) are owner-only — a rogue staffer must not be able to swap
+    // the payout account to theirs. Also ignores the caller-supplied
+    // tenantId and uses the session tenant (defence-in-depth vs PR-01).
+    let authCtx;
+    try {
+      authCtx = await requireRole("owner");
+    } catch {
+      return { error: "Only the account owner can update banking details." };
+    }
 
-    const authCheck = await verifyTenantOwnership(supabase, tenantId);
-    if (authCheck.error) return { error: authCheck.error };
+    const supabase = await createClient();
+    const user = { id: authCtx.userId };
+
+    // Refuse any cross-tenant save attempt outright.
+    if (tenantId && tenantId !== authCtx.tenantId) {
+      return { error: "Unauthorized" };
+    }
+    const effectiveTenantId = authCtx.tenantId;
 
     const updates = {
       bank_name: formData.get("bank_name") as string || null,
@@ -131,17 +146,17 @@ export async function saveBanking(tenantId: string, formData: FormData) {
     const { error } = await supabase
       .from("tenants")
       .update(updates)
-      .eq("id", tenantId);
+      .eq("id", effectiveTenantId);
 
     if (error) return { error: error.message };
 
     // Log audit event
     await logAuditEvent({
-      tenantId,
+      tenantId: effectiveTenantId,
       userId: user?.id,
       action: "settings_update",
       entityType: "settings",
-      entityId: tenantId,
+      entityId: effectiveTenantId,
       newData: { section: "banking", bank_name: updates.bank_name },
     });
 
