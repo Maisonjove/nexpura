@@ -1,4 +1,5 @@
 import logger from "@/lib/logger";
+import { isSandbox, logSandboxSuppressedSend } from "@/lib/sandbox";
 /**
  * Twilio WhatsApp API integration for sending notifications
  * Uses Twilio's REST API directly (no npm package needed)
@@ -19,6 +20,16 @@ export async function sendTwilioWhatsApp(
   to: string,
   message: string
 ): Promise<TwilioWhatsAppResult> {
+  // Sandbox gate — see src/lib/sandbox.ts. Preview/dev/SANDBOX_MODE
+  // never hits real WhatsApp numbers. The marketing-campaign flow sends
+  // in a batch after payment, which makes a live sandbox slip-up
+  // especially expensive, so this is the most important guard of the
+  // three senders.
+  if (isSandbox()) {
+    logSandboxSuppressedSend({ channel: "whatsapp", to, preview: message });
+    return { success: true, messageId: "sandbox-suppressed" };
+  }
+
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;

@@ -1,5 +1,6 @@
 import debug from "@/lib/debug";
 import logger from "@/lib/logger";
+import { isSandbox, logSandboxSuppressedSend } from "@/lib/sandbox";
 
 /**
  * Twilio SMS integration with smart number selection
@@ -110,9 +111,17 @@ export async function sendTwilioSms(
   message: string,
   credentials?: Partial<TwilioCredentials>
 ): Promise<TwilioSmsResult> {
+  // Sandbox gate — never hit real phones from a preview/dev/SANDBOX_MODE
+  // deploy. Returns a fake-success so callers don't crash or retry. See
+  // src/lib/sandbox.ts for the conditions.
+  if (isSandbox()) {
+    logSandboxSuppressedSend({ channel: "sms", to, preview: message });
+    return { success: true, messageId: "sandbox-suppressed" };
+  }
+
   const accountSid = credentials?.accountSid || process.env.TWILIO_ACCOUNT_SID;
   const authToken = credentials?.authToken || process.env.TWILIO_AUTH_TOKEN;
-  
+
   if (!accountSid || !authToken) {
     logger.error("[twilio-sms] Missing Twilio credentials");
     return { success: false, error: "Twilio not configured" };

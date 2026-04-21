@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
+import { isSandbox, sandboxRedirectEmail, logSandboxSuppressedSend } from "@/lib/sandbox";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -104,6 +105,34 @@ export async function sendTenantEmail(
   options: SendEmailOptions
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
+    // Sandbox short-circuit — see src/lib/sandbox.ts for the gate rules.
+    // Either log-and-drop, or redirect to the QA inbox with a banner
+    // so the template can be inspected end-to-end without hitting the
+    // real recipient.
+    if (isSandbox()) {
+      const redirect = sandboxRedirectEmail();
+      if (!redirect) {
+        logSandboxSuppressedSend({ channel: "email", to: options.to, subject: options.subject, preview: options.html });
+        return { success: true, messageId: "sandbox-suppressed" };
+      }
+      const originalTo = Array.isArray(options.to) ? options.to.join(", ") : options.to;
+      const emailConfig = await getTenantEmailConfig(config);
+      const banner = `<div style="background:#fff3cd;border:1px solid #ffe69c;padding:12px;margin-bottom:16px;color:#664d03;font-family:sans-serif;"><strong>[SANDBOX]</strong> Originally intended for: ${originalTo}. This copy was redirected to ${redirect} by SANDBOX_REDIRECT_EMAIL.</div>`;
+      const { data, error } = await resend.emails.send({
+        from: emailConfig.from,
+        to: redirect,
+        subject: `[SANDBOX] ${options.subject}`,
+        html: banner + options.html,
+        replyTo: options.replyTo || emailConfig.replyTo,
+        attachments: options.attachments,
+      });
+      if (error) {
+        logger.error(`[sendTenantEmail:sandbox-redirect] Error:`, error);
+        return { success: false, error: error.message };
+      }
+      return { success: true, messageId: data?.id };
+    }
+
     const emailConfig = await getTenantEmailConfig(config);
 
     const { data, error } = await resend.emails.send({
@@ -137,6 +166,29 @@ export async function sendSystemEmail(
   options: SendEmailOptions & { from?: string }
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
+    if (isSandbox()) {
+      const redirect = sandboxRedirectEmail();
+      if (!redirect) {
+        logSandboxSuppressedSend({ channel: "email", to: options.to, subject: options.subject, preview: options.html });
+        return { success: true, messageId: "sandbox-suppressed" };
+      }
+      const originalTo = Array.isArray(options.to) ? options.to.join(", ") : options.to;
+      const banner = `<div style="background:#fff3cd;border:1px solid #ffe69c;padding:12px;margin-bottom:16px;color:#664d03;font-family:sans-serif;"><strong>[SANDBOX]</strong> Originally intended for: ${originalTo}. This copy was redirected to ${redirect} by SANDBOX_REDIRECT_EMAIL.</div>`;
+      const { data, error } = await resend.emails.send({
+        from: options.from || `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>`,
+        to: redirect,
+        subject: `[SANDBOX] ${options.subject}`,
+        html: banner + options.html,
+        replyTo: options.replyTo,
+        attachments: options.attachments,
+      });
+      if (error) {
+        logger.error(`[sendSystemEmail:sandbox-redirect] Error:`, error);
+        return { success: false, error: error.message };
+      }
+      return { success: true, messageId: data?.id };
+    }
+
     const { data, error } = await resend.emails.send({
       from: options.from || `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>`,
       to: options.to,
