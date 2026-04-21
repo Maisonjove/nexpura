@@ -30,6 +30,9 @@ export interface CachedUserProfile {
   is_super_admin: boolean;
   created_at: string;
   updated_at: string;
+  // PR-05: surfaced so middleware can enforce the AAL2 gate without a
+  // second round-trip. `select("*")` already fetches this column.
+  totp_enabled?: boolean | null;
   // Nested tenant data
   tenants: {
     id: string;

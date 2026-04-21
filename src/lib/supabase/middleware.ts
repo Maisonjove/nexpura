@@ -9,6 +9,10 @@ import {
   verifyAccessTokenLocal,
   type LocalAuthUser,
 } from "@/lib/supabase/jwt-verify";
+import {
+  TWO_FACTOR_COOKIE_NAME,
+  verifyTwoFactorCookie,
+} from "@/lib/auth/two-factor-cookie";
 
 // --- Subscription status cookie cache (5-min TTL) ---
 // Skips the subscriptions DB query on every page nav once status is confirmed OK.
@@ -41,6 +45,62 @@ function setSubOkCookie(
     path: "/",
     domain: getCookieDomain(host),
   });
+}
+
+// ─── PR-05: 2FA AAL enforcement ──────────────────────────────────────
+// Routes that must remain reachable for a session that is authed but
+// hasn't proved possession of the second factor yet. Everything else is
+// gated by `enforceTwoFactor` below.
+//
+//   /verify-2fa        – the factor-entry page itself
+//   /api/auth/2fa/**   – the validate/verify/disable/setup endpoints
+//   /api/auth/login    – initial sign-in + checkOnly2FA probe
+//   /api/auth/logout   – clears the session/cookie
+//   /api/auth/sessions – sessions list (server itself re-checks auth)
+//   /logout            – the logout page
+//
+// Public routes are already short-circuited earlier in _updateSessionInner,
+// so they never reach this gate.
+function isTwoFactorExemptPath(pathname: string): boolean {
+  return (
+    pathname === "/verify-2fa" ||
+    pathname.startsWith("/verify-2fa/") ||
+    pathname.startsWith("/api/auth/2fa/") ||
+    pathname === "/api/auth/login" ||
+    pathname === "/api/auth/logout" ||
+    pathname.startsWith("/api/auth/sessions") ||
+    pathname === "/logout" ||
+    pathname.startsWith("/logout/")
+  );
+}
+
+// Inspect the user's TOTP flag + 2fa cookie and decide whether to let
+// the request through. Returns a redirect to /verify-2fa when the user
+// is enrolled in 2FA but has not proved possession on this browser.
+//
+// Fail-closed: if either (a) totp_enabled is true AND (b) the cookie is
+// missing / tampered / bound to a different user / expired, we redirect.
+function enforceTwoFactor(
+  request: NextRequest,
+  userId: string,
+  totpEnabled: boolean | null | undefined,
+  supabaseResponse: NextResponse
+): NextResponse | null {
+  if (!totpEnabled) return null;
+
+  const pathname = request.nextUrl.pathname;
+  if (isTwoFactorExemptPath(pathname)) return null;
+
+  const cookie = request.cookies.get(TWO_FACTOR_COOKIE_NAME)?.value ?? null;
+  if (verifyTwoFactorCookie(cookie, userId)) return null;
+
+  // Not proved — bounce to /verify-2fa with a returnTo for post-verify.
+  const verifyUrl = request.nextUrl.clone();
+  verifyUrl.pathname = "/verify-2fa";
+  // Preserve the original search so a deep-linked nav still round-trips.
+  const returnTo = pathname + (request.nextUrl.search || "");
+  verifyUrl.search = `?returnTo=${encodeURIComponent(returnTo)}`;
+  return redirectWithCookies(verifyUrl, supabaseResponse);
 }
 
 // Routes that never need auth — skip Supabase entirely for instant response.
@@ -287,6 +347,16 @@ async function _updateSessionInner(request: NextRequest) {
       loginUrl.pathname = "/login";
       return redirectWithCookies(loginUrl, supabaseResponse);
     }
+    // PR-05: /admin is the super-admin surface — the AAL2 gate matters
+    // most here. totp_enabled is fetched via the cached user profile.
+    const adminProfile = await getCachedUserProfile(user.id);
+    const twoFactorRedirectAdmin = enforceTwoFactor(
+      request,
+      user.id,
+      adminProfile?.totp_enabled,
+      supabaseResponse
+    );
+    if (twoFactorRedirectAdmin) return twoFactorRedirectAdmin;
     return supabaseResponse;
   }
 
@@ -321,6 +391,17 @@ async function _updateSessionInner(request: NextRequest) {
       onboardingUrl.pathname = "/onboarding";
       return redirectWithCookies(onboardingUrl, supabaseResponse);
     }
+
+    // PR-05: gate tenant-slug routes behind the AAL2 cookie when the user
+    // has 2FA enabled. Exempt paths (/verify-2fa itself, /api/auth/2fa/**)
+    // are handled inside enforceTwoFactor.
+    const twoFactorRedirect = enforceTwoFactor(
+      request,
+      user.id,
+      userProfile.totp_enabled,
+      supabaseResponse
+    );
+    if (twoFactorRedirect) return twoFactorRedirect;
 
     const userTenantSlug = userProfile.tenants?.slug;
     if (userTenantSlug && userTenantSlug !== tenantParsed.slug) {
@@ -419,6 +500,19 @@ async function _updateSessionInner(request: NextRequest) {
       onboardingUrl.pathname = "/onboarding";
       return redirectWithCookies(onboardingUrl, supabaseResponse);
     }
+
+    // PR-05: same AAL2 gate for the flat-route branch. Exempt paths
+    // (/verify-2fa, /api/auth/2fa/**, /api/auth/logout, /logout) are
+    // checked inside enforceTwoFactor. Note that most /api routes go
+    // through isPublicPath() above and never reach this branch — but
+    // protected app routes (/dashboard, /inventory, /settings, …) do.
+    const twoFactorRedirectFlat = enforceTwoFactor(
+      request,
+      user.id,
+      userProfile.totp_enabled,
+      supabaseResponse
+    );
+    if (twoFactorRedirectFlat) return twoFactorRedirectFlat;
 
     // Migrate flat URLs — tenant-aware URLs for bookmarkable, shareable routes.
     // Tenants with a slug get redirected; tenants without a slug fall through to flat-route mode.
