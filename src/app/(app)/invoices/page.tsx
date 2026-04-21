@@ -7,6 +7,7 @@ import { getAuthContext } from "@/lib/auth-context";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { Skeleton } from "@/components/ui/skeleton";
 import InvoiceListClient from "./InvoiceListClient";
+import { locationScopeFilter } from "@/lib/location-read-scope";
 
 export const metadata = { title: "Invoices — Nexpura" };
 
@@ -26,12 +27,14 @@ export default async function InvoicesPage({
   const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
 
   let tenantId: string;
+  let userId: string | null = null;
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
     const auth = await getAuthContext();
     if (!auth) redirect("/login");
     tenantId = auth.tenantId;
+    userId = auth.userId;
   }
 
   return (
@@ -52,7 +55,7 @@ export default async function InvoicesPage({
 
       {/* Stats + table stream in behind Suspense. */}
       <Suspense key={`${q}:${page}:${statusFilter}`} fallback={<InvoicesBodySkeleton />}>
-        <InvoicesBody tenantId={tenantId} q={q} statusFilter={statusFilter} page={page} />
+        <InvoicesBody tenantId={tenantId} userId={userId} q={q} statusFilter={statusFilter} page={page} />
       </Suspense>
     </div>
   );
@@ -60,11 +63,13 @@ export default async function InvoicesPage({
 
 async function InvoicesBody({
   tenantId,
+  userId,
   q,
   statusFilter,
   page,
 }: {
   tenantId: string;
+  userId: string | null;
   q: string;
   statusFilter: string;
   page: number;
@@ -75,19 +80,36 @@ async function InvoicesBody({
   const today = new Date().toISOString().split("T")[0];
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
+  // Location filter for restricted users. Applied to every invoice query
+  // in this body so stats + list + count all respect the same scope.
+  const locationFilter = userId ? await locationScopeFilter(userId, tenantId) : null;
+  const locationCacheKey = locationFilter ?? "all";
+
   const fetchInvoicesPayload = unstable_cache(
     async () => {
       const [outstandingRes, overdueRes, paidThisMonthRes, listResult, countResult] = await Promise.all([
-        admin.from("invoices").select("amount_due")
-          .eq("tenant_id", tenantId).in("status", ["unpaid", "partial", "overdue"])
-          .is("deleted_at", null),
-        admin.from("invoices").select("amount_due")
-          .eq("tenant_id", tenantId)
-          .not("status", "in", '("paid","voided","draft","cancelled")')
-          .lt("due_date", today).is("deleted_at", null),
-        admin.from("invoices").select("total")
-          .eq("tenant_id", tenantId).eq("status", "paid")
-          .gte("paid_at", monthStart).is("deleted_at", null),
+        (async () => {
+          let q1 = admin.from("invoices").select("amount_due")
+            .eq("tenant_id", tenantId).in("status", ["unpaid", "partial", "overdue"])
+            .is("deleted_at", null);
+          if (locationFilter) q1 = q1.or(locationFilter);
+          return q1;
+        })(),
+        (async () => {
+          let q2 = admin.from("invoices").select("amount_due")
+            .eq("tenant_id", tenantId)
+            .not("status", "in", '("paid","voided","draft","cancelled")')
+            .lt("due_date", today).is("deleted_at", null);
+          if (locationFilter) q2 = q2.or(locationFilter);
+          return q2;
+        })(),
+        (async () => {
+          let q3 = admin.from("invoices").select("total")
+            .eq("tenant_id", tenantId).eq("status", "paid")
+            .gte("paid_at", monthStart).is("deleted_at", null);
+          if (locationFilter) q3 = q3.or(locationFilter);
+          return q3;
+        })(),
         (async () => {
           let query = admin
             .from("invoices")
@@ -97,6 +119,7 @@ async function InvoicesBody({
             .eq("tenant_id", tenantId)
             .is("deleted_at", null);
           if (q) query = query.ilike("invoice_number", `%${q}%`);
+          if (locationFilter) query = query.or(locationFilter);
           return query
             .order("created_at", { ascending: false })
             .range(offset, offset + pageSize - 1);
@@ -108,6 +131,7 @@ async function InvoicesBody({
             .eq("tenant_id", tenantId)
             .is("deleted_at", null);
           if (q) cq = cq.ilike("invoice_number", `%${q}%`);
+          if (locationFilter) cq = cq.or(locationFilter);
           const { count } = await cq;
           return count ?? 0;
         })(),
@@ -120,7 +144,7 @@ async function InvoicesBody({
         count: countResult,
       };
     },
-    ["invoices", tenantId, String(page), q || "nq"],
+    ["invoices", tenantId, String(page), q || "nq", locationCacheKey],
     { tags: [CACHE_TAGS.invoices(tenantId)], revalidate: 3600 }
   );
 

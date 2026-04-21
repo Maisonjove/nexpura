@@ -15,6 +15,7 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
+import { bespokeCreateSchema } from "@/lib/schemas/jobs";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -102,6 +103,34 @@ export async function createBespokeJob(
   }
 
   const { supabase, userId, tenantId } = ctx;
+
+  // Zod validation before any DB writes. See src/lib/schemas/jobs.ts.
+  const rawBespoke: Record<string, unknown> = {
+    customer_id: formData.get("customer_id"),
+    title: formData.get("title"),
+    jewellery_type: formData.get("jewellery_type"),
+    order_type: formData.get("order_type"),
+    metal_type: formData.get("metal_type"),
+    metal_colour: formData.get("metal_colour"),
+    metal_purity: formData.get("metal_purity"),
+    metal_weight_grams: formData.get("metal_weight_grams"),
+    due_date: formData.get("due_date"),
+    deposit_due_date: formData.get("deposit_due_date"),
+    priority: formData.get("priority"),
+    quoted_price: formData.get("quoted_price"),
+    deposit_amount: formData.get("deposit_amount"),
+    final_price: formData.get("final_price"),
+    customer_email: formData.get("customer_email"),
+    estimated_completion_date: formData.get("estimated_completion_date"),
+    description: formData.get("description"),
+    internal_notes: formData.get("internal_notes"),
+    client_notes: formData.get("client_notes"),
+  };
+  const validation = bespokeCreateSchema.safeParse(rawBespoke);
+  if (!validation.success) {
+    const i = validation.error.issues[0];
+    return { error: `${i.path.join(".")}: ${i.message}` };
+  }
 
   // Resolve location_id with the same policy as inventory — never silently
   // orphan a bespoke job from location-filtered views. See src/lib/active-location.ts.

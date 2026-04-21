@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { getAuthContext } from "@/lib/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import BespokeListClient from "./BespokeListClient";
+import { locationScopeFilter } from "@/lib/location-read-scope";
 
 export const metadata = { title: "Bespoke Jobs — Nexpura" };
 
@@ -50,6 +51,7 @@ async function BespokeBody({
   const stageFilter = params.stage || "";
   const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
   let tenantId: string | null = null;
+  let userId: string | null = null;
   let canView = false;
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
@@ -58,6 +60,7 @@ async function BespokeBody({
     const auth = await getAuthContext();
     if (!auth) redirect("/login");
     tenantId = auth.tenantId;
+    userId = auth.userId;
     canView = auth.permissions.view_bespoke;
   }
 
@@ -81,8 +84,13 @@ async function BespokeBody({
   let rawJobs: unknown[] | null = null;
   let statsResult: Awaited<typeof statsPromise>;
 
+  // Location-scope filter for restricted users. See src/lib/location-read-scope.ts.
+  const locationFilter = !isReviewMode && userId
+    ? await locationScopeFilter(userId, tenantId)
+    : null;
+
   if (q) {
-    const liveQuery = admin
+    let liveQuery = admin
       .from("bespoke_jobs")
       .select(
         `id, job_number, title, stage, priority, due_date, created_at,
@@ -90,10 +98,12 @@ async function BespokeBody({
       )
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .or(`title.ilike.%${q}%,job_number.ilike.%${q}%`)
+      .or(`title.ilike.%${q}%,job_number.ilike.%${q}%`);
+    if (locationFilter) liveQuery = liveQuery.or(locationFilter);
+    const liveQueryFinal = liveQuery
       .order("created_at", { ascending: false })
       .limit(200);
-    const [liveRes, statsRes] = await Promise.all([liveQuery, statsPromise]);
+    const [liveRes, statsRes] = await Promise.all([liveQueryFinal, statsPromise]);
     rawJobs = liveRes.data as unknown[] | null;
     statsResult = statsRes;
   } else {
@@ -102,17 +112,22 @@ async function BespokeBody({
     const computedAt = statsResult.data?.computed_at as string | undefined;
     const ageMs = computedAt ? Date.now() - new Date(computedAt).getTime() : Infinity;
     const SNAPSHOT_MAX_AGE_MS = 5 * 60 * 1000;
-    if (snapshot && ageMs < SNAPSHOT_MAX_AGE_MS) {
+    // Snapshot path is tenant-wide. Only use it when the user has
+    // all-access; restricted users must hit the live query to get
+    // their filter applied.
+    if (!locationFilter && snapshot && ageMs < SNAPSHOT_MAX_AGE_MS) {
       rawJobs = snapshot;
     } else {
-      const { data } = await admin
+      let q2 = admin
         .from("bespoke_jobs")
         .select(
           `id, job_number, title, stage, priority, due_date, created_at,
            customers(id, full_name)`
         )
         .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
+        .is("deleted_at", null);
+      if (locationFilter) q2 = q2.or(locationFilter);
+      const { data } = await q2
         .order("created_at", { ascending: false })
         .limit(200);
       rawJobs = data as unknown[] | null;

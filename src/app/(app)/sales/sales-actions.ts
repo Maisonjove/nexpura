@@ -2,16 +2,18 @@
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
+import { resolveReadLocationScope } from "@/lib/location-read-scope";
 
 /**
  * Fast tenant ID resolution from middleware-set headers.
  * Eliminates supabase.auth.getUser() + DB query (~70-150ms savings per call).
  */
-async function getTenantId(): Promise<string> {
+async function getTenantId(): Promise<{ tenantId: string; userId: string | null }> {
   const headersList = await headers();
   const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  const userId = headersList.get(AUTH_HEADERS.USER_ID);
   if (!tenantId) throw new Error("Not authenticated");
-  return tenantId;
+  return { tenantId, userId };
 }
 
 export interface SaleWithLocation {
@@ -30,8 +32,26 @@ export interface SaleWithLocation {
 }
 
 export async function getSales(locationIds: string[] | null): Promise<SaleWithLocation[]> {
-  const tenantId = await getTenantId();
+  const { tenantId, userId } = await getTenantId();
   const admin = createAdminClient();
+
+  // Hard-scope to the user's allowed locations BEFORE respecting the
+  // client-supplied filter. A location-restricted user cannot see any
+  // location outside their allow-list even if the client passes
+  // locationIds=null (all-locations). Intersects the client filter with
+  // the allow-list when both are present. See src/lib/location-read-scope.ts.
+  if (userId) {
+    const scope = await resolveReadLocationScope(userId, tenantId);
+    if (!scope.all) {
+      const allowSet = new Set(scope.allowedIds);
+      if (locationIds && locationIds.length > 0) {
+        locationIds = locationIds.filter((id) => allowSet.has(id));
+        if (locationIds.length === 0) return []; // intersection empty
+      } else {
+        locationIds = scope.allowedIds.length > 0 ? scope.allowedIds : ["00000000-0000-0000-0000-000000000000"];
+      }
+    }
+  }
 
   // Determine if we need location names (when showing multiple locations)
   const showLocationNames = !locationIds || locationIds.length > 1;

@@ -15,6 +15,7 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
+import { repairCreateSchema } from "@/lib/schemas/jobs";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -92,6 +93,33 @@ export async function createRepair(
   }
 
   const { supabase, userId, tenantId } = ctx;
+
+  // Zod validation on the raw FormData — rejects malformed emails,
+  // negative prices, non-date due_dates, overlong descriptions, etc.
+  // Catches garbage before the DB CHECK constraints do.
+  const rawRepair: Record<string, unknown> = {
+    customer_id: formData.get("customer_id"),
+    item_type: formData.get("item_type"),
+    item_description: formData.get("item_description"),
+    metal_type: formData.get("metal_type"),
+    brand: formData.get("brand"),
+    condition_notes: formData.get("condition_notes"),
+    repair_type: formData.get("repair_type"),
+    work_description: formData.get("work_description"),
+    due_date: formData.get("due_date"),
+    priority: formData.get("priority"),
+    quoted_price: formData.get("quoted_price"),
+    deposit_amount: formData.get("deposit_amount"),
+    customer_email: formData.get("customer_email"),
+    estimated_completion_date: formData.get("estimated_completion_date"),
+    internal_notes: formData.get("internal_notes"),
+    client_notes: formData.get("client_notes"),
+  };
+  const validation = repairCreateSchema.safeParse(rawRepair);
+  if (!validation.success) {
+    const i = validation.error.issues[0];
+    return { error: `${i.path.join(".")}: ${i.message}` };
+  }
 
   // Same location policy as inventory + bespoke — never silently NULL.
   const locResolution = await resolveLocationForCreate(tenantId, userId);

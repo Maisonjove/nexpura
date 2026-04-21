@@ -7,6 +7,7 @@ import { getCached, tenantCacheKey } from "@/lib/cache";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import InventoryClient from "./InventoryClient";
+import { locationScopeFilter } from "@/lib/location-read-scope";
 
 export const metadata = { title: "Inventory — Nexpura" };
 
@@ -31,6 +32,7 @@ export default async function InventoryPage({
   // For review mode: use the demo tenant constant.
   let tenantId: string;
 
+  let userId: string | null = null;
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
@@ -38,7 +40,17 @@ export default async function InventoryPage({
     const headerTenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
     if (!headerTenantId) redirect("/login");
     tenantId = headerTenantId;
+    userId = headersList.get(AUTH_HEADERS.USER_ID);
   }
+
+  // Location-scope for restricted users. Computed OUTSIDE the cache
+  // callback so the cache key can include the user's location scope
+  // — otherwise two users with different allowed_location_ids would
+  // share a cached snapshot.
+  const locationFilter = !isReviewMode && userId
+    ? await locationScopeFilter(userId, tenantId)
+    : null;
+  const locationCacheKey = locationFilter ?? "all";
 
   // Items + count are now tag-cached per-tenant via the `inventory:{tenantId}`
   // tag. Mutations in inventory/actions.ts (create/update/adjust-stock/delete)
@@ -46,10 +58,9 @@ export default async function InventoryPage({
   // new/updated items appear on next nav.
   const fetchInventoryPage = unstable_cache(
     async () => {
-      const [itemsResult, countResult] = await Promise.all([
-        admin
-          .from("inventory")
-          .select(`
+      let itemsQuery = admin
+        .from("inventory")
+        .select(`
             id,
             sku,
             name,
@@ -77,22 +88,27 @@ export default async function InventoryPage({
             stock_categories(name),
             suppliers(name)
           `)
-          .eq("tenant_id", tenantId)
-          .is("deleted_at", null)
-          .order("created_at", { ascending: false })
-          .range(offset, offset + ITEMS_PER_PAGE - 1),
-        admin
-          .from("inventory")
-          .select("id", { count: "exact", head: true })
-          .eq("tenant_id", tenantId)
-          .is("deleted_at", null),
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null);
+      let countQuery = admin
+        .from("inventory")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null);
+      if (locationFilter) {
+        itemsQuery = itemsQuery.or(locationFilter);
+        countQuery = countQuery.or(locationFilter);
+      }
+      const [itemsResult, countResult] = await Promise.all([
+        itemsQuery.order("created_at", { ascending: false }).range(offset, offset + ITEMS_PER_PAGE - 1),
+        countQuery,
       ]);
       return {
         items: itemsResult.data ?? [],
         count: countResult.count ?? 0,
       };
     },
-    ["inventory-list", tenantId, String(page)],
+    ["inventory-list", tenantId, String(page), locationCacheKey],
     { tags: [CACHE_TAGS.inventory(tenantId)], revalidate: 3600 }
   );
 

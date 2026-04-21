@@ -8,6 +8,7 @@ import { getAuthContext } from "@/lib/auth-context";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import RepairsListClient from "./RepairsListClient";
+import { locationScopeFilter } from "@/lib/location-read-scope";
 
 export const metadata = { title: "Repairs — Nexpura" };
 
@@ -66,6 +67,7 @@ async function RepairsBody({
   // Auth resolve + tenant lookup are now here (inside Suspense), so the
   // shell has already painted by the time this runs.
   let tenantId: string;
+  let userId: string | null = null;
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
@@ -73,6 +75,7 @@ async function RepairsBody({
     const headerTenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
     if (!headerTenantId) redirect("/login");
     tenantId = headerTenantId;
+    userId = headersList.get(AUTH_HEADERS.USER_ID);
   }
 
   const admin = createAdminClient();
@@ -88,8 +91,16 @@ async function RepairsBody({
   const authPromise = isReviewMode ? Promise.resolve(null) : getAuthContext();
   let auth: Awaited<ReturnType<typeof getAuthContext>> | null;
 
+  // Location-scope filter for location-restricted users. All-access
+  // users (owner/manager with null allowed_location_ids) get null and
+  // the filter is skipped. See src/lib/location-read-scope.ts.
+  // Review-mode bypasses auth — in that case no location restriction.
+  const locationFilter = !isReviewMode && userId
+    ? await locationScopeFilter(userId, tenantId)
+    : null;
+
   if (q) {
-    const liveQuery = admin
+    let liveQuery = admin
       .from("repairs")
       .select(
         `id, repair_number, item_type, item_description, repair_type, stage, priority, due_date, created_at,
@@ -99,10 +110,12 @@ async function RepairsBody({
       .is("deleted_at", null)
       .or(
         `repair_number.ilike.%${q}%,item_description.ilike.%${q}%,repair_type.ilike.%${q}%`
-      )
+      );
+    if (locationFilter) liveQuery = liveQuery.or(locationFilter);
+    const liveQueryFinal = liveQuery
       .order("created_at", { ascending: false })
       .limit(200);
-    const [authRes, liveRes, statsRes] = await Promise.all([authPromise, liveQuery, statsPromise]);
+    const [authRes, liveRes, statsRes] = await Promise.all([authPromise, liveQueryFinal, statsPromise]);
     auth = authRes;
     rawRepairs = liveRes.data as unknown[] | null;
     statsResult = statsRes;
@@ -111,21 +124,26 @@ async function RepairsBody({
     auth = authRes;
     statsResult = statsRes;
 
+    // Snapshot path is always tenant-wide; only consult it for all-access
+    // users. A location-restricted user must hit the live query so their
+    // filter applies — otherwise they'd see the tenant-wide hot rows.
     const snapshot = statsResult.data?.repairs_hot_rows as unknown[] | null;
     const computedAt = statsResult.data?.computed_at as string | undefined;
     const ageMs = computedAt ? Date.now() - new Date(computedAt).getTime() : Infinity;
     const SNAPSHOT_MAX_AGE_MS = 5 * 60 * 1000;
-    if (snapshot && ageMs < SNAPSHOT_MAX_AGE_MS) {
+    if (!locationFilter && snapshot && ageMs < SNAPSHOT_MAX_AGE_MS) {
       rawRepairs = snapshot;
     } else {
-      const { data } = await admin
+      let q2 = admin
         .from("repairs")
         .select(
           `id, repair_number, item_type, item_description, repair_type, stage, priority, due_date, created_at,
           customers(id, full_name)`
         )
         .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
+        .is("deleted_at", null);
+      if (locationFilter) q2 = q2.or(locationFilter);
+      const { data } = await q2
         .order("created_at", { ascending: false })
         .limit(200);
       rawRepairs = data as unknown[] | null;
