@@ -61,6 +61,15 @@ export async function getVoucherById(id: string) {
 }
 
 export async function createVoucher(formData: FormData): Promise<{ id?: string; error?: string }> {
+  // W3-HIGH-04 / W3-RBAC-06: issuing a voucher = issuing money. Gate
+  // on create_invoices (same as voidVoucher + refunds).
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to issue vouchers." : "Not authenticated" };
+  }
+
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, userId, tenantId } = ctx;

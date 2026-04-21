@@ -26,6 +26,8 @@ async function getTenantId(supabase: Awaited<ReturnType<typeof createClient>>) {
 }
 
 export async function createInventoryItem(formData: FormData) {
+  // W3-RBAC-01: gate all inventory mutations on edit_inventory.
+  await requirePermission("edit_inventory");
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
   const { data: { user } } = await supabase.auth.getUser();
@@ -217,6 +219,8 @@ export async function createInventoryItem(formData: FormData) {
 }
 
 export async function updateInventoryItem(id: string, formData: FormData) {
+  // W3-RBAC-01: edit_inventory gate.
+  await requirePermission("edit_inventory");
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
 
@@ -376,6 +380,8 @@ export async function adjustStock(
   quantityChange: number,
   notes: string
 ) {
+  // W3-RBAC-01: edit_inventory gate (adjusting stock = inventory mutation).
+  await requirePermission("edit_inventory");
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
   const { data: { user } } = await supabase.auth.getUser();
@@ -502,12 +508,16 @@ export async function archiveInventoryItem(id: string) {
 }
 
 export async function createCategory(name: string, description?: string) {
+  // W3-MED-01 / W3-RBAC-01: gate + validate.
+  await requirePermission("edit_inventory");
+  const trimmed = (name ?? "").trim();
+  if (!trimmed) throw new Error("Category name is required");
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
 
   const { data, error } = await supabase
     .from("stock_categories")
-    .insert({ tenant_id: tenantId, name, description: description || null })
+    .insert({ tenant_id: tenantId, name: trimmed, description: description || null })
     .select("id, name")
     .single();
 
@@ -520,6 +530,14 @@ export async function saveInventoryItemImages(
   primaryImage: string | null,
   images: string[]
 ): Promise<{ success?: boolean; error?: string }> {
+  // W3-RBAC-01: edit_inventory gate.
+  try {
+    await requirePermission("edit_inventory");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to edit inventory." : "Not authenticated" };
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
@@ -556,11 +574,23 @@ export async function getInventoryItemByBarcode(
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
 
+  // W3-HIGH-01: the .or() filter value is interpolated raw into the
+  // PostgREST query string. A comma / dot / quote in `barcode` can
+  // introduce additional OR clauses (same-tenant only, but still
+  // broadens the match). Reject any barcode containing the PostgREST
+  // syntax characters before building the filter — barcodes are plain
+  // alphanumeric + dashes/underscores in every real-world scanner.
+  const trimmed = barcode.trim();
+  if (!trimmed) return { error: "Barcode is required" };
+  if (!/^[\w\-.]+$/.test(trimmed)) {
+    return { error: "Invalid barcode format" };
+  }
+
   const { data, error } = await supabase
     .from("inventory")
     .select("id, name")
     .eq("tenant_id", tenantId)
-    .or(`barcode_value.eq.${barcode},sku.eq.${barcode}`)
+    .or(`barcode_value.eq.${trimmed},sku.eq.${trimmed}`)
     .is("deleted_at", null)
     .maybeSingle();
 
@@ -570,6 +600,8 @@ export async function getInventoryItemByBarcode(
 }
 
 export async function generateBarcodeForItem(itemId: string): Promise<{ success?: boolean; error?: string; barcodeValue?: string }> {
+  // W3-RBAC-01: edit_inventory gate.
+  await requirePermission("edit_inventory");
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
 
@@ -620,20 +652,38 @@ export async function getSuppliersList(): Promise<{ id: string; name: string }[]
 }
 
 export async function createQuickSupplier(name: string): Promise<{ id?: string; error?: string }> {
+  // W3-MED-02 / W3-RBAC-08: gate + validate.
+  try {
+    await requirePermission("edit_inventory");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to add suppliers." : "Not authenticated" };
+  }
+  const trimmed = (name ?? "").trim();
+  if (!trimmed) return { error: "Supplier name is required" };
+
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
-  
+
   const { data, error } = await supabase
     .from("suppliers")
-    .insert({ tenant_id: tenantId, name })
+    .insert({ tenant_id: tenantId, name: trimmed })
     .select("id")
     .single();
-  
+
   if (error) return { error: error.message };
   return { id: data.id };
 }
 
 export async function quickAddStock(formData: FormData): Promise<{ id?: string; stockNumber?: string; error?: string }> {
+  // W3-RBAC-01: edit_inventory gate.
+  try {
+    await requirePermission("edit_inventory");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to add inventory." : "Not authenticated" };
+  }
+
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
   const { data: { user } } = await supabase.auth.getUser();
@@ -756,9 +806,17 @@ export async function updateStockPrices(
   costPrice: number | null,
   retailPrice: number
 ): Promise<{ success?: boolean; error?: string }> {
+  // W3-RBAC-01: edit_inventory gate.
+  try {
+    await requirePermission("edit_inventory");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to update prices." : "Not authenticated" };
+  }
+
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   const { hasPermission } = await import("@/lib/permissions");
   const canViewCost = await hasPermission(user?.id ?? "", tenantId, "view_cost_price");
@@ -785,9 +843,17 @@ export async function updateStockStatus(
   itemId: string,
   status: string
 ): Promise<{ success?: boolean; error?: string }> {
+  // W3-RBAC-01: edit_inventory gate.
+  try {
+    await requirePermission("edit_inventory");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to update stock status." : "Not authenticated" };
+  }
+
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
-  
+
   const updates: Record<string, string | Date | null> = { status };
   
   // If marking as sold, set sold_at and sold_via
@@ -814,6 +880,14 @@ export async function updateStockStatus(
 }
 
 export async function listOnWebsite(itemId: string): Promise<{ success?: boolean; error?: string }> {
+  // W3-RBAC-01: edit_inventory gate.
+  try {
+    await requirePermission("edit_inventory");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to list items on website." : "Not authenticated" };
+  }
+
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
   
@@ -893,11 +967,26 @@ export async function archiveStockItem(itemId: string): Promise<{ success?: bool
 }
 
 export async function initializeStockNumbers(): Promise<{ success?: boolean; error?: string }> {
+  // W3-RBAC-01: this rewrites tenant-wide stock numbering. Restrict to
+  // owner/manager (matches deleteLocation / saveBanking bucket) + still
+  // requires edit_inventory.
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can initialize stock numbers." };
+    }
+    await requirePermission("edit_inventory");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    if (msg === "subscription_required") return { error: "Your subscription is inactive." };
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to do that." : "Not authenticated" };
+  }
+
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
-  
+
   const { error } = await supabase.rpc("initialize_stock_numbers", { p_tenant_id: tenantId });
-  
+
   if (error) return { error: error.message };
   return { success: true };
 }
@@ -920,6 +1009,14 @@ export async function categorizeWithAI(
   itemName: string,
   description?: string
 ): Promise<{ data?: AICategorization; error?: string }> {
+  // W3-LOW-05 + W3-RBAC-01: must be authed + hold edit_inventory. Prevents
+  // OpenAI cost-burning via a leaked session.
+  try {
+    await requirePermission("edit_inventory");
+  } catch {
+    return { error: "Not authenticated" };
+  }
+
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) {
     return { error: "AI categorization not configured" };

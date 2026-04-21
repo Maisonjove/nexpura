@@ -26,6 +26,15 @@ export interface QuoteInput {
 // ── CRUD Operations ──────────────────────────────────────────────────────────
 export async function createQuote(input: QuoteInput): Promise<{ data?: unknown; error?: string }> {
   try {
+    // W3-RBAC-09: quotes are the entry-point to invoices. Gate on
+    // create_invoices (same bucket as deleteQuote + voidInvoice).
+    try {
+      await requirePermission("create_invoices");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "You don't have permission to create quotes." : "Not authenticated" };
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
@@ -77,6 +86,14 @@ export async function createQuote(input: QuoteInput): Promise<{ data?: unknown; 
 
 export async function updateQuote(id: string, input: Partial<QuoteInput>): Promise<{ data?: unknown; error?: string }> {
   try {
+    // W3-RBAC-09: gate quote edits on create_invoices.
+    try {
+      await requirePermission("create_invoices");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "You don't have permission to update quotes." : "Not authenticated" };
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
@@ -206,6 +223,15 @@ export async function getQuotesList(): Promise<{ data?: unknown[]; error?: strin
 
 export async function convertQuoteToInvoice(quoteId: string): Promise<{ id?: string; error?: string }> {
   try {
+    // W3-RBAC-09: quote → invoice is a financial commit. Gate on
+    // create_invoices.
+    try {
+      await requirePermission("create_invoices");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "You don't have permission to convert quotes." : "Not authenticated" };
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
@@ -321,6 +347,15 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<{ id?: str
 
 export async function convertQuoteToBespoke(quoteId: string): Promise<{ id?: string; error?: string }> {
   try {
+    // W3-RBAC-09: quote → bespoke creates a workshop job + invoice.
+    // Gate on create_invoices.
+    try {
+      await requirePermission("create_invoices");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "You don't have permission to convert quotes." : "Not authenticated" };
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
@@ -409,6 +444,15 @@ export async function convertQuoteToBespoke(quoteId: string): Promise<{ id?: str
 
 export async function convertQuoteToRepair(quoteId: string): Promise<{ id?: string; error?: string }> {
   try {
+    // W3-RBAC-09: quote → repair creates a job + invoice. Gate on
+    // create_invoices.
+    try {
+      await requirePermission("create_invoices");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "You don't have permission to convert quotes." : "Not authenticated" };
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };

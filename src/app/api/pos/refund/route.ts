@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { validateCSRFForRequest } from "@/lib/csrf";
 import { posRefundSchema } from "@/lib/schemas";
 import { reportServerError } from "@/lib/logger";
+import { requirePermission } from "@/lib/auth-context";
 
 export async function POST(req: NextRequest) {
   // SECURITY: Require authentication
@@ -19,18 +20,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request origin" }, { status: 403 });
   }
 
-  const admin = createAdminClient();
-  
-  // SECURITY: Get user's tenant_id from database, NOT from request body
-  const { data: userData } = await admin
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
-  
-  if (!userData?.tenant_id) {
-    return NextResponse.json({ error: "No tenant found" }, { status: 403 });
+  // W3-HIGH-03 / W3-RBAC-11: refunds = money out. Gate on create_invoices
+  // to match processRefund server action. (Bound-check + idempotency
+  // hardening is PR-09.)
+  let ctx;
+  try {
+    ctx = await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    const status = msg.startsWith("permission_denied") ? 403 : msg.startsWith("role_denied") ? 403 : 401;
+    return NextResponse.json({ error: msg }, { status });
   }
+
+  const admin = createAdminClient();
 
   const body = await req.json();
   const parseResult = posRefundSchema.safeParse(body);
@@ -38,9 +40,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
   }
   const { saleId, items, refundMethod, reason, notes, total } = parseResult.data;
-  
-  // SECURITY: Use authenticated tenant_id, ignore client-supplied one
-  const tenantId = userData.tenant_id;
+
+  // SECURITY: tenantId is session-derived from the RBAC context; body
+  // tenantId is ignored.
+  const tenantId = ctx.tenantId;
 
   // Rate limit refunds per tenant to prevent fraud
   const { success: rateLimitOk } = await checkRateLimit(`pos-refund:${tenantId}`);

@@ -611,6 +611,216 @@ describe("PR-02 exports RBAC — W6-CRIT-05 (owner-only bucket)", () => {
   }
 });
 
+// ── PR-07 (Pattern 2 commerce sweep): close the 13 RBAC gaps Wave 3
+// surfaced. Each newly-gated action gets a role matrix: the matrix
+// below mirrors the production requirePermission() rule, so a future
+// DEFAULT_PERMISSIONS change that accidentally grants an unauthorized
+// role one of these permissions fails CI.
+
+describe("PR-07 commerce sweep — create_invoices bucket (W3-RBAC-03..07, 09..11)", () => {
+  // Every action in this bucket was previously UNGATED in Wave 3 and
+  // has been wired to requirePermission("create_invoices") in PR-07:
+  //   - createPOSSale, createLaybySale (pos/actions.ts — technically
+  //     via the frontline salesperson role that already has this
+  //     permission; Wave 3 called these out as missing an explicit
+  //     gate even though the UI-level check pre-existed)
+  //   - createInvoice, updateInvoice, recordPayment, markAsSent,
+  //     createInvoiceAndRedirect, updateInvoiceAndRedirect
+  //   - /api/pos/refund route
+  //   - /api/finance/create-invoice, /api/finance/mark-deposit-paid
+  //   - createVoucher
+  //   - createExpense, updateExpense
+  //   - createQuote, updateQuote, convertQuoteToInvoice,
+  //     convertQuoteToBespoke, convertQuoteToRepair
+  //   - createSale, updateSaleStatus, generatePassportFromSaleItem
+  const gatedActions = [
+    "createInvoice",
+    "updateInvoice",
+    "recordPayment",
+    "markAsSent",
+    "createVoucher",
+    "createExpense",
+    "updateExpense",
+    "createQuote",
+    "updateQuote",
+    "convertQuoteToInvoice",
+    "convertQuoteToBespoke",
+    "convertQuoteToRepair",
+    "createSale",
+    "updateSaleStatus",
+    "generatePassportFromSaleItem",
+    "api/pos/refund",
+    "api/finance/create-invoice",
+    "api/finance/mark-deposit-paid",
+  ];
+
+  for (const action of gatedActions) {
+    describe(action, () => {
+      it("owner passes", () => {
+        expect(decidePermission(makeCtx("owner"), "create_invoices")).toBe("ok");
+      });
+      it("manager passes (default create_invoices=true)", () => {
+        expect(decidePermission(makeCtx("manager"), "create_invoices")).toBe("ok");
+      });
+      it("salesperson passes (frontline money-moving role)", () => {
+        expect(decidePermission(makeCtx("salesperson"), "create_invoices")).toBe("ok");
+      });
+      it("accountant passes (money-entering role)", () => {
+        expect(decidePermission(makeCtx("accountant"), "create_invoices")).toBe("ok");
+      });
+      it("workshop_jeweller is denied", () => {
+        expect(decidePermission(makeCtx("workshop_jeweller"), "create_invoices")).toBe(
+          "permission_denied:create_invoices"
+        );
+      });
+      it("repair_technician is denied", () => {
+        expect(decidePermission(makeCtx("repair_technician"), "create_invoices")).toBe(
+          "permission_denied:create_invoices"
+        );
+      });
+      it("inventory_manager is denied", () => {
+        expect(decidePermission(makeCtx("inventory_manager"), "create_invoices")).toBe(
+          "permission_denied:create_invoices"
+        );
+      });
+      it("staff is denied", () => {
+        expect(decidePermission(makeCtx("staff"), "create_invoices")).toBe(
+          "permission_denied:create_invoices"
+        );
+      });
+      it("suspended-tenant owner is still blocked by paywall", () => {
+        const ctx = { ...makeCtx("owner"), subscriptionStatus: "suspended" };
+        expect(decidePermission(ctx, "create_invoices")).toBe("subscription_required");
+      });
+    });
+  }
+});
+
+describe("PR-07 commerce sweep — edit_inventory bucket (W3-RBAC-01, 02, 08, 13)", () => {
+  // Inventory write-path actions that were UNGATED in Wave 3:
+  //   - createInventoryItem, updateInventoryItem, adjustStock,
+  //     createCategory, saveInventoryItemImages,
+  //     generateBarcodeForItem, quickAddStock, updateStockPrices,
+  //     updateStockStatus, listOnWebsite, categorizeWithAI,
+  //     createQuickSupplier
+  //   - createStocktake, startStocktake, countItem, completeStocktake,
+  //     createStocktakeWithInventory, addManualStocktakeItem
+  //   - createSupplier, updateSupplier
+  //   - createPurchaseOrder, updatePurchaseOrderStatus
+  const gatedActions = [
+    "createInventoryItem",
+    "updateInventoryItem",
+    "adjustStock",
+    "createCategory",
+    "saveInventoryItemImages",
+    "generateBarcodeForItem",
+    "quickAddStock",
+    "updateStockPrices",
+    "updateStockStatus",
+    "listOnWebsite",
+    "categorizeWithAI",
+    "createQuickSupplier",
+    "createStocktake",
+    "startStocktake",
+    "countItem",
+    "createStocktakeWithInventory",
+    "addManualStocktakeItem",
+    "createSupplier",
+    "updateSupplier",
+    "createPurchaseOrder",
+    "updatePurchaseOrderStatus",
+  ];
+
+  for (const action of gatedActions) {
+    describe(action, () => {
+      it("owner passes", () => {
+        expect(decidePermission(makeCtx("owner"), "edit_inventory")).toBe("ok");
+      });
+      it("manager passes (default edit_inventory=true)", () => {
+        expect(decidePermission(makeCtx("manager"), "edit_inventory")).toBe("ok");
+      });
+      it("inventory_manager passes (edit_inventory is their primary scope)", () => {
+        expect(decidePermission(makeCtx("inventory_manager"), "edit_inventory")).toBe("ok");
+      });
+      it("workshop_jeweller passes (default edit_inventory=true — they fabricate stock)", () => {
+        expect(decidePermission(makeCtx("workshop_jeweller"), "edit_inventory")).toBe("ok");
+      });
+      it("salesperson is denied (frontline but not inventory-write)", () => {
+        expect(decidePermission(makeCtx("salesperson"), "edit_inventory")).toBe(
+          "permission_denied:edit_inventory"
+        );
+      });
+      it("repair_technician is denied", () => {
+        expect(decidePermission(makeCtx("repair_technician"), "edit_inventory")).toBe(
+          "permission_denied:edit_inventory"
+        );
+      });
+      it("accountant is denied (financials only, not inventory writes)", () => {
+        expect(decidePermission(makeCtx("accountant"), "edit_inventory")).toBe(
+          "permission_denied:edit_inventory"
+        );
+      });
+      it("staff is denied", () => {
+        expect(decidePermission(makeCtx("staff"), "edit_inventory")).toBe(
+          "permission_denied:edit_inventory"
+        );
+      });
+      it("suspended-tenant owner is blocked by paywall", () => {
+        const ctx = { ...makeCtx("owner"), subscriptionStatus: "suspended" };
+        expect(decidePermission(ctx, "edit_inventory")).toBe("subscription_required");
+      });
+    });
+  }
+});
+
+describe("PR-07 stacked gate — completeStocktake with applyAdjustments (owner/manager + edit_inventory)", () => {
+  // When applyAdjustments=true this rewrites tenant-wide inventory
+  // quantities. Stacked gate: owner/manager AND edit_inventory.
+  function decideStocktakeComplete(ctx: AuthContext): "ok" | string {
+    if (!isTenantActive(ctx)) return "subscription_required";
+    if (!ctx.isManager && !ctx.isOwner) return "not_manager";
+    return decidePermission(ctx, "edit_inventory");
+  }
+  it("owner passes", () => {
+    expect(decideStocktakeComplete(makeCtx("owner"))).toBe("ok");
+  });
+  it("manager passes (has edit_inventory by default)", () => {
+    expect(decideStocktakeComplete(makeCtx("manager"))).toBe("ok");
+  });
+  it("inventory_manager is BLOCKED by owner/manager layer (even with edit_inventory)", () => {
+    expect(decideStocktakeComplete(makeCtx("inventory_manager"))).toBe("not_manager");
+  });
+  it("workshop_jeweller is BLOCKED by owner/manager layer (even with edit_inventory)", () => {
+    expect(decideStocktakeComplete(makeCtx("workshop_jeweller"))).toBe("not_manager");
+  });
+  for (const role of ["salesperson", "repair_technician", "accountant", "staff"] as Role[]) {
+    it(`${role} is blocked`, () => {
+      expect(decideStocktakeComplete(makeCtx(role))).toBe("not_manager");
+    });
+  }
+});
+
+describe("PR-07 stacked gate — initializeStockNumbers (owner/manager + edit_inventory)", () => {
+  // Rewrites tenant-wide stock numbering. Same stacked gate as
+  // completeStocktake.
+  function decide(ctx: AuthContext): "ok" | string {
+    if (!isTenantActive(ctx)) return "subscription_required";
+    if (!ctx.isManager && !ctx.isOwner) return "not_manager";
+    return decidePermission(ctx, "edit_inventory");
+  }
+  it("owner passes", () => {
+    expect(decide(makeCtx("owner"))).toBe("ok");
+  });
+  it("manager passes", () => {
+    expect(decide(makeCtx("manager"))).toBe("ok");
+  });
+  for (const role of LOW_PRIV_ROLES) {
+    it(`${role} is blocked`, () => {
+      expect(decide(makeCtx(role))).toBe("not_manager");
+    });
+  }
+});
+
 describe("PR-02 scheduled reports RBAC — W6-CRIT-06 (owner-only bucket)", () => {
   // scheduled_reports distributes tenant-wide revenue/P&L to
   // caller-supplied emails. Direct data-exfil vector if left editable by

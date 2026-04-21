@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { logAuditEvent } from "@/lib/audit";
+import { requireAuth, requirePermission } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -109,6 +110,8 @@ export async function createStocktake(
   notes?: string
 ): Promise<{ id?: string; error?: string }> {
   try {
+    // W3-RBAC-02: edit_inventory gate.
+    await requirePermission("edit_inventory");
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
@@ -154,6 +157,8 @@ export async function createStocktake(
 
 export async function startStocktake(stocktakeId: string): Promise<{ error?: string }> {
   try {
+    // W3-RBAC-02: edit_inventory gate.
+    await requirePermission("edit_inventory");
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
@@ -200,6 +205,8 @@ export async function countItem(
   notes?: string
 ): Promise<{ error?: string }> {
   try {
+    // W3-RBAC-02: edit_inventory gate.
+    await requirePermission("edit_inventory");
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
@@ -237,29 +244,72 @@ export async function countItem(
 
 export async function completeStocktake(stocktakeId: string, applyAdjustments: boolean): Promise<{ error?: string }> {
   try {
+    // W3-HIGH-02 / W3-RBAC-02: completing with applyAdjustments rewrites
+    // tenant-wide inventory quantities. Require owner/manager when
+    // adjustments are applied; otherwise edit_inventory is sufficient.
+    if (applyAdjustments) {
+      const authCtx = await requireAuth();
+      if (!authCtx.isManager && !authCtx.isOwner) {
+        return { error: "Only owner or manager can complete a stocktake with adjustments." };
+      }
+    }
+    await requirePermission("edit_inventory");
+
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
     let itemsAdjustedCount = 0;
-    
+
     if (applyAdjustments) {
-      // Apply counted quantities to inventory
+      // W3-HIGH-02: race-safe compare-and-swap on inventory.quantity so a
+      // concurrent POS sale doesn't get silently clobbered by the
+      // stocktake commit. Fetch current quantity per item, update
+      // conditionally, retry once on race.
       const { data: items } = await admin
         .from("stocktake_items")
         .select("inventory_id, counted_qty")
         .eq("stocktake_id", stocktakeId)
+        .eq("tenant_id", tenantId)
         .not("counted_qty", "is", null)
         .not("inventory_id", "is", null);
 
       itemsAdjustedCount = items?.length || 0;
-      
+
       for (const item of items ?? []) {
-        if (item.inventory_id && item.counted_qty !== null) {
-          await admin
+        if (!item.inventory_id || item.counted_qty === null) continue;
+        const { data: inv } = await admin
+          .from("inventory")
+          .select("quantity")
+          .eq("id", item.inventory_id)
+          .eq("tenant_id", tenantId)
+          .single();
+        const oldQty = inv?.quantity ?? null;
+
+        if (oldQty === null) continue;
+
+        const { count: updateCount } = await admin
+          .from("inventory")
+          .update({ quantity: item.counted_qty })
+          .eq("id", item.inventory_id)
+          .eq("tenant_id", tenantId)
+          .eq("quantity", oldQty);
+
+        // Race fallback: re-read and retry once with the latest value.
+        if (updateCount === 0) {
+          const { data: invRetry } = await admin
             .from("inventory")
-            .update({ quantity: item.counted_qty })
+            .select("quantity")
             .eq("id", item.inventory_id)
-            .eq("tenant_id", tenantId);
+            .eq("tenant_id", tenantId)
+            .single();
+          if (invRetry) {
+            await admin
+              .from("inventory")
+              .update({ quantity: item.counted_qty })
+              .eq("id", item.inventory_id)
+              .eq("tenant_id", tenantId)
+              .eq("quantity", invRetry.quantity);
+          }
         }
       }
     }
@@ -295,6 +345,8 @@ export async function createStocktakeWithInventory(
   notes?: string
 ): Promise<{ id?: string; error?: string }> {
   try {
+    // W3-RBAC-02: edit_inventory gate.
+    await requirePermission("edit_inventory");
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
@@ -359,6 +411,8 @@ export async function addManualStocktakeItem(
   sku?: string
 ): Promise<{ error?: string }> {
   try {
+    // W3-RBAC-02: edit_inventory gate.
+    await requirePermission("edit_inventory");
     const { tenantId } = await getAuthContext();
     const admin = createAdminClient();
     const { error } = await admin.from("stocktake_items").insert({

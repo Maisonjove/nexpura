@@ -67,6 +67,15 @@ export async function getExpenseById(id: string) {
 export async function createExpense(
   formData: FormData
 ): Promise<{ id?: string; error?: string }> {
+  // W3-RBAC-07: creating an expense is a financial entry. Gate on
+  // create_invoices (same bucket as deleteExpense).
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to create expenses." : "Not authenticated" };
+  }
+
   let ctx;
   try {
     ctx = await getAuthContext();
@@ -119,6 +128,14 @@ export async function updateExpense(
   id: string,
   formData: FormData
 ): Promise<{ success?: boolean; error?: string }> {
+  // W3-RBAC-07: gate expense edits on create_invoices.
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to update expenses." : "Not authenticated" };
+  }
+
   let ctx;
   try {
     ctx = await getAuthContext();

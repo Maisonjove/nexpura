@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
+import { requirePermission } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -22,9 +23,28 @@ async function getAuthContext() {
 
 export async function createPurchaseOrder(formData: FormData): Promise<{ success?: boolean; error?: string }> {
   try {
+    // W3-RBAC-08: edit_inventory gate.
+    try {
+      await requirePermission("edit_inventory");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "You don't have permission to create purchase orders." : "Not authenticated" };
+    }
+
     const { supabase, userId, tenantId } = await getAuthContext();
 
   const supplierId = formData.get("supplier_id") as string;
+
+  // W3-MED-04: verify supplierId belongs to this tenant before linking.
+  if (supplierId) {
+    const { data: supplier } = await supabase
+      .from("suppliers")
+      .select("id")
+      .eq("id", supplierId)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (!supplier) return { error: "Supplier not found" };
+  }
   const notes = formData.get("notes") as string || null;
   const expectedDate = formData.get("expected_date") as string || null;
   const itemsJson = formData.get("items") as string;
@@ -70,6 +90,14 @@ export async function updatePurchaseOrderStatus(
   status: string
 ): Promise<{ success?: boolean; error?: string }> {
   try {
+    // W3-RBAC-08: edit_inventory gate.
+    try {
+      await requirePermission("edit_inventory");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "You don't have permission to update purchase orders." : "Not authenticated" };
+    }
+
     const { supabase, userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 

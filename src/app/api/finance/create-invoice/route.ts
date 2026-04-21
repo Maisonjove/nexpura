@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantTaxConfig } from "@/lib/tenant-tax";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { requirePermission } from "@/lib/auth-context";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
@@ -12,6 +13,19 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // W3-HIGH-10 / W3-RBAC-10: finance invoice creation must mirror the
+    // /invoices/new permission gate. Without this any authed staffer can
+    // POST the route directly and issue invoices (+ Stripe payment
+    // links) even if the UI hides the button.
+    let ctx;
+    try {
+      ctx = await requirePermission("create_invoices");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      const status = msg.startsWith("permission_denied") ? 403 : msg.startsWith("role_denied") ? 403 : 401;
+      return NextResponse.json({ error: msg }, { status });
+    }
+
     const { jobId, jobType } = await req.json();
     const supabase = await createClient();
 
@@ -20,16 +34,8 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data: userData } = await supabase
-      .from("users")
-      .select("tenant_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.tenant_id)
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
-
-    const tenantId = userData.tenant_id;
+    // Session-derived tenant from the RBAC context (not body / user lookup).
+    const tenantId = ctx.tenantId;
 
     // Use admin client for data fetches to bypass RLS (same pattern as detail pages)
     const adminClient = createAdminClient();

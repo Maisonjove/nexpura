@@ -85,6 +85,15 @@ export async function getSaleById(id: string) {
 export async function createSale(
   formData: FormData
 ): Promise<{ id?: string; error?: string }> {
+  // W3-RBAC-04: sales create money-moving records (status=paid auto-
+  // invoices). Gate on create_invoices — owners bypass.
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to create sales." : "Not authenticated" };
+  }
+
   let ctx;
   try {
     ctx = await getAuthContext();
@@ -203,6 +212,16 @@ export async function updateSaleStatus(
   id: string,
   status: string
 ): Promise<{ success?: boolean; error?: string; invoiceId?: string }> {
+  // W3-HIGH-07 / W3-RBAC-04: updating a sale to paid/completed auto-
+  // creates a paid invoice. That's a money-moving state change, gate
+  // on create_invoices — owners bypass.
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to change sale status." : "Not authenticated" };
+  }
+
   let ctx;
   try {
     ctx = await getAuthContext();
@@ -323,6 +342,15 @@ export async function generatePassportFromSaleItem(
   itemDescription: string,
   inventoryId?: string | null
 ): Promise<{ success?: boolean; error?: string; passportId?: string }> {
+  // W3-RBAC-04: gate passport generation (attaches sale → passport ids
+  // that feed into customer-facing artifacts).
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to generate passports." : "Not authenticated" };
+  }
+
   let ctx;
   try {
     ctx = await getAuthContext();

@@ -50,6 +50,18 @@ async function getAuthContext() {
   return { supabase, userId: user.id, tenantId: userData.tenant_id };
 }
 
+// W3-HIGH-08/09 + W3-RBAC-05: money-moving invoice actions (create,
+// update, record payment, mark sent) must be gated by the same
+// `create_invoices` permission that already guards voidInvoice. Adds
+// the RBAC gate on top of the paywall choke point — returns the same
+// tenant/user shape as getAuthContext but throws permission_denied for
+// staff who lack the permission.
+async function getInvoiceWriteContext() {
+  const ctx = await requirePermission("create_invoices");
+  const supabase = await createClient();
+  return { supabase, userId: ctx.userId, tenantId: ctx.tenantId };
+}
+
 export interface LineItemInput {
   description: string;
   quantity: number;
@@ -110,7 +122,8 @@ function calcTotals(
 
 export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: string; error?: string }> {
   try {
-    const { supabase, userId, tenantId } = await getAuthContext();
+    // W3-HIGH-08 / W3-RBAC-05: create_invoices permission gate.
+    const { supabase, userId, tenantId } = await getInvoiceWriteContext();
 
   // Generate invoice number via RPC
   const { data: invoiceNumberData, error: numErr } = await supabase.rpc(
@@ -244,7 +257,8 @@ export async function updateInvoice(
   input: CreateInvoiceInput
 ): Promise<{ error?: string }> {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    // W3-HIGH-08 / W3-RBAC-05: create_invoices permission gate.
+    const { supabase, tenantId } = await getInvoiceWriteContext();
 
   // Check invoice is draft
   const { data: existing } = await supabase
@@ -339,7 +353,8 @@ export async function recordPayment(
   notes: string | null
 ): Promise<{ error?: string }> {
   try {
-    const { supabase, userId, tenantId } = await getAuthContext();
+    // W3-HIGH-09 / W3-RBAC-05: create_invoices permission gate.
+    const { supabase, userId, tenantId } = await getInvoiceWriteContext();
     const admin = createAdminClient();
 
   // IDEMPOTENCY: Prevent duplicate payment submissions
@@ -421,7 +436,9 @@ export async function recordPayment(
 
 export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: string | null; error?: string }> {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    // W3-RBAC-05: create_invoices permission gate (markAsSent triggers
+    // the email + upgrades DRAFT→INV-####, both money-adjacent).
+    const { supabase, tenantId } = await getInvoiceWriteContext();
 
   // If this draft was created via a repair/bespoke auto-invoice flow it has a
   // placeholder `DRAFT-XXXXXXXX` number. Upgrade to the canonical INV-####

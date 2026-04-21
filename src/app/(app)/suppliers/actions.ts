@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth-context";
+import { requireAuth, requirePermission } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -66,6 +66,14 @@ export async function getSupplierById(id: string) {
 export async function createSupplier(
   formData: FormData
 ): Promise<{ id?: string; error?: string }> {
+  // W3-MED-02 / W3-RBAC-08: edit_inventory gate + name required.
+  try {
+    await requirePermission("edit_inventory");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to create suppliers." : "Not authenticated" };
+  }
+
   let ctx;
   try {
     ctx = await getAuthContext();
@@ -76,7 +84,8 @@ export async function createSupplier(
   const { supabase, userId, tenantId } = ctx;
 
   const str = (key: string) => (formData.get(key) as string) || null;
-  const name = (formData.get("name") as string).trim();
+  const name = ((formData.get("name") as string) ?? "").trim();
+  if (!name) return { error: "Supplier name is required" };
 
   const { data, error } = await supabase
     .from("suppliers")
@@ -113,6 +122,14 @@ export async function updateSupplier(
   id: string,
   formData: FormData
 ): Promise<{ success?: boolean; error?: string }> {
+  // W3-RBAC-08: edit_inventory gate + name required.
+  try {
+    await requirePermission("edit_inventory");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to update suppliers." : "Not authenticated" };
+  }
+
   let ctx;
   try {
     ctx = await getAuthContext();
@@ -123,7 +140,8 @@ export async function updateSupplier(
   const { supabase, userId, tenantId } = ctx;
 
   const str = (key: string) => (formData.get(key) as string) || null;
-  const name = (formData.get("name") as string).trim();
+  const name = ((formData.get("name") as string) ?? "").trim();
+  if (!name) return { error: "Supplier name is required" };
 
   // Get old data for audit
   const { data: oldData } = await supabase
