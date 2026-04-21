@@ -212,6 +212,29 @@ export async function requirePermission(key: PermissionKey): Promise<AuthContext
   return ctx;
 }
 
+/**
+ * Assert that the caller holds at least one of the given roles.
+ *
+ * Used for privilege-escalation / tenant-wide mutations (roles management,
+ * banking details, bulk exports, scheduled-report wiring) where the
+ * permission matrix is too coarse and we want a hard owner-only (or
+ * owner+manager) gate. UI buttons are not sufficient — staff can POST the
+ * endpoint directly.
+ *
+ * Throws `Error("role_denied:<roles>")` so callers' try/catch surfaces the
+ * specific rule that blocked them.
+ */
+export async function requireRole(
+  ...roles: Array<"owner" | "manager">
+): Promise<AuthContext> {
+  const ctx = await requireActiveTenant();
+  // Owner is always allowed if any role is requested (super-role)
+  if (ctx.isOwner) return ctx;
+  if (roles.includes("manager") && ctx.role === "manager") return ctx;
+  if (roles.includes("owner") && ctx.isOwner) return ctx;
+  throw new Error(`role_denied:${roles.join(",")}`);
+}
+
 export async function checkPermission(key: PermissionKey): Promise<boolean> {
   const ctx = await getAuthContext();
   if (!ctx) return false;
