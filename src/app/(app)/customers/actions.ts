@@ -8,6 +8,7 @@ import { after } from "next/server";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { assertTenantActive } from "@/lib/assert-tenant-active";
 
 export type CustomerListRow = {
   id: string;
@@ -65,6 +66,8 @@ async function getTenantId(): Promise<string> {
     .single();
 
   if (!userData?.tenant_id) throw new Error("No tenant found");
+  // Paywall choke point. See src/lib/assert-tenant-active.ts.
+  await assertTenantActive(userData.tenant_id);
   return userData.tenant_id;
 }
 

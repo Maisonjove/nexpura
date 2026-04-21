@@ -14,6 +14,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
+import { assertTenantActive } from "@/lib/assert-tenant-active";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -37,6 +38,10 @@ async function getAuthContext(): Promise<{
     .single();
 
   if (!userData?.tenant_id) throw new Error("No tenant found");
+
+  // Paywall: reject mutations for suspended tenants at the shared auth
+  // layer. See src/lib/assert-tenant-active.ts.
+  await assertTenantActive(userData.tenant_id);
 
   return { supabase, userId: user.id, tenantId: userData.tenant_id };
 }

@@ -100,6 +100,11 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
 
     const tenant = Array.isArray(repair.tenants) ? repair.tenants[0] : repair.tenants;
 
+    // order-attachments bucket is private — sign each file_url so the
+    // customer can fetch it. See migration 20260421_order_attachments_private_bucket.sql.
+    const { signOrderAttachments } = await import("@/lib/storage/signed-urls");
+    const signedAttachments = await signOrderAttachments(attachmentsResult.data || []);
+
     return {
       id: repair.id,
       tracking_id: repair.tracking_id,
@@ -113,7 +118,7 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
         business_name: tenant?.business_name || "Jeweller",
         logo_url: tenant?.logo_url,
       },
-      attachments: attachmentsResult.data || [],
+      attachments: signedAttachments,
       status_history: historyResult.data || [],
     };
   }
@@ -161,6 +166,11 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
 
     const tenant = Array.isArray(bespoke.tenants) ? bespoke.tenants[0] : bespoke.tenants;
 
+    // Sign attachment URLs — bucket is private. See migration
+    // 20260421_order_attachments_private_bucket.sql.
+    const { signOrderAttachments } = await import("@/lib/storage/signed-urls");
+    const signedAttachments = await signOrderAttachments(attachmentsResult.data || []);
+
     return {
       id: bespoke.id,
       tracking_id: bespoke.tracking_id,
@@ -174,7 +184,7 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
         business_name: tenant?.business_name || "Jeweller",
         logo_url: tenant?.logo_url,
       },
-      attachments: attachmentsResult.data || [],
+      attachments: signedAttachments,
       status_history: historyResult.data || [],
     };
   }

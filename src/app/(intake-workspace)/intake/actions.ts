@@ -8,6 +8,7 @@ import { invalidateCache, tenantCacheKey } from "@/lib/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import logger from "@/lib/logger";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
+import { assertTenantActive } from "@/lib/assert-tenant-active";
 
 // Intake inserts (repair / bespoke / sale) all go through the shared
 // resolveLocationForCreate policy: cookie → single-location auto →
@@ -95,6 +96,9 @@ async function getAuthContext() {
     .single();
 
   if (!userData?.tenant_id) throw new Error("No tenant found");
+
+  // Paywall choke point. See src/lib/assert-tenant-active.ts.
+  await assertTenantActive(userData.tenant_id);
 
   return { supabase, admin, userId: user.id, tenantId: userData.tenant_id };
 }

@@ -18,24 +18,48 @@ export async function approveAccess(
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-  // Get the request to verify the user is the tenant owner
-  const request = await getSupportAccessByToken(token);
-  if (!request) {
-    return { success: false, error: "Request not found" };
-  }
+    // SECURITY: Reject unless there is an authenticated user. Previously
+    // this action allowed an unauthenticated caller to approve with
+    // `approvedBy = undefined`, which meant any customer who received a
+    // phished /support-access/approve/{token} link could grant Nexpura
+    // support full session-level access to the tenant. Auditing showed
+    // `approved_by: NULL` rows — no way to identify the approver.
+    if (!user?.id) {
+      return { success: false, error: "You must be signed in as the tenant owner to approve support access." };
+    }
 
-  // Verify the user belongs to this tenant
-  const adminClient = createAdminClient();
-  const { data: userRecord } = await adminClient
-    .from("users")
-    .select("id, tenant_id")
-    .eq("id", user?.id)
-    .single();
+    // Get the request to verify the user is the tenant owner
+    const request = await getSupportAccessByToken(token);
+    if (!request) {
+      return { success: false, error: "Request not found" };
+    }
 
-  // Allow approval if: user is logged in and belongs to tenant, OR public access (for email links)
-  const approvedBy = userRecord?.tenant_id === request.tenant_id ? user?.id : undefined;
+    // Verify the user belongs to this tenant AND is the owner.
+    const adminClient = createAdminClient();
+    const { data: userRecord } = await adminClient
+      .from("users")
+      .select("id, tenant_id")
+      .eq("id", user.id)
+      .single();
 
-  const result = await approveSupportAccess(token, approvedBy || request.tenant_id);
+    if (!userRecord || userRecord.tenant_id !== request.tenant_id) {
+      return { success: false, error: "You must be signed in to the tenant that received this request." };
+    }
+
+    // Only owners can approve support access — sales/workshop/inventory
+    // roles have no business granting data access to a third party.
+    const { data: member } = await adminClient
+      .from("team_members")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("tenant_id", request.tenant_id)
+      .single();
+
+    if (member?.role !== "owner") {
+      return { success: false, error: "Only the tenant owner can approve support access." };
+    }
+
+    const result = await approveSupportAccess(token, user.id);
   
   if (!result.success) return result;
 

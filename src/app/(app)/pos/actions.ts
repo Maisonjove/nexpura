@@ -6,6 +6,7 @@ import { executeWithSafety, TransactionStep } from "@/lib/transaction-safety";
 import logger from "@/lib/logger";
 import { revalidateTag } from "next/cache";
 import { getSelectedLocationIdFromCookie, hasLocationAccess } from "@/lib/locations";
+import { assertTenantActive } from "@/lib/assert-tenant-active";
 
 // POSWrapper already gates the UI on a specific location being chosen (see
 // the "Select a Location" guard), so every POS sale has the picker cookie
@@ -56,8 +57,17 @@ export async function createPOSSale(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
 
+    // Paywall: block sales for suspended tenants at the server action level.
+    // UI gating alone is not sufficient (a suspended tenant with a valid
+    // session can POST directly). See src/lib/assert-tenant-active.ts.
+    try {
+      await assertTenantActive(params.tenantId);
+    } catch {
+      return { error: "Your subscription is inactive. Please update billing to continue." };
+    }
+
     const admin = createAdminClient();
-    
+
     // Idempotency check - prevent duplicate submissions
     if (params.idempotencyKey) {
       const { data: existing } = await admin

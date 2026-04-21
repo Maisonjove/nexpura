@@ -62,26 +62,41 @@ export function logSandboxSuppressedSend(args: {
 }
 
 /**
- * Paranoid startup assert: if sandbox mode is on but a live Stripe key
- * is configured, fail loudly. The common mistake this prevents is
- * "oh, I set SANDBOX_MODE=true in preview but forgot to swap to the
- * test STRIPE_SECRET_KEY — my checkout hits live Stripe from a sandbox
- * deploy." Call this once at startup from instrumentation.ts.
+ * Startup assert: if sandbox mode is on but a live Stripe key is
+ * configured, THROW. Audit finding: previously this logged a warning
+ * and returned — meaning a preview deployment with the wrong env could
+ * charge real customer cards during QA. A wrong Stripe account is a
+ * money-loss event, so we hard-fail boot.
  *
- * We deliberately don't crash the whole app — a Stripe mismatch in a
- * preview deploy isn't a security breach, it just means card events
- * go to the wrong Stripe account. A loud logger.error is enough.
+ * Called from instrumentation.ts at server start so a misconfigured
+ * deploy cannot serve traffic.
+ *
+ * Also: in production, require an `sk_` prefix at all — nothing should
+ * boot in prod with an empty or malformed Stripe key. Missing key in
+ * prod means checkout, webhooks, and billing all silently break.
  */
 export function checkStripeKeyMatchesSandboxMode(): void {
-  if (!isSandbox()) return;
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return;
-  if (key.startsWith("sk_live_")) {
-    logger.error(
-      "[sandbox] LIVE Stripe key detected in a sandbox-mode deployment. " +
-      "Swap STRIPE_SECRET_KEY to an sk_test_… key in this environment's " +
-      "Vercel env vars. Real Stripe charges are still possible right now.",
-      { vercelEnv: process.env.VERCEL_ENV, nodeEnv: process.env.NODE_ENV },
-    );
+
+  if (isSandbox()) {
+    if (key && key.startsWith("sk_live_")) {
+      const msg =
+        "[sandbox] Refusing to boot: LIVE Stripe key detected in a sandbox-mode deployment. " +
+        "SANDBOX_MODE / VERCEL_ENV=preview / NODE_ENV=development cannot use sk_live_*. " +
+        "Swap STRIPE_SECRET_KEY to an sk_test_… key in this environment's Vercel env vars.";
+      logger.error(msg, { vercelEnv: process.env.VERCEL_ENV, nodeEnv: process.env.NODE_ENV });
+      throw new Error(msg);
+    }
+    return;
+  }
+
+  // Production: require the key exists and is a live key.
+  if (process.env.NODE_ENV === "production") {
+    if (!key) {
+      throw new Error("[stripe] Refusing to boot: STRIPE_SECRET_KEY required in production.");
+    }
+    if (!key.startsWith("sk_live_") && !key.startsWith("rk_live_")) {
+      throw new Error("[stripe] Refusing to boot: production must use sk_live_ / rk_live_ keys.");
+    }
   }
 }

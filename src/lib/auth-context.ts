@@ -31,7 +31,18 @@ export interface AuthContext {
   isOwner: boolean;
   isManager: boolean;
   permissions: PermissionMap;
+  subscriptionStatus: string | null;
 }
+
+// Subscription states that permit mutating operations. Anything else
+// (suspended, unpaid, cancelled, incomplete_expired) is blocked by
+// requireActiveTenant at the shared auth layer.
+export const MUTATING_SUBSCRIPTION_STATES = new Set([
+  "active",
+  "trialing",
+  "past_due", // still in grace window; cron flips to suspended after expiry
+  "payment_required", // same
+]);
 
 // Request-scoped memoization — only hits Redis/DB once per request
 export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
@@ -130,6 +141,7 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
       tax_rate?: number;
       tax_name?: string;
       tax_inclusive?: boolean;
+      subscription_status?: string | null;
     } | null;
 
     return {
@@ -146,6 +158,7 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
       isOwner,
       isManager,
       permissions,
+      subscriptionStatus: tenantData?.subscription_status ?? null,
     };
   } catch {
     return null;
@@ -155,6 +168,47 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
 export async function requireAuth(): Promise<AuthContext> {
   const ctx = await getAuthContext();
   if (!ctx) throw new Error("Not authenticated");
+  return ctx;
+}
+
+/**
+ * Shared choke point for every mutating server action / API route.
+ * Blocks tenants whose subscription has lapsed past grace. Relying on UI
+ * gating is not sufficient — a suspended tenant with a valid session can
+ * still POST directly. Call this from each write surface (or from the
+ * action's shared auth helper).
+ *
+ * Throws `Error("subscription_required")` so the caller's existing
+ * try/catch surfaces a clear error to the user.
+ */
+export async function requireActiveTenant(): Promise<AuthContext> {
+  const ctx = await requireAuth();
+  if (!isTenantActive(ctx)) {
+    throw new Error("subscription_required");
+  }
+  return ctx;
+}
+
+export function isTenantActive(ctx: AuthContext): boolean {
+  // Missing subscription_status is treated as active for tenants that
+  // predate the subscription state tracking — don't break existing tenants.
+  // Explicit "suspended" / "unpaid" / "cancelled" states are rejected.
+  if (!ctx.subscriptionStatus) return true;
+  return MUTATING_SUBSCRIPTION_STATES.has(ctx.subscriptionStatus);
+}
+
+/**
+ * Assert a specific permission. Use in mutating server actions/route
+ * handlers so RBAC is enforced server-side (UI hiding a button is not
+ * sufficient — staff can hit the endpoint directly).
+ * Owners always pass (matching getAuthContext behaviour).
+ */
+export async function requirePermission(key: PermissionKey): Promise<AuthContext> {
+  const ctx = await requireActiveTenant();
+  if (ctx.isOwner) return ctx;
+  if (!(ctx.permissions[key] ?? false)) {
+    throw new Error(`permission_denied:${key}`);
+  }
   return ctx;
 }
 

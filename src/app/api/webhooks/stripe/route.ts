@@ -51,26 +51,29 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Idempotency: skip duplicate Stripe events
+  // Atomic idempotency: one round-trip INSERT. The unique constraint on
+  // idempotency_locks.key is the only gate — if two concurrent workers
+  // both receive the same Stripe event (retry + race), exactly one INSERT
+  // succeeds and proceeds; the other gets `code === "23505"` and returns
+  // early. Previously this was a SELECT-then-INSERT pair with a
+  // check-then-act TOCTOU window.
   const eventKey = `stripe_event:${event.id}`;
-  const { data: seenEvent } = await supabase
+  const { data: lockRow, error: lockError } = await supabase
     .from("idempotency_locks")
+    .insert({
+      key: eventKey,
+      expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: new Date().toISOString(),
+    })
     .select("key")
-    .eq("key", eventKey)
     .maybeSingle();
-  if (seenEvent) {
+  if (lockError?.code === "23505") {
     debug.log(`[stripe/route] Skipping duplicate event: ${event.id} (${event.type})`);
     return NextResponse.json({ received: true, duplicate: true });
   }
-  const { error: lockError } = await supabase.from("idempotency_locks").insert({
-    key: eventKey,
-    expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date().toISOString(),
-  });
-  if (lockError && lockError.code !== "23505") {
+  if (lockError || !lockRow) {
     logger.error("[stripe/route] Failed to acquire idempotency lock:", lockError);
-  } else if (lockError?.code === "23505") {
-    return NextResponse.json({ received: true, duplicate: true });
+    return NextResponse.json({ error: "idempotency_lock_failed" }, { status: 500 });
   }
   try {
     switch (event.type) {

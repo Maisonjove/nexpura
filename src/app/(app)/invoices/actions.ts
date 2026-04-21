@@ -26,6 +26,7 @@ import { sendInvoiceEmail } from "@/lib/email/send";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { assertTenantActive } from "@/lib/assert-tenant-active";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -41,6 +42,9 @@ async function getAuthContext() {
     .single();
 
   if (!userData?.tenant_id) throw new Error("No tenant found");
+
+  // Paywall choke point. See src/lib/assert-tenant-active.ts.
+  await assertTenantActive(userData.tenant_id);
 
   return { supabase, userId: user.id, tenantId: userData.tenant_id };
 }

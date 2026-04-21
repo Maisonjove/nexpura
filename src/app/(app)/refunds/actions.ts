@@ -6,18 +6,22 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { withIdempotency } from "@/lib/idempotency";
 import { logAuditEvent } from "@/lib/audit";
+import { requirePermission } from "@/lib/auth-context";
 
 async function getAuthContext() {
+  // Refunds are money-moving. Require (a) authenticated, (b) tenant
+  // active (not suspended), (c) `create_invoices` permission — the
+  // existing financial-writes permission in the permissions schema.
+  // Without this, any auth'd team member could hit /refunds/new and
+  // issue store credit, regardless of role. Owners pass automatically.
+  const ctx = await requirePermission("create_invoices");
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
-  if (!userData?.tenant_id) throw new Error("No tenant found");
-  return { supabase, admin: createAdminClient(), userId: user.id, tenantId: userData.tenant_id };
+  return {
+    supabase,
+    admin: createAdminClient(),
+    userId: ctx.userId,
+    tenantId: ctx.tenantId,
+  };
 }
 
 export interface RefundItemInput {
@@ -62,6 +66,40 @@ export async function processRefund(params: {
 
       if (!sale) return { error: "Original sale not found" };
       if (params.items.length === 0) return { error: "Select at least one item to refund" };
+
+      // BOUND-CHECK: refund cannot exceed (sale.total) - (already refunded).
+      // Client supplies unit_price and quantity; server never trusts that the
+      // implied total stays inside the envelope of the original sale. Without
+      // this, a client could craft `{ unit_price: 9999, quantity: 100 }` and
+      // receive 99× the original as store credit.
+      const { data: priorRefunds } = await admin
+        .from("refunds")
+        .select("total")
+        .eq("tenant_id", tenantId)
+        .eq("original_sale_id", params.originalSaleId)
+        .in("status", ["completed", "processing"]);
+      const alreadyRefunded = (priorRefunds ?? []).reduce(
+        (sum, r) => sum + Number(r.total ?? 0),
+        0,
+      );
+      const requestedSubtotal = params.items.reduce(
+        (sum, i) => sum + Number(i.line_total ?? 0),
+        0,
+      );
+      // tax added below; compare subtotals (pre-tax) against sale subtotal.
+      const saleSubtotal = Number(sale.subtotal ?? sale.total ?? 0);
+      const remainingRefundable = saleSubtotal - alreadyRefunded;
+      if (requestedSubtotal <= 0) {
+        return { error: "Refund subtotal must be positive." };
+      }
+      if (requestedSubtotal > remainingRefundable + 0.01) {
+        return {
+          error:
+            `Refund exceeds remaining refundable amount. Sale subtotal ${saleSubtotal.toFixed(2)}, ` +
+            `already refunded ${alreadyRefunded.toFixed(2)}, remaining ${remainingRefundable.toFixed(2)}, ` +
+            `requested ${requestedSubtotal.toFixed(2)}.`,
+        };
+      }
 
   // Generate refund number
   const { count } = await admin

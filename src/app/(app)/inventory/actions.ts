@@ -8,6 +8,7 @@ import { generateBarcodeValue } from "@/lib/barcode";
 import { logAuditEvent } from "@/lib/audit";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
+import { assertTenantActive } from "@/lib/assert-tenant-active";
 
 async function getTenantId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -18,6 +19,8 @@ async function getTenantId(supabase: Awaited<ReturnType<typeof createClient>>) {
     .eq("id", user.id)
     .single();
   if (!data?.tenant_id) throw new Error("No tenant");
+  // Paywall choke point. See src/lib/assert-tenant-active.ts.
+  await assertTenantActive(data.tenant_id);
   return data.tenant_id as string;
 }
 
