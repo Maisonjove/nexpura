@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { sendBulkMarketingEmail } from "@/lib/marketing/email";
 import { getRecipientsForFilter } from "@/lib/marketing/segments";
 import { logAuditEvent } from "@/lib/audit";
+import { requireRole } from "@/lib/auth-context";
 
 interface CampaignData {
   name: string;
@@ -21,6 +22,13 @@ interface CampaignData {
 }
 
 export async function createCampaign(data: CampaignData) {
+  // W5-CRIT-004: campaign create/edit/send is marketing-admin. Owner/manager only.
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can manage campaigns." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -65,6 +73,13 @@ export async function createCampaign(data: CampaignData) {
 }
 
 export async function updateCampaign(id: string, data: Partial<CampaignData>) {
+  // W5-CRIT-004: owner/manager only.
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can manage campaigns." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -122,6 +137,13 @@ export async function updateCampaign(id: string, data: Partial<CampaignData>) {
 }
 
 export async function deleteCampaign(id: string) {
+  // W5-CRIT-004: owner/manager only.
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can delete campaigns." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -172,6 +194,13 @@ export async function deleteCampaign(id: string) {
 }
 
 export async function duplicateCampaign(id: string) {
+  // W5-CRIT-004: duplicating creates a new send-ready campaign → owner/manager.
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can duplicate campaigns." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -213,6 +242,14 @@ export async function duplicateCampaign(id: string) {
 }
 
 export async function sendCampaignNow(id: string) {
+  // W5-CRIT-004: the blast-the-list endpoint — highest-risk in this file.
+  // Owner/manager only. Salesperson/workshop/accountant explicitly blocked.
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can send campaigns." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

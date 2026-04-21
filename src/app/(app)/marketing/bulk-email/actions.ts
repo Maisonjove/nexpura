@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { sendBulkMarketingEmail } from "@/lib/marketing/email";
 import { getRecipientsForFilter } from "@/lib/marketing/segments";
+import { requireRole } from "@/lib/auth-context";
 
 interface BulkEmailData {
   subject: string;
@@ -18,6 +19,13 @@ interface BulkEmailData {
 }
 
 export async function sendBulkEmail(data: BulkEmailData) {
+  // W5-CRIT-004: bulk-email is the direct blast endpoint. Owner/manager only.
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can send bulk emails." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

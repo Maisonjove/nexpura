@@ -4,12 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
+import { requireRole } from "@/lib/auth-context";
 
 export async function updateAutomation(
   automationType: string,
   data: { enabled?: boolean; settings?: Record<string, unknown>; template_id?: string | null }
 ) {
   try {
+    // W5-CRIT-004: automations fire customer-facing emails on our behalf —
+    // toggling them or swapping the template is marketing-admin. Owner/manager.
+    await requireRole("owner", "manager");
+
     const supabase = await createClient();
     const {
       data: { user },

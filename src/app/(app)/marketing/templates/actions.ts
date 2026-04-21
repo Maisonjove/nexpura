@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
-import { requireAuth } from "@/lib/auth-context";
+import { requireAuth, requireRole } from "@/lib/auth-context";
 
 interface TemplateData {
   name: string;
@@ -15,6 +15,9 @@ interface TemplateData {
 
 export async function createTemplate(data: TemplateData) {
   try {
+    // W5-CRIT-004: templates drive customer-facing emails — owner/manager.
+    await requireRole("owner", "manager");
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -60,6 +63,9 @@ export async function createTemplate(data: TemplateData) {
 
 export async function updateTemplate(id: string, data: Partial<TemplateData>) {
   try {
+    // W5-CRIT-004: owner/manager only.
+    await requireRole("owner", "manager");
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -148,6 +154,9 @@ export async function deleteTemplate(id: string) {
 
 export async function duplicateTemplate(id: string) {
   try {
+    // W5-CRIT-004: owner/manager only (duplicate creates a sendable copy).
+    await requireRole("owner", "manager");
+
     const supabase = await createClient();
     const {
       data: { user },

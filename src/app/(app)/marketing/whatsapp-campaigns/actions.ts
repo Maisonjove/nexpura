@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 import logger from "@/lib/logger";
-import { requireAuth } from "@/lib/auth-context";
+import { requireAuth, requireRole } from "@/lib/auth-context";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-02-25.clover",
@@ -19,6 +19,13 @@ export async function createWhatsAppCampaign(data: {
   recipient_type: "all" | "segment" | "tags" | "manual";
   recipient_filter: Record<string, unknown>;
 }): Promise<{ id?: string; error?: string }> {
+  // W5-CRIT-004: paid WhatsApp blast — owner/manager only.
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can create WhatsApp campaigns." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -98,6 +105,13 @@ export async function createCampaignCheckout(campaignId: string): Promise<{
   checkoutUrl?: string;
   error?: string;
 }> {
+  // W5-CRIT-004: initiating billable send — owner/manager only.
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can pay and send WhatsApp campaigns." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

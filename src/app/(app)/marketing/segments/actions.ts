@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { updateSegmentCount } from "@/lib/marketing/segments";
 import { logger } from "@/lib/logger";
-import { requireAuth } from "@/lib/auth-context";
+import { requireAuth, requireRole } from "@/lib/auth-context";
 
 interface SegmentData {
   name: string;
@@ -15,6 +15,9 @@ interface SegmentData {
 
 export async function createSegment(data: SegmentData) {
   try {
+    // W5-CRIT-004: segments define who marketing sends to — owner/manager only.
+    await requireRole("owner", "manager");
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -57,6 +60,9 @@ export async function createSegment(data: SegmentData) {
 
 export async function updateSegment(id: string, data: Partial<SegmentData>) {
   try {
+    // W5-CRIT-004: owner/manager only.
+    await requireRole("owner", "manager");
+
     const supabase = await createClient();
     const {
       data: { user },
