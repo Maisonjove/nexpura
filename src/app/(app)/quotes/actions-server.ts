@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { requirePermission } from "@/lib/auth-context";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export interface QuoteItem {
@@ -122,6 +123,14 @@ export async function updateQuote(id: string, input: Partial<QuoteInput>): Promi
 
 export async function deleteQuote(id: string): Promise<{ error?: string }> {
   try {
+    // RBAC: quotes turn into invoices. Gate delete on create_invoices
+    // (same financial-document bucket as refunds / invoice-void).
+    try {
+      await requirePermission("create_invoices");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg };
+    }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };

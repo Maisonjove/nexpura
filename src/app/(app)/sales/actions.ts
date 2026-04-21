@@ -7,6 +7,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
+import { requirePermission } from "@/lib/auth-context";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -369,6 +370,15 @@ export async function generatePassportFromSaleItem(
 export async function deleteSale(
   id: string
 ): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: deleting a sale wipes a money-entered record (and the sale
+  // items under it). Gate on create_invoices — same bucket as refunds,
+  // voucher-void, invoice-void.
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg };
+  }
   let ctx;
   try {
     ctx = await getAuthContext();

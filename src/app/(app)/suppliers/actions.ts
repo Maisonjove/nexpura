@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
+import { requireAuth } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -168,6 +169,16 @@ export async function updateSupplier(
 export async function deleteSupplier(
   id: string
 ): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: deleting a supplier is destructive and cascades to historical
+  // purchase data. Mirror archiveCustomer — owner/manager only.
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete suppliers." };
+    }
+  } catch {
+    return { error: "Not authenticated" };
+  }
   let ctx;
   try {
     ctx = await getAuthContext();

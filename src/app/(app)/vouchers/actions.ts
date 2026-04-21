@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
+import { requirePermission } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -134,6 +135,14 @@ export async function lookupVoucher(code: string): Promise<{
 }
 
 export async function voidVoucher(id: string): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: voiding a gift voucher wipes balance + invalidates a money
+  // instrument. Same gate as refunds / invoice-void (create_invoices).
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg };
+  }
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, userId, tenantId } = ctx;

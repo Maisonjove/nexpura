@@ -16,6 +16,7 @@ import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { repairCreateSchema } from "@/lib/schemas/jobs";
+import { requireAuth } from "@/lib/auth-context";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -395,6 +396,17 @@ export async function sendRepairQuoteEmail(
 export async function archiveRepair(
   id: string
 ): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: archiving a repair is a destructive soft-delete. Mirror
+  // archiveCustomer — owner/manager only. edit_repairs is enough to
+  // modify status, but deletion is reserved for management.
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can archive repairs." };
+    }
+  } catch {
+    return { error: "Not authenticated" };
+  }
   let ctx;
   try {
     ctx = await getAuthContext();

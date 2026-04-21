@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
+import { requirePermission } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -175,6 +176,14 @@ export async function updateExpense(
 export async function deleteExpense(
   id: string
 ): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: expenses are a financial mutation. Gate on create_invoices
+  // (same money-handling bucket as refunds + voucher-void).
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg };
+  }
   let ctx;
   try {
     ctx = await getAuthContext();

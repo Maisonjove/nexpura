@@ -16,6 +16,7 @@ import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { bespokeCreateSchema } from "@/lib/schemas/jobs";
+import { requireAuth } from "@/lib/auth-context";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -372,6 +373,16 @@ export async function advanceJobStage(
 export async function archiveBespokeJob(
   id: string
 ): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: archiving a bespoke job is a destructive soft-delete. Mirror
+  // archiveCustomer — owner/manager only.
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can archive bespoke jobs." };
+    }
+  } catch {
+    return { error: "Not authenticated" };
+  }
   let ctx;
   try {
     ctx = await getAuthContext();
