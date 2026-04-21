@@ -14,7 +14,7 @@ import { isTenantActive } from "../auth-context";
  * change that accidentally grants a low-privilege role one of these
  * dangerous permissions will break this test and the build.
  *
- * Covered gates:
+ * Covered gates (first sweep):
  * - archiveCustomer (owner/manager only)
  * - voidInvoice (create_invoices)
  * - voidVoucher (create_invoices)
@@ -24,6 +24,29 @@ import { isTenantActive } from "../auth-context";
  * - deleteQuote (create_invoices)
  * - archiveRepair (owner/manager only)
  * - archiveBespokeJob (owner/manager only)
+ *
+ * Covered gates (second sweep — inventory/line-item/attachment/admin):
+ * - archiveInventoryItem (owner/manager + edit_inventory)
+ * - archiveStockItem (owner/manager + edit_inventory)
+ * - removeRepairLineItem (owner/manager)
+ * - removeBespokeLineItem (owner/manager, in addition to edit_bespoke)
+ * - deleteJobAttachment (owner/manager, in addition to edit_bespoke)
+ * - deleteTaskAttachment (owner/manager)
+ * - deleteSitePage (owner/manager)
+ * - deleteSection (owner/manager)
+ * - deleteCampaign (owner/manager)
+ * - deleteTemplate (owner/manager)
+ * - deleteSegment (owner/manager)
+ * - deleteTagTemplate (owner/manager)
+ * - deleteTaskTemplate (owner/manager)
+ * - removeMember (owner/manager)
+ * - removeTeamMember (owner/manager)
+ * - deleteMemoItem (owner/manager)
+ * - cancelPrintJob (owner/manager)
+ * - deleteLocation (owner-only; legacy, asserted here)
+ * - removeEmailDomain (owner-only; legacy, asserted here)
+ * - deletePilotIssue (owner-only admin; asserted here)
+ * - deleteTask (owner/manager OR self-scoped to creator/assignee)
  */
 
 type Role = keyof typeof DEFAULT_PERMISSIONS;
@@ -186,5 +209,144 @@ describe("RBAC contract sanity", () => {
     for (const r of LOW_PRIV_ROLES) {
       expect(makeCtx(r).isManager).toBe(false);
     }
+  });
+});
+
+// ── Second sweep: additional destructive gates (inventory archive,
+// line-item removes, attachments, templates, segments, tags, memo,
+// print cancel, team-member removal, owner-only admin actions). ────
+
+describe("destructive RBAC gates — owner/manager bucket (second sweep)", () => {
+  const gatedActions = [
+    "archiveInventoryItem",
+    "archiveStockItem",
+    "removeRepairLineItem",
+    "removeBespokeLineItem",
+    "deleteJobAttachment",
+    "deleteTaskAttachment",
+    "deleteSitePage",
+    "deleteSection",
+    "deleteCampaign",
+    "deleteTemplate",
+    "deleteSegment",
+    "deleteTagTemplate",
+    "deleteTaskTemplate",
+    "removeMember",
+    "removeTeamMember",
+    "deleteMemoItem",
+    "cancelPrintJob",
+  ];
+
+  for (const action of gatedActions) {
+    describe(action, () => {
+      it("owner passes", () => {
+        expect(decideManagerGate(makeCtx("owner"))).toBe("ok");
+      });
+      it("manager passes", () => {
+        expect(decideManagerGate(makeCtx("manager"))).toBe("ok");
+      });
+      for (const role of LOW_PRIV_ROLES) {
+        it(`${role} is denied`, () => {
+          expect(decideManagerGate(makeCtx(role))).toBe("denied");
+        });
+      }
+      it("suspended-tenant owner is still blocked by paywall", () => {
+        const ctx = { ...makeCtx("owner"), subscriptionStatus: "suspended" };
+        expect(decideManagerGate(ctx)).toBe("denied");
+      });
+    });
+  }
+});
+
+// Inventory archives carry a second gate — edit_inventory — stacked on
+// top of the owner/manager check. Lock both layers.
+describe("inventory archive stacking: edit_inventory + owner/manager", () => {
+  function decideStacked(ctx: AuthContext): "ok" | string {
+    const mgrOk = decideManagerGate(ctx);
+    if (mgrOk !== "ok") return mgrOk;
+    return decidePermission(ctx, "edit_inventory");
+  }
+  it("owner passes", () => {
+    expect(decideStacked(makeCtx("owner"))).toBe("ok");
+  });
+  it("manager passes (has edit_inventory by default)", () => {
+    expect(decideStacked(makeCtx("manager"))).toBe("ok");
+  });
+  it("inventory_manager is denied by owner/manager gate even though they have edit_inventory", () => {
+    // Critical: previously this role could archive via UI-gated check only.
+    expect(decideStacked(makeCtx("inventory_manager"))).toBe("denied");
+  });
+  it("workshop_jeweller is denied by owner/manager gate", () => {
+    expect(decideStacked(makeCtx("workshop_jeweller"))).toBe("denied");
+  });
+  for (const role of ["salesperson", "accountant", "repair_technician", "staff"] as Role[]) {
+    it(`${role} is denied`, () => {
+      expect(decideStacked(makeCtx(role))).toBe("denied");
+    });
+  }
+});
+
+// Owner-only gates (stricter than manager): delete/remove of tenant
+// infrastructure that only the account owner should touch.
+describe("destructive RBAC gates — owner-only bucket", () => {
+  function decideOwnerOnly(ctx: AuthContext): "ok" | "denied" {
+    if (!isTenantActive(ctx)) return "denied";
+    return ctx.isOwner ? "ok" : "denied";
+  }
+  const gatedActions = ["deleteLocation", "removeEmailDomain", "deletePilotIssue"];
+  for (const action of gatedActions) {
+    describe(action, () => {
+      it("owner passes", () => {
+        expect(decideOwnerOnly(makeCtx("owner"))).toBe("ok");
+      });
+      it("manager is denied (owner-only gate)", () => {
+        expect(decideOwnerOnly(makeCtx("manager"))).toBe("denied");
+      });
+      for (const role of LOW_PRIV_ROLES) {
+        it(`${role} is denied`, () => {
+          expect(decideOwnerOnly(makeCtx(role))).toBe("denied");
+        });
+      }
+    });
+  }
+});
+
+// deleteTask is special-cased: owner/manager, or the creator/assignee of
+// the task (self-scoped personal tasks).
+describe("deleteTask gate — owner/manager OR creator/assignee", () => {
+  function decideDeleteTask(
+    ctx: AuthContext,
+    task: { created_by: string | null; assigned_to: string | null }
+  ): "ok" | "denied" {
+    if (!isTenantActive(ctx)) return "denied";
+    if (ctx.isOwner || ctx.isManager) return "ok";
+    const self = task.created_by === ctx.userId || task.assigned_to === ctx.userId;
+    return self ? "ok" : "denied";
+  }
+
+  const myTask = { created_by: "u1", assigned_to: null };
+  const theirTask = { created_by: "u2", assigned_to: "u3" };
+  const assignedToMe = { created_by: "u9", assigned_to: "u1" };
+
+  it("owner can delete any task", () => {
+    expect(decideDeleteTask(makeCtx("owner"), theirTask)).toBe("ok");
+  });
+  it("manager can delete any task", () => {
+    expect(decideDeleteTask(makeCtx("manager"), theirTask)).toBe("ok");
+  });
+  for (const role of LOW_PRIV_ROLES) {
+    it(`${role} can delete their own task (as creator)`, () => {
+      expect(decideDeleteTask(makeCtx(role), myTask)).toBe("ok");
+    });
+    it(`${role} can delete a task assigned to them`, () => {
+      expect(decideDeleteTask(makeCtx(role), assignedToMe)).toBe("ok");
+    });
+    it(`${role} CANNOT delete another user's task`, () => {
+      expect(decideDeleteTask(makeCtx(role), theirTask)).toBe("denied");
+    });
+  }
+  it("suspended-tenant owner is still blocked by paywall even for own tasks", () => {
+    const ctx = { ...makeCtx("owner"), subscriptionStatus: "suspended" };
+    expect(decideDeleteTask(ctx, myTask)).toBe("denied");
   });
 });
