@@ -37,18 +37,8 @@ export async function POST(req: NextRequest) {
     if (finalAction === "approve") {
       updates.approval_status = "approved";
       updates.approved_at = new Date().toISOString();
-      // Store signature data if provided AND the column exists. The
-      // `client_signature_data` column was added in a later migration
-      // that hasn't necessarily been applied to every tenant's schema;
-      // if missing, PostgREST responds with a "column not found" error
-      // and the whole approval rolls back — customer clicks Approve,
-      // nothing happens, jeweller gets nothing. Fall back to persisting
-      // the signature as a prefix in approval_notes (a column that
-      // definitely exists) so nothing is lost and the state transition
-      // still completes.
       if (signature) {
-        const sigMarker = `[signature:${signature.slice(0, 120)}…]`;
-        updates.approval_notes = notes ? `${sigMarker} ${notes}` : sigMarker;
+        updates.client_signature_data = signature;
       }
     } else {
       updates.approval_status = "changes_requested";
@@ -59,11 +49,17 @@ export async function POST(req: NextRequest) {
       .update(updates)
       .eq("id", job.id);
 
-    // Defensive: if some other column we tried to set isn't in the schema
-    // cache, retry without it rather than failing the whole approval.
+    // Defensive: if the schema cache on some tenant hasn't caught up
+    // with a column this handler writes (has happened twice historically:
+    // client_signature_data before 20260421_bespoke_signature_column and
+    // invoices.sale_id before 20260421_invoices_sale_id_column), retry
+    // with just the essential state transition so the customer approval
+    // never silently fails — the signature/notes lose their home for
+    // one request but the approval itself always completes.
     if (updateErr && /column .* not find|schema cache/i.test(updateErr.message)) {
       const safeUpdates: Record<string, unknown> = { approval_status: updates.approval_status };
       if (updates.approved_at) safeUpdates.approved_at = updates.approved_at;
+      if (updates.approval_notes) safeUpdates.approval_notes = updates.approval_notes;
       const retry = await admin.from("bespoke_jobs").update(safeUpdates).eq("id", job.id);
       updateErr = retry.error;
     }
