@@ -32,12 +32,26 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { connection } from "next/server";
+import crypto from "crypto";
 import { getAuthContext } from "@/lib/integrations";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { signOAuthState } from "@/lib/webhook-security";
 import logger from "@/lib/logger";
 
 const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID!;
 const SCOPES = "read_products,write_products,read_inventory,write_inventory,read_orders";
+
+/**
+ * Secret used to HMAC-sign the OAuth `state` parameter AND the companion
+ * cookie that binds it to this browser session. We deliberately derive
+ * from the Shopify client secret so we never need a new env var, but it
+ * is namespaced so a leak of `state` can't forge arbitrary data.
+ */
+function getStateSecret(): string {
+  const base = process.env.SHOPIFY_CLIENT_SECRET || "";
+  if (!base) throw new Error("[shopify/connect] SHOPIFY_CLIENT_SECRET not configured");
+  return crypto.createHash("sha256").update(`shopify-oauth-state:${base}`).digest("hex");
+}
 
 export async function GET(req: NextRequest) {
   // CC-migration marker: defer to request time. Prevents the prerender
@@ -66,20 +80,38 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Build OAuth URL
+    // Build OAuth URL. W6-CRIT-08: the previous `state` was just
+    // base64(JSON) — unsigned and unbound. Any attacker who could
+    // induce a user's browser to hit the callback could forge a
+    // different tenant's state and bind their own Shopify store to
+    // the victim's tenant. New contract:
+    //   * state = signed { tenantId, nonce } — callback verifies HMAC.
+    //   * cookie = same nonce, HttpOnly + SameSite=Lax + Secure.
+    //   * callback requires BOTH to match, enforcing same-browser
+    //     binding + tenant equality.
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/shopify/callback`;
-    const state = Buffer.from(JSON.stringify({ tenantId })).toString("base64");
-    
+    const nonce = crypto.randomBytes(24).toString("base64url");
+    const stateSecret = getStateSecret();
+    const state = signOAuthState({ tenantId, nonce, issuedAt: Date.now() }, stateSecret);
+
     const params = new URLSearchParams({
       client_id: SHOPIFY_CLIENT_ID,
       scope: SCOPES,
       redirect_uri: redirectUri,
       state,
     });
-    
+
     const authUrl = `https://${shop}.myshopify.com/admin/oauth/authorize?${params.toString()}`;
-    
-    return NextResponse.redirect(authUrl);
+
+    const res = NextResponse.redirect(authUrl);
+    res.cookies.set("shopify_oauth_nonce", nonce, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 10 * 60, // 10 minutes
+    });
+    return res;
   } catch (err) {
     logger.error("[shopify/connect]", err);
     return NextResponse.redirect(

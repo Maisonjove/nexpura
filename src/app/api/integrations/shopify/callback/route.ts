@@ -29,12 +29,30 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { connection } from "next/server";
-import { upsertIntegration } from "@/lib/integrations";
+import crypto from "crypto";
+import { upsertIntegration, getAuthContext } from "@/lib/integrations";
+import {
+  verifyShopifyOAuthHmac,
+  verifyOAuthState,
+} from "@/lib/webhook-security";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID!;
 const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET!;
+
+function getStateSecret(): string {
+  const base = process.env.SHOPIFY_CLIENT_SECRET || "";
+  if (!base) throw new Error("[shopify/callback] SHOPIFY_CLIENT_SECRET not configured");
+  return crypto.createHash("sha256").update(`shopify-oauth-state:${base}`).digest("hex");
+}
+
+/** Shopify-allowed shop domains: `<handle>.myshopify.com`. */
+function isValidShopDomain(shop: string): boolean {
+  return /^[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com$/.test(shop);
+}
+
+const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
 
 export async function GET(req: NextRequest) {
   // CC-migration marker: defer to request time before any header/query
@@ -68,13 +86,64 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // W6-CRIT-08 hardening starts here: every one of these checks must
+  // pass before we touch the integrations table with a tenant id.
+  if (!isValidShopDomain(shop)) {
+    logger.warn("[shopify/callback] rejected non-myshopify shop domain:", shop);
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/website/connect?error=bad_shop`
+    );
+  }
+
+  // 1. Shopify query-string HMAC — signed by the app client secret.
+  if (!verifyShopifyOAuthHmac(searchParams, SHOPIFY_CLIENT_SECRET)) {
+    logger.warn("[shopify/callback] Shopify HMAC verification failed");
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/website/connect?error=invalid_hmac`
+    );
+  }
+
   try {
-    // Decode state to get tenantId
-    const { tenantId } = JSON.parse(Buffer.from(state, "base64").toString());
-    
-    if (!tenantId) {
-      throw new Error("Invalid state - missing tenantId");
+    // 2. Verify our signed `state` and match it to the browser cookie set
+    //    by /connect. This binds the OAuth hop to the browser that
+    //    initiated it (same-browser check) and prevents a logged-in
+    //    attacker from smuggling another tenant's state onto a victim
+    //    session.
+    const stateSecret = getStateSecret();
+    const decoded = verifyOAuthState<{ tenantId: string; nonce: string; issuedAt: number }>(
+      state,
+      stateSecret
+    );
+    if (!decoded?.tenantId || !decoded?.nonce) {
+      throw new Error("Invalid state signature");
     }
+    if (typeof decoded.issuedAt !== "number" || Date.now() - decoded.issuedAt > OAUTH_STATE_MAX_AGE_MS) {
+      throw new Error("State expired");
+    }
+
+    const cookieNonce = req.cookies.get("shopify_oauth_nonce")?.value;
+    if (!cookieNonce) {
+      throw new Error("Missing oauth nonce cookie");
+    }
+    const aBuf = Buffer.from(decoded.nonce);
+    const bBuf = Buffer.from(cookieNonce);
+    if (aBuf.length !== bBuf.length || !crypto.timingSafeEqual(aBuf, bBuf)) {
+      throw new Error("Nonce mismatch");
+    }
+
+    // 3. Session tenant MUST match the tenant in the signed state. No
+    //    cross-tenant install — even if a logged-in owner of tenant A
+    //    somehow surfaces a state signed for tenant B, we bail.
+    const { tenantId: sessionTenantId } = await getAuthContext();
+    if (sessionTenantId !== decoded.tenantId) {
+      logger.warn("[shopify/callback] tenant mismatch", {
+        session: sessionTenantId,
+        state: decoded.tenantId,
+      });
+      throw new Error("Tenant mismatch");
+    }
+
+    const tenantId = decoded.tenantId;
 
     // Exchange code for access token
     const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
@@ -126,13 +195,30 @@ export async function GET(req: NextRequest) {
       throw new Error(upsertError);
     }
 
-    return NextResponse.redirect(
+    const okRes = NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/website/connect?success=shopify_connected`
     );
+    // Clear the nonce cookie — it's single-use.
+    okRes.cookies.set("shopify_oauth_nonce", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+    return okRes;
   } catch (err) {
     logger.error("[shopify/callback]", err);
-    return NextResponse.redirect(
+    const failRes = NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/website/connect?error=callback_failed`
     );
+    failRes.cookies.set("shopify_oauth_nonce", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+    return failRes;
   }
 }

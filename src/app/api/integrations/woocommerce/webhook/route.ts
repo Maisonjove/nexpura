@@ -10,9 +10,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { headers } from "next/headers";
-import crypto from "crypto";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { verifyWooSignature } from "@/lib/webhook-security";
 
 /** Escapes special PostgreSQL LIKE pattern characters to prevent injection */
 function sanitizeLikePattern(input: string): string {
@@ -20,6 +20,20 @@ function sanitizeLikePattern(input: string): string {
     .replace(/\\/g, '\\\\')
     .replace(/%/g, '\\%')
     .replace(/_/g, '\\_');
+}
+
+/**
+ * Escape user-controlled values that flow into a PostgREST `.or()` filter
+ * string. PostgREST parses `,` `.` `(` `)` as filter syntax, and `)` can
+ * terminate the filter early. W6-CRIT-09 tactical guard; the broader
+ * escape layer lands in PR-07.
+ */
+function sanitizeOrLiteral(input: string | number | null | undefined): string {
+  if (input === null || input === undefined) return "";
+  const s = String(input);
+  // Only allow [A-Za-z0-9_-]. Anything else gets stripped so the filter
+  // cannot be broken out of.
+  return s.replace(/[^A-Za-z0-9_-]/g, "");
 }
 
 interface WooProduct {
@@ -99,17 +113,22 @@ export async function POST(req: NextRequest) {
     const tenantId = integration.tenant_id;
     const config = integration.config as { consumer_secret?: string };
 
-    // Verify webhook signature if secret is available
-    if (signature && config.consumer_secret) {
-      const expectedSig = crypto
-        .createHmac("sha256", config.consumer_secret)
-        .update(rawBody, "utf8")
-        .digest("base64");
-
-      if (signature !== expectedSig) {
-        logger.warn("[woo-webhook] Invalid signature");
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-      }
+    // W6-CRIT-09: fail-closed. The previous guard only verified the
+    // signature when BOTH header and secret were present, so an attacker
+    // could just drop the header and walk past the check. Now: secret
+    // MUST be configured, signature header MUST be present, and the
+    // HMAC MUST match in constant time. Any failure => 401.
+    if (!config.consumer_secret) {
+      logger.error("[woo-webhook] integration has no consumer_secret configured");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    }
+    if (!signature) {
+      logger.warn("[woo-webhook] missing x-wc-webhook-signature header");
+      return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+    }
+    if (!verifyWooSignature(rawBody, signature, config.consumer_secret)) {
+      logger.warn("[woo-webhook] Invalid signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     // Handle webhook by topic
@@ -234,13 +253,22 @@ async function handleOrderWebhook(
     if (sale) {
       // Insert line items
       for (const li of order.line_items) {
-        // Try to find matching inventory
-        const { data: inventoryItem } = await admin
-          .from("inventory")
-          .select("id")
-          .eq("tenant_id", tenantId)
-          .or(`sku.eq.${li.sku},woo_product_id.eq.${li.product_id}`)
-          .single();
+        // Try to find matching inventory — sanitize both sides of the .or()
+        // filter so a crafted product/sku string cannot break out of
+        // PostgREST filter syntax (W6-CRIT-09 tactical; general fix in PR-07).
+        const safeSku = sanitizeOrLiteral(li.sku);
+        const safeWooId = sanitizeOrLiteral(li.product_id);
+        const orClauses: string[] = [];
+        if (safeSku) orClauses.push(`sku.eq.${safeSku}`);
+        if (safeWooId) orClauses.push(`woo_product_id.eq.${safeWooId}`);
+        const { data: inventoryItem } = orClauses.length
+          ? await admin
+              .from("inventory")
+              .select("id")
+              .eq("tenant_id", tenantId)
+              .or(orClauses.join(","))
+              .maybeSingle()
+          : { data: null };
 
         await admin.from("sale_items").insert({
           tenant_id: tenantId,
