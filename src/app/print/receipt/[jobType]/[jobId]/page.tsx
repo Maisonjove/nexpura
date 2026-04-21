@@ -17,24 +17,41 @@ async function PrintReceiptPage({
   params: Promise<{ jobType: string; jobId: string }>;
 }) {
   const { jobType, jobId } = await params;
-  
+
   // SECURITY: Verify user is authenticated and belongs to the same tenant
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const admin = createAdminClient();
-  
+
   // Get user's tenant_id
   const { data: userData } = await admin
     .from("users")
     .select("tenant_id")
     .eq("id", user.id)
     .single();
-  
+
   if (!userData?.tenant_id) {
     redirect("/login");
   }
+
+  // W3-HIGH-06: pull tenant branding from the tenants row instead of
+  // hardcoding "Marcus & Co." — previously every tenant's customer
+  // receipt rendered with Marcus's brand + ABN which is a legal / trust
+  // breach (printing another entity's ABN on a tax receipt).
+  const { data: tenantRow } = await admin
+    .from("tenants")
+    .select("business_name, name, abn, address_line1, suburb, state, postcode, email, phone")
+    .eq("id", userData.tenant_id)
+    .single();
+  const businessName = tenantRow?.business_name || tenantRow?.name || "Business";
+  const tenantEmail = tenantRow?.email || null;
+  const tenantPhone = tenantRow?.phone || null;
+  const addressLine = [tenantRow?.address_line1, tenantRow?.suburb, tenantRow?.state, tenantRow?.postcode]
+    .filter(Boolean)
+    .join(tenantRow?.suburb ? ", " : " ");
+  const tenantAbn = tenantRow?.abn || null;
 
   // Fetch job + invoice + payments + customer
   let customer: Record<string, unknown> | null = null;
@@ -129,8 +146,12 @@ async function PrintReceiptPage({
         <button id="close-btn" className="no-print" style={{position:"fixed",top:12,right:12,padding:"6px 14px",background:"#e5e7eb",border:"1px solid #ccc",borderRadius:6,cursor:"pointer",fontSize:12}}>Close</button>
 
         <div className="header">
-          <h1>Marcus &amp; Co. Fine Jewellery</h1>
-          <div style={{fontSize:"9pt",color:"#666"}}>32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au</div>
+          <h1>{businessName}</h1>
+          {(addressLine || tenantEmail || tenantPhone) && (
+            <div style={{fontSize:"9pt",color:"#666"}}>
+              {[addressLine, tenantPhone, tenantEmail].filter(Boolean).join(" · ")}
+            </div>
+          )}
           <div style={{marginTop:8,fontSize:"14pt",fontWeight:"bold",letterSpacing:"0.05em"}}>PAYMENT RECEIPT</div>
           <div className="receipt-badge">{receiptNumber}</div>
           <div style={{fontSize:"9pt",color:"#888",marginTop:4}}>Printed: {printedAt}</div>
@@ -188,8 +209,8 @@ async function PrintReceiptPage({
         </div>
 
         <div className="footer">
-          Thank you for choosing Marcus &amp; Co. Fine Jewellery<br />
-          ABN: 12 345 678 901 · hello@marcusandco.com.au
+          Thank you for choosing {businessName}<br />
+          {[tenantAbn ? `ABN: ${tenantAbn}` : null, tenantEmail].filter(Boolean).join(" · ")}
         </div>
       </body>
     </html>
