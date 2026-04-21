@@ -4,6 +4,12 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
+  createScheduledReport,
+  updateScheduledReport,
+  toggleScheduledReportActive,
+  deleteScheduledReport,
+} from "./actions";
+import {
   Plus,
   Calendar,
   Clock,
@@ -123,7 +129,6 @@ export default function ScheduledReportsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const supabase = createClient();
 
     const recipients = formData.recipients
       .split(",")
@@ -143,13 +148,13 @@ export default function ScheduledReportsPage() {
     };
 
     startTransition(async () => {
-      if (editingReport) {
-        await supabase
-          .from("scheduled_reports")
-          .update(reportData)
-          .eq("id", editingReport.id);
-      } else {
-        await supabase.from("scheduled_reports").insert(reportData);
+      const result = editingReport
+        ? await updateScheduledReport(editingReport.id, reportData)
+        : await createScheduledReport(reportData);
+
+      if (result.error) {
+        alert(result.error);
+        return;
       }
 
       setShowModal(false);
@@ -159,18 +164,21 @@ export default function ScheduledReportsPage() {
   }
 
   async function toggleActive(id: string, isActive: boolean) {
-    const supabase = createClient();
-    await supabase
-      .from("scheduled_reports")
-      .update({ is_active: !isActive })
-      .eq("id", id);
+    const result = await toggleScheduledReportActive(id, !isActive);
+    if (result.error) {
+      alert(result.error);
+      return;
+    }
     loadReports();
   }
 
   async function deleteReport(id: string) {
     if (!confirm("Delete this scheduled report?")) return;
-    const supabase = createClient();
-    await supabase.from("scheduled_reports").delete().eq("id", id);
+    const result = await deleteScheduledReport(id);
+    if (result.error) {
+      alert(result.error);
+      return;
+    }
     loadReports();
   }
 

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
+import { requireRole } from "@/lib/auth-context";
 
 // ──────────────────────────────────────────────────────────
 // Auth helper
@@ -547,21 +548,20 @@ export async function importSales(rows: SaleRow[]): Promise<ImportResult> {
 // EXPORT HELPERS
 // ──────────────────────────────────────────────────────────
 
+/**
+ * W6-CRIT-05: every CSV export dumps tenant-wide PII / financials. Only the
+ * owner should be able to pull full data out of the system — staff must not
+ * be able to hit these endpoints directly (even though UI hides them).
+ * Return null on a denied caller so every export function degrades the same
+ * way ("Unauthorized" + empty csv).
+ */
 async function getExportContext() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData?.tenant_id) return null;
-  return { tenantId: userData.tenant_id };
+  try {
+    const ctx = await requireRole("owner");
+    return { tenantId: ctx.tenantId };
+  } catch {
+    return null;
+  }
 }
 
 function buildCSVString(headers: string[], rows: Record<string, unknown>[]): string {
@@ -831,14 +831,19 @@ export async function exportSuppliers(): Promise<{ csv: string; error?: string }
 // FULL DATA EXPORT (Download All)
 // ──────────────────────────────────────────────────────────────
 
-export async function exportAllData(): Promise<{ 
-  success: boolean; 
-  data?: Record<string, string>; 
-  error?: string 
+export async function exportAllData(): Promise<{
+  success: boolean;
+  data?: Record<string, string>;
+  error?: string
 }> {
   try {
-    const { tenantId } = await getAuthContext();
-    
+    // W6-CRIT-05: full-tenant PII export. Owner-only, hard gate.
+    try {
+      await requireRole("owner");
+    } catch {
+      return { success: false, error: "Only the account owner can export all data." };
+    }
+
     // Export all entities in parallel
     const [
       customers,
