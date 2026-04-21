@@ -1,21 +1,16 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCached, tenantCacheKey } from "@/lib/cache";
+import { getSessionTenantId } from "@/lib/auth/assert-tenant";
 
-async function getAuthContext() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  const { data: userData } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
-  if (!userData?.tenant_id) throw new Error("No tenant");
-  return { tenantId: userData.tenant_id as string };
-}
+/**
+ * Launch-QA W4-XTENANT1: every reports aggregator previously took
+ * `tenantId: string` as its first argument and filtered the query by it.
+ * That let any authenticated user query another tenant's revenue/repairs/
+ * expenses/etc. by passing a foreign UUID. Tenant is now resolved from the
+ * session on the server; the client no longer supplies it.
+ */
 
 export interface DateRange {
   dateFrom: string;
@@ -23,13 +18,13 @@ export interface DateRange {
 }
 
 export async function getRevenueByDateRange(
-  tenantId: string,
   dateFrom: string,
   dateTo: string
 ): Promise<{ data: { total: number; totalCost: number; count: number; byMonth: { month: string; total: number }[] }; error?: string }> {
-  const cacheKey = tenantCacheKey(tenantId, "revenue", dateFrom, dateTo);
-  
   try {
+    const tenantId = await getSessionTenantId();
+    const cacheKey = tenantCacheKey(tenantId, "revenue", dateFrom, dateTo);
+
     const result = await getCached(cacheKey, async () => {
       const admin = createAdminClient();
       const { data } = await admin
@@ -64,11 +59,11 @@ export async function getRevenueByDateRange(
 }
 
 export async function getRevenueByCategoryByDateRange(
-  tenantId: string,
   dateFrom: string,
   dateTo: string
 ): Promise<{ data: { category: string; total: number; count: number }[]; error?: string }> {
   try {
+    const tenantId = await getSessionTenantId();
     const admin = createAdminClient();
     // Join invoice_line_items → invoices, or use sales data
     // Simplified: use invoice_line_items description as proxy
@@ -89,13 +84,13 @@ export async function getRevenueByCategoryByDateRange(
 }
 
 export async function getRepairStats(
-  tenantId: string,
   dateFrom: string,
   dateTo: string
 ): Promise<{ data: { total: number; completed: number; revenue: number; avgDays: number }; error?: string }> {
-  const cacheKey = tenantCacheKey(tenantId, "repairs", dateFrom, dateTo);
-  
   try {
+    const tenantId = await getSessionTenantId();
+    const cacheKey = tenantCacheKey(tenantId, "repairs", dateFrom, dateTo);
+
     const result = await getCached(cacheKey, async () => {
       const admin = createAdminClient();
       const { data } = await admin
@@ -133,11 +128,11 @@ export async function getRepairStats(
 }
 
 export async function getBespokeStats(
-  tenantId: string,
   dateFrom: string,
   dateTo: string
 ): Promise<{ data: { total: number; completed: number; avgValue: number }; error?: string }> {
   try {
+    const tenantId = await getSessionTenantId();
     const admin = createAdminClient();
     const { data } = await admin
       .from("bespoke_jobs")
@@ -160,13 +155,13 @@ export async function getBespokeStats(
 }
 
 export async function getExpenseSummary(
-  tenantId: string,
   dateFrom: string,
   dateTo: string
 ): Promise<{ data: { category: string; total: number }[]; error?: string }> {
-  const cacheKey = tenantCacheKey(tenantId, "expenses", dateFrom, dateTo);
-  
   try {
+    const tenantId = await getSessionTenantId();
+    const cacheKey = tenantCacheKey(tenantId, "expenses", dateFrom, dateTo);
+
     const result = await getCached(cacheKey, async () => {
       const admin = createAdminClient();
       const { data } = await admin
@@ -193,12 +188,12 @@ export async function getExpenseSummary(
 }
 
 export async function exportReportCSV(
-  tenantId: string,
   reportType: string,
   dateFrom: string,
   dateTo: string
 ): Promise<{ csv?: string; error?: string }> {
   try {
+    const tenantId = await getSessionTenantId();
     const admin = createAdminClient();
 
     if (reportType === "revenue") {
@@ -259,13 +254,13 @@ export async function exportReportCSV(
 // ── Supplier Performance ──────────────────────────────────────
 
 export async function getSupplierPerformance(
-  tenantId: string,
   dateFrom: string,
   dateTo: string
 ): Promise<{ data: { supplier: string; total: number; orderCount: number }[]; error?: string }> {
-  const cacheKey = tenantCacheKey(tenantId, "suppliers", dateFrom, dateTo);
-  
   try {
+    const tenantId = await getSessionTenantId();
+    const cacheKey = tenantCacheKey(tenantId, "suppliers", dateFrom, dateTo);
+
     const result = await getCached(cacheKey, async () => {
       const admin = createAdminClient();
       const { data } = await admin
@@ -299,7 +294,6 @@ export async function getSupplierPerformance(
 // ── Payment Status Overview ───────────────────────────────────
 
 export async function getPaymentStatusOverview(
-  tenantId: string,
   dateFrom: string,
   dateTo: string
 ): Promise<{
@@ -316,9 +310,10 @@ export async function getPaymentStatusOverview(
   };
   error?: string;
 }> {
-  const cacheKey = tenantCacheKey(tenantId, "payments", dateFrom, dateTo);
-  
   try {
+    const tenantId = await getSessionTenantId();
+    const cacheKey = tenantCacheKey(tenantId, "payments", dateFrom, dateTo);
+
     const result = await getCached(cacheKey, async () => {
       const admin = createAdminClient();
       const today = new Date().toISOString().split("T")[0];

@@ -42,7 +42,9 @@ export default function PermissionsMatrixClient({
     }));
 
     startTransition(async () => {
-      const result = await updatePermission(tenantId, role, key, newValue);
+      // tenantId is ignored server-side now (PR-01 / W6-CRIT-07); the
+      // action resolves the tenant from the owner's session.
+      const result = await updatePermission(undefined, role, key, newValue);
       if (result?.error) {
         // Revert
         setMatrix((prev) => ({

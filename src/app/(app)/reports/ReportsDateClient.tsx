@@ -58,7 +58,13 @@ interface PaymentOverview {
 }
 
 interface Props {
-  tenantId: string;
+  /**
+   * Historically this component received the tenantId and passed it to the
+   * reports server actions. After PR-01 (W4-XTENANT1) those actions resolve
+   * the tenant from the session themselves; the prop is retained for
+   * backwards compat with the page entry point but intentionally unused.
+   */
+  tenantId?: string;
   canViewMargins: boolean;
 }
 
@@ -132,7 +138,7 @@ async function downloadExcel(data: Record<string, unknown>[], sheetName: string,
   URL.revokeObjectURL(url);
 }
 
-export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
+export default function ReportsDateClient({ canViewMargins }: Props) {
   const [preset, setPreset] = useState<Preset>("30d");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -160,12 +166,12 @@ export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
     startTransition(async () => {
       setError(null);
       const [revResult, repResult, besResult, expResult, suppResult, payResult] = await Promise.all([
-        getRevenueByDateRange(tenantId, from, to),
-        getRepairStats(tenantId, from, to),
-        getBespokeStats(tenantId, from, to),
-        getExpenseSummary(tenantId, from, to),
-        getSupplierPerformance(tenantId, from, to),
-        getPaymentStatusOverview(tenantId, from, to),
+        getRevenueByDateRange(from, to),
+        getRepairStats(from, to),
+        getBespokeStats(from, to),
+        getExpenseSummary(from, to),
+        getSupplierPerformance(from, to),
+        getPaymentStatusOverview(from, to),
       ]);
       setRevenue(revResult.data);
       setRepairs(repResult.data);
@@ -179,7 +185,7 @@ export default function ReportsDateClient({ tenantId, canViewMargins }: Props) {
 
   async function handleExport(reportType: string) {
     const { from, to } = getDateRange();
-    const result = await exportReportCSV(tenantId, reportType, from, to);
+    const result = await exportReportCSV(reportType, from, to);
     if (result.csv) {
       downloadCSV(result.csv, `${reportType}-${from}-to-${to}.csv`);
     }

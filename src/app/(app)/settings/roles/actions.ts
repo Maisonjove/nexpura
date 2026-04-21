@@ -241,7 +241,9 @@ export async function inviteTeamMember(
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com"}/invite/${inviteToken}`;
   
   // Get the tenant's email sender (custom domain or fallback)
-  const emailSender = await getTenantEmailSender(ctx.tenantId);
+  // getTenantEmailSender now resolves the tenant from the session itself
+  // (PR-01 / W6-CRIT-03); no tenant id is passed in.
+  const emailSender = await getTenantEmailSender();
   
   try {
     await resend.emails.send({
@@ -338,7 +340,9 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com"}/invite/${inviteToken}`;
   
   // Get the tenant's email sender (custom domain or fallback)
-  const emailSender = await getTenantEmailSender(ctx.tenantId);
+  // getTenantEmailSender now resolves the tenant from the session itself
+  // (PR-01 / W6-CRIT-03); no tenant id is passed in.
+  const emailSender = await getTenantEmailSender();
   
   try {
     await resend.emails.send({

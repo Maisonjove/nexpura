@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+/**
+ * Launch-QA W5-CRIT-001: this public shop endpoint previously accepted a
+ * `tenant_id` from the request body and would write the enquiry under that
+ * tenant if present. A stranger could POST with any tenant's UUID in the
+ * body and drop repair enquiries into that tenant's inbox. The fix: the
+ * subdomain path parameter is the ONLY way the tenant is resolved.
+ * `tenant_id` in the body is ignored.
+ */
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ subdomain: string }> }
@@ -16,7 +25,7 @@ export async function POST(
     const { subdomain } = await params;
     const body = await request.json();
 
-    const { name, email, phone, item_description, issue_description, preferred_date, tenant_id } = body;
+    const { name, email, phone, item_description, issue_description, preferred_date } = body;
 
     if (!name || !email || !item_description || !issue_description) {
       return NextResponse.json({ error: "Name, email, item description, and issue description are required" }, { status: 400 });
@@ -24,16 +33,13 @@ export async function POST(
 
     const admin = createAdminClient();
 
-    // Resolve tenant_id from subdomain if not provided
-    let tenantId = tenant_id;
-    if (!tenantId) {
-      const { data: config } = await admin
-        .from("website_config")
-        .select("tenant_id")
-        .eq("subdomain", subdomain)
-        .single();
-      tenantId = config?.tenant_id;
-    }
+    // Resolve tenant_id strictly from the subdomain. The body is not trusted.
+    const { data: config } = await admin
+      .from("website_config")
+      .select("tenant_id")
+      .eq("subdomain", subdomain)
+      .single();
+    const tenantId = config?.tenant_id;
 
     if (!tenantId) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
@@ -60,15 +66,14 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Get store owner email for notification
-    const { data: owner } = await admin
+    // Look up store owner — currently only used to keep the query logic
+    // consistent across tenants; primary notification is in-app below.
+    await admin
       .from("users")
       .select("email, full_name")
       .eq("tenant_id", tenantId)
       .eq("role", "owner")
       .single();
-
-    // Note: notification to store happens via in-app notification below
 
     // Create in-app notification
     await admin.from("notifications").insert({

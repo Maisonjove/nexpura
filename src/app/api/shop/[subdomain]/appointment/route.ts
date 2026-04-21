@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+/**
+ * Launch-QA W5-CRIT-001: this public shop endpoint previously accepted a
+ * `tenant_id` from the request body and would write the enquiry under that
+ * tenant if present. A stranger could POST with any tenant's UUID in the
+ * body and drop arbitrary records into that tenant's enquiries + fire an
+ * in-app notification there. The fix: the subdomain path parameter is the
+ * ONLY way the tenant is resolved. `tenant_id` in the body is ignored.
+ */
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ subdomain: string }> }
@@ -16,7 +25,7 @@ export async function POST(
     const { subdomain } = await params;
     const body = await request.json();
 
-    const { name, email, phone, appointment_type, preferred_date, preferred_time, notes, tenant_id } = body;
+    const { name, email, phone, appointment_type, preferred_date, preferred_time, notes } = body;
 
     if (!name || !email || !appointment_type || !preferred_date || !preferred_time) {
       return NextResponse.json({ error: "Name, email, appointment type, date, and time slot are required" }, { status: 400 });
@@ -24,16 +33,13 @@ export async function POST(
 
     const admin = createAdminClient();
 
-    // Resolve tenant_id from subdomain if not provided
-    let tenantId = tenant_id;
-    if (!tenantId) {
-      const { data: config } = await admin
-        .from("website_config")
-        .select("tenant_id")
-        .eq("subdomain", subdomain)
-        .single();
-      tenantId = config?.tenant_id;
-    }
+    // Resolve tenant_id strictly from the subdomain. The body is not trusted.
+    const { data: config } = await admin
+      .from("website_config")
+      .select("tenant_id")
+      .eq("subdomain", subdomain)
+      .single();
+    const tenantId = config?.tenant_id;
 
     if (!tenantId) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });

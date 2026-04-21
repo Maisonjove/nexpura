@@ -165,7 +165,9 @@ export default function SettingsPage() {
     const formData = new FormData(e.currentTarget);
     if (!user) return;
     startTransition(async () => {
-      const result = await saveAccount(user.id, formData);
+      // saveAccount resolves the acting user from the session; the id is no
+      // longer trusted from the client (PR-01 / W6-CRIT-02).
+      const result = await saveAccount(undefined, formData);
       if (result.error) showError(result.error);
       else {
         showSuccess("Account details saved!");

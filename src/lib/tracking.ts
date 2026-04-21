@@ -71,10 +71,14 @@ export async function sendTrackingEmail({
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com";
     
+    // tenantId is no longer accepted by the route (PR-01 / W7-CRIT-04) —
+    // the server resolves the tenant from the caller's session. We keep
+    // tenantId in the helper signature for internal bookkeeping only.
+    void tenantId;
     const response = await fetch(`${baseUrl}/api/tracking/send-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderType, orderId, tenantId }),
+      body: JSON.stringify({ orderType, orderId }),
     });
 
     if (!response.ok) {

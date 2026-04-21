@@ -152,15 +152,26 @@ export async function saveBanking(tenantId: string, formData: FormData) {
   }
 }
 
-export async function saveAccount(userId: string, formData: FormData) {
+/**
+ * Launch-QA W6-CRIT-02: saveAccount previously accepted a `userId` from the
+ * client and updated the `users` row matching that id. Any authenticated
+ * user could change another user's full_name (and, with the equivalent
+ * bug class, cross-tenant personal info) by passing a different UUID. The
+ * fix: ignore any caller-supplied id; always resolve the acting user from
+ * the session.
+ */
+export async function saveAccount(_unusedUserId: string | undefined, formData: FormData) {
   try {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
+
     const { error } = await supabase
       .from("users")
       .update({
         full_name: formData.get("full_name") as string || null,
       })
-      .eq("id", userId);
+      .eq("id", user.id);
 
     if (error) return { error: error.message };
     return { success: true };

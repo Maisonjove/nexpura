@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
 import logger from "@/lib/logger";
+
+/**
+ * Launch-QA W7-CRIT-04: this route previously accepted `tenantId` from the
+ * request body and used it as the scoping filter on the order lookup and
+ * the tenant-business-name lookup. Any caller could (a) confirm the
+ * existence of an (orderId, tenantId) pair across tenants and (b) trigger
+ * a customer-facing tracking email under a foreign tenant's branding if
+ * the orderId happened to collide. The fix:
+ *   - Require an authenticated session.
+ *   - Resolve the tenant from the session, never from the body.
+ *   - Load the order with that tenant as the scoping filter.
+ */
 
 // Tracking emails can use a dedicated key (RESEND_TRACKING_API_KEY) so it can
 // be rotated independently of the main transactional key. Falls back to
@@ -19,15 +32,30 @@ function getTrackingResendOrError(): { client: Resend } | { error: string } {
 interface SendTrackingEmailRequest {
   orderType: "repair" | "bespoke";
   orderId: string;
-  tenantId: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body: SendTrackingEmailRequest = await request.json();
-    const { orderType, orderId, tenantId } = body;
+    // Require a valid session; resolve tenant from it (never from body).
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const { data: profile } = await supabase
+      .from("users")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
+    const tenantId = profile?.tenant_id as string | undefined;
+    if (!tenantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!orderType || !orderId || !tenantId) {
+    const body: SendTrackingEmailRequest = await request.json();
+    const { orderType, orderId } = body;
+
+    if (!orderType || !orderId) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }

@@ -6,6 +6,17 @@ import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { after } from "next/server";
 
+/**
+ * Launch-QA W6-CRIT-07: `updatePermission` previously accepted `tenantId`
+ * as its first argument and passed it straight to `updateRolePermission`.
+ * Because the "owner-only" guard checked the caller's role but not the
+ * tenant match, a tenant-A owner could POST with a tenant-B UUID and
+ * rewrite that tenant's role/permission matrix (escalating every low-
+ * privilege role inside a competitor's workspace, or revoking their
+ * owners). The fix: drop the `tenantId` argument entirely and always use
+ * the owner's session-derived tenant.
+ */
+
 async function getOwnerContext() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -24,7 +35,10 @@ async function getOwnerContext() {
 }
 
 export async function updatePermission(
-  tenantId: string,
+  // Intentionally ignored. Retained only so that existing client call sites
+  // continue to compile during the roll-out; the tenant is resolved from
+  // the session. Will be removed in a follow-up once all call sites drop it.
+  _unusedTenantId: string | undefined,
   role: string,
   permissionKey: PermissionKey,
   enabled: boolean
@@ -36,7 +50,7 @@ export async function updatePermission(
     return { error: e instanceof Error ? e.message : "Unauthorized" };
   }
 
-  const result = await updateRolePermission(tenantId, role, permissionKey, enabled);
+  const result = await updateRolePermission(ctx.tenantId, role, permissionKey, enabled);
   if (result.success) {
     // Audit: who granted/revoked which permission for which role.
     // Finding #9 of the HIGH audit list: this mutation was previously
@@ -44,7 +58,7 @@ export async function updatePermission(
     // had no answer.
     after(() =>
       logAuditEvent({
-        tenantId,
+        tenantId: ctx!.tenantId,
         userId: ctx!.userId,
         action: "settings_update",
         entityType: "settings",

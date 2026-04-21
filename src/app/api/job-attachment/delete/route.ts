@@ -4,11 +4,30 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { jobAttachmentDeleteSchema } from "@/lib/schemas";
 
+/**
+ * Launch-QA W7-CRIT-05 (companion fix): the delete route previously trusted
+ * `tenantId` from the body as the scoping filter on the DELETE. A caller
+ * who knew or guessed an attachment id could pair it with any tenant id
+ * in the body; if the record existed under that tenant, it was deleted.
+ * Fix: scope by the caller's session-derived tenant — the body's tenantId
+ * is ignored.
+ */
+
 export async function POST(req: NextRequest) {
   // Auth check
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  const callerTenantId = profile?.tenant_id as string | undefined;
+  if (!callerTenantId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,15 +42,15 @@ export async function POST(req: NextRequest) {
   if (!parseResult.success) {
     return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
   }
-  const { attachmentId, tenantId, fileUrl } = parseResult.data;
+  const { attachmentId, fileUrl } = parseResult.data;
 
   const admin = createAdminClient();
 
-  // Delete DB record
+  // Delete DB record, scoped by the caller's tenant (not the body).
   const { error } = await admin.from("job_attachments")
     .delete()
     .eq("id", attachmentId)
-    .eq("tenant_id", tenantId);
+    .eq("tenant_id", callerTenantId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

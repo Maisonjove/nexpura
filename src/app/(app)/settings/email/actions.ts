@@ -335,9 +335,24 @@ export async function getReplyToEmail(): Promise<string | null> {
   return tenant?.reply_to_email || null;
 }
 
-// Helper function to get the sender email for a tenant
-export async function getTenantEmailSender(tenantId: string): Promise<{ from: string; replyTo?: string }> {
+/**
+ * Launch-QA W6-CRIT-03: `getTenantEmailSender` previously accepted a
+ * `tenantId: string` and returned the custom-domain sender for that tenant
+ * regardless of the caller. Because this file is `"use server"` the function
+ * is exposed as a server action and was callable with any tenant's UUID —
+ * any authed user could harvest another tenant's configured from-address
+ * (and by implication their brand identity for phishing) by passing a
+ * foreign UUID. The fix: the function now resolves the tenant from the
+ * caller's session and ignores any argument. Internal callers in
+ * settings/roles/actions.ts that used to pass `ctx.tenantId` are unaffected
+ * because they already only query for their own tenant.
+ */
+export async function getTenantEmailSender(): Promise<{ from: string; replyTo?: string }> {
+  // Resolve strictly from the caller's session — not a client-supplied id.
+  const ctx = await getAuthContext();
   const admin = createAdminClient();
+
+  const tenantId = ctx.tenantId;
 
   const { data: emailDomain } = await admin
     .from("email_domains")
@@ -357,14 +372,14 @@ export async function getTenantEmailSender(tenantId: string): Promise<{ from: st
 
   if (emailDomain?.domain) {
     // Use custom domain - reply-to goes to their domain too
-    return { 
+    return {
       from: `${fromName} <team@${emailDomain.domain}>`,
       replyTo: replyTo || undefined,
     };
   }
 
   // No custom domain - use nexpura.com with reply-to
-  return { 
+  return {
     from: `${fromName} <notifications@nexpura.com>`,
     replyTo: replyTo || undefined,
   };
