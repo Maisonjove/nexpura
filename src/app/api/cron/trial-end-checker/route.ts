@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendTrialEndingSoonEmail } from "@/lib/email/send"
+import { safeBearerMatch } from "@/lib/timing-safe-compare"
+import logger from "@/lib/logger"
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization")
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  try {
   const admin = createAdminClient()
   const now = new Date()
   const in3days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
@@ -105,4 +108,8 @@ export async function GET(request: NextRequest) {
     endingSoon: endingSoon?.length ?? 0,
     expired: expired?.length ?? 0,
   })
+  } catch (err) {
+    logger.error("[cron/trial-end-checker] failed", { error: err })
+    return NextResponse.json({ ok: false, error: "cron_failed" }, { status: 500 })
+  }
 }

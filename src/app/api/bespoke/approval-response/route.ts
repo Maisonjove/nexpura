@@ -41,6 +41,14 @@ export async function POST(req: NextRequest) {
       if (signature) {
         updates.client_signature_data = signature;
       }
+      // Rotate the approval token on success. Audit finding (Medium):
+      // previously the token stayed valid after approval. If the jeweller
+      // later reverted status to pending (via UI or DB write), the
+      // customer's original email link still worked. New UUID per
+      // approval means the old link deterministically 404s after
+      // approval — the branded ApprovalInvalid page at /approve/[token]
+      // catches stale links correctly.
+      updates.approval_token = crypto.randomUUID();
     } else {
       updates.approval_status = "changes_requested";
     }

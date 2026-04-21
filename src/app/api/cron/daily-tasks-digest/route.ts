@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { Resend } from 'resend';
 import DailyTaskDigestEmail from '@/lib/email/templates/DailyTaskDigestEmail';
+import { safeBearerMatch } from '@/lib/timing-safe-compare';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function GET(request: Request) {
-  // Check for auth (cron secret)
+  // Check for auth (cron secret) — constant-time.
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
     return new Response('Unauthorized', { status: 401 });
   }
 

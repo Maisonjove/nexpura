@@ -1,8 +1,10 @@
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { unstable_cache } from "next/cache";
 import TrackingPageClient from "./TrackingPageClient";
 import { getTrackingThread } from "@/lib/messaging";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Revalidate tracking data every 30 seconds
 // This means updates show within 30s but pages load instantly from cache
@@ -209,6 +211,18 @@ export default function TrackingPageWrapper(props: PageProps) {
 
 async function TrackingPage({ params }: PageProps) {
   const { trackingId } = await params;
+
+  // Audit finding (High): public /track/[id] had no rate limit, so the
+  // 4-billion-entry `RPR-XXXXXXXX` namespace was scrapable. Cap per-IP
+  // attempts on the API-tier bucket. Keep the message-fetch out of the
+  // limited scope to avoid blocking legitimate refreshes.
+  const hdrs = await headers();
+  const ip = hdrs.get("x-forwarded-for") ?? hdrs.get("x-real-ip") ?? "anonymous";
+  const { success } = await checkRateLimit(`track:${ip}`, "api");
+  if (!success) {
+    return <TrackOrderNotFound trackingId={trackingId} />;
+  }
+
   const order = await getOrderByTrackingId(trackingId);
 
   if (!order) {

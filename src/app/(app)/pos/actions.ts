@@ -111,7 +111,11 @@ export async function createPOSSale(
 
   // Define transaction steps
   const steps: TransactionStep[] = [
-    // Step 1: Deduct store credit if used
+    // Step 1: Deduct store credit if used. DB-side atomic function —
+    // SELECT FOR UPDATE + decrement in a single transaction. Replaces
+    // the prior optimistic compare-and-swap which could race under
+    // concurrent till usage and leave balance negative. See migration
+    // 20260421_atomic_store_credit_voucher.sql.
     {
       name: "deduct_store_credit",
       execute: async () => {
@@ -121,34 +125,30 @@ export async function createPOSSale(
         if (!params.customerId) {
           return { success: false, error: "Customer required for store credit" };
         }
-        
-        const { data: customer } = await admin
+        // Capture the original balance BEFORE the RPC so compensate can
+        // restore it if a later step fails.
+        const { data: pre } = await admin
           .from("customers")
           .select("store_credit")
           .eq("id", params.customerId)
           .eq("tenant_id", params.tenantId)
-          .gte("store_credit", params.storeCreditAmount)
           .single();
-        
-        if (!customer) {
-          return { success: false, error: "Insufficient store credit balance" };
+        storeCreditOriginal = pre?.store_credit ?? 0;
+
+        const { data: newBalance, error } = await admin.rpc("deduct_store_credit", {
+          p_customer_id: params.customerId,
+          p_tenant_id: params.tenantId,
+          p_amount: params.storeCreditAmount,
+        });
+        if (error) {
+          if (error.message.includes("insufficient_store_credit")) {
+            return { success: false, error: "Insufficient store credit balance" };
+          }
+          if (error.message.includes("customer_not_found")) {
+            return { success: false, error: "Customer not found" };
+          }
+          return { success: false, error: error.message };
         }
-        
-        const currentBalance = customer.store_credit || 0;
-        storeCreditOriginal = currentBalance;
-        const newBalance = currentBalance - (params.storeCreditAmount || 0);
-        
-        const { error, count: updateCount } = await admin
-          .from("customers")
-          .update({ store_credit: newBalance })
-          .eq("id", params.customerId)
-          .eq("tenant_id", params.tenantId)
-          .eq("store_credit", currentBalance);
-        
-        if (error || updateCount === 0) {
-          return { success: false, error: "Store credit balance changed — please try again" };
-        }
-        
         storeCreditDeducted = true;
         return { success: true, data: { newBalance } };
       },
@@ -162,47 +162,42 @@ export async function createPOSSale(
         }
       },
     },
-    
-    // Step 2: Deduct voucher if used
+
+    // Step 2: Deduct voucher if used. Same DB-side atomic pattern.
+    // Prevents double-redemption races between concurrent POS terminals.
     {
       name: "deduct_voucher",
       execute: async () => {
         if (!params.voucherId || !params.voucherAmount || params.voucherAmount <= 0) {
           return { success: true, data: { skipped: true } };
         }
-        
-        const { data: voucher } = await admin
+        const { data: pre } = await admin
           .from("gift_vouchers")
-          .select("id, balance, status")
+          .select("balance, status")
           .eq("id", params.voucherId)
           .eq("tenant_id", params.tenantId)
-          .eq("status", "active")
-          .gte("balance", params.voucherAmount)
           .single();
-        
-        if (!voucher) {
-          return { success: false, error: "Voucher not found, already used, or insufficient balance" };
+        voucherOriginalBalance = pre?.balance ?? 0;
+
+        const { error } = await admin.rpc("redeem_voucher", {
+          p_voucher_id: params.voucherId,
+          p_tenant_id: params.tenantId,
+          p_amount: params.voucherAmount,
+        });
+        if (error) {
+          if (error.message.includes("voucher_not_active")) {
+            return { success: false, error: "Voucher is not active" };
+          }
+          if (error.message.includes("insufficient_voucher_balance")) {
+            return { success: false, error: "Voucher balance is insufficient" };
+          }
+          if (error.message.includes("voucher_not_found")) {
+            return { success: false, error: "Voucher not found" };
+          }
+          return { success: false, error: error.message };
         }
-        
-        const currentBalance = voucher.balance || 0;
-        voucherOriginalBalance = currentBalance;
-        const newBalance = Math.max(0, currentBalance - (params.voucherAmount || 0));
-        const newStatus = newBalance === 0 ? "redeemed" : "active";
-        
-        const { error, count: updateCount } = await admin
-          .from("gift_vouchers")
-          .update({ balance: newBalance, status: newStatus })
-          .eq("id", params.voucherId)
-          .eq("tenant_id", params.tenantId)
-          .eq("balance", currentBalance)
-          .eq("status", "active");
-        
-        if (error || updateCount === 0) {
-          return { success: false, error: "Voucher was used by another transaction" };
-        }
-        
         voucherDeducted = true;
-        return { success: true, data: { newBalance } };
+        return { success: true, data: {} };
       },
       compensate: async () => {
         if (voucherDeducted && params.voucherId && voucherOriginalBalance !== null) {

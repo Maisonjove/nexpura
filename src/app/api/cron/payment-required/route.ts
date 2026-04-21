@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendFreeToPaidConversionEmail } from "@/lib/email/send";
+import { safeBearerMatch } from "@/lib/timing-safe-compare";
 
 /**
  * POST /api/cron/payment-required
@@ -9,11 +10,11 @@ import { sendFreeToPaidConversionEmail } from "@/lib/email/send";
  */
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    // Also allow admin-initiated calls with service-role token
-    if (authHeader !== `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const allowed =
+    safeBearerMatch(authHeader, process.env.CRON_SECRET) ||
+    safeBearerMatch(authHeader, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  if (!allowed) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { tenantId } = await request.json();

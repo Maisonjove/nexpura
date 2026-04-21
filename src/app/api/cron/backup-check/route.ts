@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
+import { safeBearerMatch } from "@/lib/timing-safe-compare";
 
 /**
  * Backup Check Cron Job
@@ -14,7 +15,7 @@ import logger from "@/lib/logger";
 export async function GET(request: Request) {
   // Verify cron secret
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

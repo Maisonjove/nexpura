@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendAccountSuspendedEmail, sendGracePeriod24hEmail } from "@/lib/email/send"
+import { safeBearerMatch } from "@/lib/timing-safe-compare"
+import logger from "@/lib/logger"
 
 export async function GET(request: NextRequest) {
-  // Verify cron secret
+  // Verify cron secret — constant-time compare to block timing-attack
+  // recovery of CRON_SECRET over repeated probes.
   const authHeader = request.headers.get("authorization")
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  try {
   const admin = createAdminClient()
   const now = new Date()
   const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000)
@@ -82,4 +86,12 @@ export async function GET(request: NextRequest) {
     expired: expired?.length ?? 0,
     warned: warning24h?.length ?? 0,
   })
+  } catch (err) {
+    // Audit finding (Medium): cron routes had no error handling; a 3am DB
+    // timeout went entirely silent, suspended tenants didn't get notified,
+    // and no one knew until month-end reports. logger.error routes to
+    // Sentry via the wired-up instrumentation.
+    logger.error("[cron/grace-period-checker] failed", { error: err })
+    return NextResponse.json({ ok: false, error: "cron_failed" }, { status: 500 })
+  }
 }

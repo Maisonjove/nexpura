@@ -3,6 +3,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 import { createServerClient } from "@supabase/ssr";
 import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeCompare } from "@/lib/timing-safe-compare";
 
 // Review / staff bypass tokens
 const REVIEW_TOKEN = process.env.REVIEW_BYPASS_TOKEN ?? "";
@@ -197,14 +198,16 @@ function isExemptPath(pathname: string): boolean {
 }
 
 function isBypassRequest(req: NextRequest): boolean {
+  // Constant-time compares on every shared-secret check so an attacker
+  // with a responsive endpoint can't recover the token byte-by-byte
+  // via timing measurements over repeated probes.
   if (!REVIEW_TOKEN && !STAFF_TOKEN) return false;
   const rtParam = req.nextUrl.searchParams.get("rt");
-  const reviewCookie = req.cookies.get("nexpura-review")?.value;
-  const staffCookie = req.cookies.get("nexpura-staff")?.value;
-  return (
-    (REVIEW_TOKEN && (rtParam === REVIEW_TOKEN || reviewCookie === REVIEW_TOKEN)) ||
-    (STAFF_TOKEN && staffCookie === STAFF_TOKEN)
-  ) as boolean;
+  const reviewCookie = req.cookies.get("nexpura-review")?.value ?? null;
+  const staffCookie = req.cookies.get("nexpura-staff")?.value ?? null;
+  const reviewOk = REVIEW_TOKEN && (safeCompare(rtParam, REVIEW_TOKEN) || safeCompare(reviewCookie, REVIEW_TOKEN));
+  const staffOk = STAFF_TOKEN && safeCompare(staffCookie, STAFF_TOKEN);
+  return Boolean(reviewOk || staffOk);
 }
 
 // ─── Hot-route RSC prefetch cache-safety override ────────────────────────────
