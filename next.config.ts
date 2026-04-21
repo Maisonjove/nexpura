@@ -125,8 +125,10 @@ const nextConfig: NextConfig = {
       { source: "/:slug/settings/users", destination: "/:slug/settings/team", permanent: false },
       { source: "/settings/profile", destination: "/settings", permanent: false },
       { source: "/:slug/settings/profile", destination: "/:slug/settings", permanent: false },
-      { source: "/settings/email-domains", destination: "/settings/email-domain", permanent: false },
-      { source: "/:slug/settings/email-domains", destination: "/:slug/settings/email-domain", permanent: false },
+      // /settings/email-domain already redirects onward to /settings/email,
+      // so save a hop and target the canonical directly.
+      { source: "/settings/email-domains", destination: "/settings/email", permanent: false },
+      { source: "/:slug/settings/email-domains", destination: "/:slug/settings/email", permanent: false },
     ];
   },
   async headers() {
