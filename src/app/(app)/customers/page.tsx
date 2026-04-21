@@ -31,6 +31,7 @@ export default async function CustomersPage({
 
   // Fast-path tenant resolution — no DB call, headers-only.
   let tenantId: string;
+  let userId: string | null = null;
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {
@@ -38,6 +39,7 @@ export default async function CustomersPage({
     const headerTenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
     if (!headerTenantId) redirect("/login");
     tenantId = headerTenantId;
+    userId = headersList.get(AUTH_HEADERS.USER_ID);
   }
 
   return (
@@ -55,7 +57,7 @@ export default async function CustomersPage({
 
       {/* Row table + count + export button stream in behind Suspense. */}
       <Suspense key={`${q}:${page}`} fallback={<CustomerTableSkeleton />}>
-        <CustomerRows tenantId={tenantId} q={q} page={page} isReviewMode={isReviewMode} />
+        <CustomerRows tenantId={tenantId} userId={userId} q={q} page={page} isReviewMode={isReviewMode} />
       </Suspense>
     </div>
   );
@@ -63,11 +65,13 @@ export default async function CustomersPage({
 
 async function CustomerRows({
   tenantId,
+  userId,
   q,
   page,
   isReviewMode,
 }: {
   tenantId: string;
+  userId: string | null;
   q: string;
   page: number;
   isReviewMode: boolean;
@@ -75,7 +79,31 @@ async function CustomerRows({
   const offset = (page - 1) * DEFAULT_PAGE_SIZE;
   const admin = createAdminClient();
 
-  const cacheKey = ["customers-list", tenantId, String(page), q || "nq"];
+  // Location-scoped customer visibility. All-access users get every
+  // tenant customer; restricted users get only those linked to their
+  // allowed locations via sales/repairs/bespoke (or with no location-
+  // scoped activity at all). See migration
+  // 20260421_customer_location_visibility.sql.
+  let visibleIds: string[] | null = null;
+  if (!isReviewMode && userId) {
+    const { data: member } = await admin
+      .from("team_members")
+      .select("allowed_location_ids")
+      .eq("user_id", userId)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (member && member.allowed_location_ids !== null) {
+      const { data: ids } = await admin.rpc("get_visible_customer_ids", {
+        p_user_id: userId,
+        p_tenant_id: tenantId,
+      });
+      visibleIds = (ids as unknown as Array<string | { get_visible_customer_ids: string }> | null)
+        ?.map((r) => typeof r === "string" ? r : r.get_visible_customer_ids) ?? [];
+    }
+  }
+  const visibleIdsKey = visibleIds === null ? "all" : `${visibleIds.length}:${visibleIds.slice(0, 5).join(",")}`;
+
+  const cacheKey = ["customers-list", tenantId, String(page), q || "nq", visibleIdsKey];
   const fetchPage = unstable_cache(
     async () => {
       let listQ = admin
@@ -85,6 +113,10 @@ async function CustomerRows({
         )
         .eq("tenant_id", tenantId)
         .is("deleted_at", null);
+      if (visibleIds !== null) {
+        if (visibleIds.length === 0) return { rows: [], count: 0 };
+        listQ = listQ.in("id", visibleIds);
+      }
       if (q) {
         listQ = listQ.or(
           `full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,mobile.ilike.%${q}%`
@@ -99,6 +131,9 @@ async function CustomerRows({
         .select("id", { count: "exact", head: true })
         .eq("tenant_id", tenantId)
         .is("deleted_at", null);
+      if (visibleIds !== null) {
+        countQ = countQ.in("id", visibleIds);
+      }
       if (q) {
         countQ = countQ.or(
           `full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,mobile.ilike.%${q}%`

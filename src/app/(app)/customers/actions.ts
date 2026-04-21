@@ -36,17 +36,52 @@ export async function loadMoreCustomers(
 ): Promise<{ customers: CustomerListRow[]; error?: string }> {
   try {
     const tenantId = await getTenantId();
+    const { data: { user } } = await (await createClient()).auth.getUser();
+    const userId = user?.id ?? null;
     const admin = createAdminClient();
     const pageSize = 200;
-    const { data, error } = await admin
+
+    // Location-scoped customer visibility for restricted users.
+    // See migration 20260421_customer_location_visibility.sql — the
+    // function returns the set of customer IDs the user is allowed
+    // to see (all-access users get every tenant customer; restricted
+    // users get those with activity at allowed locations OR with no
+    // location-scoped activity at all).
+    let visibleIds: string[] | null = null;
+    if (userId) {
+      const { data: member } = await admin
+        .from("team_members")
+        .select("allowed_location_ids")
+        .eq("user_id", userId)
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
+      if (member && member.allowed_location_ids !== null) {
+        // Restricted — fetch visible ids via the RPC.
+        const { data: ids } = await admin.rpc("get_visible_customer_ids", {
+          p_user_id: userId,
+          p_tenant_id: tenantId,
+        });
+        visibleIds = (ids as unknown as { get_visible_customer_ids: string }[] | string[] | null)
+          ?.map((r: unknown) => typeof r === "string" ? r : (r as { get_visible_customer_ids: string }).get_visible_customer_ids)
+          ?? [];
+      }
+    }
+
+    let query = admin
       .from("customers")
       .select(
         "id, full_name, first_name, last_name, email, phone, mobile, tags, is_vip, created_at, updated_at"
       )
       .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
+      .is("deleted_at", null);
+    if (visibleIds !== null) {
+      if (visibleIds.length === 0) return { customers: [] };
+      query = query.in("id", visibleIds);
+    }
+    const { data, error } = await query
       .order("created_at", { ascending: false })
       .range(offset, offset + pageSize - 1);
+
     if (error) return { customers: [], error: error.message };
     return { customers: (data ?? []) as CustomerListRow[] };
   } catch (err) {
