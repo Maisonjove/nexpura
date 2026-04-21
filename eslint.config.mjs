@@ -64,6 +64,62 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-empty-object-type": "off",
     },
   },
+  // PR-03: ban direct imports of outbound-comms SDKs anywhere outside the
+  // sandbox-aware helpers. Every `new Resend(...)` / `twilio(...)` /
+  // `@sendgrid/*` import has to go through `src/lib/email/resend.ts`,
+  // `src/lib/email-sender.ts`, `src/lib/email/**`, `src/lib/twilio-sms.ts`,
+  // or `src/lib/twilio-whatsapp.ts`. Those call-sites branch on
+  // `isSandbox()` so preview/dev deploys never hit real customer
+  // inboxes/phones. The exception allow-list is expressed via per-file
+  // overrides below.
+  {
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "resend",
+              message:
+                "Import the sandbox-aware client from '@/lib/email/resend' " +
+                "or the tenant/system senders from '@/lib/email-sender' instead. " +
+                "Raw 'resend' imports bypass the sandbox gate (PR-03).",
+            },
+            {
+              name: "twilio",
+              message:
+                "Use '@/lib/twilio-sms' or '@/lib/twilio-whatsapp' — those " +
+                "helpers branch on isSandbox() before hitting Twilio (PR-03).",
+            },
+          ],
+          patterns: [
+            {
+              group: ["@sendgrid/*"],
+              message:
+                "Route outbound email through '@/lib/email-sender' or " +
+                "'@/lib/email/resend'. SendGrid imports are banned outside " +
+                "the central comms layer (PR-03).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // Allow-list for files that ARE the sandbox-aware comms layer.
+  {
+    files: [
+      "src/lib/email/resend.ts",
+      "src/lib/email-sender.ts",
+      "src/lib/email/**",
+      "src/lib/twilio-sms.ts",
+      "src/lib/twilio-whatsapp.ts",
+      "src/lib/sandbox.ts",
+      "src/lib/comms/**",
+    ],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
