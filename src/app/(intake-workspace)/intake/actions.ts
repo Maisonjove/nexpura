@@ -7,6 +7,21 @@ import { after } from "next/server";
 import { invalidateCache, tenantCacheKey } from "@/lib/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import logger from "@/lib/logger";
+import { getSelectedLocationIdFromCookie, hasLocationAccess } from "@/lib/locations";
+
+// Resolve the active location for inserts: read the nx_location cookie
+// the user picked in LocationPicker, validate they still have access to
+// it, and return the id — or null ("All Locations" view, no default).
+// Every intake insert runs this so newly-created repairs / bespoke /
+// sales are stamped with the jeweller's current store at time of intake,
+// instead of being orphaned with location_id=NULL (the legacy shape that
+// caused the picker to show empty numbers).
+async function resolveActiveLocationId(tenantId: string, userId: string): Promise<string | null> {
+  const cookieLoc = await getSelectedLocationIdFromCookie();
+  if (!cookieLoc) return null;
+  const allowed = await hasLocationAccess(userId, tenantId, cookieLoc);
+  return allowed ? cookieLoc : null;
+}
 
 // ────────────────────────────────────────────────────────────────
 // SQL Injection Prevention - Sanitize LIKE patterns
@@ -281,11 +296,13 @@ export async function createRepairFromIntake(
   );
   if (numError) return { error: numError.message };
 
+  const activeLocationId = await resolveActiveLocationId(tenantId, userId);
   const { data, error } = await supabase
     .from("repairs")
     .insert({
       tenant_id: tenantId,
       created_by: userId,
+      location_id: activeLocationId,
       repair_number: numData as string,
       customer_id: input.customer_id || null,
       item_type: input.item_type,
@@ -361,6 +378,7 @@ export async function createRepairFromIntake(
       .from("invoices")
       .insert({
         tenant_id: tenantId,
+        location_id: activeLocationId,
         invoice_number: invNumData ?? `INV-${Date.now()}`,
         customer_id: input.customer_id || null,
         reference_type: "repair",
@@ -520,11 +538,13 @@ export async function createBespokeFromIntake(
   );
   if (numError) return { error: numError.message };
 
+  const activeLocationId = await resolveActiveLocationId(tenantId, userId);
   const { data, error } = await supabase
     .from("bespoke_jobs")
     .insert({
       tenant_id: tenantId,
       created_by: userId,
+      location_id: activeLocationId,
       job_number: numData as string,
       customer_id: input.customer_id || null,
       title: input.title,
@@ -603,6 +623,7 @@ export async function createBespokeFromIntake(
       .from("invoices")
       .insert({
         tenant_id: tenantId,
+        location_id: activeLocationId,
         invoice_number: invNumData ?? `INV-${Date.now()}`,
         customer_id: input.customer_id || null,
         reference_type: "bespoke",
@@ -804,10 +825,12 @@ export async function createStockSaleFromIntake(
   const status = paymentReceived >= total ? "paid" : paymentReceived > 0 ? "partial" : "quote";
 
   // Create sale
+  const activeLocationId = await resolveActiveLocationId(tenantId, userId);
   const { data: sale, error: saleError } = await supabase
     .from("sales")
     .insert({
       tenant_id: tenantId,
+      location_id: activeLocationId,
       sale_number: saleNumber,
       customer_id: input.customer_id || null,
       customer_name: customerName || null,
@@ -934,6 +957,7 @@ export async function createStockSaleFromIntake(
       .from("invoices")
       .insert({
         tenant_id: tenantId,
+        location_id: activeLocationId,
         invoice_number: invoiceNumberData ?? `INV-${Date.now()}`,
         customer_id: input.customer_id || null,
         sale_id: sale.id,

@@ -7,6 +7,18 @@ import { after } from "next/server";
 import { generateBarcodeValue } from "@/lib/barcode";
 import { logAuditEvent } from "@/lib/audit";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { getSelectedLocationIdFromCookie, hasLocationAccess } from "@/lib/locations";
+
+// Resolve the active tenant-level location from the nx_location cookie
+// so a new inventory item inherits the store the jeweller has selected
+// in the picker at intake time. Returns null in "All Locations" view.
+async function resolveActiveLocationId(tenantId: string, userId: string | undefined): Promise<string | null> {
+  if (!userId) return null;
+  const cookieLoc = await getSelectedLocationIdFromCookie();
+  if (!cookieLoc) return null;
+  const allowed = await hasLocationAccess(userId, tenantId, cookieLoc);
+  return allowed ? cookieLoc : null;
+}
 
 async function getTenantId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -83,8 +95,10 @@ export async function createInventoryItem(formData: FormData) {
     const v = formData.get(key) as string | null;
     return v && v.trim() !== "" ? v : null;
   };
+  const activeLocationId = await resolveActiveLocationId(tenantId, user?.id);
   const core: Record<string, unknown> = {
     tenant_id: tenantId,
+    location_id: activeLocationId,
     name,
     item_type: itemType,
     jewellery_type: jewelleryType || null,
@@ -667,10 +681,12 @@ export async function quickAddStock(formData: FormData): Promise<{ id?: string; 
   const { data: skuData } = await supabase.rpc("next_sku", { p_tenant_id: tenantId });
   const sku = skuData as string ?? stockNumber;
   
+  const activeLocationIdQA = await resolveActiveLocationId(tenantId, user?.id);
   const { data: item, error } = await supabase
     .from("inventory")
     .insert({
       tenant_id: tenantId,
+      location_id: activeLocationIdQA,
       name,
       description,
       item_type: "finished_piece",
