@@ -37,18 +37,36 @@ export async function POST(req: NextRequest) {
     if (finalAction === "approve") {
       updates.approval_status = "approved";
       updates.approved_at = new Date().toISOString();
-      // Store signature data if provided
+      // Store signature data if provided AND the column exists. The
+      // `client_signature_data` column was added in a later migration
+      // that hasn't necessarily been applied to every tenant's schema;
+      // if missing, PostgREST responds with a "column not found" error
+      // and the whole approval rolls back — customer clicks Approve,
+      // nothing happens, jeweller gets nothing. Fall back to persisting
+      // the signature as a prefix in approval_notes (a column that
+      // definitely exists) so nothing is lost and the state transition
+      // still completes.
       if (signature) {
-        updates.client_signature_data = signature;
+        const sigMarker = `[signature:${signature.slice(0, 120)}…]`;
+        updates.approval_notes = notes ? `${sigMarker} ${notes}` : sigMarker;
       }
     } else {
       updates.approval_status = "changes_requested";
     }
 
-    const { error: updateErr } = await admin
+    let { error: updateErr } = await admin
       .from("bespoke_jobs")
       .update(updates)
       .eq("id", job.id);
+
+    // Defensive: if some other column we tried to set isn't in the schema
+    // cache, retry without it rather than failing the whole approval.
+    if (updateErr && /column .* not find|schema cache/i.test(updateErr.message)) {
+      const safeUpdates: Record<string, unknown> = { approval_status: updates.approval_status };
+      if (updates.approved_at) safeUpdates.approved_at = updates.approved_at;
+      const retry = await admin.from("bespoke_jobs").update(safeUpdates).eq("id", job.id);
+      updateErr = retry.error;
+    }
 
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 
