@@ -281,8 +281,67 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
+// CSRF gate for mutating /api/** requests. Audit finding (High): the
+// CSRF validator existed but was only wired into a single route. Cross-
+// origin POSTs to routes like /api/job-attachment, /api/2fa/*,
+// /api/bespoke/approval-response were accepted by default. Enforced
+// here as a middleware choke point so all API routes are covered
+// without per-file edits. Exemptions:
+//   - Webhooks (/api/webhooks/**) come from third-party origins
+//     (Stripe) and verify their own HMAC signatures.
+//   - Crons (/api/cron/**) are invoked by Vercel Cron, no origin header.
+//   - Auth endpoints that accept the Supabase mobile client also lack
+//     our origin; they are otherwise rate-limited + session-backed.
+function isCsrfExemptApi(pathname: string): boolean {
+  return (
+    pathname.startsWith("/api/webhooks/") ||
+    pathname.startsWith("/api/cron/") ||
+    pathname.startsWith("/api/auth/") || // Supabase-backed; session-authed
+    pathname.startsWith("/api/stripe/") // Stripe-side redirect endpoints
+  );
+}
+function isMutatingMethod(method: string): boolean {
+  return method === "POST" || method === "PUT" || method === "DELETE" || method === "PATCH";
+}
+async function enforceApiCsrf(request: NextRequest): Promise<NextResponse | null> {
+  const pathname = request.nextUrl.pathname;
+  if (!pathname.startsWith("/api/")) return null;
+  if (isCsrfExemptApi(pathname)) return null;
+  if (!isMutatingMethod(request.method)) return null;
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const originOk = (check: string | null): boolean => {
+    if (!check) return false;
+    try {
+      const u = new URL(check);
+      if (u.origin === appUrl) return true;
+      if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return true;
+      if (u.hostname.endsWith(".vercel.app")) return true;
+      // Tenant subdomains on the main product domain.
+      if (appUrl) {
+        const appHost = new URL(appUrl).hostname;
+        if (u.hostname === appHost || u.hostname.endsWith("." + appHost)) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+  if (originOk(origin) || originOk(referer)) return null;
+  return new NextResponse(
+    JSON.stringify({ error: "Invalid request origin" }),
+    { status: 403, headers: { "Content-Type": "application/json" } },
+  );
+}
+
 export async function middleware(request: NextRequest) {
   try {
+    // CSRF gate before the main pipeline so auth side-effects don't
+    // run on rejected cross-origin mutations.
+    const csrfReject = await enforceApiCsrf(request);
+    if (csrfReject) return addSecurityHeaders(csrfReject);
+
     const response = await withTimeout(_proxyInner(request), 4500);
     augmentVaryForHotPrefetch(request, response);
     return addSecurityHeaders(response);

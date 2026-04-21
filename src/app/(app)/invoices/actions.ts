@@ -480,11 +480,11 @@ export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: s
 
 export async function voidInvoice(invoiceId: string): Promise<{ error?: string }> {
   try {
-  const { supabase, tenantId } = await getAuthContext();
+  const { supabase, tenantId, userId } = await getAuthContext();
 
   const { data: invoice } = await supabase
     .from("invoices")
-    .select("status")
+    .select("status, invoice_number, total")
     .eq("id", invoiceId)
     .eq("tenant_id", tenantId)
     .single();
@@ -500,6 +500,20 @@ export async function voidInvoice(invoiceId: string): Promise<{ error?: string }
     .eq("tenant_id", tenantId);
 
   if (error) return { error: `Failed to void invoice: ${error.message}` };
+
+    // Audit trail for money-moving state changes — finding #9 of the
+    // HIGH audit list: invoice-void was previously untraceable.
+    after(() =>
+      logAuditEvent({
+        tenantId,
+        userId,
+        action: "invoice_status_change",
+        entityType: "invoice",
+        entityId: invoiceId,
+        oldData: { status: invoice.status, invoice_number: invoice.invoice_number, total: invoice.total },
+        newData: { status: "voided" },
+      }),
+    );
 
     revalidatePath(`/invoices/${invoiceId}`);
     revalidatePath("/invoices");

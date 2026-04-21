@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import { generateDraftInvoiceNumber } from "@/lib/invoices/draft-number";
 import logger from "@/lib/logger";
+import { assertTenantActive } from "@/lib/assert-tenant-active";
+import { requirePermission } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -18,7 +20,20 @@ async function getAuthContext() {
     .eq("id", user.id)
     .single();
   if (!userData?.tenant_id) throw new Error("No tenant found");
+  // Paywall choke point.
+  await assertTenantActive(userData.tenant_id);
   return { supabase, admin, userId: user.id, tenantId: userData.tenant_id };
+}
+
+// Permission-gated variant: used by mutations that edit a bespoke job
+// (line items, payments, stage transitions). Rejects if the authed user
+// lacks `edit_bespoke`. Owners pass automatically. Audit finding (High):
+// these actions previously only checked auth + tenant match, so a
+// salesperson with no bespoke edit rights could hit them via the
+// network tab.
+async function requireBespokeEditContext() {
+  await requirePermission("edit_bespoke");
+  return getAuthContext();
 }
 
 async function recalcInvoice(admin: ReturnType<typeof createAdminClient>, invoiceId: string, taxRate: number) {
@@ -38,7 +53,12 @@ export async function addBespokeLineItem(
   item: { description: string; qty: number; unitPrice: number; inventoryId?: string }
 ): Promise<{ success?: boolean; error?: string }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try { ctx = await requireBespokeEditContext(); } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("permission_denied:")) return { error: "You don't have permission to edit bespoke jobs." };
+    if (msg === "subscription_required") return { error: "Your subscription is inactive. Please update billing to continue." };
+    return { error: "Not authenticated" };
+  }
   const { admin } = ctx;
   if (ctx.tenantId !== tenantId) return { error: "Unauthorized" };
 
@@ -92,7 +112,12 @@ export async function removeBespokeLineItem(
   tenantId: string
 ): Promise<{ success?: boolean; error?: string }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try { ctx = await requireBespokeEditContext(); } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("permission_denied:")) return { error: "You don't have permission to edit bespoke jobs." };
+    if (msg === "subscription_required") return { error: "Your subscription is inactive. Please update billing to continue." };
+    return { error: "Not authenticated" };
+  }
   const { admin } = ctx;
   if (ctx.tenantId !== tenantId) return { error: "Unauthorized" };
 
@@ -117,7 +142,12 @@ export async function recordBespokePayment(
   notes: string
 ): Promise<{ success?: boolean; error?: string }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try { ctx = await requireBespokeEditContext(); } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("permission_denied:")) return { error: "You don't have permission to edit bespoke jobs." };
+    if (msg === "subscription_required") return { error: "Your subscription is inactive. Please update billing to continue." };
+    return { error: "Not authenticated" };
+  }
   const { admin } = ctx;
   if (ctx.tenantId !== tenantId) return { error: "Unauthorized" };
 
@@ -175,7 +205,12 @@ export async function generateBespokeInvoice(
   tenantId: string
 ): Promise<{ success?: boolean; invoiceId?: string; error?: string }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try { ctx = await requireBespokeEditContext(); } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("permission_denied:")) return { error: "You don't have permission to edit bespoke jobs." };
+    if (msg === "subscription_required") return { error: "Your subscription is inactive. Please update billing to continue." };
+    return { error: "Not authenticated" };
+  }
   const { admin } = ctx;
   if (ctx.tenantId !== tenantId) return { error: "Unauthorized" };
 
@@ -212,7 +247,12 @@ export async function updateBespokeStage(
   stage: string
 ): Promise<{ success?: boolean; error?: string }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try { ctx = await requireBespokeEditContext(); } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("permission_denied:")) return { error: "You don't have permission to edit bespoke jobs." };
+    if (msg === "subscription_required") return { error: "Your subscription is inactive. Please update billing to continue." };
+    return { error: "Not authenticated" };
+  }
   const { supabase, admin, userId } = ctx;
   if (ctx.tenantId !== tenantId) return { error: "Unauthorized" };
 
@@ -241,7 +281,12 @@ export async function emailBespokeInvoice(
   invoiceId: string
 ): Promise<{ success?: boolean; note?: string; message?: string; error?: string }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try { ctx = await requireBespokeEditContext(); } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("permission_denied:")) return { error: "You don't have permission to edit bespoke jobs." };
+    if (msg === "subscription_required") return { error: "Your subscription is inactive. Please update billing to continue." };
+    return { error: "Not authenticated" };
+  }
   const { admin, tenantId } = ctx;
 
   // Fetch tenant info for dynamic branding
@@ -359,7 +404,12 @@ export async function uploadJobAttachment(
   caption: string | null
 ): Promise<{ success?: boolean; id?: string; error?: string }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try { ctx = await requireBespokeEditContext(); } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("permission_denied:")) return { error: "You don't have permission to edit bespoke jobs." };
+    if (msg === "subscription_required") return { error: "Your subscription is inactive. Please update billing to continue." };
+    return { error: "Not authenticated" };
+  }
   const { admin, tenantId } = ctx;
 
   const { data, error } = await admin.from("job_attachments").insert({
@@ -381,7 +431,12 @@ export async function deleteJobAttachment(
   jobId: string
 ): Promise<{ success?: boolean; error?: string }> {
   let ctx;
-  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  try { ctx = await requireBespokeEditContext(); } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("permission_denied:")) return { error: "You don't have permission to edit bespoke jobs." };
+    if (msg === "subscription_required") return { error: "Your subscription is inactive. Please update billing to continue." };
+    return { error: "Not authenticated" };
+  }
   const { admin, tenantId } = ctx;
 
   const { error } = await admin.from("job_attachments").delete().eq("id", attachmentId).eq("tenant_id", tenantId).eq("job_type", jobType).eq("job_id", jobId);
