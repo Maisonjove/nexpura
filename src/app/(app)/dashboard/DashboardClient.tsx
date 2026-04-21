@@ -172,28 +172,106 @@ const chevronRight = (
   </svg>
 );
 
-// Visible indicator of which location's data the dashboard is currently
-// scoped to. Reads the same LocationContext that DashboardWrapper uses
-// for its SWR key, so by construction the chip and the displayed numbers
-// reflect the same filter — no risk of "the chip says A but the cards
-// show All". Hidden when the tenant has at most one location.
-function DashboardLocationChip() {
+// Dashboard heading that swaps between "All Locations" identity and the
+// specific selected location. When a single location is chosen, that
+// location's name becomes the primary heading and the tenant name
+// drops to a small subtitle — the jeweller should feel the context has
+// genuinely switched, not just that a tiny chip turned orange. Reads
+// the same LocationContext that DashboardWrapper uses for its SWR key,
+// so the heading and the numbers below can never disagree about which
+// slice is being shown.
+function DashboardHeading({ tenantName }: { tenantName: string | null }) {
+  const { currentLocation, hasMultipleLocations, isLoading } = useLocation();
+  const tenantLabel = tenantName?.trim() || "Dashboard";
+
+  if (isLoading || !hasMultipleLocations) {
+    return (
+      <>
+        <h1 className="font-serif text-[1.625rem] font-normal tracking-[-0.015em] text-stone-900 leading-tight">
+          {tenantLabel}
+        </h1>
+        <p className="text-[0.8rem] text-stone-400 mt-1 leading-relaxed">
+          Overview of sales, workshop activity, inventory, customers, and daily operations
+        </p>
+      </>
+    );
+  }
+
+  if (currentLocation) {
+    return (
+      <>
+        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-amber-100 border border-amber-200 text-[0.7rem] font-semibold tracking-wider uppercase text-amber-900 mb-2">
+          <MapPin size={12} className="text-amber-800" />
+          Location view
+        </div>
+        <h1 className="font-serif text-[1.625rem] font-normal tracking-[-0.015em] text-stone-900 leading-tight">
+          {currentLocation.name}
+        </h1>
+        <p className="text-[0.8rem] text-stone-500 mt-1 leading-relaxed">
+          <span className="font-medium text-stone-700">{tenantLabel}</span>
+          <span className="mx-1.5 text-stone-300">·</span>
+          Only activity scoped to this location
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-stone-100 border border-stone-200 text-[0.7rem] font-semibold tracking-wider uppercase text-stone-700 mb-2">
+        <Layers size={12} className="text-stone-600" />
+        All locations
+      </div>
+      <h1 className="font-serif text-[1.625rem] font-normal tracking-[-0.015em] text-stone-900 leading-tight">
+        {tenantLabel}
+      </h1>
+      <p className="text-[0.8rem] text-stone-400 mt-1 leading-relaxed">
+        Overview of sales, workshop activity, inventory, customers, and daily operations
+      </p>
+    </>
+  );
+}
+
+// Decides whether to render the location-scoped empty state. Only shows
+// when (a) a specific location is selected, (b) the tenant actually has
+// multiple locations, (c) stats have finished loading (no flash during
+// skeleton), and (d) every headline metric on the dashboard is zero.
+function DashboardLocationEmptyGate({
+  hasAnyActivity,
+  isStatsLoading,
+}: {
+  hasAnyActivity: boolean;
+  isStatsLoading: boolean;
+}) {
   const { currentLocation, hasMultipleLocations, isLoading } = useLocation();
   if (isLoading || !hasMultipleLocations) return null;
+  if (!currentLocation) return null;
+  if (isStatsLoading) return null;
+  if (hasAnyActivity) return null;
+  return <DashboardLocationEmpty locationName={currentLocation.name} />;
+}
+
+// Shown when a specific location is selected AND every headline metric is
+// zero. Distinguishes "this jeweller genuinely has no activity at this
+// location yet" from "something is broken". Without it the dashboard
+// cards full of zeros look like a bug, not an empty state.
+function DashboardLocationEmpty({ locationName }: { locationName: string }) {
   return (
-    <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-100 text-[0.7rem] text-amber-800">
-      {currentLocation ? (
-        <>
-          <MapPin size={11} className="text-amber-700" />
-          <span>Showing data for <strong className="font-semibold">{currentLocation.name}</strong></span>
-        </>
-      ) : (
-        <>
-          <Layers size={11} className="text-amber-700" />
-          <span>Showing data for <strong className="font-semibold">all locations</strong></span>
-        </>
-      )}
-    </div>
+    <section className="bg-amber-50/50 border border-amber-100 rounded-xl px-6 py-5">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center">
+          <MapPin size={16} className="text-amber-800" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-serif text-[1rem] text-stone-900 leading-tight">
+            No activity yet at <span className="font-semibold">{locationName}</span>
+          </h3>
+          <p className="text-[0.8rem] text-stone-500 mt-1 leading-relaxed">
+            Sales, repairs, bespoke jobs and invoices attached to this location will appear here. Switch to <span className="font-medium text-stone-700">All Locations</span> in the header to see the whole business, or start a sale/repair intake with this location selected.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -220,6 +298,7 @@ export default function DashboardClient({
   activeJobsCount,
   overdueInvoiceCount,
   totalOutstanding,
+  salesThisMonthRevenue,
   salesThisMonthCount,
   lowStockItems,
   overdueRepairs,
@@ -293,6 +372,26 @@ export default function DashboardClient({
     amber: "bg-amber-400",
   };
 
+  // "Empty" means every headline number is zero. Only treated as empty
+  // when a specific location is selected AND genuinely has no activity —
+  // that's the state worth explaining to the jeweller. In the All
+  // Locations view a zero-state at this layer would just be noise.
+  const hasAnyActivity =
+    activeRepairsCount +
+      activeJobsCount +
+      overdueInvoiceCount +
+      Math.round(totalOutstanding * 100) +
+      Math.round(salesThisMonthRevenue * 100) +
+      salesThisMonthCount +
+      lowStockItems.length +
+      overdueRepairs.length +
+      readyForPickup.length +
+      recentSales.length +
+      recentRepairsList.length +
+      activeRepairs.length +
+      activeBespokeJobs.length >
+    0;
+
   return (
     <div className="flex gap-7 items-start min-h-0">
       {/* ── Main Column ───────────────────────────────────────────────────── */}
@@ -300,16 +399,12 @@ export default function DashboardClient({
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="font-serif text-[1.625rem] font-normal tracking-[-0.015em] text-stone-900 leading-tight">
-              {tenantName?.trim() || "Dashboard"}
-            </h1>
-            <p className="text-[0.8rem] text-stone-400 mt-1 leading-relaxed">
-              Overview of sales, workshop activity, inventory, customers, and daily operations
-            </p>
-            <DashboardLocationChip />
+            <DashboardHeading tenantName={tenantName} />
           </div>
           <DashboardClock />
         </div>
+
+        <DashboardLocationEmptyGate hasAnyActivity={hasAnyActivity} isStatsLoading={isStatsLoading} />
 
         {/* Summary strip */}
         <div className="flex flex-wrap gap-1.5 -mt-2">

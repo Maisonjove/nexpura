@@ -70,21 +70,25 @@ export default function LocationPicker({ showAllOption = true, compact = false, 
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2 bg-white border border-stone-200 rounded-lg hover:border-stone-300 transition-colors ${
+        className={`flex items-center gap-2 rounded-lg transition-colors ${
           compact ? "px-2 py-1.5" : "px-3 py-2"
+        } ${
+          isAllLocationsView
+            ? "bg-white border border-stone-200 hover:border-stone-300"
+            : "bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:border-amber-300"
         }`}
       >
         {isAllLocationsView ? (
           <>
-            <Layers size={14} className="text-amber-600" />
+            <Layers size={14} className="text-stone-500" />
             <span className={`font-medium text-stone-700 ${compact ? "text-xs" : "text-sm"}`}>
               All Locations
             </span>
           </>
         ) : (
           <>
-            <MapPin size={14} className="text-amber-600" />
-            <span className={`font-medium text-stone-700 max-w-[120px] truncate ${compact ? "text-xs" : "text-sm"}`}>
+            <MapPin size={14} className="text-amber-700" />
+            <span className={`font-semibold text-amber-900 max-w-[140px] truncate ${compact ? "text-xs" : "text-sm"}`}>
               {currentLocation?.name || "Select Store"}
             </span>
           </>
