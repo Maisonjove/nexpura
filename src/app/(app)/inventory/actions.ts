@@ -9,6 +9,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
+import { requireAuth, requirePermission } from "@/lib/auth-context";
 
 async function getTenantId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -457,6 +458,14 @@ export async function adjustStock(
 }
 
 export async function archiveInventoryItem(id: string) {
+  // RBAC: archive is a destructive soft-delete. Owners/managers only.
+  // edit_inventory is enough to mutate stock, but deletion is reserved
+  // for management regardless of inventory edit rights.
+  const authCtx = await requireAuth();
+  if (!authCtx.isManager && !authCtx.isOwner) {
+    throw new Error("Only owner or manager can archive inventory items.");
+  }
+  await requirePermission("edit_inventory");
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
   const { data: { user } } = await supabase.auth.getUser();
@@ -834,6 +843,21 @@ export async function listOnWebsite(itemId: string): Promise<{ success?: boolean
 }
 
 export async function archiveStockItem(itemId: string): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: archive is a destructive soft-delete. Owners/managers only.
+  // Matches archiveInventoryItem policy — mutating stock needs edit_inventory,
+  // but wiping it requires management.
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can archive stock items." };
+    }
+    await requirePermission("edit_inventory");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("permission_denied:")) return { error: "You don't have permission to edit inventory." };
+    if (msg === "subscription_required") return { error: "Your subscription is inactive. Please update billing to continue." };
+    return { error: "Not authenticated" };
+  }
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
   const { data: { user } } = await supabase.auth.getUser();
