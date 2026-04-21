@@ -9,6 +9,7 @@ import { notifyTaskAssignment } from "@/lib/whatsapp-notifications";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { requireAuth } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -319,13 +320,25 @@ export async function deleteTask(
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
-    // Get task data for audit
+    // Get task data for audit + ownership check
     const { data: oldTask } = await admin
       .from("tasks")
-      .select("title, status, priority")
+      .select("title, status, priority, assigned_to, created_by")
       .eq("id", taskId)
       .eq("tenant_id", tenantId)
       .single();
+
+    if (!oldTask) return { error: "Task not found" };
+
+    // RBAC: owner/manager can delete any task; otherwise only the
+    // creator or the assignee may delete their own task (self-scoped
+    // personal tasks). Prevents a low-privilege user from wiping
+    // another staffer's task via a network-level request.
+    const authCtx = await requireAuth();
+    const isSelfOwned = oldTask.created_by === userId || oldTask.assigned_to === userId;
+    if (!authCtx.isManager && !authCtx.isOwner && !isSelfOwned) {
+      return { error: "Only owner, manager, or the task owner can delete a task." };
+    }
 
     const { error } = await admin
       .from("tasks")
@@ -515,6 +528,13 @@ export async function deleteTaskAttachment(attachmentId: string): Promise<{ succ
   try {
     const { tenantId } = await getAuthContext();
     const admin = createAdminClient();
+    // RBAC: attachment deletion on shared task entities is destructive
+    // and unrecoverable — owner/manager only. Low-privilege roles can
+    // still attach; they cannot wipe attachments uploaded by others.
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete task attachments." };
+    }
     const { error } = await admin.from("task_attachments").delete().eq("id", attachmentId).eq("tenant_id", tenantId);
     if (error) return { error: error.message };
     return { success: true };
