@@ -7,20 +7,17 @@ import { after } from "next/server";
 import { invalidateCache, tenantCacheKey } from "@/lib/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import logger from "@/lib/logger";
-import { getSelectedLocationIdFromCookie, hasLocationAccess } from "@/lib/locations";
+import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 
-// Resolve the active location for inserts: read the nx_location cookie
-// the user picked in LocationPicker, validate they still have access to
-// it, and return the id — or null ("All Locations" view, no default).
-// Every intake insert runs this so newly-created repairs / bespoke /
-// sales are stamped with the jeweller's current store at time of intake,
-// instead of being orphaned with location_id=NULL (the legacy shape that
-// caused the picker to show empty numbers).
+// Intake inserts (repair / bespoke / sale) all go through the shared
+// resolveLocationForCreate policy: cookie → single-location auto →
+// multi-location reject. Returns { locationId } or throws with the
+// LOCATION_REQUIRED_MESSAGE so the form surfaces it instead of silently
+// orphaning a row with location_id=NULL.
 async function resolveActiveLocationId(tenantId: string, userId: string): Promise<string | null> {
-  const cookieLoc = await getSelectedLocationIdFromCookie();
-  if (!cookieLoc) return null;
-  const allowed = await hasLocationAccess(userId, tenantId, cookieLoc);
-  return allowed ? cookieLoc : null;
+  const r = await resolveLocationForCreate(tenantId, userId);
+  if (r.needsSelection) throw new Error(LOCATION_REQUIRED_MESSAGE);
+  return r.locationId;
 }
 
 // ────────────────────────────────────────────────────────────────

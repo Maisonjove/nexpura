@@ -13,6 +13,7 @@ import logger from "@/lib/logger";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
+import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -87,6 +88,13 @@ export async function createRepair(
 
   const { supabase, userId, tenantId } = ctx;
 
+  // Same location policy as inventory + bespoke — never silently NULL.
+  const locResolution = await resolveLocationForCreate(tenantId, userId);
+  if (locResolution.needsSelection) {
+    return { error: LOCATION_REQUIRED_MESSAGE };
+  }
+  const locationId = locResolution.locationId;
+
   // Generate repair number using the DB function
   const { data: numData, error: numError } = await supabase.rpc(
     "next_repair_number",
@@ -97,6 +105,7 @@ export async function createRepair(
   const repairData = {
     ...buildRepairData(formData),
     tenant_id: tenantId,
+    location_id: locationId,
     created_by: userId,
     repair_number: numData as string,
     stage: "intake",

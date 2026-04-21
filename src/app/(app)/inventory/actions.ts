@@ -7,18 +7,7 @@ import { after } from "next/server";
 import { generateBarcodeValue } from "@/lib/barcode";
 import { logAuditEvent } from "@/lib/audit";
 import { CACHE_TAGS } from "@/lib/cache-tags";
-import { getSelectedLocationIdFromCookie, hasLocationAccess } from "@/lib/locations";
-
-// Resolve the active tenant-level location from the nx_location cookie
-// so a new inventory item inherits the store the jeweller has selected
-// in the picker at intake time. Returns null in "All Locations" view.
-async function resolveActiveLocationId(tenantId: string, userId: string | undefined): Promise<string | null> {
-  if (!userId) return null;
-  const cookieLoc = await getSelectedLocationIdFromCookie();
-  if (!cookieLoc) return null;
-  const allowed = await hasLocationAccess(userId, tenantId, cookieLoc);
-  return allowed ? cookieLoc : null;
-}
+import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 
 async function getTenantId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -95,7 +84,15 @@ export async function createInventoryItem(formData: FormData) {
     const v = formData.get(key) as string | null;
     return v && v.trim() !== "" ? v : null;
   };
-  const activeLocationId = await resolveActiveLocationId(tenantId, user?.id);
+  // Resolve which location this item belongs to. Never silently NULL when
+  // the tenant has multiple active locations — see src/lib/active-location.ts
+  // for the policy (cookie → single-location auto → multi-location reject).
+  if (!user?.id) throw new Error("Not authenticated");
+  const locResolution = await resolveLocationForCreate(tenantId, user.id);
+  if (locResolution.needsSelection) {
+    throw new Error(LOCATION_REQUIRED_MESSAGE);
+  }
+  const activeLocationId = locResolution.locationId;
   const core: Record<string, unknown> = {
     tenant_id: tenantId,
     location_id: activeLocationId,
@@ -681,7 +678,14 @@ export async function quickAddStock(formData: FormData): Promise<{ id?: string; 
   const { data: skuData } = await supabase.rpc("next_sku", { p_tenant_id: tenantId });
   const sku = skuData as string ?? stockNumber;
   
-  const activeLocationIdQA = await resolveActiveLocationId(tenantId, user?.id);
+  // Same location policy as createInventoryItem — don't silently orphan
+  // quick-add rows either. See src/lib/active-location.ts.
+  if (!user?.id) return { error: "Not authenticated" };
+  const locResolutionQA = await resolveLocationForCreate(tenantId, user.id);
+  if (locResolutionQA.needsSelection) {
+    return { error: LOCATION_REQUIRED_MESSAGE };
+  }
+  const activeLocationIdQA = locResolutionQA.locationId;
   const { data: item, error } = await supabase
     .from("inventory")
     .insert({
