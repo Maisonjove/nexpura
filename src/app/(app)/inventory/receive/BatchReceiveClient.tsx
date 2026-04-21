@@ -27,13 +27,11 @@ interface ReceiveLine {
 }
 
 interface Props {
-  tenantId: string;
-  userId: string;
   suppliers: Supplier[];
   inventoryItems: InventoryItem[];
 }
 
-export default function BatchReceiveClient({ tenantId, userId, suppliers, inventoryItems }: Props) {
+export default function BatchReceiveClient({ suppliers, inventoryItems }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [supplierId, setSupplierId] = useState("");
@@ -76,8 +74,6 @@ export default function BatchReceiveClient({ tenantId, userId, suppliers, invent
 
     startTransition(async () => {
       const result = await batchReceiveStock({
-        tenantId,
-        userId,
         supplierId: supplierId || null,
         invoiceRef: invoiceRef || null,
         lines: lines.map((l) => ({ inventoryId: l.inventoryId, receiveQty: l.receiveQty })),

@@ -162,8 +162,6 @@ export default function POSClient({
     
     try {
       const result = await createPOSSale({
-        tenantId,
-        userId,
         cart,
         customerId: selectedCustomer?.id ?? null,
         customerName: selectedCustomer?.full_name ?? null,
@@ -293,8 +291,6 @@ export default function POSClient({
     setIsPending(true);
     setError(null);
     const result = await createLaybySale({
-      tenantId,
-      userId,
       cart,
       customerId: selectedCustomer.id,
       customerName: selectedCustomer.full_name,

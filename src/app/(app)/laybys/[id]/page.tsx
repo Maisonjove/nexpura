@@ -53,8 +53,6 @@ export default async function LaybyDetailPage({ params }: Props) {
 
   return (
     <LaybyDetailClient
-      tenantId={tenantId}
-      userId={user.id}
       sale={{
         id: sale.id,
         saleNumber: sale.sale_number,

@@ -34,8 +34,6 @@ interface Sale {
 }
 
 interface Props {
-  tenantId: string;
-  userId: string;
   sale: Sale;
   saleItems: SaleItem[];
   payments: Payment[];
@@ -44,8 +42,6 @@ interface Props {
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "eftpos", "other"];
 
 export default function LaybyDetailClient({
-  tenantId,
-  userId,
   sale,
   saleItems,
   payments: initialPayments,
@@ -79,11 +75,9 @@ export default function LaybyDetailClient({
     startTransition(async () => {
       const result = await recordLaybyPayment(
         sale.id,
-        tenantId,
         amount,
         payMethod,
         payNotes,
-        userId
       );
       if (result.error) {
         setError(result.error);
@@ -105,7 +99,7 @@ export default function LaybyDetailClient({
   function handleComplete() {
     setError(null);
     startTransition(async () => {
-      const result = await completeLayby(sale.id, tenantId);
+      const result = await completeLayby(sale.id);
       if (result.error) {
         setError(result.error);
       } else {

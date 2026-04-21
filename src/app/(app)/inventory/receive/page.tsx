@@ -37,8 +37,6 @@ export default async function BatchReceivePage() {
 
   return (
     <BatchReceiveClient
-      tenantId={tenantId}
-      userId={user.id}
       suppliers={suppliers ?? []}
       inventoryItems={inventoryItems ?? []}
     />

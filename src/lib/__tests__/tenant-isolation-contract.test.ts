@@ -375,3 +375,151 @@ describe("job schemas — tenantId demoted to optional (ignored server-side)", (
     expect(block).toMatch(/tenantId: z\.string\(\)\.uuid\([^)]*\)\.optional\(\)/);
   });
 });
+
+// ── PR-06: Wave-3 body-tenantId closeouts. These four commerce actions
+// PR-01 missed (W3-CRIT-01..04). Plus a filesystem-wide regression
+// ban so any future commerce server action that re-introduces
+// tenantId/userId as a top-level param fails CI. ─────────────────────
+
+describe("PR-06 W3-CRIT-01 batchReceiveStock — session-derived tenant + user", () => {
+  const src = readSrc("app/(app)/inventory/receive/actions.ts");
+
+  it("BatchReceiveParams interface no longer carries tenantId or userId", () => {
+    const block = src.match(/interface BatchReceiveParams \{[\s\S]*?\}/)?.[0] ?? "";
+    expect(block).not.toMatch(/tenantId/);
+    expect(block).not.toMatch(/userId/);
+  });
+
+  it("resolves tenant + user from getAuthContext before any admin call", () => {
+    expect(src).toMatch(/getAuthContext\(\)/);
+    expect(src).toMatch(/const tenantId = ctx\.tenantId/);
+    expect(src).toMatch(/const userId = ctx\.userId/);
+  });
+
+  it("has no params.tenantId / params.userId references", () => {
+    expect(src).not.toMatch(/params\.tenantId/);
+    expect(src).not.toMatch(/params\.userId/);
+  });
+});
+
+describe("PR-06 W3-CRIT-02 createPOSSale — session-derived tenant + user", () => {
+  const src = readSrc("app/(app)/pos/actions.ts");
+
+  it("CreatePOSSaleParams interface no longer carries tenantId or userId", () => {
+    const block = src.match(/interface CreatePOSSaleParams \{[\s\S]*?\}/)?.[0] ?? "";
+    expect(block).not.toMatch(/tenantId:/);
+    expect(block).not.toMatch(/userId:/);
+  });
+
+  it("createPOSSale resolves tenant/user from getAuthContext", () => {
+    const body = src.split("export async function createPOSSale")[1] ?? "";
+    // Grab just the body up to the next `export async function`
+    const scoped = body.split("export async function")[0];
+    expect(scoped).toMatch(/getAuthContext\(\)/);
+    expect(scoped).toMatch(/const tenantId = ctx\.tenantId/);
+    expect(scoped).toMatch(/const userId = ctx\.userId/);
+  });
+});
+
+describe("PR-06 W3-CRIT-03 createLaybySale — session-derived tenant + user", () => {
+  const src = readSrc("app/(app)/pos/actions.ts");
+
+  it("CreateLaybySaleParams interface no longer carries tenantId or userId", () => {
+    const block = src.match(/interface CreateLaybySaleParams \{[\s\S]*?\}/)?.[0] ?? "";
+    expect(block).not.toMatch(/tenantId:/);
+    expect(block).not.toMatch(/userId:/);
+  });
+
+  it("createLaybySale resolves tenant/user from getAuthContext", () => {
+    const body = src.split("export async function createLaybySale")[1] ?? "";
+    expect(body).toMatch(/getAuthContext\(\)/);
+    expect(body).toMatch(/const tenantId = ctx\.tenantId/);
+    expect(body).toMatch(/const userId = ctx\.userId/);
+  });
+});
+
+describe("PR-06 W3-CRIT-04 pos/layby-actions — session-derived tenant, no positional tenantId", () => {
+  const src = readSrc("app/(app)/pos/layby-actions.ts");
+
+  it("recordLaybyPayment signature no longer takes tenantId as a positional arg", () => {
+    // New signature: (saleId, amount, paymentMethod, notes)
+    // The old signature had `tenantId: string,` before amount.
+    const sig = src.match(/export async function recordLaybyPayment\(([\s\S]*?)\):/)?.[1] ?? "";
+    expect(sig).not.toMatch(/tenantId: string/);
+    expect(sig).not.toMatch(/paidBy\?: string/);
+  });
+
+  it("completeLayby signature no longer takes tenantId as a positional arg", () => {
+    const sig = src.match(/export async function completeLayby\(([\s\S]*?)\):/)?.[1] ?? "";
+    expect(sig).not.toMatch(/tenantId: string/);
+  });
+
+  it("both functions resolve tenantId via getAuthContext", () => {
+    expect(src).toMatch(/getAuthContext/);
+    const recordBody = src.split("export async function recordLaybyPayment")[1]?.split("export async function")[0] ?? "";
+    const completeBody = src.split("export async function completeLayby")[1] ?? "";
+    expect(recordBody).toMatch(/const tenantId = ctx\.tenantId/);
+    expect(completeBody).toMatch(/const tenantId = ctx\.tenantId/);
+  });
+});
+
+// ── Pattern-1 filesystem regression ban ─────────────────────────────
+//
+// Static grep across all `"use server"` action files in (app)/** and
+// every API route. Any interface block whose FIRST param has
+// `tenantId: string` or `userId: string` as a field is a body-tenantId
+// regression (PR-01 / PR-06 class). Exception list below (legacy
+// shapes that are allowed because tenantId is the subdomain lookup
+// key, or the route is unauthenticated).
+//
+// NOTE: Only ban on interface declarations whose NAMES reference the
+// exported server action params. Keeps the check tight (avoids false
+// positives on row-shape types).
+
+describe("PR-06 Pattern-1 regression ban — no commerce server action takes tenantId/userId in its first param", () => {
+  const RULES_PATHS = [
+    "app/(app)/pos/actions.ts",
+    "app/(app)/pos/layby-actions.ts",
+    "app/(app)/inventory/receive/actions.ts",
+    "app/(app)/inventory/actions.ts",
+    "app/(app)/stocktakes/actions.ts",
+    "app/(app)/sales/actions.ts",
+    "app/(app)/invoices/actions.ts",
+    "app/(app)/vouchers/actions.ts",
+    "app/(app)/expenses/actions.ts",
+    "app/(app)/refunds/actions.ts",
+    "app/(app)/quotes/actions-server.ts",
+    "app/(app)/suppliers/actions.ts",
+    "app/(app)/suppliers/[id]/orders/actions.ts",
+  ];
+
+  for (const rel of RULES_PATHS) {
+    it(`${rel} — no "use server" action's param interface carries tenantId or userId`, () => {
+      const src = readSrc(rel);
+      if (!src.includes('"use server"')) return;
+
+      // Find every `interface NameParams { ... }` block that has a
+      // matching `export async function name(params: NameParams)` and
+      // assert neither `tenantId: string` nor `userId: string` appears
+      // as a field.
+      const interfaceMatches = src.matchAll(/interface (\w+Params)\s*\{([\s\S]*?)\}/g);
+      for (const m of interfaceMatches) {
+        const ifaceName = m[1];
+        const body = m[2];
+        const isUsed = new RegExp(`export async function \\w+\\([^)]*:\\s*${ifaceName}`).test(src);
+        if (!isUsed) continue;
+        expect(body, `${rel} interface ${ifaceName} must not carry tenantId as a field`).not.toMatch(/^\s*tenantId\s*:/m);
+        expect(body, `${rel} interface ${ifaceName} must not carry userId as a field`).not.toMatch(/^\s*userId\s*:/m);
+      }
+
+      // Also ban positional `tenantId: string` and `userId: string`
+      // args on any exported server action (PR-06 W3-CRIT-04 class).
+      const positional = src.matchAll(/export async function \w+\(([\s\S]*?)\):/g);
+      for (const m of positional) {
+        const args = m[1];
+        expect(args, `${rel} action arg list must not declare tenantId: string positionally`).not.toMatch(/\btenantId:\s*string/);
+        expect(args, `${rel} action arg list must not declare userId: string positionally`).not.toMatch(/\buserId:\s*string/);
+      }
+    });
+  }
+});

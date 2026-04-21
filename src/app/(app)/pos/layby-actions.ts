@@ -4,16 +4,23 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import { logAuditEvent } from "@/lib/audit";
+import { getAuthContext } from "@/lib/auth-context";
 
 export async function recordLaybyPayment(
   saleId: string,
-  tenantId: string,
   amount: number,
   paymentMethod: string,
   notes: string,
-  paidBy?: string
 ): Promise<{ error?: string; completed?: boolean }> {
   if (!saleId || amount <= 0) return { error: "Invalid payment amount" };
+
+  // SECURITY: Session-derive tenantId and userId. Previously (W3-CRIT-04)
+  // this action took tenantId as a positional arg from the client, allowing
+  // cross-tenant layby payment recording.
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "Not authenticated" };
+  const tenantId = ctx.tenantId;
+  const paidBy = ctx.userId;
 
   // IDEMPOTENCY: Prevent duplicate layby payment submissions
   const paidAt = new Date().toISOString();
@@ -45,7 +52,7 @@ export async function recordLaybyPayment(
         amount,
         payment_method: paymentMethod,
         notes: notes || null,
-        paid_by: paidBy || null,
+        paid_by: paidBy,
         paid_at: paidAt,
       });
 
@@ -71,7 +78,7 @@ export async function recordLaybyPayment(
 
       // Auto-complete if fully paid
       if (totalPaid >= saleTotal - 0.01) {
-        const completeResult = await completeLayby(saleId, tenantId);
+        const completeResult = await completeLayby(saleId);
         if (completeResult.error) {
           if (completeResult.error.includes("already completed")) {
             return { completed: true };
@@ -107,8 +114,13 @@ export async function recordLaybyPayment(
 
 export async function completeLayby(
   saleId: string,
-  tenantId: string
 ): Promise<{ error?: string }> {
+  // SECURITY: Session-derive tenantId. Previously (W3-CRIT-04) this took
+  // tenantId as a positional arg from the client.
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "Not authenticated" };
+  const tenantId = ctx.tenantId;
+
   const admin = createAdminClient();
 
   // GUARD: Check current status before completing (prevent double-completion)

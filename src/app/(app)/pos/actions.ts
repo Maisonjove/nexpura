@@ -1,12 +1,12 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { executeWithSafety, TransactionStep } from "@/lib/transaction-safety";
 import logger from "@/lib/logger";
 import { revalidateTag } from "next/cache";
 import { getSelectedLocationIdFromCookie, hasLocationAccess } from "@/lib/locations";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
+import { getAuthContext } from "@/lib/auth-context";
 
 // POSWrapper already gates the UI on a specific location being chosen (see
 // the "Select a Location" guard), so every POS sale has the picker cookie
@@ -30,8 +30,6 @@ interface CartItem {
 }
 
 interface CreatePOSSaleParams {
-  tenantId: string;
-  userId: string;
   cart: CartItem[];
   customerId: string | null;
   customerName: string | null;
@@ -53,15 +51,20 @@ export async function createPOSSale(
   params: CreatePOSSaleParams
 ): Promise<{ id?: string; saleNumber?: string; invoiceId?: string; error?: string; auditId?: string }> {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
+    // SECURITY: Session-derive tenant + user. Never trust client-supplied
+    // tenantId / userId — previously (W3-CRIT-02) this action accepted both
+    // from the request body, allowing a user in tenant A to create sales in
+    // tenant B.
+    const ctx = await getAuthContext();
+    if (!ctx) return { error: "Not authenticated" };
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
 
     // Paywall: block sales for suspended tenants at the server action level.
     // UI gating alone is not sufficient (a suspended tenant with a valid
     // session can POST directly). See src/lib/assert-tenant-active.ts.
     try {
-      await assertTenantActive(params.tenantId);
+      await assertTenantActive(tenantId);
     } catch {
       return { error: "Your subscription is inactive. Please update billing to continue." };
     }
@@ -73,7 +76,7 @@ export async function createPOSSale(
       const { data: existing } = await admin
         .from("sales")
         .select("id, sale_number")
-        .eq("tenant_id", params.tenantId)
+        .eq("tenant_id", tenantId)
         .eq("idempotency_key", params.idempotencyKey)
         .maybeSingle();
       
@@ -94,7 +97,7 @@ export async function createPOSSale(
   // Generate sale number using atomic RPC (returns format like "SALE-0001")
   // This ensures no duplicate numbers and consistent formatting
   const { data: saleNumber, error: saleNumErr } = await admin.rpc("next_sale_number", { 
-    p_tenant_id: params.tenantId 
+    p_tenant_id: tenantId 
   });
   if (saleNumErr || !saleNumber) {
     return { error: `Failed to generate sale number: ${saleNumErr?.message ?? "Unknown error"}` };
@@ -131,13 +134,13 @@ export async function createPOSSale(
           .from("customers")
           .select("store_credit")
           .eq("id", params.customerId)
-          .eq("tenant_id", params.tenantId)
+          .eq("tenant_id", tenantId)
           .single();
         storeCreditOriginal = pre?.store_credit ?? 0;
 
         const { data: newBalance, error } = await admin.rpc("deduct_store_credit", {
           p_customer_id: params.customerId,
-          p_tenant_id: params.tenantId,
+          p_tenant_id: tenantId,
           p_amount: params.storeCreditAmount,
         });
         if (error) {
@@ -158,7 +161,7 @@ export async function createPOSSale(
             .from("customers")
             .update({ store_credit: storeCreditOriginal })
             .eq("id", params.customerId)
-            .eq("tenant_id", params.tenantId);
+            .eq("tenant_id", tenantId);
         }
       },
     },
@@ -175,13 +178,13 @@ export async function createPOSSale(
           .from("gift_vouchers")
           .select("balance, status")
           .eq("id", params.voucherId)
-          .eq("tenant_id", params.tenantId)
+          .eq("tenant_id", tenantId)
           .single();
         voucherOriginalBalance = pre?.balance ?? 0;
 
         const { error } = await admin.rpc("redeem_voucher", {
           p_voucher_id: params.voucherId,
-          p_tenant_id: params.tenantId,
+          p_tenant_id: tenantId,
           p_amount: params.voucherAmount,
         });
         if (error) {
@@ -205,7 +208,7 @@ export async function createPOSSale(
             .from("gift_vouchers")
             .update({ balance: voucherOriginalBalance, status: "active" })
             .eq("id", params.voucherId)
-            .eq("tenant_id", params.tenantId);
+            .eq("tenant_id", tenantId);
         }
       },
     },
@@ -214,11 +217,11 @@ export async function createPOSSale(
     {
       name: "create_sale",
       execute: async () => {
-        const posLocationId = await resolvePOSLocationId(params.tenantId, params.userId);
+        const posLocationId = await resolvePOSLocationId(tenantId, userId);
         const { data: sale, error } = await admin
           .from("sales")
           .insert({
-            tenant_id: params.tenantId,
+            tenant_id: tenantId,
             location_id: posLocationId,
             sale_number: saleNumber,
             customer_id: params.customerId,
@@ -232,7 +235,7 @@ export async function createPOSSale(
             payment_method: params.paymentMethod,
             store_credit_amount: params.storeCreditAmount || 0,
             status: "paid",
-            sold_by: params.userId,
+            sold_by: userId,
             sale_date: new Date().toISOString().split("T")[0],
           })
           .select("id")
@@ -262,7 +265,7 @@ export async function createPOSSale(
         
         const { error } = await admin.from("sale_items").insert(
           params.cart.map((item) => ({
-            tenant_id: params.tenantId,
+            tenant_id: tenantId,
             sale_id: saleId,
             inventory_id: item.inventoryId,
             description: item.name,
@@ -288,7 +291,7 @@ export async function createPOSSale(
             .from("inventory")
             .select("quantity, name")
             .eq("id", item.inventoryId)
-            .eq("tenant_id", params.tenantId)
+            .eq("tenant_id", tenantId)
             .single();
           
           if (!inv) continue;
@@ -307,7 +310,7 @@ export async function createPOSSale(
             .from("inventory")
             .update({ quantity: newQty })
             .eq("id", item.inventoryId)
-            .eq("tenant_id", params.tenantId)
+            .eq("tenant_id", tenantId)
             .eq("quantity", oldQty);
           
           if (updateCount === 0) {
@@ -316,7 +319,7 @@ export async function createPOSSale(
               .from("inventory")
               .select("quantity, name")
               .eq("id", item.inventoryId)
-              .eq("tenant_id", params.tenantId)
+              .eq("tenant_id", tenantId)
               .single();
             
             if (invRetry) {
@@ -335,7 +338,7 @@ export async function createPOSSale(
                 .from("inventory")
                 .update({ quantity: retryQty })
                 .eq("id", item.inventoryId)
-                .eq("tenant_id", params.tenantId);
+                .eq("tenant_id", tenantId);
               stockDeductions.push({ inventoryId: item.inventoryId, quantity: item.quantity, originalQty: invRetry.quantity });
             }
           } else {
@@ -344,13 +347,13 @@ export async function createPOSSale(
           
           // Log stock movement
           await admin.from("stock_movements").insert({
-            tenant_id: params.tenantId,
+            tenant_id: tenantId,
             inventory_id: item.inventoryId,
             movement_type: "sale",
             quantity_change: -item.quantity,
             quantity_after: newQty >= 0 ? newQty : 0,
             notes: `POS Sale ${saleNumber}`,
-            created_by: params.userId,
+            created_by: userId,
           });
         }
         
@@ -363,7 +366,7 @@ export async function createPOSSale(
             .from("inventory")
             .update({ quantity: deduction.originalQty })
             .eq("id", deduction.inventoryId)
-            .eq("tenant_id", params.tenantId);
+            .eq("tenant_id", tenantId);
         }
       },
     },
@@ -376,10 +379,10 @@ export async function createPOSSale(
         
         try {
           const { data: invoiceNumberData } = await admin.rpc("next_invoice_number", {
-            p_tenant_id: params.tenantId,
+            p_tenant_id: tenantId,
           });
 
-          const posLocationIdInv = await resolvePOSLocationId(params.tenantId, params.userId);
+          const posLocationIdInv = await resolvePOSLocationId(tenantId, userId);
           // Full payload — includes sale_id linkage. On schemas where the
           // sale_id column hasn't been added yet (older tenants), PostgREST
           // rejects with "column not found", so we retry without that one
@@ -387,7 +390,7 @@ export async function createPOSSale(
           // lands, and the link gets restored on the next visit once the
           // accompanying migration lands.
           const basePayload: Record<string, unknown> = {
-            tenant_id: params.tenantId,
+            tenant_id: tenantId,
             location_id: posLocationIdInv,
             invoice_number: invoiceNumberData ?? `INV-${Date.now()}`,
             customer_id: params.customerId,
@@ -404,7 +407,7 @@ export async function createPOSSale(
             amount_paid: params.total,
             status: "paid",
             paid_at: new Date().toISOString(),
-            created_by: params.userId,
+            created_by: userId,
           };
           let ins = await admin.from("invoices").insert({ ...basePayload, sale_id: saleId }).select("id").single();
           if (ins.error && /sale_id|schema cache/i.test(ins.error.message)) {
@@ -418,7 +421,7 @@ export async function createPOSSale(
             invoiceId = newInvoice.id;
             await admin.from("invoice_line_items").insert(
               params.cart.map((item, idx) => ({
-                tenant_id: params.tenantId,
+                tenant_id: tenantId,
                 invoice_id: newInvoice.id,
                 description: item.name,
                 quantity: item.quantity,
@@ -448,14 +451,14 @@ export async function createPOSSale(
         
         const newBalance = (storeCreditOriginal || 0) - (params.storeCreditAmount || 0);
         await admin.from("customer_store_credit_history").insert({
-          tenant_id: params.tenantId,
+          tenant_id: tenantId,
           customer_id: params.customerId,
           amount: -(params.storeCreditAmount || 0),
           balance_after: newBalance,
           reason: "POS Purchase",
           reference_type: "sale",
           reference_id: saleId,
-          created_by: params.userId,
+          created_by: userId,
         });
         
         return { success: true };
@@ -474,7 +477,7 @@ export async function createPOSSale(
           voucher_id: params.voucherId,
           sale_id: saleId,
           amount_used: params.voucherAmount,
-          tenant_id: params.tenantId,
+          tenant_id: tenantId,
           redeemed_at: new Date().toISOString(),
         });
         
@@ -488,8 +491,8 @@ export async function createPOSSale(
     admin,
     "pos_sale",
     saleNumber,
-    params.tenantId,
-    params.userId,
+    tenantId,
+    userId,
     steps
   );
 
@@ -509,8 +512,6 @@ export async function createPOSSale(
 // ─── Layby Sale ───────────────────────────────────────────────────────────────
 
 interface CreateLaybySaleParams {
-  tenantId: string;
-  userId: string;
   cart: CartItem[];
   customerId: string;
   customerName: string;
@@ -528,9 +529,19 @@ export async function createLaybySale(
   params: CreateLaybySaleParams
 ): Promise<{ id?: string; saleNumber?: string; error?: string }> {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
+    // SECURITY: Session-derive tenant + user. Previously (W3-CRIT-03) this
+    // action accepted tenantId + userId from the body, allowing cross-tenant
+    // layby creation.
+    const ctx = await getAuthContext();
+    if (!ctx) return { error: "Not authenticated" };
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
+
+    try {
+      await assertTenantActive(tenantId);
+    } catch {
+      return { error: "Your subscription is inactive. Please update billing to continue." };
+    }
 
     if (!params.customerId) return { error: "Customer is required for layby" };
     if (params.depositAmount <= 0) return { error: "Deposit must be greater than zero" };
@@ -542,16 +553,16 @@ export async function createLaybySale(
   const { count } = await admin
     .from("sales")
     .select("id", { count: "exact", head: true })
-    .eq("tenant_id", params.tenantId);
+    .eq("tenant_id", tenantId);
 
   const saleNumber = `S-${String((count ?? 0) + 1).padStart(4, "0")}`;
 
   // Create layby sale record (status='layby', inventory NOT yet deducted)
-  const laybyLocationId = await resolvePOSLocationId(params.tenantId, params.userId);
+  const laybyLocationId = await resolvePOSLocationId(tenantId, userId);
   const { data: sale, error: saleErr } = await admin
     .from("sales")
     .insert({
-      tenant_id: params.tenantId,
+      tenant_id: tenantId,
       location_id: laybyLocationId,
       sale_number: saleNumber,
       customer_id: params.customerId,
@@ -564,7 +575,7 @@ export async function createLaybySale(
       payment_method: "layby",
       store_credit_amount: 0,
       status: "layby",
-      sold_by: params.userId,
+      sold_by: userId,
       sale_date: new Date().toISOString().split("T")[0],
       deposit_amount: params.depositAmount,
       amount_paid: params.depositAmount,
@@ -576,12 +587,12 @@ export async function createLaybySale(
 
   // Record initial deposit payment
   await admin.from("layby_payments").insert({
-    tenant_id: params.tenantId,
+    tenant_id: tenantId,
     sale_id: sale.id,
     amount: params.depositAmount,
     payment_method: "cash",
     notes: "Initial deposit",
-    paid_by: params.userId,
+    paid_by: userId,
     paid_at: new Date().toISOString(),
   });
 
@@ -589,7 +600,7 @@ export async function createLaybySale(
   if (params.cart.length > 0) {
     await admin.from("sale_items").insert(
       params.cart.map((item) => ({
-        tenant_id: params.tenantId,
+        tenant_id: tenantId,
         sale_id: sale.id,
         description: item.name,
         quantity: item.quantity,

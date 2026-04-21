@@ -1,10 +1,10 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { getAuthContext } from "@/lib/auth-context";
 
 interface ReceiveLine {
   inventoryId: string;
@@ -12,8 +12,6 @@ interface ReceiveLine {
 }
 
 interface BatchReceiveParams {
-  tenantId: string;
-  userId: string;
   supplierId: string | null;
   invoiceRef: string | null;
   lines: ReceiveLine[];
@@ -23,15 +21,16 @@ export async function batchReceiveStock(
   params: BatchReceiveParams
 ): Promise<{ success?: boolean; error?: string }> {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
+    // SECURITY: Session-derive tenantId + userId. Previously (W3-CRIT-01)
+    // this action took tenantId + userId from the request body, allowing
+    // cross-tenant stock tampering + audit-log pollution.
+    const ctx = await getAuthContext();
+    if (!ctx) return { error: "Not authenticated" };
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
 
     const admin = createAdminClient();
 
-    // Validate params
-    if (!params.tenantId) return { error: "Missing tenant ID" };
-    if (!params.userId) return { error: "Missing user ID" };
     if (!params.lines || params.lines.length === 0) return { error: "No items to receive" };
 
     let receivedCount = 0;
@@ -44,7 +43,7 @@ export async function batchReceiveStock(
         .from("inventory")
         .select("quantity")
         .eq("id", line.inventoryId)
-        .eq("tenant_id", params.tenantId)
+        .eq("tenant_id", tenantId)
         .single();
 
       if (fetchError) {
@@ -64,7 +63,7 @@ export async function batchReceiveStock(
           supplier_invoice_ref: params.invoiceRef ?? undefined,
         })
         .eq("id", line.inventoryId)
-        .eq("tenant_id", params.tenantId);
+        .eq("tenant_id", tenantId);
 
       if (updateError) {
         logger.error(`[batchReceiveStock] Failed to update item ${line.inventoryId}:`, updateError);
@@ -73,9 +72,9 @@ export async function batchReceiveStock(
 
       // Log stock movement
       const { error: movementError } = await admin.from("inventory_stock_movements").insert({
-        tenant_id: params.tenantId,
+        tenant_id: tenantId,
         inventory_item_id: line.inventoryId,
-        moved_by: params.userId,
+        moved_by: userId,
         from_location: null,
         to_location: "display",
         notes: `Received from supplier${params.invoiceRef ? ` (Inv: ${params.invoiceRef})` : ""}`,
@@ -87,13 +86,13 @@ export async function batchReceiveStock(
 
       // Also log in stock_movements table (for stock history)
       const { error: historyError } = await admin.from("stock_movements").insert({
-        tenant_id: params.tenantId,
+        tenant_id: tenantId,
         inventory_id: line.inventoryId,
         movement_type: "purchase",
         quantity_change: line.receiveQty,
         quantity_after: newQty,
         notes: `Batch receive${params.invoiceRef ? ` - ${params.invoiceRef}` : ""}`,
-        created_by: params.userId,
+        created_by: userId,
       });
 
       if (historyError) {
@@ -106,8 +105,8 @@ export async function batchReceiveStock(
     // Log audit event for batch receive
     if (receivedCount > 0) {
       await logAuditEvent({
-        tenantId: params.tenantId,
-        userId: params.userId,
+        tenantId,
+        userId,
         action: "inventory_receive",
         entityType: "inventory",
         newData: {
