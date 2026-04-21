@@ -17,25 +17,38 @@ export async function GET(
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
-  // Auth check — also allow token-based access via ?token= query param for email links
-  const token = req.nextUrl.searchParams.get("token");
-  if (!token) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  // W7-CRIT-03: the previous handler accepted `?token=<anything>` as a
+  // full bypass of the auth check. The "token" was never verified and
+  // the previewed `?preview=1` parallel existed only in older versions.
+  // The only internal consumer (/quotes/[id] client) is logged-in,
+  // so we now require a real Supabase session — no unsigned backdoor.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const { id } = await params;
     const admin = createAdminClient();
 
-    // Fetch quote
+    // Derive session tenant and enforce ownership — the previous handler
+    // leaked any tenant's quote PDF to any authenticated user.
+    const { data: userRow } = await admin
+      .from("users")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
+    if (!userRow?.tenant_id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Fetch quote scoped to caller's tenant
     const { data: quote, error: quoteError } = await admin
       .from("quotes")
       .select("*, customers(*)")
       .eq("id", id)
+      .eq("tenant_id", userRow.tenant_id)
       .single();
 
     if (quoteError || !quote) {

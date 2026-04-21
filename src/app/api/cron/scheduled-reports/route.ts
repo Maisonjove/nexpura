@@ -9,17 +9,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTenantEmail } from "@/lib/email-sender";
 import { generateReport } from "@/lib/reports/generator";
+import { safeBearerMatch } from "@/lib/timing-safe-compare";
 import logger from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
-  // Verify cron secret - require CRON_SECRET env var
+  // W4-APR2 / fail-closed contract: when CRON_SECRET is unset we MUST NOT
+  // return 200 — the previous handler would cheerfully respond "ok" to
+  // any anonymous caller in that branch. Now: 503 when misconfigured,
+  // 401 when the bearer mismatches, and constant-time compare.
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
-    logger.error("[scheduled-reports] CRON_SECRET env var not configured");
-    return NextResponse.json({ success: false, message: "CRON_SECRET not configured" }, { status: 200 });
+    logger.error("[scheduled-reports] CRON_SECRET env var not configured — refusing");
+    return NextResponse.json({ error: "Cron not configured" }, { status: 503 });
   }
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  if (!safeBearerMatch(authHeader, cronSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
