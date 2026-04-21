@@ -5,6 +5,7 @@ import { verifyTOTPToken, generateBackupCodes, hashBackupCode } from '@/lib/totp
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { twoFAVerifySchema } from '@/lib/schemas';
+import { setTwoFactorCookie } from '@/lib/auth/two-factor-cookie';
 
 export async function POST(request: NextRequest) {
   // Strict rate limiting for auth endpoints
@@ -60,10 +61,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to enable 2FA' }, { status: 500 });
     }
 
-    return NextResponse.json({ 
+    // PR-05: the user just proved possession of the TOTP factor during
+    // enrollment. Mint the AAL2 cookie now so middleware does not bounce
+    // them straight back to /verify-2fa on their next navigation.
+    const host = request.headers.get('host') || undefined;
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const protocol = forwardedProto ? `${forwardedProto}:` : undefined;
+
+    const res = NextResponse.json({
       success: true,
       backupCodes, // Return plain backup codes to user (only time they'll see them)
     });
+    setTwoFactorCookie(res, user.id, host, protocol);
+    return res;
   } catch (error) {
     logger.error('2FA verification error', { error });
     return NextResponse.json(

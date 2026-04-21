@@ -14,6 +14,17 @@ function LogoutContent() {
     async function logout() {
       const supabase = createClient();
       await supabase.auth.signOut();
+      // PR-05: actively clear the HttpOnly 2FA proof cookie that Supabase
+      // signOut cannot touch. Best-effort — even if this fails the cookie
+      // is bound to the old user id and will fail verification on next use.
+      try {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "same-origin",
+        });
+      } catch {
+        // Non-blocking; cookie is user-ID-bound so orphan can't grant AAL2.
+      }
       // Clear session timeout tracking
       localStorage.removeItem("nexpura_last_activity");
       // Redirect to login after a brief delay

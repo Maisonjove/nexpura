@@ -6,6 +6,7 @@ import { recordSession, checkNewDeviceLogin } from '@/lib/session-manager';
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { twoFAValidateSchema } from '@/lib/schemas';
+import { setTwoFactorCookie } from '@/lib/auth/two-factor-cookie';
 
 /**
  * Validate a 2FA code during login
@@ -65,11 +66,15 @@ export async function POST(request: NextRequest) {
 
     // Try TOTP code first
     const normalizedCode = code.replace(/\s/g, '').toUpperCase();
-    
+
+    const host = request.headers.get('host') || undefined;
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const protocol = forwardedProto ? `${forwardedProto}:` : undefined;
+
     // Check if it's a 6-digit TOTP code
     if (/^\d{6}$/.test(normalizedCode)) {
       const isValid = verifyTOTPToken(normalizedCode, profile.totp_secret);
-      
+
       if (isValid) {
         // Record session after successful 2FA (non-blocking, isolated)
         try {
@@ -85,7 +90,21 @@ export async function POST(request: NextRequest) {
         } catch {
           // Silently ignore - session tracking is non-critical
         }
-        return NextResponse.json({ valid: true, method: 'totp' });
+        // PR-05: mint the HMAC-signed cookie that middleware requires for
+        // any totp_enabled user. Without it the user will be bounced back
+        // to /verify-2fa on their next navigation. If the signing secret
+        // is unset in this environment, fail-closed: return an explicit
+        // 500 rather than a cosmetic success that lets the bearer roam.
+        const res = NextResponse.json({ valid: true, method: 'totp' });
+        const ok = setTwoFactorCookie(res, userId, host, protocol);
+        if (!ok) {
+          logger.error('2FA cookie signing unavailable — refusing AAL2 promotion', { userId });
+          return NextResponse.json(
+            { error: '2FA is temporarily unavailable, please contact support.' },
+            { status: 500 }
+          );
+        }
+        return res;
       }
     }
 
@@ -121,7 +140,17 @@ export async function POST(request: NextRequest) {
           // Silently ignore - session tracking is non-critical
         }
 
-        return NextResponse.json({ valid: true, method: 'backup_code' });
+        // PR-05: see the TOTP branch above — mint the AAL2 cookie or fail-closed.
+        const res = NextResponse.json({ valid: true, method: 'backup_code' });
+        const ok = setTwoFactorCookie(res, userId, host, protocol);
+        if (!ok) {
+          logger.error('2FA cookie signing unavailable — refusing AAL2 promotion', { userId });
+          return NextResponse.json(
+            { error: '2FA is temporarily unavailable, please contact support.' },
+            { status: 500 }
+          );
+        }
+        return res;
       }
     }
 

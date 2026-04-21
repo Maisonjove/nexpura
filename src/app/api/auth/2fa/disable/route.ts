@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { clearTwoFactorCookie } from '@/lib/auth/two-factor-cookie';
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
@@ -35,7 +36,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to disable 2FA' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    // PR-05: clear the 2FA proof cookie — no longer meaningful once the
+    // factor is disabled, and guarantees that if 2FA is re-enabled later
+    // the user must re-prove possession before the middleware trusts them.
+    const host = request.headers.get('host') || undefined;
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const protocol = forwardedProto ? `${forwardedProto}:` : undefined;
+    const res = NextResponse.json({ success: true });
+    clearTwoFactorCookie(res, host, protocol);
+    return res;
   } catch (error) {
     logger.error('2FA disable error', { error });
     return NextResponse.json(

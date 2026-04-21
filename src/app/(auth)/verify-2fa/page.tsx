@@ -14,12 +14,55 @@ function Verify2FAContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const userId = searchParams.get('userId');
-  const email = searchParams.get('email');
+  const userIdParam = searchParams.get('userId');
+  const emailParam = searchParams.get('email');
+  const [resolvedUserId, setResolvedUserId] = useState<string | null>(userIdParam);
+  const [resolvedEmail, setResolvedEmail] = useState<string | null>(emailParam);
 
+  const rawReturnTo = searchParams.get('returnTo');
+  // Defence-in-depth: only honour same-origin relative paths. If the
+  // middleware redirects a user here it supplies returnTo already URL-
+  // decoded by Next.js. A tampered querystring like
+  // `?returnTo=https://evil.example/phish` would otherwise become a
+  // post-2FA open-redirect. Reject anything that isn't a path starting
+  // with a single `/` (and not `//` protocol-relative).
+  const returnTo =
+    rawReturnTo && rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//')
+      ? rawReturnTo
+      : '/dashboard';
+
+  // PR-05: middleware can redirect an already-authenticated but un-
+  // promoted user here without the legacy ?userId= param. In that case
+  // probe /api/auth/me to pick up the identity from the Supabase session
+  // cookie. If there's no session at all, bounce to /login.
   useEffect(() => {
-    if (!userId) router.push('/login');
-  }, [userId, router]);
+    if (userIdParam) return; // legacy login-flow already supplied it
+    let cancelled = false;
+    fetch('/api/auth/me', { credentials: 'same-origin' })
+      .then(async (res) => {
+        if (cancelled) return;
+        if (!res.ok) {
+          router.push('/login');
+          return;
+        }
+        const data = await res.json().catch(() => null);
+        if (!data?.userId) {
+          router.push('/login');
+          return;
+        }
+        setResolvedUserId(data.userId);
+        if (data.email) setResolvedEmail(data.email);
+      })
+      .catch(() => {
+        if (!cancelled) router.push('/login');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userIdParam, router]);
+
+  const userId = resolvedUserId;
+  const email = resolvedEmail;
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +88,10 @@ function Verify2FAContent() {
       await supabase.auth.refreshSession();
       sessionStorage.setItem('2fa_verified', 'true');
 
-      router.push('/dashboard');
+      // PR-05: respect the sanitized returnTo so middleware-initiated
+      // redirects land the user back where they were trying to go, not
+      // on a forced /dashboard.
+      router.push(returnTo);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed');
