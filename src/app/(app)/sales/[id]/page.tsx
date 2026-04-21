@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import SaleDetailClient from "./SaleDetailClient";
+import { resolveReadLocationScope } from "@/lib/location-read-scope";
 
 export default async function SaleDetailPage({
   params,
@@ -32,6 +33,12 @@ export default async function SaleDetailPage({
     .single();
 
   if (!sale) notFound();
+
+  // Location-scope read guard — see src/lib/location-read-scope.ts.
+  if (user?.id && tenantId && sale.location_id) {
+    const scope = await resolveReadLocationScope(user.id, tenantId);
+    if (!scope.all && !scope.allowedIds.includes(sale.location_id)) notFound();
+  }
 
   const { data: items } = await adminClient
     .from("sale_items")

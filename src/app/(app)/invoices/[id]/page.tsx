@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import InvoiceDetailClient from "./InvoiceDetailClient";
+import { resolveReadLocationScope } from "@/lib/location-read-scope";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
@@ -39,6 +40,7 @@ export default async function InvoiceDetailPage({
   const adminClient = createAdminClient();
 
   let tenantId: string | null;
+  let userId: string | null = null;
   const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
@@ -48,6 +50,7 @@ export default async function InvoiceDetailPage({
     // SELECT round-trips shaves ~60-150ms off every detail-page render.
     tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
     if (!tenantId) redirect("/login");
+    userId = headersList.get(AUTH_HEADERS.USER_ID);
   }
 
   const [{ data: invoice }, { data: lineItems }, { data: tenant }, { data: paymentsRaw }] =
@@ -58,7 +61,7 @@ export default async function InvoiceDetailPage({
           `id, invoice_number, status, invoice_date, due_date, paid_at,
            subtotal, tax_amount, discount_amount, total, amount_paid,
            tax_name, tax_rate, tax_inclusive, notes, footer_text, reference_type,
-           created_at, stripe_payment_link,
+           created_at, stripe_payment_link, location_id,
            customers(id, full_name, email, phone, mobile, address_line1, suburb, state, postcode)`
         )
         .eq("id", id)
@@ -83,6 +86,13 @@ export default async function InvoiceDetailPage({
     ]);
 
   if (!invoice) notFound();
+
+  // Location-scope read guard — see src/lib/location-read-scope.ts.
+  if (!isReviewMode && userId && (invoice as { location_id?: string | null }).location_id) {
+    const scope = await resolveReadLocationScope(userId, tenantId);
+    const loc = (invoice as { location_id: string }).location_id;
+    if (!scope.all && !scope.allowedIds.includes(loc)) notFound();
+  }
 
   // Normalize customer join (Supabase may return array)
   const rawCustomer = Array.isArray(invoice.customers)

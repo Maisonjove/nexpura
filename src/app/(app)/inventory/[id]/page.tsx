@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth-context";
 import ItemDetailClient from "./ItemDetailClient";
 import InventoryPhotos from "./InventoryPhotos";
+import { resolveReadLocationScope } from "@/lib/location-read-scope";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
@@ -19,6 +20,7 @@ export default async function InventoryDetailPage({
   const admin = createAdminClient();
 
   let tenantId: string | null = null;
+  let userId: string | null = null;
   let canViewCost = false;
   const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
 
@@ -29,6 +31,7 @@ export default async function InventoryDetailPage({
     const auth = await getAuthContext();
     if (!auth) redirect("/login");
     tenantId = auth.tenantId;
+    userId = auth.userId;
     canViewCost = auth.permissions.view_cost_price;
   }
 
@@ -43,6 +46,7 @@ export default async function InventoryDetailPage({
         ring_size, dimensions, cost_price, wholesale_price, retail_price,
         quantity, low_stock_threshold, track_quantity,
         supplier_name, supplier_sku, is_featured, status, primary_image, images,
+        location_id,
         stock_categories(name)
       `)
       .eq("id", id)
@@ -59,6 +63,12 @@ export default async function InventoryDetailPage({
 
   const { data: item, error } = itemResult;
   if (error || !item) notFound();
+
+  // Location-scope read guard — see src/lib/location-read-scope.ts.
+  if (!isReviewMode && userId && item.location_id) {
+    const scope = await resolveReadLocationScope(userId, tenantId);
+    if (!scope.all && !scope.allowedIds.includes(item.location_id)) notFound();
+  }
 
   // Strip cost if no permission
   if (!canViewCost) {

@@ -5,6 +5,7 @@ import { getAuthContext } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
 import RepairCommandCenter from "./RepairCommandCenter";
 import type { OrderMessage } from "@/lib/messaging";
+import { resolveReadLocationScope } from "@/lib/location-read-scope";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
@@ -38,6 +39,7 @@ export default async function RepairDetailPage({
 
   // Check for review mode or auth
   let tenantId: string | null = null;
+  let userId: string | null = null;
   let tenantCurrency = "AUD";
   const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
 
@@ -47,6 +49,7 @@ export default async function RepairDetailPage({
     const auth = await getAuthContext();
     if (!auth) redirect("/login");
     tenantId = auth.tenantId;
+    userId = auth.userId;
     tenantCurrency = auth.currency;
   }
 
@@ -116,6 +119,15 @@ export default async function RepairDetailPage({
 
   const { data: repair } = repairResult;
   if (!repair) notFound();
+
+  // Location-scope read guard. A location-restricted staff member
+  // typing another location's UUID into the URL returns notFound
+  // instead of the detail view. Review-mode + legacy rows with
+  // location_id=NULL stay visible. See src/lib/location-read-scope.ts.
+  if (!isReviewMode && userId && repair.location_id) {
+    const scope = await resolveReadLocationScope(userId, tenantId);
+    if (!scope.all && !scope.allowedIds.includes(repair.location_id)) notFound();
+  }
 
   // Phase 2: Fetch repair-specific data in parallel
   const [attachmentsResult, eventsResult, invoiceData, messagesResult] = await Promise.all([

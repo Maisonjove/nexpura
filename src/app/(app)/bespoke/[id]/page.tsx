@@ -5,6 +5,7 @@ import { getAuthContext } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
 import BespokeCommandCenter from "./BespokeCommandCenter";
 import type { OrderMessage } from "@/lib/messaging";
+import { resolveReadLocationScope } from "@/lib/location-read-scope";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
@@ -41,6 +42,7 @@ export default async function BespokeJobDetailPage({
 
   // Check for review mode or auth
   let tenantId: string | null = null;
+  let userId: string | null = null;
   let tenantCurrency = "AUD";
   const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
 
@@ -50,6 +52,7 @@ export default async function BespokeJobDetailPage({
     const auth = await getAuthContext();
     if (!auth) redirect("/login");
     tenantId = auth.tenantId;
+    userId = auth.userId;
     tenantCurrency = auth.currency;
   }
 
@@ -114,6 +117,12 @@ export default async function BespokeJobDetailPage({
 
   const { data: job } = jobResult;
   if (!job) notFound();
+
+  // Location-scope read guard — see src/lib/location-read-scope.ts.
+  if (!isReviewMode && userId && job.location_id) {
+    const scope = await resolveReadLocationScope(userId, tenantId);
+    if (!scope.all && !scope.allowedIds.includes(job.location_id)) notFound();
+  }
 
   // Phase 2: Fetch job-specific data in parallel
   const [attachmentsResult, eventsResult, invoiceData, messagesResult] = await Promise.all([
