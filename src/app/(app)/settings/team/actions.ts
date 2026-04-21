@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { PLAN_FEATURES, canAddStaff, type PlanId } from "@/lib/plans";
+import { requireAuth } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -160,6 +161,11 @@ export async function updateTeamMemberRole(memberId: string, role: string) {
 
 export async function removeTeamMember(memberId: string) {
   try {
+    // RBAC: staff removal is a high-impact destructive action. Owner/manager only.
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can remove team members." };
+    }
     const { admin, userId, tenantId } = await getAuthContext();
 
     // Get member data for audit

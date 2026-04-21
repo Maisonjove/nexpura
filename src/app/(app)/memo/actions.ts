@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { logAuditEvent } from "@/lib/audit";
+import { requireAuth } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -206,6 +207,12 @@ export async function updateMemoStatus(
 
 export async function deleteMemoItem(id: string): Promise<{ error?: string }> {
   try {
+    // RBAC: memo items track consigned inventory — destructive removal
+    // could break reconciliation. Owner/manager only.
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete memo items." };
+    }
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
     const { error } = await admin

@@ -7,6 +7,7 @@ import { Resend } from "resend";
 import { getTenantEmailSender } from "../email/actions";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { requireAuth } from "@/lib/auth-context";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -390,6 +391,15 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
 }
 
 export async function removeMember(memberId: string): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: staff removal is a high-impact destructive action. Owner/manager only.
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can remove team members." };
+    }
+  } catch {
+    return { error: "Not authenticated" };
+  }
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
 

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { revalidatePath, updateTag } from "next/cache"
 import { logger } from "@/lib/logger"
+import { requireAuth } from "@/lib/auth-context"
 
 async function getTenantId() {
   const supabase = await createClient()
@@ -97,6 +98,11 @@ export async function updateTagTemplate(id: string, formData: FormData) {
 
 export async function deleteTagTemplate(id: string): Promise<{ success?: boolean; error?: string }> {
   try {
+    // RBAC: tag templates configure printed stock labels. Owner/manager only.
+    const authCtx = await requireAuth()
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete tag templates." }
+    }
     const { supabase, tenantId } = await getTenantId()
 
     // Check count — can't delete if only one

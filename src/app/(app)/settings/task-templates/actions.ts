@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
+import { requireAuth } from "@/lib/auth-context";
 
 export interface TaskTemplate {
   id: string;
@@ -126,6 +127,12 @@ export async function updateTaskTemplate(
 
 export async function deleteTaskTemplate(id: string): Promise<{ error?: string }> {
   try {
+    // RBAC: task templates shape the default workflow for all staff.
+    // Destructive removal is owner/manager only.
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can delete task templates." };
+    }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { requireAuth } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -103,6 +104,13 @@ export async function markPrintJobDone(jobId: string): Promise<{ error?: string 
 
 export async function cancelPrintJob(jobId: string): Promise<{ error?: string }> {
   try {
+    // RBAC: cancelling another user's print job is destructive to their
+    // workflow. Owner/manager only (users wanting to cancel their own
+    // job can just reprint).
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can cancel print jobs." };
+    }
     const { tenantId } = await getAuthContext();
     const admin = createAdminClient();
     const { error } = await admin
