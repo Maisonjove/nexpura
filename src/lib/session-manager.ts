@@ -264,9 +264,8 @@ async function sendNewDeviceAlert(
   ipAddress: string
 ): Promise<void> {
   try {
-    const { Resend } = await import('resend');
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    
+    const { resend } = await import('@/lib/email/resend');
+
     const timestamp = new Date().toLocaleString('en-AU', {
       timeZone: 'Australia/Sydney',
       dateStyle: 'full',

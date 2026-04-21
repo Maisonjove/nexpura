@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sms2FASetupSchema } from '@/lib/schemas';
+import { sendTwilioSms } from '@/lib/twilio-sms';
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
@@ -45,40 +46,15 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', user.id);
 
-    // Send SMS via Twilio
-    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
-    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-    const twilioFromNumber = process.env.TWILIO_FROM_NUMBER;
+    // Send SMS via the sandbox-aware Twilio helper. In preview/dev/SANDBOX_MODE
+    // this returns fake success without hitting Twilio.
+    const smsResult = await sendTwilioSms(
+      normalizedPhone,
+      `Your Nexpura verification code is: ${code}. It expires in 10 minutes.`,
+    );
 
-    if (!twilioAccountSid || !twilioAuthToken || !twilioFromNumber) {
-      // Fallback: log the code for development
-      logger.info('SMS 2FA - dev mode verification code', { phone: normalizedPhone, code });
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Verification code sent (dev mode - check logs)',
-        phone: normalizedPhone,
-      });
-    }
-
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
-    const twilioAuth = Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString('base64');
-
-    const smsResponse = await fetch(twilioUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${twilioAuth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        From: twilioFromNumber,
-        To: normalizedPhone,
-        Body: `Your Nexpura verification code is: ${code}. It expires in 10 minutes.`,
-      }),
-    });
-
-    if (!smsResponse.ok) {
-      const twilioError = await smsResponse.json();
-      logger.error('SMS 2FA - Twilio error', { error: twilioError });
+    if (!smsResult.success) {
+      logger.error('SMS 2FA - Twilio error', { error: smsResult.error });
       return NextResponse.json({ error: 'Failed to send SMS' }, { status: 500 });
     }
 

@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+// PR-03 exception: this route needs a per-request Resend client because it
+// uses a dedicated RESEND_TRACKING_API_KEY that can be rotated independently
+// of the main transactional key. The sandbox gate is enforced inline
+// below via isSandbox(); the factory is never reached in sandbox mode.
+// eslint-disable-next-line no-restricted-imports
 import { Resend } from "resend";
+import { isSandbox, logSandboxSuppressedSend } from "@/lib/sandbox";
 import logger from "@/lib/logger";
 
 /**
@@ -120,6 +126,22 @@ export async function POST(request: NextRequest) {
     const businessName = tenant?.business_name || "Your Jeweller";
     const trackingUrl = `https://nexpura.com/track/${order.tracking_id}`;
     const orderTypeLabel = orderType === "repair" ? "Repair" : "Bespoke Order";
+
+    // Sandbox short-circuit — preview/dev/SANDBOX_MODE must never hit real
+    // customer inboxes. Returns a synthetic messageId + logs the intent so
+    // QA can verify what would have gone out.
+    if (isSandbox()) {
+      logSandboxSuppressedSend({
+        channel: "email",
+        to: order.customer_email,
+        subject: `Your ${orderTypeLabel} - Tracking ID: ${order.tracking_id}`,
+      });
+      return NextResponse.json({
+        success: true,
+        messageId: "sandbox-suppressed",
+        trackingId: order.tracking_id,
+      });
+    }
 
     // Resolve the Resend client lazily; fail cleanly if the key isn't set.
     const resendResult = getTrackingResendOrError();

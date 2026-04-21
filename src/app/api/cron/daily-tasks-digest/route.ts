@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { Resend } from 'resend';
+import { resend } from '@/lib/email/resend';
 import DailyTaskDigestEmail from '@/lib/email/templates/DailyTaskDigestEmail';
 import { safeBearerMatch } from '@/lib/timing-safe-compare';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function GET(request: Request) {
   // Check for auth (cron secret) — constant-time.

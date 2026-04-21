@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { Resend } from "resend";
+import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizeText } from "@/lib/sanitize";
@@ -18,7 +18,6 @@ async function handleEmailExport(
   businessName: string
 ): Promise<string | null> {
   const adminClient = createAdminClient();
-  const resend = new Resend(process.env.RESEND_API_KEY!);
 
   // Detect invoice export intent
   const invoiceMatch = intent.match(/invoice[s]?.*?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*(\d{4})?/i);

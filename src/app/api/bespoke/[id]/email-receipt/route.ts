@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import BespokeSheetPDF from "@/lib/pdf/BespokeSheetPDF";
-import { Resend } from "resend";
+import { resend } from "@/lib/email/resend";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -113,7 +113,6 @@ export async function POST(
   const storeAddr = tenantAddress ? ` | ${tenantAddress}` : "";
   const customerDisplayName = jobData.customerName || "Valued Customer";
 
-  const resend = new Resend(process.env.RESEND_API_KEY);
   const { error: sendError } = await resend.emails.send({
     from: `${businessName} <receipts@nexpura.com>`,
     to: [recipientEmail],

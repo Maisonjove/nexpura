@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Resend } from "resend";
+import { resend } from "@/lib/email/resend";
 import { randomUUID } from "crypto";
 import logger from "@/lib/logger";
 import { getAuthContext } from "@/lib/auth-context";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext();

@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
-import { isAustralianNumber, normalizePhoneNumber } from "@/lib/twilio-sms";
+import { sendTwilioSms } from "@/lib/twilio-sms";
 import { generateDraftInvoiceNumber } from "@/lib/invoices/draft-number";
+import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
 import { requireAuth } from "@/lib/auth-context";
 
@@ -314,46 +315,35 @@ export async function updateRepairStage(
 
           const message = STAGE_SMS_MESSAGES[stage];
           if (message) {
-            const normalizedPhone = normalizePhoneNumber(customerPhone);
-            const isAU = isAustralianNumber(customerPhone);
-            const fromNumber = isAU
-              ? (settings.phone_number_au || process.env.TWILIO_SMS_NUMBER_AU || settings.phone_number)
-              : (settings.phone_number_us || process.env.TWILIO_SMS_NUMBER || settings.phone_number);
-
-            if (fromNumber) {
-              const fromNormalized = fromNumber.startsWith("+") ? fromNumber : `+${fromNumber}`;
-              const twRes = await fetch(
-                `https://api.twilio.com/2010-04-01/Accounts/${settings.account_sid}/Messages.json`,
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Basic ${Buffer.from(`${settings.account_sid}:${settings.auth_token}`).toString("base64")}`,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                  },
-                  body: new URLSearchParams({ From: fromNormalized, To: normalizedPhone, Body: message }),
-                }
-              );
-              if (twRes.ok) {
-                const twData = await twRes.json();
-                smsSent = true;
-                await admin.from("sms_sends").insert({
-                  tenant_id: tenantId,
-                  customer_id: repairRow.customer_id,
-                  phone: customerPhone,
-                  message,
-                  status: "sent",
-                  twilio_sid: twData.sid,
-                  context: { repair_id: repairId, stage, type: "stage_change" },
-                });
-                await admin.from("job_events").insert({
-                  tenant_id: tenantId,
-                  job_type: "repair",
-                  job_id: repairId,
-                  event_type: "sms_sent",
-                  description: `Auto SMS sent for stage: ${stageLabel}`,
-                  actor: userId,
-                });
-              }
+            // Route through the sandbox-aware helper (W2-001). In preview/dev
+            // this returns a synthetic sid and never hits Twilio; in prod it
+            // uses the same smart AU/US number selection the helper owns.
+            const smsResult = await sendTwilioSms(customerPhone, message, {
+              accountSid: settings.account_sid,
+              authToken: settings.auth_token,
+              smsNumberAU: settings.phone_number_au,
+              smsNumberUS: settings.phone_number_us,
+              phoneNumber: settings.phone_number,
+            });
+            if (smsResult.success) {
+              smsSent = true;
+              await admin.from("sms_sends").insert({
+                tenant_id: tenantId,
+                customer_id: repairRow.customer_id,
+                phone: customerPhone,
+                message,
+                status: "sent",
+                twilio_sid: smsResult.messageId ?? null,
+                context: { repair_id: repairId, stage, type: "stage_change" },
+              });
+              await admin.from("job_events").insert({
+                tenant_id: tenantId,
+                job_type: "repair",
+                job_id: repairId,
+                event_type: "sms_sent",
+                description: `Auto SMS sent for stage: ${stageLabel}`,
+                actor: userId,
+              });
             }
           }
         }
@@ -428,18 +418,14 @@ export async function updateRepairStage(
           const htmlBody = `<div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;color:#1c1917;"><div style="background:#1c1917;color:#fff;padding:28px 24px;text-align:center;"><h1 style="margin:0;font-size:20px;letter-spacing:1px;">${businessName}</h1></div><div style="padding:28px 24px;background:#fafaf9;"><p style="margin:0 0 16px;">Hi ${firstName},</p><p style="margin:0 0 16px;">${STAGE_EMAIL_BODY[stage]}</p>${trackingSection}<div style="margin:24px 0;padding:16px;background:#fff;border:1px solid #e7e5e4;border-radius:8px;"><p style="margin:0 0 8px;font-size:12px;color:#78716c;text-transform:uppercase;letter-spacing:1px;">Repair Reference</p><p style="margin:0;font-size:18px;font-weight:600;font-family:monospace;">${repairRow.repair_number}</p>${repairRow.item_description ? `<p style="margin:4px 0 0;font-size:14px;color:#57534e;">${repairRow.item_description}</p>` : ""}</div>${tenant?.phone || tenant?.email ? `<p style="font-size:13px;color:#78716c;margin:16px 0 0;">Questions? Contact us${tenant.phone ? ` on ${tenant.phone}` : ""}${tenant.email ? ` or ${tenant.email}` : ""}.</p>` : ""}</div><div style="padding:14px 24px;background:#fff;text-align:center;font-size:11px;color:#a8a29e;border-top:1px solid #e7e5e4;">${businessName} · Powered by Nexpura</div></div>`;
 
           const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
-          await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: `${businessName} <${fromEmail}>`,
-              to: [customer.email],
-              subject: STAGE_EMAIL_SUBJECTS[stage] || `Repair update — ${repairRow.repair_number}`,
-              html: htmlBody,
-            }),
+          // W2-001: route through the sandbox-aware `resend` wrapper; the
+          // raw fetch bypassed `isSandbox()` and would hit real Resend from
+          // preview/dev deploys.
+          await resend.emails.send({
+            from: `${businessName} <${fromEmail}>`,
+            to: [customer.email],
+            subject: STAGE_EMAIL_SUBJECTS[stage] || `Repair update — ${repairRow.repair_number}`,
+            html: htmlBody,
           });
 
           await admin.from("job_events").insert({
@@ -533,23 +519,18 @@ export async function emailRepairInvoice(
 
   // Use tenant's configured from email, or fall back to nexpura.com domain
   const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: `${businessName} <${fromEmail}>`,
-      to: [customer.email],
-      subject: `Invoice ${invoice.invoice_number} — ${businessName}`,
-      html: htmlBody,
-    }),
+  // W2-001: route through the sandbox-aware `resend` wrapper. The old raw
+  // fetch hit Resend unconditionally, which meant preview/dev deploys could
+  // email real customer invoices.
+  const { error: sendError } = await resend.emails.send({
+    from: `${businessName} <${fromEmail}>`,
+    to: [customer.email],
+    subject: `Invoice ${invoice.invoice_number} — ${businessName}`,
+    html: htmlBody,
   });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    logger.error("Resend error:", errText);
+  if (sendError) {
+    logger.error("Resend error:", sendError);
     // Demo-limited: log event but don't surface as error
     try {
       await admin.from("job_events").insert({
@@ -628,21 +609,15 @@ export async function emailJobReady(
 </div>`;
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: `${businessName} <${fromEmail}>`,
-      to: [customer.email],
-      subject: `Your repair is ready — ${businessName}`,
-      html: htmlBody,
-    }),
+  // W2-001: route through the sandbox-aware `resend` wrapper.
+  const { error: jobReadyErr } = await resend.emails.send({
+    from: `${businessName} <${fromEmail}>`,
+    to: [customer.email],
+    subject: `Your repair is ready — ${businessName}`,
+    html: htmlBody,
   });
 
-  if (!res.ok) return { error: "Email failed to send" };
+  if (jobReadyErr) return { error: "Email failed to send" };
 
   await admin.from("job_events").insert({
     tenant_id: tenantId,
@@ -690,92 +665,51 @@ export async function sendJobReadySms(params: {
     return { success: false, error: "Twilio not configured" };
   }
 
-  // Smart number selection: AU number for Australian recipients, US number for international
-  const isAuRecipient = isAustralianNumber(params.customerPhone);
-  const fromNumber = isAuRecipient
-    ? (settings.phone_number_au || process.env.TWILIO_SMS_NUMBER_AU || settings.phone_number)
-    : (settings.phone_number_us || process.env.TWILIO_SMS_NUMBER || settings.phone_number);
+  debug.log(`[sendJobReadySms] Sending to ${params.customerPhone}`);
 
-  if (!fromNumber) {
-    return { success: false, error: "No SMS number configured" };
-  }
+  // W2-001: route through the sandbox-aware Twilio helper; never hit the
+  // Twilio REST API directly from a route/action handler. The helper
+  // short-circuits in preview/dev/SANDBOX_MODE and logs the intent.
+  const smsResult = await sendTwilioSms(params.customerPhone, params.message, {
+    accountSid: settings.account_sid,
+    authToken: settings.auth_token,
+    smsNumberAU: settings.phone_number_au,
+    smsNumberUS: settings.phone_number_us,
+    phoneNumber: settings.phone_number,
+  });
 
-  // Normalize recipient phone to E.164
-  const toNormalized = normalizePhoneNumber(params.customerPhone);
-  const fromNormalized = fromNumber.startsWith("+") ? fromNumber : `+${fromNumber}`;
-
-  debug.log(`[sendJobReadySms] Sending to ${toNormalized} from ${fromNormalized} (AU: ${isAuRecipient})`);
-
-  try {
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${settings.account_sid}/Messages.json`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${settings.account_sid}:${settings.auth_token}`).toString("base64")}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          From: fromNormalized,
-          To: toNormalized,
-          Body: params.message,
-        }),
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      // Log failed send
-      await admin.from("sms_sends").insert({
-        tenant_id: tenantId,
-        customer_id: params.customerId,
-        phone: params.customerPhone,
-        message: params.message,
-        status: "failed",
-        error_message: data.message || "Failed to send",
-        context: { job_id: params.repairId, type: "job_ready" },
-      });
-
-      return { success: false, error: data.message || "Failed to send SMS" };
-    }
-
-    // Log successful send
-    await admin.from("sms_sends").insert({
-      tenant_id: tenantId,
-      customer_id: params.customerId,
-      phone: params.customerPhone,
-      message: params.message,
-      status: "sent",
-      twilio_sid: data.sid,
-      context: { job_id: params.repairId, type: "job_ready" },
-    });
-
-    // Log to job_events
-    await admin.from("job_events").insert({
-      tenant_id: tenantId,
-      job_type: "repair",
-      job_id: params.repairId,
-      event_type: "sms_sent",
-      description: `Ready for collection SMS sent to ${params.customerPhone}`,
-      actor: userId,
-    });
-
-    revalidatePath(`/repairs/${params.repairId}`);
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    
+  if (!smsResult.success) {
     await admin.from("sms_sends").insert({
       tenant_id: tenantId,
       customer_id: params.customerId,
       phone: params.customerPhone,
       message: params.message,
       status: "failed",
-      error_message: errorMessage,
+      error_message: smsResult.error || "Failed to send",
       context: { job_id: params.repairId, type: "job_ready" },
     });
-
-    return { success: false, error: errorMessage };
+    return { success: false, error: smsResult.error || "Failed to send SMS" };
   }
+
+  await admin.from("sms_sends").insert({
+    tenant_id: tenantId,
+    customer_id: params.customerId,
+    phone: params.customerPhone,
+    message: params.message,
+    status: "sent",
+    twilio_sid: smsResult.messageId ?? null,
+    context: { job_id: params.repairId, type: "job_ready" },
+  });
+
+  await admin.from("job_events").insert({
+    tenant_id: tenantId,
+    job_type: "repair",
+    job_id: params.repairId,
+    event_type: "sms_sent",
+    description: `Ready for collection SMS sent to ${params.customerPhone}`,
+    actor: userId,
+  });
+
+  revalidatePath(`/repairs/${params.repairId}`);
+  return { success: true };
 }

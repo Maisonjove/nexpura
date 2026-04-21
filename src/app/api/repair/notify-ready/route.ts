@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Resend } from "resend";
+import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";

@@ -3,13 +3,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { Resend } from "resend";
+import { resend } from "@/lib/email/resend";
 import { getTenantEmailSender } from "../email/actions";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { requireAuth, requireRole } from "@/lib/auth-context";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function getAuthContext() {
   const supabase = await createClient();

@@ -10,23 +10,33 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
-import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 import { whatsappNotifySchema } from "@/lib/schemas";
+import { requireRole } from "@/lib/auth-context";
 
 export async function POST(req: NextRequest) {
   try {
-    // Verify user is authenticated
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
+    // W6-HIGH-13: this endpoint previously only required an authenticated
+    // session, which let any staff user blast WhatsApp messages via the
+    // network tab. Gate on owner/manager so customer-facing WhatsApp sends
+    // go through someone accountable for outbound comms volume.
+    let ctx;
+    try {
+      ctx = await requireRole("owner", "manager");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === "Not authenticated") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (msg.startsWith("role_denied:")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Rate limit WhatsApp notifications per user
-    const { success } = await checkRateLimit(`whatsapp-notify:${user.id}`);
+    const { success } = await checkRateLimit(`whatsapp-notify:${ctx.userId}`);
     if (!success) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }

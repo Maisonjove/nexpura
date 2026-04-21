@@ -3,10 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantEmailConfig } from "@/lib/email-sender";
-import { Resend } from "resend";
+import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 function fmt(amount: number): string {
   return new Intl.NumberFormat("en-AU", {

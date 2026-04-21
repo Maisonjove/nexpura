@@ -8,6 +8,7 @@ import { generateDraftInvoiceNumber } from "@/lib/invoices/draft-number";
 import logger from "@/lib/logger";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { requireAuth, requirePermission } from "@/lib/auth-context";
+import { resend } from "@/lib/email/resend";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -361,23 +362,17 @@ export async function emailBespokeInvoice(
 
   // Use tenant's configured from email, or fall back to nexpura.com domain
   const fromEmail = process.env.RESEND_FROM_EMAIL || "notifications@nexpura.com";
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: `${businessName} <${fromEmail}>`,
-      to: [customer.email],
-      subject: `Invoice ${invoice.invoice_number} — ${businessName}`,
-      html: htmlBody,
-    }),
+  // W2-001: route through the sandbox-aware `resend` wrapper; the old raw
+  // fetch bypassed `isSandbox()` and could hit Resend from preview/dev.
+  const { error: sendError } = await resend.emails.send({
+    from: `${businessName} <${fromEmail}>`,
+    to: [customer.email],
+    subject: `Invoice ${invoice.invoice_number} — ${businessName}`,
+    html: htmlBody,
   });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    logger.error("Resend error:", errText);
+  if (sendError) {
+    logger.error("Resend error:", sendError);
     // Demo-limited: log event but don't surface as error
     try {
       await admin.from("job_events").insert({
