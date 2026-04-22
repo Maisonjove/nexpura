@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       success: true,
       backupCodes, // Return plain backup codes to user (only time they'll see them)
     });
-    setTwoFactorCookie(res, user.id, host, protocol);
+    await setTwoFactorCookie(res, user.id, host, protocol);
     return res;
   } catch (error) {
     logger.error('2FA verification error', { error });

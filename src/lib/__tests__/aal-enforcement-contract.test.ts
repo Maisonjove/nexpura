@@ -75,26 +75,26 @@ describe("two-factor-cookie helper (W1-001 HIGH)", () => {
     expect(TWO_FACTOR_COOKIE_NAME).toBe("nexpura-2fa-ok");
   });
 
-  it("signs and verifies a round-trip for the same userId", () => {
-    const cookie = signTwoFactorCookie("user-abc");
+  it("signs and verifies a round-trip for the same userId", async () => {
+    const cookie = await signTwoFactorCookie("user-abc");
     expect(cookie).toBeTruthy();
-    expect(verifyTwoFactorCookie(cookie, "user-abc")).toBe(true);
+    expect(await verifyTwoFactorCookie(cookie, "user-abc")).toBe(true);
   });
 
-  it("rejects a cookie bound to a different userId (no cross-user reuse)", () => {
-    const cookie = signTwoFactorCookie("user-abc");
-    expect(verifyTwoFactorCookie(cookie, "user-xyz")).toBe(false);
+  it("rejects a cookie bound to a different userId (no cross-user reuse)", async () => {
+    const cookie = await signTwoFactorCookie("user-abc");
+    expect(await verifyTwoFactorCookie(cookie, "user-xyz")).toBe(false);
   });
 
-  it("rejects a tampered HMAC signature", () => {
-    const cookie = signTwoFactorCookie("user-abc")!;
+  it("rejects a tampered HMAC signature", async () => {
+    const cookie = (await signTwoFactorCookie("user-abc"))!;
     // flip the last signature char
     const tampered = cookie.slice(0, -1) + (cookie.slice(-1) === "A" ? "B" : "A");
-    expect(verifyTwoFactorCookie(tampered, "user-abc")).toBe(false);
+    expect(await verifyTwoFactorCookie(tampered, "user-abc")).toBe(false);
   });
 
-  it("rejects a tampered payload (re-base64ing a swapped uid without re-signing)", () => {
-    const cookie = signTwoFactorCookie("user-abc")!;
+  it("rejects a tampered payload (re-base64ing a swapped uid without re-signing)", async () => {
+    const cookie = (await signTwoFactorCookie("user-abc"))!;
     const dot = cookie.lastIndexOf(".");
     // re-encode a different payload onto the original sig
     const newBody = Buffer.from(
@@ -106,28 +106,28 @@ describe("two-factor-cookie helper (W1-001 HIGH)", () => {
       .replace(/\//g, "_")
       .replace(/=+$/, "");
     const forged = `${newBody}.${cookie.slice(dot + 1)}`;
-    expect(verifyTwoFactorCookie(forged, "user-xyz")).toBe(false);
-    expect(verifyTwoFactorCookie(forged, "user-abc")).toBe(false);
+    expect(await verifyTwoFactorCookie(forged, "user-xyz")).toBe(false);
+    expect(await verifyTwoFactorCookie(forged, "user-abc")).toBe(false);
   });
 
-  it("rejects a malformed cookie (no dot)", () => {
-    expect(verifyTwoFactorCookie("not-a-valid-cookie", "user-abc")).toBe(false);
+  it("rejects a malformed cookie (no dot)", async () => {
+    expect(await verifyTwoFactorCookie("not-a-valid-cookie", "user-abc")).toBe(false);
   });
 
-  it("rejects an empty cookie", () => {
-    expect(verifyTwoFactorCookie("", "user-abc")).toBe(false);
-    expect(verifyTwoFactorCookie(null, "user-abc")).toBe(false);
-    expect(verifyTwoFactorCookie(undefined, "user-abc")).toBe(false);
+  it("rejects an empty cookie", async () => {
+    expect(await verifyTwoFactorCookie("", "user-abc")).toBe(false);
+    expect(await verifyTwoFactorCookie(null, "user-abc")).toBe(false);
+    expect(await verifyTwoFactorCookie(undefined, "user-abc")).toBe(false);
   });
 
-  it("rejects when expectedUserId is empty (can't bind to nothing)", () => {
-    const cookie = signTwoFactorCookie("user-abc")!;
-    expect(verifyTwoFactorCookie(cookie, "")).toBe(false);
+  it("rejects when expectedUserId is empty (can't bind to nothing)", async () => {
+    const cookie = (await signTwoFactorCookie("user-abc"))!;
+    expect(await verifyTwoFactorCookie(cookie, "")).toBe(false);
   });
 
-  it("rejects an expired cookie (iat older than max-age)", () => {
+  it("rejects an expired cookie (iat older than max-age)", async () => {
     process.env.NEXPURA_2FA_COOKIE_MAX_AGE_SECONDS = "1"; // 1s window
-    const cookie = signTwoFactorCookie("user-abc")!;
+    const cookie = (await signTwoFactorCookie("user-abc"))!;
     // fast-forward by overriding the payload iat via re-signing
     // easier: wait for max-age? No — we fake iat directly by re-signing.
     // The helper re-reads env on verify, so a stale cookie fails.
@@ -143,37 +143,37 @@ describe("two-factor-cookie helper (W1-001 HIGH)", () => {
     const b64 = (b: Buffer) =>
       b.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     const stale = `${b64(body)}.${b64(mac)}`;
-    expect(verifyTwoFactorCookie(stale, "user-abc")).toBe(false);
+    expect(await verifyTwoFactorCookie(stale, "user-abc")).toBe(false);
     // Sanity: the valid cookie signed above is still OK within 1s.
     // (We don't assert this because the test harness may take >1s.)
     void cookie;
   });
 
-  it("fail-closed: refuses to sign when the secret is unset", () => {
+  it("fail-closed: refuses to sign when the secret is unset", async () => {
     delete process.env.NEXPURA_2FA_COOKIE_SECRET;
     expect(getTwoFactorCookieSecret()).toBeNull();
-    expect(signTwoFactorCookie("user-abc")).toBeNull();
+    expect(await signTwoFactorCookie("user-abc")).toBeNull();
   });
 
-  it("fail-closed: refuses to verify when the secret is unset", () => {
+  it("fail-closed: refuses to verify when the secret is unset", async () => {
     // Sign with the secret available…
     process.env.NEXPURA_2FA_COOKIE_SECRET = TEST_SECRET;
-    const cookie = signTwoFactorCookie("user-abc")!;
+    const cookie = (await signTwoFactorCookie("user-abc"))!;
     // …then simulate the secret being removed (misconfigured prod).
     delete process.env.NEXPURA_2FA_COOKIE_SECRET;
-    expect(verifyTwoFactorCookie(cookie, "user-abc")).toBe(false);
+    expect(await verifyTwoFactorCookie(cookie, "user-abc")).toBe(false);
   });
 
-  it("fail-closed: refuses short (likely missing) secrets", () => {
+  it("fail-closed: refuses short (likely missing) secrets", async () => {
     process.env.NEXPURA_2FA_COOKIE_SECRET = "too-short";
     expect(getTwoFactorCookieSecret()).toBeNull();
-    expect(signTwoFactorCookie("user-abc")).toBeNull();
+    expect(await signTwoFactorCookie("user-abc")).toBeNull();
   });
 
-  it("rejects a cookie signed with a different secret", () => {
-    const cookie = signTwoFactorCookie("user-abc")!;
+  it("rejects a cookie signed with a different secret", async () => {
+    const cookie = (await signTwoFactorCookie("user-abc"))!;
     process.env.NEXPURA_2FA_COOKIE_SECRET = TEST_SECRET + "-rotated";
-    expect(verifyTwoFactorCookie(cookie, "user-abc")).toBe(false);
+    expect(await verifyTwoFactorCookie(cookie, "user-abc")).toBe(false);
   });
 });
 

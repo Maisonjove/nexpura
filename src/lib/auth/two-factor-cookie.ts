@@ -16,6 +16,13 @@
  * Cookie format:   `<base64url(payload)>.<base64url(hmac-sha256)>`
  * Payload:         `{ uid: <supabase user id>, iat: <unix ms> }`
  *
+ * Runtime: this file is imported by middleware, which runs in the Edge
+ * Runtime where Node's `crypto` module and `Buffer` are unavailable. We
+ * use Web Crypto (`globalThis.crypto.subtle`) + `Uint8Array` + `btoa`/
+ * `atob` instead so the same module works in both Node (API routes) and
+ * Edge (middleware). As a consequence, `signTwoFactorCookie`,
+ * `verifyTwoFactorCookie`, and `setTwoFactorCookie` are async.
+ *
  * Security properties:
  *   - HMAC-signed with `NEXPURA_2FA_COOKIE_SECRET` (fail-closed when
  *     missing: middleware treats it as "no valid cookie" and redirects).
@@ -28,7 +35,6 @@
  *   - Secure + SameSite=Lax; Domain matches Supabase session cookies so
  *     it follows the user across tenant subdomains.
  */
-import crypto from "crypto";
 import type { NextResponse } from "next/server";
 import { getCookieDomain, getIsSecure } from "@/lib/supabase/cookie-config";
 
@@ -60,17 +66,40 @@ export function getTwoFactorCookieSecret(): string | null {
   return s;
 }
 
-function b64url(buf: Buffer): string {
-  return buf
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+function b64url(bytes: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
-function b64urlDecode(s: string): Buffer {
+function b64urlDecode(s: string): Uint8Array {
   let str = s.replace(/-/g, "+").replace(/_/g, "/");
   while (str.length % 4) str += "=";
-  return Buffer.from(str, "base64");
+  const binary = atob(str);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+async function hmacSha256(secret: string, body: Uint8Array): Promise<Uint8Array> {
+  const key = await globalThis.crypto.subtle.importKey(
+    "raw",
+    textEncoder.encode(secret) as BufferSource,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await globalThis.crypto.subtle.sign("HMAC", key, body as BufferSource);
+  return new Uint8Array(sig);
 }
 
 interface TwoFactorCookiePayload {
@@ -82,13 +111,13 @@ interface TwoFactorCookiePayload {
  * Sign a payload bound to a specific user ID.
  * Returns null if the secret is unavailable (fail-closed).
  */
-export function signTwoFactorCookie(userId: string): string | null {
+export async function signTwoFactorCookie(userId: string): Promise<string | null> {
   const secret = getTwoFactorCookieSecret();
   if (!secret) return null;
   if (!userId) return null;
   const payload: TwoFactorCookiePayload = { uid: userId, iat: Date.now() };
-  const body = Buffer.from(JSON.stringify(payload), "utf8");
-  const mac = crypto.createHmac("sha256", secret).update(body).digest();
+  const body = textEncoder.encode(JSON.stringify(payload));
+  const mac = await hmacSha256(secret, body);
   return `${b64url(body)}.${b64url(mac)}`;
 }
 
@@ -102,10 +131,10 @@ export function signTwoFactorCookie(userId: string): string | null {
  *   - payload uid equals the supplied expected user ID
  *   - payload is not older than the configured max-age
  */
-export function verifyTwoFactorCookie(
+export async function verifyTwoFactorCookie(
   cookieValue: string | null | undefined,
   expectedUserId: string
-): boolean {
+): Promise<boolean> {
   if (!cookieValue || !expectedUserId) return false;
   const secret = getTwoFactorCookieSecret();
   if (!secret) return false;
@@ -116,8 +145,8 @@ export function verifyTwoFactorCookie(
   const bodyPart = cookieValue.slice(0, dot);
   const sigPart = cookieValue.slice(dot + 1);
 
-  let body: Buffer;
-  let sig: Buffer;
+  let body: Uint8Array;
+  let sig: Uint8Array;
   try {
     body = b64urlDecode(bodyPart);
     sig = b64urlDecode(sigPart);
@@ -125,17 +154,17 @@ export function verifyTwoFactorCookie(
     return false;
   }
 
-  const expected = crypto.createHmac("sha256", secret).update(body).digest();
-  if (sig.length !== expected.length) return false;
+  let expected: Uint8Array;
   try {
-    if (!crypto.timingSafeEqual(sig, expected)) return false;
+    expected = await hmacSha256(secret, body);
   } catch {
     return false;
   }
+  if (!timingSafeEqual(sig, expected)) return false;
 
   let parsed: TwoFactorCookiePayload;
   try {
-    parsed = JSON.parse(body.toString("utf8")) as TwoFactorCookiePayload;
+    parsed = JSON.parse(textDecoder.decode(body)) as TwoFactorCookiePayload;
   } catch {
     return false;
   }
@@ -161,13 +190,13 @@ export function verifyTwoFactorCookie(
  * write the cookie so the user is re-prompted on the next request. We
  * never pass-through without proof.
  */
-export function setTwoFactorCookie(
+export async function setTwoFactorCookie(
   response: NextResponse,
   userId: string,
   host: string | undefined,
   protocol: string | undefined
-): boolean {
-  const value = signTwoFactorCookie(userId);
+): Promise<boolean> {
+  const value = await signTwoFactorCookie(userId);
   if (!value) return false;
   response.cookies.set(TWO_FACTOR_COOKIE_NAME, value, {
     httpOnly: true,

@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
         // is unset in this environment, fail-closed: return an explicit
         // 500 rather than a cosmetic success that lets the bearer roam.
         const res = NextResponse.json({ valid: true, method: 'totp' });
-        const ok = setTwoFactorCookie(res, userId, host, protocol);
+        const ok = await setTwoFactorCookie(res, userId, host, protocol);
         if (!ok) {
           logger.error('2FA cookie signing unavailable — refusing AAL2 promotion', { userId });
           return NextResponse.json(
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
         // PR-05: see the TOTP branch above — mint the AAL2 cookie or fail-closed.
         const res = NextResponse.json({ valid: true, method: 'backup_code' });
-        const ok = setTwoFactorCookie(res, userId, host, protocol);
+        const ok = await setTwoFactorCookie(res, userId, host, protocol);
         if (!ok) {
           logger.error('2FA cookie signing unavailable — refusing AAL2 promotion', { userId });
           return NextResponse.json(

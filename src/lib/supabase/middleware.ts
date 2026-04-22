@@ -80,19 +80,19 @@ function isTwoFactorExemptPath(pathname: string): boolean {
 //
 // Fail-closed: if either (a) totp_enabled is true AND (b) the cookie is
 // missing / tampered / bound to a different user / expired, we redirect.
-function enforceTwoFactor(
+async function enforceTwoFactor(
   request: NextRequest,
   userId: string,
   totpEnabled: boolean | null | undefined,
   supabaseResponse: NextResponse
-): NextResponse | null {
+): Promise<NextResponse | null> {
   if (!totpEnabled) return null;
 
   const pathname = request.nextUrl.pathname;
   if (isTwoFactorExemptPath(pathname)) return null;
 
   const cookie = request.cookies.get(TWO_FACTOR_COOKIE_NAME)?.value ?? null;
-  if (verifyTwoFactorCookie(cookie, userId)) return null;
+  if (await verifyTwoFactorCookie(cookie, userId)) return null;
 
   // Not proved — bounce to /verify-2fa with a returnTo for post-verify.
   const verifyUrl = request.nextUrl.clone();
@@ -350,7 +350,7 @@ async function _updateSessionInner(request: NextRequest) {
     // PR-05: /admin is the super-admin surface — the AAL2 gate matters
     // most here. totp_enabled is fetched via the cached user profile.
     const adminProfile = await getCachedUserProfile(user.id);
-    const twoFactorRedirectAdmin = enforceTwoFactor(
+    const twoFactorRedirectAdmin = await enforceTwoFactor(
       request,
       user.id,
       adminProfile?.totp_enabled,
@@ -395,7 +395,7 @@ async function _updateSessionInner(request: NextRequest) {
     // PR-05: gate tenant-slug routes behind the AAL2 cookie when the user
     // has 2FA enabled. Exempt paths (/verify-2fa itself, /api/auth/2fa/**)
     // are handled inside enforceTwoFactor.
-    const twoFactorRedirect = enforceTwoFactor(
+    const twoFactorRedirect = await enforceTwoFactor(
       request,
       user.id,
       userProfile.totp_enabled,
@@ -506,7 +506,7 @@ async function _updateSessionInner(request: NextRequest) {
     // checked inside enforceTwoFactor. Note that most /api routes go
     // through isPublicPath() above and never reach this branch — but
     // protected app routes (/dashboard, /inventory, /settings, …) do.
-    const twoFactorRedirectFlat = enforceTwoFactor(
+    const twoFactorRedirectFlat = await enforceTwoFactor(
       request,
       user.id,
       userProfile.totp_enabled,

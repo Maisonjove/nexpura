@@ -1,5 +1,3 @@
-import { timingSafeEqual as nodeTimingSafeEqual } from "node:crypto";
-
 /**
  * Constant-time string equality. Use for every server-side comparison
  * of a secret provided by an untrusted caller (cron bearer tokens,
@@ -8,21 +6,32 @@ import { timingSafeEqual as nodeTimingSafeEqual } from "node:crypto";
  * Audit finding (High): previous `authHeader !== "Bearer " + SECRET`
  * comparisons were not constant-time — an attacker with a responsive
  * endpoint could recover the secret byte-by-byte via timing measurements
- * over a few thousand requests. Node's `timingSafeEqual` runs in the
- * same number of operations regardless of where the first byte diverges.
+ * over a few thousand requests. This implementation XOR's every byte
+ * of both inputs in the same number of operations regardless of where
+ * the first byte diverges.
+ *
+ * Runtime: this module is imported from middleware (Edge Runtime) and
+ * API routes (Node runtime), so we avoid Node's `crypto` module and
+ * `Buffer` and rely only on built-in `TextEncoder` + plain JS.
  *
  * Returns false if either input is missing/empty/length-mismatched.
  * The length check is itself NOT timing-safe, but revealing the expected
  * length of a crypto-random token (typically 32-64 chars) is not a
  * meaningful information leak — the token content is what matters.
  */
+const textEncoder = new TextEncoder();
+
 export function safeCompare(a: string | null | undefined, b: string | null | undefined): boolean {
   if (!a || !b) return false;
   if (a.length !== b.length) return false;
-  const aBuf = Buffer.from(a, "utf8");
-  const bBuf = Buffer.from(b, "utf8");
+  const aBuf = textEncoder.encode(a);
+  const bBuf = textEncoder.encode(b);
   if (aBuf.length !== bBuf.length) return false;
-  return nodeTimingSafeEqual(aBuf, bBuf);
+  let diff = 0;
+  for (let i = 0; i < aBuf.length; i++) {
+    diff |= aBuf[i] ^ bBuf[i];
+  }
+  return diff === 0;
 }
 
 /**
