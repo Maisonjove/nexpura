@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -19,12 +20,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
  */
 
 export const metadata = { title: "Operations dashboard — Nexpura Admin" };
-
-// Super-admin-only live ops page. Never cache or prerender — the tenant
-// list, stuck-repairs window (new Date()), and idempotency-lock table
-// are all request-time. Next 16's cacheComponents would otherwise fail
-// the build on `new Date()` before any request data is read.
-export const dynamic = "force-dynamic";
 
 export default function AdminOpsPage() {
   return (
@@ -117,6 +112,13 @@ async function PastDueTenantsSection() {
 }
 
 async function StuckRepairsSection() {
+  // Next 16's cacheComponents rejects `new Date()` in a server component
+  // that hasn't first read request-scoped data. Touching cookies() here
+  // marks this section as dynamic per request — the (admin) layout
+  // already authenticates super_admin via cookie, so this is conceptually
+  // what's already happening.
+  await cookies();
+
   const admin = createAdminClient();
   const fourteenDaysAgo = new Date();
   fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
