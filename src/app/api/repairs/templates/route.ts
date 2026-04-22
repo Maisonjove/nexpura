@@ -6,18 +6,18 @@ import { checkRateLimit } from "@/lib/rate-limit";
 
 // GET - List repair templates
 export async function GET(request: NextRequest) {
-  // Rate limiting
-  const ip = request.headers.get("x-forwarded-for") || "anonymous";
-  const { success } = await checkRateLimit(ip, "api");
-  if (!success) {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
-  }
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limit keyed by user id (not IP).
+    const { success } = await checkRateLimit(user.id, "api");
+    if (!success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     const admin = createAdminClient();
@@ -58,19 +58,18 @@ export async function GET(request: NextRequest) {
 
 // POST - Create a new repair template
 export async function POST(request: NextRequest) {
-  // Rate limiting
-  const ip = request.headers.get("x-forwarded-for") || "anonymous";
-  const { success } = await checkRateLimit(ip, "api");
-  if (!success) {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
-  }
-
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limit keyed by user id (not IP).
+    const { success } = await checkRateLimit(user.id, "api");
+    if (!success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     const body = await request.json();
@@ -130,19 +129,18 @@ export async function POST(request: NextRequest) {
 
 // DELETE - Delete a repair template
 export async function DELETE(request: NextRequest) {
-  // Rate limiting
-  const ip = request.headers.get("x-forwarded-for") || "anonymous";
-  const { success } = await checkRateLimit(ip, "api");
-  if (!success) {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
-  }
-
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limit keyed by user id (not IP).
+    const { success } = await checkRateLimit(user.id, "api");
+    if (!success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     const { searchParams } = new URL(request.url);

@@ -11,13 +11,6 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Rate limiting - heavy operation (sends email with PDF)
-  const ip = _req.headers.get("x-forwarded-for") || "anonymous";
-  const { success } = await checkRateLimit(ip, "heavy");
-  if (!success) {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
-  }
-
   const { id } = await params;
 
   const supabase = await createClient();
@@ -26,6 +19,12 @@ export async function POST(
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rate limit keyed by user id (not IP) — heavy op, sends email with PDF.
+  const { success } = await checkRateLimit(user.id, "heavy");
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
 
   const { data: userData } = await supabase
     .from("users")

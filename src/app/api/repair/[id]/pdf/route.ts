@@ -10,13 +10,6 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Rate limiting
-  const ip = _request.headers.get("x-forwarded-for") || "anonymous";
-  const { success } = await checkRateLimit(ip, "pdf");
-  if (!success) {
-    return new NextResponse("Rate limit exceeded", { status: 429 });
-  }
-
   const { id } = await params;
 
   // Auth check via regular client (needs cookies)
@@ -26,6 +19,13 @@ export async function GET(
   } = await supabase.auth.getUser();
 
   if (!user) return new NextResponse("Unauthorized", { status: 401 });
+
+  // Rate limit keyed by user id (not IP) — IP-based shares an "anonymous"
+  // bucket when x-forwarded-for is missing, which bites real users.
+  const { success } = await checkRateLimit(user.id, "pdf");
+  if (!success) {
+    return new NextResponse("Rate limit exceeded", { status: 429 });
+  }
 
   const { data: userData } = await supabase
     .from("users")

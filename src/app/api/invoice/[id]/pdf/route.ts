@@ -12,13 +12,6 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Rate limiting
-  const ip = request.headers.get("x-forwarded-for") || "anonymous";
-  const { success } = await checkRateLimit(ip, "pdf");
-  if (!success) {
-    return new NextResponse("Rate limit exceeded", { status: 429 });
-  }
-
   const { id } = await params;
   const format = request.nextUrl.searchParams.get("format"); // 'thermal' or null
 
@@ -30,6 +23,13 @@ export async function GET(
 
   if (!user) {
     return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  // Rate limit keyed by user id (not IP) — IP-based shares an "anonymous"
+  // bucket when x-forwarded-for is missing.
+  const { success } = await checkRateLimit(user.id, "pdf");
+  if (!success) {
+    return new NextResponse("Rate limit exceeded", { status: 429 });
   }
 
   // Use admin client to avoid RLS recursion on users table
