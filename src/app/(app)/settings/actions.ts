@@ -10,7 +10,7 @@ async function verifyTenantOwnership(supabase: Awaited<ReturnType<typeof createC
   if (!user) return { error: "Not authenticated" };
 
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("users")
     .select("tenant_id")
     .eq("id", user.id)
     .single();
