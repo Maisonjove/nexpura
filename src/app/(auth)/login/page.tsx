@@ -74,22 +74,38 @@ function LoginPageContent() {
         return;
       }
 
-      // 3. Navigate. 2FA enforcement is handled by middleware (PR-05) —
-      // if the user has totp_enabled and no valid AAL2 cookie, the middleware
-      // will redirect /dashboard → /verify-2fa automatically. We no longer
-      // need a pre-nav /api/auth/login?checkOnly2FA round-trip (was adding
-      // ~300-500ms to every login). For non-2FA users this is a pure win;
-      // for 2FA users the /verify-2fa page resolves the session userId via
-      // /api/auth/me on its own.
-      //
-      // @supabase/ssr's createBrowserClient synchronously writes auth cookies
-      // to document.cookie *before* signInWithPassword resolves, so by the
-      // time router.replace fires the cookie is already in the jar and the
-      // RSC fetch for /dashboard sends it to middleware. router.replace (not
-      // .push) also removes /login from history so back-button doesn't flash
-      // the login form.
+      // 3. Resolve tenant slug BEFORE navigating so we go straight to the
+      // tenant-aware URL and skip the middleware redirect round-trip. The
+      // middleware used to receive /dashboard, look up the user's slug, and
+      // 307-redirect to /{slug}/dashboard — a full extra hop (~200-500ms
+      // first-click) that we can collapse by asking the DB directly here.
+      // The session cookie is already written, so this query is authed.
+      let targetUrl = redirectUrl;
+      try {
+        const profileRes = await supabase
+          .from("users")
+          .select("tenants!inner(slug)")
+          .eq("id", data.user.id)
+          .maybeSingle();
+        const slug =
+          (profileRes.data as { tenants?: { slug?: string | null } } | null)?.tenants?.slug;
+        if (slug && targetUrl.startsWith("/") && !targetUrl.startsWith(`/${slug}/`)) {
+          targetUrl = `/${slug}${targetUrl === "/" ? "/dashboard" : targetUrl}`;
+        }
+      } catch {
+        // fall through with the original redirectUrl; middleware will still redirect.
+      }
+
+      // 2FA enforcement is handled by middleware (PR-05) — if the user has
+      // totp_enabled and no valid AAL2 cookie, middleware redirects
+      // /dashboard → /verify-2fa automatically. @supabase/ssr's
+      // createBrowserClient synchronously writes auth cookies to
+      // document.cookie before signInWithPassword resolves, so by the time
+      // router.replace fires the cookie is already in the jar. router.replace
+      // (not .push) removes /login from history so back-button doesn't flash
+      // the form.
       postLoginChecks(email, rateCheck.identifier).catch(() => {});
-      router.replace(redirectUrl);
+      router.replace(targetUrl);
     });
   }
 
