@@ -74,33 +74,20 @@ function LoginPageContent() {
         return;
       }
 
-      // 3. Check 2FA.
-      // Pass `userId` so the server can skip admin.auth.admin.listUsers()
-      // (previously used to resolve email→id) and go straight to a single-row
-      // `users.totp_enabled` lookup. Server verifies that userId matches the
-      // authenticated session before trusting it.
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, redirectTo: redirectUrl, checkOnly2FA: true, userId: data.user.id }),
-        credentials: "same-origin",
-      });
-
-      if (res.ok) {
-        const data2fa = await res.json().catch(() => ({}));
-        if (data2fa.requires2FA && data2fa.userId && data2fa.email) {
-          router.push(`/verify-2fa?userId=${data2fa.userId}&email=${encodeURIComponent(data2fa.email)}`);
-          return;
-        }
-      }
-
-      // 4. Navigate via soft-nav so we reuse the prefetched /dashboard bundle
-      // and avoid a full page reload. @supabase/ssr's createBrowserClient
-      // synchronously writes auth cookies to document.cookie *before*
-      // signInWithPassword resolves, so by the time router.replace fires the
-      // cookie is already in the jar and the RSC fetch for /dashboard sends
-      // it to middleware. Using router.replace (not router.push) also removes
-      // /login from history so back-button doesn't flash the login form.
+      // 3. Navigate. 2FA enforcement is handled by middleware (PR-05) —
+      // if the user has totp_enabled and no valid AAL2 cookie, the middleware
+      // will redirect /dashboard → /verify-2fa automatically. We no longer
+      // need a pre-nav /api/auth/login?checkOnly2FA round-trip (was adding
+      // ~300-500ms to every login). For non-2FA users this is a pure win;
+      // for 2FA users the /verify-2fa page resolves the session userId via
+      // /api/auth/me on its own.
+      //
+      // @supabase/ssr's createBrowserClient synchronously writes auth cookies
+      // to document.cookie *before* signInWithPassword resolves, so by the
+      // time router.replace fires the cookie is already in the jar and the
+      // RSC fetch for /dashboard sends it to middleware. router.replace (not
+      // .push) also removes /login from history so back-button doesn't flash
+      // the login form.
       postLoginChecks(email, rateCheck.identifier).catch(() => {});
       router.replace(redirectUrl);
     });
