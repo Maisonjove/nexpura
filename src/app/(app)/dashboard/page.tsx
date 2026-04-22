@@ -1,13 +1,7 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getDashboardCriticalData, getDashboardStats } from "./actions";
+import { getDashboardCriticalData } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
-import logger from "@/lib/logger";
-import {
-  getSelectedLocationIdFromCookie,
-  hasLocationAccess,
-} from "@/lib/locations";
-import { requireAuth } from "@/lib/auth-context";
 
 export const metadata = { title: "Dashboard — Nexpura" };
 
@@ -20,16 +14,19 @@ export const metadata = { title: "Dashboard — Nexpura" };
 
 // The page below is synchronous at the top level so the shell (Suspense
 // fallback) emits in the first streamed HTML chunk on hard-nav, before
-// the dynamic body (auth + critical data + stats) resolves. Shaped for
-// future migration to Next 16's cacheComponents / unstable_instant model.
+// the dynamic body (auth + critical data) resolves.
 
 export default function DashboardPage() {
   return (
     <Suspense fallback={<DashboardStatsFallback />}>
-      {/* All dynamic work lives here: requireAuth (cookies), critical data
-          (15 min cache, ~5-20 ms warm / ~50-100 ms cold), and the 20-query
-          stats batch (~100-500 ms cold / ~30-80 ms warm). The outer page
-          renders zero async work so PPR can prerender the shell. */}
+      {/* Server work minimised for first-paint speed: only critical data
+          (15 min cache, ~5-20 ms warm / ~50-100 ms cold). The 20-query
+          stats batch is fetched client-side by SWR in DashboardWrapper,
+          so the shell appears immediately and widgets fill in via their
+          own inline loaders via isStatsLoading. This replaces the old
+          ~200-600 ms blocking server-side stats fetch + redundant
+          location-cookie validation that was making first sign-in feel
+          like a "big loading" moment. */}
       <DashboardStatsStream />
     </Suspense>
   );
@@ -38,30 +35,11 @@ export default function DashboardPage() {
 async function DashboardStatsStream() {
   const criticalData = await getDashboardCriticalData();
 
-  // Read the user's selected location from the cookie so the very first
-  // server render of the dashboard already reflects the chosen location —
-  // no flash of tenant-wide data before the client-side context hydrates.
-  // Validate access before trusting the cookie value: a stale or tampered
-  // cookie pointing at a location the user can't see falls back to "all".
-  const cookieLocationId = await getSelectedLocationIdFromCookie();
-  let initialLocationIds: string[] | null = null;
-  if (cookieLocationId) {
-    const auth = await requireAuth();
-    const allowed = await hasLocationAccess(auth.userId, auth.tenantId, cookieLocationId);
-    if (allowed) initialLocationIds = [cookieLocationId];
-  }
-  const initialLocationKey = initialLocationIds?.sort().join(",") ?? "all";
-
-  const initialStats = await getDashboardStats(initialLocationIds).catch((err) => {
-    logger.error("[DashboardPage] initial stats fetch failed, falling back to client-side fetch:", err);
-    return null;
-  });
-
   return (
     <DashboardWrapper
       criticalData={criticalData}
-      initialStats={initialStats}
-      initialLocationKey={initialLocationKey}
+      initialStats={null}
+      initialLocationKey="all"
     />
   );
 }
