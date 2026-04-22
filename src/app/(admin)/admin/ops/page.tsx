@@ -20,6 +20,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Operations dashboard — Nexpura Admin" };
 
+// Super-admin-only live ops page. Never cache or prerender — the tenant
+// list, stuck-repairs window (new Date()), and idempotency-lock table
+// are all request-time. Next 16's cacheComponents would otherwise fail
+// the build on `new Date()` before any request data is read.
+export const dynamic = "force-dynamic";
+
 export default function AdminOpsPage() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
