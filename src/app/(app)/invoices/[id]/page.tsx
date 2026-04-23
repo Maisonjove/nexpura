@@ -5,9 +5,9 @@ import type { Metadata } from "next";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import InvoiceDetailClient from "./InvoiceDetailClient";
 import { resolveReadLocationScope } from "@/lib/location-read-scope";
+import { matchesReviewOrStaffToken } from "@/lib/auth/review";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
-const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 export async function generateMetadata({
   params,
@@ -41,7 +41,8 @@ export default async function InvoiceDetailPage({
 
   let tenantId: string | null;
   let userId: string | null = null;
-  const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+  // W7-HIGH-04: env-backed constant-time check.
+  const isReviewMode = matchesReviewOrStaffToken(sp.rt);
   if (isReviewMode) {
     tenantId = DEMO_TENANT;
   } else {

@@ -4,9 +4,9 @@ import { getAuthContext } from "@/lib/auth-context";
 import ItemDetailClient from "./ItemDetailClient";
 import InventoryPhotos from "./InventoryPhotos";
 import { resolveReadLocationScope } from "@/lib/location-read-scope";
+import { matchesReviewOrStaffToken } from "@/lib/auth/review";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
-const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 export default async function InventoryDetailPage({
   params,
@@ -22,7 +22,8 @@ export default async function InventoryDetailPage({
   let tenantId: string | null = null;
   let userId: string | null = null;
   let canViewCost = false;
-  const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+  // W7-HIGH-04: env-backed constant-time check.
+  const isReviewMode = matchesReviewOrStaffToken(sp.rt);
 
   if (isReviewMode) {
     tenantId = DEMO_TENANT;

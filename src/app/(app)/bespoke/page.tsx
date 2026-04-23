@@ -8,11 +8,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import BespokeListClient from "./BespokeListClient";
 import { locationScopeFilter } from "@/lib/location-read-scope";
 import { ilikeOrValue } from "@/lib/db/or-escape";
+import { matchesReviewOrStaffToken } from "@/lib/auth/review";
 
 export const metadata = { title: "Bespoke Jobs — Nexpura" };
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
-const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 // Dynamic rendering is explicit — see /repairs/page.tsx for the same
 // pattern and rationale.
@@ -50,7 +50,8 @@ async function BespokeBody({
   const view = params.view || "pipeline";
   const q = params.q || "";
   const stageFilter = params.stage || "";
-  const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
+  // W7-HIGH-04: env-backed constant-time check.
+  const isReviewMode = matchesReviewOrStaffToken(params.rt);
   let tenantId: string | null = null;
   let userId: string | null = null;
   let canView = false;

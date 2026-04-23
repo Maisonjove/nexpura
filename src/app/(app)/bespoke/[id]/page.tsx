@@ -6,9 +6,9 @@ import { getCached, tenantCacheKey } from "@/lib/cache";
 import BespokeCommandCenter from "./BespokeCommandCenter";
 import type { OrderMessage } from "@/lib/messaging";
 import { resolveReadLocationScope } from "@/lib/location-read-scope";
+import { matchesReviewOrStaffToken } from "@/lib/auth/review";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
-const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 export async function generateMetadata({
   params,
@@ -44,7 +44,8 @@ export default async function BespokeJobDetailPage({
   let tenantId: string | null = null;
   let userId: string | null = null;
   let tenantCurrency = "AUD";
-  const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+  // W7-HIGH-04: env-backed constant-time check.
+  const isReviewMode = matchesReviewOrStaffToken(sp.rt);
 
   if (isReviewMode) {
     tenantId = DEMO_TENANT;

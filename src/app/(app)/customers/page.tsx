@@ -10,12 +10,12 @@ import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { ilikeOrValue } from "@/lib/db/or-escape";
 import { Skeleton } from "@/components/ui/skeleton";
+import { matchesReviewOrStaffToken } from "@/lib/auth/review";
 import CustomerListClient from "./CustomerListClient";
 
 export const metadata = { title: "Customers — Nexpura" };
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
-const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 const DEFAULT_PAGE_SIZE = 200;
 
@@ -28,7 +28,10 @@ export default async function CustomersPage({
   const q = params.q || "";
   const page = parseInt(params.page || "1");
 
-  const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
+  // W7-HIGH-04: matchesReviewOrStaffToken compares constant-time
+  // against env-loaded secrets. Empty env => returns false => bypass
+  // disabled (fail-closed).
+  const isReviewMode = matchesReviewOrStaffToken(params.rt);
 
   // Fast-path tenant resolution — no DB call, headers-only.
   let tenantId: string;

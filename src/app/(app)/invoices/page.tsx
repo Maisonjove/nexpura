@@ -8,11 +8,11 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import { Skeleton } from "@/components/ui/skeleton";
 import InvoiceListClient from "./InvoiceListClient";
 import { locationScopeFilter } from "@/lib/location-read-scope";
+import { matchesReviewOrStaffToken } from "@/lib/auth/review";
 
 export const metadata = { title: "Invoices — Nexpura" };
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
-const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 export default async function InvoicesPage({
   searchParams,
@@ -24,7 +24,8 @@ export default async function InvoicesPage({
   const statusFilter = params.status || "all";
   const page = parseInt(params.page || "1");
 
-  const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
+  // W7-HIGH-04: env-backed constant-time check.
+  const isReviewMode = matchesReviewOrStaffToken(params.rt);
 
   let tenantId: string;
   let userId: string | null = null;

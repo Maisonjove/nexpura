@@ -8,11 +8,11 @@ import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import InventoryClient from "./InventoryClient";
 import { locationScopeFilter } from "@/lib/location-read-scope";
+import { matchesReviewOrStaffToken } from "@/lib/auth/review";
 
 export const metadata = { title: "Inventory — Nexpura" };
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
-const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 const ITEMS_PER_PAGE = 100; // Initial load limit for performance
 
 export default async function InventoryPage({
@@ -25,7 +25,8 @@ export default async function InventoryPage({
   const page = parseInt(sp.page || "1", 10);
   const offset = (page - 1) * ITEMS_PER_PAGE;
 
-  const isReviewMode = !!(sp.rt && REVIEW_TOKENS.includes(sp.rt));
+  // W7-HIGH-04: env-backed constant-time check.
+  const isReviewMode = matchesReviewOrStaffToken(sp.rt);
 
   // Resolve tenantId as fast as possible.
   // For auth users: read from middleware-set header (instant, no DB round-trip).

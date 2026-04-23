@@ -10,11 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import RepairsListClient from "./RepairsListClient";
 import { locationScopeFilter } from "@/lib/location-read-scope";
 import { ilikeOrValue } from "@/lib/db/or-escape";
+import { matchesReviewOrStaffToken } from "@/lib/auth/review";
 
 export const metadata = { title: "Repairs — Nexpura" };
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
-const REVIEW_TOKENS = ["nexpura-review-2026", "nexpura-staff-2026"];
 
 // Dynamic rendering is explicit — the page reads searchParams, auth,
 // and DB inside its Suspense child. Making that explicit prevents Next
@@ -64,7 +64,8 @@ async function RepairsBody({
   const view = params.view || "pipeline";
   const q = params.q || "";
   const stageFilter = params.stage || "";
-  const isReviewMode = !!(params.rt && REVIEW_TOKENS.includes(params.rt));
+  // W7-HIGH-04: env-backed constant-time check.
+  const isReviewMode = matchesReviewOrStaffToken(params.rt);
   // Auth resolve + tenant lookup are now here (inside Suspense), so the
   // shell has already painted by the time this runs.
   let tenantId: string;
