@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getIntegration } from "@/lib/integrations";
 import AppraisalDetailClient from "./AppraisalDetailClient";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -31,13 +32,16 @@ export default async function AppraisalDetailPage({ params }: { params: Promise<
 
   if (!appraisal) notFound();
 
-  const [tenantResult, insuranceResult] = await Promise.all([
+  // Use getIntegration() so config is decrypted at the boundary
+  // (W6-HIGH-12). The row's encrypted `config_encrypted` column isn't
+  // selectable from client code — only decrypted plaintext reaches us.
+  const [tenantResult, insuranceIntegration] = await Promise.all([
     admin.from("tenants").select("name, email, phone, address").eq("id", userData.tenant_id).single(),
-    admin.from("integrations").select("config").eq("tenant_id", userData.tenant_id).eq("type", "insurance").maybeSingle(),
+    getIntegration(userData.tenant_id, "insurance"),
   ]);
 
   const tenant = tenantResult.data;
-  const insuranceEnabled = (insuranceResult.data?.config as Record<string, unknown> | null)?.enabled === true;
+  const insuranceEnabled = insuranceIntegration?.config?.enabled === true;
 
   return (
     <AppraisalDetailClient

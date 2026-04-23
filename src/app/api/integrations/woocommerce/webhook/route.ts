@@ -13,6 +13,7 @@ import { headers } from "next/headers";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { verifyWooSignature } from "@/lib/webhook-security";
+import { getIntegration } from "@/lib/integrations";
 
 /** Escapes special PostgreSQL LIKE pattern characters to prevent injection */
 function sanitizeLikePattern(input: string): string {
@@ -94,31 +95,37 @@ export async function POST(req: NextRequest) {
     const rawBody = await req.text();
     const body = JSON.parse(rawBody);
 
-    // Find tenant by store URL (sanitize hostname to prevent LIKE injection)
+    // Find tenant by store URL (sanitize hostname to prevent LIKE injection).
+    // `store_url` is a non-secret public field, so it lives in the plaintext
+    // `config` column and is filterable. The consumer_secret lives in
+    // `config_encrypted` and is loaded via getIntegration() below
+    // (W6-HIGH-12).
     const admin = createAdminClient();
     const safeHostname = sanitizeLikePattern(new URL(source).hostname);
-    const { data: integration } = await admin
+    const { data: integrationRow } = await admin
       .from("integrations")
-      .select("tenant_id, config")
+      .select("tenant_id")
       .eq("type", "woocommerce")
       .eq("status", "connected")
-      .filter("config->store_url", "ilike", `%${safeHostname}%`)
+      .filter("config->>store_url", "ilike", `%${safeHostname}%`)
       .single();
 
-    if (!integration) {
+    if (!integrationRow) {
       logger.warn("[woo-webhook] No matching integration for source:", source);
       return NextResponse.json({ error: "Unknown store" }, { status: 404 });
     }
 
-    const tenantId = integration.tenant_id;
-    const config = integration.config as { consumer_secret?: string };
+    const tenantId = integrationRow.tenant_id as string;
+    // Decrypt secrets at the verification boundary only.
+    const integration = await getIntegration(tenantId, "woocommerce");
+    const consumer_secret = integration?.config?.consumer_secret as string | undefined;
 
     // W6-CRIT-09: fail-closed. The previous guard only verified the
     // signature when BOTH header and secret were present, so an attacker
     // could just drop the header and walk past the check. Now: secret
     // MUST be configured, signature header MUST be present, and the
     // HMAC MUST match in constant time. Any failure => 401.
-    if (!config.consumer_secret) {
+    if (!consumer_secret) {
       logger.error("[woo-webhook] integration has no consumer_secret configured");
       return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
     }
@@ -126,7 +133,7 @@ export async function POST(req: NextRequest) {
       logger.warn("[woo-webhook] missing x-wc-webhook-signature header");
       return NextResponse.json({ error: "Missing signature" }, { status: 401 });
     }
-    if (!verifyWooSignature(rawBody, signature, config.consumer_secret)) {
+    if (!verifyWooSignature(rawBody, signature, consumer_secret)) {
       logger.warn("[woo-webhook] Invalid signature");
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
