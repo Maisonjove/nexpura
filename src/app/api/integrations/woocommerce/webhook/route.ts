@@ -14,6 +14,7 @@ import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { verifyWooSignature } from "@/lib/webhook-security";
 import { getIntegration } from "@/lib/integrations";
+import { eqOrValue } from "@/lib/db/or-escape";
 
 /** Escapes special PostgreSQL LIKE pattern characters to prevent injection */
 function sanitizeLikePattern(input: string): string {
@@ -260,14 +261,15 @@ async function handleOrderWebhook(
     if (sale) {
       // Insert line items
       for (const li of order.line_items) {
-        // Try to find matching inventory — sanitize both sides of the .or()
-        // filter so a crafted product/sku string cannot break out of
-        // PostgREST filter syntax (W6-CRIT-09 tactical; general fix in PR-07).
+        // W2-004: route both sides of the .or() through eqOrValue so a
+        // crafted product/sku string can't break out of PostgREST filter
+        // syntax. Keep sanitizeOrLiteral as a sanity gate (strips non-
+        // alphanumeric) on top of quoting.
         const safeSku = sanitizeOrLiteral(li.sku);
         const safeWooId = sanitizeOrLiteral(li.product_id);
         const orClauses: string[] = [];
-        if (safeSku) orClauses.push(`sku.eq.${safeSku}`);
-        if (safeWooId) orClauses.push(`woo_product_id.eq.${safeWooId}`);
+        if (safeSku) orClauses.push(`sku.${eqOrValue(safeSku)}`);
+        if (safeWooId) orClauses.push(`woo_product_id.${eqOrValue(safeWooId)}`);
         const { data: inventoryItem } = orClauses.length
           ? await admin
               .from("inventory")

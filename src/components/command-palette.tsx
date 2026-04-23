@@ -8,6 +8,7 @@ import {
   ClipboardList, Star, Bell, TrendingUp, Globe, Loader2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { ilikeOrValue } from '@/lib/db/or-escape';
 import { useFocusTrap } from '@/hooks/useAccessibility';
 import { useLiveRegion } from '@/components/LiveRegion';
 import * as Sentry from '@sentry/nextjs';
@@ -110,7 +111,9 @@ export function CommandPalette() {
       setIsSearching(true);
       try {
         const supabase = createClient();
-        const searchTerm = `%${search}%`;
+        // W2-004: quote user-supplied search via ilikeOrValue so `.`
+        // `,` `(` `)` `*` `"` can't break out of the .or() clause.
+        const ilikeVal = ilikeOrValue(search);
 
         // Parallel searches across all entity types
         const [inventoryRes, customersRes, repairsRes, invoicesRes] = await Promise.all([
@@ -119,27 +122,28 @@ export function CommandPalette() {
             .from('inventory')
             .select('id, name, sku')
             .is('deleted_at', null)
-            .or(`name.ilike.${searchTerm},sku.ilike.${searchTerm}`)
+            .or(`name.${ilikeVal},sku.${ilikeVal}`)
             .limit(5),
           // Customers: name, email, phone
           supabase
             .from('customers')
             .select('id, full_name, email, phone')
-            .or(`full_name.ilike.${searchTerm},email.ilike.${searchTerm},phone.ilike.${searchTerm}`)
+            .or(`full_name.${ilikeVal},email.${ilikeVal},phone.${ilikeVal}`)
             .limit(5),
           // Repairs: repair_number, description
           supabase
             .from('repairs')
             .select('id, repair_number, description')
             .is('deleted_at', null)
-            .or(`repair_number.ilike.${searchTerm},description.ilike.${searchTerm}`)
+            .or(`repair_number.${ilikeVal},description.${ilikeVal}`)
             .limit(5),
-          // Invoices: invoice_number
+          // Invoices: invoice_number — direct .ilike() is not .or(),
+          // the supabase client escapes its arg, so it is safe as-is.
           supabase
             .from('invoices')
             .select('id, invoice_number, customer_name')
             .is('deleted_at', null)
-            .ilike('invoice_number', searchTerm)
+            .ilike('invoice_number', `%${search}%`)
             .limit(5),
         ]);
 

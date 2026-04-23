@@ -9,6 +9,7 @@ import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import RepairsListClient from "./RepairsListClient";
 import { locationScopeFilter } from "@/lib/location-read-scope";
+import { ilikeOrValue } from "@/lib/db/or-escape";
 
 export const metadata = { title: "Repairs — Nexpura" };
 
@@ -100,6 +101,8 @@ async function RepairsBody({
     : null;
 
   if (q) {
+    // W2-004: quote user input so `.`, `,`, `(`, `)`, `*` can't escape.
+    const qIlike = ilikeOrValue(q);
     let liveQuery = admin
       .from("repairs")
       .select(
@@ -108,9 +111,7 @@ async function RepairsBody({
       )
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .or(
-        `repair_number.ilike.%${q}%,item_description.ilike.%${q}%,repair_type.ilike.%${q}%`
-      );
+      .or(`repair_number.${qIlike},item_description.${qIlike},repair_type.${qIlike}`);
     if (locationFilter) liveQuery = liveQuery.or(locationFilter);
     const liveQueryFinal = liveQuery
       .order("created_at", { ascending: false })

@@ -120,6 +120,54 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  // W2-004: forbid raw `%${...}%` or `.eq.${...}` (no-quote) patterns
+  // inside `.or(` PostgREST filters. User input must go through
+  // `escapeOrLiteral` / `ilikeOrValue` / `eqOrValue` from
+  // `@/lib/db/or-escape`. Safe patterns are `.${ilikeVal}` / `.${eqVal}`
+  // where the expression itself already produces a quoted literal.
+  //
+  // Regex explanation (applied to the raw template-literal source):
+  //   - `%\$\{` : caller used `%${...}%` — unquoted interpolation with
+  //     LIKE wildcards, the classic injection surface.
+  //   - `\.eq\.\$\{` or `\.ilike\.\$\{` : caller inlined an unquoted
+  //     value right after a PostgREST operator.
+  //
+  // Patterns that only use `${varAlreadyQuotedByHelper}` (like
+  // `name.${ilikeVal}`) do not match and are allowed.
+  {
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.property.name='or'] TemplateLiteral[quasis.0.value.raw=/(%\\$\\{|\\.(eq|ilike|neq|gt|lt|gte|lte|like)\\.\\$\\{)/]",
+          message:
+            "Raw template-literal interpolation inside .or() can break the PostgREST filter " +
+            "grammar (`,` `.` `(` `)` `*`). Route user input through escapeOrLiteral / " +
+            "ilikeOrValue / eqOrValue from '@/lib/db/or-escape' (W2-004).",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='or'] TemplateLiteral[quasis.1.value.raw=/(%\\$\\{|\\.(eq|ilike|neq|gt|lt|gte|lte|like)\\.\\$\\{)/]",
+          message:
+            "Raw template-literal interpolation inside .or() can break the PostgREST filter " +
+            "grammar. Route user input through escapeOrLiteral / ilikeOrValue / eqOrValue " +
+            "from '@/lib/db/or-escape' (W2-004).",
+        },
+      ],
+    },
+  },
+  // Allow-list: the or-escape helper itself and its tests.
+  {
+    files: [
+      "src/lib/db/or-escape.ts",
+      "src/lib/__tests__/or-escape.test.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

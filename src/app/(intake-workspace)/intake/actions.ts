@@ -9,6 +9,7 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import logger from "@/lib/logger";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
+import { ilikeOrValue, eqOrValue } from "@/lib/db/or-escape";
 
 // Intake inserts (repair / bespoke / sale) all go through the shared
 // resolveLocationForCreate policy: cookie → single-location auto →
@@ -19,22 +20,6 @@ async function resolveActiveLocationId(tenantId: string, userId: string): Promis
   const r = await resolveLocationForCreate(tenantId, userId);
   if (r.needsSelection) throw new Error(LOCATION_REQUIRED_MESSAGE);
   return r.locationId;
-}
-
-// ────────────────────────────────────────────────────────────────
-// SQL Injection Prevention - Sanitize LIKE patterns
-// ────────────────────────────────────────────────────────────────
-
-/**
- * Escapes special PostgreSQL LIKE pattern characters to prevent injection.
- * Characters % and _ have special meaning in LIKE patterns.
- * Also escapes backslash which is the escape character.
- */
-function sanitizeLikePattern(input: string): string {
-  return input
-    .replace(/\\/g, '\\\\')  // Escape backslash first
-    .replace(/%/g, '\\%')    // Escape percent
-    .replace(/_/g, '\\_');   // Escape underscore
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -122,15 +107,16 @@ export async function searchCustomers(query: string): Promise<{ data?: CustomerS
   try {
     const { supabase, tenantId } = await getAuthContext();
     
-    // Sanitize query to prevent SQL injection via LIKE patterns
-    const safeQuery = sanitizeLikePattern(query);
-    
+    // W2-004: ilikeOrValue quotes user input so `.`, `,`, `(`, `)`, `*`
+    // don't break out of the PostgREST filter grammar.
+    const ilikeVal = ilikeOrValue(query);
+
     const { data, error } = await supabase
       .from("customers")
       .select("id, full_name, first_name, last_name, email, mobile, phone, notes")
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .or(`full_name.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%,mobile.ilike.%${safeQuery}%,phone.ilike.%${safeQuery}%`)
+      .or(`full_name.${ilikeVal},email.${ilikeVal},mobile.${ilikeVal},phone.${ilikeVal}`)
       .order("full_name")
       .limit(10);
 
@@ -200,16 +186,17 @@ export async function searchInventory(query: string): Promise<{ data?: Inventory
   try {
     const { supabase, tenantId } = await getAuthContext();
     
-    // Sanitize query to prevent SQL injection via LIKE patterns
-    const safeQuery = sanitizeLikePattern(query);
-    
+    // W2-004: ilikeOrValue quotes user input so `.`, `,`, `(`, `)`, `*`
+    // don't break out of the PostgREST filter grammar.
+    const ilikeVal = ilikeOrValue(query);
+
     const { data, error } = await supabase
       .from("inventory")
       .select("id, name, sku, barcode_value, jewellery_type, metal_type, metal_purity, stone_type, stone_carat, retail_price, quantity, primary_image")
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
       .eq("status", "active")
-      .or(`name.ilike.%${safeQuery}%,sku.ilike.%${safeQuery}%,barcode_value.ilike.%${safeQuery}%`)
+      .or(`name.${ilikeVal},sku.${ilikeVal},barcode_value.${ilikeVal}`)
       .order("name")
       .limit(10);
 
@@ -230,7 +217,8 @@ export async function getInventoryByBarcode(barcode: string): Promise<{ data?: I
       .select("id, name, sku, barcode_value, jewellery_type, metal_type, metal_purity, stone_type, stone_carat, retail_price, quantity, primary_image")
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .or(`barcode_value.eq.${barcode},sku.eq.${barcode}`)
+      // W2-004: barcode may contain `.`, `,`, `*` — eqOrValue quotes it.
+      .or(`barcode_value.${eqOrValue(barcode)},sku.${eqOrValue(barcode)}`)
       .single();
 
     if (error) return { error: "Item not found" };

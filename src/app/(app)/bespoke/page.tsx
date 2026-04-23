@@ -7,6 +7,7 @@ import { getAuthContext } from "@/lib/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import BespokeListClient from "./BespokeListClient";
 import { locationScopeFilter } from "@/lib/location-read-scope";
+import { ilikeOrValue } from "@/lib/db/or-escape";
 
 export const metadata = { title: "Bespoke Jobs — Nexpura" };
 
@@ -98,7 +99,8 @@ async function BespokeBody({
       )
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .or(`title.ilike.%${q}%,job_number.ilike.%${q}%`);
+      // W2-004: quote user input via ilikeOrValue so PostgREST metachars can't escape.
+      .or((() => { const v = ilikeOrValue(q); return `title.${v},job_number.${v}`; })());
     if (locationFilter) liveQuery = liveQuery.or(locationFilter);
     const liveQueryFinal = liveQuery
       .order("created_at", { ascending: false })

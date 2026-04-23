@@ -10,6 +10,7 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { requireAuth, requirePermission } from "@/lib/auth-context";
+import { eqOrValue } from "@/lib/db/or-escape";
 
 async function getTenantId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -574,12 +575,10 @@ export async function getInventoryItemByBarcode(
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
 
-  // W3-HIGH-01: the .or() filter value is interpolated raw into the
-  // PostgREST query string. A comma / dot / quote in `barcode` can
-  // introduce additional OR clauses (same-tenant only, but still
-  // broadens the match). Reject any barcode containing the PostgREST
-  // syntax characters before building the filter — barcodes are plain
-  // alphanumeric + dashes/underscores in every real-world scanner.
+  // W3-HIGH-01 + W2-004: accept any barcode, but route through
+  // eqOrValue so `.`, `,`, `(`, `)`, `*`, `"` are quoted literals and
+  // can't break out of the .or() clause. Format gate stays as a
+  // defence-in-depth sanity check.
   const trimmed = barcode.trim();
   if (!trimmed) return { error: "Barcode is required" };
   if (!/^[\w\-.]+$/.test(trimmed)) {
@@ -590,7 +589,7 @@ export async function getInventoryItemByBarcode(
     .from("inventory")
     .select("id, name")
     .eq("tenant_id", tenantId)
-    .or(`barcode_value.eq.${trimmed},sku.eq.${trimmed}`)
+    .or(`barcode_value.${eqOrValue(trimmed)},sku.${eqOrValue(trimmed)}`)
     .is("deleted_at", null)
     .maybeSingle();
 

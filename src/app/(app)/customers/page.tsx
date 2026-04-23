@@ -8,6 +8,7 @@ import { Plus } from "lucide-react";
 import { getAuthContext } from "@/lib/auth-context";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { ilikeOrValue } from "@/lib/db/or-escape";
 import { Skeleton } from "@/components/ui/skeleton";
 import CustomerListClient from "./CustomerListClient";
 
@@ -117,9 +118,11 @@ async function CustomerRows({
         if (visibleIds.length === 0) return { rows: [], count: 0 };
         listQ = listQ.in("id", visibleIds);
       }
-      if (q) {
+      // W2-004: quote user input so PostgREST metachars can't escape.
+      const qIlike = q ? ilikeOrValue(q) : null;
+      if (qIlike) {
         listQ = listQ.or(
-          `full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,mobile.ilike.%${q}%`
+          `full_name.${qIlike},email.${qIlike},phone.${qIlike},mobile.${qIlike}`
         );
       }
       const listResult = await listQ
@@ -134,9 +137,9 @@ async function CustomerRows({
       if (visibleIds !== null) {
         countQ = countQ.in("id", visibleIds);
       }
-      if (q) {
+      if (qIlike) {
         countQ = countQ.or(
-          `full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,mobile.ilike.%${q}%`
+          `full_name.${qIlike},email.${qIlike},phone.${qIlike},mobile.${qIlike}`
         );
       }
       const { count } = await countQ;

@@ -54,7 +54,11 @@ export default async function TransfersPage() {
         </div>
       );
     }
-    // Show transfers where user's location is either source or destination
+    // Show transfers where user's location is either source or destination.
+    // W2-004: allowedLocationIds is a UUID array read from
+    // team_members.allowed_location_ids (server-only, not user-controlled),
+    // so the `.in.(...)` interpolation is safe. The lint pattern targets
+    // `%${}%` / `.eq.${}` / `.ilike.${}` specifically.
     transfersQuery = transfersQuery.or(`from_location_id.in.(${allowedLocationIds.join(",")}),to_location_id.in.(${allowedLocationIds.join(",")})`);
   }
 

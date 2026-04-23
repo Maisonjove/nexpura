@@ -3,14 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { findSaleQuerySchema } from "@/lib/schemas";
 import { checkRateLimit } from "@/lib/rate-limit";
-
-/** Escapes special PostgreSQL LIKE pattern characters to prevent injection */
-function sanitizeLikePattern(input: string): string {
-  return input
-    .replace(/\\/g, '\\\\')
-    .replace(/%/g, '\\%')
-    .replace(/_/g, '\\_');
-}
+import { ilikeOrValue } from "@/lib/db/or-escape";
 
 export async function GET(req: NextRequest) {
   // SECURITY: Require authentication
@@ -49,15 +42,16 @@ export async function GET(req: NextRequest) {
   }
   const { q, tenantId } = parseResult.data;
 
-  // Sanitize query to prevent SQL injection via LIKE patterns
-  const safeQ = sanitizeLikePattern(q);
+  // W2-004: route user input through ilikeOrValue so PostgREST filter
+  // metachars (`,`, `.`, `(`, `)`, `*`, `"`) are quoted as a literal.
+  const ilikeVal = ilikeOrValue(q);
 
   // Search by sale_number or customer name
   const { data: sale, error } = await admin
     .from("sales")
     .select("id, sale_number, total, payment_method, created_at, customer_name, sale_items(id, inventory_id, quantity, unit_price, total, inventory(name))")
     .eq("tenant_id", tenantId)
-    .or(`sale_number.ilike.%${safeQ}%,customer_name.ilike.%${safeQ}%`)
+    .or(`sale_number.${ilikeVal},customer_name.${ilikeVal}`)
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
