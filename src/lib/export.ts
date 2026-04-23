@@ -14,22 +14,34 @@ export function downloadCSV(data: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * W6-HIGH-05 / W4-REPORT8: CSV formula-injection guard. Before this,
+ * a value like `=HYPERLINK("http://evil",...)` in a cell rendered as
+ * a live formula in Excel. We now prefix any cell starting with
+ * `=`, `+`, `-`, `@`, `\t`, `\r` with a single apostrophe. Numbers
+ * are also coerced through the same path (their string form can't
+ * start with a formula trigger unless they're negative, in which
+ * case the apostrophe prefix is what we want).
+ */
+const FORMULA_TRIGGERS = /^[=+\-@\t\r]/;
+function csvCellValue(v: unknown): string {
+  if (v === null || v === undefined) return '""';
+  let s = typeof v === 'number' || typeof v === 'boolean' ? String(v) : String(v);
+  if (FORMULA_TRIGGERS.test(s)) s = "'" + s;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
 export function arrayToCSV<T extends Record<string, unknown>>(
   data: T[],
   columns: { key: keyof T; label: string }[]
 ): string {
   if (data.length === 0) return '';
-  
-  const headers = columns.map(c => `"${c.label}"`).join(',');
-  const rows = data.map(row => 
-    columns.map(col => {
-      const value = row[col.key];
-      if (value === null || value === undefined) return '""';
-      if (typeof value === 'number') return String(value);
-      return `"${String(value).replace(/"/g, '""')}"`;
-    }).join(',')
+
+  const headers = columns.map(c => csvCellValue(c.label)).join(',');
+  const rows = data.map(row =>
+    columns.map(col => csvCellValue(row[col.key])).join(',')
   );
-  
+
   return [headers, ...rows].join('\n');
 }
 

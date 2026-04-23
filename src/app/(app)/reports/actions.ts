@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCached, tenantCacheKey } from "@/lib/cache";
 import { getSessionTenantId } from "@/lib/auth/assert-tenant";
+import { buildCsv } from "@/lib/csv/escape";
 
 /**
  * Launch-QA W4-XTENANT1: every reports aggregator previously took
@@ -196,6 +197,9 @@ export async function exportReportCSV(
     const tenantId = await getSessionTenantId();
     const admin = createAdminClient();
 
+    // W6-HIGH-05 / W4-REPORT8: all three report types route through
+    // buildCsv(), which prefixes formula-triggering cells (starts with
+    // =, +, -, @, \t, \r) with an apostrophe before RFC-4180 quoting.
     if (reportType === "revenue") {
       const { data } = await admin
         .from("invoices")
@@ -206,11 +210,15 @@ export async function exportReportCSV(
         .lte("invoice_date", dateTo)
         .order("invoice_date");
 
-      const headers = "Invoice Number,Date,Customer,Total,Status";
-      const rows = (data ?? []).map(
-        (i) => `"${i.invoice_number}","${i.invoice_date}","${i.customer_name ?? ""}","${i.total}","${i.status}"`
-      );
-      return { csv: [headers, ...rows].join("\n") };
+      const headers = ["Invoice Number", "Date", "Customer", "Total", "Status"];
+      const rows = (data ?? []).map((i) => ({
+        "Invoice Number": i.invoice_number,
+        "Date": i.invoice_date,
+        "Customer": i.customer_name ?? "",
+        "Total": i.total,
+        "Status": i.status,
+      }));
+      return { csv: buildCsv(headers, rows) };
     }
 
     if (reportType === "repairs") {
@@ -222,11 +230,17 @@ export async function exportReportCSV(
         .lte("created_at", dateTo + "T23:59:59")
         .order("created_at");
 
-      const headers = "Repair Number,Customer,Description,Status,Price,Received,Completed";
-      const rows = (data ?? []).map(
-        (r) => `"${r.repair_number ?? ""}","${r.customer_name ?? ""}","${r.description ?? ""}","${r.status}","${r.price ?? 0}","${r.received_date ?? ""}","${r.completion_date ?? ""}"`
-      );
-      return { csv: [headers, ...rows].join("\n") };
+      const headers = ["Repair Number", "Customer", "Description", "Status", "Price", "Received", "Completed"];
+      const rows = (data ?? []).map((r) => ({
+        "Repair Number": r.repair_number ?? "",
+        "Customer": r.customer_name ?? "",
+        "Description": r.description ?? "",
+        "Status": r.status,
+        "Price": r.price ?? 0,
+        "Received": r.received_date ?? "",
+        "Completed": r.completion_date ?? "",
+      }));
+      return { csv: buildCsv(headers, rows) };
     }
 
     if (reportType === "expenses") {
@@ -238,11 +252,15 @@ export async function exportReportCSV(
         .lte("expense_date", dateTo)
         .order("expense_date");
 
-      const headers = "Description,Category,Amount,Date,Notes";
-      const rows = (data ?? []).map(
-        (e) => `"${e.description ?? ""}","${e.category ?? ""}","${e.amount ?? 0}","${e.expense_date ?? ""}","${e.notes ?? ""}"`
-      );
-      return { csv: [headers, ...rows].join("\n") };
+      const headers = ["Description", "Category", "Amount", "Date", "Notes"];
+      const rows = (data ?? []).map((e) => ({
+        "Description": e.description ?? "",
+        "Category": e.category ?? "",
+        "Amount": e.amount ?? 0,
+        "Date": e.expense_date ?? "",
+        "Notes": e.notes ?? "",
+      }));
+      return { csv: buildCsv(headers, rows) };
     }
 
     return { error: `Unknown report type: ${reportType}` };

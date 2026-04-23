@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { arrayToCSV } from "@/lib/export";
 
 const CATEGORIES = ["stock", "rent", "utilities", "marketing", "staffing", "equipment", "repairs", "other"];
 
@@ -76,17 +77,26 @@ export default function ExpenseReportsPage() {
   const maxCat = Math.max(...Object.values(byCategory), 1);
 
   function handleCSVDownload() {
-    const rows = [
-      ["Date", "Description", "Category", "Amount", "Invoice Ref"],
-      ...expenses.map((e) => [
-        e.expense_date,
-        `"${e.description.replace(/"/g, '""')}"`,
-        CATEGORY_LABELS[e.category] ?? e.category,
-        e.amount.toFixed(2),
-        e.invoice_ref ?? "",
-      ]),
-    ];
-    const csv = rows.map((r) => r.join(",")).join("\n");
+    // W6-HIGH-05 / W4-REPORT8: arrayToCSV now prefixes formula
+    // triggers (=, +, -, @, \t, \r) with an apostrophe before
+    // RFC-4180 quoting, so an expense description starting with `=`
+    // can't execute as an Excel formula.
+    const csv = arrayToCSV(
+      expenses.map((e) => ({
+        date: e.expense_date,
+        description: e.description,
+        category: CATEGORY_LABELS[e.category] ?? e.category,
+        amount: e.amount.toFixed(2),
+        invoice_ref: e.invoice_ref ?? "",
+      })),
+      [
+        { key: "date", label: "Date" },
+        { key: "description", label: "Description" },
+        { key: "category", label: "Category" },
+        { key: "amount", label: "Amount" },
+        { key: "invoice_ref", label: "Invoice Ref" },
+      ],
+    );
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
