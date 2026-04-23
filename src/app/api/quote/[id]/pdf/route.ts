@@ -55,6 +55,9 @@ export async function GET(
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
 
+    // W2-005 note: quotes is tenant-global (no location_id column);
+    // tenant check above is the scope.
+
     // Fetch tenant
     const { data: tenant } = await admin
       .from("tenants")

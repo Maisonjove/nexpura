@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getUserLocationIds } from "@/lib/locations";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
@@ -45,14 +46,32 @@ export async function POST(req: NextRequest) {
     let notified = 0;
     let skipped = 0;
 
+    // W2-006: bulk notify must respect the session user's location
+    // scope. A location-restricted staffer can only trigger
+    // notifications for jobs at their assigned locations. Owners/
+    // managers (null allowed_location_ids) pass through with full
+    // tenant scope.
+    const allowedLocations = await getUserLocationIds(user.id, tenantId);
+
     if (jobType === "repair") {
       // Fetch all ready repairs with customer contact info
-      const { data: repairs } = await admin
+      let repairsQuery = admin
         .from("repairs")
-        .select("id, repair_number, item_description, customers(id, full_name, email, mobile)")
+        .select("id, repair_number, item_description, location_id, customers(id, full_name, email, mobile)")
         .eq("tenant_id", tenantId)
         .eq("stage", "ready")
         .is("deleted_at", null);
+      if (allowedLocations !== null) {
+        // Restricted — only rows in allowed_location_ids, plus legacy
+        // location_id IS NULL rows (pre-location-column).
+        if (allowedLocations.length === 0) {
+          return NextResponse.json({ notified: 0, skipped: 0 });
+        }
+        repairsQuery = repairsQuery.or(
+          `location_id.in.(${allowedLocations.join(",")}),location_id.is.null`,
+        );
+      }
+      const { data: repairs } = await repairsQuery;
 
       for (const repair of repairs ?? []) {
         const customer = Array.isArray(repair.customers)
@@ -100,12 +119,21 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // Bespoke jobs
-      const { data: jobs } = await admin
+      let jobsQuery = admin
         .from("bespoke_jobs")
-        .select("id, job_number, title, customers(id, full_name, email, mobile)")
+        .select("id, job_number, title, location_id, customers(id, full_name, email, mobile)")
         .eq("tenant_id", tenantId)
         .eq("stage", "ready")
         .is("deleted_at", null);
+      if (allowedLocations !== null) {
+        if (allowedLocations.length === 0) {
+          return NextResponse.json({ notified: 0, skipped: 0 });
+        }
+        jobsQuery = jobsQuery.or(
+          `location_id.in.(${allowedLocations.join(",")}),location_id.is.null`,
+        );
+      }
+      const { data: jobs } = await jobsQuery;
 
       for (const job of jobs ?? []) {
         const customer = Array.isArray(job.customers)

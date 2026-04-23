@@ -42,6 +42,9 @@ export async function POST(
       return NextResponse.json({ error: "Appraisal not found" }, { status: 404 });
     }
 
+    // W2-006 note: appraisals is tenant-global (no location_id column);
+    // tenant check is the entire scope.
+
     if (!appraisal.customer_email) {
       return NextResponse.json(
         { error: "Customer has no email address on this appraisal" },

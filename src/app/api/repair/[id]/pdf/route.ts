@@ -5,6 +5,7 @@ import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import RepairTicketPDF from "@/lib/pdf/RepairTicketPDF";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 export async function GET(
   _request: NextRequest,
@@ -41,7 +42,7 @@ export async function GET(
   const { data: repair, error } = await adminClient
     .from("repairs")
     .select(
-      `id, repair_number, customer_id, customer_name, customer_email,
+      `id, repair_number, location_id, customer_id, customer_name, customer_email,
        item_type, item_description, metal_type, brand, condition_notes,
        repair_type, work_description, work_required, technician,
        priority, stage, quoted_price, final_price, deposit_amount, deposit_paid,
@@ -53,6 +54,19 @@ export async function GET(
     .single();
 
   if (error || !repair) return new NextResponse("Not found", { status: 404 });
+
+  // W2-005: multi-location tenants — a location-restricted staff user
+  // must not be able to fetch a PDF for a repair at a location they
+  // aren't assigned to. Owners/managers (null allowed_location_ids)
+  // pass through. Legacy rows (location_id null) pass through.
+  try {
+    await assertUserCanAccessLocation(user.id, userData.tenant_id, repair.location_id);
+  } catch (e) {
+    if (e instanceof LocationAccessDeniedError) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+    throw e;
+  }
 
   const { data: tenant } = await adminClient
     .from("tenants")

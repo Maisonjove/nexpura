@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
 import { isSandbox, logSandboxSuppressedSend } from "@/lib/sandbox";
 import logger from "@/lib/logger";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 /**
  * Launch-QA W7-CRIT-04: this route previously accepted `tenantId` from the
@@ -70,19 +71,20 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Get order details
+    // Get order details (incl. location_id for scope gating)
     let order: {
       tracking_id: string;
       customer_email: string | null;
       item_description: string;
       item_type?: string;
       estimated_completion_date: string | null;
+      location_id: string | null;
     } | null = null;
 
     if (orderType === "repair") {
       const { data } = await admin
         .from("repairs")
-        .select("tracking_id, customer_email, item_description, item_type, estimated_completion_date")
+        .select("tracking_id, customer_email, item_description, item_type, estimated_completion_date, location_id")
         .eq("id", orderId)
         .eq("tenant_id", tenantId)
         .single();
@@ -90,7 +92,7 @@ export async function POST(request: NextRequest) {
     } else {
       const { data } = await admin
         .from("bespoke_jobs")
-        .select("tracking_id, customer_email, description, item_type, estimated_completion_date")
+        .select("tracking_id, customer_email, description, item_type, estimated_completion_date, location_id")
         .eq("id", orderId)
         .eq("tenant_id", tenantId)
         .single();
@@ -101,12 +103,24 @@ export async function POST(request: NextRequest) {
           item_description: data.description,
           item_type: data.item_type,
           estimated_completion_date: data.estimated_completion_date,
+          location_id: data.location_id,
         };
       }
     }
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    // W2-006: tracking email must only be sendable by staff whose
+    // allowed_location_ids include the order's location.
+    try {
+      await assertUserCanAccessLocation(user.id, tenantId, order.location_id);
+    } catch (e) {
+      if (e instanceof LocationAccessDeniedError) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      throw e;
     }
 
     if (!order.customer_email) {

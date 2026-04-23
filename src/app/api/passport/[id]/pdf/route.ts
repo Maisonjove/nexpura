@@ -41,6 +41,9 @@ export async function GET(
 
   if (error || !passport) return new NextResponse("Not found", { status: 404 });
 
+  // W2-005 note: passports is a tenant-global resource (no location_id
+  // column). Tenant check is sufficient — no location scope to apply.
+
   const { data: tenant } = await supabase
     .from("tenants")
     .select("name, phone, email")

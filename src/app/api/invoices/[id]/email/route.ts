@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendInvoiceEmail } from "@/lib/email/send";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 export async function POST(
   request: NextRequest,
@@ -42,13 +43,23 @@ export async function POST(
     // Verify invoice belongs to tenant
     const { data: invoice, error: invError } = await admin
       .from("invoices")
-      .select("id, tenant_id, customer_id, customers(email)")
+      .select("id, tenant_id, location_id, customer_id, customers(email)")
       .eq("id", id)
       .eq("tenant_id", userData.tenant_id)
       .single();
 
     if (invError || !invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    // W2-006: gate email trigger by the user's allowed_location_ids.
+    try {
+      await assertUserCanAccessLocation(user.id, userData.tenant_id, invoice.location_id);
+    } catch (e) {
+      if (e instanceof LocationAccessDeniedError) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      throw e;
     }
 
     // Get customer email (can be array or single object from Supabase join)

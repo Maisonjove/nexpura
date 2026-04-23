@@ -6,6 +6,7 @@ import RepairTicketPDF from "@/lib/pdf/RepairTicketPDF";
 import { resend } from "@/lib/email/resend";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 export async function POST(
   _req: NextRequest,
@@ -40,7 +41,7 @@ export async function POST(
   const { data: repair, error } = await adminClient
     .from("repairs")
     .select(
-      `id, repair_number, customer_id, customer_name, customer_email,
+      `id, repair_number, location_id, customer_id, customer_name, customer_email,
        item_type, item_description, metal_type, brand, condition_notes,
        repair_type, work_description, work_required, technician,
        priority, stage, quoted_price, final_price, deposit_amount, deposit_paid,
@@ -53,6 +54,19 @@ export async function POST(
 
   if (error || !repair)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // W2-006: a location-restricted staffer must not be able to trigger
+  // an email for a repair outside their assigned locations. Otherwise
+  // they could POST to /api/repair/<L2-repair-uuid>/email-receipt and
+  // spam the L2 customer.
+  try {
+    await assertUserCanAccessLocation(user.id, userData.tenant_id, repair.location_id);
+  } catch (e) {
+    if (e instanceof LocationAccessDeniedError) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    throw e;
+  }
 
   const customerRaw = Array.isArray(repair.customers) ? repair.customers[0] : repair.customers;
   const recipientEmail = customerRaw?.email ?? repair.customer_email;

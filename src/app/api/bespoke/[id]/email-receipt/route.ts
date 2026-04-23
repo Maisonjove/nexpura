@@ -6,6 +6,7 @@ import BespokeSheetPDF from "@/lib/pdf/BespokeSheetPDF";
 import { resend } from "@/lib/email/resend";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 export async function POST(
   _req: NextRequest,
@@ -40,7 +41,7 @@ export async function POST(
   const { data: job, error } = await adminClient
     .from("bespoke_jobs")
     .select(
-      `id, job_number, customer_id, customer_name, customer_email,
+      `id, job_number, location_id, customer_id, customer_name, customer_email,
        title, description, order_type, jewellery_type, stage, priority,
        metal_type, metal_colour, metal_purity, metal_weight_grams,
        stone_type, stone_colour, stone_carat,
@@ -55,6 +56,16 @@ export async function POST(
 
   if (error || !job)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // W2-006: location-gate the email trigger.
+  try {
+    await assertUserCanAccessLocation(user.id, userData.tenant_id, job.location_id);
+  } catch (e) {
+    if (e instanceof LocationAccessDeniedError) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    throw e;
+  }
 
   const customer = Array.isArray(job.customers) ? job.customers[0] : job.customers;
   const recipientEmail = customer?.email ?? job.customer_email;

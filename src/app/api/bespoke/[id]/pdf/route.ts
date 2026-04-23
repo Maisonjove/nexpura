@@ -5,6 +5,7 @@ import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import BespokeSheetPDF from "@/lib/pdf/BespokeSheetPDF";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 export async function GET(
   _request: NextRequest,
@@ -40,7 +41,7 @@ export async function GET(
   const { data: job, error } = await adminClient
     .from("bespoke_jobs")
     .select(
-      `id, job_number, customer_id, customer_name, customer_email,
+      `id, job_number, location_id, customer_id, customer_name, customer_email,
        title, description, order_type, jewellery_type, stage, priority,
        metal_type, metal_colour, metal_purity, metal_weight_grams,
        stone_type, stone_colour, stone_carat,
@@ -54,6 +55,17 @@ export async function GET(
     .single();
 
   if (error || !job) return new NextResponse("Not found", { status: 404 });
+
+  // W2-005: gate PDF on location scope — cross-location restricted
+  // staff must not be able to pull another location's bespoke job PDF.
+  try {
+    await assertUserCanAccessLocation(user.id, userData.tenant_id, job.location_id);
+  } catch (e) {
+    if (e instanceof LocationAccessDeniedError) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+    throw e;
+  }
 
   const { data: tenant } = await adminClient
     .from("tenants")

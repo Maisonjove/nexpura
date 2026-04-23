@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { escapeHtml } from "@/lib/sanitize";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 export async function GET(
   _request: NextRequest,
@@ -36,6 +37,16 @@ export async function GET(
     .single();
 
   if (!refund) return new NextResponse("Refund not found", { status: 404 });
+
+  // W2-005: refunds.location_id — restrict cross-location fetch.
+  try {
+    await assertUserCanAccessLocation(user.id, userData.tenant_id, refund.location_id);
+  } catch (e) {
+    if (e instanceof LocationAccessDeniedError) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+    throw e;
+  }
 
   const { data: items } = await admin
     .from("refund_items")

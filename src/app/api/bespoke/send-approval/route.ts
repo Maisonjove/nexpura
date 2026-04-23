@@ -4,6 +4,7 @@ import { resend } from "@/lib/email/resend";
 import { randomUUID } from "crypto";
 import logger from "@/lib/logger";
 import { getAuthContext } from "@/lib/auth-context";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext();
@@ -29,6 +30,16 @@ export async function POST(req: NextRequest) {
 
   if (jobErr || !job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+
+  // W2-006: location-gate the approval email trigger.
+  try {
+    await assertUserCanAccessLocation(auth.userId, auth.tenantId, job.location_id);
+  } catch (e) {
+    if (e instanceof LocationAccessDeniedError) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    throw e;
   }
 
   const customer = Array.isArray(job.customers) ? job.customers[0] : job.customers;

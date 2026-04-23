@@ -7,6 +7,7 @@ import { ThermalInvoicePDF } from "@/lib/pdf/ThermalInvoicePDF";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 export async function GET(
   request: NextRequest,
@@ -50,7 +51,7 @@ export async function GET(
   const { data: invoice, error: invoiceError } = await adminClient
     .from("invoices")
     .select(
-      `id, invoice_number, status, invoice_date, due_date,
+      `id, invoice_number, status, invoice_date, due_date, location_id,
        subtotal, tax_amount, discount_amount, total, paid_at, amount_paid,
        tax_name, tax_rate, tax_inclusive, notes, footer_text, layout,
        customers(full_name, email, phone, address)`
@@ -61,6 +62,17 @@ export async function GET(
 
   if (invoiceError || !invoice) {
     return new NextResponse("Invoice not found", { status: 404 });
+  }
+
+  // W2-005: location-restricted users can only pull PDFs for invoices
+  // at their assigned locations.
+  try {
+    await assertUserCanAccessLocation(user.id, userData.tenant_id, invoice.location_id);
+  } catch (e) {
+    if (e instanceof LocationAccessDeniedError) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+    throw e;
   }
 
   // Fetch line items
