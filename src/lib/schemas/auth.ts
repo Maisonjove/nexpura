@@ -47,6 +47,11 @@ export const inviteAcceptSchema = z.object({
   userId: z.string().uuid("Invalid user ID"),
 });
 
+// Forgot-password request
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Please enter a valid email").max(254, "Email too long"),
+});
+
 export type TwoFAValidateInput = z.infer<typeof twoFAValidateSchema>;
 export type TwoFAVerifyInput = z.infer<typeof twoFAVerifySchema>;
 export type SMS2FASetupInput = z.infer<typeof sms2FASetupSchema>;
@@ -54,3 +59,4 @@ export type SMS2FAVerifyInput = z.infer<typeof sms2FAVerifySchema>;
 export type SMS2FASendLoginInput = z.infer<typeof sms2FASendLoginSchema>;
 export type SMS2FAVerifyLoginInput = z.infer<typeof sms2FAVerifyLoginSchema>;
 export type InviteAcceptInput = z.infer<typeof inviteAcceptSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

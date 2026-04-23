@@ -1,43 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
 import { Mail, CheckCircle, ArrowLeft } from "lucide-react";
+import { requestPasswordReset } from "./actions";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-
-  // Use vanilla supabase-js with implicit flow — @supabase/ssr's createBrowserClient
-  // hardcodes PKCE and ignores flowType overrides, so we bypass it here.
-  // Implicit flow sends the access token directly in the URL hash, no stored
-  // code verifier needed, so the reset link works on any browser or device.
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { flowType: "implicit" } }
-  );
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    setSuccess(null);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+    const fd = new FormData();
+    fd.set("email", email);
+
+    startTransition(async () => {
+      const result = await requestPasswordReset(fd);
+      if (result.ok) {
+        setSuccess(result.message);
+      } else {
+        setError(result.message);
+      }
     });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    setSuccess(true);
-    setLoading(false);
   }
 
   if (success) {
@@ -57,7 +46,7 @@ export default function ForgotPasswordPage() {
             Check your email
           </h2>
           <p className="text-stone-500 text-sm mb-8">
-            We&apos;ve sent a password reset link to <strong className="text-stone-700">{email}</strong>
+            {success}
           </p>
           <Link
             href="/login"
@@ -101,23 +90,28 @@ export default function ForgotPasswordPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@yourshop.com"
+                autoComplete="email"
                 className="w-full pl-11 pr-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
               />
             </div>
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 border border-red-100 px-4 py-2.5 rounded-lg">
+            <p
+              role="alert"
+              aria-live="assertive"
+              className="text-red-600 text-sm bg-red-50 border border-red-100 px-4 py-2.5 rounded-lg"
+            >
               {error}
             </p>
           )}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isPending}
             className="w-full bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] hover:from-[#4a4a4a] hover:to-[#2a2a2a] text-white font-medium py-3 rounded-full transition-all disabled:opacity-60 text-sm shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
           >
-            {loading ? "Sending…" : "Send reset link"}
+            {isPending ? "Sending…" : "Send reset link"}
           </button>
         </form>
 
