@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { preload } from "react-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDashboardCriticalData } from "./actions";
 import DashboardWrapper from "./DashboardWrapper";
@@ -17,6 +18,18 @@ export const metadata = { title: "Dashboard — Nexpura" };
 // the dynamic body (auth + critical data) resolves.
 
 export default function DashboardPage() {
+  // Emit <link rel=preload as=fetch> in the first streamed chunk so the
+  // browser issues the stats GET before React hydrates. SWR's later
+  // fetch() with the same URL + credentials-include consumes the in-flight
+  // response. Saves 200-400ms on cold. Preloads the "all locations" URL
+  // (no query string) — matches initialLocationKey="all"; a location
+  // filter makes the preload a wasted request, not a broken one.
+  preload("/api/dashboard/stats", {
+    as: "fetch",
+    crossOrigin: "use-credentials",
+    fetchPriority: "high",
+  });
+
   return (
     <Suspense fallback={<DashboardStatsFallback />}>
       {/* Server work minimised for first-paint speed: only critical data
