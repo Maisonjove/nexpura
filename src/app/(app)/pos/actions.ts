@@ -322,10 +322,73 @@ export async function createPOSSale(
       },
     },
     
-    // Step 5: Deduct stock for each item
+    // Step 5: Deduct stock + log stock_movements in a single atomic RPC.
+    // Replaces the 3–4 queries-per-item loop (SELECT, CAS UPDATE, retry,
+    // INSERT stock_movement) with one Postgres round-trip that does
+    // FOR UPDATE row-locks, decrements, inserts, and either succeeds
+    // whole-cart or rolls back whole-cart (no partial deductions).
+    // See migration 20260424_pos_deduct_stock_rpc.sql.
+    //
+    // If the migration hasn't landed yet (function missing / 42883) we
+    // transparently fall back to the original per-item JS loop so POS
+    // keeps working during the rollout seam.
     {
       name: "deduct_stock",
       execute: async () => {
+        if (params.cart.length === 0) {
+          return { success: true, data: { skipped: true } };
+        }
+
+        const { data: rows, error } = await admin.rpc("pos_deduct_stock", {
+          p_tenant_id: tenantId,
+          p_items: params.cart.map((c) => ({
+            inventory_id: c.inventoryId,
+            quantity: c.quantity,
+            name: c.name,
+          })),
+          p_sale_number: saleNumber,
+          p_user_id: userId,
+        });
+
+        // Migration seam: function doesn't exist yet. Fall through to
+        // the legacy per-item loop below. Clear when Supabase's
+        // PostgREST reports 42883 or says "Could not find the function".
+        const isFnMissing =
+          error &&
+          (error.code === "42883" ||
+            /function.*does not exist|Could not find the function/i.test(error.message));
+
+        if (error && !isFnMissing) {
+          const m = /insufficient_stock\|(.+)\|(\-?\d+)$/.exec(error.message);
+          if (m) {
+            const itemName = m[1];
+            const available = Number(m[2]);
+            return {
+              success: false,
+              error:
+                available === 0
+                  ? `"${itemName}" just sold out while you were checking out. Please remove it from your cart.`
+                  : `Only ${available} "${itemName}" left in stock (another sale just went through). Please update your cart.`,
+            };
+          }
+          return { success: false, error: error.message };
+        }
+
+        if (!error) {
+          type StockRow = { inventory_id: string; original_qty: number; new_qty: number };
+          for (const row of (rows ?? []) as StockRow[]) {
+            const cartItem = params.cart.find((c) => c.inventoryId === row.inventory_id);
+            if (!cartItem) continue;
+            stockDeductions.push({
+              inventoryId: row.inventory_id,
+              quantity: cartItem.quantity,
+              originalQty: row.original_qty,
+            });
+          }
+          return { success: true };
+        }
+
+        // ─── Legacy per-item fallback (pre-migration only) ───────────
         for (const item of params.cart) {
           const { data: inv } = await admin
             .from("inventory")
@@ -333,45 +396,39 @@ export async function createPOSSale(
             .eq("id", item.inventoryId)
             .eq("tenant_id", tenantId)
             .single();
-          
           if (!inv) continue;
-          
           const oldQty = inv.quantity;
           const newQty = oldQty - item.quantity;
-          
           if (newQty < 0) {
-            return { 
-              success: false, 
-              error: `Insufficient stock for "${inv.name || item.name}". Available: ${oldQty}, Requested: ${item.quantity}` 
+            return {
+              success: false,
+              error: `Insufficient stock for "${inv.name || item.name}". Available: ${oldQty}, Requested: ${item.quantity}`,
             };
           }
-          
           const { count: updateCount } = await admin
             .from("inventory")
             .update({ quantity: newQty })
             .eq("id", item.inventoryId)
             .eq("tenant_id", tenantId)
             .eq("quantity", oldQty);
-          
           if (updateCount === 0) {
-            // Race occurred — another user bought the same item simultaneously
             const { data: invRetry } = await admin
               .from("inventory")
               .select("quantity, name")
               .eq("id", item.inventoryId)
               .eq("tenant_id", tenantId)
               .single();
-            
             if (invRetry) {
               const retryQty = invRetry.quantity - item.quantity;
               if (retryQty < 0) {
                 const available = invRetry.quantity;
                 const itemName = invRetry.name || inv.name || item.name;
-                return { 
-                  success: false, 
-                  error: available === 0 
-                    ? `"${itemName}" just sold out while you were checking out. Please remove it from your cart.`
-                    : `Only ${available} "${itemName}" left in stock (another sale just went through). Please update your cart.`
+                return {
+                  success: false,
+                  error:
+                    available === 0
+                      ? `"${itemName}" just sold out while you were checking out. Please remove it from your cart.`
+                      : `Only ${available} "${itemName}" left in stock (another sale just went through). Please update your cart.`,
                 };
               }
               await admin
@@ -379,13 +436,19 @@ export async function createPOSSale(
                 .update({ quantity: retryQty })
                 .eq("id", item.inventoryId)
                 .eq("tenant_id", tenantId);
-              stockDeductions.push({ inventoryId: item.inventoryId, quantity: item.quantity, originalQty: invRetry.quantity });
+              stockDeductions.push({
+                inventoryId: item.inventoryId,
+                quantity: item.quantity,
+                originalQty: invRetry.quantity,
+              });
             }
           } else {
-            stockDeductions.push({ inventoryId: item.inventoryId, quantity: item.quantity, originalQty: oldQty });
+            stockDeductions.push({
+              inventoryId: item.inventoryId,
+              quantity: item.quantity,
+              originalQty: oldQty,
+            });
           }
-          
-          // Log stock movement
           await admin.from("stock_movements").insert({
             tenant_id: tenantId,
             inventory_id: item.inventoryId,
@@ -396,11 +459,10 @@ export async function createPOSSale(
             created_by: userId,
           });
         }
-        
         return { success: true };
       },
       compensate: async () => {
-        // Restore stock for all deducted items
+        // Restore stock for all deducted items.
         for (const deduction of stockDeductions) {
           await admin
             .from("inventory")
