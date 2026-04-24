@@ -38,7 +38,7 @@ export interface NotificationLog {
   title: string;
   body: string | null;
   link: string | null;
-  read: boolean;
+  is_read: boolean;
   created_at: string;
   users?: { full_name: string; email: string } | null;
 }
@@ -281,7 +281,7 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
                   </thead>
                   <tbody className="divide-y divide-stone-100">
                     {notifications.map((notif) => (
-                      <tr key={notif.id} className={`hover:bg-stone-50 ${!notif.read ? "bg-amber-700/5" : ""}`}>
+                      <tr key={notif.id} className={`hover:bg-stone-50 ${!notif.is_read ? "bg-amber-700/5" : ""}`}>
                         <td className="px-5 py-3">
                           <span className="text-base">{NOTIF_TYPE_ICONS[notif.type] ?? "🔔"}</span>
                         </td>
@@ -296,8 +296,8 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
                           {notif.users?.full_name || "All users"}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${notif.read ? "bg-stone-100 text-stone-400" : "bg-amber-700/10 text-amber-700"}`}>
-                            {notif.read ? "Read" : "Unread"}
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${notif.is_read ? "bg-stone-100 text-stone-400" : "bg-amber-700/10 text-amber-700"}`}>
+                            {notif.is_read ? "Read" : "Unread"}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-xs text-stone-400">{formatDate(notif.created_at)}</td>

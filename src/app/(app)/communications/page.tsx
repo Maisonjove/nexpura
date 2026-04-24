@@ -33,7 +33,7 @@ export default async function CommunicationsPage() {
       .limit(100),
     admin
       .from("notifications")
-      .select("id, type, title, body, link, read, created_at, users(full_name, email)")
+      .select("id, type, title, body, link, is_read, created_at, users(full_name, email)")
       .eq("tenant_id", tenantId ?? "")
       .order("created_at", { ascending: false })
       .limit(100),
