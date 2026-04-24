@@ -132,13 +132,29 @@ export async function removeBespokeLineItem(
   const { admin } = ctx;
   if (ctx.tenantId !== tenantId) return { error: "Unauthorized" };
 
-  const { data: li } = await admin.from("invoice_line_items").select("invoice_id").eq("id", lineItemId).single();
+  // Tenant-scope every admin-client access so a Tenant-A user can't
+  // cross-tenant-delete a line item they happen to know the UUID of.
+  const { data: li } = await admin
+    .from("invoice_line_items")
+    .select("invoice_id")
+    .eq("id", lineItemId)
+    .eq("tenant_id", tenantId)
+    .single();
   if (!li?.invoice_id) return { error: "Line item not found" };
 
-  const { error } = await admin.from("invoice_line_items").delete().eq("id", lineItemId);
+  const { error } = await admin
+    .from("invoice_line_items")
+    .delete()
+    .eq("id", lineItemId)
+    .eq("tenant_id", tenantId);
   if (error) return { error: error.message };
 
-  const { data: invRow } = await admin.from("invoices").select("tax_rate").eq("id", li.invoice_id).single();
+  const { data: invRow } = await admin
+    .from("invoices")
+    .select("tax_rate")
+    .eq("id", li.invoice_id)
+    .eq("tenant_id", tenantId)
+    .single();
   await recalcInvoice(admin, li.invoice_id, invRow?.tax_rate ?? 0.1);
   revalidatePath(`/bespoke/${jobId}`);
   return { success: true };
@@ -171,8 +187,15 @@ export async function recordBespokePayment(
     invoiceId,
     fingerprint,
     async () => {
-      // Check invoice status before inserting payment
-      const { data: invCheck } = await admin.from("invoices").select("status, total").eq("id", invoiceId).single();
+      // Tenant-scope every admin-client access. Without .eq("tenant_id",
+      // tenantId) on the invoice read/update + payments read, a
+      // Tenant-A user could flip any Tenant-B bespoke invoice to paid.
+      const { data: invCheck } = await admin
+        .from("invoices")
+        .select("status, total")
+        .eq("id", invoiceId)
+        .eq("tenant_id", tenantId)
+        .single();
       if (!invCheck) return { error: "Invoice not found" };
       if (invCheck.status === "voided") return { error: "Cannot record payment on voided invoice" };
 
@@ -187,7 +210,11 @@ export async function recordBespokePayment(
       if (payErr) return { error: payErr.message };
 
       // ATOMIC: recalculate from all payments (race-safe)
-      const { data: payments } = await admin.from("payments").select("amount").eq("invoice_id", invoiceId);
+      const { data: payments } = await admin
+        .from("payments")
+        .select("amount")
+        .eq("invoice_id", invoiceId)
+        .eq("tenant_id", tenantId);
       const totalPaid = (payments ?? []).reduce((s, p) => s + (p.amount ?? 0), 0);
       const invTotal = invCheck.total ?? 0;
 
@@ -196,7 +223,7 @@ export async function recordBespokePayment(
         amount_paid: totalPaid,
         status: newStatus,
         ...(newStatus === "paid" ? { paid_at: new Date().toISOString() } : {}),
-      }).eq("id", invoiceId);
+      }).eq("id", invoiceId).eq("tenant_id", tenantId);
 
       return { success: true };
     }

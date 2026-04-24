@@ -296,16 +296,30 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 // here as a middleware choke point so all API routes are covered
 // without per-file edits. Exemptions:
 //   - Webhooks (/api/webhooks/**) come from third-party origins
-//     (Stripe) and verify their own HMAC signatures.
+//     (Stripe, Resend) and verify their own HMAC signatures.
+//   - Integration webhooks (/api/integrations/<vendor>/webhook) —
+//     WooCommerce, Shopify, etc. — are third-party-origin POSTs with
+//     their own HMAC verification. Before this exemption they 403'd
+//     at CSRF before the HMAC check even ran.
 //   - Crons (/api/cron/**) are invoked by Vercel Cron, no origin header.
-//   - Auth endpoints that accept the Supabase mobile client also lack
-//     our origin; they are otherwise rate-limited + session-backed.
+//   - The auth login + 2fa-validate endpoints are hit by the /login
+//     page first-party POST and by the Supabase mobile client which
+//     also lacks our origin; they are rate-limited + session-authed.
+//     Other /api/auth/** endpoints (2fa/disable, 2fa/setup, sessions/*,
+//     logout) MUST go through CSRF because an attacker page could
+//     otherwise disable 2FA or log you out with a simple cross-origin
+//     fetch on a signed-in browser.
 function isCsrfExemptApi(pathname: string): boolean {
   return (
     pathname.startsWith("/api/webhooks/") ||
     pathname.startsWith("/api/cron/") ||
-    pathname.startsWith("/api/auth/") || // Supabase-backed; session-authed
-    pathname.startsWith("/api/stripe/") // Stripe-side redirect endpoints
+    pathname === "/api/auth/login" ||
+    pathname.startsWith("/api/auth/2fa/validate") ||
+    pathname.startsWith("/api/auth/2fa/sms/send-login") ||
+    pathname.startsWith("/api/auth/2fa/sms/verify-login") ||
+    pathname.startsWith("/api/stripe/") || // Stripe-side redirect endpoints
+    // Integration webhooks: vendor-origin POSTs with HMAC verification.
+    (pathname.startsWith("/api/integrations/") && pathname.endsWith("/webhook"))
   );
 }
 function isMutatingMethod(method: string): boolean {

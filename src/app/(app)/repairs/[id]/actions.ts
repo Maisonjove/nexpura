@@ -116,13 +116,32 @@ export async function removeRepairLineItem(
   const { admin } = ctx;
   if (ctx.tenantId !== tenantId) return { error: "Unauthorized" };
 
-  const { data: li } = await admin.from("invoice_line_items").select("invoice_id").eq("id", lineItemId).single();
+  // Tenant-scope every admin-client read + delete below so a session-authed
+  // user of Tenant A can't delete a line item belonging to Tenant B by
+  // supplying its UUID. The outer `ctx.tenantId !== tenantId` check only
+  // verifies the caller's own session; the admin client otherwise has
+  // no tenant filter.
+  const { data: li } = await admin
+    .from("invoice_line_items")
+    .select("invoice_id")
+    .eq("id", lineItemId)
+    .eq("tenant_id", tenantId)
+    .single();
   if (!li?.invoice_id) return { error: "Line item not found" };
 
-  const { error } = await admin.from("invoice_line_items").delete().eq("id", lineItemId);
+  const { error } = await admin
+    .from("invoice_line_items")
+    .delete()
+    .eq("id", lineItemId)
+    .eq("tenant_id", tenantId);
   if (error) return { error: error.message };
 
-  const { data: invRow } = await admin.from("invoices").select("tax_rate").eq("id", li.invoice_id).single();
+  const { data: invRow } = await admin
+    .from("invoices")
+    .select("tax_rate")
+    .eq("id", li.invoice_id)
+    .eq("tenant_id", tenantId)
+    .single();
   await recalcInvoice(admin, li.invoice_id, invRow?.tax_rate ?? 0.1);
   revalidatePath(`/repairs/${repairId}`);
   return { success: true };
@@ -150,8 +169,17 @@ export async function recordRepairPayment(
     invoiceId,
     fingerprint,
     async () => {
-      // Check invoice status before inserting payment
-      const { data: invCheck } = await admin.from("invoices").select("status, total").eq("id", invoiceId).single();
+      // Tenant-scope every admin-client access below. Without
+      // `.eq("tenant_id", tenantId)` on the invoice read + update, a
+      // session-authed user of Tenant A can flip any Tenant B invoice
+      // to paid/partial by supplying its UUID — the outer ctx check
+      // only verifies the caller's own session.
+      const { data: invCheck } = await admin
+        .from("invoices")
+        .select("status, total")
+        .eq("id", invoiceId)
+        .eq("tenant_id", tenantId)
+        .single();
       if (!invCheck) return { error: "Invoice not found" };
       if (invCheck.status === "voided") return { error: "Cannot record payment on voided invoice" };
 
@@ -166,7 +194,11 @@ export async function recordRepairPayment(
       if (payErr) return { error: payErr.message };
 
       // ATOMIC: recalculate from all payments (race-safe)
-      const { data: payments } = await admin.from("payments").select("amount").eq("invoice_id", invoiceId);
+      const { data: payments } = await admin
+        .from("payments")
+        .select("amount")
+        .eq("invoice_id", invoiceId)
+        .eq("tenant_id", tenantId);
       const totalPaid = (payments ?? []).reduce((s, p) => s + (p.amount ?? 0), 0);
       const invTotal = invCheck.total ?? 0;
 
@@ -175,7 +207,7 @@ export async function recordRepairPayment(
         amount_paid: totalPaid,
         status: newStatus,
         ...(newStatus === "paid" ? { paid_at: new Date().toISOString() } : {}),
-      }).eq("id", invoiceId);
+      }).eq("id", invoiceId).eq("tenant_id", tenantId);
 
       return { success: true };
     }

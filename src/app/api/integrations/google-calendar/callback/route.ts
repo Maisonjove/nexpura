@@ -21,13 +21,23 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { connection } from "next/server";
+import crypto from "crypto";
 import { upsertIntegration } from "@/lib/integrations";
+import { getAuthContext } from "@/lib/integrations";
+import { verifyOAuthState } from "@/lib/webhook-security";
+import { safeCompare } from "@/lib/timing-safe-compare";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID!;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET!;
 const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google-calendar/callback`;
+
+function getStateSecret(): string {
+  const base = process.env.GOOGLE_OAUTH_CLIENT_SECRET || "";
+  if (!base) throw new Error("[google-calendar/callback] GOOGLE_OAUTH_CLIENT_SECRET not configured");
+  return crypto.createHash("sha256").update(`gcal-oauth-state:${base}`).digest("hex");
+}
 
 export async function GET(req: NextRequest) {
   // CC-migration marker: defer to request time before any header/query
@@ -61,12 +71,45 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Decode state to get tenantId
-    const { tenantId } = JSON.parse(Buffer.from(state, "base64").toString());
-    
-    if (!tenantId) {
-      throw new Error("Invalid state - missing tenantId");
+    // Verify signed state + nonce cookie (mirrors the Xero/Shopify pattern).
+    // Unsigned base64 state was a CSRF account-linking vector — a logged-in
+    // attacker could craft a state blob with the victim's tenantId and
+    // link their own calendar to the victim's tenant (or vice versa).
+    const stateSecret = getStateSecret();
+    const payload = verifyOAuthState<{ tenantId: string; nonce: string; issuedAt: number }>(
+      state,
+      stateSecret,
+    );
+    if (!payload || !payload.tenantId || !payload.nonce) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=invalid_state`,
+      );
     }
+    // State must be fresh — 10-minute window matches the nonce cookie TTL.
+    if (Date.now() - payload.issuedAt > 10 * 60 * 1000) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=state_expired`,
+      );
+    }
+    // Nonce must match the cookie set on /connect — proves the same
+    // browser started this flow.
+    const cookieNonce = req.cookies.get("gcal_oauth_nonce")?.value;
+    if (!cookieNonce || !safeCompare(cookieNonce, payload.nonce)) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=nonce_mismatch`,
+      );
+    }
+    // Session-tenant equality: the logged-in user's tenant must match
+    // the tenantId embedded in the state. This catches the case where
+    // an attacker initiates a flow on one tenant and the callback hits
+    // a different tenant's session.
+    const session = await getAuthContext();
+    if (session.tenantId !== payload.tenantId) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=tenant_mismatch`,
+      );
+    }
+    const { tenantId } = payload;
 
     // Exchange code for tokens
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {

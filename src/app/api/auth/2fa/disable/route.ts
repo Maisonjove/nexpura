@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyTOTPToken } from '@/lib/totp';
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { clearTwoFactorCookie } from '@/lib/auth/two-factor-cookie';
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await checkRateLimit(ip, 'auth');
-  if (!success) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
-  }
-
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -20,8 +15,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Disable 2FA using admin client to bypass RLS
+    // Rate-limit keyed by user.id so a shared-IP neighbour can't DoS
+    // the victim's 2FA-disable surface.
+    const { success: rlOk } = await checkRateLimit(user.id, 'auth');
+    if (!rlOk) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
+
+    // Proof-of-possession: require a current TOTP code before disabling.
+    // Disabling 2FA is a high-value target (it clears backup codes too),
+    // so we don't let a session-cookie-only request succeed — the user
+    // must prove they hold the current authenticator. CSRF is already
+    // enforced by middleware (2fa/disable is no longer blanket-exempt).
+    const body = await request.json().catch(() => ({} as { token?: string }));
+    const token = typeof body?.token === 'string' ? body.token.trim() : '';
+    if (!token || !/^\d{6}$/.test(token)) {
+      return NextResponse.json(
+        { error: 'Current 6-digit code required' },
+        { status: 400 },
+      );
+    }
+
     const admin = createAdminClient();
+    const { data: profile } = await admin
+      .from('users')
+      .select('totp_secret, totp_enabled')
+      .eq('id', user.id)
+      .single();
+    if (!profile?.totp_enabled || !profile?.totp_secret) {
+      // 2FA is already off — idempotent success (no info leak).
+      return NextResponse.json({ success: true });
+    }
+    const codeOk = verifyTOTPToken(profile.totp_secret, token);
+    if (!codeOk) {
+      return NextResponse.json(
+        { error: 'Invalid code — try again with a fresh code from your authenticator app.' },
+        { status: 401 },
+      );
+    }
+
+    // Disable 2FA using admin client to bypass RLS
     const { error: updateError } = await admin
       .from('users')
       .update({

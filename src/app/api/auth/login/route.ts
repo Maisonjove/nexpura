@@ -47,42 +47,19 @@ export async function POST(request: NextRequest) {
       userId?: string;
     };
 
-    // ─────────────────────────────────────────────────────────────
-    // 2FA-only check path (used after a session-authed user needs
-    // to resolve totp_enabled). Preserved from the previous impl so
-    // existing callers keep working.
-    // ─────────────────────────────────────────────────────────────
+    // The legacy `checkOnly2FA` pre-auth probe was removed. It returned
+    // `{requires2FA: true, userId, email}` for any registered account
+    // with TOTP enabled, which was an unauthenticated enumeration oracle
+    // (plus a full listUsers() scan per probe on the email branch).
+    // The `requires2FA` signal is now delivered only after successful
+    // password auth further down, so the probe isn't needed. Requests
+    // that still send `checkOnly2FA:true` are rejected with the same
+    // generic 400 as any malformed body.
     if (checkOnly2FA) {
-      const admin = createAdminClient();
-
-      if (clientUserId) {
-        const supabase = await createClient();
-        const { data: { user: sessionUser } } = await supabase.auth.getUser();
-        if (sessionUser && sessionUser.id === clientUserId) {
-          const { data: profile } = await admin
-            .from("users")
-            .select("totp_enabled")
-            .eq("id", clientUserId)
-            .single();
-          if (profile?.totp_enabled) {
-            return NextResponse.json({ requires2FA: true, userId: clientUserId, email: sessionUser.email });
-          }
-          return NextResponse.json({ requires2FA: false });
-        }
-      }
-
-      if (!email) {
-        return NextResponse.json({ requires2FA: false });
-      }
-      const { data: userData } = await admin.auth.admin.listUsers();
-      const user = userData?.users?.find(u => u.email === email);
-      if (user) {
-        const { data: profile } = await admin.from("users").select("totp_enabled").eq("id", user.id).single();
-        if (profile?.totp_enabled) {
-          return NextResponse.json({ requires2FA: true, userId: user.id, email: user.email });
-        }
-      }
-      return NextResponse.json({ requires2FA: false });
+      return NextResponse.json(
+        { error: "Invalid request" },
+        { status: 400 },
+      );
     }
 
     if (!email || !password) {
