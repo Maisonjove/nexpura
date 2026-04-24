@@ -12,7 +12,10 @@
 
 import { NextResponse } from "next/server";
 
-export const runtime = "edge";
+// Node runtime (cacheComponents is incompatible with `runtime = "edge"`).
+// Still fine for the keep-warm role — fluid compute shares the lambda
+// runtime across routes, so this ping warms the Node container that
+// /api/dashboard/stats later runs on.
 
 export async function GET() {
   return NextResponse.json(

@@ -35,7 +35,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
-export const runtime = "edge";
+// NOTE: originally this route was `runtime = "edge"` for always-warm
+// first-paint, but Next 16's `cacheComponents` global flag is
+// architecturally incompatible with per-route `runtime` exports
+// (same build-error `/admin/ops` hit earlier — "Route segment
+// config 'runtime' is not compatible with nextConfig.cacheComponents").
+// Kept as a plain Node Route Handler. The Option C wins that DON'T
+// depend on Edge — thin fast path, shell cookie, keep-warm cron,
+// tenant_dashboard_stats HOT fillfactor — all still apply.
 
 const PRECOMPUTED_MAX_STALE_MS = 60 * 1000;
 
