@@ -180,12 +180,19 @@ export default function POSClient({
       if (result.error) {
         setError(result.error);
       } else if (result.id) {
+        // Snapshot the just-charged total + change BEFORE clearing the
+        // cart — SaleSuccessScreen otherwise reads the live `total` /
+        // `change` derived from `cart`, which becomes 0 the moment we
+        // call setCart([]) below. Bug surfaced as the success screen
+        // showing "$0.00" with a "$55 change" line for a $55 sale.
         setSaleResult({
           id: result.id,
           saleNumber: result.saleNumber!,
           invoiceId: result.invoiceId,
           customerEmail: selectedCustomer?.email,
           cartSnapshot: [...cart],
+          totalAmount: total,
+          paymentMethod,
         });
         setShowPaymentModal(false);
         setCart([]);
@@ -394,11 +401,20 @@ export default function POSClient({
   }
 
   if (saleResult) {
+    // Live `total` / `change` are derived from `cart`, which we just
+    // emptied — fall back to the snapshot stashed on saleResult so the
+    // success screen reflects what was actually charged.
+    const successTotal = saleResult.totalAmount ?? total;
+    const cashTenderedNum = parseFloat(cashTendered) || 0;
+    const successChange =
+      paymentTab === "cash" && cashTenderedNum >= successTotal
+        ? cashTenderedNum - successTotal
+        : 0;
     return (
       <SaleSuccessScreen
         saleResult={saleResult}
-        total={total}
-        change={change}
+        total={successTotal}
+        change={successChange}
         paymentTab={paymentTab}
         emailReceiptSending={emailReceiptSending}
         emailReceiptToast={emailReceiptToast}
