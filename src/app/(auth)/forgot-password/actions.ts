@@ -38,7 +38,7 @@ const GENERIC_SUCCESS =
 const PLATFORM_RATE_LIMITED =
   "Too many reset requests for this email in the last hour — please wait a bit and try again, or check your inbox for the earlier email.";
 
-const UPSTASH_RATE_LIMITED =
+const LOCAL_RATE_LIMITED =
   "Too many requests. Please wait a minute and try again.";
 
 const GENERIC_ERROR =
@@ -93,7 +93,7 @@ export async function requestPasswordReset(
   if (!rl.success) {
     return {
       ok: false,
-      message: UPSTASH_RATE_LIMITED,
+      message: LOCAL_RATE_LIMITED,
       status: 429,
     };
   }

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   // Delete old audit logs (keep 90 days)
   const { error: auditError, count: auditCount } = await supabase
     .from("audit_logs")
-    .delete({ count: 'exact' })
+    .delete({ count: "exact" })
     .lt("created_at", ninetyDaysAgo.toISOString());
 
   if (auditError) {
@@ -26,9 +26,26 @@ export async function GET(request: Request) {
     results.audit_logs = `deleted ${auditCount ?? 0} records older than 90 days`;
   }
 
-  return NextResponse.json({ 
-    success: true, 
+  // Rate-limit bucket + login-attempt cleanup. Postgres-backed limiters
+  // grow unbounded without pruning; the RPC handles its own deletion
+  // logic and returns counts.
+  const { data: rlData, error: rlError } = await supabase.rpc(
+    "cleanup_expired_rate_limits",
+  );
+  if (rlError) {
+    results.rate_limit_buckets = `error: ${rlError.message}`;
+  } else if (rlData) {
+    const counts = rlData as {
+      rate_limit_buckets_deleted?: number;
+      login_attempts_deleted?: number;
+    };
+    results.rate_limit_buckets = `deleted ${counts.rate_limit_buckets_deleted ?? 0}`;
+    results.login_attempts = `deleted ${counts.login_attempts_deleted ?? 0}`;
+  }
+
+  return NextResponse.json({
+    success: true,
     cleaned_at: new Date().toISOString(),
-    results 
+    results,
   });
 }

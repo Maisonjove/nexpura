@@ -4,13 +4,13 @@
  * BUG-W1-004: the previous implementation called
  * `supabase.auth.resetPasswordForEmail` from the *browser* client, so
  * Supabase's platform rate-limit (~6/hr/email) tripped before our
- * Upstash limiter ever saw the request, and the raw "API rate limit
+ * Postgres limiter ever saw the request, and the raw "API rate limit
  * reached" string leaked to users.
  *
  * The fix moves the call to a server action (`requestPasswordReset`)
  * which:
  *   1. Validates input with zod (email format + length).
- *   2. Gates on the Upstash `auth` bucket (key = ip + normalised email).
+ *   2. Gates on the Postgres `auth` bucket (key = ip + normalised email).
  *   3. Calls `admin.auth.resetPasswordForEmail` server-side so we own
  *      the error path and translate platform RL → friendly copy.
  *   4. ALWAYS returns a generic success message (enumeration-safe).
@@ -19,7 +19,7 @@
  *   - Happy path returns generic success.
  *   - Nonexistent-email response is indistinguishable from the happy
  *     path (enumeration safety).
- *   - Upstash RL exceeded → 429 with retry copy.
+ *   - Postgres RL exceeded → 429 with retry copy.
  *   - Supabase platform RL → friendly "try again in a bit" copy, NOT
  *     the raw error string.
  *   - Malformed / missing email → 400 with "enter a valid email" — but
@@ -83,7 +83,7 @@ describe("forgot-password actions — server-side reset path", () => {
     expect(actionsSrc).toMatch(/resetPasswordForEmail/);
   });
 
-  it("gates on the Upstash `auth` rate-limit bucket", () => {
+  it("gates on the Postgres `auth` rate-limit bucket", () => {
     expect(actionsSrc).toMatch(/checkRateLimit\([^)]*["']auth["']\s*\)/);
   });
 
@@ -172,7 +172,7 @@ describe("requestPasswordReset — behaviour", () => {
     expect(res.message).toBe(known.message);
   });
 
-  it("returns 429 with retry copy when Upstash RL window exceeded", async () => {
+  it("returns 429 with retry copy when Postgres RL window exceeded", async () => {
     checkRateLimitMock.mockResolvedValue({ success: false, remaining: 0 });
     const res = await requestPasswordReset(fd("user@example.com"));
     expect(res.ok).toBe(false);

@@ -1,112 +1,127 @@
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 
-// Fail-CLOSED posture. Audit finding: previous implementation returned
-// { success: true } whenever Upstash env vars were missing or Redis was
-// unreachable. That turned every "rate-limited" endpoint (login, 2FA
-// verify, invite accept, bespoke approval-response, POS refund) into an
-// unthrottled surface if a single env var ever went unset.
+// Postgres-backed rate limiting.
 //
-// Production MUST have UPSTASH_REDIS_REST_URL + TOKEN configured. If
-// they're missing in NODE_ENV=production, the process refuses to boot.
-// In dev/preview without Redis, the limiter still runs (fail-closed
-// with an explicit allow for localhost) so the app is testable.
+// This replaces the prior Upstash/Redis limiter. Approved stack is
+// Supabase + Vercel only — no external cache services. See
+// supabase/migrations/20260424_postgres_rate_limit_and_login_attempts.sql
+// for the table + RPC.
 //
-// If Redis is configured but temporarily unreachable, we also fail
-// closed and log to Sentry — better to return a 503 than to silently
-// let through a brute-force wave.
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+// Fail-CLOSED posture. Audit finding: the original Upstash impl returned
+// { success: true } whenever env vars were missing, which turned every
+// rate-limited endpoint (login, 2FA verify, invite accept,
+// bespoke approval-response, POS refund) into an unthrottled surface if
+// env ever went unset. Same invariant here — if the DB call fails, we
+// deny the request in production. Better a brief 503 wave than a
+// brute-force window.
+//
+// Window algorithm: fixed-window via
+// `check_and_increment_rate_limit(key, limit, window_seconds)` RPC. This
+// permits up to 2× the configured rate at a boundary (standard trade-off
+// for O(1) SQL limiters; identical to Upstash's approximation). The
+// absolute per-minute cap is still bounded and the login-attempt module
+// sits on top as a stricter anti-brute-force layer.
 
-if (process.env.NODE_ENV === "production" && (!REDIS_URL || !REDIS_TOKEN)) {
-  // Crash on boot rather than serve traffic without rate limiting.
-  // Keeps the bad deploy out of production entirely.
-  throw new Error(
-    "[rate-limit] Refusing to boot: UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN required in production. " +
-      "Without them, rate limiting is effectively disabled and every /login, /2fa, /approval-response becomes brute-forceable."
-  );
+export type RateLimitType =
+  | "api"
+  | "auth"
+  | "ai"
+  | "webhook"
+  | "heavy"
+  | "pdf"
+  | "export";
+
+interface BucketConfig {
+  limit: number;
+  windowSeconds: number;
 }
 
-const redis = REDIS_URL && REDIS_TOKEN
-  ? new Redis({ url: REDIS_URL, token: REDIS_TOKEN })
-  : null;
-
-// Different rate limiters for different use cases
-export const rateLimiters = {
-  // General API: 100 requests per minute
-  api: redis ? new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(100, "60 s"),
-  }) : null,
-  
-  // Auth endpoints: 10 requests per minute (stricter)
-  auth: redis ? new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, "60 s"),
-  }) : null,
-  
-  // AI endpoints: 20 requests per minute
-  ai: redis ? new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(20, "60 s"),
-  }) : null,
-  
-  // Webhooks: 50 requests per minute
-  webhook: redis ? new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(50, "60 s"),
-  }) : null,
-  
-  // Heavy operations: 5 per minute
-  heavy: redis ? new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(5, "60 s"),
-  }) : null,
-  
-  // PDF generation: 10 per minute per user (memory-intensive)
-  pdf: redis ? new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, "60 s"),
-  }) : null,
-  
-  // Bulk exports: 3 per minute
-  export: redis ? new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(3, "60 s"),
-  }) : null,
+// Keep parity with the previous Upstash slidingWindow(N, "60 s") configs.
+const BUCKETS: Record<RateLimitType, BucketConfig> = {
+  api: { limit: 100, windowSeconds: 60 },
+  auth: { limit: 10, windowSeconds: 60 },
+  ai: { limit: 20, windowSeconds: 60 },
+  webhook: { limit: 50, windowSeconds: 60 },
+  heavy: { limit: 5, windowSeconds: 60 },
+  pdf: { limit: 10, windowSeconds: 60 },
+  export: { limit: 3, windowSeconds: 60 },
 };
 
-export type RateLimitType = keyof typeof rateLimiters;
-
-// Legacy export for backward compatibility
-export const ratelimit = rateLimiters.api;
+// Types mirror the previous API so the 120+ call sites don't need changes.
+export interface RateLimitResult {
+  success: boolean;
+  remaining?: number;
+}
 
 export async function checkRateLimit(
   identifier: string,
-  type: RateLimitType = 'api'
-): Promise<{ success: boolean; remaining?: number }> {
-  const limiter = rateLimiters[type];
-  if (!limiter) {
-    // Redis not configured. In production this path is unreachable
-    // because the module throws at import time. In dev/preview we
-    // fail-closed except for explicit localhost (so tests + local dev
-    // aren't blocked). Anything else is denied with a logged warning.
+  type: RateLimitType = "api",
+): Promise<RateLimitResult> {
+  const cfg = BUCKETS[type];
+  if (!cfg) {
+    logger.error("[rate-limit] unknown bucket type", { type });
+    return { success: false };
+  }
+
+  // Key format keeps each bucket isolated so an "api" burst from a user
+  // doesn't starve the same user's "auth" allowance.
+  const key = `${type}:${identifier}`;
+
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin.rpc("check_and_increment_rate_limit", {
+      p_key: key,
+      p_limit: cfg.limit,
+      p_window_seconds: cfg.windowSeconds,
+    });
+
+    if (error || !data) {
+      // Fail-CLOSED. In dev/test an explicit localhost allow-list keeps
+      // the app testable when the DB is offline.
+      if (process.env.NODE_ENV !== "production") {
+        const isLocalOrTest = /^(::1|127\.0\.0\.1|localhost|anonymous|test:)/.test(identifier);
+        if (isLocalOrTest) return { success: true };
+      }
+      logger.error("[rate-limit] denying request — RPC error", {
+        identifier: key,
+        type,
+        error: error?.message,
+      });
+      return { success: false };
+    }
+
+    const result = data as {
+      success: boolean;
+      remaining: number;
+    };
+    return { success: result.success, remaining: result.remaining };
+  } catch (err) {
+    // DB unreachable. Fail-closed.
     if (process.env.NODE_ENV !== "production") {
       const isLocalOrTest = /^(::1|127\.0\.0\.1|localhost|anonymous|test:)/.test(identifier);
       if (isLocalOrTest) return { success: true };
     }
-    logger.error("[rate-limit] denying request — limiter not configured", { identifier, type });
-    return { success: false };
-  }
-  try {
-    const result = await limiter.limit(identifier);
-    return { success: result.success, remaining: result.remaining };
-  } catch (err) {
-    // Redis unreachable (outage, network). Fail CLOSED and surface the
-    // error — better to return 503s briefly than let a brute-force wave
-    // through.
-    logger.error("[rate-limit] denying request — limiter threw", { identifier, type, error: err });
+    logger.error("[rate-limit] denying request — RPC threw", {
+      identifier: key,
+      type,
+      error: err,
+    });
     return { success: false };
   }
 }
+
+// Legacy export preserved for backward compatibility. A handful of call
+// sites still reference `ratelimit.limit(id)` or `rateLimiters[type]` —
+// the thin shim below keeps them working without a code change.
+export const rateLimiters: Record<RateLimitType, { limit: (id: string) => Promise<RateLimitResult> }> = {
+  api: { limit: (id: string) => checkRateLimit(id, "api") },
+  auth: { limit: (id: string) => checkRateLimit(id, "auth") },
+  ai: { limit: (id: string) => checkRateLimit(id, "ai") },
+  webhook: { limit: (id: string) => checkRateLimit(id, "webhook") },
+  heavy: { limit: (id: string) => checkRateLimit(id, "heavy") },
+  pdf: { limit: (id: string) => checkRateLimit(id, "pdf") },
+  export: { limit: (id: string) => checkRateLimit(id, "export") },
+};
+
+export const ratelimit = rateLimiters.api;
