@@ -1,10 +1,15 @@
 "use server";
 
 import { after } from "next/server";
+import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/auth-context";
 import { getCached, tenantCacheKey, invalidateCachePattern } from "@/lib/cache";
 import { coalesceRequest } from "@/lib/high-scale";
+import {
+  verifyShellCookie,
+  SHELL_COOKIE_NAME,
+} from "@/lib/dashboard/shell-cookie";
 import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
@@ -107,6 +112,32 @@ function getLast7Days(tz: string = "Australia/Sydney"): string[] {
 export async function getDashboardCriticalData(): Promise<DashboardCriticalData> {
   const auth = await requireAuth();
   const { userId, tenantId, tenantName, currency, isManager } = auth;
+
+  // Cold-path fast lane: the `nexpura-dash-shell` cookie carries the
+  // critical shell fields, signed + bound to the userId, 24h max-age.
+  // Login sets it; on the first dashboard open we skip the DB
+  // round-trip entirely. Any miss (cookie absent / tampered / expired
+  // / stale userId) silently falls through to the existing DB path.
+  try {
+    const jar = await cookies();
+    const signed = jar.get(SHELL_COOKIE_NAME)?.value;
+    const fromCookie = await verifyShellCookie(signed, userId);
+    if (fromCookie && fromCookie.tenantId === tenantId) {
+      return {
+        firstName: fromCookie.firstName,
+        tenantName: fromCookie.tenantName,
+        businessType: fromCookie.businessType,
+        currency: fromCookie.currency || currency,
+        isManager: fromCookie.isManager,
+        userId,
+        tenantId,
+        timezone: fromCookie.timezone ?? "Australia/Sydney",
+      };
+    }
+  } catch {
+    // Fall through to DB path — cookie read failures must never block
+    // the dashboard from rendering.
+  }
 
   const cacheKey = tenantCacheKey(tenantId, "dashboard-critical", userId);
 

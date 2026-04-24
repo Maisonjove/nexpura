@@ -31,12 +31,40 @@ const emptyStats: DashboardStatsData = {
   repairStageData: [],
 };
 
-// Fetcher that extracts locationIds from the SWR key and calls the server action
-// This avoids stale closure issues by getting locationIds from the key itself
+// Fetcher with two-tier strategy:
+//   1. Try the Edge-runtime /api/dashboard/stats endpoint first. On a
+//      cold session this is ~1-2s faster than the server-action path
+//      because Edge is always warm and the handler is a thin
+//      precomputed-row read.
+//   2. If Edge responds { stale: true, reason: ... } (missing or stale
+//      precomputed row, or a location-filter the Edge fast path doesn't
+//      handle), transparently fall back to the full server-action
+//      path which recomputes live.
+// Shape returned in either branch is DashboardStatsData, so consumers
+// don't know or care which tier served them.
 const fetcher = async (key: string): Promise<DashboardStatsData> => {
   // Key format: "dashboard-stats:id1,id2,id3" or "dashboard-stats:all"
   const locationPart = key.split(":")[1];
   const locationIds = locationPart === "all" ? null : locationPart.split(",");
+
+  try {
+    const qs = locationIds && locationIds.length > 0
+      ? `?locationIds=${encodeURIComponent(locationIds.join(","))}`
+      : "";
+    const r = await fetch(`/api/dashboard/stats${qs}`, {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (r.ok) {
+      const body = await r.json();
+      if (!body?.stale) return body as DashboardStatsData;
+      // stale — fall through to server action
+    }
+  } catch {
+    // network blip — fall through to server action
+  }
+
   return getDashboardStats(locationIds);
 };
 

@@ -8,6 +8,11 @@ import {
   clearLoginAttempts,
 } from "@/lib/auth-security";
 import { recordSession, checkNewDeviceLogin } from "@/lib/session-manager";
+import {
+  signShellCookie,
+  SHELL_COOKIE_NAME,
+  SHELL_COOKIE_MAX_AGE,
+} from "@/lib/dashboard/shell-cookie";
 import logger from "@/lib/logger";
 
 /**
@@ -147,20 +152,70 @@ export async function POST(request: NextRequest) {
     // Step 4: 2FA gate. Middleware will also bounce totp_enabled
     // users without the AAL2 cookie, but we return the signal here
     // so the client can take the user straight to /verify-2fa.
+    //
+    // Also: widen the tenant select so we can populate the
+    // `nexpura-dash-shell` cookie in one go — dashboard will read it
+    // and skip its DB round-trip on the first cold render.
     // ─────────────────────────────────────────────────────────────
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("users")
-      .select("totp_enabled, tenant_id, tenants!inner(slug)")
+      .select(
+        "totp_enabled, tenant_id, role, tenants!inner(slug, name, business_name, business_type, currency, timezone)",
+      )
       .eq("id", data.user.id)
       .single();
 
-    if ((profile as { totp_enabled?: boolean } | null)?.totp_enabled) {
-      return NextResponse.json({
-        requires2FA: true,
-        userId: data.user.id,
-        email: data.user.email,
+    const profileTyped = profile as {
+      totp_enabled?: boolean;
+      tenant_id?: string;
+      role?: string;
+      tenants?: {
+        slug?: string | null;
+        name?: string | null;
+        business_name?: string | null;
+        business_type?: string | null;
+        currency?: string | null;
+        timezone?: string | null;
+      };
+    } | null;
+
+    // Build + sign the shell cookie. Fire-and-forget: if signing fails
+    // (missing secret, Edge crypto transient) the dashboard just falls
+    // back to its DB path. We set the cookie on BOTH the requires2FA
+    // path and the success path so a subsequent /verify-2fa → /dashboard
+    // hit reads it without a round-trip.
+    const shellCookieValue = await signShellCookie({
+      userId: data.user.id,
+      tenantId: profileTyped?.tenant_id ?? "",
+      firstName: profileTyped?.tenants?.business_name || profileTyped?.tenants?.name || "there",
+      tenantName: profileTyped?.tenants?.business_name || profileTyped?.tenants?.name || null,
+      businessType: profileTyped?.tenants?.business_type ?? null,
+      currency: profileTyped?.tenants?.currency || "AUD",
+      timezone: profileTyped?.tenants?.timezone ?? null,
+      isManager: profileTyped?.role === "owner" || profileTyped?.role === "manager",
+    }).catch(() => null);
+
+    function attachShellCookie(res: NextResponse): NextResponse {
+      if (!shellCookieValue) return res;
+      res.cookies.set(SHELL_COOKIE_NAME, shellCookieValue, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: SHELL_COOKIE_MAX_AGE,
       });
+      return res;
+    }
+
+    if (profileTyped?.totp_enabled) {
+      return attachShellCookie(
+        NextResponse.json({
+          requires2FA: true,
+          userId: data.user.id,
+          email: data.user.email,
+        }),
+      );
     }
 
     // Session-tracking hooks (non-blocking).
@@ -178,13 +233,15 @@ export async function POST(request: NextRequest) {
 
     // Resolve tenant slug so the client can skip the middleware
     // /dashboard → /{slug}/dashboard redirect round-trip on first nav.
-    const tenantSlug = (profile as { tenants?: { slug?: string | null } } | null)?.tenants?.slug ?? null;
+    const tenantSlug = profileTyped?.tenants?.slug ?? null;
 
-    return NextResponse.json({
-      success: true,
-      redirectTo: redirectTo || "/dashboard",
-      tenantSlug,
-    });
+    return attachShellCookie(
+      NextResponse.json({
+        success: true,
+        redirectTo: redirectTo || "/dashboard",
+        tenantSlug,
+      }),
+    );
   } catch (err) {
     logger.error("[api/auth/login] unexpected error", { error: err });
     // Enumeration-safe fallback: same copy as invalid-credentials.
