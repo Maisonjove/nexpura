@@ -5,9 +5,14 @@ import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeCompare } from "@/lib/timing-safe-compare";
 
-// Review / staff bypass tokens
-const REVIEW_TOKEN = process.env.REVIEW_BYPASS_TOKEN ?? "";
-const STAFF_TOKEN = process.env.STAFF_BYPASS_TOKEN ?? "";
+// Review / staff bypass tokens. Prefer the canonical NEXPURA_* names
+// (matches src/lib/auth/review.ts); fall back to the legacy REVIEW_BYPASS_TOKEN
+// / STAFF_BYPASS_TOKEN names so existing Vercel env vars keep working during
+// the consolidation.
+const REVIEW_TOKEN =
+  process.env.NEXPURA_REVIEW_TOKEN ?? process.env.REVIEW_BYPASS_TOKEN ?? "";
+const STAFF_TOKEN =
+  process.env.NEXPURA_STAFF_BYPASS_TOKEN ?? process.env.STAFF_BYPASS_TOKEN ?? "";
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
