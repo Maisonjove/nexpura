@@ -68,10 +68,16 @@ export async function getCachedUserProfile(
   return getCached(
     cacheKey,
     async () => {
+      // Narrow projection — the fields consumed by middleware + the
+      // (app) layout. Avoids shipping every column of users + tenants
+      // on every 5-minute cache refresh for every signed-in user.
       const admin = createAdminClient();
       const { data, error } = await admin
         .from("users")
-        .select("*, tenants(*)")
+        .select(
+          "id, email, tenant_id, role, full_name, phone, preferred_location_id, is_super_admin, created_at, updated_at, totp_enabled, " +
+            "tenants(id, name, slug, business_name, business_type, currency, timezone, subscription_status, logo_url, phone, email, abn, address_line1, suburb, state, postcode, country, tax_rate, tax_name, tax_inclusive)",
+        )
         .eq("id", userId)
         .single();
 
@@ -79,7 +85,7 @@ export async function getCachedUserProfile(
         return null;
       }
 
-      return data as CachedUserProfile;
+      return data as unknown as CachedUserProfile;
     },
     PROFILE_TTL
   );
