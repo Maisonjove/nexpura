@@ -39,6 +39,14 @@ export interface ShellPayload {
   currency: string;
   timezone: string | null;
   isManager: boolean;
+  // Middleware fast-path fields — set from the login profile lookup so
+  // subsequent navigations skip the `users` + `tenants` DB read entirely.
+  // All optional so pre-existing cookies (signed before these fields
+  // shipped) still verify and just fall back to the DB path.
+  role?: string;
+  tenantSlug?: string | null;
+  totpEnabled?: boolean;
+  subscriptionStatus?: string | null;
   iat: number;
 }
 

@@ -172,4 +172,34 @@ describe("dashboard shell cookie — sign/verify contract", () => {
     expect(SHELL_COOKIE_NAME).toBe("nexpura-dash-shell");
     expect(SHELL_COOKIE_MAX_AGE).toBe(24 * 60 * 60);
   });
+
+  // Step 3 middleware fast-path fields — role/tenantSlug/totpEnabled.
+  // Locked so a future refactor doesn't accidentally stop round-tripping
+  // them and quietly re-introduce the getCachedUserProfile DB call on
+  // every protected nav.
+  it("round-trips the middleware fast-path fields (role / slug / totp)", async () => {
+    const cookie = await signShellCookie({
+      ...BASE_PAYLOAD,
+      role: "owner",
+      tenantSlug: "acme-jewellers",
+      totpEnabled: true,
+    });
+    expect(cookie).toBeTruthy();
+    const payload = await verifyShellCookie(cookie!, BASE_PAYLOAD.userId);
+    expect(payload).not.toBeNull();
+    expect(payload!.role).toBe("owner");
+    expect(payload!.tenantSlug).toBe("acme-jewellers");
+    expect(payload!.totpEnabled).toBe(true);
+  });
+
+  it("accepts cookies signed without the new fast-path fields (backwards-compat)", async () => {
+    // BASE_PAYLOAD omits role/tenantSlug/totpEnabled — the helper must
+    // still verify so sessions signed before this ships aren't nuked.
+    const cookie = await signShellCookie(BASE_PAYLOAD);
+    const payload = await verifyShellCookie(cookie!, BASE_PAYLOAD.userId);
+    expect(payload).not.toBeNull();
+    expect(payload!.role).toBeUndefined();
+    expect(payload!.tenantSlug).toBeUndefined();
+    expect(payload!.totpEnabled).toBeUndefined();
+  });
 });

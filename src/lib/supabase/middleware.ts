@@ -13,6 +13,56 @@ import {
   TWO_FACTOR_COOKIE_NAME,
   verifyTwoFactorCookie,
 } from "@/lib/auth/two-factor-cookie";
+import {
+  SHELL_COOKIE_NAME,
+  verifyShellCookie,
+} from "@/lib/dashboard/shell-cookie";
+
+// Profile shape middleware actually consumes. Deliberately a narrow
+// subset of the users/tenants row so both the shell-cookie fast path
+// and the getCachedUserProfile slow path converge on it.
+type MiddlewareProfile = {
+  tenant_id: string;
+  role: string;
+  totp_enabled: boolean;
+  slug: string | null;
+};
+
+/**
+ * Resolve the middleware profile. Reads the HMAC-signed shell cookie
+ * first (set at login with tenant_id/role/slug/totp_enabled baked in);
+ * that's a ~0.5 ms Web-Crypto verify with no DB round-trip. On miss
+ * (no cookie, tampered, expired, pre-rollout session, missing fields)
+ * falls back to the DB path via getCachedUserProfile.
+ */
+async function resolveMiddlewareProfile(
+  request: NextRequest,
+  userId: string,
+): Promise<MiddlewareProfile | null> {
+  const shellValue = request.cookies.get(SHELL_COOKIE_NAME)?.value;
+  const shell = await verifyShellCookie(shellValue, userId);
+  if (
+    shell &&
+    shell.tenantId &&
+    typeof shell.role === "string" &&
+    typeof shell.totpEnabled === "boolean"
+  ) {
+    return {
+      tenant_id: shell.tenantId,
+      role: shell.role,
+      totp_enabled: shell.totpEnabled,
+      slug: shell.tenantSlug ?? null,
+    };
+  }
+  const fallback = await getCachedUserProfile(userId);
+  if (!fallback?.tenant_id) return null;
+  return {
+    tenant_id: fallback.tenant_id,
+    role: fallback.role ?? "",
+    totp_enabled: fallback.totp_enabled === true,
+    slug: fallback.tenants?.slug ?? null,
+  };
+}
 
 // --- Subscription status cookie cache (5-min TTL) ---
 // Skips the subscriptions DB query on every page nav once status is confirmed OK.
@@ -348,8 +398,9 @@ async function _updateSessionInner(request: NextRequest) {
       return redirectWithCookies(loginUrl, supabaseResponse);
     }
     // PR-05: /admin is the super-admin surface — the AAL2 gate matters
-    // most here. totp_enabled is fetched via the cached user profile.
-    const adminProfile = await getCachedUserProfile(user.id);
+    // most here. totp_enabled is read from the shell cookie (set at login
+    // + signed) so we skip the users-table round-trip on every /admin nav.
+    const adminProfile = await resolveMiddlewareProfile(request, user.id);
     const twoFactorRedirectAdmin = await enforceTwoFactor(
       request,
       user.id,
@@ -385,7 +436,7 @@ async function _updateSessionInner(request: NextRequest) {
       return redirectWithCookies(verifyUrl, supabaseResponse);
     }
 
-    const userProfile = await getCachedUserProfile(user.id);
+    const userProfile = await resolveMiddlewareProfile(request, user.id);
     if (!userProfile || !userProfile.tenant_id) {
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = "/onboarding";
@@ -403,7 +454,7 @@ async function _updateSessionInner(request: NextRequest) {
     );
     if (twoFactorRedirect) return twoFactorRedirect;
 
-    const userTenantSlug = userProfile.tenants?.slug;
+    const userTenantSlug = userProfile.slug;
     if (userTenantSlug && userTenantSlug !== tenantParsed.slug) {
       // Cross-tenant URL: silently redirect user to their own correct tenant URL
       const correctUrl = request.nextUrl.clone();
@@ -494,7 +545,7 @@ async function _updateSessionInner(request: NextRequest) {
       return redirectWithCookies(verifyUrl, supabaseResponse);
     }
 
-    const userProfile = await getCachedUserProfile(user.id);
+    const userProfile = await resolveMiddlewareProfile(request, user.id);
     if (!userProfile || !userProfile.tenant_id) {
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = "/onboarding";
@@ -516,7 +567,7 @@ async function _updateSessionInner(request: NextRequest) {
 
     // Migrate flat URLs — tenant-aware URLs for bookmarkable, shareable routes.
     // Tenants with a slug get redirected; tenants without a slug fall through to flat-route mode.
-    const userTenantSlug = userProfile.tenants?.slug;
+    const userTenantSlug = userProfile.slug;
     if (userTenantSlug) {
       const tenantUrl = request.nextUrl.clone();
       tenantUrl.pathname = `/${userTenantSlug}${pathname}`;

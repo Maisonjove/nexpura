@@ -194,6 +194,12 @@ export async function POST(request: NextRequest) {
       currency: profileTyped?.tenants?.currency || "AUD",
       timezone: profileTyped?.tenants?.timezone ?? null,
       isManager: profileTyped?.role === "owner" || profileTyped?.role === "manager",
+      // Middleware fast-path fields — lets subsequent navigations skip
+      // the users+tenants DB read that getCachedUserProfile currently
+      // does on every protected nav.
+      role: profileTyped?.role ?? undefined,
+      tenantSlug: profileTyped?.tenants?.slug ?? null,
+      totpEnabled: profileTyped?.totp_enabled === true,
     }).catch(() => null);
 
     function attachShellCookie(res: NextResponse): NextResponse {
