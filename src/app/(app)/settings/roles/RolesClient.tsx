@@ -19,10 +19,12 @@ import {
   updateMemberPhone,
   updateMemberNotifications,
   updateMemberWhatsAppEnabled,
-  DEFAULT_PERMISSIONS,
-  PermissionSet,
-  NotificationPreferences 
 } from "./actions";
+import {
+  DEFAULT_PERMISSIONS,
+  type PermissionSet,
+  type NotificationPreferences,
+} from "./_constants";
 
 interface TeamMember {
   id: string;
