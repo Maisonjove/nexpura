@@ -156,7 +156,7 @@ describe("auth-security.ts — Postgres-backed contract", () => {
   it("calls the Postgres lockout RPCs", () => {
     expect(authSecuritySource).toMatch(/check_login_allowed/);
     expect(authSecuritySource).toMatch(/record_failed_login/);
-    expect(authSecuritySource).toMatch(/clear_login_attempts/);
+    expect(authSecuritySource).toMatch(/clear_login_lockouts/);
   });
 
   it("hashes the identifier before storing (no raw PII in DB)", () => {

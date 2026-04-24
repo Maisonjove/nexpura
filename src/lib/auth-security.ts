@@ -85,11 +85,11 @@ export async function recordFailedLogin(identifier: string): Promise<void> {
 export async function clearLoginAttempts(identifier: string): Promise<void> {
   try {
     const admin = createAdminClient();
-    const { error } = await admin.rpc("clear_login_attempts", {
+    const { error } = await admin.rpc("clear_login_lockouts", {
       p_identifier_hash: hashIdentifier(identifier),
     });
     if (error) {
-      logger.error("[auth-security] clear_login_attempts RPC error", {
+      logger.error("[auth-security] clear_login_lockouts RPC error", {
         error: error.message,
       });
     }

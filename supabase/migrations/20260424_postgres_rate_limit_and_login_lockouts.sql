@@ -9,7 +9,7 @@
 --     bucket_key encodes the window_start epoch, so each window is a
 --     distinct row and the counter increments atomically via
 --     INSERT ... ON CONFLICT DO UPDATE.
---   • login_attempts — stateful 5-strike → 15-min lockout per hashed
+--   • login_lockouts — stateful 5-strike → 15-min lockout per hashed
 --     identifier (matches the old auth-security.ts behavior exactly).
 --   • Both tables grow unbounded without cleanup; see the
 --     /api/cron/cleanup-rate-limits route for the daily prune.
@@ -95,10 +95,10 @@ REVOKE ALL ON FUNCTION public.check_and_increment_rate_limit(text, integer, inte
 GRANT EXECUTE ON FUNCTION public.check_and_increment_rate_limit(text, integer, integer) TO service_role;
 
 -- ──────────────────────────────────────────────────────────────────────
--- login_attempts — stateful per-identifier failure counter + lockout
+-- login_lockouts — stateful per-identifier failure counter + lockout
 -- ──────────────────────────────────────────────────────────────────────
 
-CREATE TABLE IF NOT EXISTS public.login_attempts (
+CREATE TABLE IF NOT EXISTS public.login_lockouts (
   identifier_hash text PRIMARY KEY,
   attempts integer NOT NULL DEFAULT 0,
   first_attempt_at timestamptz NOT NULL DEFAULT now(),
@@ -106,10 +106,10 @@ CREATE TABLE IF NOT EXISTS public.login_attempts (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS login_attempts_updated_at_idx
-  ON public.login_attempts (updated_at);
+CREATE INDEX IF NOT EXISTS login_lockouts_updated_at_idx
+  ON public.login_lockouts (updated_at);
 
-ALTER TABLE public.login_attempts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.login_lockouts ENABLE ROW LEVEL SECURITY;
 -- No policies: service-role-only.
 
 -- check_login_allowed: returns whether the identifier may attempt login.
@@ -124,10 +124,10 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_row public.login_attempts;
+  v_row public.login_lockouts;
   v_now timestamptz := now();
 BEGIN
-  SELECT * INTO v_row FROM public.login_attempts WHERE identifier_hash = p_identifier_hash;
+  SELECT * INTO v_row FROM public.login_lockouts WHERE identifier_hash = p_identifier_hash;
 
   IF NOT FOUND THEN
     RETURN jsonb_build_object(
@@ -172,35 +172,35 @@ DECLARE
   v_locked_until timestamptz;
   v_now timestamptz := now();
 BEGIN
-  INSERT INTO public.login_attempts (identifier_hash, attempts, first_attempt_at, updated_at)
+  INSERT INTO public.login_lockouts (identifier_hash, attempts, first_attempt_at, updated_at)
   VALUES (p_identifier_hash, 1, v_now, v_now)
   ON CONFLICT (identifier_hash) DO UPDATE
     SET
       -- If the previous lockout has expired, start a fresh count.
       attempts = CASE
-        WHEN public.login_attempts.locked_until IS NOT NULL
-          AND public.login_attempts.locked_until <= v_now
+        WHEN public.login_lockouts.locked_until IS NOT NULL
+          AND public.login_lockouts.locked_until <= v_now
           THEN 1
-        ELSE public.login_attempts.attempts + 1
+        ELSE public.login_lockouts.attempts + 1
       END,
       first_attempt_at = CASE
-        WHEN public.login_attempts.locked_until IS NOT NULL
-          AND public.login_attempts.locked_until <= v_now
+        WHEN public.login_lockouts.locked_until IS NOT NULL
+          AND public.login_lockouts.locked_until <= v_now
           THEN v_now
-        ELSE public.login_attempts.first_attempt_at
+        ELSE public.login_lockouts.first_attempt_at
       END,
       locked_until = CASE
-        WHEN public.login_attempts.locked_until IS NOT NULL
-          AND public.login_attempts.locked_until <= v_now
+        WHEN public.login_lockouts.locked_until IS NOT NULL
+          AND public.login_lockouts.locked_until <= v_now
           THEN NULL
-        ELSE public.login_attempts.locked_until
+        ELSE public.login_lockouts.locked_until
       END,
       updated_at = v_now
   RETURNING attempts, locked_until INTO v_attempts, v_locked_until;
 
   -- If we've hit the threshold this call, set the lockout.
   IF v_attempts >= p_max_attempts AND (v_locked_until IS NULL OR v_locked_until <= v_now) THEN
-    UPDATE public.login_attempts
+    UPDATE public.login_lockouts
       SET locked_until = v_now + make_interval(secs => p_lockout_seconds),
           updated_at = v_now
       WHERE identifier_hash = p_identifier_hash
@@ -217,8 +217,8 @@ $$;
 REVOKE ALL ON FUNCTION public.record_failed_login(text, integer, integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.record_failed_login(text, integer, integer) TO service_role;
 
--- clear_login_attempts: wipe the row on successful login.
-CREATE OR REPLACE FUNCTION public.clear_login_attempts(
+-- clear_login_lockouts: wipe the row on successful login.
+CREATE OR REPLACE FUNCTION public.clear_login_lockouts(
   p_identifier_hash text
 ) RETURNS void
 LANGUAGE plpgsql
@@ -226,12 +226,12 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  DELETE FROM public.login_attempts WHERE identifier_hash = p_identifier_hash;
+  DELETE FROM public.login_lockouts WHERE identifier_hash = p_identifier_hash;
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.clear_login_attempts(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.clear_login_attempts(text) TO service_role;
+REVOKE ALL ON FUNCTION public.clear_login_lockouts(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.clear_login_lockouts(text) TO service_role;
 
 -- ──────────────────────────────────────────────────────────────────────
 -- cleanup helpers (called from /api/cron/cleanup-rate-limits)
@@ -251,14 +251,14 @@ BEGIN
     WHERE window_end < now() - interval '1 hour';
   GET DIAGNOSTICS v_buckets_deleted = ROW_COUNT;
 
-  DELETE FROM public.login_attempts
+  DELETE FROM public.login_lockouts
     WHERE updated_at < now() - interval '24 hours'
       AND (locked_until IS NULL OR locked_until < now());
   GET DIAGNOSTICS v_attempts_deleted = ROW_COUNT;
 
   RETURN jsonb_build_object(
     'rate_limit_buckets_deleted', v_buckets_deleted,
-    'login_attempts_deleted', v_attempts_deleted
+    'login_lockouts_deleted', v_attempts_deleted
   );
 END;
 $$;

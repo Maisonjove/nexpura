@@ -37,10 +37,10 @@ export async function GET(request: Request) {
   } else if (rlData) {
     const counts = rlData as {
       rate_limit_buckets_deleted?: number;
-      login_attempts_deleted?: number;
+      login_lockouts_deleted?: number;
     };
     results.rate_limit_buckets = `deleted ${counts.rate_limit_buckets_deleted ?? 0}`;
-    results.login_attempts = `deleted ${counts.login_attempts_deleted ?? 0}`;
+    results.login_lockouts = `deleted ${counts.login_lockouts_deleted ?? 0}`;
   }
 
   return NextResponse.json({
