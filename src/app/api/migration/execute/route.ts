@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     // subsequent inserts to run without a tenant_id.
     const { data: profile } = await admin
       .from('users')
-      .select('tenant_id')
+      .select('tenant_id, role')
       .eq('id', user.id)
       .single();
 
@@ -117,6 +117,14 @@ export async function POST(req: NextRequest) {
     // Hard-fail if tenant cannot be resolved — never proceed with undefined tenantId
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 403 });
+    }
+
+    // Migration execute does bulk writes across customers / inventory /
+    // repairs / invoices etc. Owner/admin only — staff have no reason to
+    // trigger a multi-hundred-row import against the tenant.
+    const role = (profile as { role?: string } | null)?.role ?? 'staff';
+    if (!['owner', 'admin'].includes(role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json();

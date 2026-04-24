@@ -6,17 +6,34 @@ import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-02-25.clover",
-});
+// Lazy accessors so a missing env var in preview doesn't crash the
+// module at load-time (which produces an unrelated 500 instead of the
+// intended 503). Mirrors the main /api/webhooks/stripe/route.ts pattern.
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe | null {
+  if (_stripe) return _stripe;
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return null;
+  _stripe = new Stripe(key, { apiVersion: "2026-02-25.clover" });
+  return _stripe;
+}
 
-const webhookSecret = process.env.STRIPE_MARKETING_WEBHOOK_SECRET!;
+function getMarketingWebhookSecret(): string | null {
+  return process.env.STRIPE_MARKETING_WEBHOOK_SECRET || null;
+}
 
 export async function POST(req: NextRequest) {
   const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success: _rlSuccess } = await checkRateLimit(_ip);
   if (!_rlSuccess) {
     return new Response("Too many requests", { status: 429 });
+  }
+
+  const stripe = getStripe();
+  const webhookSecret = getMarketingWebhookSecret();
+  if (!stripe || !webhookSecret) {
+    logger.error("[stripe-marketing-webhook] missing STRIPE_SECRET_KEY or STRIPE_MARKETING_WEBHOOK_SECRET — refusing request");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
   }
 
   const body = await req.text();

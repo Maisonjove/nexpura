@@ -29,15 +29,22 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Get user's tenant
+    // Get user's tenant + role
     const { data: userData } = await admin
       .from('users')
-      .select('tenant_id')
+      .select('tenant_id, role')
       .eq('id', user.id)
       .single();
 
     if (!userData?.tenant_id) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 400 });
+    }
+
+    // Merging customers is destructive and rewrites FK pointers across
+    // sales / repairs / invoices etc. — owner/admin/manager only.
+    const role = (userData as { role?: string }).role ?? 'staff';
+    if (!['owner', 'admin', 'manager'].includes(role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const tenantId = userData.tenant_id;
@@ -110,6 +117,11 @@ export async function POST(request: NextRequest) {
         await admin
           .from(table)
           .update({ customer_id: primaryId })
+          // Scope every FK rewrite to this tenant as defence-in-depth.
+          // UUID collisions across tenants are astronomically unlikely
+          // but a misrouted merge would be silently cross-tenant without
+          // this guard.
+          .eq('tenant_id', tenantId)
           .in('customer_id', secondaryIds);
       } catch (e) {
         // Table might not exist or not have customer_id - skip

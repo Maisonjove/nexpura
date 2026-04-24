@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+
+// Public contact-form schema. Enforced lengths stop a spammer bloating
+// the DB with a megabyte-sized "message" and shut down the most obvious
+// XSS-via-long-input patterns. Honeypot field `website` should always
+// be empty from real browsers; spambots fill every field.
+const enquirySchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200),
+  email: z.string().trim().email("Please enter a valid email").max(200),
+  phone: z.string().trim().max(40).optional(),
+  message: z.string().trim().min(1, "Message is required").max(5000),
+  item_name: z.string().trim().max(400).optional(),
+  // honeypot — must be empty
+  website: z.string().max(0).optional().or(z.literal("")).or(z.undefined()),
+});
 
 export async function POST(
   req: NextRequest,
@@ -15,23 +30,29 @@ export async function POST(
 
   const { subdomain } = await params;
 
-  let body: {
-    name?: string;
-    email?: string;
-    phone?: string;
-    message?: string;
-    item_name?: string;
-  };
-
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  if (!body.name || !body.email || !body.message) {
-    return NextResponse.json({ error: "Name, email, and message are required" }, { status: 400 });
+  const parsed = enquirySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 },
+    );
   }
+
+  // Honeypot: if a bot filled the hidden `website` field, swallow the
+  // request with a 200 so spam pipelines think it worked but no row
+  // lands in the DB.
+  if (parsed.data.website && parsed.data.website.length > 0) {
+    return NextResponse.json({ success: true });
+  }
+
+  const body = parsed.data;
 
   const supabase = createAdminClient();
 

@@ -8,19 +8,19 @@ import { twoFAVerifySchema } from '@/lib/schemas';
 import { setTwoFactorCookie } from '@/lib/auth/two-factor-cookie';
 
 export async function POST(request: NextRequest) {
-  // Strict rate limiting for auth endpoints
-  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success: rlSuccess } = await checkRateLimit(ip, 'auth');
-  if (!rlSuccess) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-  }
-
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limit keyed by user.id so a victim's 2FA-setup attempts
+    // can't be DoS'd by an attacker sharing their IP (NAT / CGNAT).
+    const { success: rlSuccess } = await checkRateLimit(user.id, 'auth');
+    if (!rlSuccess) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
     const body = await request.json();

@@ -16,18 +16,20 @@ import { setTwoFactorCookie } from '@/lib/auth/two-factor-cookie';
  * oracle attacks where an attacker could validate 2FA codes without knowing the password.
  */
 export async function POST(request: NextRequest) {
-  // Strict rate limiting for auth endpoints
-  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success: rlSuccess } = await checkRateLimit(ip, 'auth');
-  if (!rlSuccess) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-  }
-
   try {
     // SECURITY: Verify the caller has an active session
     // This ensures they passed password authentication before attempting 2FA
     const supabase = await createClient();
     const { data: { user: sessionUser } } = await supabase.auth.getUser();
+
+    // Rate limit keyed by user.id so a victim's 2FA can't be DoS'd by
+    // an attacker on the same NAT / CGNAT IP. Fall back to IP only for
+    // the pre-auth case (sessionUser missing — handled below with 401).
+    const rlKey = sessionUser?.id ?? (request.headers.get('x-forwarded-for') ?? 'anonymous');
+    const { success: rlSuccess } = await checkRateLimit(rlKey, 'auth');
+    if (!rlSuccess) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
     
     if (!sessionUser) {
       // No session means they haven't passed password auth
