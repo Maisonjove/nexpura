@@ -15,9 +15,20 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data: userData } = await admin.from("users").select("tenant_id").eq("id", user.id).single();
+  const { data: userData } = await admin
+    .from("users")
+    .select("tenant_id, role")
+    .eq("id", user.id)
+    .single();
   const tenantId = userData?.tenant_id;
   if (!tenantId) return NextResponse.json({ error: "No tenant" }, { status: 400 });
+
+  // Expense reports are an owner/manager/admin surface. Staff users
+  // don't need a breakdown of tenant spend.
+  const role = (userData as { role?: string }).role ?? "staff";
+  if (!["owner", "admin", "manager"].includes(role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from") ?? "";

@@ -31,11 +31,18 @@ export async function GET(req: Request) {
 
     const { data: userData } = await admin
       .from("users")
-      .select("tenant_id, tenants(gst_rate)")
+      .select("tenant_id, role, tenants(gst_rate)")
       .eq("id", user.id)
       .single();
 
     if (!userData?.tenant_id) return Response.json({ error: "No tenant" }, { status: 403 });
+
+    // Financials surface is owner/manager/admin only — staff users
+    // should not see tenant revenue / GST / outstanding invoices.
+    const role = (userData as { role?: string }).role ?? "staff";
+    if (!["owner", "admin", "manager"].includes(role)) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const tenantId = userData.tenant_id;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -17,11 +17,18 @@ export async function GET(req: Request) {
 
     const { data: userData } = await supabase
       .from("users")
-      .select("tenant_id, tenants(name, gst_rate)")
+      .select("tenant_id, role, tenants(name, gst_rate)")
       .eq("id", user.id)
       .single();
 
     if (!userData?.tenant_id) return Response.json({ error: "No tenant" }, { status: 403 });
+
+    // Financials surface is owner/manager/admin only — staff users
+    // must not see tenant P&L or revenue breakdowns.
+    const role = (userData as { role?: string }).role ?? "staff";
+    if (!["owner", "admin", "manager"].includes(role)) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const tenantId = userData.tenant_id;
     const tenant = userData.tenants as { name?: string; gst_rate?: number } | null;

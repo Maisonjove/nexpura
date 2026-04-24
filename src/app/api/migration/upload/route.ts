@@ -49,11 +49,19 @@ export async function POST(req: NextRequest) {
 
     const { data: profile } = await supabase
       .from('users')
-      .select('tenant_id')
+      .select('tenant_id, role')
       .eq('id', user.id)
       .single();
 
-    const tenantId = (profile as { tenant_id: string } | null)?.tenant_id;
+    const tenantId = (profile as { tenant_id: string; role?: string } | null)?.tenant_id;
+    // Migration uploads ingest customer/invoice/inventory data in bulk.
+    // Only owner/admin should trigger that — staff users have no reason
+    // to upload a 10k-row customer CSV.
+    const role = (profile as { role?: string } | null)?.role ?? 'staff';
+    if (!['owner', 'admin'].includes(role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const sessionId = formData.get('sessionId') as string;
@@ -62,7 +70,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing file or sessionId' }, { status: 400 });
     }
 
+    // Reject oversized uploads BEFORE arrayBuffer() loads them into
+    // lambda memory. 20 MB is ample for any real migration CSV /
+    // Excel / JSON — anything above is pathological and would OOM
+    // the function.
+    const MAX_MIGRATION_FILE_BYTES = 20 * 1024 * 1024;
+    if (file.size > MAX_MIGRATION_FILE_BYTES) {
+      return NextResponse.json(
+        { error: 'File too large. Maximum 20 MB per upload.' },
+        { status: 413 },
+      );
+    }
+
     const admin = createAdminClient();
+
+    // Verify the sessionId actually belongs to this tenant. Without this
+    // check, a low-privilege user could pollute another tenant's
+    // migration_files rows by supplying a known foreign sessionId.
+    const { data: sessionRow } = await admin
+      .from('migration_sessions')
+      .select('tenant_id')
+      .eq('id', sessionId)
+      .maybeSingle();
+    if (!sessionRow || (sessionRow as { tenant_id: string }).tenant_id !== tenantId) {
+      return NextResponse.json(
+        { error: 'Migration session not found' },
+        { status: 404 },
+      );
+    }
 
     // Read file content
     const buffer = await file.arrayBuffer();
