@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import ExpenseListClient from "./ExpenseListClient";
 
+export const metadata = { title: "Expenses — Nexpura" };
+
 export default async function ExpensesPage() {
   const supabase = await createClient();
   const {

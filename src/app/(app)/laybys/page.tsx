@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
+export const metadata = { title: "Laybys — Nexpura" };
+
 export default async function LaybysPage() {
   const supabase = await createClient();
   const {

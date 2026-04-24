@@ -6,6 +6,8 @@ import { planIncludes, PLAN_NAMES, PlanId } from "@/lib/plans";
 import Link from "next/link";
 import WebsiteBuilderClient from "./WebsiteBuilderClient";
 
+export const metadata = { title: "Website Builder — Nexpura" };
+
 export default async function WebsitePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

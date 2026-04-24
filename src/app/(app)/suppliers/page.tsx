@@ -5,6 +5,8 @@ import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { matchesReviewOrStaffToken } from "@/lib/auth/review";
 import SupplierListClient from "./SupplierListClient";
 
+export const metadata = { title: "Suppliers — Nexpura" };
+
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
 export default async function SuppliersPage({
