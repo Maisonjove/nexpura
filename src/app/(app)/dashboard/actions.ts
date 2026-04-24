@@ -10,6 +10,12 @@ import {
   verifyShellCookie,
   SHELL_COOKIE_NAME,
 } from "@/lib/dashboard/shell-cookie";
+import {
+  hydrateDashboardStats,
+  mergeRecentActivityFallback,
+  type PrecomputedRow,
+  type LiveTaskRow,
+} from "./_stats-hydrate";
 import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
@@ -208,7 +214,6 @@ async function readPrecomputedStats(
 ): Promise<DashboardStatsData | null> {
   const admin = createAdminClient();
 
-  // 1. Single-row read of the precomputed aggregate.
   const { data: row, error } = await admin
     .from("tenant_dashboard_stats")
     .select("*")
@@ -220,19 +225,17 @@ async function readPrecomputedStats(
     return null;
   }
   if (!row) {
-    // First-ever read for this tenant — compute now, schedule refresh.
     after(() => refreshDashboardStatsAsync(tenantId));
     return null;
   }
 
   const ageMs = Date.now() - new Date(row.computed_at as string).getTime();
   if (ageMs > PRECOMPUTED_MAX_STALE_MS) {
-    // Too old — fall back to live + schedule refresh.
     after(() => refreshDashboardStatsAsync(tenantId));
     return null;
   }
 
-  // 2. Per-user pieces that aren't (and shouldn't be) precomputed tenant-wide.
+  // Per-user tasks: small, indexed, not precomputable tenant-wide.
   const tz = "Australia/Sydney";
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
   let tasksQ = admin
@@ -245,153 +248,49 @@ async function readPrecomputedStats(
     .limit(50);
   if (!isManager) tasksQ = tasksQ.eq("assigned_to", userId);
 
-  // Recent activity is still live — cheap 5-row ordered reads.
-  const [allTasksResult, recentJobsResult, recentRepairsResult] = await Promise.all([
-    tasksQ,
-    admin
-      .from("bespoke_jobs")
-      .select("id, title, stage, updated_at, customers(full_name)")
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .order("updated_at", { ascending: false })
-      .limit(5),
-    admin
-      .from("repairs")
-      .select("id, item_description, stage, updated_at, customers(full_name)")
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .order("updated_at", { ascending: false })
-      .limit(5),
-  ]);
+  // Prefer the precomputed recent-activity slice (post-migration path).
+  // If it isn't populated yet (pre-migration or brand-new tenant where the
+  // refresh hasn't run), fall back to live joins so the widget stays
+  // populated on the migration seam.
+  const hasPrecomputedActivity =
+    Array.isArray(row.recent_activity) && (row.recent_activity as unknown[]).length > 0;
 
-  const allTasks = allTasksResult.data ?? [];
-  const myTasks = allTasks
-    .filter((t) => t.assigned_to === userId || t.assigned_to === null)
-    .map((t) => ({
-      id: t.id,
-      title: t.title,
-      priority: t.priority,
-      status: t.status,
-      due_date: t.due_date,
-    }));
+  let tasksResult: { data: LiveTaskRow[] | null };
+  let recentActivityFallback;
 
-  type TeamTaskSummary = { assigneeId: string; assigneeName: string; taskCount: number; overdueCount: number };
-  const teamTaskSummary: TeamTaskSummary[] = [];
-  if (isManager) {
-    const byAssignee = new Map<string, number>();
-    for (const t of allTasks) {
-      if (!t.assigned_to || t.assigned_to === userId) continue;
-      byAssignee.set(t.assigned_to, (byAssignee.get(t.assigned_to) ?? 0) + 1);
-    }
-    for (const [id, count] of byAssignee) {
-      teamTaskSummary.push({ assigneeId: id, assigneeName: "Unknown", taskCount: count, overdueCount: 0 });
-    }
+  if (hasPrecomputedActivity) {
+    tasksResult = (await tasksQ) as { data: LiveTaskRow[] | null };
+  } else {
+    const [t, j, r] = await Promise.all([
+      tasksQ,
+      admin
+        .from("bespoke_jobs")
+        .select("id, title, stage, updated_at, customers(full_name)")
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false })
+        .limit(5),
+      admin
+        .from("repairs")
+        .select("id, item_description, stage, updated_at, customers(full_name)")
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false })
+        .limit(5),
+    ]);
+    tasksResult = t as { data: LiveTaskRow[] | null };
+    recentActivityFallback = mergeRecentActivityFallback(
+      (j.data ?? []) as Parameters<typeof mergeRecentActivityFallback>[0],
+      (r.data ?? []) as Parameters<typeof mergeRecentActivityFallback>[1],
+    );
   }
 
-  type ActivityItem = { id: string; title: string; stage: string; customerName: string | null; updatedAt: string; type: "job" | "repair"; href: string; locationName?: string };
-  const recentActivity: ActivityItem[] = [
-    ...(recentJobsResult.data ?? []).map((j) => ({
-      id: j.id as string,
-      title: (j.title as string) || "Untitled Job",
-      stage: (j.stage as string) || "enquiry",
-      customerName: Array.isArray(j.customers)
-        ? ((j.customers[0] as { full_name: string | null } | null)?.full_name ?? null)
-        : ((j.customers as { full_name: string | null } | null)?.full_name ?? null),
-      updatedAt: j.updated_at as string,
-      type: "job" as const,
-      href: `/bespoke/${j.id}`,
-    })),
-    ...(recentRepairsResult.data ?? []).map((r) => ({
-      id: r.id as string,
-      title: (r.item_description as string) || "Repair",
-      stage: (r.stage as string) || "intake",
-      customerName: Array.isArray(r.customers)
-        ? ((r.customers[0] as { full_name: string | null } | null)?.full_name ?? null)
-        : ((r.customers as { full_name: string | null } | null)?.full_name ?? null),
-      updatedAt: r.updated_at as string,
-      type: "repair" as const,
-      href: `/repairs/${r.id}`,
-    })),
-  ]
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 5);
-
-  // 3. Re-hydrate row lists from jsonb into the typed shapes the client
-  //    component expects. Jsonb columns came out as plain JS objects.
-  type LS = { id: string; name: string; sku: string | null; quantity: number };
-  type OR = { id: string; repair_number: string | null; item_description: string | null; customer_name: string | null; days_overdue: number };
-  type RF = { id: string; number: string | null; label: string; customer_name: string | null; type: "repair" | "bespoke" };
-  type AR = { id: string; customer_name: string | null; item: string; stage: string; due_date: string | null };
-  type AB = { id: string; customer_name: string | null; title: string; stage: string; due_date: string | null };
-  type RS = { id: string; sale_number: string | null; customer_name: string | null };
-  type RR = { id: string; repair_number: string | null; customer_name: string | null };
-
-  const lowStockItems = ((row.low_stock_items as LS[]) ?? []).map((i) => ({
-    id: i.id, name: i.name, sku: i.sku, quantity: i.quantity,
-  }));
-  const overdueRepairs = ((row.overdue_repairs as OR[]) ?? []).map((r) => ({
-    id: r.id,
-    repairNumber: r.repair_number ?? r.id.slice(-4).toUpperCase(),
-    item: r.item_description || "Repair",
-    customer: r.customer_name ?? null,
-    daysOverdue: r.days_overdue,
-  }));
-  const readyForPickup = ((row.ready_for_pickup as RF[]) ?? []).map((r) => ({
-    id: r.id,
-    number: r.number ?? r.id.slice(-4).toUpperCase(),
-    label: r.label,
-    customer: r.customer_name ?? null,
-    type: r.type,
-  }));
-  const activeRepairs = ((row.active_repairs_list as AR[]) ?? []).map((r) => ({
-    id: r.id,
-    customer: r.customer_name ?? null,
-    item: r.item || "Repair",
-    stage: r.stage,
-    due_date: r.due_date,
-  }));
-  const activeBespokeJobs = ((row.active_bespoke_list as AB[]) ?? []).map((j) => ({
-    id: j.id,
-    customer: j.customer_name ?? null,
-    title: j.title || "Untitled Job",
-    stage: j.stage,
-    due_date: j.due_date,
-  }));
-  const recentSales = ((row.recent_sales as RS[]) ?? []).map((s) => ({
-    id: s.id,
-    saleNumber: s.sale_number ?? s.id.slice(-4).toUpperCase(),
-    customer: s.customer_name ?? null,
-  }));
-  const recentRepairsList = ((row.recent_repairs_list as RR[]) ?? []).map((r) => ({
-    id: r.id,
-    repairNumber: r.repair_number ?? r.id.slice(-4).toUpperCase(),
-    customer: r.customer_name ?? null,
-  }));
-
-  return {
-    salesThisMonthRevenue: Number(row.sales_this_month_revenue) || 0,
-    salesThisMonthCount: row.sales_this_month_count as number,
-    activeRepairsCount: row.active_repairs_count as number,
-    activeJobsCount: row.active_jobs_count as number,
-    totalOutstanding: Number(row.total_outstanding) || 0,
-    overdueInvoiceCount: row.overdue_invoice_count as number,
-    lowStockItems,
-    overdueRepairs,
-    readyForPickup,
-    recentActivity,
-    myTasks,
-    teamTaskSummary,
-    activeRepairs,
-    activeBespokeJobs,
-    recentSales,
-    recentRepairsList,
-    revenueSparkline: (row.revenue_sparkline as { value: number }[]) ?? [],
-    salesCountSparkline: (row.sales_count_sparkline as { value: number }[]) ?? [],
-    repairsSparkline: (row.repairs_sparkline as { value: number }[]) ?? [],
-    customersSparkline: (row.customers_sparkline as { value: number }[]) ?? [],
-    salesBarData: (row.sales_bar_data as { day: string; sales: number; revenue: number }[]) ?? [],
-    repairStageData: (row.repair_stage_data as { name: string; value: number }[]) ?? [],
-  };
+  return hydrateDashboardStats(row as unknown as PrecomputedRow, {
+    userId,
+    isManager,
+    tasks: tasksResult.data ?? [],
+    recentActivityFallback,
+  });
 }
 
 /**

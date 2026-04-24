@@ -1,61 +1,48 @@
 /**
- * GET /api/dashboard/stats — Edge-runtime fast path for dashboard stats.
+ * GET /api/dashboard/stats — Route Handler fast path for dashboard stats.
  *
- * Option C, dashboard cold-load reduction: the existing
- * `getDashboardStats` server action runs on the Node lambda and pays
- * the full cold-start cost on first hit. This Route Handler is the
- * Edge-runtime mirror of the precomputed fast path inside
- * `readPrecomputedStats` (dashboard/actions.ts:204-290).
+ * Option C, dashboard cold-load reduction. The server-action
+ * `getDashboardStats` also runs through `readPrecomputedStats`, but it
+ * ships behind the full RSC auth/action pipeline. This handler is a
+ * thinner, Route-Handler-shaped twin of the same logic — SWR on the
+ * client calls it directly and skips the action-serialization overhead.
+ *
+ * Originally this was `runtime = "edge"` for always-warm first-paint,
+ * but Next 16 `cacheComponents` is incompatible with per-route
+ * `runtime` exports, so it's a plain Node Route Handler. Fluid compute
+ * shares the Node container across routes, so the keep-warm cron on
+ * /api/dashboard/warm still keeps this lambda hot.
  *
  * Behavior:
  *   - Reads the `tenant_dashboard_stats` precomputed aggregate row for
- *     the caller's tenant + enriches with small per-user live reads
- *     (today's tasks, recent jobs, recent repairs).
- *   - Returns the same `DashboardStatsData` shape the server action
- *     returns, so the SWR fetcher is a drop-in swap.
- *   - If the precomputed row is missing or stale (> PRECOMPUTED_MAX_STALE_MS
- *     old), responds with `{ stale: true }` and HTTP 200. The client
- *     then falls back to the heavy server-action path which recomputes
- *     live. We intentionally don't do the live-path inline here because
- *     it issues 20 parallel queries and isn't the cold-path shortcut
- *     Edge is optimised for.
- *
- * Runtime: edge. No Node APIs, no react-cache; every dependency is
- * Edge-compatible (Supabase-js v2 uses fetch, @supabase/ssr uses fetch,
- * shell-cookie helper uses Web Crypto, only cookies() is read).
+ *     the caller's tenant.
+ *   - Reads today's tasks (per-user filter applied for non-managers).
+ *   - Hydrates into the canonical `DashboardStatsData` shape via the
+ *     shared helper (same shape the server-action path returns).
+ *   - Returns `{ stale: true, reason }` with HTTP 200 when the fast
+ *     path can't serve (precomputed row missing/stale, location filter
+ *     active). The SWR fetcher then falls through to the server-action
+ *     live-compute path.
  *
  * Auth:
- *   - Reads Supabase session cookie via @supabase/ssr.
- *   - Falls back to 401 if no session. No bearer/JWT shortcut — Edge
- *     function doesn't trust forged headers; middleware strips x-auth-*
- *     on every inbound request.
+ *   - Session cookie via `@supabase/ssr`.
+ *   - 401 if no session. No bearer/JWT shortcut — middleware strips
+ *     forged x-auth-* headers on every inbound request.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-
-// NOTE: originally this route was `runtime = "edge"` for always-warm
-// first-paint, but Next 16's `cacheComponents` global flag is
-// architecturally incompatible with per-route `runtime` exports
-// (same build-error `/admin/ops` hit earlier — "Route segment
-// config 'runtime' is not compatible with nextConfig.cacheComponents").
-// Kept as a plain Node Route Handler. The Option C wins that DON'T
-// depend on Edge — thin fast path, shell cookie, keep-warm cron,
-// tenant_dashboard_stats HOT fillfactor — all still apply.
+import {
+  hydrateDashboardStats,
+  mergeRecentActivityFallback,
+  type PrecomputedRow,
+  type LiveTaskRow,
+} from "@/app/(app)/dashboard/_stats-hydrate";
 
 const PRECOMPUTED_MAX_STALE_MS = 60 * 1000;
 
-type EdgeCookie = { name: string; value: string };
-
-async function getCookies(req: NextRequest) {
-  const all: EdgeCookie[] = [];
-  req.cookies.getAll().forEach((c) => all.push({ name: c.name, value: c.value }));
-  return all;
-}
-
 export async function GET(req: NextRequest) {
-  // --- auth: read session via Supabase SSR (Edge-safe) ----------------
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -73,9 +60,6 @@ export async function GET(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // --- resolve tenant_id + role from users table ----------------------
-  // Use the service-role client directly (bypasses RLS, matches the
-  // existing server-action pattern) so the query stays O(1) and Edge-safe.
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -92,43 +76,35 @@ export async function GET(req: NextRequest) {
   if (!tenantId) return NextResponse.json({ error: "No tenant" }, { status: 403 });
   const isManager = role === "owner" || role === "manager";
 
-  // --- location filter from query param -------------------------------
+  // Fast path only handles the tenant-wide precomputed case. Per-location
+  // filtered reads go through the heavier live path in the server action.
   const locationIdsParam = req.nextUrl.searchParams.get("locationIds");
-  const locationIds =
-    locationIdsParam && locationIdsParam !== "all"
-      ? locationIdsParam.split(",").filter(Boolean)
-      : null;
-
-  // Edge fast path only handles the tenant-wide precomputed case.
-  // Per-location filtered reads require the heavier live path; defer
-  // to the server action.
-  if (locationIds && locationIds.length > 0) {
+  const hasLocationFilter =
+    !!locationIdsParam &&
+    locationIdsParam !== "all" &&
+    locationIdsParam.split(",").filter(Boolean).length > 0;
+  if (hasLocationFilter) {
     return NextResponse.json({ stale: true, reason: "location_filter" });
   }
 
-  // --- read precomputed row ------------------------------------------
   const { data: row, error } = await admin
     .from("tenant_dashboard_stats")
     .select("*")
     .eq("tenant_id", tenantId)
     .maybeSingle();
 
-  if (error) {
-    return NextResponse.json({ stale: true, reason: "precomputed_error" });
-  }
-  if (!row) {
-    return NextResponse.json({ stale: true, reason: "precomputed_missing" });
-  }
+  if (error) return NextResponse.json({ stale: true, reason: "precomputed_error" });
+  if (!row) return NextResponse.json({ stale: true, reason: "precomputed_missing" });
 
   const ageMs = Date.now() - new Date(row.computed_at as string).getTime();
   if (ageMs > PRECOMPUTED_MAX_STALE_MS) {
     return NextResponse.json({ stale: true, reason: "precomputed_stale" });
   }
 
-  // --- per-user enrichment (small, indexed reads) ---------------------
+  // Per-user tasks (small indexed query). Live because `assigned_to`
+  // filter differs per caller.
   const tz = "Australia/Sydney";
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-
   let tasksQ = admin
     .from("tasks")
     .select("id, title, priority, status, due_date, assigned_to")
@@ -139,41 +115,53 @@ export async function GET(req: NextRequest) {
     .limit(50);
   if (!isManager) tasksQ = tasksQ.eq("assigned_to", user.id);
 
-  const [allTasksResult, recentJobsResult, recentRepairsResult] = await Promise.all([
-    tasksQ,
-    admin
-      .from("bespoke_jobs")
-      .select("id, title, stage, updated_at, customers(full_name)")
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .order("updated_at", { ascending: false })
-      .limit(5),
-    admin
-      .from("repairs")
-      .select("id, item_description, stage, updated_at, customers(full_name)")
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .order("updated_at", { ascending: false })
-      .limit(5),
-  ]);
+  const hasPrecomputedActivity =
+    Array.isArray(row.recent_activity) && (row.recent_activity as unknown[]).length > 0;
 
-  // Merge precomputed aggregate + per-user live slices. The shape here
-  // must match DashboardStatsData in dashboard/actions.ts — otherwise
-  // the DashboardWrapper consumer renders wrong. Copy of the merge
-  // logic from readPrecomputedStats.
-  const payload = {
-    ...(row.stats as Record<string, unknown>),
-    tasks_today: allTasksResult.data ?? [],
-    recent_bespoke: recentJobsResult.data ?? [],
-    recent_repairs: recentRepairsResult.data ?? [],
-    computed_at: row.computed_at,
-    _source: "edge" as const,
-  };
+  let tasksResult: { data: LiveTaskRow[] | null };
+  let recentActivityFallback;
 
-  return NextResponse.json(payload, {
-    headers: {
-      // Tenant-specific + user-specific data — never cache publicly.
-      "Cache-Control": "private, no-store",
-    },
+  if (hasPrecomputedActivity) {
+    tasksResult = (await tasksQ) as { data: LiveTaskRow[] | null };
+  } else {
+    const [t, j, r] = await Promise.all([
+      tasksQ,
+      admin
+        .from("bespoke_jobs")
+        .select("id, title, stage, updated_at, customers(full_name)")
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false })
+        .limit(5),
+      admin
+        .from("repairs")
+        .select("id, item_description, stage, updated_at, customers(full_name)")
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false })
+        .limit(5),
+    ]);
+    tasksResult = t as { data: LiveTaskRow[] | null };
+    recentActivityFallback = mergeRecentActivityFallback(
+      (j.data ?? []) as Parameters<typeof mergeRecentActivityFallback>[0],
+      (r.data ?? []) as Parameters<typeof mergeRecentActivityFallback>[1],
+    );
+  }
+
+  const payload = hydrateDashboardStats(row as unknown as PrecomputedRow, {
+    userId: user.id,
+    isManager,
+    tasks: tasksResult.data ?? [],
+    recentActivityFallback,
   });
+
+  return NextResponse.json(
+    { ...payload, _source: "route" as const, computed_at: row.computed_at },
+    {
+      headers: {
+        // Tenant-specific + user-specific data — never cache publicly.
+        "Cache-Control": "private, no-store",
+      },
+    },
+  );
 }
