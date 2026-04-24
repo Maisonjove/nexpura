@@ -338,21 +338,61 @@ async function enforceApiCsrf(request: NextRequest): Promise<NextResponse | null
   );
 }
 
+// Names of the auth headers that middleware sets from the verified session
+// and that downstream server actions / route handlers trust. Listed here so
+// this file owns the scrub list. Any new x-auth-* header added to
+// AUTH_HEADERS in lib/cached-auth must also be appended here.
+const FORGEABLE_AUTH_HEADERS = [
+  "x-auth-user-id",
+  "x-auth-tenant-id",
+  "x-auth-user-role",
+  "x-auth-user-email",
+] as const;
+
+function stripForgedAuthHeaders(request: NextRequest): NextRequest {
+  // An attacker can freely send x-auth-* headers on any request. Downstream
+  // `getAuthContext()` reads them as a perf fast-path assuming middleware
+  // set them — so if we don't scrub inbound copies here, a forged tenant/
+  // role/user lands in the route handler without any cookie or CSRF token.
+  // The scrub is unconditional: middleware re-sets these from the verified
+  // session via `NextResponse.next({ request: { headers: … } })` after
+  // auth.getUser() succeeds, so legitimate paths are unaffected.
+  const incoming = request.headers;
+  const hasAny = FORGEABLE_AUTH_HEADERS.some((h) => incoming.has(h));
+  if (!hasAny) return request;
+
+  const sanitized = new Headers(incoming);
+  for (const h of FORGEABLE_AUTH_HEADERS) sanitized.delete(h);
+  return new NextRequest(request.url, {
+    headers: sanitized,
+    method: request.method,
+    body: request.body,
+  });
+}
+
 export async function middleware(request: NextRequest) {
+  // SECURITY: strip forged auth headers BEFORE any branching. Fallback
+  // / timeout paths below reuse this scrubbed request too so attackers
+  // can't slip headers through on a middleware error.
+  const scrubbed = stripForgedAuthHeaders(request);
+
   try {
     // CSRF gate before the main pipeline so auth side-effects don't
     // run on rejected cross-origin mutations.
-    const csrfReject = await enforceApiCsrf(request);
+    const csrfReject = await enforceApiCsrf(scrubbed);
     if (csrfReject) return addSecurityHeaders(csrfReject);
 
-    const response = await withTimeout(_proxyInner(request), 4500);
-    augmentVaryForHotPrefetch(request, response);
+    const response = await withTimeout(_proxyInner(scrubbed), 4500);
+    augmentVaryForHotPrefetch(scrubbed, response);
     return addSecurityHeaders(response);
   } catch (err) {
     const isTimeout = err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
     if (!isTimeout) console.error("[middleware] unexpected error -- passing through:", err);
-    const fallback = NextResponse.next();
-    augmentVaryForHotPrefetch(request, fallback);
+    // Forward the SCRUBBED request on the fallback path so timeouts /
+    // uncaught throws don't leak attacker-supplied x-auth-* into
+    // downstream handlers.
+    const fallback = NextResponse.next({ request: scrubbed });
+    augmentVaryForHotPrefetch(scrubbed, fallback);
     return addSecurityHeaders(fallback);
   }
 }

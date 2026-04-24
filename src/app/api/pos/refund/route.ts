@@ -132,17 +132,21 @@ export async function POST(req: NextRequest) {
   );
 
   const result = await withIdempotency("refund", tenantId, saleId, fingerprint, async () => {
-    // Generate refund number using function or fallback
-    let refundNumber: string;
-    const { data: numData } = await admin.rpc("next_refund_number", { p_tenant_id: tenantId });
-    if (numData) {
-      refundNumber = numData;
-    } else {
-      const { count } = await admin
-        .from("refunds")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId);
-      refundNumber = `R-${String((count ?? 0) + 1).padStart(4, "0")}`;
+    // Atomic refund-number allocation via RPC (advisory-locked).
+    // The old COUNT()+1 fallback was race-prone — two concurrent refunds
+    // would both read count=N and both insert N+1, producing duplicates.
+    // Now that the RPC exists + `refunds_tenant_number_unique` is on
+    // (tenant_id, refund_number), fail loud if the RPC doesn't succeed
+    // rather than silently falling back.
+    const { data: refundNumber, error: numErr } = await admin.rpc(
+      "next_refund_number",
+      { p_tenant_id: tenantId },
+    );
+    if (numErr || !refundNumber) {
+      return {
+        status: 500,
+        payload: { error: "Failed to allocate refund number" },
+      };
     }
 
     // Create refund record with server-computed total

@@ -7,6 +7,7 @@ import { revalidateTag } from "next/cache";
 import { getSelectedLocationIdFromCookie, hasLocationAccess } from "@/lib/locations";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { getAuthContext } from "@/lib/auth-context";
+import { getTenantTaxConfig, computeMoneyTotals, clampDiscount } from "@/lib/tenant-tax";
 
 // POSWrapper already gates the UI on a specific location being chosen (see
 // the "Select a Location" guard), so every POS sale has the picker cookie
@@ -79,21 +80,58 @@ export async function createPOSSale(
         .eq("tenant_id", tenantId)
         .eq("idempotency_key", params.idempotencyKey)
         .maybeSingle();
-      
+
       if (existing) {
         // Return the existing sale instead of creating a duplicate
-        logger.info("Duplicate POS submission prevented", { 
-          idempotencyKey: params.idempotencyKey, 
-          existingSaleId: existing.id 
+        logger.info("Duplicate POS submission prevented", {
+          idempotencyKey: params.idempotencyKey,
+          existingSaleId: existing.id
         });
-        return { 
-          id: existing.id, 
+        return {
+          id: existing.id,
           saleNumber: existing.sale_number,
-          error: undefined 
+          error: undefined
         };
       }
     }
-  
+
+  // ─── W3-CRIT-04: server-authoritative money recompute ──────────────────
+  // Previously this action read subtotal / discount_amount / tax_amount /
+  // total straight from the client body and stored them. A compromised or
+  // buggy client could record a $5 sale for a $5000 item — classic till
+  // shortfall. Now: sum the cart on the server, pull tenant tax config
+  // from the DB, recompute totals, and reject if the client's claimed
+  // total diverges by more than a cent.
+  //
+  // Tax semantics: the POS UI today always computes tax on top (exclusive)
+  // regardless of the tenant's tax_inclusive flag. We mirror that here
+  // (tax_inclusive=false) so an honest client still passes the match
+  // check. Tenant's tax_rate is still the source of truth — a malicious
+  // client cannot get a discounted tax rate through the params.
+  const taxCfg = await getTenantTaxConfig(tenantId);
+  const serverDiscount = clampDiscount(
+    params.discountAmount,
+    params.cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0)
+  );
+  const serverTotals = computeMoneyTotals(
+    params.cart.map((c) => ({ quantity: c.quantity, unit_price: c.unitPrice })),
+    taxCfg.tax_rate,
+    false, // POS UI formula is always tax-on-top; see note above
+    serverDiscount
+  );
+  if (Math.abs(serverTotals.total - params.total) > 0.01) {
+    logger.warn("[createPOSSale] client total mismatch — rejecting", {
+      tenantId,
+      clientTotal: params.total,
+      serverTotal: serverTotals.total,
+      clientSubtotal: params.subtotal,
+      serverSubtotal: serverTotals.subtotal,
+    });
+    return {
+      error: `Client total mismatch. Expected $${serverTotals.total.toFixed(2)}, got $${params.total.toFixed(2)}.`,
+    };
+  }
+
   // Generate sale number using atomic RPC (returns format like "SALE-0001")
   // This ensures no duplicate numbers and consistent formatting
   const { data: saleNumber, error: saleNumErr } = await admin.rpc("next_sale_number", { 
@@ -227,11 +265,12 @@ export async function createPOSSale(
             customer_id: params.customerId,
             customer_name: params.customerName,
             customer_email: params.customerEmail,
-            subtotal: params.subtotal,
-            discount_amount: params.discountAmount,
-            tax_amount: params.taxAmount,
-            total: params.total,
-            amount_paid: params.total,
+            // W3-CRIT-04: store server-recomputed money, never params.*
+            subtotal: serverTotals.subtotal,
+            discount_amount: serverDiscount,
+            tax_amount: serverTotals.taxAmount,
+            total: serverTotals.total,
+            amount_paid: serverTotals.total,
             payment_method: params.paymentMethod,
             store_credit_amount: params.storeCreditAmount || 0,
             status: "paid",
@@ -264,14 +303,15 @@ export async function createPOSSale(
         }
         
         const { error } = await admin.from("sale_items").insert(
-          params.cart.map((item) => ({
+          params.cart.map((item, idx) => ({
             tenant_id: tenantId,
             sale_id: saleId,
             inventory_id: item.inventoryId,
             description: item.name,
             quantity: item.quantity,
             unit_price: item.unitPrice,
-            line_total: item.unitPrice * item.quantity,
+            // W3-CRIT-04: server-authoritative line_total, not client-supplied
+            line_total: serverTotals.lineTotals[idx],
           }))
         );
         
@@ -397,14 +437,16 @@ export async function createPOSSale(
             customer_name: params.customerName,
             customer_email: params.customerEmail,
             invoice_date: new Date().toISOString().split("T")[0],
-            subtotal: params.subtotal,
-            discount_amount: params.discountAmount,
-            tax_name: params.taxName || "GST",
-            tax_rate: params.taxRate ?? 0.1,
-            tax_inclusive: true,
-            tax_amount: params.taxAmount,
-            total: params.total,
-            amount_paid: params.total,
+            // W3-CRIT-04: server-recomputed amounts; tenant config (not
+            // params.taxName / params.taxRate) is the source of truth.
+            subtotal: serverTotals.subtotal,
+            discount_amount: serverDiscount,
+            tax_name: taxCfg.tax_name,
+            tax_rate: taxCfg.tax_rate,
+            tax_inclusive: false, // POS formula is always exclusive — see recompute note
+            tax_amount: serverTotals.taxAmount,
+            total: serverTotals.total,
+            amount_paid: serverTotals.total,
             status: "paid",
             paid_at: new Date().toISOString(),
             created_by: userId,
@@ -549,6 +591,39 @@ export async function createLaybySale(
 
     const admin = createAdminClient();
 
+  // ─── W3-CRIT-04: server-authoritative money recompute (layby) ──────────
+  // Same rationale as createPOSSale. Layby records commit the customer
+  // to a final total that gets paid off across multiple payments; a
+  // client-supplied bogus total here would corrupt the remaining-balance
+  // math forever. Recompute, compare, reject on divergence.
+  const laybyTaxCfg = await getTenantTaxConfig(tenantId);
+  const laybyServerDiscount = clampDiscount(
+    params.discountAmount,
+    params.cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0)
+  );
+  const laybyServerTotals = computeMoneyTotals(
+    params.cart.map((c) => ({ quantity: c.quantity, unit_price: c.unitPrice })),
+    laybyTaxCfg.tax_rate,
+    false, // POS formula is exclusive — see note on createPOSSale
+    laybyServerDiscount
+  );
+  if (Math.abs(laybyServerTotals.total - params.total) > 0.01) {
+    logger.warn("[createLaybySale] client total mismatch — rejecting", {
+      tenantId,
+      clientTotal: params.total,
+      serverTotal: laybyServerTotals.total,
+    });
+    return {
+      error: `Client total mismatch. Expected $${laybyServerTotals.total.toFixed(2)}, got $${params.total.toFixed(2)}.`,
+    };
+  }
+  // Re-check deposit-vs-total against the *server* total (param.total is
+  // now proven to match, but a client could send deposit=total-1 with
+  // total already inflated — use server total for the bound).
+  if (params.depositAmount >= laybyServerTotals.total) {
+    return { error: "Deposit must be less than total — use regular sale instead" };
+  }
+
   // Generate sale number
   const { count } = await admin
     .from("sales")
@@ -568,10 +643,11 @@ export async function createLaybySale(
       customer_id: params.customerId,
       customer_name: params.customerName,
       customer_email: params.customerEmail,
-      subtotal: params.subtotal,
-      discount_amount: params.discountAmount,
-      tax_amount: params.taxAmount,
-      total: params.total,
+      // W3-CRIT-04: server-recomputed money only
+      subtotal: laybyServerTotals.subtotal,
+      discount_amount: laybyServerDiscount,
+      tax_amount: laybyServerTotals.taxAmount,
+      total: laybyServerTotals.total,
       payment_method: "layby",
       store_credit_amount: 0,
       status: "layby",
@@ -599,13 +675,14 @@ export async function createLaybySale(
   // Create sale items (no inventory deduction — item reserved, not sold)
   if (params.cart.length > 0) {
     await admin.from("sale_items").insert(
-      params.cart.map((item) => ({
+      params.cart.map((item, idx) => ({
         tenant_id: tenantId,
         sale_id: sale.id,
         description: item.name,
         quantity: item.quantity,
         unit_price: item.unitPrice,
-        line_total: item.unitPrice * item.quantity,
+        // W3-CRIT-04: server-authoritative line_total
+        line_total: laybyServerTotals.lineTotals[idx],
         inventory_id: item.inventoryId,
       }))
     );

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth-context";
+import { getTenantTaxConfig, computeMoneyTotals } from "@/lib/tenant-tax";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export interface QuoteItem {
@@ -47,13 +48,22 @@ export async function createQuote(input: QuoteInput): Promise<{ data?: unknown; 
 
     if (!userData?.tenant_id) return { error: "No tenant found" };
 
+    // W3-CRIT-04: server-authoritative total. The client sends
+    // `total_amount` for display, but we recompute from items. Quotes
+    // themselves don't apply tax (a quote is a pre-tax offer — tax is
+    // added at invoice creation), so the quote total is simply
+    // sum(quantity * unit_price).
+    const serverQuoteTotal = Math.round(
+      input.items.reduce((sum, it) => sum + it.quantity * it.unit_price, 0) * 100
+    ) / 100;
+
     const { data, error } = await supabase
       .from("quotes")
       .insert({
         tenant_id: userData.tenant_id,
         customer_id: input.customer_id,
         items: input.items,
-        total_amount: input.total_amount,
+        total_amount: serverQuoteTotal,
         status: input.status || "draft",
         expires_at: input.expires_at || null,
         notes: input.notes || null,
@@ -265,13 +275,29 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<{ id?: str
       return { error: "Failed to generate invoice number" };
     }
 
+    // W3-CRIT-04: previously this copied `quote.total_amount` into both
+    // `total` and `subtotal` and dropped tax entirely, producing an
+    // invoice that understated the bill by the tax component. Apply the
+    // tenant's tax config the same way createInvoice does.
+    const convertTaxCfg = await getTenantTaxConfig(tenantId);
+    const convertTotals = computeMoneyTotals(
+      (quote.items as QuoteItem[]).map((it) => ({ quantity: it.quantity, unit_price: it.unit_price })),
+      convertTaxCfg.tax_rate,
+      convertTaxCfg.tax_inclusive,
+      0 // quotes carry no discount today; discount_amount=0
+    );
+
     // Create invoice
     const invoiceData = {
       tenant_id: quote.tenant_id,
       customer_id: quote.customer_id,
       invoice_number: numData,
-      total: quote.total_amount,
-      subtotal: quote.total_amount, // Assuming total is subtotal for now
+      subtotal: convertTotals.subtotal,
+      tax_name: convertTaxCfg.tax_name,
+      tax_rate: convertTaxCfg.tax_rate,
+      tax_inclusive: convertTaxCfg.tax_inclusive,
+      tax_amount: convertTotals.taxAmount,
+      total: convertTotals.total,
       status: "draft",
       quote_id: quote.id,
       created_by: user.id

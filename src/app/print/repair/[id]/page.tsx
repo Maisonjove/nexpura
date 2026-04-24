@@ -36,6 +36,24 @@ async function PrintRepairPage({
     redirect("/login");
   }
 
+  // W3-HIGH-06: pull tenant branding from the tenants row instead of
+  // hardcoding "Marcus & Co." — previously every tenant's repair ticket
+  // rendered with Marcus's brand + address which is a trust / privacy
+  // leak (printing another entity's letterhead on customer paperwork).
+  const { data: tenantRow } = await admin
+    .from("tenants")
+    .select("business_name, name, abn, address_line1, suburb, state, postcode, email, phone")
+    .eq("id", userData.tenant_id)
+    .single();
+  const businessName = tenantRow?.business_name || tenantRow?.name || "Your Business";
+  const tenantEmail = tenantRow?.email || null;
+  const tenantPhone = tenantRow?.phone || null;
+  const addressLine = [tenantRow?.address_line1, tenantRow?.suburb, tenantRow?.state, tenantRow?.postcode]
+    .filter(Boolean)
+    .join(", ");
+  const contactLine = [tenantPhone, tenantEmail].filter(Boolean).join(" · ");
+  const headerDetails = [addressLine, contactLine].filter(Boolean).join(" · ");
+
   const { data: repair } = await admin
     .from("repairs")
     .select("*, customers(id, full_name, email, mobile, address_line1, suburb, state, postcode)")
@@ -110,8 +128,8 @@ async function PrintRepairPage({
 
       <div className="page-header">
         <div>
-          <h1>Marcus &amp; Co. Fine Jewellery</h1>
-          <div style={{ fontSize: "10pt", color: "#555" }}>32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au</div>
+          <h1>{businessName}</h1>
+          {headerDetails && <div style={{ fontSize: "10pt", color: "#555" }}>{headerDetails}</div>}
         </div>
         <div className="meta">
           <div><strong>Repair Ticket</strong></div>
@@ -233,7 +251,7 @@ async function PrintRepairPage({
       )}
 
       <div className="footer">
-        Thank you for choosing Marcus &amp; Co. Fine Jewellery · 32 Castlereagh St, Sydney NSW 2000 · hello@marcusandco.com.au
+        {["Thank you for choosing " + businessName, addressLine, contactLine].filter(Boolean).join(" · ")}
       </div>
     </>
   );

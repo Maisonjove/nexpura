@@ -23,8 +23,17 @@ describe("CSRF middleware gate (HIGH: fixes the missing per-route validator)", (
   });
 
   it("is called before the main pipeline", () => {
-    const enforceIdx = middleware.indexOf("enforceApiCsrf(request)");
-    const proxyIdx = middleware.indexOf("_proxyInner(request)");
+    // Forged x-auth-* header strip landed (commit on branch) and both
+    // call sites now forward the scrubbed NextRequest. Accept either
+    // variable name so the test survives that refactor.
+    const enforceIdx = Math.max(
+      middleware.indexOf("enforceApiCsrf(request)"),
+      middleware.indexOf("enforceApiCsrf(scrubbed)"),
+    );
+    const proxyIdx = Math.max(
+      middleware.indexOf("_proxyInner(request)"),
+      middleware.indexOf("_proxyInner(scrubbed)"),
+    );
     expect(enforceIdx).toBeGreaterThan(-1);
     expect(proxyIdx).toBeGreaterThan(-1);
     // enforcer call must precede _proxyInner call (measured by source order)

@@ -126,12 +126,18 @@ export async function createSale(
     return v && v !== "" ? parseFloat(v) : 0;
   };
 
-  // Parse line items from JSON
+  // Parse line items from JSON.
+  // W3-CRIT-04: `line_total` and `discount_pct` arrive from the client but
+  // are NEVER trusted — we recompute line_total on the server from
+  // quantity * unit_price * (1 - discount_pct/100). A malicious client
+  // previously could send unit_price=5000, line_total=5 and get a $5
+  // sale recorded for a $5000 item.
   let lineItems: Array<{
     description: string;
     quantity: number;
     unit_price: number;
-    line_total: number;
+    discount_pct?: number;
+    line_total?: number; // ignored server-side
   }> = [];
   try {
     const itemsJson = formData.get("line_items") as string;
@@ -147,10 +153,22 @@ export async function createSale(
     .single();
   const taxRate = tenantData?.tax_rate ?? 0.1;
 
-  const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
-  const discountAmount = num("discount_amount");
+  // Server-authoritative line totals + subtotal. Discount_pct is per-line
+  // (staff-entered) and clamped to [0, 100].
+  const serverLineTotals = lineItems.map((item) => {
+    const disc = Math.min(Math.max(item.discount_pct ?? 0, 0), 100) / 100;
+    return Math.round(item.quantity * item.unit_price * (1 - disc) * 100) / 100;
+  });
+  const subtotal = Math.round(
+    lineItems.reduce((sum, item) => {
+      const disc = Math.min(Math.max(item.discount_pct ?? 0, 0), 100) / 100;
+      return sum + item.quantity * item.unit_price * (1 - disc);
+    }, 0) * 100
+  ) / 100;
+  const discountAmountRaw = num("discount_amount");
+  const discountAmount = Math.min(Math.max(discountAmountRaw, 0), subtotal);
   const taxAmount = Math.round((subtotal - discountAmount) * taxRate * 100) / 100;
-  const total = subtotal - discountAmount + taxAmount;
+  const total = Math.round((subtotal - discountAmount + taxAmount) * 100) / 100;
 
   const { data: sale, error: saleError } = await supabase
     .from("sales")
@@ -185,13 +203,14 @@ export async function createSale(
 
   // Insert line items
   if (lineItems.length > 0) {
-    const saleItemsData = lineItems.map((item) => ({
+    const saleItemsData = lineItems.map((item, idx) => ({
       tenant_id: tenantId,
       sale_id: sale.id,
       description: item.description,
       quantity: item.quantity,
       unit_price: item.unit_price,
-      line_total: item.line_total,
+      // W3-CRIT-04: server-authoritative line_total (not client-supplied)
+      line_total: serverLineTotals[idx],
     }));
 
     const { error: itemsError } = await supabase.from("sale_items").insert(saleItemsData);
