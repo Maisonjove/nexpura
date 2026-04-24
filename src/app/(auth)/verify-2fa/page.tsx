@@ -81,7 +81,13 @@ function Verify2FAContent() {
       const data = await res.json();
 
       if (!res.ok || !data.valid) {
-        throw new Error(data.error || 'Invalid verification code');
+        // Human-friendly copy for invalid code. We intentionally do NOT
+        // distinguish "user doesn't have 2FA enabled" vs "wrong code" —
+        // both funnel to the same message so an attacker can't probe
+        // account-state from this page.
+        throw new Error(
+          "That code didn't match — try again, or use a backup code if the app is out of sync."
+        );
       }
 
       const supabase = createClient();
@@ -94,7 +100,11 @@ function Verify2FAContent() {
       router.push(returnTo);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
+      setError(
+        err instanceof Error
+          ? err.message
+          : "We couldn't verify that code — please try again in a moment."
+      );
     } finally {
       setLoading(false);
     }

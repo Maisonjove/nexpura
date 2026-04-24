@@ -62,14 +62,17 @@ function LoginPageContent() {
         // Supabase exposes the machine-readable reason on `authError.code`.
         const code = (authError as { code?: string } | null)?.code ?? "";
         const msg = authError?.message ?? "";
+        // NOTE: copy is deliberately identical for "invalid_credentials"
+        // and the unknown-error fallback so we never distinguish "email
+        // not found" from "wrong password". Enumeration-safe.
         if (code === "email_not_confirmed" || /email.*confirm/i.test(msg)) {
           setError("Please verify your email — check your inbox for the confirmation link.");
         } else if (code === "invalid_credentials" || /invalid.*credentials/i.test(msg)) {
-          setError("Invalid email or password");
+          setError("Those details don't match — please check your email and password and try again.");
         } else if (authError?.status && authError.status >= 500) {
           setError("Sign-in service is having trouble — please try again in a moment.");
         } else {
-          setError(msg || "Invalid email or password");
+          setError("Those details don't match — please check your email and password and try again.");
         }
         return;
       }
