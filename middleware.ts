@@ -268,20 +268,33 @@ function augmentVaryForHotPrefetch(
   );
 }
 
+// Single source of truth for the Content-Security-Policy and the
+// clickjack/framing controls. Previously set in two places (next.config
+// `securityHeaders` + this middleware) with diverging origin lists — the
+// middleware version won because next.config's header() runs first and
+// gets overwritten here, but the drift was a trap. next.config keeps only
+// the static, never-changing controls (HSTS, Permissions-Policy, COOP,
+// CORP, etc.); everything CSP-related lives here.
+//
+// X-Frame-Options was also set alongside with `DENY`, which conflicts
+// with the `frame-ancestors 'self' https://annot8.dev ...` in the CSP.
+// The spec says CSP frame-ancestors supersedes X-Frame-Options when both
+// are present, so the end behaviour matched the CSP — but the presence
+// of the header is misleading. Removed.
 function addSecurityHeaders(response: NextResponse): NextResponse {
-  response.headers.set("X-Frame-Options", "DENY");
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co https://*.vercel-scripts.com https://www.annot8.dev https://cdnjs.cloudflare.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.vercel-scripts.com https://*.supabase.co https://*.sentry.io https://*.sentry-cdn.com https://js.stripe.com https://checkout.stripe.com https://www.annot8.dev https://cdnjs.cloudflare.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: blob: https: http:",
+    "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://images.unsplash.com https://*.stripe.com",
     "font-src 'self' https://fonts.gstatic.com data:",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://*.vercel-insights.com https://*.google-analytics.com https://*.googleapis.com https://www.annot8.dev",
-    "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://*.supabase.co",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io https://api.stripe.com https://checkout.stripe.com https://*.vercel-insights.com https://*.google-analytics.com https://*.googleapis.com https://www.annot8.dev",
+    "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://*.supabase.co",
     "frame-ancestors 'self' https://annot8.dev https://*.annot8.dev https://openclaw.ai https://*.openclaw.ai https://astry.agency https://*.astry.agency",
     "form-action 'self'",
     "base-uri 'self'",
     "object-src 'none'",
+    "upgrade-insecure-requests",
   ].join("; ");
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");

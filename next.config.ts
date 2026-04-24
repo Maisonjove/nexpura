@@ -6,15 +6,18 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
+// Static security headers applied to every response. CSP, X-Content-Type-
+// Options, Referrer-Policy, and the framing controls are set in
+// middleware.ts (the authoritative owner — middleware's response headers
+// overwrite these anyway). Kept here: headers that never change per
+// request and don't conflict with middleware.
 const securityHeaders = [
   // HSTS - 2 years with preload (max security)
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
-  { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-XSS-Protection", value: "1; mode=block" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
     value:
@@ -23,22 +26,6 @@ const securityHeaders = [
   // Prevent MIME type confusion attacks
   { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
   { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.vercel-scripts.com https://*.supabase.co https://*.sentry.io https://*.sentry-cdn.com https://js.stripe.com https://www.annot8.dev https://cdnjs.cloudflare.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://images.unsplash.com https://*.stripe.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.resend.com https://*.sentry.io https://*.ingest.sentry.io https://api.stripe.com https://api.openai.com https://www.annot8.dev",
-      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
-      "frame-ancestors 'self' https://annot8.dev https://*.annot8.dev https://openclaw.ai https://*.openclaw.ai https://astry.agency https://*.astry.agency",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "upgrade-insecure-requests",
-    ].join("; "),
-  },
 ];
 
 const nextConfig: NextConfig = {

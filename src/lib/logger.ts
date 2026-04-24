@@ -14,8 +14,21 @@ interface LogEntry {
   timestamp: string;
 }
 
+// Redact email addresses from the log line before it leaves the process.
+// Customer emails were previously landing in Vercel logs via calls like
+//   logger.info(`[tracking] Sent to ${order.customer_email}`)
+//   logger.error("Failed to send invite email:", emailError)  // err contains the address
+// Keeping the domain preserves the signal for debugging (per-domain
+// bounce patterns, DNS config issues) without leaking the individual
+// mailbox. No-op in dev so local debugging still shows full addresses.
+const EMAIL_RE = /\b([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/g;
+function redactEmailsInText(s: string): string {
+  if (isDev) return s;
+  return s.replace(EMAIL_RE, "***@$2");
+}
+
 function formatLog(entry: LogEntry): string {
-  return JSON.stringify(entry);
+  return redactEmailsInText(JSON.stringify(entry));
 }
 
 // Pick the best thing to hand Sentry.captureException — it wants an Error
@@ -60,40 +73,40 @@ export const logger = {
     }
   },
   warn: (messageOrError: string | unknown, context?: LogContext) => {
-    const message = typeof messageOrError === "string" 
-      ? messageOrError 
-      : messageOrError instanceof Error 
-        ? messageOrError.message 
+    const message = typeof messageOrError === "string"
+      ? messageOrError
+      : messageOrError instanceof Error
+        ? messageOrError.message
         : String(messageOrError);
     console.warn(
-      JSON.stringify({
+      redactEmailsInText(JSON.stringify({
         level: "warn",
         message,
         context: typeof messageOrError === "string" ? context : { error: messageOrError },
         timestamp: new Date().toISOString(),
-      })
+      }))
     );
   },
   info: (message: string, context?: LogContext) => {
     if (!isDev) return;
     console.info(
-      JSON.stringify({
+      redactEmailsInText(JSON.stringify({
         level: "info",
         message,
         context,
         timestamp: new Date().toISOString(),
-      })
+      }))
     );
   },
   debug: (message: string, context?: LogContext) => {
     if (!isDev) return;
     console.log(
-      JSON.stringify({
+      redactEmailsInText(JSON.stringify({
         level: "debug",
         message,
         context,
         timestamp: new Date().toISOString(),
-      })
+      }))
     );
   },
 };

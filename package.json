@@ -4,7 +4,9 @@
   "private": true,
   "pnpm": {
     "overrides": {
-      "picomatch": ">=2.3.2"
+      "picomatch": ">=2.3.2",
+      "basic-ftp": ">=5.2.2",
+      "path-to-regexp": ">=8.4.0"
     }
   },
   "scripts": {
