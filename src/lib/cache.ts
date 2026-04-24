@@ -41,8 +41,14 @@ export async function getCached<T>(
     const fresh = await fetcher();
 
     // Write back to cache without blocking the response (fire-and-forget)
-    redis.set(key, fresh, { ex: ttlSeconds }).catch((err) => {
-      console.error("[cache] Redis write error:", err);
+    redis.set(key, fresh, { ex: ttlSeconds }).catch((err: unknown) => {
+      const e = err as { name?: string; message?: string; cause?: { code?: string; message?: string } };
+      console.error("[cache] Redis write error:", {
+        name: e?.name,
+        message: e?.message,
+        causeCode: e?.cause?.code,
+        causeMessage: e?.cause?.message,
+      });
     });
 
     return fresh;
