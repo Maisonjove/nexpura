@@ -7,6 +7,7 @@ import { resend } from "@/lib/email/resend";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
+import { escapeHtml } from "@/lib/sanitize";
 
 export async function POST(
   _req: NextRequest,
@@ -124,6 +125,21 @@ export async function POST(
   const storeAddr = tenantAddress ? ` | ${tenantAddress}` : "";
   const customerDisplayName = jobData.customerName || "Valued Customer";
 
+  // Escape every customer/tenant-authored string going into the email
+  // HTML body. Without this a malicious customer name could inject
+  // live HTML into the recipient's email client (phishing / broken-
+  // render). Same treatment the refund-PDF HTML route got.
+  const esc = {
+    businessName: escapeHtml(businessName),
+    jobNumber: escapeHtml(String(jobNumber)),
+    customerDisplayName: escapeHtml(customerDisplayName),
+    jobTitle: escapeHtml(jobData.title || "—"),
+    abn: tenant?.abn ? escapeHtml(tenant.abn) : "",
+    phone: tenant?.phone ? escapeHtml(tenant.phone) : "",
+    storePhone: escapeHtml(storePhone),
+    storeAddr: escapeHtml(storeAddr),
+  };
+
   const { error: sendError } = await resend.emails.send({
     from: `${businessName} <receipts@nexpura.com>`,
     to: [recipientEmail],
@@ -134,27 +150,27 @@ export async function POST(
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
   <tr><td style="background:#1A1A1A;border-radius:12px 12px 0 0;padding:28px 36px;">
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td><p style="margin:0;font-size:18px;font-weight:700;color:#fff;">${businessName}</p>${tenant?.abn ? `<p style="margin:4px 0 0;font-size:11px;color:rgba(255,255,255,0.5);">ABN: ${tenant.abn}</p>` : ""}</td>
-      <td align="right"><p style="margin:0;font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;">BESPOKE JOB RECEIPT</p><p style="margin:3px 0 0;font-size:18px;font-weight:700;color:#8B7355;">${jobNumber}</p></td>
+      <td><p style="margin:0;font-size:18px;font-weight:700;color:#fff;">${esc.businessName}</p>${esc.abn ? `<p style="margin:4px 0 0;font-size:11px;color:rgba(255,255,255,0.5);">ABN: ${esc.abn}</p>` : ""}</td>
+      <td align="right"><p style="margin:0;font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;">BESPOKE JOB RECEIPT</p><p style="margin:3px 0 0;font-size:18px;font-weight:700;color:#8B7355;">${esc.jobNumber}</p></td>
     </tr></table>
   </td></tr>
   <tr><td style="background:#fff;padding:36px;">
-    <p style="margin:0 0 6px;font-size:15px;color:#1A1A1A;font-weight:600;">Hi ${customerDisplayName},</p>
+    <p style="margin:0 0 6px;font-size:15px;color:#1A1A1A;font-weight:600;">Hi ${esc.customerDisplayName},</p>
     <p style="margin:0 0 24px;font-size:14px;color:#666;line-height:1.6;">Thank you for placing your bespoke order with us. Your job receipt is attached. Here's a summary:</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF9;border-radius:8px;margin-bottom:28px;border:1px solid #E5E2DE;"><tr><td style="padding:20px 24px;">
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="padding-bottom:12px;width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Job #</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${jobNumber}</p></td>
-          <td style="padding-bottom:12px;width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Title</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${jobData.title || "—"}</p></td>
+          <td style="padding-bottom:12px;width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Job #</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${esc.jobNumber}</p></td>
+          <td style="padding-bottom:12px;width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Title</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${esc.jobTitle}</p></td>
         </tr>
         ${jobData.estimatedCost != null ? `<tr><td style="width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Estimated Cost</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">$${Number(jobData.estimatedCost).toFixed(2)}</p></td>` : "<tr><td>"}
         <td style="width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Due Date</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${jobData.dueDate ? new Date(jobData.dueDate).toLocaleDateString("en-AU", {day:"numeric",month:"short",year:"numeric"}) : "To be advised"}</p></td></tr>
       </table>
     </td></tr></table>
-    <p style="margin:0;font-size:13px;color:#888;line-height:1.6;">Our team will be in touch with progress updates. If you have any questions, please reply to this email${tenant?.phone ? ` or call us at ${tenant.phone}` : ""}.</p>
+    <p style="margin:0;font-size:13px;color:#888;line-height:1.6;">Our team will be in touch with progress updates. If you have any questions, please reply to this email${esc.phone ? ` or call us at ${esc.phone}` : ""}.</p>
   </td></tr>
   <tr><td style="background:#F8F5F0;border-radius:0 0 12px 12px;padding:16px 36px;border-top:1px solid #E5E2DE;">
-    <p style="margin:0;font-size:11px;color:#aaa;text-align:center;">Sent by <strong>${businessName}</strong>${storePhone}${storeAddr} using <a href="https://nexpura.com" style="color:#8B7355;text-decoration:none;">Nexpura</a></p>
+    <p style="margin:0;font-size:11px;color:#aaa;text-align:center;">Sent by <strong>${esc.businessName}</strong>${esc.storePhone}${esc.storeAddr} using <a href="https://nexpura.com" style="color:#8B7355;text-decoration:none;">Nexpura</a></p>
   </td></tr>
 </table></td></tr></table></body></html>`,
     attachments: [

