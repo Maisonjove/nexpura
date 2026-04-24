@@ -5,7 +5,7 @@ import { openai } from "@ai-sdk/openai";
 import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { sanitizeText } from "@/lib/sanitize";
+import { sanitizeText, escapeHtml } from "@/lib/sanitize";
 
 export const maxDuration = 60;
 
@@ -62,13 +62,16 @@ async function handleEmailExport(
 
     const totalAmount = invoices.reduce((s, i) => s + (i.total || 0), 0);
     const rows = invoices.map((inv) => {
+      // L-ai-chat-email-html: every DB-sourced string goes through
+      // escapeHtml before interpolation — invoice_number, customer
+      // name, and status all originate from user input.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const customerName = (inv.customers as any)?.name || "Unknown";
       return `<tr>
-        <td style="padding:8px;border:1px solid #e5e7eb">${inv.invoice_number || "—"}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${inv.invoice_date}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${customerName}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb;text-transform:capitalize">${inv.status}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(String(inv.invoice_number || "—"))}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(String(inv.invoice_date ?? ""))}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(String(customerName))}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb;text-transform:capitalize">${escapeHtml(String(inv.status ?? ""))}</td>
         <td style="padding:8px;border:1px solid #e5e7eb;text-align:right">$${(inv.total || 0).toFixed(2)}</td>
       </tr>`;
     }).join("");
@@ -128,11 +131,12 @@ async function handleEmailExport(
     const rows = repairs.map((r) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const customerName = (r.customers as any)?.name || "Unknown";
+      const desc = r.description?.slice(0, 60) || "—";
       return `<tr>
-        <td style="padding:8px;border:1px solid #e5e7eb">${r.created_at?.slice(0, 10)}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${customerName}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${r.description?.slice(0, 60) || "—"}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb;text-transform:capitalize">${r.stage}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(String(r.created_at?.slice(0, 10) ?? ""))}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(String(customerName))}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(String(desc))}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb;text-transform:capitalize">${escapeHtml(String(r.stage ?? ""))}</td>
         <td style="padding:8px;border:1px solid #e5e7eb;text-align:right">$${(r.price || 0).toFixed(2)}</td>
       </tr>`;
     }).join("");
@@ -187,10 +191,10 @@ async function handleEmailExport(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const customerName = (q.customers as any)?.name || "Unknown";
       return `<tr>
-        <td style="padding:8px;border:1px solid #e5e7eb">${q.quote_number || "—"}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${q.created_at?.slice(0, 10)}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${customerName}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb;text-transform:capitalize">${q.status}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(String(q.quote_number || "—"))}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(String(q.created_at?.slice(0, 10) ?? ""))}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(String(customerName))}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb;text-transform:capitalize">${escapeHtml(String(q.status ?? ""))}</td>
         <td style="padding:8px;border:1px solid #e5e7eb;text-align:right">$${(q.total || 0).toFixed(2)}</td>
       </tr>`;
     }).join("");
@@ -289,6 +293,24 @@ export async function POST(req: Request) {
 
     const adminClient = createAdminClient();
     const businessName = tenant?.name ?? "your business";
+
+    // CRIT-5: If the caller supplied a conversationId, verify the conversation
+    // actually belongs to the caller's tenant BEFORE any downstream query uses
+    // it. Prior behaviour looked up ai_messages by conversation_id alone —
+    // Tenant A could pass Tenant B's convoId and the AI would quote back
+    // Tenant B's history. We reject unknown / cross-tenant ids with 404 so
+    // the surface doesn't leak existence.
+    if (conversationId) {
+      const { data: convoRow } = await adminClient
+        .from("ai_conversations")
+        .select("id, tenant_id")
+        .eq("id", conversationId)
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
+      if (!convoRow) {
+        return Response.json({ error: "Conversation not found" }, { status: 404 });
+      }
+    }
 
     // ── Check for email export intent first ──────────────────────────────────
     const emailKeywords = /\b(email|send|export)\b/i;
@@ -438,9 +460,14 @@ Be concise, direct, and practical. You know jewellery.`;
     });
 
     // Fetch history
+    // CRIT-5: always scope by tenant_id — even though convoId was verified
+    // above, defense-in-depth guarantees a race or future edit can't leak
+    // another tenant's messages.
     const { data: history } = await adminClient
       .from("ai_messages").select("role, content")
-      .eq("conversation_id", convoId).order("created_at", { ascending: true }).limit(20);
+      .eq("conversation_id", convoId)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: true }).limit(20);
 
     const messages = (history ?? []).map((m) => ({
       role: m.role as "user" | "assistant",
@@ -462,7 +489,8 @@ Be concise, direct, and practical. You know jewellery.`;
         });
         await adminClient.from("ai_conversations")
           .update({ updated_at: new Date().toISOString() })
-          .eq("id", convoId!);
+          .eq("id", convoId!)
+          .eq("tenant_id", tenantId);
       },
     });
 

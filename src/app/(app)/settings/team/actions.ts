@@ -3,10 +3,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import nodeCrypto from "node:crypto";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { PLAN_FEATURES, canAddStaff, type PlanId } from "@/lib/plans";
 import { requireRole } from "@/lib/auth-context";
+
+// CRIT-7: invites expire after 7 days. Keep this constant in sync with
+// the copy in the invite emails and with /api/invite/accept's 410 path.
+const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
+function hashInviteToken(token: string): string {
+  return nodeCrypto.createHash("sha256").update(token, "utf8").digest("hex");
+}
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -88,8 +97,13 @@ export async function inviteTeamMember(formData: FormData) {
       return { error: "A team member with this email already exists" };
     }
 
-    // Generate invite token
+    // Generate invite token. CRIT-7: we now persist sha256(token) and an
+    // invite_expires_at (now + 7d). The plaintext column is still
+    // populated so we can email the link; /api/invite/accept prefers
+    // hash lookup and clears both on accept.
     const inviteToken = crypto.randomUUID();
+    const inviteTokenHash = hashInviteToken(inviteToken);
+    const inviteExpiresAt = new Date(Date.now() + INVITE_EXPIRY_MS).toISOString();
 
     const { data: member, error } = await admin.from("team_members").insert({
       tenant_id: tenantId,
@@ -97,6 +111,8 @@ export async function inviteTeamMember(formData: FormData) {
       email,
       role,
       invite_token: inviteToken,
+      invite_token_hash: inviteTokenHash,
+      invite_expires_at: inviteExpiresAt,
       invite_accepted: false,
       notify_new_repairs: false,
       notify_new_bespoke: false,

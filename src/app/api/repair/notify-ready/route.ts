@@ -5,6 +5,7 @@ import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getUserLocationIds } from "@/lib/locations";
+import { isSandbox, logSandboxSuppressedSend } from "@/lib/sandbox";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
@@ -34,13 +35,27 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Fetch tenant name for email branding
+    // L-notify-ready-sandbox: in sandbox mode (preview/dev/SANDBOX_MODE)
+    // never hit real customer inboxes. Short-circuit before any lookup
+    // so preview QA runs are observable in logs but emit nothing.
+    if (isSandbox()) {
+      logSandboxSuppressedSend({
+        channel: "email",
+        to: "bulk-ready-notifications",
+        subject: "notify-ready batch suppressed in sandbox",
+      });
+      return NextResponse.json({ success: true, skipped: "sandbox", notified: 0 });
+    }
+
+    // Fetch tenant name + business_name for email branding. Prefer
+    // business_name (the trading-as name); fall back to `name` (legacy
+    // owner-display label) then a generic.
     const { data: tenant } = await admin
       .from("tenants")
-      .select("name, email")
+      .select("business_name, name, email")
       .eq("id", tenantId)
       .maybeSingle();
-    const businessName = tenant?.name ?? "Our Store";
+    const businessName = tenant?.business_name ?? tenant?.name ?? "Our Store";
     const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@nexpura.com";
 
     let notified = 0;

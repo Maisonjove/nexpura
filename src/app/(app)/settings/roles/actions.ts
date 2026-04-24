@@ -3,11 +3,20 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import nodeCrypto from "node:crypto";
 import { resend } from "@/lib/email/resend";
 import { getTenantEmailSender } from "../email/actions";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { requireAuth, requireRole } from "@/lib/auth-context";
+
+// CRIT-7: invites expire after 7 days. Matches the 7-day copy in the
+// invite emails below and /api/invite/accept's expiry check.
+const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
+function hashInviteToken(token: string): string {
+  return nodeCrypto.createHash("sha256").update(token, "utf8").digest("hex");
+}
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -247,9 +256,11 @@ export async function inviteTeamMember(
     .eq("id", ctx.tenantId)
     .single();
 
-  // Generate invite token
+  // Generate invite token. CRIT-7: store sha256(token) + 7-day expiry.
   const inviteToken = crypto.randomUUID();
-  
+  const inviteTokenHash = hashInviteToken(inviteToken);
+  const inviteExpiresAt = new Date(Date.now() + INVITE_EXPIRY_MS).toISOString();
+
   // Get default permissions for this role
   const defaultPerms = DEFAULT_PERMISSIONS[role] || DEFAULT_PERMISSIONS.staff;
 
@@ -262,6 +273,8 @@ export async function inviteTeamMember(
     permissions: defaultPerms,
     allowed_location_ids: allowedLocationIds,
     invite_token: inviteToken,
+    invite_token_hash: inviteTokenHash,
+    invite_expires_at: inviteExpiresAt,
     invite_accepted: false,
     phone_number: phoneNumber || null,
     whatsapp_notifications_enabled: true, // Default to enabled
@@ -367,12 +380,19 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
     .eq("id", ctx.tenantId)
     .single();
 
-  // Generate new token
+  // Generate new token. CRIT-7: rotate hash + expiry as well so the
+  // fresh link has a fresh 7-day window and the old link is dead.
   const inviteToken = crypto.randomUUID();
-  
+  const inviteTokenHash = hashInviteToken(inviteToken);
+  const inviteExpiresAt = new Date(Date.now() + INVITE_EXPIRY_MS).toISOString();
+
   await admin
     .from("team_members")
-    .update({ invite_token: inviteToken })
+    .update({
+      invite_token: inviteToken,
+      invite_token_hash: inviteTokenHash,
+      invite_expires_at: inviteExpiresAt,
+    })
     .eq("id", memberId);
 
   // Send invite email

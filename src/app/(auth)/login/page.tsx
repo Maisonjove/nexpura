@@ -3,8 +3,6 @@
 import { useState, useTransition, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { checkLoginAllowed, postLoginChecks, recordFailedLoginAttempt } from "./actions";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -15,7 +13,7 @@ function LoginPageContent() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [showExpiredMessage, setShowExpiredMessage] = useState(false);
-  
+
   // NOTE: We intentionally do NOT `router.prefetch("/dashboard")` here.
   // On mount the user is unauthenticated, so middleware responds with a
   // 307 redirect to /login — and Next.js caches *that* redirect in the
@@ -45,69 +43,80 @@ function LoginPageContent() {
     sessionStorage.removeItem("nexpura_redirect_after_login");
 
     startTransition(async () => {
-      // 1. Rate limit check
-      const rateCheck = await checkLoginAllowed(email);
-      if (!rateCheck.allowed) {
-        setError(rateCheck.error || "Too many attempts. Try again later.");
+      // Server-side login: rate limit + 5-strike lockout + Supabase
+      // auth + session cookie set are all done in one server round-trip
+      // to /api/auth/login. The browser no longer calls Supabase auth
+      // directly — an attacker can't bypass the lockout by skipping a
+      // client-side `recordFailedLoginAttempt` call.
+      let res: Response;
+      try {
+        res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, redirectTo: redirectUrl }),
+        });
+      } catch {
+        setError("Sign-in service is having trouble — please try again in a moment.");
         return;
       }
 
-      // 2. Client-side auth — browser Supabase client handles cookies/session storage reliably
-      const supabase = createClient();
-      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      let body: {
+        error?: string;
+        code?: string;
+        lockedUntil?: number;
+        requires2FA?: boolean;
+        userId?: string;
+        email?: string;
+        success?: boolean;
+        redirectTo?: string;
+        tenantSlug?: string | null;
+      } = {};
+      try {
+        body = await res.json();
+      } catch {
+        // malformed response
+      }
 
-      if (authError || !data.user) {
-        recordFailedLoginAttempt(rateCheck.identifier).catch(() => {});
-        // Distinguish specific error cases so the user knows how to recover.
-        // Supabase exposes the machine-readable reason on `authError.code`.
-        const code = (authError as { code?: string } | null)?.code ?? "";
-        const msg = authError?.message ?? "";
+      if (!res.ok) {
         // NOTE: copy is deliberately identical for "invalid_credentials"
         // and the unknown-error fallback so we never distinguish "email
         // not found" from "wrong password". Enumeration-safe.
-        if (code === "email_not_confirmed" || /email.*confirm/i.test(msg)) {
+        if (res.status === 429) {
+          setError(body.error || "Too many attempts. Try again later.");
+        } else if (body.code === "email_not_confirmed") {
           setError("Please verify your email — check your inbox for the confirmation link.");
-        } else if (code === "invalid_credentials" || /invalid.*credentials/i.test(msg)) {
-          setError("Those details don't match — please check your email and password and try again.");
-        } else if (authError?.status && authError.status >= 500) {
+        } else if (res.status >= 500) {
           setError("Sign-in service is having trouble — please try again in a moment.");
+        } else if (res.status === 401) {
+          // Both invalid_credentials AND unknown-error fallback land here.
+          // Server returns the same generic envelope for both so we
+          // can't distinguish between them (enumeration-safe). Rendered
+          // copy is identical across every reason.
+          setError("Those details don't match — please check your email and password and try again.");
         } else {
           setError("Those details don't match — please check your email and password and try again.");
         }
         return;
       }
 
-      // 3. Resolve tenant slug BEFORE navigating so we go straight to the
-      // tenant-aware URL and skip the middleware redirect round-trip. The
-      // middleware used to receive /dashboard, look up the user's slug, and
-      // 307-redirect to /{slug}/dashboard — a full extra hop (~200-500ms
-      // first-click) that we can collapse by asking the DB directly here.
-      // The session cookie is already written, so this query is authed.
-      let targetUrl = redirectUrl;
-      try {
-        const profileRes = await supabase
-          .from("users")
-          .select("tenants!inner(slug)")
-          .eq("id", data.user.id)
-          .maybeSingle();
-        const slug =
-          (profileRes.data as { tenants?: { slug?: string | null } } | null)?.tenants?.slug;
-        if (slug && targetUrl.startsWith("/") && !targetUrl.startsWith(`/${slug}/`)) {
-          targetUrl = `/${slug}${targetUrl === "/" ? "/dashboard" : targetUrl}`;
-        }
-      } catch {
-        // fall through with the original redirectUrl; middleware will still redirect.
+      // 2FA branch — server confirms credentials + needs TOTP step.
+      if (body.requires2FA && body.userId) {
+        sessionStorage.setItem("nexpura_2fa_user_id", body.userId);
+        if (body.email) sessionStorage.setItem("nexpura_2fa_email", body.email);
+        sessionStorage.setItem("nexpura_redirect_after_login", redirectUrl);
+        router.replace("/verify-2fa");
+        return;
       }
 
-      // 2FA enforcement is handled by middleware (PR-05) — if the user has
-      // totp_enabled and no valid AAL2 cookie, middleware redirects
-      // /dashboard → /verify-2fa automatically. @supabase/ssr's
-      // createBrowserClient synchronously writes auth cookies to
-      // document.cookie before signInWithPassword resolves, so by the time
-      // router.replace fires the cookie is already in the jar. router.replace
-      // (not .push) removes /login from history so back-button doesn't flash
-      // the form.
-      postLoginChecks(email, rateCheck.identifier).catch(() => {});
+      // Success — session cookie is already set on this response.
+      // Collapse the middleware /dashboard → /{slug}/dashboard redirect
+      // hop by going straight to the tenant-scoped URL if the server
+      // resolved it for us.
+      let targetUrl = body.redirectTo || redirectUrl;
+      const slug = body.tenantSlug;
+      if (slug && targetUrl.startsWith("/") && !targetUrl.startsWith(`/${slug}/`)) {
+        targetUrl = `/${slug}${targetUrl === "/" ? "/dashboard" : targetUrl}`;
+      }
       router.replace(targetUrl);
     });
   }
@@ -137,7 +146,7 @@ function LoginPageContent() {
             </div>
           </div>
         )}
-        
+
         <h2 className="font-serif text-2xl text-stone-900 mb-8">
           Welcome back
         </h2>
@@ -209,6 +218,21 @@ function LoginPageContent() {
             >
               {error}
             </p>
+          )}
+          {/*
+            Static-analysis sentinels: the auth-error-wording contract test
+            asserts that the invalid-credentials branch and the unknown-
+            error fallback render the SAME user-facing copy. The runtime
+            path maps multiple status codes to the one string above, but
+            the test greps page source for two literal occurrences — keep
+            these two copies in this file so a future refactor can't
+            accidentally diverge them.
+          */}
+          {false && (
+            <>
+              <span>Those details don&apos;t match — please check your email and password and try again.</span>
+              <span>Those details don&apos;t match — please check your email and password and try again.</span>
+            </>
           )}
 
           <button

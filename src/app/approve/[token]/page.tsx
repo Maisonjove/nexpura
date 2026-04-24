@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit } from "@/lib/rate-limit";
 import ApprovalClient from "./ApprovalClient";
 
 export const metadata = {
@@ -41,6 +43,18 @@ export default function ApprovalPage({ params }: Props) {
 
 async function ApprovalBody({ paramsPromise }: { paramsPromise: Promise<{ token: string }> }) {
   const { token } = await paramsPromise;
+
+  // L-approve-ratelimit: public token-gated page; cap per-IP attempts
+  // on the API-tier bucket so a bot can't enumerate approval tokens.
+  // Mirrors the guard on /track/[trackingId]. Invalid limit → same
+  // branded "invalid link" card to avoid signalling what failed.
+  const hdrs = await headers();
+  const ip = hdrs.get("x-forwarded-for") ?? hdrs.get("x-real-ip") ?? "anonymous";
+  const { success: rlOk } = await checkRateLimit(`approve:${ip}`, "api");
+  if (!rlOk) {
+    return <ApprovalInvalid />;
+  }
+
   const data = await loadJobByToken(token);
   if (!data) {
     // Customer-facing invalid-state: branded card (not the generic Next.js

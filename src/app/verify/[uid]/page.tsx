@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Image from "next/image";
+import { headers } from "next/headers";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const metadata = {
   title: "Jewellery Passport — Nexpura",
@@ -92,7 +94,35 @@ async function VerifyPage({
   params: Promise<{ uid: string }>;
 }) {
   const { uid } = await params;
-  
+
+  // Audit finding (High): public /verify/[uid] had no rate limit, so
+  // the passport-UID namespace was scrapable from a single IP. Cap per-
+  // IP attempts on the API-tier bucket. Treat 429 as "not found" so the
+  // 404 copy both doubles as brand-consistent AND doesn't reveal that
+  // we noticed the scraping pattern.
+  const hdrs = await headers();
+  const ip = hdrs.get("x-forwarded-for") ?? hdrs.get("x-real-ip") ?? "anonymous";
+  const { success: rlOk } = await checkRateLimit(`verify:${ip}`, "api");
+  if (!rlOk) {
+    return (
+      <div className="min-h-screen bg-[#F8F5F0] flex flex-col items-center justify-center px-4">
+        <div className="w-full max-w-md text-center">
+          <h1 className="font-semibold text-3xl font-bold text-[#071A0D] mb-1">nexpura</h1>
+          <p className="text-xs text-gray-400 uppercase tracking-widest mb-12">Digital Jewellery Passport</p>
+          <div className="bg-white rounded-2xl border border-[#E8E8E8] p-8 shadow-sm">
+            <h2 className="font-semibold text-xl font-semibold text-[#071A0D] mb-2">Passport Not Found</h2>
+            <p className="text-sm text-gray-500 leading-relaxed mb-6">
+              This passport does not exist or is private. If you believe this is an error, please contact your jeweller.
+            </p>
+            <a href="/verify" className="inline-flex items-center gap-2 px-4 py-2 bg-[#071A0D] text-white text-sm font-medium rounded-lg hover:bg-[#0a2614] transition-colors">
+              Try Another Number
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Validate UID format to prevent enumeration attacks
   if (!isValidPassportUid(uid)) {
     return (

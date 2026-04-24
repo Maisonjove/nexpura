@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 export default function PrintReceiptPageWrapper(props: { params: Promise<{ jobType: string; jobId: string }> }) {
   return (
@@ -59,6 +60,23 @@ async function PrintReceiptPage({
   let jobTitle = "";
   let itemDesc = "";
 
+  // W2-005/W2-006: a location-restricted staff user must not be able to
+  // print a receipt for a job at a location they aren't assigned to.
+  // Owners/managers (null allowed_location_ids) and legacy rows
+  // (location_id null) pass through.
+  const uid = user.id;
+  const tid = userData.tenant_id;
+  async function guardLocation(recordLocationId: string | null | undefined): Promise<void> {
+    try {
+      await assertUserCanAccessLocation(uid, tid, recordLocationId);
+    } catch (e) {
+      if (e instanceof LocationAccessDeniedError) {
+        notFound();
+      }
+      throw e;
+    }
+  }
+
   if (jobType === "repair") {
     const { data } = await admin.from("repairs")
       .select("*, customers(id, full_name, email, mobile)")
@@ -66,6 +84,7 @@ async function PrintReceiptPage({
       .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
       .single();
     if (!data) notFound();
+    await guardLocation(data.location_id);
     customer = Array.isArray(data.customers) ? data.customers[0] : data.customers;
     jobNumber = data.repair_number;
     jobTitle = `${data.repair_type}`;
@@ -77,6 +96,7 @@ async function PrintReceiptPage({
       .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
       .single();
     if (!data) notFound();
+    await guardLocation(data.location_id);
     customer = Array.isArray(data.customers) ? data.customers[0] : data.customers;
     jobNumber = data.job_number;
     jobTitle = data.title;

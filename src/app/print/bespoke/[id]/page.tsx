@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
+import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 
 export default function PrintBespokePageWrapper(props: { params: Promise<{ id: string }> }) {
   return (
@@ -63,6 +64,19 @@ async function PrintBespokePage({
     .single();
 
   if (!job) notFound();
+
+  // W2-005/W2-006: a location-restricted staff user must not be able to
+  // print a bespoke job sheet for a job at a location they aren't
+  // assigned to. Owners/managers (null allowed_location_ids) and legacy
+  // rows (location_id null) pass through.
+  try {
+    await assertUserCanAccessLocation(user.id, userData.tenant_id, job.location_id);
+  } catch (e) {
+    if (e instanceof LocationAccessDeniedError) {
+      notFound();
+    }
+    throw e;
+  }
 
   const customer = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
 

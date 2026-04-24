@@ -47,12 +47,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Customer has no email" }, { status: 400 });
   }
 
-  // Fetch tenant details
+  // Fetch tenant details. Prefer business_name (trading identity) over
+  // `name` (legacy owner-display label) for customer-facing emails so
+  // branding matches the rest of the app — see L-bespoke-send-approval-
+  // branding in the audit.
   const { data: tenant } = await admin
     .from("tenants")
-    .select("name, subdomain")
+    .select("business_name, name, subdomain")
     .eq("id", auth.tenantId)
     .single();
+  const businessName = tenant?.business_name ?? tenant?.name ?? "Nexpura";
 
   // Generate approval token
   const token = randomUUID();
@@ -77,7 +81,7 @@ export async function POST(req: NextRequest) {
   // Send email
   try {
     await resend.emails.send({
-      from: `${tenant?.name || "Nexpura"} <noreply@nexpura.com>`,
+      from: `${businessName} <noreply@nexpura.com>`,
       to: customer.email,
       subject: `Your custom jewellery design is ready for approval — Job #${job.job_number}`,
       html: `
@@ -102,7 +106,7 @@ export async function POST(req: NextRequest) {
           </p>
           <hr style="border: none; border-top: 1px solid #e7e5e4; margin: 24px 0;" />
           <p style="color: #78716c; font-size: 12px;">
-            ${tenant?.name || "Your jeweller"} — Powered by Nexpura
+            ${businessName} — Powered by Nexpura
           </p>
         </div>
       `,

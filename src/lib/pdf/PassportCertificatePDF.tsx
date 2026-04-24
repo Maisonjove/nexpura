@@ -148,6 +148,11 @@ export interface PassportCertificateData {
   itemName: string;
   description?: string;
   tenantName: string;
+  tenantAbn?: string;
+  tenantAddressLine1?: string;
+  tenantSuburb?: string;
+  tenantState?: string;
+  tenantPostcode?: string;
   tenantPhone?: string;
   tenantEmail?: string;
   customerName?: string;
@@ -159,6 +164,15 @@ export interface PassportCertificateData {
   weightGrams?: number;
   isPublic?: boolean;
   createdAt?: string;
+}
+
+function formatTenantAddress(p: PassportCertificateData): string | null {
+  // Mirrors RepairTicketPDF: "123 Main St, Surry Hills NSW 2010".
+  const cityLine = [p.tenantSuburb, p.tenantState, p.tenantPostcode]
+    .filter(Boolean)
+    .join(" ");
+  const parts = [p.tenantAddressLine1, cityLine].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : null;
 }
 
 function fmt(n?: number) {
@@ -178,9 +192,25 @@ export default function PassportCertificatePDF({ passport }: { passport: Passpor
         {/* Decorative border */}
         <View style={styles.border} />
 
-        {/* Header */}
+        {/* Header — full trading identity (business name, ABN, address)
+            so the certificate holds up as a provenance document. */}
         <View style={styles.header}>
           <Text style={styles.brandName}>{passport.tenantName}</Text>
+          {passport.tenantAbn && (
+            <Text style={{ fontSize: 7, color: "#999", marginBottom: 2 }}>
+              ABN {passport.tenantAbn}
+            </Text>
+          )}
+          {formatTenantAddress(passport) && (
+            <Text style={{ fontSize: 7, color: "#999", marginBottom: 2 }}>
+              {formatTenantAddress(passport)}
+            </Text>
+          )}
+          {(passport.tenantPhone || passport.tenantEmail) && (
+            <Text style={{ fontSize: 7, color: "#999", marginBottom: 6 }}>
+              {[passport.tenantPhone, passport.tenantEmail].filter(Boolean).join(" · ")}
+            </Text>
+          )}
           <Text style={styles.docTitle}>JEWELLERY PASSPORT</Text>
           <Text style={styles.subtitle}>Certificate of Authenticity &amp; Ownership</Text>
           <Text style={styles.passportNumber}>{passport.passportNumber}</Text>

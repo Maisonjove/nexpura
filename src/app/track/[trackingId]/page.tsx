@@ -44,8 +44,10 @@ interface OrderData {
 
 // Validate tracking ID format to prevent abuse
 function isValidTrackingId(id: string): boolean {
-  // Only allow valid tracking ID formats: RPR-XXXXXXXX or BSP-XXXXXXXX
-  return /^(RPR|BSP)-[A-F0-9]{8}$/i.test(id);
+  // Only allow valid tracking ID formats: RPR-XXXXXXXX or BSP-XXXXXXXX.
+  // Accepts 8 or 12 hex chars — 8 is the legacy length, 12 is the
+  // current generator output (see migration 20260424_tracking_id_entropy.sql).
+  return /^(RPR|BSP)-[A-F0-9]{8,12}$/i.test(id);
 }
 
 async function fetchOrderData(trackingId: string): Promise<OrderData | null> {

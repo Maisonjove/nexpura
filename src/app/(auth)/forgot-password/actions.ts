@@ -6,17 +6,19 @@
 // directly from the browser client. Two problems with that:
 //
 //   1. Supabase's platform rate-limit (default ~6 req/hr/email or
-//      ~30 req/hr/IP) tripped before our Upstash limiter ever saw the
+//      ~30 req/hr/IP) tripped before our Postgres-backed
+//      (check_and_increment_rate_limit RPC) limiter ever saw the
 //      request, surfacing as "API rate limit reached" to the user with
 //      no email actually sent.
 //   2. The client-side call leaked the raw Supabase error string to
 //      the user, which is both confusing and (marginally) info-leaky.
 //
-// The fix: move the call server-side, gate it on our Upstash `auth`
-// bucket (keyed by `ip` + normalised `email` so 10/min is shared
-// across axes), use the admin client so we control the retry path,
-// and ALWAYS return a generic success response regardless of whether
-// the email exists — enumeration-safe by construction.
+// The fix: move the call server-side, gate it on our Postgres-backed
+// (check_and_increment_rate_limit RPC) `auth` bucket (keyed by `ip` +
+// normalised `email` so 10/min is shared across axes), use the admin
+// client so we control the retry path, and ALWAYS return a generic
+// success response regardless of whether the email exists —
+// enumeration-safe by construction.
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -84,9 +86,10 @@ export async function requestPasswordReset(
   }
   const email = parse.data.email; // already lowercased + trimmed by zod
 
-  // 2. Upstash rate limit — keyed by ip+email so 10/min is shared
-  // across both axes. Gives a legitimate user room to retry while
-  // preventing enumeration bursts from a single attacker.
+  // 2. Postgres-backed (check_and_increment_rate_limit RPC) rate limit
+  // — keyed by ip+email so 10/min is shared across both axes. Gives a
+  // legitimate user room to retry while preventing enumeration bursts
+  // from a single attacker.
   const ip = await getClientIp();
   const rlKey = `forgot-password:${ip}:${email}`;
   const rl = await checkRateLimit(rlKey, "auth");

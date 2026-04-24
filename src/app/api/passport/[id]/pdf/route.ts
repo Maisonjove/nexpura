@@ -44,9 +44,14 @@ export async function GET(
   // W2-005 note: passports is a tenant-global resource (no location_id
   // column). Tenant check is sufficient — no location scope to apply.
 
+  // L-passport-pdf-tenant-fields: widen tenant select to match the
+  // shape RepairTicketPDF uses, so the passport certificate renders
+  // the full trading identity (business name + ABN + address) rather
+  // than just the loose `name` field. Falls back to `name` if
+  // `business_name` is null.
   const { data: tenant } = await supabase
     .from("tenants")
-    .select("name, phone, email")
+    .select("business_name, name, abn, address_line1, suburb, state, postcode, phone, email")
     .eq("id", userData.tenant_id)
     .single();
 
@@ -56,7 +61,12 @@ export async function GET(
     passportNumber: passport.passport_uid ?? passport.id,
     itemName: passport.title,
     description: passport.description,
-    tenantName: tenant?.name ?? "Jewellery Studio",
+    tenantName: tenant?.business_name ?? tenant?.name ?? "Jewellery Studio",
+    tenantAbn: tenant?.abn ?? undefined,
+    tenantAddressLine1: tenant?.address_line1 ?? undefined,
+    tenantSuburb: tenant?.suburb ?? undefined,
+    tenantState: tenant?.state ?? undefined,
+    tenantPostcode: tenant?.postcode ?? undefined,
     tenantPhone: tenant?.phone,
     tenantEmail: tenant?.email,
     customerName: customer?.full_name,

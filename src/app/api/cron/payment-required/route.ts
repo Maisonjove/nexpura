@@ -9,11 +9,13 @@ import { safeBearerMatch } from "@/lib/timing-safe-compare";
  * Body: { tenantId: string }
  */
 export async function POST(request: NextRequest) {
+  // Accept ONLY CRON_SECRET. Previously the service_role key was
+  // accepted as a fallback bearer — that's a wildly over-privileged
+  // credential for cron invocation and leaked anywhere (Vercel env
+  // export, log line, deploy preview) would hand an attacker the
+  // entire database.
   const authHeader = request.headers.get("authorization");
-  const allowed =
-    safeBearerMatch(authHeader, process.env.CRON_SECRET) ||
-    safeBearerMatch(authHeader, process.env.SUPABASE_SERVICE_ROLE_KEY);
-  if (!allowed) {
+  if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
