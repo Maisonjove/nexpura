@@ -163,10 +163,13 @@ export async function processRefund(params: {
     const oldBalance = customer?.store_credit || 0;
     const newBalance = oldBalance + total;
 
-    // Atomic update with conditional check to prevent race
+    // Atomic update with conditional check to prevent race.
+    // PostgREST `.update()` returns count=null unless count: "exact"
+    // is requested. Without it the `=== 0` check below never fires →
+    // a stale CAS goes undetected → customer is shorted the credit.
     const { error: creditErr, count: creditCount } = await admin
       .from("customers")
-      .update({ store_credit: newBalance })
+      .update({ store_credit: newBalance }, { count: "exact" })
       .eq("id", sale.customer_id)
       .eq("tenant_id", tenantId)
       .eq("store_credit", oldBalance); // Only if balance unchanged
@@ -226,64 +229,37 @@ export async function processRefund(params: {
 
   await admin.from("refund_items").insert(refundItemsData);
 
-  // Return stock to inventory for items marked for restock (race-safe)
+  // Return stock for items marked for restock. Pre-fix this did
+  // SELECT-then-UPDATE-then-INSERT which collided with the BEFORE INSERT
+  // trigger sync_inventory_on_stock_movement_insert (verified
+  // 2026-04-25) — every refund-restock added stock back twice. Now: only
+  // emit the stock_movements row and let the trigger handle inventory
+  // and quantity_after. Plus the prior CAS was buggy (count: undefined
+  // without count: "exact") so it never noticed concurrent races anyway.
   for (const item of params.items.filter((i) => i.restock && i.inventory_id)) {
-    const { data: inv } = await admin
-      .from("inventory")
-      .select("quantity")
-      .eq("id", item.inventory_id!)
-      .eq("tenant_id", tenantId)
-      .single();
-
-    if (inv) {
-      const oldQty = inv.quantity;
-      const newQty = oldQty + item.quantity;
-      
-      // Conditional update to prevent race
-      const { count: updateCount } = await admin
-        .from("inventory")
-        .update({ quantity: newQty })
-        .eq("id", item.inventory_id!)
-        .eq("tenant_id", tenantId)
-        .eq("quantity", oldQty);
-      
-      // If race occurred, retry
-      let finalQty = newQty;
-      if (updateCount === 0) {
-        const { data: invRetry } = await admin
-          .from("inventory")
-          .select("quantity")
-          .eq("id", item.inventory_id!)
-          .eq("tenant_id", tenantId)
-          .single();
-        if (invRetry) {
-          finalQty = invRetry.quantity + item.quantity;
-          await admin
-            .from("inventory")
-            .update({ quantity: finalQty })
-            .eq("id", item.inventory_id!)
-            .eq("tenant_id", tenantId);
-        }
-      }
-
-      await admin.from("stock_movements").insert({
-        tenant_id: tenantId,
-        inventory_id: item.inventory_id!,
-        movement_type: "return",
-        quantity_change: item.quantity,
-        quantity_after: finalQty,
-        notes: `Refund ${refundNumber}`,
-        created_by: userId,
-      });
-    }
+    await admin.from("stock_movements").insert({
+      tenant_id: tenantId,
+      inventory_id: item.inventory_id!,
+      movement_type: "return",
+      quantity_change: item.quantity,
+      notes: `Refund ${refundNumber}`,
+      created_by: userId,
+    });
   }
 
-      // Update original sale status to refunded
-      await admin
-        .from("sales")
-        .update({ status: "refunded" })
-        .eq("id", params.originalSaleId)
-        .eq("tenant_id", tenantId);
+      // Only flip the parent sale to status='refunded' when the refund
+      // (this one + prior) covers the full subtotal. Pre-fix the parent
+      // got stamped 'refunded' on every partial refund — subsequent UI
+      // listings hid the original sale and prevented further partial
+      // refunds against the remaining items.
+      const fullyRefunded = requestedSubtotal + alreadyRefunded >= saleSubtotal - 0.01;
+      if (fullyRefunded) {
+        await admin
+          .from("sales")
+          .update({ status: "refunded" })
+          .eq("id", params.originalSaleId)
+          .eq("tenant_id", tenantId);
+      }
 
       // Log audit event
       await logAuditEvent({

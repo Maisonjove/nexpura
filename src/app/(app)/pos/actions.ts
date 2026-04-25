@@ -389,6 +389,13 @@ export async function createPOSSale(
         }
 
         // ─── Legacy per-item fallback (pre-migration only) ───────────
+        // Pre-fix: did SELECT-then-UPDATE-then-INSERT, which collided with
+        // the BEFORE INSERT trigger `sync_inventory_on_stock_movement_insert`
+        // (verified function `sync_inventory_quantity()` 2026-04-25). Net
+        // effect: 2× decrement on every fallback sale (e.g. 10 → 6 instead
+        // of 8 for a quantity 2 sold). Now: pre-flight stock check for
+        // friendly error UX, but the INSERT alone is the write — trigger
+        // handles inventory.quantity + quantity_after.
         for (const item of params.cart) {
           const { data: inv } = await admin
             .from("inventory")
@@ -397,66 +404,28 @@ export async function createPOSSale(
             .eq("tenant_id", tenantId)
             .single();
           if (!inv) continue;
-          const oldQty = inv.quantity;
-          const newQty = oldQty - item.quantity;
-          if (newQty < 0) {
+          const available = inv.quantity;
+          if (available - item.quantity < 0) {
             return {
               success: false,
-              error: `Insufficient stock for "${inv.name || item.name}". Available: ${oldQty}, Requested: ${item.quantity}`,
+              error: `Insufficient stock for "${inv.name || item.name}". Available: ${available}, Requested: ${item.quantity}`,
             };
           }
-          const { count: updateCount } = await admin
-            .from("inventory")
-            .update({ quantity: newQty })
-            .eq("id", item.inventoryId)
-            .eq("tenant_id", tenantId)
-            .eq("quantity", oldQty);
-          if (updateCount === 0) {
-            const { data: invRetry } = await admin
-              .from("inventory")
-              .select("quantity, name")
-              .eq("id", item.inventoryId)
-              .eq("tenant_id", tenantId)
-              .single();
-            if (invRetry) {
-              const retryQty = invRetry.quantity - item.quantity;
-              if (retryQty < 0) {
-                const available = invRetry.quantity;
-                const itemName = invRetry.name || inv.name || item.name;
-                return {
-                  success: false,
-                  error:
-                    available === 0
-                      ? `"${itemName}" just sold out while you were checking out. Please remove it from your cart.`
-                      : `Only ${available} "${itemName}" left in stock (another sale just went through). Please update your cart.`,
-                };
-              }
-              await admin
-                .from("inventory")
-                .update({ quantity: retryQty })
-                .eq("id", item.inventoryId)
-                .eq("tenant_id", tenantId);
-              stockDeductions.push({
-                inventoryId: item.inventoryId,
-                quantity: item.quantity,
-                originalQty: invRetry.quantity,
-              });
-            }
-          } else {
-            stockDeductions.push({
-              inventoryId: item.inventoryId,
-              quantity: item.quantity,
-              originalQty: oldQty,
-            });
-          }
-          await admin.from("stock_movements").insert({
+          const { error: insErr } = await admin.from("stock_movements").insert({
             tenant_id: tenantId,
             inventory_id: item.inventoryId,
             movement_type: "sale",
             quantity_change: -item.quantity,
-            quantity_after: newQty >= 0 ? newQty : 0,
             notes: `POS Sale ${saleNumber}`,
             created_by: userId,
+          });
+          if (insErr) {
+            return { success: false, error: insErr.message };
+          }
+          stockDeductions.push({
+            inventoryId: item.inventoryId,
+            quantity: item.quantity,
+            originalQty: available,
           });
         }
         return { success: true };

@@ -38,65 +38,40 @@ export async function batchReceiveStock(
     for (const line of params.lines) {
       if (line.receiveQty <= 0) continue;
 
-      // Get current quantity
-      const { data: item, error: fetchError } = await admin
+      // Three compounding bugs in the pre-fix shape:
+      //   1. Direct UPDATE inventory.quantity then INSERT stock_movements
+      //      collided with `sync_inventory_on_stock_movement_insert` BEFORE
+      //      INSERT trigger → every receive applied 2× (receive 5 → +10).
+      //   2. The UPDATE wrote `supplier_invoice_ref` which doesn't exist on
+      //      `inventory` (verified 2026-04-25). PGRST204 → entire receive
+      //      errored, but the next INSERT logged + log-and-continue silently
+      //      ate the failure for the second-call retries pattern.
+      //   3. Insert into `inventory_stock_movements` — that table doesn't
+      //      exist at all. Logged-and-ignored, but pollutes error logs and
+      //      represents dead intent.
+      //
+      // Fix: just emit the stock_movements row; the trigger handles the
+      // inventory quantity + quantity_after.
+      const { data: item } = await admin
         .from("inventory")
         .select("quantity")
         .eq("id", line.inventoryId)
         .eq("tenant_id", tenantId)
         .single();
-
-      if (fetchError) {
-        logger.error(`[batchReceiveStock] Failed to fetch item ${line.inventoryId}:`, fetchError);
-        continue;
-      }
-
       if (!item) continue;
 
-      const newQty = (item.quantity ?? 0) + line.receiveQty;
-
-      // Update inventory
-      const { error: updateError } = await admin
-        .from("inventory")
-        .update({
-          quantity: newQty,
-          supplier_invoice_ref: params.invoiceRef ?? undefined,
-        })
-        .eq("id", line.inventoryId)
-        .eq("tenant_id", tenantId);
-
-      if (updateError) {
-        logger.error(`[batchReceiveStock] Failed to update item ${line.inventoryId}:`, updateError);
-        continue;
-      }
-
-      // Log stock movement
-      const { error: movementError } = await admin.from("inventory_stock_movements").insert({
-        tenant_id: tenantId,
-        inventory_item_id: line.inventoryId,
-        moved_by: userId,
-        from_location: null,
-        to_location: "display",
-        notes: `Received from supplier${params.invoiceRef ? ` (Inv: ${params.invoiceRef})` : ""}`,
-      });
-
-      if (movementError) {
-        logger.error(`[batchReceiveStock] Failed to log movement for ${line.inventoryId}:`, movementError);
-      }
-
-      // Also log in stock_movements table (for stock history)
       const { error: historyError } = await admin.from("stock_movements").insert({
         tenant_id: tenantId,
         inventory_id: line.inventoryId,
         movement_type: "purchase",
         quantity_change: line.receiveQty,
-        quantity_after: newQty,
         notes: `Batch receive${params.invoiceRef ? ` - ${params.invoiceRef}` : ""}`,
         created_by: userId,
       });
 
       if (historyError) {
         logger.error(`[batchReceiveStock] Failed to log history for ${line.inventoryId}:`, historyError);
+        continue;
       }
 
       receivedCount++;

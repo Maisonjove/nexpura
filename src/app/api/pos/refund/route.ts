@@ -274,9 +274,17 @@ export async function POST(req: NextRequest) {
         const oldBalance = customer.store_credit || 0;
         const newBalance = oldBalance + refundTotal;
 
+        // PostgREST `.update()` returns count=null unless head/exact is
+        // requested via `{ count: "exact" }`. Without it, `creditCount`
+        // is undefined and the `=== 0` check below never triggers — a
+        // stale CAS (e.g. concurrent POS sale changed store_credit
+        // between the SELECT and UPDATE) goes undetected, the row
+        // doesn't actually update, and the customer is shorted the
+        // refund credit. Same fix applied to all CAS sites in this
+        // session.
         const { error: creditErr, count: creditCount } = await admin
           .from("customers")
-          .update({ store_credit: newBalance })
+          .update({ store_credit: newBalance }, { count: "exact" })
           .eq("id", sale.customer_id)
           .eq("tenant_id", tenantId)
           .eq("store_credit", oldBalance);

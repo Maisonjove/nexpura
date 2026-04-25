@@ -82,12 +82,21 @@ export default function QuoteDetailClient({ quote }: Props) {
   const [emailSending, setEmailSending] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
+  // convertQuoteTo* return `{ id?: string; error?: string }`. Pre-fix the
+  // client awaited the whole object and used it as the `:id` URL segment,
+  // producing `/invoices/[object%20Object]` for every successful convert
+  // even though the server-side row lands fine. Destructure properly and
+  // surface server errors via toast.
   async function handleConvert() {
     setLoading(true);
     setConfirmAction(null);
     try {
-      const invoiceId = await convertQuoteToInvoice(quote.id);
-      router.push(`/invoices/${invoiceId}`);
+      const result = await convertQuoteToInvoice(quote.id);
+      if (result.error || !result.id) {
+        toast.error(result.error || "Failed to convert quote");
+        return;
+      }
+      router.push(`/invoices/${result.id}`);
     } catch (err) {
       logger.error(err);
       toast.error("Failed to convert quote");
@@ -100,9 +109,13 @@ export default function QuoteDetailClient({ quote }: Props) {
     setLoading(true);
     setConfirmAction(null);
     try {
-      const jobId = await convertQuoteToBespoke(quote.id);
+      const result = await convertQuoteToBespoke(quote.id);
+      if (result.error || !result.id) {
+        toast.error(result.error || "Failed to convert quote to bespoke job");
+        return;
+      }
       toast.success("Converted to Bespoke Job successfully!");
-      router.push(`/bespoke/${jobId}`);
+      router.push(`/bespoke/${result.id}`);
     } catch (err) {
       logger.error(err);
       toast.error("Failed to convert quote to bespoke job");
@@ -115,9 +128,13 @@ export default function QuoteDetailClient({ quote }: Props) {
     setLoading(true);
     setConfirmAction(null);
     try {
-      const repairId = await convertQuoteToRepair(quote.id);
+      const result = await convertQuoteToRepair(quote.id);
+      if (result.error || !result.id) {
+        toast.error(result.error || "Failed to convert quote to repair job");
+        return;
+      }
       toast.success("Converted to Repair Job successfully!");
-      router.push(`/repairs/${repairId}`);
+      router.push(`/repairs/${result.id}`);
     } catch (err) {
       logger.error(err);
       toast.error("Failed to convert quote to repair job");

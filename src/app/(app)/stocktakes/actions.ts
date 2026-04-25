@@ -287,30 +287,28 @@ export async function completeStocktake(stocktakeId: string, applyAdjustments: b
 
         if (oldQty === null) continue;
 
-        const { count: updateCount } = await admin
-          .from("inventory")
-          .update({ quantity: item.counted_qty })
-          .eq("id", item.inventory_id)
-          .eq("tenant_id", tenantId)
-          .eq("quantity", oldQty);
+        const delta = item.counted_qty - oldQty;
+        // No-op when count matches expected; emit a movement only when
+        // there's an actual adjustment so audit history isn't polluted.
+        if (delta === 0) continue;
 
-        // Race fallback: re-read and retry once with the latest value.
-        if (updateCount === 0) {
-          const { data: invRetry } = await admin
-            .from("inventory")
-            .select("quantity")
-            .eq("id", item.inventory_id)
-            .eq("tenant_id", tenantId)
-            .single();
-          if (invRetry) {
-            await admin
-              .from("inventory")
-              .update({ quantity: item.counted_qty })
-              .eq("id", item.inventory_id)
-              .eq("tenant_id", tenantId)
-              .eq("quantity", invRetry.quantity);
-          }
-        }
+        // Pre-fix: directly UPDATE inventory.quantity to counted_qty with
+        // no stock_movements row → the dashboard movement history showed
+        // no record of stocktake corrections; reports underreported
+        // shrinkage; the trigger pattern was bypassed entirely.
+        // Now: insert a stocktake movement and let
+        // sync_inventory_on_stock_movement_insert (BEFORE INSERT trigger)
+        // settle inventory.quantity itself. The trigger's
+        // GREATEST(...,0) floor is OK here — counted_qty=0 just sets
+        // inventory to 0 via delta = -oldQty.
+        await admin.from("stock_movements").insert({
+          tenant_id: tenantId,
+          inventory_id: item.inventory_id,
+          movement_type: "stocktake",
+          quantity_change: delta,
+          notes: `Stocktake ${stocktakeId} adjustment`,
+          created_by: userId,
+        });
       }
     }
 
