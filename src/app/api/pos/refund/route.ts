@@ -94,11 +94,16 @@ export async function POST(req: NextRequest) {
 
   // Bound against remaining refundable amount on this sale (sale.total
   // minus any prior refunds). Mirrors processRefund.
+  // Column on `refunds` is `original_sale_id`, NOT `sale_id` (the latter
+  // is what processRefund + the schema both use). Querying `sale_id`
+  // returned a PostgREST schema-cache 404, the data slot was null, and
+  // the bound check silently allowed any amount through. Worse, the
+  // INSERT below also used `sale_id` and 500'd on every refund click.
   const { data: priorRefunds } = await admin
     .from("refunds")
     .select("total")
     .eq("tenant_id", tenantId)
-    .eq("sale_id", saleId);
+    .eq("original_sale_id", saleId);
   const alreadyRefunded = (priorRefunds ?? []).reduce(
     (sum, r) => sum + Number(r.total ?? 0),
     0,
@@ -149,17 +154,27 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // Create refund record with server-computed total
+    // Create refund record with server-computed total. Column is
+    // `original_sale_id`, not `sale_id` (see priorRefunds note above).
+    // customer_id / customer_name / customer_email are denormalised on
+    // refunds for fast lookup; copy them off the sale row so the refund
+    // surfaces them without joining.
     const { data: refund, error: refundErr } = await admin
       .from("refunds")
       .insert({
         tenant_id: tenantId,
-        sale_id: saleId,
+        original_sale_id: saleId,
+        customer_id: sale.customer_id ?? null,
+        customer_name: sale.customer_name ?? null,
         refund_number: refundNumber,
+        subtotal: refundSubtotal,
+        tax_amount: 0,
         total: refundSubtotal,
         refund_method: refundMethod,
         reason,
         notes: notes || null,
+        status: "completed",
+        processed_by: userId,
       })
       .select("id")
       .single();
@@ -169,16 +184,28 @@ export async function POST(req: NextRequest) {
       return { status: 500, payload: { error: refundErr?.message ?? "Failed to create refund" } };
     }
 
-    // Create refund items and restore inventory.
+    // Create refund items and restore inventory. refund_items columns
+    // are `original_sale_item_id` + `line_total` (matches processRefund);
+    // `description` is NOT NULL on the schema — copy it from the original
+    // sale_items row so the line is human-readable in the refund detail.
     for (const item of items2) {
       const lineTotal = Number(item.quantity ?? 0) * Number(item.unitPrice ?? 0);
+      const { data: srcSaleItem } = await admin
+        .from("sale_items")
+        .select("inventory_id, description")
+        .eq("id", item.saleItemId)
+        .eq("tenant_id", tenantId)
+        .single();
       const { error: refundItemErr } = await admin.from("refund_items").insert({
         tenant_id: tenantId,
         refund_id: refund.id,
-        sale_item_id: item.saleItemId,
+        original_sale_item_id: item.saleItemId,
+        inventory_id: srcSaleItem?.inventory_id ?? null,
+        description: srcSaleItem?.description ?? "Refunded item",
         quantity: item.quantity,
         unit_price: item.unitPrice,
-        total: lineTotal,
+        line_total: lineTotal,
+        restock: true,
       });
       if (refundItemErr) {
         reportServerError("pos/refund:refund_items.insert", refundItemErr, {
@@ -192,55 +219,27 @@ export async function POST(req: NextRequest) {
         };
       }
 
-      // Look up the original sale item's inventory linkage (tenant-scoped).
-      const { data: saleItem } = await admin
-        .from("sale_items")
-        .select("inventory_id, quantity")
-        .eq("id", item.saleItemId)
-        .eq("tenant_id", tenantId)
-        .single();
-
-      if (saleItem?.inventory_id) {
-        const { data: inv } = await admin
-          .from("inventory")
-          .select("quantity")
-          .eq("id", saleItem.inventory_id)
-          .eq("tenant_id", tenantId)
-          .single();
-
-        if (inv) {
-          const { error: invUpdateErr } = await admin
-            .from("inventory")
-            .update({ quantity: (inv.quantity || 0) + item.quantity })
-            .eq("id", saleItem.inventory_id)
-            .eq("tenant_id", tenantId);
-          if (invUpdateErr) {
-            // Inventory miscount is recoverable; page Sentry loudly
-            // but don't hard-fail the refund.
-            reportServerError("pos/refund:inventory.update", invUpdateErr, {
-              inventoryId: saleItem.inventory_id,
-              tenantId,
-              refundId: refund.id,
-            });
-          }
-
-          // Log stock movement
-          const { error: stockMoveErr } = await admin.from("stock_movements").insert({
-            tenant_id: tenantId,
-            inventory_id: saleItem.inventory_id,
-            movement_type: "return",
-            quantity_change: item.quantity,
-            quantity_after: (inv.quantity || 0) + item.quantity,
-            notes: `Refund ${refundNumber}`,
-            created_by: userId,
+      // Restore inventory by inserting a stock_movements row. The
+      // sync_inventory_quantity trigger applies quantity_change to the
+      // inventory row + sets quantity_after — so the route does NOT
+      // touch inventory directly. Same pattern as inventory create-item
+      // (commit 00d9e91) + pos_deduct_stock (commit 2b0850b): direct
+      // updates compete with the trigger and double-apply.
+      if (srcSaleItem?.inventory_id) {
+        const { error: stockMoveErr } = await admin.from("stock_movements").insert({
+          tenant_id: tenantId,
+          inventory_id: srcSaleItem.inventory_id,
+          movement_type: "return",
+          quantity_change: item.quantity,
+          notes: `Refund ${refundNumber}`,
+          created_by: userId,
+        });
+        if (stockMoveErr) {
+          reportServerError("pos/refund:stock_movements.insert", stockMoveErr, {
+            inventoryId: srcSaleItem.inventory_id,
+            tenantId,
+            refundId: refund.id,
           });
-          if (stockMoveErr) {
-            reportServerError("pos/refund:stock_movements.insert", stockMoveErr, {
-              inventoryId: saleItem.inventory_id,
-              tenantId,
-              refundId: refund.id,
-            });
-          }
         }
       }
     }
