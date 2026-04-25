@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useRef, useEffect } from 'react'
 import {
@@ -15,6 +14,7 @@ import {
   BarChart3,
   type LucideIcon,
 } from 'lucide-react'
+import Button from '@/components/landing/ui/Button'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -190,32 +190,32 @@ export default function FeaturesClient() {
   }, [activeIndex])
 
   return (
-    <div className="bg-white">
+    <div className="bg-m-ivory">
       {/* Hero */}
-      <section className="pt-20 pb-10 lg:pt-28 lg:pb-10 px-6 sm:px-10 lg:px-20 text-center">
+      <section className="pt-24 pb-10 lg:pt-32 lg:pb-12 px-6 sm:px-10 lg:px-20 text-center">
         <div className="max-w-[820px] mx-auto">
           <motion.p
             {...fadeUp()}
-            className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-6"
+            className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-6"
           >
             The Platform
           </motion.p>
           <motion.h1
             {...fadeBlur}
-            className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.75rem,5vw,4.25rem)] font-normal leading-[1.15] tracking-[-0.01em] text-stone-900 mb-7"
+            className="font-serif text-[42px] sm:text-[56px] lg:text-[clamp(2.75rem,5vw,4.5rem)] font-normal leading-[1.06] tracking-[-0.015em] text-m-charcoal mb-7"
           >
             Every feature, <em className="italic">crafted for jewellers</em>
           </motion.h1>
           <motion.p
             {...fadeUp(0.2)}
-            className="text-base leading-relaxed text-stone-500 max-w-[640px] mx-auto mb-10"
+            className="text-[16px] sm:text-[18px] leading-[1.55] text-m-text-secondary max-w-[640px] mx-auto mb-10"
           >
             From the shop floor to the workshop, Nexpura brings sales, repairs, bespoke, inventory, customer records, and financial workflows into one connected system.
           </motion.p>
           {/* Proof strip */}
           <motion.div
             {...fadeUp(0.35)}
-            className="text-[0.8125rem] font-normal text-stone-400 tracking-wide text-center leading-relaxed"
+            className="text-[13px] font-medium text-m-text-faint tracking-[0.05em] text-center leading-relaxed"
           >
             Built for jewellers&nbsp;&nbsp;·&nbsp;&nbsp;9 connected modules&nbsp;&nbsp;·&nbsp;&nbsp;Repairs and bespoke built in&nbsp;&nbsp;·&nbsp;&nbsp;Guided migration included
           </motion.div>
@@ -223,7 +223,7 @@ export default function FeaturesClient() {
       </section>
 
       {/* Tab nav */}
-      <div className="sticky top-[72px] z-30 bg-white/95 backdrop-blur-xl border-y border-black/[0.06]">
+      <div className="sticky top-[72px] z-30 bg-[rgba(250,247,242,0.95)] backdrop-blur-xl border-y border-m-border-soft">
         <div
           ref={navRef}
           className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-20 overflow-x-auto scrollbar-none"
@@ -237,20 +237,20 @@ export default function FeaturesClient() {
                   key={s.id}
                   ref={(el) => { itemRefs.current[i] = el }}
                   onClick={() => setActiveIndex(i)}
-                  className={`relative flex flex-col items-start gap-1 py-5 pr-10 lg:pr-14 cursor-pointer shrink-0 transition-all duration-300 ${
-                    isActive ? 'opacity-100' : 'opacity-25 hover:opacity-60'
+                  className={`relative flex flex-col items-start gap-1 py-5 pr-10 lg:pr-14 cursor-pointer shrink-0 transition-all duration-300 [transition-timing-function:var(--m-ease)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m-champagne focus-visible:ring-offset-2 rounded ${
+                    isActive ? 'opacity-100' : 'opacity-30 hover:opacity-70'
                   }`}
                 >
-                  <span className={`text-[0.625rem] font-mono tabular-nums tracking-[0.15em] transition-colors duration-300 ${isActive ? 'text-stone-500' : 'text-stone-400'}`}>
+                  <span className={`text-[10px] font-mono tabular-nums tracking-[0.18em] transition-colors duration-300 ${isActive ? 'text-m-text-muted' : 'text-m-text-faint'}`}>
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <span className={`font-serif leading-none transition-all duration-300 ${isActive ? 'text-stone-900 text-base font-semibold' : 'text-stone-500 text-[0.9375rem] font-normal'}`}>
+                  <span className={`font-serif leading-none transition-all duration-300 ${isActive ? 'text-m-charcoal text-[16px] font-semibold' : 'text-m-text-secondary text-[15px] font-normal'}`}>
                     {s.title}
                   </span>
                   {isActive && (
                     <motion.div
                       layoutId="tab-indicator"
-                      className="absolute bottom-0 left-0 h-[2.5px] bg-stone-900"
+                      className="absolute bottom-0 left-0 h-[2.5px] bg-m-charcoal"
                       style={{ right: 'var(--tab-pr, 2.5rem)' }}
                       transition={{ duration: 0.35, ease: EASE }}
                     />
@@ -277,24 +277,37 @@ export default function FeaturesClient() {
               {/* Left: text */}
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  {(() => { const Icon = activeSection.icon; return <Icon size={18} strokeWidth={1.25} className="text-stone-400" /> })()}
-                  <span className="text-xs tabular-nums text-stone-300 font-medium tracking-widest">
+                  {(() => { const Icon = activeSection.icon; return <Icon size={18} strokeWidth={1.5} className="text-m-text-faint" /> })()}
+                  <span className="text-[11px] tabular-nums text-m-text-faint font-medium tracking-[0.16em]">
                     {String(activeIndex + 1).padStart(2, '0')}
                   </span>
                 </div>
-                <h2 className="font-serif text-3xl lg:text-[2.5rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-4">
+                <h2 className="font-serif text-[32px] sm:text-[40px] lg:text-[44px] font-normal leading-[1.12] tracking-[-0.01em] text-m-charcoal mb-4">
                   {activeSection.title}
                 </h2>
-                <p className="text-[0.9375rem] leading-relaxed text-stone-500 mb-6">
+                <p className="text-[16px] leading-[1.55] text-m-text-secondary mb-6">
                   {activeSection.tagline}
                 </p>
-                <p className="text-[0.875rem] font-medium text-stone-900 border-l-2 border-stone-900 pl-4 mb-8">
+                <p className="text-[14px] font-medium text-m-charcoal border-l-2 border-m-champagne pl-4 mb-8">
                   {activeSection.benefit}
                 </p>
                 <ul className="space-y-3">
                   {activeSection.features.map((f) => (
-                    <li key={f} className="flex items-start gap-3 text-[0.9375rem] text-stone-600">
-                      <span className="mt-2 w-1 h-1 rounded-full bg-stone-400 flex-shrink-0" />
+                    <li key={f} className="flex items-start gap-3 text-[15px] text-m-text-secondary leading-[1.55]">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.75"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                        className="mt-1.5 shrink-0 text-m-charcoal"
+                      >
+                        <path d="M3 7l3 3 5-6" />
+                      </svg>
                       {f}
                     </li>
                   ))}
@@ -303,7 +316,7 @@ export default function FeaturesClient() {
 
               {/* Right: product visual (only when available) */}
               {activeSection.image && (
-                <div className="relative rounded-2xl overflow-hidden bg-stone-100 shadow-[0_4px_32px_rgba(0,0,0,0.08)]">
+                <div className="relative rounded-2xl overflow-hidden bg-m-white-soft border border-m-border-soft shadow-[0_18px_45px_rgba(0,0,0,0.06)]">
                   <AnimatePresence mode="wait">
                     <motion.img
                       key={activeSection.image}
@@ -324,45 +337,27 @@ export default function FeaturesClient() {
         </div>
       </div>
 
-      {/* CTA */}
-      <section className="py-20 lg:py-36 px-6 sm:px-10 lg:px-20 text-center border-t border-black/[0.06]">
+      {/* Final CTA */}
+      <section className="py-24 lg:py-36 px-6 sm:px-10 lg:px-20 text-center border-t border-m-border-soft bg-m-charcoal">
         <motion.h2
           {...fadeBlur}
-          className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-4"
+          className="font-serif text-[36px] sm:text-[48px] lg:text-[56px] font-normal leading-[1.12] tracking-[-0.01em] text-white mb-4"
         >
           See how Nexpura fits your workflow
         </motion.h2>
         <motion.p
           {...fadeUp(0.1)}
-          className="text-[0.9375rem] text-stone-500 mb-10 max-w-md mx-auto"
+          className="text-[15px] text-m-champagne-soft mb-10 max-w-md mx-auto"
         >
           Explore the platform in a personalised walkthrough built around your business.
         </motion.p>
         <motion.div {...fadeUp(0.2)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-          <Link
-            href="/contact"
-            className="
-              inline-flex items-center justify-center
-              min-w-[180px] px-10 py-4 md:min-w-[200px] md:px-12
-              bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a]
-              rounded-full
-              shadow-[0_2px_4px_rgba(0,0,0,0.25),0_8px_24px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]
-              transition-shadow duration-400
-              hover:shadow-[0_4px_8px_rgba(0,0,0,0.25),0_16px_40px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]
-              relative overflow-hidden cursor-pointer
-            "
-          >
-            <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
-            <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-              Book a Demo
-            </span>
-          </Link>
-          <Link
-            href="/platform"
-            className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
-          >
-            See real workflows
-          </Link>
+          <Button href="/signup" size="lg" className="!bg-white !text-m-charcoal hover:!bg-m-champagne-tint">
+            Start Free Trial
+          </Button>
+          <Button href="/contact" variant="tertiary" className="!text-white after:!bg-white">
+            Book a Demo
+          </Button>
         </motion.div>
       </section>
     </div>
