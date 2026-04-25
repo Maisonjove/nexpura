@@ -35,25 +35,40 @@ interface ButtonAsLink extends BaseProps {
 export type ButtonProps = ButtonAsButton | ButtonAsLink;
 
 function classes(variant: Variant, size: Size, fullWidth: boolean, extra?: string) {
+  // Updated to brief #2 spec (Section 3): explicit height tokens,
+  // 999px radius (rounded-full), max 2px hover lift, max
+  // 0_6px_16px shadow, secondary uses champagne-tint hover background
+  // (was champagne-soft — too saturated), tertiary gets the
+  // underline-grow micro-interaction from `::after` via Tailwind's
+  // `after:` pseudo-element utilities.
   const base =
     "inline-flex items-center justify-center gap-2 rounded-full font-sans font-semibold " +
     "transition-all duration-200 [transition-timing-function:var(--m-ease)] " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m-champagne focus-visible:ring-offset-2 " +
     "disabled:opacity-60 disabled:pointer-events-none";
+  // Tertiary uses a smaller height (44px) per brief; primary + secondary
+  // share the 52–54px target (`default` 52px, `lg` 56px).
   const sizeCls =
-    size === "lg"
-      ? "text-base px-8 py-4"
-      : "text-[15px] px-7 py-[14px]";
+    variant === "tertiary"
+      ? "h-11 px-2 text-[14px]"
+      : size === "lg"
+      ? "h-14 px-7 text-[15px]"
+      : "h-[52px] px-7 text-[15px]";
   const variantCls =
     variant === "primary"
       ? "bg-m-charcoal text-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] " +
         "hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.18)] hover:bg-m-charcoal-soft"
       : variant === "secondary"
       ? "bg-transparent border border-m-charcoal text-m-charcoal " +
-        "hover:bg-m-champagne-soft"
-      : // tertiary
-        "bg-transparent text-m-text-secondary px-3 py-2 " +
-        "hover:text-m-charcoal hover:underline underline-offset-4 decoration-m-charcoal";
+        "hover:-translate-y-0.5 hover:bg-m-champagne-tint"
+      : // tertiary — animated underline (transform: scaleX(0 → 1) from
+        // origin: left) implemented as an `after:` pseudo-element. No
+        // background, no border, sits flat with the surrounding copy.
+        "relative bg-transparent text-m-text-primary " +
+        "after:content-[''] after:absolute after:left-2 after:right-2 after:bottom-2.5 after:h-px " +
+        "after:bg-m-charcoal after:scale-x-0 after:origin-left " +
+        "after:transition-transform after:duration-[220ms] [&_after]:[transition-timing-function:var(--m-ease)] " +
+        "hover:after:scale-x-100";
   const widthCls = fullWidth ? "w-full" : "";
   return [base, sizeCls, variantCls, widthCls, extra ?? ""].filter(Boolean).join(" ");
 }

@@ -140,6 +140,56 @@
     white-space: normal;
   }
 
+  /* ─── Marketing form primitives (brief #2 Section 7) ───
+     Used by Verify Passport, Login, Contact, newsletter, demo form, etc.
+     Preserve every form's existing name/id/action — only the visual
+     tokens are unified here. */
+  .m-form-input {
+    width: 100%;
+    height: 56px;
+    background: var(--m-white-soft);
+    border: 1px solid var(--m-border-soft);
+    border-radius: 14px;
+    padding: 0 18px;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    color: var(--m-text-primary);
+    transition: border-color var(--m-dur-micro) var(--m-ease),
+                box-shadow var(--m-dur-micro) var(--m-ease);
+  }
+  .m-form-input::placeholder { color: #B8B1A8; }
+  .m-form-input:focus {
+    outline: none;
+    border-color: var(--m-champagne);
+    box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.18);
+  }
+  .m-form-textarea {
+    min-height: 140px;
+    height: auto;
+    padding: 14px 18px;
+    line-height: 1.55;
+  }
+  .m-form-label {
+    display: inline-block;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--m-text-muted);
+    margin-bottom: 8px;
+  }
+  .m-form-error {
+    color: var(--m-status-danger);
+    font-size: 13px;
+    margin-top: 6px;
+  }
+  .m-form-help {
+    color: var(--m-text-muted);
+    font-size: 13px;
+    margin-top: 6px;
+  }
+
   /* Enhanced focus indicator for high contrast */
   @media (prefers-contrast: high) {
     *:focus-visible {
