@@ -51,17 +51,17 @@ const sections = [
 
 export default function TermsPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-m-ivory">
       {/* Hero */}
-      <section className="pt-20 pb-16 lg:pt-28 lg:pb-20 px-6 sm:px-10 lg:px-20 text-center">
+      <section className="pt-24 pb-16 lg:pt-32 lg:pb-20 px-6 sm:px-10 lg:px-20 text-center">
         <div className="max-w-[820px] mx-auto">
-          <p className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-6">
+          <p className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-6">
             Legal
           </p>
-          <h1 className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.75rem,5vw,4rem)] font-normal leading-[1.08] tracking-[-0.01em] text-stone-900 mb-6">
+          <h1 className="font-serif text-[42px] sm:text-[56px] lg:text-[clamp(2.75rem,5vw,4rem)] font-normal leading-[1.06] tracking-[-0.015em] text-m-charcoal mb-6">
             Terms of <em className="italic">Service</em>
           </h1>
-          <p className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400">
+          <p className="text-[12px] tracking-[0.16em] uppercase text-m-text-faint font-medium">
             Last updated &middot; March 2026
           </p>
         </div>
@@ -69,18 +69,18 @@ export default function TermsPage() {
 
       {/* Body */}
       <section className="pb-24 lg:pb-32 px-6 sm:px-10 lg:px-20">
-        <div className="max-w-[820px] mx-auto divide-y divide-stone-200 border-y border-stone-200">
+        <div className="max-w-[820px] mx-auto divide-y divide-m-border-soft border-y border-m-border-soft">
           {sections.map((s, i) => (
             <article key={s.title} className="py-10 lg:py-12">
               <div className="flex items-baseline gap-6 mb-4">
-                <span className="text-sm tabular-nums text-stone-300 font-medium">
+                <span className="text-[14px] tabular-nums text-m-champagne font-medium">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <h2 className="font-serif text-2xl lg:text-[1.75rem] text-stone-900 font-normal">
+                <h2 className="font-serif text-[24px] lg:text-[28px] text-m-charcoal font-medium leading-[1.25]">
                   {s.title}
                 </h2>
               </div>
-              <p className="text-[0.9375rem] leading-relaxed text-stone-500 pl-10">
+              <p className="text-[15px] leading-[1.65] text-m-text-secondary pl-12">
                 {s.body}
               </p>
             </article>

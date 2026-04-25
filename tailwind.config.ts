@@ -54,6 +54,27 @@ export default {
           warm: "#EDE9E3",
           champagne: "#E8DCC8",
         },
+        // Marketing-site palette (Kaitlyn's homepage brief). The `m-`
+        // prefix keeps these scoped — only the (marketing) tree +
+        // landing components use them; the (app) UI keeps the warm-
+        // stone theme above.
+        m: {
+          ivory: "#FAF7F2",
+          "white-soft": "#FFFFFF",
+          "warm-tint": "#FDFAF4",
+          charcoal: "#1A1A1A",
+          "charcoal-soft": "#2B2B2B",
+          champagne: "#C9A961",
+          "champagne-soft": "#E8D9B5",
+          "champagne-tint": "#F3E9D5",
+          "text-primary": "#1A1A1A",
+          "text-secondary": "#5C5C5C",
+          "text-muted": "#8A8A8A",
+          "text-faint": "#9A8F82",
+          "border-soft": "#E8E1D6",
+          "border-soft-2": "#EFEAE1",
+          "border-hover": "#C9A961",
+        },
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",

@@ -1,58 +1,114 @@
+'use client'
+
+import { useState } from 'react'
 import Image from 'next/image'
 
-const benefits = [
-  'Instant customer verification',
-  'Piece-level provenance history',
-  'Better trust at point of sale',
-  'Stronger resale and aftercare confidence',
-]
+/**
+ * Digital Passport trust section per Kaitlyn's brief (section 13).
+ *
+ * Hover interaction: each bullet hovers a champagne-coloured highlight
+ * over the corresponding region of the passport screenshot. Coordinates
+ * (top/left/width/height as % of the image container) are mapped per
+ * bullet so the overlay points at the relevant block.
+ */
+
+interface Bullet {
+  label: string
+  /** Position of the highlight overlay over the passport screenshot (% based). */
+  highlight: { top: string; left: string; width: string; height: string }
+}
+
+const BULLETS: readonly Bullet[] = [
+  // QR code area — typically top-right of a passport-style screen
+  {
+    label: 'Instant customer verification',
+    highlight: { top: '6%', left: '60%', width: '32%', height: '20%' },
+  },
+  // Specifications / provenance block — middle-left
+  {
+    label: 'Piece-level provenance history',
+    highlight: { top: '28%', left: '4%', width: '52%', height: '28%' },
+  },
+  // Financial summary block — typically lower-right
+  {
+    label: 'Better trust at point of sale',
+    highlight: { top: '58%', left: '52%', width: '40%', height: '20%' },
+  },
+  // Stage timeline / history block — bottom strip
+  {
+    label: 'Stronger resale and aftercare confidence',
+    highlight: { top: '78%', left: '4%', width: '92%', height: '18%' },
+  },
+] as const
 
 export default function LandingDigitalPassports() {
+  const [hovered, setHovered] = useState<number | null>(null)
+
   return (
-    <section className="bg-stone-50 py-20 lg:py-36 px-6 sm:px-10 lg:px-20">
-      <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+    <section className="bg-m-ivory py-24 lg:py-32 px-6 sm:px-12">
+      <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        {/* Copy */}
         <div>
-          <h2
-            className="nx-fade-in-blur font-serif text-3xl sm:text-4xl lg:text-[2.75rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-6"
-          >
+          <h2 className="font-serif text-[34px] sm:text-[40px] leading-[1.15] text-m-charcoal">
             Authenticity, provenance, and trust — attached to every piece
           </h2>
-          <p
-            style={{ animationDelay: '0.1s' }}
-            className="nx-fade-in text-stone-500 text-[0.9375rem] leading-relaxed mb-4"
-          >
+          <p className="mt-6 text-[16px] sm:text-[17px] leading-[1.6] text-m-text-secondary">
             When a customer buys from you, they should know exactly what they own.
           </p>
-          <p
-            style={{ animationDelay: '0.15s' }}
-            className="nx-fade-in text-stone-500 text-[0.9375rem] leading-relaxed mb-8"
-          >
+          <p className="mt-3 text-[16px] sm:text-[17px] leading-[1.6] text-m-text-secondary">
             Nexpura generates a digital passport for every eligible piece, linked by QR code to a verified record of materials, craftsmanship, and provenance.
           </p>
-          <ul className="space-y-3">
-            {benefits.map((b, i) => (
+          <ul className="mt-8 space-y-1">
+            {BULLETS.map((b, i) => (
               <li
-                key={b}
-                style={{ animationDelay: `${0.2 + i * 0.07}s` }}
-                className="nx-fade-in flex items-start gap-3 text-[0.9375rem] text-stone-600 leading-relaxed"
+                key={b.label}
+                onMouseEnter={() => setHovered(i)}
+                onMouseLeave={() => setHovered(null)}
+                onFocus={() => setHovered(i)}
+                onBlur={() => setHovered(null)}
+                tabIndex={0}
+                className={`group flex items-start gap-3 px-3 py-3 rounded-lg cursor-default transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m-champagne ${
+                  hovered === i ? 'bg-m-champagne-soft/40' : ''
+                }`}
               >
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0" />
-                {b}
+                <span
+                  aria-hidden
+                  className={`mt-2 w-1.5 h-1.5 rounded-full shrink-0 transition-colors duration-200 ${
+                    hovered === i ? 'bg-m-champagne' : 'bg-m-text-muted'
+                  }`}
+                />
+                <span className="text-[15px] leading-[1.5] text-m-charcoal">{b.label}</span>
               </li>
             ))}
           </ul>
         </div>
-        <div
-          style={{ animationDelay: '0.2s' }}
-          className="nx-fade-in-blur relative rounded-2xl overflow-hidden shadow-xl"
-        >
+
+        {/* Screenshot + hover highlight overlay */}
+        <div className="relative rounded-2xl overflow-hidden border border-m-border-soft shadow-[0_8px_32px_rgba(0,0,0,0.08)] bg-white">
           <Image
             src="/screenshots/passport.png"
-            alt="Nexpura Digital Passport - Item Specifications"
-            width={800}
-            height={600}
+            alt="Nexpura Digital Passport — provenance, materials, and history"
+            width={1000}
+            height={1200}
             className="w-full h-auto"
           />
+          {BULLETS.map((b, i) => (
+            <div
+              key={b.label}
+              aria-hidden
+              className="absolute pointer-events-none rounded-lg border-2 transition-opacity duration-200 [transition-timing-function:var(--m-ease)]"
+              style={{
+                top: b.highlight.top,
+                left: b.highlight.left,
+                width: b.highlight.width,
+                height: b.highlight.height,
+                opacity: hovered === i ? 1 : 0,
+                background: 'rgba(201,169,97,0.12)',
+                borderColor: 'rgba(201,169,97,0.7)',
+                boxShadow: '0 0 0 9999px rgba(0,0,0,0.0)',
+              }}
+            />
+          ))}
         </div>
       </div>
     </section>

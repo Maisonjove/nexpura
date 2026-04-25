@@ -42,6 +42,44 @@
     /* Typography */
     --font-sans: 'Inter', system-ui, sans-serif;
     --font-serif: 'Cormorant Garamond', Georgia, serif;
+
+    /* ─── Marketing site design tokens (per Kaitlyn's homepage brief +
+       global consistency brief) ─── */
+    /* Authoritative ivory/champagne palette for every public marketing
+       page (homepage, pricing, solutions, migration, verify, login,
+       about, contact, 404). Kept separate from the warm-stone theme
+       so the logged-in (app) UI stays unchanged. */
+    --m-ivory: #FAF7F2;
+    --m-white-soft: #FFFFFF;
+    --m-warm-tint: #FDFAF4;          /* card hover tint */
+    --m-charcoal: #1A1A1A;
+    --m-charcoal-soft: #2B2B2B;
+    --m-champagne: #C9A961;
+    --m-champagne-soft: #E8D9B5;
+    --m-champagne-tint: #F3E9D5;     /* chip/tag hover background */
+    --m-text-primary: #1A1A1A;
+    --m-text-secondary: #5C5C5C;
+    --m-text-muted: #8A8A8A;
+    --m-text-faint: #9A8F82;         /* eyebrows / workflow-suite labels */
+    --m-border-soft: #E8E1D6;
+    --m-border-soft-2: #EFEAE1;
+    --m-border-hover: #C9A961;
+    /* Status (product UI only — never on marketing pages) */
+    --m-status-success: #2F9E6B;
+    --m-status-warning: #C8941F;
+    --m-status-danger:  #C24545;
+    --m-status-info:    #3D7AB8;
+    /* Standard motion easing + durations */
+    --m-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --m-dur-micro: 200ms;
+    --m-dur-small: 400ms;
+    --m-dur-large: 550ms;
+    /* Section spacing tokens */
+    --m-section-py-desktop: 112px;
+    --m-section-py-mobile: 72px;
+    --m-container-max: 1200px;
+    --m-container-px-desktop: 48px;
+    --m-container-px-mobile: 24px;
   }
 
   * {
@@ -100,6 +138,151 @@
     overflow: visible;
     clip: auto;
     white-space: normal;
+  }
+
+  /* ─── Marketing type-scale classes (brief #2 Section 2) ───
+     Optional opt-in classes for components that prefer named scales
+     over Tailwind text-[…] arbitraries. Pages already shipped on the
+     literal sizes (homepage, pricing, features, contact, about,
+     switching, verify, login, 404) work as-is; new components should
+     reach for these instead so the scale stays consistent. */
+  .m-h1-hero {
+    font-family: var(--font-serif);
+    font-size: 72px;
+    line-height: 1.06;
+    letter-spacing: -0.015em;
+    font-weight: 400;
+    color: var(--m-text-primary);
+  }
+  .m-h2-section {
+    font-family: var(--font-serif);
+    font-size: 48px;
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+    color: var(--m-text-primary);
+  }
+  .m-h2-bridge {
+    font-family: var(--font-serif);
+    font-size: 42px;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+    color: var(--m-text-primary);
+  }
+  .m-h3-card {
+    font-family: var(--font-serif);
+    font-size: 24px;
+    line-height: 1.25;
+    font-weight: 500;
+    color: var(--m-text-primary);
+  }
+  .m-h4-block {
+    font-family: var(--font-sans);
+    font-size: 20px;
+    line-height: 1.35;
+    font-weight: 600;
+    color: var(--m-text-primary);
+  }
+  .m-body-lead {
+    font-family: var(--font-sans);
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--m-text-secondary);
+  }
+  .m-body-default {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--m-text-secondary);
+  }
+  .m-body-small {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--m-text-secondary);
+  }
+  .m-eyebrow {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--m-text-faint);
+  }
+  .m-eyebrow-tight {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--m-text-faint);
+  }
+  @media (max-width: 1024px) {
+    .m-h1-hero    { font-size: 56px; }
+    .m-h2-section { font-size: 36px; }
+    .m-h2-bridge  { font-size: 32px; }
+    .m-h3-card    { font-size: 22px; }
+  }
+  @media (max-width: 640px) {
+    .m-h1-hero    { font-size: 42px; }
+    .m-h2-section { font-size: 30px; }
+    .m-h2-bridge  { font-size: 26px; }
+    .m-h3-card    { font-size: 20px; }
+    .m-body-lead  { font-size: 16px; }
+    .m-body-default { font-size: 15px; }
+  }
+
+  /* ─── Marketing form primitives (brief #2 Section 7) ───
+     Used by Verify Passport, Login, Contact, newsletter, demo form, etc.
+     Preserve every form's existing name/id/action — only the visual
+     tokens are unified here. */
+  .m-form-input {
+    width: 100%;
+    height: 56px;
+    background: var(--m-white-soft);
+    border: 1px solid var(--m-border-soft);
+    border-radius: 14px;
+    padding: 0 18px;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    color: var(--m-text-primary);
+    transition: border-color var(--m-dur-micro) var(--m-ease),
+                box-shadow var(--m-dur-micro) var(--m-ease);
+  }
+  .m-form-input::placeholder { color: #B8B1A8; }
+  .m-form-input:focus {
+    outline: none;
+    border-color: var(--m-champagne);
+    box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.18);
+  }
+  .m-form-textarea {
+    min-height: 140px;
+    height: auto;
+    padding: 14px 18px;
+    line-height: 1.55;
+  }
+  .m-form-label {
+    display: inline-block;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--m-text-muted);
+    margin-bottom: 8px;
+  }
+  .m-form-error {
+    color: var(--m-status-danger);
+    font-size: 13px;
+    margin-top: 6px;
+  }
+  .m-form-help {
+    color: var(--m-text-muted);
+    font-size: 13px;
+    margin-top: 6px;
   }
 
   /* Enhanced focus indicator for high contrast */
@@ -232,6 +415,58 @@
     transform: translateY(12px);
     animation: fadeInBlurUp 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
+
+  /* Hero scroll cue — gentle 4px vertical bounce (Kaitlyn's brief sec 5) */
+  .nx-bounce-y {
+    animation: nxBounceY 2s ease-in-out infinite;
+  }
+
+  /* Marketing-section reveal — 16px fade-up triggered when an element
+     gets the `.is-visible` class via the IntersectionObserver in
+     marketing-reveal.ts. Used by trust strip, audience cards, etc. */
+  .m-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity var(--m-dur-large) var(--m-ease), transform var(--m-dur-large) var(--m-ease);
+  }
+  .m-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Reduced motion — strip animation, keep static layout */
+  @media (prefers-reduced-motion: reduce) {
+    .nx-bounce-y,
+    .nx-fade-in-blur,
+    .nx-fade-in-blur-up,
+    .nx-fade-in-up,
+    .nx-fade-in {
+      animation: none !important;
+    }
+    .m-reveal {
+      opacity: 1 !important;
+      transform: none !important;
+      transition: none !important;
+    }
+  }
+}
+
+@keyframes nxBounceY {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+/* Inventory status badges — subtle 2% scale pulse to feel alive
+   (Kaitlyn's brief sec 14). Disabled under prefers-reduced-motion. */
+.nx-pulse-subtle {
+  animation: nxPulseSubtle 4s ease-in-out infinite;
+}
+@keyframes nxPulseSubtle {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nx-pulse-subtle { animation: none !important; }
 }
 
 @keyframes fadeIn {
@@ -257,6 +492,12 @@
 @keyframes shimmer {
   0% { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
+}
+
+/* Repair-stepper active-step description fade-in (Kaitlyn Fix #3). */
+@keyframes stepDescFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes blobShift {

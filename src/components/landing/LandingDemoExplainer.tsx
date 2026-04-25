@@ -1,62 +1,116 @@
-import Link from 'next/link'
+import Button from './ui/Button'
+import SectionHeader from './ui/SectionHeader'
+import Card from './ui/Card'
 
-const steps = [
-  { n: '1', title: 'Personalised walkthrough', body: 'We show the modules that matter most to your business.' },
-  { n: '2', title: 'Migration discussion', body: 'We review your current tools and outline an import plan.' },
-  { n: '3', title: 'Workflow review', body: 'We map your repair, bespoke, and sales workflows to Nexpura.' },
-  { n: '4', title: 'Setup recommendations', body: 'You get a recommended configuration before you commit.' },
-  { n: '5', title: 'Q&A', body: 'Ask anything. Clear answers, no pressure.' },
-]
-
+/**
+ * "Choose how you want to explore Nexpura" — replaces the prior
+ * "What happens in a demo" timeline per Kaitlyn's brief (section 16).
+ *
+ * Two cards side-by-side. Card 1 (Free Trial) is visually stronger:
+ * charcoal background, faint champagne corner accent, scaled slightly.
+ * Card 2 (Demo) is the secondary ivory variant.
+ *
+ * Stack on mobile with the Free Trial card first (winning side leads).
+ */
 export default function LandingDemoExplainer() {
   return (
-    <section className="bg-white py-20 lg:py-36 px-6 sm:px-10 lg:px-20">
-      <div className="max-w-[700px] mx-auto text-center">
-        <h2
-          className="nx-fade-in-blur font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 mb-4"
-        >
-          What happens in a demo
-        </h2>
-        <p
-          style={{ animationDelay: '0.1s' }}
-          className="nx-fade-in text-stone-500 text-[0.9375rem] mb-14"
-        >
-          Book 30 minutes and we'll show you exactly how Nexpura fits your business.
-        </p>
-        <div className="text-left space-y-0 mb-14">
-          {steps.map((step, i) => (
+    <section className="bg-white py-20 lg:py-32 px-6 sm:px-12">
+      <div className="max-w-[1200px] mx-auto">
+        <SectionHeader
+          title="Choose how you want to explore Nexpura"
+          subtitle="Start with the platform yourself, or book a guided walkthrough if you want help mapping Nexpura to your business."
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mt-14 max-w-[960px] mx-auto">
+          {/* Card 1 — Free Trial (prominent) */}
+          <Card variant="dark" className="relative lg:scale-[1.02] flex flex-col">
             <div
-              key={step.n}
-              style={{ animationDelay: `${i * 0.08}s` }}
-              className="nx-fade-in-up flex gap-6 py-4 border-b border-stone-100 last:border-b-0"
-            >
-              <span className="text-[0.625rem] font-mono tabular-nums tracking-[0.15em] text-stone-300 pt-1 shrink-0 w-6">{step.n}</span>
-              <div>
-                <h3 className="font-serif text-lg text-stone-900 mb-1">{step.title}</h3>
-                <p className="text-[0.9375rem] text-stone-500 leading-relaxed">{step.body}</p>
-              </div>
+              aria-hidden
+              className="absolute top-0 right-0 w-32 h-32 rounded-tr-2xl pointer-events-none opacity-30"
+              style={{
+                background:
+                  'radial-gradient(circle at top right, rgba(201,169,97,0.25), transparent 70%)',
+              }}
+            />
+            <h3 className="relative font-serif text-[28px] leading-[1.15] text-white">
+              Start Free Trial
+            </h3>
+            <p className="relative mt-4 text-[15px] leading-[1.6] text-white/80">
+              Explore Nexpura at your own pace and see how repairs, inventory, bespoke orders, passports, and customer records connect.
+            </p>
+            <ul className="relative mt-6 mb-8 space-y-2.5 text-[14px] text-white/85">
+              {[
+                '14-day free trial',
+                'Explore core workflows',
+                'No hidden fees',
+                'Guided setup available',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2.5">
+                  <CheckIcon className="text-m-champagne shrink-0 mt-[3px]" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="relative mt-auto">
+              <Button
+                href="/signup"
+                fullWidth
+                className="!bg-white !text-m-charcoal hover:!bg-white/90"
+              >
+                Start Free Trial
+              </Button>
             </div>
-          ))}
-        </div>
-        <div
-          style={{ animationDelay: '0.4s' }}
-          className="nx-fade-in-up flex flex-col sm:flex-row gap-4 items-center"
-        >
-          <Link
-            href="/contact"
-            className="inline-flex items-center justify-center min-w-[180px] px-10 py-4 bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.25),0_8px_24px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.25),0_16px_40px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)] relative overflow-hidden transition-shadow duration-400"
-          >
-            <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
-            <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">Book a Demo</span>
-          </Link>
-          <Link
-            href="/contact"
-            className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
-          >
-            Contact Us
-          </Link>
+          </Card>
+
+          {/* Card 2 — Book a Demo (secondary) */}
+          <Card variant="default" className="flex flex-col">
+            <h3 className="font-serif text-[28px] leading-[1.15] text-m-charcoal">
+              Book a Guided Demo
+            </h3>
+            <p className="mt-4 text-[15px] leading-[1.6] text-m-text-secondary">
+              Walk through the platform with the Nexpura team and see how it can fit your current workflows.
+            </p>
+            <ul className="mt-6 mb-8 space-y-2.5 text-[14px] text-m-text-secondary">
+              {[
+                'Personalised walkthrough',
+                'Workflow review',
+                'Migration discussion',
+                'Q&A',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden
+                    className="w-1.5 h-1.5 rounded-full bg-m-charcoal shrink-0 mt-2"
+                  />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-auto">
+              <Button href="/contact" variant="secondary" fullWidth>
+                Book a Demo
+              </Button>
+            </div>
+          </Card>
         </div>
       </div>
     </section>
+  )
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      width={16}
+      height={16}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path d="M3.5 8L7 11.5L12.5 5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }

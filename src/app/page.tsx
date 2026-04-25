@@ -1,7 +1,7 @@
 // Landing page - no auth check needed
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingHero from '@/components/landing/LandingHero'
-import LandingLogoBar from '@/components/landing/LandingLogoBar'
+import LandingTrustStrip from '@/components/landing/LandingTrustStrip'
 import LandingWhoItsFor from '@/components/landing/LandingWhoItsFor'
 import LandingPainPoints from '@/components/landing/LandingPainPoints'
 import LandingRepairs from '@/components/landing/LandingRepairs'
@@ -15,20 +15,21 @@ import LandingDemoExplainer from '@/components/landing/LandingDemoExplainer'
 import LandingFaq from '@/components/landing/LandingFaq'
 import LandingCta from '@/components/landing/LandingCta'
 import LandingFooter from '@/components/landing/LandingFooter'
+import MarketingReveal from '@/components/landing/MarketingReveal'
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-m-ivory flex flex-col">
       <LandingHeader />
-      <main className="flex-1">
+      <main id="audience" className="flex-1">
         <LandingHero />
-        <LandingLogoBar />
+        <LandingTrustStrip />
         <LandingWhoItsFor />
         <LandingPainPoints />
         <LandingRepairs />
         <LandingPlatformModules />
-        <LandingScreenshots />
         <LandingMigration />
+        <LandingScreenshots />
         <LandingDigitalPassports />
         <LandingInventory />
         <LandingComparison />
@@ -37,6 +38,7 @@ export default function HomePage() {
         <LandingCta />
       </main>
       <LandingFooter />
+      <MarketingReveal />
     </div>
   )
 }

@@ -125,13 +125,13 @@ function LoginPageContent() {
     <div className="w-full max-w-md">
       {/* Logo */}
       <div className="text-center mb-10">
-        <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">
+        <Link href="/" className="font-serif text-2xl tracking-[0.32em] text-m-charcoal">
           NEXPURA
         </Link>
-        <p className="text-sm text-stone-400 mt-2">The modern platform for jewellers</p>
+        <p className="text-[13px] text-m-text-faint mt-2">The modern platform for jewellers</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-stone-200/60 p-10 w-full shadow-sm">
+      <div className="bg-m-white-soft rounded-[18px] border border-m-border-soft p-8 sm:p-10 w-full shadow-[0_18px_45px_rgba(0,0,0,0.06)]">
         {/* Session expired message */}
         {showExpiredMessage && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
@@ -147,20 +147,16 @@ function LoginPageContent() {
           </div>
         )}
 
-        <h2 className="font-serif text-2xl text-stone-900 mb-8">
+        <h2 className="font-serif text-[24px] text-m-charcoal mb-8">
           Welcome back
         </h2>
 
         <form onSubmit={handlePasswordLogin} className="space-y-5" aria-label="Login form">
           <div>
-            <label
-              htmlFor="email"
-              className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2"
-            >
-              Email
-            </label>
+            <label htmlFor="email" className="m-form-label">Email</label>
             <input
               id="email"
+              name="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -169,18 +165,14 @@ function LoginPageContent() {
               aria-describedby={error ? "login-error" : undefined}
               placeholder="you@yourshop.com"
               autoComplete="email"
-              className="w-full px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
+              className="m-form-input"
             />
           </div>
           <div>
-            <label
-              htmlFor="password"
-              className="block text-xs font-medium text-stone-400 uppercase tracking-wider mb-2"
-            >
-              Password
-            </label>
+            <label htmlFor="password" className="m-form-label">Password</label>
             <input
               id="password"
+              name="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -189,7 +181,7 @@ function LoginPageContent() {
               aria-describedby={error ? "login-error" : undefined}
               placeholder="••••••••"
               autoComplete="current-password"
-              className="w-full px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
+              className="m-form-input"
             />
           </div>
 
@@ -197,14 +189,15 @@ function LoginPageContent() {
             <label htmlFor="remember-me" className="flex items-center gap-2 cursor-pointer">
               <input
                 id="remember-me"
+                name="remember-me"
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-900/20 cursor-pointer"
+                className="w-4 h-4 rounded border-m-border-soft text-m-charcoal focus:ring-m-champagne cursor-pointer"
               />
-              <span className="text-sm text-stone-500">Remember me</span>
+              <span className="text-[14px] text-m-text-secondary">Remember me</span>
             </label>
-            <Link href="/forgot-password" className="text-sm text-stone-900 hover:opacity-70 transition-opacity">
+            <Link href="/forgot-password" className="text-[14px] text-m-charcoal hover:opacity-70 transition-opacity">
               Forgot password?
             </Link>
           </div>
@@ -214,7 +207,7 @@ function LoginPageContent() {
               id="login-error"
               role="alert"
               aria-live="assertive"
-              className="text-red-600 text-sm bg-red-50 border border-red-100 px-4 py-2.5 rounded-lg"
+              className="text-[#C24545] text-[14px] bg-[#FDF1F1] border border-[#F4D9D9] px-4 py-2.5 rounded-lg"
             >
               {error}
             </p>
@@ -238,15 +231,15 @@ function LoginPageContent() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] hover:from-[#4a4a4a] hover:to-[#2a2a2a] text-white font-medium py-3 rounded-full transition-all disabled:opacity-60 text-sm shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
+            className="w-full h-[54px] bg-m-charcoal hover:-translate-y-0.5 hover:bg-m-charcoal-soft text-white font-semibold rounded-full transition-all duration-200 [transition-timing-function:var(--m-ease)] disabled:opacity-60 disabled:hover:translate-y-0 text-[15px] shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_16px_rgba(0,0,0,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m-champagne focus-visible:ring-offset-2"
           >
             {isPending ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-stone-400 mt-8">
+        <p className="text-center text-[14px] text-m-text-muted mt-8">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-stone-900 hover:opacity-70 transition-opacity font-medium">
+          <Link href="/signup" className="text-m-charcoal hover:opacity-70 transition-opacity font-medium">
             Sign up free
           </Link>
         </p>
@@ -260,15 +253,15 @@ export default function LoginPage() {
     <Suspense fallback={
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <span className="font-serif text-2xl tracking-[0.12em] text-stone-900">NEXPURA</span>
-          <p className="text-sm text-stone-400 mt-2">The modern platform for jewellers</p>
+          <span className="font-serif text-2xl tracking-[0.32em] text-m-charcoal">NEXPURA</span>
+          <p className="text-[13px] text-m-text-faint mt-2">The modern platform for jewellers</p>
         </div>
-        <div className="bg-white rounded-2xl border border-stone-200/60 p-10 w-full shadow-sm">
-          <div className="h-8 w-48 bg-stone-100 rounded animate-pulse mb-8" />
+        <div className="bg-m-white-soft rounded-[18px] border border-m-border-soft p-8 sm:p-10 w-full shadow-[0_18px_45px_rgba(0,0,0,0.06)]">
+          <div className="h-8 w-48 bg-m-ivory rounded animate-pulse mb-8" />
           <div className="space-y-5">
-            <div className="h-12 bg-stone-100 rounded-lg animate-pulse" />
-            <div className="h-12 bg-stone-100 rounded-lg animate-pulse" />
-            <div className="h-12 bg-stone-900 rounded-full animate-pulse" />
+            <div className="h-14 bg-m-ivory rounded-[14px] animate-pulse" />
+            <div className="h-14 bg-m-ivory rounded-[14px] animate-pulse" />
+            <div className="h-[54px] bg-m-charcoal rounded-full animate-pulse" />
           </div>
         </div>
       </div>
