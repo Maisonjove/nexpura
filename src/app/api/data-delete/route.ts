@@ -32,8 +32,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No tenant found" }, { status: 403 });
   }
 
-  // Only owners can request deletion
-  if (userData.role !== "owner" && userData.role !== "admin") {
+  // Only owners can request deletion. The "admin" branch was dead code:
+  // tenant role taxonomy is owner / manager / staff (super_admins live in
+  // a separate table). Removed to make the gate explicit.
+  if (userData.role !== "owner") {
     return NextResponse.json({ error: "Only account owners can request data deletion" }, { status: 403 });
   }
 

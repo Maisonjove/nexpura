@@ -423,10 +423,13 @@ export async function archiveRepair(
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
-  
-  // Invalidate dashboard cache
+
+  // Invalidate dashboard cache. Drop the revalidatePath('/repairs')
+  // before redirect to avoid the cacheComponents "Failed to parse
+  // postponed state" 500 (same fix as commits 8d52e3b + b8ff461 +
+  // batch-6). Also revalidate the detail page so a sibling tab
+  // showing this repair refreshes — only via tag, not path.
   revalidateTag("dashboard", "default");
-  revalidatePath("/repairs");
   redirect("/repairs");
 }
 
