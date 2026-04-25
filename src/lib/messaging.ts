@@ -77,11 +77,20 @@ export async function postCustomerMessage(params: {
   const orderType: OrderType = isRepair ? "repair" : "bespoke";
   const table = isRepair ? "repairs" : "bespoke_jobs";
 
+  // Honour the tracking_revoked_at kill-switch (added by migration
+  // 20260421_tracking_revoked_at). The /track page already 404s revoked
+  // links, but the message-post helper used to filter only on
+  // deleted_at — meaning a tenant who revoked a customer's tracking
+  // link to lock out a hostile sender could still receive messages
+  // posted via the API. Apply the same gate here + on getTrackingThread
+  // + submitBespokeDecision so the React form stopping rendering and
+  // the server actually accepting writes stay aligned.
   const { data: order, error: lookupErr } = await admin
     .from(table)
     .select("id, tenant_id, created_by")
     .eq("tracking_id", trackingId)
     .is("deleted_at", null)
+    .is("tracking_revoked_at", null)
     .maybeSingle();
 
   if (lookupErr || !order) {
@@ -186,6 +195,7 @@ export async function submitBespokeDecision(params: {
     .select("id, tenant_id, created_by, approval_status")
     .eq("tracking_id", trackingId)
     .is("deleted_at", null)
+    .is("tracking_revoked_at", null)
     .maybeSingle();
 
   if (lookupErr || !job) {
@@ -359,11 +369,14 @@ export async function getTrackingThread(trackingId: string): Promise<OrderMessag
   const admin = createAdminClient();
   const isRepair = id.startsWith("RPR-");
   const table = isRepair ? "repairs" : "bespoke_jobs";
+  // Same revoke gate as postCustomerMessage / submitBespokeDecision —
+  // a revoked tracking link must not return any thread history.
   const { data: order } = await admin
     .from(table)
     .select("id, tenant_id")
     .eq("tracking_id", id)
     .is("deleted_at", null)
+    .is("tracking_revoked_at", null)
     .maybeSingle();
   if (!order) return [];
   const orderType: OrderType = isRepair ? "repair" : "bespoke";
