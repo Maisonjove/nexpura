@@ -295,6 +295,19 @@
   50% { transform: translateY(4px); }
 }
 
+/* Inventory status badges — subtle 2% scale pulse to feel alive
+   (Kaitlyn's brief sec 14). Disabled under prefers-reduced-motion. */
+.nx-pulse-subtle {
+  animation: nxPulseSubtle 4s ease-in-out infinite;
+}
+@keyframes nxPulseSubtle {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nx-pulse-subtle { animation: none !important; }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
