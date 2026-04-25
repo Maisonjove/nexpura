@@ -284,6 +284,12 @@ function parseTenantSlugPath(
   pathname: string
 ): { slug: string; route: string } | null {
   const segments = pathname.split("/").filter(Boolean);
+  // Don't slug-rewrite /api/* paths — segments[0]="api" is a route prefix,
+  // not a tenant slug. Pre-fix this misinterpreted /api/dashboard/stats as
+  // slug="api" + route="/dashboard/stats" and the rewrite returned 404.
+  // (Surfaced after the isPublicPath /api short-circuit was tightened in
+  // batch-12 — before that, /api never reached this codepath.)
+  if (segments[0] === "api") return null;
   if (
     segments.length >= 2 &&
     TENANT_APP_ROUTES.has(segments[1]) &&
