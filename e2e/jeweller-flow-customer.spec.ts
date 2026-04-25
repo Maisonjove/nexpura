@@ -1,10 +1,12 @@
 /**
  * Jeweller real-flow #1 — customer lifecycle.
  *
- * Acts as a real jeweller would: create a customer through the new-
- * customer form, search for them in the customer list, open their
- * detail page, edit a field, save, and verify the change persists. No
- * mocking — drives the production UI end-to-end.
+ * Acts as a real jeweller: opens /customers/new, fills the form with
+ * unique-per-run data, submits, then re-opens the customer's edit page,
+ * changes the phone number, saves, and verifies the change persists in
+ * the DB. Selectors target `name="..."` directly because the form's
+ * <Label> component is a styled wrapper that doesn't use `htmlFor`, so
+ * Playwright's getByLabel() returns nothing.
  *
  * Run:
  *   BASE_URL=https://nexpura-delta.vercel.app \
@@ -12,7 +14,7 @@
  *   pnpm exec playwright test e2e/jeweller-flow-customer.spec.ts
  */
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Response } from "@playwright/test";
 
 const BASE_URL = process.env.BASE_URL ?? "https://nexpura-delta.vercel.app";
 const EMAIL = process.env.NEXPURA_TEST_EMAIL;
@@ -27,9 +29,9 @@ test.describe("Customer flow", () => {
     const page = await ctx.newPage();
     const slug = await login(page);
 
-    // Unique tag — avoids collisions if the test runs twice in the same minute.
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const fullName = `QA Test Jeweller ${stamp}`;
+    const firstName = `QATest${stamp.slice(-6)}`;
+    const lastName = `Jeweller`;
     const phone = `04${Math.floor(10000000 + Math.random() * 89999999)}`;
     const email = `qa+${stamp}@example.test`;
 
@@ -37,20 +39,15 @@ test.describe("Customer flow", () => {
     await page.goto(`/${slug}/customers/new`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1500);
 
-    // Fill in the form. Selectors are best-effort — we try labels first,
-    // then fall back to common name/placeholder patterns.
-    await fillByLabelOrPlaceholder(page, /full.?name|name/i, fullName);
-    await fillByLabelOrPlaceholder(page, /phone|mobile/i, phone);
-    await fillByLabelOrPlaceholder(page, /email|e-?mail/i, email);
+    await fillByName(page, "first_name", firstName);
+    await fillByName(page, "last_name", lastName);
+    await fillByName(page, "email", email);
+    await fillByName(page, "mobile", phone);
 
     // ── Step 2: submit ─────────────────────────────────────────────────
-    const submit = page
-      .getByRole("button", { name: /^(save|create|add customer|submit)/i })
-      .first();
+    const submit = page.getByRole("button", { name: /^(save|create|add customer|submit)/i }).first();
     await expect(submit).toBeVisible({ timeout: 10_000 });
 
-    // Capture network response of the form-action POST so we can verify it
-    // succeeded (not a 4xx/5xx).
     const responsePromise = page.waitForResponse(
       (r) => /\/customers/.test(r.url()) && r.request().method() === "POST",
       { timeout: 30_000 },
@@ -58,62 +55,66 @@ test.describe("Customer flow", () => {
     await submit.click();
     const response = await responsePromise;
     if (response) {
-      expect(response.status(), "POST /customers should not 5xx").toBeLessThan(500);
+      expect(response.status(), "POST /customers (create) should not 5xx").toBeLessThan(500);
     }
 
-    // Should redirect away from /customers/new — either to the customer
-    // list or directly to the new customer's detail page.
-    await page.waitForURL((url) => !url.pathname.endsWith("/customers/new"), {
-      timeout: 30_000,
-    });
-    const afterCreateUrl = page.url();
-    test.info().annotations.push({ type: "post-create-url", description: afterCreateUrl });
+    await page.waitForURL((url) => !url.pathname.endsWith("/customers/new"), { timeout: 30_000 });
+
+    // After create the action redirects to /customers/[id]
+    const customerId = page.url().match(/\/customers\/([a-f0-9-]{36})/)?.[1] ?? "";
+    expect(customerId, "should redirect to /customers/[id] after create").toMatch(/^[a-f0-9-]{36}$/);
 
     // ── Step 3: search for the customer in the list ───────────────────
     await page.goto(`/${slug}/customers`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1500);
 
-    // Look for a search/filter input
     const searchBox = page.getByPlaceholder(/search/i).or(page.getByLabel(/search/i)).first();
     if (await searchBox.count() > 0) {
-      await searchBox.fill(fullName);
+      await searchBox.fill(firstName);
       await page.waitForTimeout(800);
     }
 
-    // The customer's name should now be visible somewhere on the page.
-    await expect(page.getByText(fullName).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(firstName).first()).toBeVisible({ timeout: 10_000 });
 
-    // ── Step 4: open the detail page by clicking the name ─────────────
-    await page.getByText(fullName).first().click();
-    await page.waitForURL(/\/customers\/[a-f0-9-]{36}/, { timeout: 30_000 });
-    const customerId = page.url().match(/\/customers\/([a-f0-9-]{36})/)?.[1] ?? "";
-    expect(customerId, "should land on a UUID detail page").toMatch(/^[a-f0-9-]{36}$/);
-
-    // ── Step 5: edit a field ───────────────────────────────────────────
-    // Open the edit page via /customers/[id]/edit (consistent across the codebase).
+    // ── Step 4: edit the mobile field ─────────────────────────────────
     await page.goto(`/${slug}/customers/${customerId}/edit`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1500);
 
     const newPhone = `04${Math.floor(10000000 + Math.random() * 89999999)}`;
-    await fillByLabelOrPlaceholder(page, /phone|mobile/i, newPhone);
+    // Verify the form pre-populated with the original phone before edit.
+    const mobileInput = page.locator('input[name="mobile"]').first();
+    await expect(mobileInput).toBeVisible({ timeout: 10_000 });
+    const before = await mobileInput.inputValue();
+    expect(before, "edit form should preload current mobile").toBe(phone);
+
+    await mobileInput.fill(newPhone);
+    expect(await mobileInput.inputValue()).toBe(newPhone);
 
     const saveBtn = page.getByRole("button", { name: /^(save|update|submit)/i }).first();
-    const saveResponse = page.waitForResponse(
+    const saveResponsePromise = page.waitForResponse(
       (r) => /\/customers/.test(r.url()) && r.request().method() === "POST",
       { timeout: 30_000 },
     ).catch(() => null);
     await saveBtn.click();
-    const saveR = await saveResponse;
-    if (saveR) expect(saveR.status()).toBeLessThan(500);
-    await page.waitForTimeout(2000);
+    const saveR: Response | null = await saveResponsePromise;
+    if (saveR) {
+      const status = saveR.status();
+      // RSC server-action POST returns 200 on success. 4xx/5xx == fail.
+      const body = await saveR.text().catch(() => "");
+      expect(status, `save POST should 200 (got ${status}); body: ${body.slice(0, 300)}`).toBe(200);
+      // Body should NOT contain a structured error digest — that signals
+      // a thrown error inside the action.
+      expect(body, `save response should not carry an error digest; body: ${body.slice(0, 300)}`).not.toMatch(/E\{"digest"/);
+    }
 
-    // ── Step 6: verify the new phone shows on the detail page ─────────
+    // Wait for the post-save redirect
+    await page.waitForURL((url) => !url.pathname.endsWith("/edit"), { timeout: 30_000 });
+    await page.waitForTimeout(1500);
+
+    // ── Step 5: verify on the detail page ────────────────────────────
     await page.goto(`/${slug}/customers/${customerId}`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1500);
     const html = await page.content();
-    // Strip non-digits — some renderers space the phone (04 9916 2122)
-    // or insert + prefixes (+61 491 6122). The persisted digits are what
-    // we actually care about.
     const digits = html.replace(/\D/g, "");
     expect(digits, `phone digits ${newPhone} should appear on detail page after edit`).toContain(newPhone);
 
@@ -135,29 +136,8 @@ async function login(page: Page): Promise<string> {
   return slug;
 }
 
-async function fillByLabelOrPlaceholder(page: Page, pattern: RegExp, value: string): Promise<void> {
-  const byLabel = page.getByLabel(pattern).first();
-  if (await byLabel.count() > 0 && await byLabel.isVisible().catch(() => false)) {
-    await byLabel.fill(value);
-    return;
-  }
-  const byPlaceholder = page.getByPlaceholder(pattern).first();
-  if (await byPlaceholder.count() > 0 && await byPlaceholder.isVisible().catch(() => false)) {
-    await byPlaceholder.fill(value);
-    return;
-  }
-  // Fallback: input[name=...] matching the pattern's source words
-  const tokens = pattern.source
-    .toLowerCase()
-    .replace(/[\\^$|?*+(){}[\].]/g, " ")
-    .split(/\s+/)
-    .filter((t) => t.length > 1 && !["and","or","not"].includes(t));
-  for (const t of tokens) {
-    const byName = page.locator(`input[name*="${t}" i], textarea[name*="${t}" i]`).first();
-    if (await byName.count() > 0 && await byName.isVisible().catch(() => false)) {
-      await byName.fill(value);
-      return;
-    }
-  }
-  throw new Error(`Could not find an input matching ${pattern}`);
+async function fillByName(page: Page, name: string, value: string): Promise<void> {
+  const input = page.locator(`input[name="${name}"], textarea[name="${name}"]`).first();
+  await expect(input, `input[name="${name}"] should be visible`).toBeVisible({ timeout: 10_000 });
+  await input.fill(value);
 }

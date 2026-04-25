@@ -42,6 +42,28 @@
     /* Typography */
     --font-sans: 'Inter', system-ui, sans-serif;
     --font-serif: 'Cormorant Garamond', Georgia, serif;
+
+    /* ─── Marketing site design tokens (per Kaitlyn's homepage brief) ─── */
+    /* Authoritative ivory/champagne palette for the public landing page.
+       Kept separate from the warm-stone theme so the (app) UI stays
+       unchanged — these vars are only consumed by the (marketing) tree
+       + landing components. */
+    --m-ivory: #FAF7F2;
+    --m-white-soft: #FFFFFF;
+    --m-charcoal: #1A1A1A;
+    --m-charcoal-soft: #2B2B2B;
+    --m-champagne: #C9A961;
+    --m-champagne-soft: #E8D9B5;
+    --m-text-primary: #1A1A1A;
+    --m-text-secondary: #5C5C5C;
+    --m-text-muted: #8A8A8A;
+    --m-border-soft: #EAE6DD;
+    --m-border-hover: #C9A961;
+    /* Standard motion easing + durations */
+    --m-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --m-dur-micro: 200ms;
+    --m-dur-small: 400ms;
+    --m-dur-large: 600ms;
   }
 
   * {
@@ -232,6 +254,45 @@
     transform: translateY(12px);
     animation: fadeInBlurUp 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
+
+  /* Hero scroll cue — gentle 4px vertical bounce (Kaitlyn's brief sec 5) */
+  .nx-bounce-y {
+    animation: nxBounceY 2s ease-in-out infinite;
+  }
+
+  /* Marketing-section reveal — 16px fade-up triggered when an element
+     gets the `.is-visible` class via the IntersectionObserver in
+     marketing-reveal.ts. Used by trust strip, audience cards, etc. */
+  .m-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity var(--m-dur-large) var(--m-ease), transform var(--m-dur-large) var(--m-ease);
+  }
+  .m-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Reduced motion — strip animation, keep static layout */
+  @media (prefers-reduced-motion: reduce) {
+    .nx-bounce-y,
+    .nx-fade-in-blur,
+    .nx-fade-in-blur-up,
+    .nx-fade-in-up,
+    .nx-fade-in {
+      animation: none !important;
+    }
+    .m-reveal {
+      opacity: 1 !important;
+      transform: none !important;
+      transition: none !important;
+    }
+  }
+}
+
+@keyframes nxBounceY {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
 }
 
 @keyframes fadeIn {
