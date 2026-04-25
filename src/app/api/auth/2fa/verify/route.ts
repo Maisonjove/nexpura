@@ -28,31 +28,59 @@ export async function POST(request: NextRequest) {
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
-    const { code, secret } = parseResult.data;
+    const { code } = parseResult.data;
 
-    // Verify the TOTP code
-    const isValid = verifyTOTPToken(code, secret);
+    // Pre-fix this trusted the body's `secret` and persisted whatever
+    // the client posted. Now: pull the candidate secret server-side
+    // (set by /setup) and IGNORE the body. Stale or missing pending
+    // → "start enrollment again". Migration 20260425d_totp_pending_secret.
+    const admin = createAdminClient();
+    const { data: pending } = await admin
+      .from('users')
+      .select('totp_pending_secret, totp_pending_at')
+      .eq('id', user.id)
+      .single();
 
+    const pendingSecret = pending?.totp_pending_secret as string | null;
+    const pendingAt = pending?.totp_pending_at as string | null;
+
+    if (!pendingSecret) {
+      return NextResponse.json(
+        { error: 'No pending enrollment — start again from /settings/security.' },
+        { status: 400 },
+      );
+    }
+    // 10-minute TTL: pendings older than that should be re-minted to
+    // limit replay against a leaked /setup response.
+    if (pendingAt && Date.now() - new Date(pendingAt).getTime() > 10 * 60 * 1000) {
+      return NextResponse.json(
+        { error: 'Enrollment expired — start again from /settings/security.' },
+        { status: 400 },
+      );
+    }
+
+    const isValid = verifyTOTPToken(code, pendingSecret);
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
     }
 
     // Generate backup codes
     const backupCodes = generateBackupCodes(8);
-    
+
     // Hash backup codes for storage
     const hashedBackupCodes = await Promise.all(
-      backupCodes.map(code => hashBackupCode(code))
+      backupCodes.map(c => hashBackupCode(c))
     );
 
-    // Save to database using admin client to bypass RLS
-    const admin = createAdminClient();
+    // Promote pending → active and clear the pending columns.
     const { error: updateError } = await admin
       .from('users')
       .update({
-        totp_secret: secret,
+        totp_secret: pendingSecret,
         totp_enabled: true,
         totp_backup_codes: hashedBackupCodes,
+        totp_pending_secret: null,
+        totp_pending_at: null,
       })
       .eq('id', user.id);
 
