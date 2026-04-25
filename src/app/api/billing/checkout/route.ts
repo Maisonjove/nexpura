@@ -32,15 +32,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's tenant and subscription
+    // RBAC: creating a Stripe checkout for a plan upgrade affects the
+    // tenant's billing — owner only. Pre-fix any session-authed staff
+    // could redirect the tenant to a paid Stripe checkout for a
+    // different plan/interval.
     const { data: userData } = await supabase
       .from("users")
-      .select("tenant_id, email, full_name")
+      .select("tenant_id, email, full_name, role")
       .eq("id", user.id)
       .single();
 
     if (!userData) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    if (userData.role !== "owner") {
+      return NextResponse.json(
+        { error: "Only the tenant owner can change the subscription plan." },
+        { status: 403 },
+      );
     }
 
     const { data: subscription } = await supabase

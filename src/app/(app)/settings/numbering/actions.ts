@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/auth-context";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -115,6 +116,17 @@ export async function saveSequence(
   value: number
 ): Promise<{ error?: string }> {
   try {
+    // Pre-fix any tenant member could re-set the document sequences.
+    // Restarting the invoice or sale counter at 1 collides with the
+    // unique-on-tenant-number constraint and breaks every subsequent
+    // create. Owners + managers only.
+    try {
+      await requireRole("owner", "manager");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "Only owner or manager can change document sequences." : "Not authenticated" };
+    }
+
     if (!Number.isInteger(value) || value < 1) {
       return { error: "Sequence must be a positive integer" };
     }

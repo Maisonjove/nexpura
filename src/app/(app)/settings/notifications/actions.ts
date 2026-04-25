@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/auth-context";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 
@@ -13,6 +14,14 @@ export async function saveNotificationSettings(settings: {
   notify_on_urgent_flagged?: boolean;
 }): Promise<{ success?: boolean; error?: string }> {
   try {
+    // Pre-fix any tenant member could rewrite these flags. They control
+    // outbound customer-facing comms — owners + managers only.
+    try {
+      await requireRole("owner", "manager");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "Only owner or manager can edit notification settings." : "Not authenticated" };
+    }
     const supabase = await createClient();
     const {
       data: { user },

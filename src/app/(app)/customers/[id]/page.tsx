@@ -153,11 +153,16 @@ export default async function CustomerDetailPage({
     })(),
     (async () => {
       try {
+        // The embedded inventory join previously had no `deleted_at`
+        // filter, so soft-deleted inventory rows kept appearing in the
+        // wishlist with their full retail price — confusing for staff
+        // and dangerous to quote. Filter the join.
         const { data } = await admin
           .from("wishlists")
-          .select("id, inventory_id, added_at, inventory(name, sku, retail_price)")
+          .select("id, inventory_id, added_at, inventory!inner(name, sku, retail_price, deleted_at)")
           .eq("customer_id", id)
           .eq("tenant_id", tenantId)
+          .is("inventory.deleted_at", null)
           .order("added_at", { ascending: false });
         return (data ?? []).map(item => ({
           ...item,
