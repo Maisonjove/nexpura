@@ -85,8 +85,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Verification code expired' }, { status: 400 });
     }
 
-    // Verify the code
-    if (profile.sms_2fa_code !== code) {
+    // Constant-time comparison so the request duration doesn't leak
+    // how many leading digits matched. The code is only 6 digits over
+    // a 10-minute window, but the timing-side-channel still narrows
+    // the search if the rate-limit ever loosens.
+    const { timingSafeEqual } = await import("node:crypto");
+    const a = Buffer.from(String(profile.sms_2fa_code));
+    const b = Buffer.from(String(code));
+    const match = a.length === b.length && timingSafeEqual(a, b);
+    if (!match) {
       return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
     }
 

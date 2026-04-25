@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe/client";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -21,16 +22,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user's tenant
-    const { data: userData } = await supabase
+    // RBAC: opening the billing portal lets the holder update payment
+    // methods, change plans, or cancel the subscription on behalf of
+    // the tenant. Owners only — staff with tenant access shouldn't be
+    // able to schedule the tenant's cancellation by clicking "Manage
+    // billing". Pre-fix this was open to any authed tenant member.
+    const admin = createAdminClient();
+    const { data: roleProfile } = await admin
       .from("users")
-      .select("tenant_id")
+      .select("tenant_id, role")
       .eq("id", user.id)
       .single();
-
-    if (!userData) {
+    if (!roleProfile?.tenant_id) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+    if (roleProfile.role !== "owner") {
+      return NextResponse.json(
+        { error: "Only the tenant owner can manage billing." },
+        { status: 403 },
+      );
+    }
+    const userData = { tenant_id: roleProfile.tenant_id };
 
     // Get subscription with stripe_customer_id
     const { data: subscription } = await supabase

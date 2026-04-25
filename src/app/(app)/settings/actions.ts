@@ -24,6 +24,16 @@ async function verifyTenantOwnership(supabase: Awaited<ReturnType<typeof createC
 
 export async function saveBusinessProfile(tenantId: string, formData: FormData) {
   try {
+    // Pre-fix this only verified tenant ownership (any authed member of
+    // the tenant). Salespersons + workshop staff could rewrite the
+    // business name / ABN / tax-relevant address. Owners + managers
+    // only — saveBanking already does this; align the rest.
+    try {
+      await requireRole("owner", "manager");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "Only owner or manager can edit business profile." : "Not authenticated" };
+    }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -73,6 +83,14 @@ export async function saveBusinessProfile(tenantId: string, formData: FormData) 
 
 export async function saveTaxCurrency(tenantId: string, formData: FormData) {
   try {
+    // Same pattern as saveBusinessProfile — tax + currency directly
+    // affects every invoice/sale total. Owners + managers only.
+    try {
+      await requireRole("owner", "manager");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "Only owner or manager can edit tax + currency." : "Not authenticated" };
+    }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 

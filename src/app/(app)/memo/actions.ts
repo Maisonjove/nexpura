@@ -170,21 +170,44 @@ export async function updateMemoStatus(
   try {
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
-    
-    // Get old status for audit
+
+    // Get old status + linked inventory for audit + sold-handling.
+    // Pre-fix transitioning active → sold left the linked inventory row
+    // untouched; the item handed out on memo + then marked sold stayed
+    // available for POS to resell. Insert a stock_movement of type
+    // 'sale' so the trigger decrements inventory.
+    // memo_items has no `quantity` column — memo is one item per row.
     const { data: oldData } = await admin
       .from("memo_items")
-      .select("status, item_name")
+      .select("status, item_name, inventory_id")
       .eq("id", id)
       .eq("tenant_id", tenantId)
       .single();
-    
+
     const { error } = await admin
       .from("memo_items")
       .update({ status, ...extraFields, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("tenant_id", tenantId);
     if (error) return { error: error.message };
+
+    // active → sold: decrement linked inventory through the trigger.
+    // Memo is one item per row so qty=1.
+    if (
+      status === "sold" &&
+      oldData?.status === "active" &&
+      oldData?.inventory_id
+    ) {
+      await admin.from("stock_movements").insert({
+        tenant_id: tenantId,
+        inventory_id: oldData.inventory_id,
+        movement_type: "sale",
+        quantity_change: -1,
+        notes: `Memo ${id} sold`,
+        created_by: userId,
+      });
+    }
+
     await logActivity(tenantId, userId, `memo_status_${status}`, "memo_item", id, "");
     
     await logAuditEvent({
