@@ -6,18 +6,21 @@ import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await checkRateLimit(ip, 'auth');
-  if (!success) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
-  }
-
+  void request; // ip-keyed rate-limit replaced with user-id below
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Pre-fix this rate-limited by IP — a NAT/CGNAT neighbour could DoS
+    // a victim's 2FA setup attempts. Other 2FA routes (verify, disable)
+    // correctly key by user.id; align this one.
+    const { success } = await checkRateLimit(user.id, 'auth');
+    if (!success) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
     // Get user email

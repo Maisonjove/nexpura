@@ -13,19 +13,21 @@ import { sendTwilioSms } from '@/lib/twilio-sms';
  * SMS bombing attacks where an attacker could trigger SMS sends to any user.
  */
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await checkRateLimit(ip, 'auth');
-  if (!success) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
-  }
-
   try {
     // SECURITY: Verify the caller has an active session
     const supabase = await createClient();
     const { data: { user: sessionUser } } = await supabase.auth.getUser();
-    
+
     if (!sessionUser) {
       return NextResponse.json({ error: 'Session required' }, { status: 401 });
+    }
+
+    // Pre-fix rate-limited by IP only — a NAT/CGNAT neighbour could
+    // flood Twilio SMS messages to a victim's phone (cost surface +
+    // user-trust surface). Key by user.id like the other 2FA routes.
+    const { success } = await checkRateLimit(sessionUser.id, 'auth');
+    if (!success) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
     const body = await request.json();

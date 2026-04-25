@@ -102,13 +102,18 @@ export async function processRefund(params: {
         };
       }
 
-  // Generate refund number
-  const { count } = await admin
-    .from("refunds")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId);
-
-  const refundNumber = `REF-${String((count ?? 0) + 1).padStart(4, "0")}`;
+  // Generate refund number via the atomic next_refund_number RPC,
+  // matching /api/pos/refund. Pre-fix used count+1 which is race-prone:
+  // two concurrent refunds compute the same number, refunds_tenant_
+  // number_unique fails one of them after items have been processed.
+  const { data: refundNumberData, error: refundNumErr } = await admin.rpc(
+    "next_refund_number",
+    { p_tenant_id: tenantId },
+  );
+  if (refundNumErr || !refundNumberData) {
+    return { error: "Failed to allocate refund number — please retry." };
+  }
+  const refundNumber = refundNumberData as string;
 
   // Fetch tenant tax config
   const { data: tenantData } = await admin

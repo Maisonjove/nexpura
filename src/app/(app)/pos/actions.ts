@@ -675,13 +675,19 @@ export async function createLaybySale(
     return { error: "Deposit must be less than total — use regular sale instead" };
   }
 
-  // Generate sale number
-  const { count } = await admin
-    .from("sales")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId);
-
-  const saleNumber = `S-${String((count ?? 0) + 1).padStart(4, "0")}`;
+  // Generate sale number via the atomic next_sale_number RPC, same as
+  // createPOSSale (line 137). Pre-fix used count+1 which is race-prone:
+  // two POS terminals starting a layby simultaneously both compute the
+  // same number; sales_tenant_number_unique then fails one of them
+  // outright. Using the RPC sequences atomically.
+  const { data: laybySaleNumber, error: laybyNumErr } = await admin.rpc(
+    "next_sale_number",
+    { p_tenant_id: tenantId },
+  );
+  if (laybyNumErr || !laybySaleNumber) {
+    return { error: "Failed to allocate sale number — please retry." };
+  }
+  const saleNumber = laybySaleNumber as string;
 
   // Create layby sale record (status='layby', inventory NOT yet deducted)
   const laybyLocationId = await resolvePOSLocationId(tenantId, userId);
