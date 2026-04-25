@@ -291,7 +291,13 @@ export async function processRefund(params: {
     return { error: refundResult.error };
   }
 
-  revalidatePath("/refunds");
+  // Pre-fix: revalidatePath('/refunds') ran right before redirect(),
+  // and under Next 16 cacheComponents that chain raised
+  // "Failed to parse postponed state" 500s on Vercel (same root cause
+  // as the layby fix in commit 8d52e3b). Next's `redirect()` already
+  // invalidates the destination page, and the /refunds list has no
+  // unstable_cache wrapper that needs busting — so the revalidatePath
+  // here was both wrong and unnecessary.
   redirect(`/refunds/${refundResult.id}`);
 }
 

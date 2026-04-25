@@ -217,12 +217,16 @@ export async function createSale(
     if (itemsError) return { error: itemsError.message };
   }
 
-  // Invalidate dashboard cache
+  // Invalidate dashboard cache. revalidatePath('/sales') chained with
+  // redirect() raises "Failed to parse postponed state" 500s under
+  // Next 16 cacheComponents (same root as the layby fix in 8d52e3b).
+  // The redirect destination already refetches; the list page is
+  // covered by the dashboard tag invalidation above. Drop the
+  // revalidatePath call.
   revalidateTag("dashboard", "default");
   revalidateTag(CACHE_TAGS.invoices(tenantId), "default");
   revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
   after(() => refreshDashboardStatsAsync(tenantId));
-  revalidatePath("/sales");
 
   redirect(`/sales/${sale.id}`);
 }
@@ -446,11 +450,11 @@ export async function deleteSale(
 
   if (error) return { error: error.message };
   
-  // Invalidate dashboard cache
+  // Drop revalidatePath('/sales') before redirect to avoid the
+  // cacheComponents "Failed to parse postponed state" 500.
   revalidateTag("dashboard", "default");
   revalidateTag(CACHE_TAGS.invoices(tenantId), "default");
   revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
   after(() => refreshDashboardStatsAsync(tenantId));
-  revalidatePath("/sales");
   redirect("/sales");
 }

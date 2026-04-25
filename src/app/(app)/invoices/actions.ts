@@ -240,8 +240,11 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
     },
   });
 
-  revalidatePath("/invoices");
-  // Invalidate dashboard cache
+  // Pre-fix this called revalidatePath('/invoices') here, but the only
+  // caller that runs createInvoice is createInvoiceAndRedirect (line
+  // ~559) which immediately redirects. Under Next 16 cacheComponents
+  // that chain throws "Failed to parse postponed state" 500s. The
+  // tag invalidations below are CC-safe and cover the list page.
   revalidateTag("dashboard", "default");
   revalidateTag(CACHE_TAGS.invoices(tenantId), "default");
   after(() => refreshDashboardStatsAsync(tenantId));
@@ -335,8 +338,11 @@ export async function updateInvoice(
     newData: { total, status: input.status },
   });
 
-  revalidatePath(`/invoices/${id}`);
-    revalidatePath("/invoices");
+    // Skip revalidatePath here — `updateInvoiceAndRedirect` calls
+    // redirect() immediately after; chaining revalidatePath +
+    // redirect under cacheComponents raises "Failed to parse
+    // postponed state". The CACHE_TAGS.invoices(tenantId) revalidate
+    // earlier in the function covers the list refresh.
     return {};
   } catch (err) {
     logger.error("[updateInvoice] Error:", err);
