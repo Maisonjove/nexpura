@@ -136,10 +136,12 @@ async function RepairTrackingPage({ params }: Props) {
   const businessName = (config?.business_name as string) || subdomain;
   const tenantId = config?.tenant_id as string;
 
-  // Fetch repair
+  // Fetch repair. Pre-fix selected `notes` (column doesn't exist on
+  // repairs — verified 2026-04-25; real column is `internal_notes`)
+  // → maybeSingle returned null → page 404'd for every repair.
   const { data: repair } = await admin
     .from("repairs")
-    .select("id, repair_number, item_description, stage, due_date, created_at, notes")
+    .select("id, repair_number, item_description, stage, due_date, created_at, internal_notes")
     .eq("id", repairId)
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
@@ -147,19 +149,26 @@ async function RepairTrackingPage({ params }: Props) {
 
   if (!repair) notFound();
 
-  // Fetch stage history
+  // Fetch stage history (table exists — order_status_history was the
+  // canonical name; repair_stages may also exist depending on the
+  // tenant). Use order_status_history scoped to repair.
   const { data: stageHistory } = await admin
-    .from("repair_stages")
-    .select("stage, created_at, notes")
-    .eq("repair_id", repairId)
-    .order("created_at", { ascending: true })
+    .from("order_status_history")
+    .select("status, changed_at, notes")
+    .eq("order_type", "repair")
+    .eq("order_id", repairId)
+    .order("changed_at", { ascending: true })
     .limit(20);
 
-  // Fetch photos (attachments)
+  // Fetch photos. Pre-fix queried `repair_attachments` — table doesn't
+  // exist (verified 2026-04-25). Real table is `order_attachments` with
+  // a (order_type, order_id) shape, same one /track/[trackingId] uses.
   const { data: attachments } = await admin
-    .from("repair_attachments")
+    .from("order_attachments")
     .select("id, file_url, file_name, created_at")
-    .eq("repair_id", repairId)
+    .eq("order_type", "repair")
+    .eq("order_id", repairId)
+    .eq("is_public", true)
     .order("created_at", { ascending: false })
     .limit(10);
 
@@ -242,9 +251,9 @@ async function RepairTrackingPage({ params }: Props) {
                       <div className="w-1.5 h-1.5 rounded-full bg-amber-600 mt-2 flex-shrink-0" />
                       <div>
                         <span className="font-medium text-stone-800">
-                          {STAGE_LABELS[s.stage as string] ?? (s.stage as string).replace(/_/g, " ")}
+                          {STAGE_LABELS[s.status as string] ?? (s.status as string).replace(/_/g, " ")}
                         </span>
-                        <span className="text-stone-400 ml-2 text-xs">{fmtDate(s.created_at as string)}</span>
+                        <span className="text-stone-400 ml-2 text-xs">{fmtDate(s.changed_at as string)}</span>
                         {s.notes && <p className="text-xs text-stone-500 mt-0.5">{s.notes as string}</p>}
                       </div>
                     </div>

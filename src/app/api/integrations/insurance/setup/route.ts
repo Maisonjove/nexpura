@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integrations";
+import { requireRole } from "@/lib/auth-context";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -20,6 +21,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Insurance settings drive what appears on appraisal certificates
+    // customers see — appraiser name + license number. Pre-fix any
+    // tenant member could rewrite them. Owners + managers only.
+    try {
+      await requireRole("owner", "manager");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return NextResponse.json(
+        { error: msg.startsWith("permission_denied") ? "Only owner or manager can edit insurance settings." : "Not authenticated" },
+        { status: 403 },
+      );
+    }
     const { tenantId } = await getAuthContext();
     const body = await req.json();
     const { enabled, appraiser_name, appraiser_license, valuation_basis } = body;
