@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { reportServerError } from "@/lib/logger";
+import logger, { reportServerError } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -66,6 +66,14 @@ export async function POST(req: NextRequest) {
     // never silently fails — the signature/notes lose their home for
     // one request but the approval itself always completes.
     if (updateErr && /column .* not find|schema cache/i.test(updateErr.message)) {
+      // Operators-need-to-know signal — without this the
+      // signature/notes silently disappear for one request and the
+      // schema cache miss is invisible to ops.
+      logger.warn("[bespoke/approval-response] schema-cache retry triggered — refresh the schema cache or run pending migrations", {
+        tenantId: job.tenant_id,
+        droppedFromUpdate: Object.keys(updates).filter(k => k !== "approval_status" && k !== "approved_at" && k !== "approval_notes"),
+        originalError: updateErr.message,
+      });
       const safeUpdates: Record<string, unknown> = { approval_status: updates.approval_status };
       if (updates.approved_at) safeUpdates.approved_at = updates.approved_at;
       if (updates.approval_notes) safeUpdates.approval_notes = updates.approval_notes;

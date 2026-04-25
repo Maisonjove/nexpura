@@ -225,8 +225,14 @@ export async function submitBespokeDecision(params: {
   // a column is missing from the live schema cache (we've been bitten
   // twice on this codepath: client_signature_data, sale_id), retry with
   // just the essential state transition so the customer's decision
-  // never silently drops.
+  // never silently drops. Surface a metric/log when the retry hits so
+  // operators know to refresh the schema cache (or migrate the column).
   if (updateErr && /column .* not find|schema cache/i.test(updateErr.message)) {
+    logger.warn("[submitBespokeDecision] schema-cache retry triggered — refresh the schema cache or run pending migrations", {
+      tenantId: job.tenant_id,
+      droppedFromUpdate: Object.keys(updates).filter(k => k !== "approval_status" && k !== "approved_at" && k !== "approval_notes"),
+      originalError: updateErr.message,
+    });
     const safe: Record<string, unknown> = { approval_status: updates.approval_status };
     if (updates.approved_at) safe.approved_at = updates.approved_at;
     if (updates.approval_notes) safe.approval_notes = updates.approval_notes;

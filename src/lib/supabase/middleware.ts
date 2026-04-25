@@ -437,6 +437,33 @@ async function _updateSessionInner(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // ─── PR-05 fill-in: /api/** AAL2 enforcement ──────────────────────
+  // batch-12 removed the broad /api short-circuit from isPublicPath
+  // and added an explicit isAlwaysPublicApiPath() list (webhooks,
+  // /api/auth/2fa/**, /api/tracking, etc.). But the page-rendered
+  // 2FA enforceTwoFactor calls live inside the isProtectedRoute /
+  // tenantParsed / isAdminRoute branches — none of which match an
+  // /api/* path. Result: a 2FA-enrolled user with a fresh Supabase
+  // cookie (set on /api/auth/login response) could fire any /api/**
+  // mutation before completing /verify-2fa.
+  // Fix: explicit AAL2 check for /api/* that isn't on the
+  // always-public list. Returns 401 (no redirect — this is an API).
+  if (pathname.startsWith("/api/") && !isAlwaysPublicApiPath(pathname)) {
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const apiProfile = await resolveMiddlewareProfile(request, user.id);
+    if (apiProfile?.totp_enabled) {
+      const cookie = request.cookies.get(TWO_FACTOR_COOKIE_NAME)?.value ?? null;
+      if (!(await verifyTwoFactorCookie(cookie, user.id))) {
+        return NextResponse.json(
+          { error: "Two-factor authentication required" },
+          { status: 401 },
+        );
+      }
+    }
+  }
+
   const isAdminRoute = pathname.startsWith("/admin");
   if (isAdminRoute) {
     if (!user) {
