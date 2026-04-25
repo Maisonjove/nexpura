@@ -92,6 +92,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Refund total must be positive" }, { status: 400 });
   }
 
+  // Compute refund tax + total at the tenant's tax rate so the refund
+  // mirrors the original sale (which adds tax on top of subtotal). The
+  // pre-fix legacy route stored `total = subtotal`, which under-credited
+  // the customer by the tax portion when refundMethod === "store_credit"
+  // — a sale of $80 + $8 GST = $88 was refunded to $80 of credit, $8
+  // short. Matches processRefund's behaviour.
+  const { data: tenantData } = await admin
+    .from("tenants")
+    .select("tax_rate")
+    .eq("id", tenantId)
+    .single();
+  const taxRate = Number(tenantData?.tax_rate ?? 0.1);
+  const refundTaxAmount = Math.round(refundSubtotal * taxRate * 100) / 100;
+  const refundTotal = refundSubtotal + refundTaxAmount;
+
   // Bound against remaining refundable amount on this sale (sale.total
   // minus any prior refunds). Mirrors processRefund.
   // Column on `refunds` is `original_sale_id`, NOT `sale_id` (the latter
@@ -110,13 +125,13 @@ export async function POST(req: NextRequest) {
   );
   const saleTotal = Number(sale.total ?? sale.subtotal ?? 0);
   const remainingRefundable = saleTotal - alreadyRefunded;
-  if (refundSubtotal > remainingRefundable + 0.01) {
+  if (refundTotal > remainingRefundable + 0.01) {
     return NextResponse.json(
       {
         error:
           `Refund exceeds remaining refundable amount. Sale total ${saleTotal.toFixed(2)}, ` +
           `already refunded ${alreadyRefunded.toFixed(2)}, remaining ${remainingRefundable.toFixed(2)}, ` +
-          `requested ${refundSubtotal.toFixed(2)}.`,
+          `requested ${refundTotal.toFixed(2)}.`,
       },
       { status: 400 },
     );
@@ -168,8 +183,8 @@ export async function POST(req: NextRequest) {
         customer_name: sale.customer_name ?? null,
         refund_number: refundNumber,
         subtotal: refundSubtotal,
-        tax_amount: 0,
-        total: refundSubtotal,
+        tax_amount: refundTaxAmount,
+        total: refundTotal,
         refund_method: refundMethod,
         reason,
         notes: notes || null,
@@ -257,7 +272,7 @@ export async function POST(req: NextRequest) {
 
       if (customer) {
         const oldBalance = customer.store_credit || 0;
-        const newBalance = oldBalance + refundSubtotal;
+        const newBalance = oldBalance + refundTotal;
 
         const { error: creditErr, count: creditCount } = await admin
           .from("customers")
@@ -274,7 +289,7 @@ export async function POST(req: NextRequest) {
             .eq("id", sale.customer_id)
             .eq("tenant_id", tenantId)
             .single();
-          const retryNew = (customerRetry?.store_credit || 0) + refundSubtotal;
+          const retryNew = (customerRetry?.store_credit || 0) + refundTotal;
           const { error: retryErr } = await admin
             .from("customers")
             .update({ store_credit: retryNew })
@@ -285,7 +300,7 @@ export async function POST(req: NextRequest) {
               customerId: sale.customer_id,
               tenantId,
               refundId: refund.id,
-              amount: refundSubtotal,
+              amount: refundTotal,
             });
             return {
               status: 500,
