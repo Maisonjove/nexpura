@@ -39,7 +39,13 @@ const TOPIC_LABELS: Record<z.infer<typeof contactSchema>["topic"], string> = {
 };
 
 const RECIPIENT = process.env.NEXPURA_CONTACT_INBOX || "hello@nexpura.com";
-const FROM = "Nexpura Contact Form <notifications@nexpura.com>";
+// Source the from-address from the same env var the rest of the
+// transactional-email stack reads (`RESEND_FROM_EMAIL`) so we send
+// from the address that's actually been verified in Resend. Falling
+// back to `notifications@nexpura.com` would 500 the route on Resend's
+// "from address not verified" rejection.
+const FROM_ADDR = process.env.RESEND_FROM_EMAIL || "support@nexpura.com";
+const FROM = `Nexpura Contact Form <${FROM_ADDR}>`;
 
 function escapeHtml(s: string): string {
   return s
