@@ -49,6 +49,7 @@ export default function ApprovalClient({
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Already approved/changes_requested
   if (job.approval_status === "approved" || job.approved_at) {
@@ -108,14 +109,26 @@ export default function ApprovalClient({
       return;
     }
     setIsPending(true);
-    const res = await fetch("/api/bespoke/approval-response", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, action: "approve", signature: signatureData }),
-    });
-    const data = await res.json();
-    setIsPending(false);
-    if (data.success) setResult("approved");
+    setError(null);
+    try {
+      const res = await fetch("/api/bespoke/approval-response", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, action: "approve", signature: signatureData }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResult("approved");
+      } else {
+        // Pre-fix swallowed every server error — the form silently
+        // re-enabled and the customer thought their click did nothing.
+        setError(data.error || "Could not record approval. Please try again or contact your jeweller.");
+      }
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setIsPending(false);
+    }
   }
 
   async function handleRequestChanges() {
@@ -124,14 +137,24 @@ export default function ApprovalClient({
       return;
     }
     setIsPending(true);
-    const res = await fetch("/api/bespoke/approval-response", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, action: "changes_requested", notes: changeNotes }),
-    });
-    const data = await res.json();
-    setIsPending(false);
-    if (data.success) setResult("changes_requested");
+    setError(null);
+    try {
+      const res = await fetch("/api/bespoke/approval-response", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, action: "changes_requested", notes: changeNotes }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResult("changes_requested");
+      } else {
+        setError(data.error || "Could not send your request. Please try again.");
+      }
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setIsPending(false);
+    }
   }
 
   // Canvas signature handling
@@ -375,6 +398,11 @@ export default function ApprovalClient({
         </div>
 
         {/* Action buttons */}
+        {error && (
+          <div role="alert" className="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-xs text-red-700">
+            {error}
+          </div>
+        )}
         {!showRequestChanges ? (
           <div className="space-y-3">
             <button

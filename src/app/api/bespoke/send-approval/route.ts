@@ -63,6 +63,26 @@ export async function POST(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com";
   const approvalUrl = `${appUrl}/approve/${token}`;
 
+  // Pre-fix this overwrote approval_status='approved' back to 'requested'
+  // and rotated the token unconditionally — staff re-clicking "Send
+  // Approval" on a job that was already approved (e.g. to send a
+  // milestone update) wiped the prior approval, broke the customer's
+  // existing email link with a 404 (token rotated), and left
+  // approved_at + approval_status mismatched. Short-circuit when
+  // already approved.
+  const { data: existing } = await admin
+    .from("bespoke_jobs")
+    .select("approval_status")
+    .eq("id", jobId)
+    .eq("tenant_id", auth.tenantId)
+    .maybeSingle();
+  if (existing?.approval_status === "approved") {
+    return NextResponse.json(
+      { error: "This design has already been approved. Re-send is disabled to preserve the audit trail." },
+      { status: 400 },
+    );
+  }
+
   // Update job with approval token + status
   const { error: updateErr } = await admin
     .from("bespoke_jobs")

@@ -705,11 +705,12 @@ export async function quickAddStock(formData: FormData): Promise<{ id?: string; 
   const supplierId = formData.get("supplier_id") as string || null;
   const costPriceRaw = formData.get("cost_price") as string;
   const retailPriceRaw = formData.get("retail_price") as string;
-  const tagsRaw = formData.get("tags") as string;
-  
+
   const costPrice = costPriceRaw ? parseFloat(costPriceRaw) : null;
   const retailPrice = retailPriceRaw ? parseFloat(retailPriceRaw) : 0;
-  const tags = tagsRaw ? tagsRaw.split(",").map(t => t.trim()).filter(Boolean) : [];
+  // tags input dropped — `inventory.tags` column doesn't exist on the
+  // live schema and the form value silently never persisted. Bring back
+  // when the column is migrated.
   
   // Get next stock number using the database function
   const { data: stockNumberData, error: stockNumError } = await supabase
@@ -772,11 +773,18 @@ export async function quickAddStock(formData: FormData): Promise<{ id?: string; 
       cost_price: costPrice,
       retail_price: retailPrice,
       quantity: 1,
-      status: "available",
+      // Schema canon is status='active' (matches createInventoryItem
+      // and the inventory list / transfers page filter). 'available'
+      // was a divergence — items added via Quick Add were invisible
+      // to the transfers selector and the inventory list filter.
+      status: "active",
       is_consignment: isConsignment,
       stock_number: stockNumber,
       sku,
-      tags,
+      // `inventory.tags` does NOT exist on the live schema — earlier
+      // INSERT silently failed when tags was non-empty (route returned
+      // PGRST204) and otherwise succeeded but the tags array was lost.
+      // Drop the field; reintroduce when a column is migrated.
       created_by: user?.id,
     })
     .select("id")
@@ -865,16 +873,15 @@ export async function updateStockStatus(
   const supabase = await createClient();
   const tenantId = await getTenantId(supabase);
 
+  // `inventory.sold_via` does NOT exist on the live schema (verified
+  // 2026-04-25). Earlier code wrote it on every status change → PGRST204
+  // → status update returned an error to the UI. Drop sold_via writes;
+  // sold_at is the only remaining column we update.
   const updates: Record<string, string | Date | null> = { status };
-  
-  // If marking as sold, set sold_at and sold_via
   if (status === "sold") {
     updates.sold_at = new Date().toISOString();
-    updates.sold_via = "manual";
   } else {
-    // Clear sold fields if changing from sold
     updates.sold_at = null;
-    updates.sold_via = null;
   }
   
   const { error } = await supabase

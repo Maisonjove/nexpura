@@ -115,16 +115,20 @@ export async function POST(req: NextRequest) {
             `,
           });
 
-          // Log communication
+          // Log communication. Schema doesn't have reference_type /
+          // reference_id / metadata (verified 2026-04-25). Drop them so
+          // the audit row actually lands. Email gets persisted as
+          // customer_email instead.
           await admin.from("customer_communications").insert({
             customer_id: customer.id,
+            customer_email: customer.email,
+            customer_name: customer.full_name,
             tenant_id: tenantId,
             type: "repair_ready",
             subject: `Your repair is ready for collection — ${businessName}`,
             sent_by: user.id,
-            reference_type: "repair",
-            reference_id: repair.id,
-            metadata: { email: customer.email },
+            sent_at: new Date().toISOString(),
+            status: "sent",
           }).maybeSingle();
 
           notified++;
@@ -177,16 +181,18 @@ export async function POST(req: NextRequest) {
             `,
           });
 
-          // Log communication
+          // Log communication. Same column-drift fix as the repair
+          // branch — drop reference_type / reference_id / metadata.
           await admin.from("customer_communications").insert({
             customer_id: customer.id,
+            customer_email: customer.email,
+            customer_name: customer.full_name,
             tenant_id: tenantId,
             type: "repair_ready",
             subject: `Your bespoke piece is ready — ${businessName}`,
             sent_by: user.id,
-            reference_type: "bespoke_job",
-            reference_id: job.id,
-            metadata: { email: customer.email },
+            sent_at: new Date().toISOString(),
+            status: "sent",
           }).maybeSingle();
 
           notified++;
