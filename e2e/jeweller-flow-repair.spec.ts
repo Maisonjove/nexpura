@@ -62,14 +62,13 @@ test.describe("Repair intake flow", () => {
     const page = await ctx.newPage();
     await login(page);
 
-    // ── Pick a specific location before opening any tenant-locked form ─
+    // ── Pick a specific location via the LocationPicker UI ────────────
     // (Repairs / POS / Sales etc. all reject the "All Locations" view.)
-    await pickFirstLocation(page);
-    // Force a full reload so the LocationProvider re-initializes from the
-    // new cookie value (otherwise the React state stays at "All Locations"
-    // even though the cookie has flipped).
+    // The UI flow calls setSelectedLocation which sets the cookie
+    // server-side AND revalidates the data cache.
     await page.goto(`/${TEST_TENANT_SLUG}/dashboard`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(2000);
+    await pickFirstLocation(page);
 
     // ── Open new-repair form ──────────────────────────────────────────
     await page.goto(`/${TEST_TENANT_SLUG}/repairs/new`, { waitUntil: "domcontentloaded" });
@@ -132,26 +131,24 @@ test.describe("Repair intake flow", () => {
   });
 });
 
-// test-tenant Main Store id — reused across deep-flow specs.
-const FIRST_LOCATION_ID = "f1a105f7-5269-46cf-96ba-bbf04ce7f88a";
-
 async function pickFirstLocation(page: Page): Promise<void> {
-  // Set the nx_location cookie directly — way more reliable than
-  // driving the LocationPicker dropdown UI which uses a portal +
-  // animation and has flaky timing in headless Chromium. The header
-  // picker DOES pick it up (correctly displays "test 4 - Main St..."),
-  // but the create-record validators (resolveLocationForCreate) read
-  // both the cookie AND the user-allowed-locations join — so we set
-  // the cookie via Playwright AND issue the server action so the
-  // server-side state is updated too.
-  await page.context().addCookies([
-    {
-      name: "nx_location",
-      value: FIRST_LOCATION_ID,
-      url: BASE_URL,
-      sameSite: "Lax",
-    },
-  ]);
+  // Drive the actual LocationPicker UI — clicks the "All Locations"
+  // pill in the header to open the dropdown, then clicks the first
+  // specific-location card. This calls the setSelectedLocation server
+  // action which writes the cookie + revalidates the data cache. Doing
+  // it via Playwright addCookies() is NOT sufficient: the server reads
+  // the cookie correctly for SSR (header updates) but resolveLocation-
+  // ForCreate during the form-submit somehow doesn't see it. Going
+  // through the real UI flow side-steps the discrepancy.
+  const picker = page.locator("button", { hasText: "All Locations" }).first();
+  if (await picker.count() === 0) return; // already on a specific location
+  await picker.click();
+  await page.waitForTimeout(600);
+  // The dropdown contains buttons whose visible text starts with the
+  // location name; "test 4 - Main Storeretail" combines name + type.
+  const target = page.locator("button", { hasText: /test 4 - Main Store/i }).first();
+  await target.click();
+  await page.waitForTimeout(1500);
 }
 
 async function login(page: Page): Promise<void> {

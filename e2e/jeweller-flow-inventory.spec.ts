@@ -44,6 +44,11 @@ test.describe("Inventory create flow", () => {
     const page = await ctx.newPage();
     await login(page);
 
+    // Pick a specific location — inventory create rejects "All Locations".
+    await page.goto(`/${TEST_TENANT_SLUG}/dashboard`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2000);
+    await pickFirstLocation(page);
+
     await page.goto(`/${TEST_TENANT_SLUG}/inventory/new`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2000);
 
@@ -97,6 +102,16 @@ test.describe("Inventory create flow", () => {
     await ctx.close();
   });
 });
+
+async function pickFirstLocation(page: Page): Promise<void> {
+  const picker = page.locator("button", { hasText: "All Locations" }).first();
+  if (await picker.count() === 0) return;
+  await picker.click();
+  await page.waitForTimeout(600);
+  const target = page.locator("button", { hasText: /test 4 - Main Store/i }).first();
+  await target.click();
+  await page.waitForTimeout(1500);
+}
 
 async function login(page: Page): Promise<void> {
   await page.goto("/login", { waitUntil: "domcontentloaded" });

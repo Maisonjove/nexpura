@@ -9,10 +9,19 @@ test("debug location picker", async ({ browser }) => {
   await page.getByLabel(/password/i).first().fill(process.env.NEXPURA_TEST_PASSWORD!);
   await page.getByRole("button", { name: /^(sign in|log in)/i }).click();
   await page.waitForURL(/dashboard/, { timeout: 30_000 });
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(4000);
+  console.log("URL:", page.url());
+
+  // Dump all visible buttons with their text to see what's on screen
+  const allBtns = await page.locator("button:visible").all();
+  console.log("visible button count:", allBtns.length);
+  for (const b of allBtns.slice(0, 15)) {
+    const t = ((await b.textContent()) ?? "").replace(/\s+/g, " ").trim().slice(0, 50);
+    if (t) console.log(" btn:", JSON.stringify(t));
+  }
 
   // Find the location picker — it has the "All Locations" label by default.
-  const picker = page.getByRole("button", { name: /^All Locations$/i });
+  const picker = page.locator("button", { hasText: "All Locations" });
   console.log("picker count:", await picker.count());
   const pickerEl = picker.first();
   await pickerEl.click();

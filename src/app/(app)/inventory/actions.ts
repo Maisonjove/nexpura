@@ -189,13 +189,32 @@ export async function createInventoryItem(formData: FormData) {
     // barcode generation is non-critical
   }
 
-  // Create initial stock movement if quantity > 0
+  // Create initial stock movement if quantity > 0.
+  //
+  // The `sync_inventory_quantity` trigger (added 2026-03-31) fires on
+  // every stock_movements INSERT and applies quantity_change to the
+  // inventory row. We've already INSERTed inventory with quantity = 12;
+  // if we now INSERT a stock_movement with quantity_change = 12 the
+  // trigger pushes the row to 24. Repro: e2e/jeweller-flow-inventory.
+  //
+  // Reset inventory.quantity to 0 first so the trigger lands on the
+  // correct final value (0 + 12 = 12). The audit row in stock_movements
+  // is preserved.
   if (quantity > 0) {
+    const { error: zeroError } = await supabase
+      .from("inventory")
+      .update({ quantity: 0 })
+      .eq("id", item.id);
+    if (zeroError) throw new Error(`Failed to zero inventory before stock movement: ${zeroError.message}`);
+
     const { error: smError } = await supabase.from("stock_movements").insert({
       tenant_id: tenantId,
       inventory_id: item.id,
       movement_type: "purchase",
       quantity_change: quantity,
+      // quantity_after is set by the sync trigger; we set it here too
+      // so a stock_movements consumer that reads only this row sees the
+      // correct end state without joining inventory.
       quantity_after: quantity,
       notes: "Initial stock",
       created_by: user?.id,
