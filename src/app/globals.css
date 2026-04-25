@@ -140,6 +140,101 @@
     white-space: normal;
   }
 
+  /* ─── Marketing type-scale classes (brief #2 Section 2) ───
+     Optional opt-in classes for components that prefer named scales
+     over Tailwind text-[…] arbitraries. Pages already shipped on the
+     literal sizes (homepage, pricing, features, contact, about,
+     switching, verify, login, 404) work as-is; new components should
+     reach for these instead so the scale stays consistent. */
+  .m-h1-hero {
+    font-family: var(--font-serif);
+    font-size: 72px;
+    line-height: 1.06;
+    letter-spacing: -0.015em;
+    font-weight: 400;
+    color: var(--m-text-primary);
+  }
+  .m-h2-section {
+    font-family: var(--font-serif);
+    font-size: 48px;
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+    color: var(--m-text-primary);
+  }
+  .m-h2-bridge {
+    font-family: var(--font-serif);
+    font-size: 42px;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+    color: var(--m-text-primary);
+  }
+  .m-h3-card {
+    font-family: var(--font-serif);
+    font-size: 24px;
+    line-height: 1.25;
+    font-weight: 500;
+    color: var(--m-text-primary);
+  }
+  .m-h4-block {
+    font-family: var(--font-sans);
+    font-size: 20px;
+    line-height: 1.35;
+    font-weight: 600;
+    color: var(--m-text-primary);
+  }
+  .m-body-lead {
+    font-family: var(--font-sans);
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--m-text-secondary);
+  }
+  .m-body-default {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--m-text-secondary);
+  }
+  .m-body-small {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--m-text-secondary);
+  }
+  .m-eyebrow {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--m-text-faint);
+  }
+  .m-eyebrow-tight {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--m-text-faint);
+  }
+  @media (max-width: 1024px) {
+    .m-h1-hero    { font-size: 56px; }
+    .m-h2-section { font-size: 36px; }
+    .m-h2-bridge  { font-size: 32px; }
+    .m-h3-card    { font-size: 22px; }
+  }
+  @media (max-width: 640px) {
+    .m-h1-hero    { font-size: 42px; }
+    .m-h2-section { font-size: 30px; }
+    .m-h2-bridge  { font-size: 26px; }
+    .m-h3-card    { font-size: 20px; }
+    .m-body-lead  { font-size: 16px; }
+    .m-body-default { font-size: 15px; }
+  }
+
   /* ─── Marketing form primitives (brief #2 Section 7) ───
      Used by Verify Passport, Login, Contact, newsletter, demo form, etc.
      Preserve every form's existing name/id/action — only the visual
