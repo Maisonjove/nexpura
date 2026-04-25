@@ -1,8 +1,28 @@
 'use client'
 
-import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
+import Button from '@/components/landing/ui/Button'
+
+/**
+ * Pricing page restyled to the homepage system per Kaitlyn brief #2
+ * Section 10B. Structure, content, prices, plan names, feature lists,
+ * comparison table rows, FAQ copy — all preserved verbatim. Only the
+ * visual layer is brought in line with the marketing tokens:
+ *  - Page bg #FFFFFF → bg-m-ivory.
+ *  - Plan cards use the standard card surface; featured plan is the
+ *    one with a champagne border (was charcoal). 32px desktop /
+ *    22px mobile padding meets the spacing token minimum.
+ *  - Plan CTA buttons swap to the Button component (primary on the
+ *    featured plan, secondary on the others) so heights, hover lift,
+ *    radius, and focus ring all match every other CTA on the site.
+ *  - Comparison table + FAQ accordion + final CTA all swap stone-*
+ *    palette for the m-* tokens. FAQ accordion already had the +
+ *    → × rotation Kaitlyn called for; only colours change.
+ *  - Final CTA's bespoke heavy-shadow gradient pill is dropped for
+ *    the standard primary Button. Tertiary "Explore the Platform"
+ *    link uses the underline-grow tertiary variant.
+ */
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -24,7 +44,8 @@ const plans = [
   {
     name: 'Boutique',
     price: 89,
-    description: 'For single-store jewellers who need one connected system for sales, repairs, bespoke, and stock.',
+    description:
+      'For single-store jewellers who need one connected system for sales, repairs, bespoke, and stock.',
     cta: 'Start Free Trial',
     ctaHref: '/signup',
     highlights: [
@@ -39,7 +60,8 @@ const plans = [
   {
     name: 'Studio',
     price: 179,
-    description: 'For growing jewellery businesses that need deeper reporting, branding, and team visibility across locations.',
+    description:
+      'For growing jewellery businesses that need deeper reporting, branding, and team visibility across locations.',
     cta: 'Book a Demo',
     ctaHref: '/contact',
     highlights: [
@@ -54,7 +76,8 @@ const plans = [
   {
     name: 'Atelier',
     price: 299,
-    description: 'For multi-store jewellery businesses and high-volume workshops needing advanced support, analytics, and scale.',
+    description:
+      'For multi-store jewellery businesses and high-volume workshops needing advanced support, analytics, and scale.',
     cta: 'Talk to Sales',
     ctaHref: '/contact',
     highlights: [
@@ -116,7 +139,7 @@ const faqs = [
   },
   {
     q: 'Do you offer annual billing?',
-    a: 'Yes — annual billing gives you two months free. We can help you set it up when you\'re ready.',
+    a: "Yes — annual billing gives you two months free. We can help you set it up when you're ready.",
   },
 ]
 
@@ -124,33 +147,33 @@ export default function PricingClient() {
   const [openFaq, setOpenFaq] = useState<number | null>(0)
 
   return (
-    <div className="bg-white">
+    <div className="bg-m-ivory">
       {/* Hero */}
-      <section className="pt-20 pb-20 lg:pt-28 lg:pb-24 px-6 sm:px-10 lg:px-20 text-center">
+      <section className="pt-24 pb-20 lg:pt-32 lg:pb-24 px-6 sm:px-10 lg:px-20 text-center">
         <div className="max-w-[820px] mx-auto">
           <motion.p
             {...fadeUp()}
-            className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-6"
+            className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-6"
           >
             Pricing
           </motion.p>
           <motion.h1
             {...fadeBlur}
-            className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.75rem,5vw,4.25rem)] font-normal leading-[1.08] tracking-[-0.01em] text-stone-900 mb-7"
+            className="font-serif text-[42px] sm:text-[56px] lg:text-[clamp(2.75rem,5vw,4.5rem)] font-normal leading-[1.06] tracking-[-0.015em] text-m-charcoal mb-7"
           >
             Transparent <em className="italic">by design</em>
           </motion.h1>
           <motion.p
             {...fadeUp(0.3)}
-            className="text-base leading-relaxed text-stone-500 max-w-[600px] mx-auto"
+            className="text-[16px] sm:text-[18px] leading-[1.55] text-m-text-secondary max-w-[600px] mx-auto"
           >
             Simple pricing for jewellers — with guided migration included and no transaction cuts. Start with the plan that fits your business and scale when you&apos;re ready.
           </motion.p>
           <motion.p
             {...fadeUp(0.45)}
-            className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mt-8"
+            className="text-[12px] tracking-[0.16em] uppercase text-m-text-faint font-medium mt-8"
           >
-            14 day free trial &middot; No credit card required
+            14 day free trial · No credit card required
           </motion.p>
         </div>
       </section>
@@ -162,50 +185,48 @@ export default function PricingClient() {
             <motion.div
               key={plan.name}
               {...fadeUp(i * 0.1)}
-              className={`relative flex flex-col p-8 lg:p-10 border ${
+              className={`relative flex flex-col p-[22px] sm:p-8 lg:p-10 rounded-[18px] border transition-all duration-[250ms] [transition-timing-function:var(--m-ease)] ${
                 plan.featured
-                  ? 'border-stone-900 bg-stone-50'
-                  : 'border-black/[0.08] bg-white'
+                  ? 'border-m-champagne bg-m-white-soft shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
+                  : 'border-m-border-soft bg-m-white-soft hover:-translate-y-1 hover:border-m-border-hover hover:shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
               }`}
             >
               {plan.featured && (
-                <span className="absolute -top-3 left-8 px-3 py-1 bg-stone-900 text-white text-[0.625rem] tracking-[0.15em] uppercase">
+                <span className="absolute -top-3 left-8 px-3 py-1 bg-m-champagne text-m-charcoal text-[10px] tracking-[0.18em] uppercase font-medium rounded-full">
                   Most Popular
                 </span>
               )}
-              <h3 className="font-serif text-3xl lg:text-[2rem] text-stone-900 mb-2">
+              <h3 className="font-serif text-[28px] lg:text-[32px] font-medium text-m-charcoal mb-2 leading-[1.2]">
                 {plan.name}
               </h3>
-              <p className="text-[0.875rem] leading-relaxed text-stone-500 mb-8 min-h-[2.5em]">
+              <p className="text-[14px] leading-[1.6] text-m-text-secondary mb-8 min-h-[2.5em]">
                 {plan.description}
               </p>
 
               <div className="mb-8 flex items-baseline gap-2">
-                <span className="font-serif text-5xl lg:text-6xl text-stone-900">
+                <span className="font-serif text-[48px] lg:text-[56px] text-m-charcoal leading-none">
                   ${plan.price}
                 </span>
-                <span className="text-[0.875rem] text-stone-400">/ month</span>
+                <span className="text-[14px] text-m-text-faint">/ month</span>
               </div>
 
-              <Link
+              <Button
                 href={plan.ctaHref}
-                className={`w-full text-center py-3.5 mb-10 text-[0.875rem] font-medium transition-colors duration-300 ${
-                  plan.featured
-                    ? 'bg-stone-900 text-white hover:bg-stone-800'
-                    : 'border border-stone-900 text-stone-900 hover:bg-stone-900 hover:text-white'
-                }`}
+                variant={plan.featured ? 'primary' : 'secondary'}
+                fullWidth
+                className="mb-10"
               >
                 {plan.cta}
-              </Link>
+              </Button>
 
               <ul className="space-y-3 flex-1">
                 {plan.highlights.map((h) => (
                   <li
                     key={h}
-                    className="flex items-start gap-3 text-[0.875rem] text-stone-600"
+                    className="flex items-start gap-3 text-[14px] leading-[1.6] text-m-text-secondary"
                   >
-                    <span className="mt-2 w-1 h-1 rounded-full bg-stone-900 flex-shrink-0" />
-                    {h}
+                    <CheckIcon />
+                    <span>{h}</span>
                   </li>
                 ))}
               </ul>
@@ -215,34 +236,34 @@ export default function PricingClient() {
       </section>
 
       {/* Comparison table */}
-      <section className="py-20 lg:py-32 px-6 sm:px-10 lg:px-20 border-t border-black/[0.06]">
+      <section className="py-20 lg:py-32 px-6 sm:px-10 lg:px-20 border-t border-m-border-soft bg-m-white-soft">
         <div className="max-w-[1200px] mx-auto">
           <div className="text-center mb-16">
             <motion.p
               {...fadeUp()}
-              className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-4"
+              className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-4"
             >
               Compare Plans
             </motion.p>
             <motion.h2
               {...fadeBlur}
-              className="font-serif text-3xl sm:text-4xl lg:text-[3rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900"
+              className="font-serif text-[36px] sm:text-[44px] lg:text-[48px] font-normal leading-[1.12] tracking-[-0.01em] text-m-charcoal"
             >
               Compare plans at a glance
             </motion.h2>
           </div>
 
           <motion.div {...fadeUp(0.1)} className="overflow-x-auto">
-            <table className="w-full text-[0.875rem]">
+            <table className="w-full text-[14px]">
               <thead>
-                <tr className="border-b border-stone-900">
-                  <th className="text-left py-4 pr-4 text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 font-normal w-1/2">
+                <tr className="border-b-2 border-m-charcoal">
+                  <th className="text-left py-4 pr-4 text-[11px] tracking-[0.14em] uppercase text-m-text-muted font-medium w-1/2">
                     Feature
                   </th>
                   {plans.map((p) => (
                     <th
                       key={p.name}
-                      className="text-center py-4 px-4 font-serif text-lg text-stone-900 font-normal"
+                      className="text-center py-4 px-4 font-serif text-[20px] text-m-charcoal font-medium"
                     >
                       {p.name}
                     </th>
@@ -251,29 +272,7 @@ export default function PricingClient() {
               </thead>
               <tbody>
                 {comparisonGroups.map((group) => (
-                  <>
-                    <tr key={group.heading} className="border-b border-stone-200 bg-stone-50">
-                      <td
-                        colSpan={4}
-                        className="py-3 pr-4 text-[0.7rem] font-medium tracking-[0.15em] uppercase text-stone-500"
-                      >
-                        {group.heading}
-                      </td>
-                    </tr>
-                    {group.rows.map((row) => (
-                      <tr key={row.key} className="border-b border-stone-100">
-                        <td className="py-4 pr-4 text-stone-700">{row.key}</td>
-                        {row.values.map((v, i) => (
-                          <td
-                            key={i}
-                            className={`text-center py-4 px-4 ${v === '—' ? 'text-stone-300' : 'text-stone-600'}`}
-                          >
-                            {v}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </>
+                  <ComparisonGroup key={group.heading} group={group} />
                 ))}
               </tbody>
             </table>
@@ -282,35 +281,38 @@ export default function PricingClient() {
       </section>
 
       {/* FAQ */}
-      <section className="py-20 lg:py-32 px-6 sm:px-10 lg:px-20 border-t border-black/[0.06]">
+      <section className="py-20 lg:py-32 px-6 sm:px-10 lg:px-20 border-t border-m-border-soft">
         <div className="max-w-[820px] mx-auto">
           <div className="text-center mb-16">
             <motion.p
               {...fadeUp()}
-              className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-4"
+              className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-4"
             >
               Questions
             </motion.p>
             <motion.h2
               {...fadeBlur}
-              className="font-serif text-3xl sm:text-4xl lg:text-[3rem] font-normal leading-[1.1] tracking-[-0.01em] text-stone-900"
+              className="font-serif text-[36px] sm:text-[44px] lg:text-[48px] font-normal leading-[1.12] tracking-[-0.01em] text-m-charcoal"
             >
               Common questions, answered
             </motion.h2>
           </div>
 
-          <div className="divide-y divide-stone-200 border-y border-stone-200">
+          <div className="divide-y divide-m-border-soft border-y border-m-border-soft">
             {faqs.map((faq, i) => (
               <motion.div key={faq.q} {...fadeUp(i * 0.05)}>
                 <button
+                  type="button"
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="w-full flex items-center justify-between gap-6 py-6 text-left cursor-pointer group"
+                  aria-expanded={openFaq === i}
+                  className="w-full flex items-center justify-between gap-6 py-6 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m-champagne focus-visible:ring-offset-2 rounded"
                 >
-                  <span className="font-serif text-lg lg:text-xl text-stone-900">
+                  <span className="font-sans font-semibold text-[18px] lg:text-[20px] text-m-charcoal">
                     {faq.q}
                   </span>
                   <span
-                    className={`text-stone-400 text-2xl transition-transform duration-300 flex-shrink-0 ${
+                    aria-hidden
+                    className={`text-m-text-faint text-[24px] transition-transform duration-300 [transition-timing-function:var(--m-ease)] flex-shrink-0 leading-none ${
                       openFaq === i ? 'rotate-45' : ''
                     }`}
                   >
@@ -318,11 +320,11 @@ export default function PricingClient() {
                   </span>
                 </button>
                 <div
-                  className={`overflow-hidden transition-all duration-500 ease-out ${
+                  className={`overflow-hidden transition-all duration-[400ms] [transition-timing-function:var(--m-ease)] ${
                     openFaq === i ? 'max-h-40 pb-6' : 'max-h-0'
                   }`}
                 >
-                  <p className="text-[0.9375rem] leading-relaxed text-stone-500 max-w-[680px]">
+                  <p className="text-[15px] leading-[1.6] text-m-text-secondary max-w-[680px]">
                     {faq.a}
                   </p>
                 </div>
@@ -332,44 +334,73 @@ export default function PricingClient() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20 lg:py-36 px-6 sm:px-10 lg:px-20 text-center border-t border-black/[0.06]">
+      {/* Final CTA */}
+      <section className="py-24 lg:py-36 px-6 sm:px-10 lg:px-20 text-center border-t border-m-border-soft bg-m-charcoal">
         <motion.h2
           {...fadeBlur}
-          className="font-serif text-3xl sm:text-4xl lg:text-[3.75rem] font-normal leading-[1.12] tracking-[-0.01em] text-stone-900 mb-10 italic"
+          className="font-serif text-[36px] sm:text-[48px] lg:text-[56px] font-normal leading-[1.12] tracking-[-0.01em] text-white mb-10 italic"
         >
           See how Nexpura fits your business
         </motion.h2>
         <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-          <Link
-            href="/contact"
-            className="
-              inline-flex items-center justify-center
-              min-w-[180px] px-10 py-4 md:min-w-[200px] md:px-12
-              bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a]
-              rounded-full
-              shadow-[0_2px_4px_rgba(0,0,0,0.25),0_8px_24px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]
-              transition-shadow duration-400
-              hover:shadow-[0_4px_8px_rgba(0,0,0,0.25),0_16px_40px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]
-              relative overflow-hidden cursor-pointer
-            "
-          >
-            <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
-            <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-              Book a Demo
-            </span>
-          </Link>
-          <Link
-            href="/platform"
-            className="text-[0.9375rem] text-stone-700 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
-          >
-            Explore the Platform
-          </Link>
+          <Button href="/signup" size="lg" className="!bg-white !text-m-charcoal hover:!bg-m-champagne-tint">
+            Start Free Trial
+          </Button>
+          <Button href="/contact" variant="tertiary" className="!text-white after:!bg-white">
+            Book a Demo
+          </Button>
         </motion.div>
-        <p className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mt-8">
-          14 days &middot; Full access &middot; No credit card
+        <p className="text-[12px] tracking-[0.16em] uppercase text-m-champagne-soft mt-8 font-medium">
+          14 days · Full access · No credit card
         </p>
       </section>
     </div>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="mt-1.5 shrink-0 text-m-charcoal"
+    >
+      <path d="M3 7l3 3 5-6" />
+    </svg>
+  )
+}
+
+function ComparisonGroup({ group }: { group: typeof comparisonGroups[number] }) {
+  return (
+    <>
+      <tr className="border-b border-m-border-soft bg-m-ivory">
+        <td
+          colSpan={4}
+          className="py-3 pr-4 pl-0 text-[11px] font-medium tracking-[0.14em] uppercase text-m-text-faint"
+        >
+          {group.heading}
+        </td>
+      </tr>
+      {group.rows.map((row) => (
+        <tr key={row.key} className="border-b border-m-border-soft-2">
+          <td className="py-4 pr-4 text-m-text-primary">{row.key}</td>
+          {row.values.map((v, i) => (
+            <td
+              key={i}
+              className={`text-center py-4 px-4 ${v === '—' ? 'text-m-text-faint' : 'text-m-text-secondary'}`}
+            >
+              {v}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
   )
 }
