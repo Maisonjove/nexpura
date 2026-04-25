@@ -305,9 +305,19 @@ export async function updateRepairStage(
       auto_sms_on_stage_change?: boolean;
     } | null;
 
-    // Only send if auto-SMS is enabled and stage warrants notification
-    const NOTIFY_STAGES = ["quoted", "in_progress", "quality_check", "ready"];
-    if (settings?.account_sid && settings?.auth_token && NOTIFY_STAGES.includes(stage)) {
+    // Only send if auto-SMS is enabled and stage warrants notification.
+    // 'quality_check' isn't allowed by repairs_stage_valid (verified
+    // 2026-04-25) so the branch was dead — never fired. Drop it.
+    // Also gate on the explicit auto_sms_on_stage_change preference,
+    // not just Twilio creds; pre-fix any tenant with Twilio configured
+    // got auto-SMS regardless of whether they opted in.
+    const NOTIFY_STAGES = ["quoted", "in_progress", "ready"];
+    if (
+      settings?.account_sid &&
+      settings?.auth_token &&
+      settings?.auto_sms_on_stage_change &&
+      NOTIFY_STAGES.includes(stage)
+    ) {
       // Get repair + customer details
       const { data: repairRow } = await admin
         .from("repairs")
@@ -387,7 +397,9 @@ export async function updateRepairStage(
   }
 
   // ── Auto-email customer with tracking link on stage change ──────────────
-  const EMAIL_NOTIFY_STAGES = ["quoted", "approved", "in_progress", "in_workshop", "quality_check", "ready", "collected"];
+  // 'in_workshop' and 'quality_check' aren't valid repairs.stage values
+  // per repairs_stage_valid (verified 2026-04-25). Drop the dead branches.
+  const EMAIL_NOTIFY_STAGES = ["quoted", "approved", "in_progress", "ready", "collected"];
   if (EMAIL_NOTIFY_STAGES.includes(stage)) {
     try {
       const { data: repairRow } = await admin

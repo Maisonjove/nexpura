@@ -86,13 +86,19 @@ export default function BespokeListClient({
   // the header chips prefer the precomputed tenant-wide counts so they
   // don't undercount when tenant has >200 jobs.
   const readyDisplayCount = precomputedStageCounts?.ready ?? readyJobs.length;
+  // 'collected' is the post-ready terminal state for bespoke (per the
+  // DB CHECK constraint and advanceJobStage). Earlier this filter only
+  // excluded 'completed','cancelled' so collected jobs stayed in the
+  // "active" count forever and inflated the header chip + scrolled
+  // through the list. Same fix in workshop/page.tsx counters.
+  const TERMINAL_STAGES = ["completed", "cancelled", "collected"];
   const activeJobsCount = precomputedStageCounts
     ? Object.entries(precomputedStageCounts)
-        .filter(([k]) => !["completed", "cancelled"].includes(k))
+        .filter(([k]) => !TERMINAL_STAGES.includes(k))
         .reduce((s, [, n]) => s + n, 0)
-    : jobs.filter(j => !["completed", "cancelled"].includes(j.stage)).length;
+    : jobs.filter(j => !TERMINAL_STAGES.includes(j.stage)).length;
   const overdueDisplayCount = precomputedOverdueCount
-    ?? jobs.filter(j => j.due_date && new Date(j.due_date) < new Date(new Date().toDateString()) && !['completed','cancelled','ready'].includes(j.stage)).length;
+    ?? jobs.filter(j => j.due_date && new Date(j.due_date) < new Date(new Date().toDateString()) && !["completed","cancelled","collected","ready"].includes(j.stage)).length;
   const visibleJobs = useMemo(
     () => (activeTab === "all" ? jobs : jobs.filter(j => j.stage === activeTab)),
     [jobs, activeTab]

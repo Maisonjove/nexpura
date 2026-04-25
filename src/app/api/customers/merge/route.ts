@@ -100,7 +100,12 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', primaryId);
 
-    // Update all related records to point to primary customer
+    // Update all related records to point to primary customer.
+    // Pre-fix list missed wishlists, loyalty_transactions, customer_notes,
+    // customer_communications, customer_store_credit_history. The
+    // secondary's wishlist + loyalty rows kept FK-pointing at the
+    // tombstone after merge → disappeared from primary's detail page.
+    // 'communications' was a typo (real table is customer_communications).
     const tablesToUpdate = [
       'sales',
       'repairs',
@@ -109,7 +114,11 @@ export async function POST(request: NextRequest) {
       'quotes',
       'enquiries',
       'appointments',
-      'communications',
+      'wishlists',
+      'loyalty_transactions',
+      'customer_notes',
+      'customer_communications',
+      'customer_store_credit_history',
     ];
 
     for (const table of tablesToUpdate) {
@@ -129,12 +138,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Soft delete secondary customers (mark as merged)
+    // Soft delete secondary customers (mark as merged). Scope by
+    // tenant_id for the same defence-in-depth reason as the FK rewrites.
     await admin
       .from('customers')
       .update({
         deleted_at: new Date().toISOString(),
       })
+      .eq('tenant_id', tenantId)
       .in('id', secondaryIds);
 
     return NextResponse.json({

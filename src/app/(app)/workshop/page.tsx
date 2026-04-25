@@ -65,7 +65,7 @@ async function WorkshopBody({ tenantId }: { tenantId: string }) {
           .select("id, title, stage, due_date, customers(full_name)")
           .eq("tenant_id", tenantId)
           .is("deleted_at", null)
-          .not("stage", "in", '("completed","cancelled")')
+          .not("stage", "in", '("collected","completed","cancelled")')
           .order("due_date", { ascending: true })
           .limit(50),
         admin.from("repairs").select("id", { count: "exact", head: true })
@@ -73,7 +73,7 @@ async function WorkshopBody({ tenantId }: { tenantId: string }) {
           .not("stage", "in", '("collected","cancelled")'),
         admin.from("bespoke_jobs").select("id", { count: "exact", head: true })
           .eq("tenant_id", tenantId).is("deleted_at", null)
-          .not("stage", "in", '("completed","cancelled")'),
+          .not("stage", "in", '("collected","completed","cancelled")'),
         admin.from("repairs").select("id", { count: "exact", head: true })
           .eq("tenant_id", tenantId).is("deleted_at", null)
           .not("stage", "in", '("intake","collected","cancelled")'),
@@ -85,7 +85,7 @@ async function WorkshopBody({ tenantId }: { tenantId: string }) {
           .not("stage", "in", '("collected","cancelled")').lt("due_date", todayIso),
         admin.from("bespoke_jobs").select("id", { count: "exact", head: true })
           .eq("tenant_id", tenantId).is("deleted_at", null)
-          .not("stage", "in", '("completed","cancelled")').lt("due_date", todayIso),
+          .not("stage", "in", '("collected","completed","cancelled")').lt("due_date", todayIso),
       ]);
       return {
         activeRepairs: repairsResult.data ?? [],
