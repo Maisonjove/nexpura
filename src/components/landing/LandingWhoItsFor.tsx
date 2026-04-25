@@ -1,20 +1,28 @@
-import Link from 'next/link'
 import Card from './ui/Card'
 import Tag from './ui/Tag'
 import SectionHeader from './ui/SectionHeader'
 
 /**
  * "Built for every corner of the jewellery trade" per Kaitlyn's brief
- * (section 7). Four cards: small line icon top-left, serif title, body,
- * tag row, "Explore workflow" link with arrow that slides on hover.
+ * (section 7 + correction Fix #1).
+ *
+ * The cards are now purely informational — no per-card link, no router
+ * push, no chevron icon, default cursor. Kaitlyn's brief explicitly
+ * removes the "See {x} workflows →" CTAs because each routed to a page
+ * that wasn't a real per-segment workflow surface, so we'd be promising
+ * navigation we couldn't honour.
+ *
+ * Each card now closes with a "Workflow suite" footer row listing the
+ * specific modules that segment uses (POS · Inventory · CRM · Repairs
+ * etc). The footer is a non-interactive label, not a clickable list.
  */
 
 interface Audience {
   title: string
   body: string
   tags: readonly string[]
-  cta: string
-  href: string
+  /** Per-segment ordered list of modules that make up this workflow. */
+  workflow: readonly string[]
   Icon: () => React.ReactElement
 }
 
@@ -23,49 +31,48 @@ const SEGMENTS: readonly Audience[] = [
     title: 'Retail Jewellers',
     body: 'Connect POS, inventory, CRM, repairs, and customer records in one retail workspace.',
     tags: ['POS', 'Inventory', 'CRM', 'Repairs'],
-    cta: 'See retail workflows',
-    href: '/features',
+    workflow: ['POS', 'Inventory', 'CRM', 'Repairs'],
     Icon: RetailIcon,
   },
   {
     title: 'Workshops & Repairs',
     body: 'Track repairs, due dates, staff assignments, customer updates, photos, quotes, and collection readiness.',
     tags: ['Repairs', 'Jobs', 'Staff', 'Updates'],
-    cta: 'See repair workflows',
-    href: '/features#repairs',
+    workflow: ['Repairs', 'Jobs', 'Staff', 'Updates'],
     Icon: WorkshopIcon,
   },
   {
     title: 'Bespoke Studios',
     body: 'Manage custom orders from enquiry to approval, production, deposits, sourcing, and final handover.',
     tags: ['Bespoke', 'Approvals', 'Deposits', 'Sourcing'],
-    cta: 'See bespoke workflows',
-    href: '/features#bespoke',
+    workflow: ['Bespoke', 'Approvals', 'Deposits', 'Sourcing'],
     Icon: BespokeIcon,
   },
   {
     title: 'Multi-Store Groups',
     body: 'Centralise stock, customers, reporting, visibility, and operations across every location.',
     tags: ['Locations', 'Stock', 'Reports', 'Teams'],
-    cta: 'See multi-store workflows',
-    href: '/features',
+    workflow: ['Locations', 'Stock', 'Reports', 'Teams'],
     Icon: MultiStoreIcon,
   },
 ] as const
 
 export default function LandingWhoItsFor() {
   return (
-    <section className="bg-m-ivory py-24 lg:py-32 px-6 sm:px-12">
+    <section
+      id="platform-overview"
+      className="bg-m-ivory py-24 lg:py-32 px-6 sm:px-12"
+    >
       <SectionHeader
         title="Built for every corner of the jewellery trade"
         subtitle="Whether you sell, repair, create, or manage multiple locations, Nexpura connects the workflows your business depends on."
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 max-w-[1200px] mx-auto mt-14">
-        {SEGMENTS.map(({ title, body, tags, cta, href, Icon }, i) => (
+        {SEGMENTS.map(({ title, body, tags, workflow, Icon }, i) => (
           <Card
             key={title}
-            className={`group flex flex-col m-reveal`}
+            className="group flex flex-col m-reveal cursor-default"
             as="article"
           >
             <div
@@ -80,25 +87,24 @@ export default function LandingWhoItsFor() {
             <p className="mt-3 text-[15px] leading-[1.6] text-m-text-secondary flex-1">
               {body}
             </p>
-            <ul className="flex flex-wrap gap-1.5 mt-5">
+            <ul className="flex flex-wrap gap-y-2.5 gap-x-2 mt-5">
               {tags.map((t) => (
                 <li key={t}>
                   <Tag>{t}</Tag>
                 </li>
               ))}
             </ul>
-            <Link
-              href={href}
-              className="mt-6 inline-flex items-center gap-1.5 text-[14px] font-sans font-medium text-m-charcoal hover:underline underline-offset-4 decoration-m-charcoal"
-            >
-              {cta}
-              <span
-                aria-hidden
-                className="inline-block transition-transform duration-200 [transition-timing-function:var(--m-ease)] group-hover:translate-x-1"
-              >
-                →
+            {/* Workflow-suite footer — informational, NOT interactive.
+                pointer-events-none + cursor-default keep stray clicks
+                from doing nothing-pretending-to-be-something. */}
+            <div className="mt-[22px] pt-[22px] border-t border-black/[0.06] flex flex-col gap-2 cursor-default pointer-events-none">
+              <span className="text-[11px] tracking-[0.08em] uppercase text-[#9A8F82] font-medium">
+                Workflow suite
               </span>
-            </Link>
+              <span className="text-[14px] font-semibold text-[#1A1A1A] leading-[1.5]">
+                {workflow.join(' · ')}
+              </span>
+            </div>
           </Card>
         ))}
       </div>

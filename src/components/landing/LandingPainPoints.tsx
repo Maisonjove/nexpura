@@ -78,9 +78,28 @@ export default function LandingPainPoints() {
           ))}
         </div>
 
-        <p className="mt-16 text-center font-sans text-[20px] sm:text-[22px] leading-[1.5] text-m-charcoal max-w-[760px] mx-auto m-reveal">
-          Nexpura brings every workflow into one connected platform, so nothing gets lost, delayed, or disconnected.
-        </p>
+        {/* Bridge statement — re-typed per Kaitlyn's correction Fix #2.
+            Serif (matches section H2s), 42px desktop / 32px @≤lg / 26px
+            mobile, centered, max-width 920px. The phrase "one connected
+            platform" gets a subtle champagne underline highlight using
+            a clipped linear-gradient. */}
+        <div className="max-w-[920px] mx-auto mt-20 lg:mt-20 px-6 text-center m-reveal">
+          <p className="font-serif text-[26px] sm:text-[32px] lg:text-[42px] leading-[1.18] tracking-[-0.01em] text-m-charcoal m-0">
+            Nexpura brings every workflow into{' '}
+            <span
+              className="pb-px"
+              style={{
+                backgroundImage:
+                  'linear-gradient(transparent 92%, rgba(201,169,97,0.45) 92%)',
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: '100% 100%',
+              }}
+            >
+              one connected platform
+            </span>
+            , so nothing gets lost, delayed, or disconnected.
+          </p>
+        </div>
       </div>
     </section>
   )

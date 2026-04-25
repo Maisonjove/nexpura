@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import SectionHeader from './ui/SectionHeader'
+import PassportVerificationMockup from './PassportVerificationMockup'
 
 /**
  * "See Nexpura in action" tabbed product section per Kaitlyn's brief
@@ -19,7 +20,10 @@ interface TabContent {
   title: string
   body: string
   bullets: readonly string[]
-  cta: { label: string; href: string }
+  /** Only set when the link routes to a verified existing page —
+   *  per Kaitlyn's correction Fix #7, placeholder #anchors that don't
+   *  exist on /features were stripped to avoid dead clicks. */
+  cta?: { label: string; href: string }
   src: string
   alt: string
 }
@@ -35,7 +39,7 @@ const TABS: readonly TabContent[] = [
       'Assign work clearly to team members',
       'Track deposits, balances, and collection readiness',
     ],
-    cta: { label: 'Explore repair workflow', href: '/features#repairs' },
+    // No CTA — /features has no #repairs anchor; Fix #7 removed.
     src: '/screenshots/repairs.png',
     alt: 'Nexpura Repair Tracker — repair pipeline view',
   },
@@ -49,7 +53,7 @@ const TABS: readonly TabContent[] = [
       'Track reserved, sold, low-stock, and available pieces',
       'Maintain full movement and item history',
     ],
-    cta: { label: 'Explore inventory', href: '/features#inventory' },
+    // No CTA — /features has no #inventory anchor; Fix #7 removed.
     src: '/screenshots/inventory.png',
     alt: 'Nexpura Inventory — live stock with status badges',
   },
@@ -63,7 +67,7 @@ const TABS: readonly TabContent[] = [
       'Track milestones and customer decisions',
       'Connect bespoke jobs to customer records',
     ],
-    cta: { label: 'Explore bespoke workflows', href: '/features#bespoke' },
+    // No CTA — /features has no #bespoke anchor; Fix #7 removed.
     src: '/screenshots/bespoke.png',
     alt: 'Nexpura Bespoke — milestone timeline and approvals',
   },
@@ -91,7 +95,7 @@ const TABS: readonly TabContent[] = [
       'Identify slow-moving stock and repair bottlenecks',
       'View business activity across locations',
     ],
-    cta: { label: 'Explore analytics', href: '/features#analytics' },
+    // No CTA — /features has no #analytics anchor; Fix #7 removed.
     src: '/screenshots/analytics.png',
     alt: 'Nexpura Analytics — sales and workshop performance dashboards',
   },
@@ -105,7 +109,7 @@ const TABS: readonly TabContent[] = [
       'Record preferences and important dates',
       'Connect customers to purchases, repairs, and passports',
     ],
-    cta: { label: 'Explore CRM', href: '/features#crm' },
+    // No CTA — /features has no #crm anchor; Fix #7 removed.
     // Falls back to the dashboard screenshot until a dedicated CRM
     // screenshot lands.
     src: '/screenshots/dashboard.png',
@@ -196,17 +200,25 @@ export default function LandingScreenshots() {
           key={active}
           className="mt-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-10 lg:gap-12 items-start nx-fade-in-blur-up"
         >
-          {/* Screenshot */}
-          <div className="relative rounded-2xl overflow-hidden border border-m-border-soft shadow-[0_8px_32px_rgba(0,0,0,0.08)] bg-white aspect-video">
-            <Image
-              src={current.src}
-              alt={current.alt}
-              fill
-              sizes="(min-width: 1024px) 720px, 100vw"
-              className="object-cover object-top"
-              priority={active === 0}
-            />
-          </div>
+          {/* Left panel — screenshot for every tab except Passport, which
+              renders the PassportVerificationMockup (Kaitlyn Fix #4). The
+              prior bespoke/admin dashboard image confused users about
+              what the customer-facing passport surface actually looks
+              like. */}
+          {current.tab === 'Passport' ? (
+            <PassportVerificationMockup />
+          ) : (
+            <div className="relative rounded-2xl overflow-hidden border border-m-border-soft shadow-[0_8px_32px_rgba(0,0,0,0.08)] bg-white aspect-video">
+              <Image
+                src={current.src}
+                alt={current.alt}
+                fill
+                sizes="(min-width: 1024px) 720px, 100vw"
+                className="object-cover object-top"
+                priority={active === 0}
+              />
+            </div>
+          )}
 
           {/* Copy */}
           <div className="flex flex-col">
@@ -230,13 +242,15 @@ export default function LandingScreenshots() {
                 </li>
               ))}
             </ul>
-            <Link
-              href={current.cta.href}
-              className="mt-7 inline-flex items-center gap-1.5 text-[14px] font-sans font-medium text-m-charcoal hover:underline underline-offset-4 decoration-m-charcoal w-fit"
-            >
-              {current.cta.label}
-              <span aria-hidden>→</span>
-            </Link>
+            {current.cta && (
+              <Link
+                href={current.cta.href}
+                className="mt-7 inline-flex items-center gap-1.5 text-[14px] font-sans font-medium text-m-charcoal hover:underline underline-offset-4 decoration-m-charcoal w-fit"
+              >
+                {current.cta.label}
+                <span aria-hidden>→</span>
+              </Link>
+            )}
           </div>
         </div>
       </div>

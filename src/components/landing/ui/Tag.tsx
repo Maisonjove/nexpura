@@ -1,17 +1,21 @@
 import { type ReactNode } from "react";
 
 /**
- * Small pill tag — used in the audience cards on the homepage to list
- * sub-features (POS / Inventory / CRM / Repairs etc.). Sans 12px,
- * ivory background, charcoal text, soft border.
+ * Refined audience-card chip per Kaitlyn's correction brief (Fix #1C).
+ *
+ * 34px tall, 14px charcoal text, ivory background, soft border, no
+ * shadow. When the parent card is hovered (Tailwind `group` on the
+ * card root), the chip background shifts from `#FBF8F3` → `#F3E9D5`.
  */
 export default function Tag({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <span
       className={[
-        "inline-flex items-center px-2.5 py-1 rounded-full",
-        "bg-m-ivory border border-m-border-soft text-m-charcoal",
-        "font-sans text-[12px] font-medium",
+        "inline-flex items-center h-[34px] px-[14px] rounded-full whitespace-nowrap",
+        "bg-[#FBF8F3] border border-[#E8E1D6] text-[#292929]",
+        "font-sans text-[14px] font-medium leading-none",
+        "transition-[background-color,border-color] duration-200 [transition-timing-function:var(--m-ease)]",
+        "group-hover:bg-[#F3E9D5]",
         className ?? "",
       ]
         .filter(Boolean)

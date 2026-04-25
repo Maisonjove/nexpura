@@ -24,7 +24,9 @@ export default function Card({
   as = "div",
 }: CardProps) {
   const Tag = as;
-  const base = "rounded-2xl border p-7 sm:p-7 transition-all duration-[250ms] ease-out";
+  // Internal padding minimum 32px desktop / 22px mobile per Kaitlyn's
+  // correction Fix #8 (was 28px both, breaching the desktop minimum).
+  const base = "rounded-2xl border p-[22px] sm:p-8 transition-all duration-[250ms] ease-out";
   const variantCls =
     variant === "muted"
       ? "bg-m-ivory border-m-border-soft text-m-text-muted"

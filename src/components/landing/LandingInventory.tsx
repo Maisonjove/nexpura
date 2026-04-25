@@ -1,7 +1,6 @@
 'use client'
 
 import Image from 'next/image'
-import Button from './ui/Button'
 
 /**
  * Inventory Intelligence per Kaitlyn's brief (section 14).
@@ -94,11 +93,9 @@ export default function LandingInventory() {
               </li>
             ))}
           </ul>
-          <div className="mt-9">
-            <Button href="/features#inventory" variant="secondary">
-              See inventory workflows
-            </Button>
-          </div>
+          {/* "See inventory workflows" button removed per Kaitlyn's
+              correction Fix #6 — no verified marketing-tree inventory
+              page exists, so the link was a placeholder. */}
         </div>
       </div>
     </section>

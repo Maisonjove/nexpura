@@ -70,17 +70,27 @@ export default function LandingHero() {
       </div>
 
       {/* Scroll cue — centred below the hero content (desktop only — on
-          mobile the hero is short enough that a cue is redundant). */}
-      <a
-        href="#audience"
-        aria-label="Explore the platform"
-        className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-1.5 text-m-text-muted text-[12px] font-sans tracking-[0.15em] uppercase nx-bounce-y motion-reduce:animate-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m-champagne rounded"
+          mobile the hero is short enough that a cue is redundant).
+          Per Kaitlyn's correction Fix #5: real <button> with smooth-
+          scroll to the LandingWhoItsFor section's id="platform-overview"
+          anchor. The arrow is the only thing that bounces; the wrapper
+          is reduced-motion aware. */}
+      <button
+        type="button"
+        onClick={() => {
+          const target = document.getElementById('platform-overview')
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }}
+        aria-label="Scroll to platform overview"
+        className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 text-m-text-muted hover:text-m-charcoal text-[12px] font-sans tracking-[0.16em] uppercase font-medium px-3 py-2 bg-transparent border-0 cursor-pointer transition-colors duration-200 [transition-timing-function:var(--m-ease)] focus-visible:outline-2 focus-visible:outline-m-champagne focus-visible:outline-offset-4 rounded"
       >
         <span>Explore the platform</span>
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-        </svg>
-      </a>
+        <span aria-hidden className="inline-flex nx-bounce-y motion-reduce:animate-none">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 2v10M3 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </button>
     </section>
   )
 }
