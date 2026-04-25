@@ -95,6 +95,7 @@ const NAV_GROUPS = [
       { name: 'Connected Services', href: '/integrations', icon: Plug },
       { name: 'Printers',     href: '/settings/printing',  icon: Printer },
       { name: 'Activity Log', href: '/settings/activity',  icon: Activity },
+      { name: 'Tracking history', href: '/admin/tracking-history', icon: MessageSquare },
       { name: 'Support',      href: '/support',            icon: MessageSquare },
     ],
   },

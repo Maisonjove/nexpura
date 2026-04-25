@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import TrackingMessages from "@/components/tracking/TrackingMessages";
+import BespokeDecisionCard from "@/components/tracking/BespokeDecisionCard";
 import type { OrderMessage } from "@/lib/messaging";
 
 interface OrderData {
@@ -14,6 +15,10 @@ interface OrderData {
   item_type?: string;
   estimated_completion_date: string | null;
   created_at: string;
+  // Bespoke-only — drives BespokeDecisionCard.
+  approval_status?: "pending" | "approved" | "changes_requested" | null;
+  approval_notes?: string | null;
+  approved_at?: string | null;
   tenant: {
     business_name: string;
     logo_url?: string;
@@ -120,8 +125,11 @@ export default function TrackingPageClient({
   const imageAttachments = order.attachments.filter((a) =>
     a.file_type?.startsWith("image/")
   );
+  const videoAttachments = order.attachments.filter((a) =>
+    a.file_type?.startsWith("video/")
+  );
   const otherAttachments = order.attachments.filter(
-    (a) => !a.file_type?.startsWith("image/")
+    (a) => !a.file_type?.startsWith("image/") && !a.file_type?.startsWith("video/")
   );
 
   return (
@@ -307,6 +315,35 @@ export default function TrackingPageClient({
               </div>
             )}
 
+            {/* Videos — bespoke jewellers commonly upload CAD design walkthroughs.
+                Rendered inline with native controls (download disabled) so the
+                customer can review without leaving the page. */}
+            {videoAttachments.length > 0 && (
+              <div className="mb-4 space-y-3">
+                {videoAttachments.map((attachment) => (
+                  <div key={attachment.id} className="rounded-lg overflow-hidden bg-stone-900">
+                    <video
+                      src={attachment.file_url}
+                      controls
+                      controlsList="nodownload"
+                      preload="metadata"
+                      className="w-full max-h-[480px] bg-stone-900"
+                    >
+                      Your browser does not support inline video playback.{" "}
+                      <a href={attachment.file_url} target="_blank" rel="noopener noreferrer" className="underline">
+                        Download {attachment.file_name}
+                      </a>
+                    </video>
+                    {attachment.description && (
+                      <p className="text-xs text-stone-500 px-3 py-2 bg-stone-50">
+                        {attachment.description}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Other Files */}
             {otherAttachments.length > 0 && (
               <div className="space-y-2">
@@ -389,6 +426,19 @@ export default function TrackingPageClient({
               ))}
             </div>
           </div>
+        )}
+
+        {/* Bespoke-only: customer Approve / Decline on the design.
+            Repairs don't have an approval workflow — the field stays
+            null and the card never renders. */}
+        {order.order_type === "bespoke" && (
+          <BespokeDecisionCard
+            trackingId={order.tracking_id}
+            approvalStatus={order.approval_status ?? null}
+            approvalNotes={order.approval_notes ?? null}
+            approvedAt={order.approved_at ?? null}
+            businessName={order.tenant.business_name}
+          />
         )}
 
         {/* Customer ↔ Jeweller messaging on this order */}

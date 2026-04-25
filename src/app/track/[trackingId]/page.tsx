@@ -22,6 +22,12 @@ interface OrderData {
   item_type?: string;
   estimated_completion_date: string | null;
   created_at: string;
+  // Bespoke-only — null on repairs and on bespoke orders that haven't
+  // had an approval requested yet. Drives the Approve/Decline card on
+  // the tracking page.
+  approval_status?: "pending" | "approved" | "changes_requested" | null;
+  approval_notes?: string | null;
+  approved_at?: string | null;
   tenant: {
     business_name: string;
     logo_url?: string;
@@ -144,6 +150,9 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
         created_at,
         tenant_id,
         tracking_revoked_at,
+        approval_status,
+        approval_notes,
+        approved_at,
         tenants!inner (
           business_name,
           logo_url
@@ -189,6 +198,9 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
       item_type: bespoke.jewellery_type,
       estimated_completion_date: bespoke.estimated_completion_date,
       created_at: bespoke.created_at,
+      approval_status: (bespoke.approval_status as OrderData["approval_status"]) ?? null,
+      approval_notes: (bespoke.approval_notes as string | null) ?? null,
+      approved_at: (bespoke.approved_at as string | null) ?? null,
       tenant: {
         business_name: tenant?.business_name || "Jeweller",
         logo_url: tenant?.logo_url,

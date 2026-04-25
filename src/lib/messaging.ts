@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
+import { sendWhatsAppMessage } from "@/lib/whatsapp-notifications";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 
@@ -71,7 +72,7 @@ export async function postCustomerMessage(params: {
 
   const { data: order, error: lookupErr } = await admin
     .from(table)
-    .select("id, tenant_id")
+    .select("id, tenant_id, created_by")
     .eq("tracking_id", trackingId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -115,7 +116,215 @@ export async function postCustomerMessage(params: {
     logger.error("[postCustomerMessage] notification failed (message saved OK)", { err });
   });
 
+  // WhatsApp ping to the person who created the order (their team_member
+  // row is the source of truth for phone + opt-in). Fire-and-forget so a
+  // Twilio outage can never lose a customer message.
+  notifyPersonInChargeWhatsApp({
+    tenantId: order.tenant_id as string,
+    createdByUserId: (order.created_by as string | null) ?? null,
+    headline: `${label} from customer on ${jobLabel}`,
+    body,
+    link,
+  }).catch((err) => {
+    logger.error("[postCustomerMessage] whatsapp notify failed (message saved OK)", { err });
+  });
+
   return { success: true };
+}
+
+/**
+ * Customer-side bespoke approve/decline. Same trust boundary as the
+ * customer-message flow: caller knows the tracking_id, we resolve it
+ * service-role and only act on this job's row.
+ *
+ * Decline forces a non-empty message (Joey's spec): we both write the
+ * approval_status='changes_requested' AND insert an order_messages row
+ * carrying the customer's reason so it shows up in the in-app thread
+ * AND on the admin Tracking history page.
+ *
+ * Either action fires a WhatsApp ping to the person-in-charge so the
+ * jeweller knows immediately.
+ */
+export async function submitBespokeDecision(params: {
+  trackingId: string;
+  decision: "approve" | "decline";
+  message?: string;
+}): Promise<{ success?: boolean; error?: string }> {
+  const trackingId = params.trackingId?.trim().toUpperCase();
+  const message = params.message?.trim() ?? "";
+  const decision = params.decision;
+
+  if (!trackingId || !TRACKING_ID_RE.test(trackingId) || !trackingId.startsWith("BSP-")) {
+    return { error: "Approval is only available on bespoke jobs" };
+  }
+  if (decision !== "approve" && decision !== "decline") {
+    return { error: "Invalid decision" };
+  }
+  if (decision === "decline" && message.length < 5) {
+    return { error: "Please tell the jeweller why so they know what to change." };
+  }
+  if (message.length > 4000) {
+    return { error: "Message is too long (max 4000 characters)" };
+  }
+
+  const admin = createAdminClient();
+  const { data: job, error: lookupErr } = await admin
+    .from("bespoke_jobs")
+    .select("id, tenant_id, created_by, approval_status")
+    .eq("tracking_id", trackingId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (lookupErr || !job) {
+    logger.error("[submitBespokeDecision] lookup failed", { trackingId, err: lookupErr });
+    return { error: "Could not record decision" };
+  }
+  if (job.approval_status === "approved") {
+    return { error: "This design has already been approved." };
+  }
+
+  const updates: Record<string, unknown> = {
+    approval_notes: message || null,
+  };
+  if (decision === "approve") {
+    updates.approval_status = "approved";
+    updates.approved_at = new Date().toISOString();
+  } else {
+    updates.approval_status = "changes_requested";
+  }
+
+  let { error: updateErr } = await admin
+    .from("bespoke_jobs")
+    .update(updates)
+    .eq("id", job.id);
+
+  // Defensive retry — same shape as /api/bespoke/approval-response. If
+  // a column is missing from the live schema cache (we've been bitten
+  // twice on this codepath: client_signature_data, sale_id), retry with
+  // just the essential state transition so the customer's decision
+  // never silently drops.
+  if (updateErr && /column .* not find|schema cache/i.test(updateErr.message)) {
+    const safe: Record<string, unknown> = { approval_status: updates.approval_status };
+    if (updates.approved_at) safe.approved_at = updates.approved_at;
+    if (updates.approval_notes) safe.approval_notes = updates.approval_notes;
+    const retry = await admin.from("bespoke_jobs").update(safe).eq("id", job.id);
+    updateErr = retry.error;
+  }
+
+  if (updateErr) {
+    logger.error("[submitBespokeDecision] update failed", { err: updateErr });
+    return { error: "Could not record decision" };
+  }
+
+  // Mirror the decision into the message thread so it shows up on the
+  // admin Tracking history page alongside everything else, and so the
+  // jeweller's OrderMessagesPanel sees the rationale inline. Customer
+  // sender_type so the unread badge fires.
+  const threadBody = decision === "approve"
+    ? (message ? `[Approved design]\n\n${message}` : "[Approved design]")
+    : `[Requested changes]\n\n${message}`;
+  await admin.from("order_messages").insert({
+    tenant_id: job.tenant_id,
+    order_type: "bespoke",
+    order_id: job.id,
+    sender_type: "customer",
+    sender_user_id: null,
+    sender_display_name: null,
+    body: threadBody,
+    message_type: "amendment_request",
+    read_by_staff_at: null,
+  });
+
+  // job_events is the audit-log surface other approval-related code already
+  // writes to (see /api/bespoke/approval-response). Mirror there so a single
+  // historical view of the bespoke job stays consistent.
+  const eventResult = await admin.from("job_events").insert({
+    tenant_id: job.tenant_id,
+    job_type: "bespoke",
+    job_id: job.id,
+    event_type: decision === "approve" ? "client_approved" : "changes_requested",
+    description: decision === "approve"
+      ? "Customer approved design from tracking page"
+      : `Customer requested changes from tracking page: ${message || "No details"}`,
+  });
+  if (eventResult.error) {
+    logger.error("[submitBespokeDecision] job_events insert failed (decision saved OK)", {
+      err: eventResult.error,
+    });
+  }
+
+  // In-app notification (broadcast to team).
+  const headline = decision === "approve"
+    ? `Customer approved design on ${trackingId}`
+    : `Customer requested changes on ${trackingId}`;
+  await createNotification({
+    tenantId: job.tenant_id as string,
+    userId: null,
+    type: "customer_message",
+    title: headline,
+    body: (message || (decision === "approve" ? "No additional notes." : "")).slice(0, 140),
+    link: `/bespoke/${job.id}`,
+  }).catch((err) => {
+    logger.error("[submitBespokeDecision] notification failed (decision saved OK)", { err });
+  });
+
+  // WhatsApp ping to person-in-charge. Same fire-and-forget semantics
+  // as customer messages — never let a Twilio outage drop the decision.
+  notifyPersonInChargeWhatsApp({
+    tenantId: job.tenant_id as string,
+    createdByUserId: (job.created_by as string | null) ?? null,
+    headline,
+    body: message || (decision === "approve" ? "Approved with no extra notes." : ""),
+    link: `/bespoke/${job.id}`,
+  }).catch((err) => {
+    logger.error("[submitBespokeDecision] whatsapp notify failed (decision saved OK)", { err });
+  });
+
+  return { success: true };
+}
+
+/**
+ * Send a WhatsApp ping to the team member who created (= is responsible
+ * for) an order. Resolves user_id → team_members row → phone + opt-in flag.
+ *
+ * Soft-failure semantics: every miss path returns `{ sent: false, … }`
+ * without throwing — the caller (postCustomerMessage / approve / decline)
+ * is fire-and-forget. We never want a Twilio outage or a missing phone
+ * number to lose the underlying customer action.
+ */
+async function notifyPersonInChargeWhatsApp(params: {
+  tenantId: string;
+  createdByUserId: string | null;
+  headline: string;
+  body: string;
+  link: string;
+}): Promise<{ sent: boolean; reason?: string }> {
+  if (!params.createdByUserId) return { sent: false, reason: "no created_by on order" };
+
+  const admin = createAdminClient();
+  const { data: member } = await admin
+    .from("team_members")
+    .select("phone_number, whatsapp_notifications_enabled")
+    .eq("tenant_id", params.tenantId)
+    .eq("user_id", params.createdByUserId)
+    .maybeSingle();
+
+  if (!member?.phone_number) return { sent: false, reason: "no team_member phone" };
+  if (member.whatsapp_notifications_enabled === false) {
+    return { sent: false, reason: "team_member opted out" };
+  }
+
+  // Keep the WhatsApp body conversational + truncated. Twilio rejects very
+  // long messages and the customer's full body is already in-app.
+  const snippet = params.body.length > 220 ? params.body.slice(0, 217) + "…" : params.body;
+  const text = `${params.headline}\n\n"${snippet}"\n\nReply in Nexpura: https://nexpura.com${params.link}`;
+
+  const r = await sendWhatsAppMessage(params.tenantId, {
+    to: member.phone_number,
+    message: text,
+  });
+  if (!r.success) return { sent: false, reason: r.error || "twilio failed" };
+  return { sent: true };
 }
 
 /**
