@@ -52,8 +52,8 @@ export async function recordLaybyPayment(params: {
     amount: params.amount,
     payment_method: params.paymentMethod,
     notes: params.notes || null,
-    received_by: userId,
-    payment_date: params.paymentDate,
+    paid_by: userId,
+    paid_at: params.paymentDate,
   });
 
   if (paymentErr) return { error: paymentErr.message };
@@ -129,7 +129,7 @@ export async function getLaybyPayments(saleId: string) {
     .select("*")
     .eq("sale_id", saleId)
     .eq("tenant_id", tenantId)
-    .order("payment_date", { ascending: false });
+    .order("paid_at", { ascending: false });
 
   return { data, error: error?.message ?? null };
 }

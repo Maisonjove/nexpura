@@ -213,11 +213,13 @@ export async function getQuotesList(): Promise<{ data?: unknown[]; error?: strin
 
     if (!userData?.tenant_id) return { error: "No tenant found" };
 
+    // `quotes` has no `deleted_at` column (verified against live schema).
+    // Filtering on it returned a PG error and the list page rendered
+    // "Failed to load quotes" for every tenant.
     const { data, error } = await supabase
       .from("quotes")
       .select("*, customers(full_name, email)")
       .eq("tenant_id", userData.tenant_id)
-      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -287,7 +289,10 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<{ id?: str
       0 // quotes carry no discount today; discount_amount=0
     );
 
-    // Create invoice
+    // Create invoice. Schema doesn't expose a `quote_id` column; the
+    // generic ref shape is `reference_type` + `reference_id` (used for
+    // sale_id and bespoke_job_id linkage too). Writing `quote_id`
+    // returned PGRST204 and the whole conversion 500'd.
     const invoiceData = {
       tenant_id: quote.tenant_id,
       customer_id: quote.customer_id,
@@ -299,8 +304,9 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<{ id?: str
       tax_amount: convertTotals.taxAmount,
       total: convertTotals.total,
       status: "draft",
-      quote_id: quote.id,
-      created_by: user.id
+      reference_type: "quote",
+      reference_id: quote.id,
+      created_by: user.id,
     };
 
     // Atomicity: previously this did insert-invoice → insert-items →

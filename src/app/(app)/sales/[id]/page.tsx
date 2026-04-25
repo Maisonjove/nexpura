@@ -56,15 +56,18 @@ export default async function SaleDetailPage({
     .maybeSingle();
   const invoiceId = invoiceRow?.id ?? null;
 
-  // Fetch layby payments if this is a layby sale
-  let laybyPayments: Array<{ id: string; amount: number; payment_method: string; payment_date: string; notes: string | null }> = [];
+  // Fetch layby payments if this is a layby sale.
+  // Schema columns are paid_at + paid_by (the older payment_date / received_by
+  // names never existed on this table; using them returns column-not-found
+  // and 500s the sale-detail page on every layby sale).
+  let laybyPayments: Array<{ id: string; amount: number; payment_method: string; paid_at: string; notes: string | null }> = [];
   if (sale.status === "layby" || sale.payment_method === "layby") {
     const { data: payments } = await adminClient
       .from("layby_payments")
-      .select("id, amount, payment_method, payment_date, notes")
+      .select("id, amount, payment_method, paid_at, notes")
       .eq("sale_id", id)
       .eq("tenant_id", tenantId ?? "")
-      .order("payment_date", { ascending: true });
+      .order("paid_at", { ascending: true });
     laybyPayments = payments ?? [];
   }
 

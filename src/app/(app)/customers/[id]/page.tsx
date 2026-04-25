@@ -98,10 +98,12 @@ export default async function CustomerDetailPage({
       .limit(20),
     admin
       .from("quotes")
+      // `quotes` has no `deleted_at` column — filtering on it returned a
+      // PG error and crashed the customer detail page. Hard-deletion is
+      // the current behaviour; revisit if a soft-delete column is added.
       .select("id, quote_number, status, total_amount, expires_at, created_at")
       .eq("customer_id", id)
       .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(20),
     admin
@@ -112,14 +114,21 @@ export default async function CustomerDetailPage({
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(20),
-    admin
-      .from("passports")
-      .select("id, passport_uid, title, jewellery_type, status, created_at")
-      .eq("customer_id", id)
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(20),
+    // passports has no customer_id FK — link via email instead. Skips the
+    // query entirely if the customer has no email so we don't pull every
+    // null-email passport in the tenant. (Was 500ing on every detail load
+    // because of the customer_id+deleted_at miss; the filter on customer.email
+    // also skips soft-deleted passports as a side effect.)
+    customer?.email
+      ? admin
+          .from("passports")
+          .select("id, passport_uid, title, jewellery_type, status, created_at")
+          .eq("current_owner_email", customer.email)
+          .eq("tenant_id", tenantId)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .limit(20)
+      : Promise.resolve({ data: [] }),
     admin
       .from("sales")
       .select("id, sale_number, status, payment_method, total, amount_paid, sale_date, created_at")
@@ -129,9 +138,12 @@ export default async function CustomerDetailPage({
       .limit(20),
     (async () => {
       try {
+        // customer_communications has no reference_type / reference_id
+        // columns — selecting them returned a PG error so this whole block
+        // returned [] and the Communications tab was permanently empty.
         const { data } = await admin
           .from("customer_communications")
-          .select("id, type, subject, sent_at, sent_by, reference_type, reference_id")
+          .select("id, type, subject, sent_at, sent_by, status, body")
           .eq("customer_id", id)
           .eq("tenant_id", tenantId)
           .order("sent_at", { ascending: false })

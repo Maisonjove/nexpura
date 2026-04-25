@@ -108,8 +108,12 @@ type CustomerCommunication = {
   subject: string | null;
   sent_at: string;
   sent_by: string | null;
-  reference_type: string | null;
-  reference_id: string | null;
+  // reference_type / reference_id were referenced here but the columns
+  // don't exist on customer_communications (verified against live
+  // schema 2026-04-25). Selecting them returned a PG error and the
+  // Communications tab silently rendered empty for every customer.
+  status?: string | null;
+  body?: string | null;
 };
 
 type CustomerSale = {
@@ -857,9 +861,9 @@ export default function CustomerDetailClient({
                           <span className="text-xs font-bold uppercase tracking-wide text-amber-700">
                             {typeLabels[comm.type] ?? comm.type.replace(/_/g, " ")}
                           </span>
-                          {comm.reference_type && (
+                          {comm.status && (
                             <span className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">
-                              · {comm.reference_type.replace(/_/g, " ")}
+                              · {comm.status}
                             </span>
                           )}
                         </div>

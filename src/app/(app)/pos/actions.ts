@@ -552,23 +552,33 @@ export async function createPOSSale(
         if (!storeCreditDeducted || !params.customerId || !saleId) {
           return { success: true, data: { skipped: true } };
         }
-        
-        const newBalance = (storeCreditOriginal || 0) - (params.storeCreditAmount || 0);
-        await admin.from("customer_store_credit_history").insert({
-          tenant_id: tenantId,
-          customer_id: params.customerId,
-          amount: -(params.storeCreditAmount || 0),
-          balance_after: newBalance,
-          reason: "POS Purchase",
-          reference_type: "sale",
-          reference_id: saleId,
-          created_by: userId,
-        });
-        
+
+        // Schema only exposes: amount, reason, sale_id, refund_id,
+        // created_by. Earlier the insert sent balance_after /
+        // reference_type / reference_id which don't exist; the insert
+        // errored and the unawaited promise was discarded so every
+        // POS-store-credit purchase was missing its audit row. Refs
+        // resolve via sale_id (no need for the generic shape).
+        // newBalance is recomputed downstream from customers.store_credit
+        // and isn't needed in the history row.
+        const { error: histErr } = await admin
+          .from("customer_store_credit_history")
+          .insert({
+            tenant_id: tenantId,
+            customer_id: params.customerId,
+            amount: -(params.storeCreditAmount || 0),
+            reason: "POS Purchase",
+            sale_id: saleId,
+            created_by: userId,
+          });
+        if (histErr) {
+          logger.error("[pos/record_credit_history] insert failed", { err: histErr });
+        }
+
         return { success: true };
       },
     },
-    
+
     // Step 8: Record voucher redemption history
     {
       name: "record_voucher_history",
@@ -576,15 +586,25 @@ export async function createPOSSale(
         if (!voucherDeducted || !params.voucherId || !saleId) {
           return { success: true, data: { skipped: true } };
         }
-        
-        await admin.from("gift_voucher_redemptions").insert({
-          voucher_id: params.voucherId,
-          sale_id: saleId,
-          amount_used: params.voucherAmount,
-          tenant_id: tenantId,
-          redeemed_at: new Date().toISOString(),
-        });
-        
+
+        // Schema columns are `amount` + `redeemed_by` + `created_at`;
+        // earlier code wrote `amount_used` + `redeemed_at` (neither
+        // exist), so every redemption silently failed to log. The
+        // gift_vouchers.balance was still decremented by the prior
+        // step, leaving redemption + balance out of sync.
+        const { error: redErr } = await admin
+          .from("gift_voucher_redemptions")
+          .insert({
+            voucher_id: params.voucherId,
+            sale_id: saleId,
+            amount: params.voucherAmount,
+            tenant_id: tenantId,
+            redeemed_by: userId,
+          });
+        if (redErr) {
+          logger.error("[pos/record_voucher_history] insert failed", { err: redErr });
+        }
+
         return { success: true };
       },
     },

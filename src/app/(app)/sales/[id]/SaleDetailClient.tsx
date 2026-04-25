@@ -39,7 +39,10 @@ interface LaybyPayment {
   id: string;
   amount: number;
   payment_method: string;
-  payment_date: string;
+  // Schema column is `paid_at` (the older `payment_date` name never
+  // existed). Page-side select was queried wrongly for months and 500'd
+  // every layby sale-detail load — see migration history + 2026-04-25 fix.
+  paid_at: string;
   notes: string | null;
 }
 
@@ -384,7 +387,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                         <div>
                           <p className="text-sm font-medium text-stone-900">{fmtCurrency(p.amount)}</p>
                           <p className="text-xs text-stone-400 capitalize">
-                            {p.payment_method} · {new Date(p.payment_date + "T12:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                            {p.payment_method} · {new Date(p.paid_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
                           </p>
                           {p.notes && <p className="text-xs text-stone-400 italic mt-0.5">{p.notes}</p>}
                         </div>

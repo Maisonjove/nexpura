@@ -74,7 +74,7 @@ const NAV_GROUPS = [
       { name: 'Overview',      href: '/marketing',              icon: Megaphone },
       { name: 'Campaigns',     href: '/marketing/campaigns',    icon: Mail },
       { name: 'Bulk Email',    href: '/marketing/bulk-email',   icon: Send },
-      { name: 'Bulk SMS',      href: '/marketing/bulk-sms',     icon: MessageSquare },
+      { name: 'Bulk WhatsApp', href: '/marketing/whatsapp-campaigns', icon: MessageSquare },
       { name: 'Automations',   href: '/marketing/automations',  icon: Zap },
       { name: 'Segments',      href: '/marketing/segments',     icon: Users },
       { name: 'Templates',     href: '/marketing/templates',    icon: FileText },

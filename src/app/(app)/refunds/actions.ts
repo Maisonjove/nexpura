@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { withIdempotency } from "@/lib/idempotency";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth-context";
+import logger from "@/lib/logger";
 
 async function getAuthContext() {
   // Refunds are money-moving. Require (a) authenticated, (b) tenant
@@ -187,17 +188,27 @@ export async function processRefund(params: {
         .eq("tenant_id", tenantId);
     }
 
-    // Record credit history with accurate final balance
-    await admin.from("customer_store_credit_history").insert({
-      tenant_id: tenantId,
-      customer_id: sale.customer_id,
-      amount: total,
-      balance_after: finalBalance,
-      reason: "Refund",
-      reference_type: "refund",
-      reference_id: refund.id,
-      created_by: userId,
-    });
+    // Record credit history. The table only exposes
+    // amount, reason, sale_id, refund_id, created_by — earlier code
+    // wrote balance_after / reference_type / reference_id which don't
+    // exist; the insert errored and the awaited promise was discarded
+    // (no error check), so every store-credit refund silently lost
+    // its audit row. `finalBalance` is computed for downstream uses.
+    void finalBalance;
+    const { error: creditHistoryErr } = await admin
+      .from("customer_store_credit_history")
+      .insert({
+        tenant_id: tenantId,
+        customer_id: sale.customer_id,
+        amount: total,
+        reason: "Refund",
+        sale_id: sale.id,
+        refund_id: refund.id,
+        created_by: userId,
+      });
+    if (creditHistoryErr) {
+      logger.error("[processRefund] credit history insert failed", { err: creditHistoryErr });
+    }
   }
 
   // Insert refund items

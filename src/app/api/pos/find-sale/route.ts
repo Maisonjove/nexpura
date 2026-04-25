@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
   // Search by sale_number or customer name
   const { data: sale, error } = await admin
     .from("sales")
-    .select("id, sale_number, total, payment_method, created_at, customer_name, sale_items(id, inventory_id, quantity, unit_price, total, inventory(name))")
+    .select("id, sale_number, total, payment_method, created_at, customer_name, sale_items(id, inventory_id, quantity, unit_price, line_total, inventory(name))")
     .eq("tenant_id", tenantId)
     .or(`sale_number.${ilikeVal},customer_name.${ilikeVal}`)
     .order("created_at", { ascending: false })
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     inventory_name: (Array.isArray(item.inventory) ? item.inventory[0]?.name : item.inventory?.name) || "Item",
     quantity: item.quantity,
     unit_price: item.unit_price,
-    total: item.total,
+    total: item.line_total,
   }));
 
   return NextResponse.json({
