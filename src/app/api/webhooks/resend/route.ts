@@ -110,11 +110,28 @@ export async function POST(request: NextRequest) {
         const emails = event.data.to;
         logger.info(`[resend-webhook] Email bounced for: ${emails.join(", ")}`);
 
+        // Pre-fix this updated customers across ALL tenants matching
+        // the bounced email. Two tenants legitimately sharing a customer
+        // email (common in jewellery — same retail customer at multiple
+        // stores) meant Tenant A's bounce silently un-mailable'd that
+        // person at Tenant B without warning. Scope to the tenant whose
+        // email_logs row matched this resend_id.
+        const { data: emailLog } = await supabase
+          .from("email_logs")
+          .select("tenant_id")
+          .eq("resend_id", event.data.email_id)
+          .maybeSingle();
+        const scopedTenantId = (emailLog?.tenant_id as string | undefined) ?? null;
+
         for (const email of emails) {
-          const { data: customers } = await supabase
+          let customerQuery = supabase
             .from("customers")
             .select("id, email_status")
             .ilike("email", email);
+          if (scopedTenantId) {
+            customerQuery = customerQuery.eq("tenant_id", scopedTenantId);
+          }
+          const { data: customers } = await customerQuery;
 
           if (customers && customers.length > 0) {
             await supabase

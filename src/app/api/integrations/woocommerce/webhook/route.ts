@@ -179,19 +179,29 @@ async function handleProductWebhook(
   event: string,
   product: WooProduct
 ) {
+  // inventory has neither `woo_product_id` nor `last_synced_at` (verified
+  // 2026-04-25). Pre-fix every Woo product webhook hit PGRST204 → handler
+  // 500'd, Woo retried indefinitely. Use the existing `import_metadata`
+  // JSONB column to carry the Woo product ID + sync timestamp.
   if (event === "deleted") {
-    // Mark as inactive rather than delete
-    await admin
+    // Mark as inactive rather than delete. Look up by import_metadata.
+    const { data: existing } = await admin
       .from("inventory")
-      .update({ status: "inactive", updated_at: new Date().toISOString() })
+      .select("id, import_metadata")
       .eq("tenant_id", tenantId)
-      .eq("woo_product_id", String(product.id));
+      .eq("import_metadata->>woo_product_id", String(product.id))
+      .maybeSingle();
+    if (existing) {
+      await admin
+        .from("inventory")
+        .update({ status: "inactive", updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+    }
     return;
   }
 
-  // Create or update inventory item
   const sku = product.sku || `woo-${product.id}`;
-  
+
   await admin.from("inventory").upsert(
     {
       tenant_id: tenantId,
@@ -199,11 +209,14 @@ async function handleProductWebhook(
       sku,
       retail_price: parseFloat(product.regular_price) || 0,
       quantity: product.stock_quantity || 0,
-      woo_product_id: String(product.id),
       status: product.status === "publish" ? "active" : "inactive",
-      last_synced_at: new Date().toISOString(),
+      import_metadata: {
+        source: "woocommerce",
+        woo_product_id: String(product.id),
+        synced_at: new Date().toISOString(),
+      },
     },
-    { onConflict: "tenant_id,woo_product_id", ignoreDuplicates: false }
+    { onConflict: "tenant_id,sku", ignoreDuplicates: false }
   );
 }
 
@@ -213,13 +226,15 @@ async function handleOrderWebhook(
   event: string,
   order: WooOrder
 ) {
-  // Check if already exists
+  // sales has no `external_reference` column (verified 2026-04-25).
+  // Pre-fix this lookup PGRST204'd and handler 500'd. Use the
+  // existing import_metadata JSONB instead.
   const { data: existing } = await admin
     .from("sales")
     .select("id")
     .eq("tenant_id", tenantId)
-    .eq("external_reference", `woo_${order.id}`)
-    .single();
+    .eq("import_metadata->>woo_order_id", String(order.id))
+    .maybeSingle();
 
   if (existing && event === "created") {
     // Already imported, skip
@@ -242,7 +257,8 @@ async function handleOrderWebhook(
       })
       .eq("id", existing.id);
   } else {
-    // Create new sale
+    // Create new sale. Use import_metadata for the Woo correlation ID
+    // since `sales.external_reference` doesn't exist.
     const { data: sale } = await admin.from("sales").insert({
       tenant_id: tenantId,
       sale_number: `WOO-${order.number}`,
@@ -253,7 +269,10 @@ async function handleOrderWebhook(
       payment_method: order.payment_method || "woocommerce",
       customer_name: customerName,
       customer_email: order.billing?.email || null,
-      external_reference: `woo_${order.id}`,
+      import_metadata: {
+        source: "woocommerce",
+        woo_order_id: String(order.id),
+      },
       created_at: order.date_created,
       status: mapWooStatus(order.status),
     }).select("id").single();
@@ -265,27 +284,38 @@ async function handleOrderWebhook(
         // crafted product/sku string can't break out of PostgREST filter
         // syntax. Keep sanitizeOrLiteral as a sanity gate (strips non-
         // alphanumeric) on top of quoting.
+        // inventory.woo_product_id doesn't exist; we now stash the woo
+        // ID inside import_metadata. Match on SKU first (canonical
+        // unique key) and fall back to import_metadata.woo_product_id.
         const safeSku = sanitizeOrLiteral(li.sku);
-        const safeWooId = sanitizeOrLiteral(li.product_id);
-        const orClauses: string[] = [];
-        if (safeSku) orClauses.push(`sku.${eqOrValue(safeSku)}`);
-        if (safeWooId) orClauses.push(`woo_product_id.${eqOrValue(safeWooId)}`);
-        const { data: inventoryItem } = orClauses.length
-          ? await admin
-              .from("inventory")
-              .select("id")
-              .eq("tenant_id", tenantId)
-              .or(orClauses.join(","))
-              .maybeSingle()
-          : { data: null };
+        let inventoryItem: { id: string } | null = null;
+        if (safeSku) {
+          const { data } = await admin
+            .from("inventory")
+            .select("id")
+            .eq("tenant_id", tenantId)
+            .eq("sku", safeSku)
+            .maybeSingle();
+          inventoryItem = (data as { id: string } | null) ?? null;
+        }
+        if (!inventoryItem && li.product_id) {
+          const { data } = await admin
+            .from("inventory")
+            .select("id")
+            .eq("tenant_id", tenantId)
+            .eq("import_metadata->>woo_product_id", String(li.product_id))
+            .maybeSingle();
+          inventoryItem = (data as { id: string } | null) ?? null;
+        }
 
+        // sale_items column is `line_total`, not `total` (verified).
         await admin.from("sale_items").insert({
           tenant_id: tenantId,
           sale_id: sale.id,
           inventory_id: inventoryItem?.id || null,
           quantity: li.quantity,
           unit_price: li.price,
-          total: li.quantity * li.price,
+          line_total: li.quantity * li.price,
         });
 
         // Decrement inventory if matched
@@ -308,13 +338,20 @@ async function handleCustomerWebhook(
 ) {
   if (!customer.email) return;
 
+  // customers has no `source` column (verified 2026-04-25). Pre-fix
+  // every Woo customer.* webhook PGRST204'd. Stash the source in the
+  // existing import_metadata JSONB column.
   await admin.from("customers").upsert(
     {
       tenant_id: tenantId,
       email: customer.email,
       full_name: `${customer.first_name || ""} ${customer.last_name || ""}`.trim(),
       mobile: customer.billing?.phone || null,
-      source: "woocommerce",
+      import_metadata: {
+        source: "woocommerce",
+        woo_customer_id: String(customer.id ?? ""),
+        synced_at: new Date().toISOString(),
+      },
       updated_at: new Date().toISOString(),
     },
     { onConflict: "tenant_id,email", ignoreDuplicates: false }

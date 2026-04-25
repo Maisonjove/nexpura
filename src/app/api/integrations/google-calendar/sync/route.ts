@@ -82,31 +82,38 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Sync repair due dates
+    // Sync repair due dates. Pre-fix queried `jobs` (table doesn't
+    // exist — only `repairs` and `bespoke_jobs`) and selected
+    // `customers(name)` (column is `full_name`) and `estimated_completion`
+    // (real column is `due_date` on repairs / `estimated_completion_date`
+    // on bespoke). Whole branch 500'd. Use `repairs` with the real
+    // columns; `bespoke_jobs` are out of scope for this branch.
     if (type === "repairs" || type === "all") {
       const { data: jobs } = await admin
-        .from("jobs")
-        .select("*, customers(name)")
+        .from("repairs")
+        .select("id, repair_number, repair_type, item_description, due_date, google_calendar_event_id, stage, customers(full_name)")
         .eq("tenant_id", tenantId)
-        .not("estimated_completion", "is", null)
+        .not("due_date", "is", null)
         .is("google_calendar_event_id", null)
-        .in("status", ["pending", "in_progress"]);
+        .in("stage", ["intake", "assessed", "quoted", "approved", "in_progress"]);
 
       for (const job of jobs || []) {
+        const customer = Array.isArray(job.customers) ? job.customers[0] : job.customers;
+        const customerName = customer?.full_name || "Customer";
         const event = await createCalendarEvent(accessToken, config.calendar_id, {
-          summary: `Repair Due: ${job.repair_type || "Job"} - ${job.customers?.name || "Customer"}`,
-          description: `Job #${job.job_number}\n${job.description || ""}`,
+          summary: `Repair Due: ${job.repair_type || "Job"} - ${customerName}`,
+          description: `Job #${job.repair_number}\n${job.item_description || ""}`,
           start: {
-            date: job.estimated_completion,
+            date: job.due_date,
           },
           end: {
-            date: job.estimated_completion,
+            date: job.due_date,
           },
         });
 
         if (event?.id) {
           await admin
-            .from("jobs")
+            .from("repairs")
             .update({ google_calendar_event_id: event.id })
             .eq("id", job.id);
           synced.repairs++;

@@ -206,9 +206,14 @@ async function handleSubscriptionUpdated(
   const plan = subscription.metadata?.plan || "boutique";
   // Access current_period_end from items if available, or use any type assertion
   const subAny = subscription as { current_period_end?: number };
-  const currentPeriodEnd = subAny.current_period_end 
+  // Pre-fix: missing current_period_end fell back to NEW Date() (i.e.
+  // "right now"). Combined with the middleware's subscription-expiry
+  // check this could push a freshly active subscription into a "past
+  // period" state. Now: don't write the field if Stripe doesn't carry
+  // it on this event — the previous DB value stays intact.
+  const currentPeriodEnd = subAny.current_period_end
     ? new Date(subAny.current_period_end * 1000).toISOString()
-    : new Date().toISOString();
+    : null;
 
   // Update subscription in database
   const { data: sub } = await supabase
@@ -218,13 +223,13 @@ async function handleSubscriptionUpdated(
     .maybeSingle();
 
   if (sub) {
+    const subUpdate: Record<string, string | null> = { status, plan };
+    if (currentPeriodEnd !== null) {
+      subUpdate.current_period_end = currentPeriodEnd;
+    }
     await supabase
       .from("subscriptions")
-      .update({
-        status,
-        plan,
-        current_period_end: currentPeriodEnd,
-      })
+      .update(subUpdate)
       .eq("id", sub.id);
 
     // Also update tenant

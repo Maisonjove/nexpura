@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 
 // Stripe Product IDs for LIVE mode
@@ -51,6 +52,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Invalid subdomain format" },
         { status: 400 }
+      );
+    }
+
+    // Reject if the subdomain already exists. Pre-fix this was a public
+    // unauthenticated POST that created Stripe checkout for ANY
+    // subdomain string passing the regex. The webhook's `existingTenant`
+    // branch then silently rewrote the existing tenant's
+    // stripe_customer_id / stripe_subscription_id → billing-hijack of an
+    // already-running tenant by anyone who knew the subdomain.
+    const admin = createAdminClient();
+    const { data: existingTenant } = await admin
+      .from("tenants")
+      .select("id")
+      .eq("subdomain", subdomain)
+      .maybeSingle();
+    if (existingTenant) {
+      return NextResponse.json(
+        { error: "That subdomain is already taken. Please choose another." },
+        { status: 409 },
       );
     }
 
