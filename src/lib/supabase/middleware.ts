@@ -154,6 +154,47 @@ async function enforceTwoFactor(
 }
 
 // Routes that never need auth — skip Supabase entirely for instant response.
+//
+// PRE-FIX: this returned true for any `/api/*` path. That short-circuited
+// the entire auth + 2FA enforcement chain for API routes — a 2FA-enrolled
+// user could hit /api/settings, /api/integrations, /api/billing/portal,
+// etc. before completing 2FA. Page navs got the gate but API mutations
+// did not. (Audit finding HIGH, 2026-04-25.)
+//
+// FIX: enumerate the API paths that actually have no auth (webhooks,
+// public tracking/approval endpoints, login/2fa-flow routes) and let
+// the rest fall through to the normal auth + AAL2 enforcement. Authed
+// routes already call getUser() themselves so this only ADDS the
+// middleware AAL2 gate without changing existing handler behaviour.
+// Trade-off: ~50ms getUser() latency on previously-shortcut /api calls.
+function isAlwaysPublicApiPath(pathname: string): boolean {
+  return (
+    // Auth flow — must be reachable without an existing session
+    pathname.startsWith("/api/auth/login") ||
+    pathname.startsWith("/api/auth/logout") ||
+    pathname.startsWith("/api/auth/2fa") ||
+    pathname.startsWith("/api/auth/sessions") ||
+    pathname.startsWith("/api/auth/forgot-password") ||
+    pathname.startsWith("/api/auth/reset-password") ||
+    pathname.startsWith("/api/auth/signup") ||
+    // Webhooks — signature is their auth, no session
+    pathname.startsWith("/api/webhooks") ||
+    // Cron jobs — Vercel-signed token in headers
+    pathname.startsWith("/api/cron") ||
+    // Public per-token / per-tracking-id endpoints
+    pathname.startsWith("/api/tracking") ||
+    pathname.startsWith("/api/bespoke/approval-response") ||
+    pathname.startsWith("/api/bespoke/approval-validate") ||
+    pathname.startsWith("/api/contact") ||
+    // Stripe checkout (signup-time, no session yet)
+    pathname.startsWith("/api/stripe") ||
+    // Health + sandbox introspection
+    pathname.startsWith("/api/health") ||
+    // Demo session route (returns 410 — see api/demo/session/route.ts)
+    pathname.startsWith("/api/demo")
+  );
+}
+
 function isPublicPath(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -172,7 +213,7 @@ function isPublicPath(pathname: string): boolean {
     pathname.startsWith("/reset-password") ||
     pathname.startsWith("/support-access") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
+    isAlwaysPublicApiPath(pathname) ||
     // Marketing pages — static, no auth needed
     pathname.startsWith("/features") ||
     pathname.startsWith("/pricing") ||
