@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
 import { sendWhatsAppMessage } from "@/lib/whatsapp-notifications";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "next/server";
 import logger from "@/lib/logger";
 
 export type OrderType = "repair" | "bespoke";
@@ -133,16 +134,23 @@ export async function postCustomerMessage(params: {
   });
 
   // WhatsApp ping to the person who created the order (their team_member
-  // row is the source of truth for phone + opt-in). Fire-and-forget so a
-  // Twilio outage can never lose a customer message.
-  notifyPersonInChargeWhatsApp({
-    tenantId: order.tenant_id as string,
-    createdByUserId: (order.created_by as string | null) ?? null,
-    headline: `${label} from customer on ${jobLabel}`,
-    body,
-    link,
-  }).catch((err) => {
-    logger.error("[postCustomerMessage] whatsapp notify failed (message saved OK)", { err });
+  // row is the source of truth for phone + opt-in). Deferred via after() —
+  // raw fire-and-forget gets killed when Vercel flushes the response, so
+  // the Twilio call never actually executes in production. after() keeps
+  // the Lambda alive for the post-response work without blocking the
+  // customer's UI; a Twilio outage still can't lose the saved message.
+  after(async () => {
+    try {
+      await notifyPersonInChargeWhatsApp({
+        tenantId: order.tenant_id as string,
+        createdByUserId: (order.created_by as string | null) ?? null,
+        headline: `${label} from customer on ${jobLabel}`,
+        body,
+        link,
+      });
+    } catch (err) {
+      logger.error("[postCustomerMessage] whatsapp notify failed (message saved OK)", { err });
+    }
   });
 
   // /track/[trackingId] wraps fetchOrderData in unstable_cache with tag
@@ -297,16 +305,21 @@ export async function submitBespokeDecision(params: {
     logger.error("[submitBespokeDecision] notification failed (decision saved OK)", { err });
   });
 
-  // WhatsApp ping to person-in-charge. Same fire-and-forget semantics
-  // as customer messages — never let a Twilio outage drop the decision.
-  notifyPersonInChargeWhatsApp({
-    tenantId: job.tenant_id as string,
-    createdByUserId: (job.created_by as string | null) ?? null,
-    headline,
-    body: message || (decision === "approve" ? "Approved with no extra notes." : ""),
-    link: `/bespoke/${job.id}`,
-  }).catch((err) => {
-    logger.error("[submitBespokeDecision] whatsapp notify failed (decision saved OK)", { err });
+  // WhatsApp ping to person-in-charge — deferred via after() so the
+  // Twilio call survives Vercel's response-flush. Twilio outage still
+  // can't drop the decision (state already saved above).
+  after(async () => {
+    try {
+      await notifyPersonInChargeWhatsApp({
+        tenantId: job.tenant_id as string,
+        createdByUserId: (job.created_by as string | null) ?? null,
+        headline,
+        body: message || (decision === "approve" ? "Approved with no extra notes." : ""),
+        link: `/bespoke/${job.id}`,
+      });
+    } catch (err) {
+      logger.error("[submitBespokeDecision] whatsapp notify failed (decision saved OK)", { err });
+    }
   });
 
   // Bust the cached tracking page so a hard refresh after approve/decline
