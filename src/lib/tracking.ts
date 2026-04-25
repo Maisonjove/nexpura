@@ -60,8 +60,15 @@ interface SendTrackingEmailParams {
 }
 
 /**
- * Send tracking email to customer
- * Called internally after order creation if customer_email is set
+ * Send tracking email to customer.
+ * Called internally after order creation if customer_email is set.
+ *
+ * Pre-fix this used to do a server-to-server fetch to
+ * /api/tracking/send-email without forwarding cookies, which then 401'd
+ * because the route requires a session (W7-CRIT-04). Now: call the
+ * shared lib directly — the trusted-server context already has the
+ * authority to send (the caller is the server action that just created
+ * the order).
  */
 export async function sendTrackingEmail({
   tenantId,
@@ -69,24 +76,9 @@ export async function sendTrackingEmail({
   orderId,
 }: SendTrackingEmailParams): Promise<{ success: boolean; error?: string }> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com";
-    
-    // tenantId is no longer accepted by the route (PR-01 / W7-CRIT-04) —
-    // the server resolves the tenant from the caller's session. We keep
-    // tenantId in the helper signature for internal bookkeeping only.
-    void tenantId;
-    const response = await fetch(`${baseUrl}/api/tracking/send-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderType, orderId }),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      return { success: false, error: data.error || "Failed to send email" };
-    }
-
-    return { success: true };
+    const { sendTrackingEmailInternal } = await import("@/lib/tracking-email");
+    const result = await sendTrackingEmailInternal({ tenantId, orderType, orderId });
+    return { success: result.success, error: result.error };
   } catch (err) {
     logger.error("[tracking/sendTrackingEmail] Exception:", err);
     return {

@@ -39,15 +39,19 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // ATOMIC STATUS GUARD: Update status first with conditional check
-    // Only succeeds if status is still 'in_transit' — prevents double receive
+    // ATOMIC STATUS GUARD: prevent double-receive. count: "exact"
+    // is required for the statusCount check below (PostgREST returns
+    // null without it).
     const { error: statusError, count: statusCount } = await admin
       .from("stock_transfers")
-      .update({
-        status: "completed",
-        received_at: new Date().toISOString(),
-        received_by: user.id,
-      })
+      .update(
+        {
+          status: "completed",
+          received_at: new Date().toISOString(),
+          received_by: user.id,
+        },
+        { count: "exact" },
+      )
       .eq("id", transferId)
       .eq("tenant_id", userData.tenant_id)
       .eq("status", "in_transit"); // Only if still in_transit
@@ -84,61 +88,82 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "You don't have access to receive at this location" }, { status: 403 });
     }
 
-    // Process each item with conditional updates
+    // Process each item.
+    //
+    // Pre-fix the no-existing-row branch overwrote the source row's
+    // location_id + quantity with `receivedQty` — that wholesale lost
+    // any remaining stock at the source (e.g. dispatch transferred 3
+    // of 10, source row at 7; receive then "moved" the source row to
+    // dest with quantity=3 → 4 units vanished + source location went
+    // empty).
+    //
+    // Now: emit a 'transfer_in' stock_movement against the destination
+    // inventory row (creating a new row at the dest location if one
+    // doesn't already exist for that SKU). The BEFORE INSERT trigger
+    // sync_inventory_on_stock_movement_insert handles the qty update
+    // race-safely. Source row keeps whatever quantity dispatch left it
+    // with — no destruction.
     for (const transferItem of transfer.transfer_items) {
       const itemUpdate = items?.find((i: { itemId: string; receivedQty: number }) => i.itemId === transferItem.id);
       const receivedQty = itemUpdate?.receivedQty ?? transferItem.quantity;
 
-      // Update transfer item with received quantity
       await admin
         .from("stock_transfer_items")
         .update({ received_quantity: receivedQty })
         .eq("id", transferItem.id);
 
-      // Check if inventory item already exists at destination
-      const { data: existingItem } = await admin
-        .from("inventory")
-        .select("id, quantity")
-        .eq("tenant_id", userData.tenant_id)
-        .eq("sku", transferItem.inventory?.sku)
-        .eq("location_id", transfer.to_location_id)
-        .maybeSingle();
+      const sourceRow = transferItem.inventory as { id: string; sku?: string; name?: string; jewellery_type?: string; retail_price?: number; cost_price?: number } | null;
 
-      if (existingItem) {
-        // Conditional update for existing item at destination
-        const oldQty = existingItem.quantity || 0;
-        const newQty = oldQty + receivedQty;
-
-        const { count: updateCount } = await admin
+      // Find or create the destination inventory row.
+      let destRowId: string | null = null;
+      if (sourceRow?.sku) {
+        const { data: existing } = await admin
           .from("inventory")
-          .update({ quantity: newQty })
-          .eq("id", existingItem.id)
-          .eq("quantity", oldQty);
+          .select("id")
+          .eq("tenant_id", userData.tenant_id)
+          .eq("sku", sourceRow.sku)
+          .eq("location_id", transfer.to_location_id)
+          .maybeSingle();
+        destRowId = (existing?.id as string | undefined) ?? null;
+      }
 
-        if (updateCount === 0) {
-          // Race — retry with fresh value
-          const { data: retryItem } = await admin
-            .from("inventory")
-            .select("quantity")
-            .eq("id", existingItem.id)
-            .single();
-
-          if (retryItem) {
-            await admin
-              .from("inventory")
-              .update({ quantity: (retryItem.quantity || 0) + receivedQty })
-              .eq("id", existingItem.id);
-          }
-        }
-      } else {
-        // Move item to destination location
-        await admin
+      if (!destRowId) {
+        // Create a fresh inventory row at the destination location with
+        // quantity=0; the trigger will bump it to receivedQty when the
+        // movement inserts.
+        const { data: created, error: createErr } = await admin
           .from("inventory")
-          .update({ 
+          .insert({
+            tenant_id: userData.tenant_id,
             location_id: transfer.to_location_id,
-            quantity: receivedQty 
+            sku: sourceRow?.sku ?? null,
+            name: sourceRow?.name ?? "Transferred Item",
+            jewellery_type: sourceRow?.jewellery_type ?? null,
+            retail_price: sourceRow?.retail_price ?? 0,
+            cost_price: sourceRow?.cost_price ?? null,
+            quantity: 0,
+            status: "active",
+            created_by: user.id,
           })
-          .eq("id", transferItem.inventory_id);
+          .select("id")
+          .single();
+        if (createErr || !created) {
+          logger.error("Receive create dest inventory failed:", createErr);
+          continue;
+        }
+        destRowId = created.id;
+      }
+
+      const { error: movErr } = await admin.from("stock_movements").insert({
+        tenant_id: userData.tenant_id,
+        inventory_id: destRowId,
+        movement_type: "transfer_in",
+        quantity_change: receivedQty,
+        notes: `Transfer ${transferId} received from ${transfer.from_location_id}`,
+        created_by: user.id,
+      });
+      if (movErr) {
+        logger.error("Receive stock_movement insert failed:", movErr);
       }
     }
 

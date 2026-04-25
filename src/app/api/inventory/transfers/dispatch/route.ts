@@ -39,15 +39,20 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // ATOMIC STATUS GUARD: Update status first with conditional check
-    // Only succeeds if status is still 'pending' — prevents double dispatch
+    // ATOMIC STATUS GUARD: Update status first with conditional check.
+    // count: "exact" required — without it PostgREST returns count=null
+    // and the `=== 0` guard below never trips (same bug fixed in
+    // batch-5 across the CAS sites).
     const { error: statusError, count: statusCount } = await admin
       .from("stock_transfers")
-      .update({
-        status: "in_transit",
-        dispatched_at: new Date().toISOString(),
-        dispatched_by: user.id,
-      })
+      .update(
+        {
+          status: "in_transit",
+          dispatched_at: new Date().toISOString(),
+          dispatched_by: user.id,
+        },
+        { count: "exact" },
+      )
       .eq("id", transferId)
       .eq("tenant_id", userData.tenant_id)
       .eq("status", "pending"); // Only if still pending
@@ -84,69 +89,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "You don't have access to dispatch from this location" }, { status: 403 });
     }
 
-    // Deduct stock with conditional update + hard fail on insufficient
+    // Deduct stock at the source location. Pre-fix this UPDATEd
+    // inventory.quantity directly with no stock_movements row → no
+    // audit trail (item-level history showed only the bare quantity
+    // change with no reason). Now: pre-flight check for friendly
+    // error UX, then emit a 'transfer_out' stock_movement and let
+    // the BEFORE INSERT trigger sync_inventory_on_stock_movement_insert
+    // do the actual quantity change. Race-safety stays because the
+    // trigger reads-and-adds in a single statement.
     for (const item of transfer.items) {
       const { data: currentItem } = await admin
         .from("inventory")
         .select("quantity")
         .eq("id", item.inventory_id)
         .eq("location_id", transfer.from_location_id)
+        .eq("tenant_id", userData.tenant_id)
         .single();
-      
+
       if (!currentItem) continue;
 
-      const oldQty = currentItem.quantity || 0;
-      const newQty = oldQty - item.quantity;
-
-      // HARD FAIL: Do not allow dispatch if insufficient stock
-      if (newQty < 0) {
+      const available = currentItem.quantity || 0;
+      if (available - item.quantity < 0) {
         // Rollback the status change
         await admin
           .from("stock_transfers")
           .update({ status: "pending", dispatched_at: null, dispatched_by: null })
           .eq("id", transferId);
-        return NextResponse.json({ 
-          error: `Insufficient stock for item. Available: ${oldQty}, Required: ${item.quantity}` 
+        return NextResponse.json({
+          error: `Insufficient stock for item. Available: ${available}, Required: ${item.quantity}`,
         }, { status: 400 });
       }
 
-      // Conditional update with retry
-      const { count: updateCount } = await admin
-        .from("inventory")
-        .update({ quantity: newQty })
-        .eq("id", item.inventory_id)
-        .eq("location_id", transfer.from_location_id)
-        .eq("quantity", oldQty);
-
-      if (updateCount === 0) {
-        // Race occurred — retry with fresh value
-        const { data: retryItem } = await admin
-          .from("inventory")
-          .select("quantity")
-          .eq("id", item.inventory_id)
-          .eq("location_id", transfer.from_location_id)
-          .single();
-
-        if (!retryItem) continue;
-
-        const retryOldQty = retryItem.quantity || 0;
-        const retryNewQty = retryOldQty - item.quantity;
-
-        if (retryNewQty < 0) {
-          await admin
-            .from("stock_transfers")
-            .update({ status: "pending", dispatched_at: null, dispatched_by: null })
-            .eq("id", transferId);
-          return NextResponse.json({ 
-            error: `Insufficient stock after recheck. Available: ${retryOldQty}, Required: ${item.quantity}` 
-          }, { status: 400 });
-        }
-
+      const { error: movErr } = await admin.from("stock_movements").insert({
+        tenant_id: userData.tenant_id,
+        inventory_id: item.inventory_id,
+        movement_type: "transfer_out",
+        quantity_change: -item.quantity,
+        notes: `Transfer ${transferId} dispatched`,
+        created_by: user.id,
+      });
+      if (movErr) {
+        logger.error("Dispatch stock_movement insert failed:", movErr);
         await admin
-          .from("inventory")
-          .update({ quantity: retryNewQty })
-          .eq("id", item.inventory_id)
-          .eq("location_id", transfer.from_location_id);
+          .from("stock_transfers")
+          .update({ status: "pending", dispatched_at: null, dispatched_by: null })
+          .eq("id", transferId);
+        return NextResponse.json({ error: "Failed to dispatch — please retry." }, { status: 500 });
       }
     }
 

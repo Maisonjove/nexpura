@@ -116,6 +116,13 @@ export async function POST(request: NextRequest) {
         // stores) meant Tenant A's bounce silently un-mailable'd that
         // person at Tenant B without warning. Scope to the tenant whose
         // email_logs row matched this resend_id.
+        //
+        // If we can't resolve the tenant (no log row), skip the
+        // customer update entirely rather than fall back to the
+        // cross-tenant ilike. The email_logs.status update below still
+        // fires (keyed by resend_id), so we don't lose the bounce
+        // signal — we just decline to mark customers as bounced when
+        // we can't be sure which tenant they belong to.
         const { data: emailLog } = await supabase
           .from("email_logs")
           .select("tenant_id")
@@ -124,14 +131,24 @@ export async function POST(request: NextRequest) {
         const scopedTenantId = (emailLog?.tenant_id as string | undefined) ?? null;
 
         for (const email of emails) {
-          let customerQuery = supabase
+          if (!scopedTenantId) {
+            logger.warn(`[resend-webhook] bounce for ${email} — no tenant scope (resend_id not in email_logs); skipping customer update`);
+            // Still update email_logs by resend_id below so the bounce
+            // signal isn't completely lost.
+            await supabase
+              .from("email_logs")
+              .update({
+                status: "bounced",
+                bounce_reason: event.data.bounce?.message || "Email bounced",
+              })
+              .eq("resend_id", event.data.email_id);
+            continue;
+          }
+          const { data: customers } = await supabase
             .from("customers")
             .select("id, email_status")
-            .ilike("email", email);
-          if (scopedTenantId) {
-            customerQuery = customerQuery.eq("tenant_id", scopedTenantId);
-          }
-          const { data: customers } = await customerQuery;
+            .ilike("email", email)
+            .eq("tenant_id", scopedTenantId);
 
           if (customers && customers.length > 0) {
             await supabase

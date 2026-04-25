@@ -59,30 +59,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cannot cancel a completed or already cancelled transfer" }, { status: 400 });
     }
 
-    // If transfer was in_transit, restore stock to source location
+    // If transfer was in_transit, restore stock to source location.
+    // Pre-fix this read-then-wrote inventory.quantity directly with no
+    // CAS and no stock_movements row — concurrent POS sale during a
+    // cancel could lose the increment, plus the restore was invisible
+    // to audit history. Now: emit a 'transfer_cancel' movement; the
+    // BEFORE INSERT trigger handles the qty bump race-safely.
     if (transfer.status === "in_transit") {
       for (const item of transfer.items) {
-        // Restore quantity to source location
-        const { data: sourceItem } = await admin
-          .from("inventory")
-          .select("quantity")
-          .eq("id", item.inventory_id)
-          .single();
-
-        if (sourceItem) {
-          await admin
-            .from("inventory")
-            .update({ quantity: (sourceItem.quantity || 0) + item.quantity })
-            .eq("id", item.inventory_id);
+        const { error: movErr } = await admin.from("stock_movements").insert({
+          tenant_id: userData.tenant_id,
+          inventory_id: item.inventory_id,
+          movement_type: "transfer_cancel",
+          quantity_change: item.quantity,
+          notes: `Transfer ${transferId} cancelled — stock restored`,
+          created_by: user.id,
+        });
+        if (movErr) {
+          logger.error("Cancel restore stock_movement failed:", movErr);
         }
       }
     }
 
-    // Update transfer status to cancelled
+    // Update transfer status to cancelled (scope to tenant_id for
+    // defence-in-depth even though we already filtered above).
     const { error: updateError } = await admin
       .from("stock_transfers")
       .update({ status: "cancelled" })
-      .eq("id", transferId);
+      .eq("id", transferId)
+      .eq("tenant_id", userData.tenant_id);
 
     if (updateError) {
       logger.error("Cancel update error:", updateError);

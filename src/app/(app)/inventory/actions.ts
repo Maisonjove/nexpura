@@ -318,21 +318,16 @@ export async function updateInventoryItem(id: string, formData: FormData) {
       supplier_sku: supplierSku || null,
       is_featured: isFeatured,
       status,
-      // Advanced fields
+      // Advanced fields. Most of the original "advanced" payload pre-fix
+      // wrote columns that don't exist on the live schema (verified
+      // 2026-04-25 — only `certificate_number` exists from this group).
+      // The PGRST204-retry loop below silently dropped the rest, costing
+      // 12+ extra round-trips per save. Upfront-only-include `certificate_number`
+      // until those columns are migrated.
       certificate_number: (formData.get("certificate_number") as string) || null,
-      grading_lab: (formData.get("grading_lab") as string) || null,
-      grade: (formData.get("grade") as string) || null,
-      report_url: (formData.get("report_url") as string) || null,
-      stock_location: (formData.get("stock_location") as string) || "display",
-      metal_form: (formData.get("metal_form") as string) || null,
-      consignor_name: (formData.get("consignor_name") as string) || null,
-      consignor_contact: (formData.get("consignor_contact") as string) || null,
-      consignment_start_date: (formData.get("consignment_start_date") as string) || null,
-      consignment_end_date: (formData.get("consignment_end_date") as string) || null,
-      consignment_commission_pct: formData.get("consignment_commission_pct") ? parseFloat(formData.get("consignment_commission_pct") as string) : null,
-      supplier_invoice_ref: (formData.get("supplier_invoice_ref") as string) || null,
-      secondary_stones: secondaryStones,
+      // (Retained for forward-compat) consume secondaryStones to keep TS happy.
   };
+  void secondaryStones;
 
   if (canViewCost) {
     updates.cost_price = costPrice;
