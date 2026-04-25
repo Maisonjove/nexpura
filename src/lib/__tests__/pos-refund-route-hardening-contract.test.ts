@@ -40,10 +40,12 @@ describe("PR-09 /api/pos/refund — safety primitives at parity with processRefu
     expect(src).toMatch(/refundSubtotal\s*=\s*items2\.reduce/);
   });
 
-  it("bounds refundSubtotal against (sale.total − alreadyRefunded)", () => {
+  it("bounds refund total against (sale.total − alreadyRefunded)", () => {
     expect(src).toMatch(/alreadyRefunded/);
     expect(src).toMatch(/remainingRefundable\s*=\s*saleTotal\s*-\s*alreadyRefunded/);
-    expect(src).toMatch(/refundSubtotal\s*>\s*remainingRefundable/);
+    // refundTotal (subtotal + tax_amount) is what we bound, not the
+    // raw subtotal — fix(pos) commit 6d57a04 adds tax to the credit.
+    expect(src).toMatch(/refundTotal\s*>\s*remainingRefundable/);
   });
 
   it("rejects zero/negative server-computed subtotal", () => {
@@ -54,11 +56,13 @@ describe("PR-09 /api/pos/refund — safety primitives at parity with processRefu
     expect(src).toMatch(/const tenantId = ctx\.tenantId/);
   });
 
-  it("stores the SERVER-computed subtotal in the refunds row, not body.total", () => {
-    // The `total:` column on the refunds.insert must be refundSubtotal,
-    // not the destructured body `total`. The destructure must not
-    // include `total` at all in the fixed version.
-    expect(src).toMatch(/total:\s*refundSubtotal/);
+  it("stores the SERVER-computed total + subtotal + tax_amount in the refunds row, not body.total", () => {
+    // refunds.total = refundTotal (subtotal + tax) — fix(pos) commit
+    // 6d57a04 made the route tax-aware. refunds.subtotal still sources
+    // from refundSubtotal. body.total is never destructured.
+    expect(src).toMatch(/total:\s*refundTotal/);
+    expect(src).toMatch(/subtotal:\s*refundSubtotal/);
+    expect(src).toMatch(/tax_amount:\s*refundTaxAmount/);
     expect(src).not.toMatch(/const\s*\{[^}]*\btotal\b[^}]*\}\s*=\s*parseResult\.data/);
   });
 
