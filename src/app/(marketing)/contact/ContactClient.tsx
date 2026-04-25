@@ -2,18 +2,17 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { useState, type FormEvent } from 'react'
 import Button from '@/components/landing/ui/Button'
 
 /**
  * Contact page restyled to the homepage system per Kaitlyn brief #2
- * Section 10G. Structure, copy, channels list, and "what happens in a
- * demo" expectations preserved verbatim. Visual layer aligned with the
- * marketing token system + standardised form primitives.
+ * Section 10G + wired to /api/contact in Joey's follow-up sweep
+ * (item 2/6). Submitting POSTs JSON to /api/contact, which forwards
+ * to hello@nexpura.com via Resend with reply-to set to the submitter.
  *
- * The form has no backend wiring yet (no name/id/action/submit handler)
- * — the page is visual-only at the moment. Restyling does NOT introduce
- * a submit handler; that's a backend follow-up beyond the scope of this
- * design pass.
+ * No DB persistence on the client side — if a CRM record is wanted
+ * later, the API can be extended without changing this component.
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -59,6 +58,44 @@ const expectations = [
 ]
 
 export default function ContactClient() {
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (status === 'sending') return
+    setStatus('sending')
+    setErrorMsg(null)
+    const form = e.currentTarget
+    const fd = new FormData(form)
+    const payload = {
+      first_name: String(fd.get('first_name') ?? ''),
+      last_name: String(fd.get('last_name') ?? ''),
+      business_name: String(fd.get('business_name') ?? ''),
+      email: String(fd.get('email') ?? ''),
+      topic: String(fd.get('topic') ?? ''),
+      message: String(fd.get('message') ?? ''),
+    }
+    try {
+      const r = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const body = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        setStatus('error')
+        setErrorMsg(body.error || 'Something went wrong. Please email hello@nexpura.com directly.')
+        return
+      }
+      setStatus('sent')
+      form.reset()
+    } catch {
+      setStatus('error')
+      setErrorMsg("Couldn't reach our server. Please email hello@nexpura.com directly.")
+    }
+  }
+
   return (
     <div className="bg-m-ivory">
       {/* Hero */}
@@ -90,9 +127,9 @@ export default function ContactClient() {
       <section className="pb-24 lg:pb-32 px-6 sm:px-10 lg:px-20">
         <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
           {/* Form */}
-          <motion.form {...fadeUp()} className="space-y-5">
+          <motion.form {...fadeUp()} onSubmit={handleSubmit} className="space-y-5" noValidate>
             <div className="grid grid-cols-2 gap-5">
-              <Field label="First name" name="first_name" placeholder="Jane" />
+              <Field label="First name" name="first_name" placeholder="Jane" required />
               <Field label="Last name" name="last_name" placeholder="Smith" />
             </div>
             <Field label="Business name" name="business_name" placeholder="Smith & Co Jewellers" />
@@ -101,6 +138,7 @@ export default function ContactClient() {
               name="email"
               placeholder="jane@smithjewellers.com"
               type="email"
+              required
             />
             <div>
               <label htmlFor="contact-topic" className="m-form-label">
@@ -110,9 +148,9 @@ export default function ContactClient() {
                 id="contact-topic"
                 name="topic"
                 className="m-form-input cursor-pointer"
-                defaultValue=""
+                defaultValue="demo"
+                required
               >
-                <option value="" disabled>Select a topic</option>
                 <option value="demo">Book a product demo</option>
                 <option value="trial">Help with my free trial</option>
                 <option value="migration">Migration from another system</option>
@@ -130,10 +168,27 @@ export default function ContactClient() {
                 rows={4}
                 placeholder="Tell us about your business..."
                 className="m-form-input m-form-textarea"
+                required
+                minLength={5}
+                maxLength={4000}
               />
             </div>
-            <Button type="submit" size="lg" className="mt-2">
-              Send message
+
+            {status === 'sent' && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="bg-m-champagne-tint border border-m-champagne-soft text-m-charcoal rounded-[14px] px-4 py-3 text-[14px] leading-[1.55]"
+              >
+                Thanks — your message is on its way to hello@nexpura.com. We&apos;ll be in touch within 24 hours.
+              </div>
+            )}
+            {status === 'error' && errorMsg && (
+              <p role="alert" className="m-form-error">{errorMsg}</p>
+            )}
+
+            <Button type="submit" size="lg" className="mt-2" disabled={status === 'sending'}>
+              {status === 'sending' ? 'Sending…' : 'Send message'}
             </Button>
           </motion.form>
 
@@ -203,11 +258,13 @@ function Field({
   name,
   placeholder,
   type = 'text',
+  required = false,
 }: {
   label: string
   name: string
   placeholder: string
   type?: string
+  required?: boolean
 }) {
   const id = `contact-${name}`
   return (
@@ -220,6 +277,7 @@ function Field({
         name={name}
         type={type}
         placeholder={placeholder}
+        required={required}
         className="m-form-input"
       />
     </div>
