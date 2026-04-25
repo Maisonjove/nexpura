@@ -53,8 +53,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'SMS 2FA not enabled' }, { status: 400 });
     }
 
-    // Generate a 6-digit verification code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate a 6-digit verification code with a CSPRNG. Math.random()
+    // is non-cryptographic — V8's Xorshift state can be recovered from
+    // a few outputs, then future codes are predictable. This is the
+    // login-second-factor surface so a predictability gap is real.
+    // Use Node crypto.randomInt instead.
+    const { randomInt } = await import("node:crypto");
+    const code = randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     // Store the code

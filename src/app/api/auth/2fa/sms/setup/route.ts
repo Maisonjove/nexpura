@@ -31,8 +31,10 @@ export async function POST(request: NextRequest) {
     // Normalize phone number
     const normalizedPhone = phone.replace(/\s/g, '').replace(/^0/, '+61');
 
-    // Generate a 6-digit verification code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // Use crypto.randomInt instead of Math.random — V8 PRNG state is
+    // recoverable from a few outputs, making future codes predictable.
+    const { randomInt } = await import("node:crypto");
+    const code = randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     // Store the pending verification
