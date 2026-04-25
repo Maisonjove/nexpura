@@ -2,6 +2,19 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import Button from '@/components/landing/ui/Button'
+
+/**
+ * Contact page restyled to the homepage system per Kaitlyn brief #2
+ * Section 10G. Structure, copy, channels list, and "what happens in a
+ * demo" expectations preserved verbatim. Visual layer aligned with the
+ * marketing token system + standardised form primitives.
+ *
+ * The form has no backend wiring yet (no name/id/action/submit handler)
+ * — the page is visual-only at the moment. Restyling does NOT introduce
+ * a submit handler; that's a backend follow-up beyond the scope of this
+ * design pass.
+ */
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -47,25 +60,25 @@ const expectations = [
 
 export default function ContactClient() {
   return (
-    <div className="bg-white">
+    <div className="bg-m-ivory">
       {/* Hero */}
-      <section className="pt-20 pb-20 lg:pt-28 lg:pb-24 px-6 sm:px-10 lg:px-20 text-center">
+      <section className="pt-24 pb-20 lg:pt-32 lg:pb-24 px-6 sm:px-10 lg:px-20 text-center">
         <div className="max-w-[820px] mx-auto">
           <motion.p
             {...fadeUp()}
-            className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-6"
+            className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-6"
           >
             Get in Touch
           </motion.p>
           <motion.h1
             {...fadeBlur}
-            className="font-serif text-4xl sm:text-5xl lg:text-[clamp(2.75rem,5vw,4.25rem)] font-normal leading-[1.08] tracking-[-0.01em] text-stone-900 mb-7"
+            className="font-serif text-[42px] sm:text-[56px] lg:text-[clamp(2.75rem,5vw,4.5rem)] font-normal leading-[1.06] tracking-[-0.015em] text-m-charcoal mb-7"
           >
             Let&apos;s <em className="italic">talk</em>
           </motion.h1>
           <motion.p
             {...fadeUp(0.3)}
-            className="text-base lg:text-lg leading-relaxed text-stone-500 max-w-[600px] mx-auto"
+            className="text-[16px] sm:text-[18px] leading-[1.55] text-m-text-secondary max-w-[600px] mx-auto"
           >
             Book a demo, ask questions, or talk to our team about your migration.
             We&apos;re real people who understand jewellery businesses.
@@ -77,23 +90,29 @@ export default function ContactClient() {
       <section className="pb-24 lg:pb-32 px-6 sm:px-10 lg:px-20">
         <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
           {/* Form */}
-          <motion.form {...fadeUp()} className="space-y-7">
-            <div className="grid grid-cols-2 gap-6">
-              <Field label="First name" placeholder="Jane" />
-              <Field label="Last name" placeholder="Smith" />
+          <motion.form {...fadeUp()} className="space-y-5">
+            <div className="grid grid-cols-2 gap-5">
+              <Field label="First name" name="first_name" placeholder="Jane" />
+              <Field label="Last name" name="last_name" placeholder="Smith" />
             </div>
-            <Field label="Business name" placeholder="Smith & Co Jewellers" />
+            <Field label="Business name" name="business_name" placeholder="Smith & Co Jewellers" />
             <Field
               label="Email address"
+              name="email"
               placeholder="jane@smithjewellers.com"
               type="email"
             />
             <div>
-              <label className="block text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mb-2">
+              <label htmlFor="contact-topic" className="m-form-label">
                 What are you enquiring about?
               </label>
-              <select className="w-full bg-transparent border-b border-stone-300 py-3 text-[0.9375rem] text-stone-900 focus:outline-none focus:border-stone-900 transition-colors duration-300 cursor-pointer">
-                <option value="">Select a topic</option>
+              <select
+                id="contact-topic"
+                name="topic"
+                className="m-form-input cursor-pointer"
+                defaultValue=""
+              >
+                <option value="" disabled>Select a topic</option>
                 <option value="demo">Book a product demo</option>
                 <option value="trial">Help with my free trial</option>
                 <option value="migration">Migration from another system</option>
@@ -102,51 +121,38 @@ export default function ContactClient() {
               </select>
             </div>
             <div>
-              <label className="block text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mb-2">
+              <label htmlFor="contact-message" className="m-form-label">
                 Message
               </label>
               <textarea
+                id="contact-message"
+                name="message"
                 rows={4}
                 placeholder="Tell us about your business..."
-                className="w-full bg-transparent border-b border-stone-300 py-3 text-[0.9375rem] text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition-colors duration-300 resize-none"
+                className="m-form-input m-form-textarea"
               />
             </div>
-            <button
-              type="submit"
-              className="
-                inline-flex items-center justify-center mt-2
-                min-w-[180px] px-10 py-4
-                bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a]
-                rounded-full
-                shadow-[0_2px_4px_rgba(0,0,0,0.25),0_8px_24px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]
-                transition-shadow duration-400
-                hover:shadow-[0_4px_8px_rgba(0,0,0,0.25),0_16px_40px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]
-                relative overflow-hidden cursor-pointer
-              "
-            >
-              <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
-              <span className="text-base font-medium text-white tracking-[0.01em] relative z-10">
-                Send message
-              </span>
-            </button>
+            <Button type="submit" size="lg" className="mt-2">
+              Send message
+            </Button>
           </motion.form>
 
           {/* Info */}
           <motion.div {...fadeUp(0.2)} className="space-y-12">
             <div>
-              <p className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-6">
+              <p className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-6">
                 Other ways to reach us
               </p>
-              <div className="divide-y divide-stone-200 border-y border-stone-200">
+              <div className="divide-y divide-m-border-soft border-y border-m-border-soft">
                 {channels.map((c) => (
                   <div key={c.label} className="py-5 flex flex-col gap-1">
-                    <span className="text-[0.75rem] tracking-[0.1em] uppercase text-stone-400">
+                    <span className="text-[11px] tracking-[0.14em] uppercase text-m-text-faint font-medium">
                       {c.label}
                     </span>
-                    <span className="font-serif text-lg text-stone-900">
+                    <span className="font-serif text-[20px] text-m-charcoal">
                       {c.value}
                     </span>
-                    <span className="text-[0.8125rem] text-stone-500">
+                    <span className="text-[13px] text-m-text-secondary">
                       {c.note}
                     </span>
                   </div>
@@ -155,16 +161,16 @@ export default function ContactClient() {
             </div>
 
             <div>
-              <p className="text-[0.75rem] tracking-[0.2em] text-stone-400 uppercase mb-6">
+              <p className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-6">
                 What happens in a demo
               </p>
               <ul className="space-y-4">
                 {expectations.map((e, i) => (
                   <li
                     key={e}
-                    className="flex items-start gap-4 text-[0.9375rem] text-stone-700"
+                    className="flex items-start gap-4 text-[15px] text-m-text-secondary leading-[1.6]"
                   >
-                    <span className="text-sm tabular-nums text-stone-300 font-medium pt-0.5">
+                    <span className="text-[13px] tabular-nums text-m-text-faint font-medium pt-0.5">
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <span>{e}</span>
@@ -173,15 +179,16 @@ export default function ContactClient() {
               </ul>
             </div>
 
-            <div className="border-t border-stone-200 pt-6">
-              <p className="text-[0.875rem] text-stone-500 mb-2">
+            <div className="border-t border-m-border-soft pt-6">
+              <p className="text-[14px] text-m-text-secondary mb-2">
                 Already signed up?
               </p>
               <Link
                 href="/login"
-                className="text-[0.9375rem] text-stone-900 underline underline-offset-4 hover:opacity-60 transition-opacity duration-300"
+                className="inline-flex items-center gap-1.5 text-[15px] font-sans font-medium text-m-charcoal hover:underline underline-offset-4 decoration-m-charcoal"
               >
-                Sign in to your account →
+                Sign in to your account
+                <span aria-hidden>→</span>
               </Link>
             </div>
           </motion.div>
@@ -193,22 +200,27 @@ export default function ContactClient() {
 
 function Field({
   label,
+  name,
   placeholder,
   type = 'text',
 }: {
   label: string
+  name: string
   placeholder: string
   type?: string
 }) {
+  const id = `contact-${name}`
   return (
     <div>
-      <label className="block text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mb-2">
+      <label htmlFor={id} className="m-form-label">
         {label}
       </label>
       <input
+        id={id}
+        name={name}
         type={type}
         placeholder={placeholder}
-        className="w-full bg-transparent border-b border-stone-300 py-3 text-[0.9375rem] text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition-colors duration-300"
+        className="m-form-input"
       />
     </div>
   )
