@@ -1,36 +1,85 @@
-const pains = [
-  { title: 'Repairs fall through the cracks', body: 'Jobs get lost. Customers call chasing. Staff scramble.' },
-  { title: 'No real stock visibility', body: 'You find out something is sold out only when it becomes a problem.' },
-  { title: 'Bespoke and repairs live across too many tools', body: 'Quotes in email, job notes in notebooks, updates in messages.' },
-  { title: 'Customers keep chasing updates', body: 'Without live status, every job creates more calls and confusion.' },
-]
+import Card from './ui/Card'
+import SectionHeader from './ui/SectionHeader'
+
+/**
+ * Pain points per Kaitlyn's brief (section 8). On hover each card
+ * reveals a champagne-bordered "Nexpura solves this with → <module>"
+ * footer (200ms fade), so the section actively bridges the problem
+ * statement to the solution.
+ */
+
+interface Pain {
+  title: string
+  body: string
+  solution: string
+}
+
+const PAINS: readonly Pain[] = [
+  {
+    title: 'Repairs fall through the cracks',
+    body: 'Jobs get lost. Customers call chasing updates. Staff rely on memory.',
+    solution: 'Repair Tracker',
+  },
+  {
+    title: 'Stock visibility is unclear',
+    body: 'You find out something is sold, reserved, missing, or unavailable too late.',
+    solution: 'Inventory Intelligence',
+  },
+  {
+    title: 'Bespoke jobs live in too many places',
+    body: 'Quotes, notes, photos, approvals, and deposits are scattered across messages and notebooks.',
+    solution: 'Bespoke Orders',
+  },
+  {
+    title: 'Customers keep chasing updates',
+    body: 'Without live statuses, every job creates more calls, confusion, and admin.',
+    solution: 'Customer Updates',
+  },
+] as const
 
 export default function LandingPainPoints() {
   return (
-    <section className="bg-white py-20 lg:py-36 px-6 sm:px-10 lg:px-20">
+    <section className="bg-white py-24 lg:py-32 px-6 sm:px-12">
       <div className="max-w-[1200px] mx-auto">
-        <h2
-          className="nx-fade-in-blur font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.1] tracking-[-0.01em] text-stone-900 text-center mb-16"
-        >
-          Sound familiar?
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-          {pains.map((pain, i) => (
-            <div
+        <SectionHeader
+          title="Still running jewellery workflows across notebooks, spreadsheets, and messages?"
+          subtitle="Nexpura replaces disconnected tools with one connected operating system built around the way jewellers actually work."
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 mt-14">
+          {PAINS.map((pain) => (
+            <Card
               key={pain.title}
-              style={{ animationDelay: `${i * 0.07}s` }}
-              className="nx-fade-in-up border border-stone-100 rounded-2xl p-7"
+              as="article"
+              className="group relative overflow-hidden flex flex-col m-reveal !p-0"
             >
-              <h3 className="font-serif text-lg text-stone-900 mb-2">{pain.title}</h3>
-              <p className="text-[0.9375rem] text-stone-400 leading-relaxed">{pain.body}</p>
-            </div>
+              <div className="p-7 flex-1">
+                <h3 className="font-serif text-[20px] leading-[1.25] text-m-charcoal">
+                  {pain.title}
+                </h3>
+                <p className="mt-3 text-[15px] leading-[1.6] text-m-text-secondary">
+                  {pain.body}
+                </p>
+              </div>
+
+              {/* Solution bridge — fades in on hover, with a champagne
+                  top border so the visual ties to the rest of the
+                  page's accent palette. */}
+              <div
+                className="border-t border-m-champagne bg-[#FDFAF4] px-7 py-3 opacity-0 translate-y-1 transition-all duration-200 [transition-timing-function:var(--m-ease)] group-hover:opacity-100 group-hover:translate-y-0"
+                aria-hidden
+              >
+                <span className="text-[12px] tracking-[0.05em] text-m-text-muted">
+                  Nexpura solves this with →{' '}
+                </span>
+                <span className="text-[13px] font-medium text-m-charcoal">{pain.solution}</span>
+              </div>
+            </Card>
           ))}
         </div>
-        <p
-          style={{ animationDelay: '0.3s' }}
-          className="nx-fade-in text-center font-serif text-xl sm:text-2xl text-stone-900"
-        >
-          Nexpura brings every workflow into one place — so nothing gets lost, delayed, or disconnected.
+
+        <p className="mt-16 text-center font-sans text-[20px] sm:text-[22px] leading-[1.5] text-m-charcoal max-w-[760px] mx-auto m-reveal">
+          Nexpura brings every workflow into one connected platform, so nothing gets lost, delayed, or disconnected.
         </p>
       </div>
     </section>
