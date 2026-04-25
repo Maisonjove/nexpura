@@ -41,7 +41,14 @@ export async function sendTwilioWhatsApp(
 
   // Ensure phone number starts with +
   const cleanTo = to.startsWith("+") ? to : `+${to.replace(/\D/g, "")}`;
-  const cleanFrom = fromNumber.startsWith("+") ? fromNumber : `+${fromNumber}`;
+
+  // Defensive: tolerate TWILIO_WHATSAPP_NUMBER being set with or without
+  // a leading `whatsapp:` prefix. Pre-fix, an env value of
+  // "whatsapp:+1234567890" produced twilioFrom="whatsapp:+whatsapp:+1234567890"
+  // which Twilio rejects with 63007 ("no Channel with this From address")
+  // and the error is invisible from the env screen alone.
+  const fromStripped = fromNumber.replace(/^whatsapp:/i, "").trim();
+  const cleanFrom = fromStripped.startsWith("+") ? fromStripped : `+${fromStripped}`;
 
   // Twilio WhatsApp format: whatsapp:+number
   const twilioTo = `whatsapp:${cleanTo}`;
@@ -66,10 +73,22 @@ export async function sendTwilioWhatsApp(
     const data = await response.json();
 
     if (!response.ok) {
-      logger.error("[twilio-whatsapp] Send failed:", data);
+      logger.error("[twilio-whatsapp] Send failed", {
+        twilioCode: data.code,
+        twilioMessage: data.message,
+        moreInfo: data.more_info,
+        httpStatus: response.status,
+        from: twilioFrom,
+      });
+      // Bake the Twilio numeric code into the persisted error so ops
+      // can grep without tailing logs. 63007 in particular is the
+      // "From channel not configured" signal — by far the most common
+      // 'why didn't WhatsApp arrive?' cause and the one that needs a
+      // dashboard fix, not a code fix.
+      const baseMessage = data.message || `HTTP ${response.status}`;
       return {
         success: false,
-        error: data.message || `HTTP ${response.status}`,
+        error: data.code ? `[${data.code}] ${baseMessage}` : baseMessage,
       };
     }
 
