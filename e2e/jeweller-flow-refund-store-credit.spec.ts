@@ -258,7 +258,7 @@ test.describe("Refund → store credit flow", () => {
     >(
       `SELECT id, refund_number, total::numeric AS total, refund_method
        FROM refunds
-       WHERE tenant_id = '${TEST_TENANT_ID}'::uuid AND sale_id = '${sale.id}'::uuid
+       WHERE tenant_id = '${TEST_TENANT_ID}'::uuid AND original_sale_id = '${sale.id}'::uuid
        ORDER BY created_at DESC LIMIT 1`,
     );
     expect(refunds.length, "refund should be recorded").toBe(1);
@@ -266,9 +266,9 @@ test.describe("Refund → store credit flow", () => {
     expect(Number(refund.total)).toBeCloseTo(saleTotal, 2);
     expect(refund.refund_method).toBe("store_credit");
 
-    // refund_items mirror the sale items
-    const refundItems = await runDbQuery<Array<{ quantity: number; total: string }>>(
-      `SELECT quantity, total::numeric AS total FROM refund_items
+    // refund_items mirror the sale items (column is `line_total`).
+    const refundItems = await runDbQuery<Array<{ quantity: number; line_total: string }>>(
+      `SELECT quantity, line_total::numeric AS line_total FROM refund_items
        WHERE tenant_id = '${TEST_TENANT_ID}'::uuid AND refund_id = '${refund.id}'::uuid`,
     );
     expect(refundItems.length).toBe(1);
