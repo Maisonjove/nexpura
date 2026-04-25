@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
 import { sendWhatsAppMessage } from "@/lib/whatsapp-notifications";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import logger from "@/lib/logger";
 
 export type OrderType = "repair" | "bespoke";
@@ -28,7 +28,14 @@ export interface OrderMessage {
 // Matches the format enforced by the `generate_tracking_id` DB function and
 // by the tracking page's own validator (see
 // src/app/track/[trackingId]/page.tsx:44). Keep these in lockstep.
-const TRACKING_ID_RE = /^(RPR|BSP)-[A-F0-9]{8}$/i;
+//
+// Accepts 8 OR 12 hex chars: 8 is the legacy length, 12 is the current
+// generator output (migration 20260424_tracking_id_entropy + 20260425_
+// tracking_id_strip_uuid_dash). Pre-fix this regex required exactly 8,
+// so customer messages and approve/decline against the new 12-char IDs
+// were silently rejected with "Invalid tracking ID" — the optimistic
+// UI echoed but the server insert never happened.
+const TRACKING_ID_RE = /^(RPR|BSP)-[A-F0-9]{8,12}$/i;
 
 /**
  * Customer-side public message send. Called from /track/[trackingId] with no
@@ -128,6 +135,12 @@ export async function postCustomerMessage(params: {
   }).catch((err) => {
     logger.error("[postCustomerMessage] whatsapp notify failed (message saved OK)", { err });
   });
+
+  // /track/[trackingId] wraps fetchOrderData in unstable_cache with tag
+  // 'tracking' (30s revalidate). Bust it so the customer's reload picks
+  // up the fresh state immediately. Optimistic UI hides the lag for the
+  // active tab, this fixes the multi-device / hard-reload case.
+  revalidateTag("tracking", "default");
 
   return { success: true };
 }
@@ -280,6 +293,12 @@ export async function submitBespokeDecision(params: {
     logger.error("[submitBespokeDecision] whatsapp notify failed (decision saved OK)", { err });
   });
 
+  // Bust the cached tracking page so a hard refresh after approve/decline
+  // doesn't bring back the Approve/Request changes buttons (which would
+  // then 4xx with "already approved" — confusing UX). Optimistic UI in
+  // BespokeDecisionCard handles the active tab.
+  revalidateTag("tracking", "default");
+
   return { success: true };
 }
 
@@ -426,6 +445,9 @@ export async function postStaffReply(params: {
     // Revalidate the staff-facing detail page so the refreshed thread shows up.
     const path = params.orderType === "repair" ? `/repairs/${params.orderId}` : `/bespoke/${params.orderId}`;
     revalidatePath(path);
+    // And bust the customer's cached tracking page so they see the
+    // jeweller's reply on their next reload (otherwise stale up to 30s).
+    revalidateTag("tracking", "default");
 
     return { success: true };
   } catch (err) {
