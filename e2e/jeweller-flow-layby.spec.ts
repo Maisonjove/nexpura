@@ -65,13 +65,19 @@ async function seedCustomer(): Promise<{ id: string; name: string }> {
 test.describe("Layby flow", () => {
   test.skip(!EMAIL || !PASSWORD, "set NEXPURA_TEST_EMAIL + NEXPURA_TEST_PASSWORD");
   test.skip(!SUPABASE_PAT, "set SUPABASE_PAT");
-  // Currently flakey on the test tenant — the POS error boundary trips
-  // mid-flow ("Failed to load this page") and we can't repro on demand.
-  // Likely caused by an accumulated-fixture issue (50+ QA customers + items
-  // in the test tenant push the POS page into a slow render). Marked
-  // .skip until the test tenant is reset or the layby flow is rewritten
-  // to seed via direct SQL instead of driving the cart UI.
-  test.skip(true, "layby flow flaky on shared test tenant — see comment");
+  // Skipped: hits Next.js 16 cacheComponents "invalid postponed state"
+  // error on the /dashboard POST that fires from the LocationPicker
+  // server action right before the layby cart-customer-pick step.
+  // Repros via Vercel runtime logs:
+  //   POST /test-4-psd98/dashboard
+  //   Failed to parse postponed state
+  //   Error: Invariant: invalid postponed state �...
+  // The same flow works fine in the repair / inventory / quote / bespoke
+  // specs that also call pickFirstLocation — so the bug is intermittent
+  // and likely a Next 16 PPR edge case rather than a deterministic
+  // application bug. Tracked separately; spec is shipped so it can be
+  // re-enabled once the Next 16 dashboard-render issue is fixed.
+  test.skip(true, "blocked by Next 16 'invalid postponed state' error on /dashboard server-action POST");
   test.setTimeout(5 * 60 * 1000);
 
   test("create layby with deposit → verify sale.status='layby' + payment recorded", async ({ browser }) => {
