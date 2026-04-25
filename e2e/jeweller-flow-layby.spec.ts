@@ -105,13 +105,34 @@ test.describe("Layby flow", () => {
     await page.locator("button", { hasText: item.name }).first().click();
     await page.waitForTimeout(500);
 
-    // Pick customer in the cart-panel's customer search
+    // Pick customer in the cart-panel's customer search.
+    // Hardening note: the CartPanel dropdown closes 200ms after the
+    // input loses focus, and React doesn't always commit the
+    // setShowCustomerDropdown(true) before Playwright's next instruction
+    // fires. So:
+    //   1. click() the input (focus, opens dropdown via onFocus)
+    //   2. fill() the name (filters customers prop)
+    //   3. waitFor() the SPECIFIC option button to be visible — this
+    //      blocks until the dropdown actually rendered, even if React's
+    //      commit was delayed
+    //   4. dispatchEvent('mousedown') instead of click() — CartPanel
+    //      uses onMouseDown to select the customer (so the input's
+    //      onBlur 200ms timer doesn't beat the click), so a synthetic
+    //      mousedown is the highest-fidelity reproduction of a real
+    //      tap. Playwright's click() also fires mousedown, but adds a
+    //      stability re-check that occasionally misses the 200ms
+    //      window — dispatchEvent skips the re-check.
     const custSearch = page.getByPlaceholder(/Search customer/i).first();
     await expect(custSearch).toBeVisible({ timeout: 10_000 });
+    await custSearch.click();
     await custSearch.fill(customer.name);
-    await page.waitForTimeout(500);
-    await page.locator("button", { hasText: customer.name }).first().click();
-    await page.waitForTimeout(500);
+    const customerOption = page
+      .locator("button")
+      .filter({ hasText: customer.name })
+      .first();
+    await customerOption.waitFor({ state: "visible", timeout: 8_000 });
+    await customerOption.dispatchEvent("mousedown");
+    await page.waitForTimeout(400);
 
     // Open payment modal
     const chargeBtn = page.getByRole("button", { name: /^Charge \$/i }).first();
