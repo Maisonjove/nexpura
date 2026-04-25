@@ -39,16 +39,28 @@ export async function POST(
 
   const adminClient = createAdminClient();
 
+  // Schema reality (verified 2026-04-25 against vkpjocnrefjfpuovzinn):
+  //   bespoke_jobs has NO customer_name / design_notes / estimated_cost /
+  //   final_cost / completed_at / notes columns. Selecting them returned
+  //   PGRST204 → `error` was set → route 404'd. Effect: every "Email
+  //   receipt" + "PDF" click on a bespoke job returned "Not found" with
+  //   no diagnostic. Map onto the real columns:
+  //     customer_name   → customers.full_name (already in the join)
+  //     design_notes    → client_notes
+  //     estimated_cost  → quoted_price
+  //     final_cost      → final_price
+  //     completed_at    → drop (not stored separately; stage===completed)
+  //     notes           → internal_notes
   const { data: job, error } = await adminClient
     .from("bespoke_jobs")
     .select(
-      `id, job_number, location_id, customer_id, customer_name, customer_email,
+      `id, job_number, location_id, customer_id, customer_email,
        title, description, order_type, jewellery_type, stage, priority,
        metal_type, metal_colour, metal_purity, metal_weight_grams,
        stone_type, stone_colour, stone_carat,
-       design_notes, client_notes, internal_notes,
-       estimated_cost, final_cost, deposit_amount, deposit_received,
-       due_date, completed_at, notes, created_at,
+       client_notes, internal_notes,
+       quoted_price, final_price, deposit_amount, deposit_received,
+       due_date, created_at,
        customers(full_name, email, phone, address)`
     )
     .eq("id", id)
@@ -91,7 +103,7 @@ export async function POST(
     tenantEmail: tenant?.email ?? undefined,
     tenantAddress: tenantAddress || undefined,
     tenantAbn: tenant?.abn ?? undefined,
-    customerName: customer?.full_name ?? job.customer_name,
+    customerName: customer?.full_name ?? null,
     customerPhone: customer?.phone,
     customerEmail: customer?.email ?? job.customer_email,
     stage: job.stage,
@@ -104,8 +116,12 @@ export async function POST(
     stoneType: job.stone_type,
     stoneColour: job.stone_colour,
     stoneCarat: job.stone_carat,
-    designNotes: job.design_notes,
-    estimatedCost: job.estimated_cost,
+    // designNotes / estimatedCost mapped onto the real DB columns. The
+    // earlier *_cost / design_notes column names never existed on
+    // bespoke_jobs and made every PDF/email generate route 404.
+    designNotes: job.client_notes,
+    estimatedCost: job.quoted_price,
+    finalCost: job.final_price,
     depositAmount: job.deposit_amount,
     depositReceived: job.deposit_received,
     dueDate: job.due_date,

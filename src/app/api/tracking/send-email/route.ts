@@ -90,9 +90,13 @@ export async function POST(request: NextRequest) {
         .single();
       order = data;
     } else {
+      // bespoke_jobs has `jewellery_type`, NOT `item_type`. Selecting
+      // item_type returned PGRST204 → order stayed null → 404 "Order not
+      // found" for every bespoke tracking-email retry. Customers of bespoke
+      // jobs never received the resend-tracking-link email.
       const { data } = await admin
         .from("bespoke_jobs")
-        .select("tracking_id, customer_email, description, item_type, estimated_completion_date, location_id")
+        .select("tracking_id, customer_email, description, jewellery_type, estimated_completion_date, location_id")
         .eq("id", orderId)
         .eq("tenant_id", tenantId)
         .single();
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
           tracking_id: data.tracking_id,
           customer_email: data.customer_email,
           item_description: data.description,
-          item_type: data.item_type,
+          item_type: data.jewellery_type,
           estimated_completion_date: data.estimated_completion_date,
           location_id: data.location_id,
         };

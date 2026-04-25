@@ -39,14 +39,19 @@ export async function GET(
   // Use admin client for data fetch to bypass RLS (same pattern as detail pages)
   const adminClient = createAdminClient();
 
+  // repairs schema does NOT have customer_name / work_required / technician
+  // / completed_at / notes (verified 2026-04-25). Selecting them returned
+  // PGRST204 → every PDF generation returned 404. Map to real columns
+  // (customer_name → customers.full_name, work_required → work_description,
+  // technician → drop, completed_at → collected_at, notes → internal_notes).
   const { data: repair, error } = await adminClient
     .from("repairs")
     .select(
-      `id, repair_number, location_id, customer_id, customer_name, customer_email,
+      `id, repair_number, location_id, customer_id, customer_email,
        item_type, item_description, metal_type, brand, condition_notes,
-       repair_type, work_description, work_required, technician,
+       repair_type, work_description,
        priority, stage, quoted_price, final_price, deposit_amount, deposit_paid,
-       due_date, completed_at, internal_notes, client_notes, notes, created_at,
+       due_date, collected_at, internal_notes, client_notes, created_at,
        customers(full_name, email, phone, address)`
     )
     .eq("id", id)
@@ -85,7 +90,7 @@ export async function GET(
     tenantEmail: tenant?.email ?? undefined,
     tenantAddress: tenantAddress || undefined,
     tenantAbn: tenant?.abn ?? undefined,
-    customerName: customerRaw?.full_name ?? repair.customer_name,
+    customerName: customerRaw?.full_name ?? null,
     customerPhone: customerRaw?.phone,
     customerEmail: customerRaw?.email ?? repair.customer_email,
     itemType: repair.item_type,
@@ -102,7 +107,7 @@ export async function GET(
     depositAmount: repair.deposit_amount,
     depositPaid: repair.deposit_paid,
     dueDate: repair.due_date,
-    technician: repair.technician,
+    technician: undefined,
     clientNotes: repair.client_notes,
     createdAt: repair.created_at,
   };

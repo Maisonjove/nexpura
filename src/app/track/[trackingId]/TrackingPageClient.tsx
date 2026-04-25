@@ -39,12 +39,19 @@ interface OrderData {
   }>;
 }
 
-// Status configurations for visual progress
+// Status configurations for visual progress.
+// CRITICAL: keys here MUST match the DB CHECK constraints
+// (`repairs_stage_valid`, `bespoke_jobs_stage_valid` from migration
+// 20260421_stage_check_constraints.sql). Earlier the customer's
+// progress tracker referenced `quality_check`, `cad`, `production` —
+// none allowed by the constraint, so any in-flight job hit
+// `findIndex` → -1 → bar rendered 0% width regardless of progress.
 const REPAIR_STAGES = [
   { key: "intake", label: "Received", icon: "📥" },
   { key: "assessed", label: "Assessed", icon: "🔍" },
+  { key: "quoted", label: "Quoted", icon: "💬" },
+  { key: "approved", label: "Approved", icon: "👍" },
   { key: "in_progress", label: "In Progress", icon: "⚒️" },
-  { key: "quality_check", label: "Quality Check", icon: "✅" },
   { key: "ready", label: "Ready", icon: "🎉" },
   { key: "collected", label: "Collected", icon: "🏠" },
 ];
@@ -53,10 +60,10 @@ const BESPOKE_STAGES = [
   { key: "enquiry", label: "Enquiry", icon: "💬" },
   { key: "consultation", label: "Consultation", icon: "🤝" },
   { key: "design", label: "Design", icon: "✏️" },
-  { key: "cad", label: "CAD Model", icon: "💎" },
+  { key: "design_review", label: "Design Review", icon: "👀" },
+  { key: "quoted", label: "Quoted", icon: "📋" },
   { key: "approved", label: "Approved", icon: "👍" },
-  { key: "production", label: "Production", icon: "⚒️" },
-  { key: "quality_check", label: "Quality Check", icon: "✅" },
+  { key: "in_progress", label: "In Production", icon: "⚒️" },
   { key: "ready", label: "Ready", icon: "🎉" },
   { key: "collected", label: "Collected", icon: "🏠" },
 ];

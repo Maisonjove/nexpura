@@ -140,7 +140,7 @@ export async function completeLayby(
   // Mark sale as completed (atomic status transition)
   const { error: updateErr, count } = await admin
     .from("sales")
-    .update({ status: "completed", paid_at: new Date().toISOString() })
+    .update({ status: "completed" })
     .eq("id", saleId)
     .eq("tenant_id", tenantId)
     .eq("status", "layby"); // Only update if still 'layby' — prevents race
@@ -175,7 +175,7 @@ export async function completeLayby(
         // Rollback layby status
         await admin
           .from("sales")
-          .update({ status: "layby", paid_at: null })
+          .update({ status: "layby" })
           .eq("id", saleId)
           .eq("tenant_id", tenantId);
         return { error: `Insufficient stock for "${item.description}". Available: ${oldQty}, Required: ${qty}` };
@@ -203,7 +203,7 @@ export async function completeLayby(
           if (finalQty < 0) {
             await admin
               .from("sales")
-              .update({ status: "layby", paid_at: null })
+              .update({ status: "layby" })
               .eq("id", saleId)
               .eq("tenant_id", tenantId);
             return { error: `Item "${item.description}" just sold out. Cannot complete layby.` };

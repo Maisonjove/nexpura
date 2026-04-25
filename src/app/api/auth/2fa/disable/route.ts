@@ -46,7 +46,12 @@ export async function POST(request: NextRequest) {
       // 2FA is already off — idempotent success (no info leak).
       return NextResponse.json({ success: true });
     }
-    const codeOk = verifyTOTPToken(profile.totp_secret, token);
+    // verifyTOTPToken signature is (token, secret) — passing them in the
+    // opposite order treated the user's 6-digit code as the secret (which
+    // otplib rejects on shape) and the actual secret as the code. Result:
+    // every disable attempt returned "Invalid code" → users could never
+    // turn TOTP off through the UI.
+    const codeOk = verifyTOTPToken(token, profile.totp_secret);
     if (!codeOk) {
       return NextResponse.json(
         { error: 'Invalid code — try again with a fresh code from your authenticator app.' },

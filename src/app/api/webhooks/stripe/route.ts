@@ -279,14 +279,19 @@ async function handleSubscriptionDeleted(
     .maybeSingle();
 
   if (sub) {
+    // subscriptions.status CHECK constraint only accepts 'canceled'
+    // (US spelling). Writing 'cancelled' (UK) raised 23514 on every
+    // customer.subscription.deleted event → handler 500'd, idempotency
+    // lock rolled back, Stripe retried forever, tenant stayed "active"
+    // in our DB after they cancelled in the portal.
     await supabase
       .from("subscriptions")
-      .update({ status: "cancelled" })
+      .update({ status: "canceled" })
       .eq("id", sub.id);
 
     await supabase
       .from("tenants")
-      .update({ subscription_status: "cancelled" })
+      .update({ subscription_status: "canceled" })
       .eq("id", sub.tenant_id);
   }
 
@@ -367,14 +372,18 @@ async function handlePaymentSucceeded(
 }
 
 function mapStripeStatus(status: Stripe.Subscription.Status): string {
+  // subscriptions.status CHECK constraint accepts only US spelling
+  // 'canceled' (and not 'cancelled'). Mapping to 'cancelled' here
+  // raised 23514 on every cancellation flow and rolled back the
+  // idempotency lock — Stripe retried forever.
   const map: Record<string, string> = {
     active: "active",
     trialing: "trialing",
     past_due: "past_due",
-    canceled: "cancelled",
+    canceled: "canceled",
     unpaid: "suspended",
     incomplete: "incomplete",
-    incomplete_expired: "cancelled",
+    incomplete_expired: "canceled",
     paused: "paused",
   };
   return map[status] || "active";
