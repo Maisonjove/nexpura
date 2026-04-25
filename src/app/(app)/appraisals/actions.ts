@@ -204,9 +204,40 @@ export async function updateAppraisal(
       .eq("tenant_id", tenantId)
       .single();
     
+    // Whitelist allowed update keys. The previous shape spread `updates`
+    // straight into the SET clause; a caller could ship `tenant_id`,
+    // `id`, `created_by` and the WHERE filter on tenant only constrains
+    // *which* row is matched, not what's overwritten — meaning a
+    // malicious payload could move the appraisal cross-tenant or
+    // reassign authorship.
+    const allowedKeys = [
+      "item_name",
+      "item_description",
+      "appraisal_type",
+      "metal_type",
+      "metal_weight_grams",
+      "stone_type",
+      "stone_carat",
+      "stone_colour",
+      "stone_clarity",
+      "appraised_value",
+      "currency",
+      "status",
+      "notes",
+      "appraised_at",
+      "valid_until",
+      "appraiser_name",
+      "appraiser_license",
+      "customer_id",
+      "location_id",
+    ] as const;
+    const safeUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    for (const key of allowedKeys) {
+      if (key in updates) safeUpdates[key] = (updates as Record<string, unknown>)[key];
+    }
     const { error } = await admin
       .from("appraisals")
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(safeUpdates)
       .eq("id", id)
       .eq("tenant_id", tenantId);
     if (error) return { error: error.message };

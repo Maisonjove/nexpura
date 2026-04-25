@@ -314,27 +314,32 @@ export async function updateCustomer(
 }
 
 export async function archiveCustomer(id: string): Promise<{ success?: boolean; error?: string }> {
+  // RBAC: archive is a destructive action — require owner or manager.
+  // Low-privilege roles (salesperson, workshop, inventory, accountant)
+  // can still create + update customers but cannot soft-delete them.
+  let tenantId: string | null = null;
+  let userId: string | undefined;
+  let oldData: { full_name: string; email: string | null; mobile: string | null } | null = null;
   try {
-    // RBAC: archive is a destructive action — require owner or manager.
-    // Low-privilege roles (salesperson, workshop, inventory, accountant)
-    // can still create + update customers but cannot soft-delete them.
     const ctx = await requireAuth();
     if (!ctx.isManager && !ctx.isOwner) {
       return { error: "Only owner or manager can archive customers." };
     }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    userId = user?.id;
 
-    const tenantId = await getTenantId().catch(() => null);
+    tenantId = (await getTenantId().catch(() => null)) as string | null;
     if (!tenantId) return { error: "Not authenticated" };
 
     // Get old data for audit
-    const { data: oldData } = await supabase
+    const oldResult = await supabase
       .from("customers")
       .select("full_name, email, mobile")
       .eq("id", id)
       .eq("tenant_id", tenantId)
       .single();
+    oldData = oldResult.data ?? null;
 
     const { error } = await supabase
       .from("customers")
@@ -346,8 +351,8 @@ export async function archiveCustomer(id: string): Promise<{ success?: boolean; 
 
     after(() =>
       logAuditEvent({
-        tenantId,
-        userId: user?.id,
+        tenantId: tenantId!,
+        userId,
         action: "customer_delete",
         entityType: "customer",
         entityId: id,
@@ -357,11 +362,14 @@ export async function archiveCustomer(id: string): Promise<{ success?: boolean; 
 
     revalidatePath("/customers");
     revalidateTag(CACHE_TAGS.customers(tenantId), "default");
-    redirect("/customers");
   } catch (error) {
     logger.error("archiveCustomer failed", { error });
     return { error: "Operation failed" };
   }
+  // redirect() throws NEXT_REDIRECT — must run OUTSIDE the try/catch or
+  // the catch eats it and the user sees an "Operation failed" toast even
+  // though the soft-delete succeeded.
+  redirect("/customers");
 }
 
 export async function addCustomerNote(

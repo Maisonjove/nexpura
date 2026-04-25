@@ -406,64 +406,57 @@ export async function adjustStock(
   const tenantId = await getTenantId(supabase);
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Get current quantity
-  const { data: item, error: fetchError } = await supabase
+  // The DB has a BEFORE INSERT trigger `sync_inventory_on_stock_movement_insert`
+  // (function `sync_inventory_quantity()` — verified 2026-04-25) that:
+  //   1. Reads inventory.quantity at insert time
+  //   2. Computes new = GREATEST(current + quantity_change, 0)
+  //   3. UPDATEs inventory.quantity = new
+  //   4. Sets NEW.quantity_after = new (so the row's column is correct)
+  //
+  // The pre-trigger code did its own SELECT-then-UPDATE-then-INSERT,
+  // which means every adjust applied 2x: explicit UPDATE deducted X,
+  // then the trigger deducted X again from the post-update read.
+  // Verified by tracing oldQty=10, change=-3 → explicit set to 7 → trigger
+  // reads 7, adds -3 → 4 → inventory ends at 4 instead of 7.
+  //
+  // The pre-flight check below preserves the "no negative stock" UX
+  // (so the user sees a friendly error instead of a 0 quantity)
+  // without doing an actual write — the trigger's GREATEST(...,0)
+  // is the source of truth.
+  const { data: item } = await supabase
     .from("inventory")
     .select("quantity")
     .eq("id", inventoryId)
     .eq("tenant_id", tenantId)
     .single();
 
-  if (fetchError || !item) throw new Error("Item not found");
-
-  const oldQuantity = item.quantity;
-  const newQuantity = oldQuantity + quantityChange;
-  if (newQuantity < 0) throw new Error("Stock cannot go below 0");
-
-  // Atomic update with conditional check (race-safe)
-  const { error: updateError, count } = await supabase
-    .from("inventory")
-    .update({ quantity: newQuantity })
-    .eq("id", inventoryId)
-    .eq("tenant_id", tenantId)
-    .eq("quantity", oldQuantity); // Only update if quantity unchanged
-
-  // If race occurred, retry with current quantity
-  let finalQuantity = newQuantity;
-  if (updateError || count === 0) {
-    const { data: itemRetry } = await supabase
-      .from("inventory")
-      .select("quantity")
-      .eq("id", inventoryId)
-      .eq("tenant_id", tenantId)
-      .single();
-    
-    if (!itemRetry) throw new Error("Item not found on retry");
-    
-    finalQuantity = itemRetry.quantity + quantityChange;
-    if (finalQuantity < 0) throw new Error("Stock cannot go below 0");
-    
-    const { error: retryError } = await supabase
-      .from("inventory")
-      .update({ quantity: finalQuantity })
-      .eq("id", inventoryId)
-      .eq("tenant_id", tenantId);
-    
-    if (retryError) throw new Error(retryError.message);
+  if (!item) throw new Error("Item not found");
+  if (item.quantity + quantityChange < 0) {
+    throw new Error("Stock cannot go below 0");
   }
 
-  // Insert movement with accurate final quantity (immutable)
+  // Insert movement — the trigger handles the inventory.quantity update
+  // and computes quantity_after itself (so we don't need to send it).
   const { error: movError } = await supabase.from("stock_movements").insert({
     tenant_id: tenantId,
     inventory_id: inventoryId,
     movement_type: movementType,
     quantity_change: quantityChange,
-    quantity_after: finalQuantity,
     notes: notes || null,
     created_by: user?.id,
   });
 
   if (movError) throw new Error(movError.message);
+
+  // Re-read for the audit log so we record the post-trigger value.
+  const { data: itemAfter } = await supabase
+    .from("inventory")
+    .select("quantity")
+    .eq("id", inventoryId)
+    .eq("tenant_id", tenantId)
+    .single();
+  const oldQuantity = item.quantity;
+  const finalQuantity = itemAfter?.quantity ?? oldQuantity + quantityChange;
 
   // Log audit event
   await logAuditEvent({

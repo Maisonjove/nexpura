@@ -116,9 +116,29 @@ export async function updateQuote(id: string, input: Partial<QuoteInput>): Promi
 
     if (!userData?.tenant_id) return { error: "No tenant found" };
 
+    // Whitelist allowed update keys. Spreading the whole input let a
+    // caller ship `tenant_id` and PostgREST would happily SET it (the
+    // WHERE clause limits which row matches, not what's overwritten),
+    // moving the quote across tenants. customer_id, items, status,
+    // total_amount, expires_at, notes, terms, quote_number cover the
+    // legitimate updates from the UI.
+    const allowedKeys = [
+      "customer_id",
+      "items",
+      "status",
+      "total_amount",
+      "expires_at",
+      "notes",
+      "terms",
+      "quote_number",
+    ] as const;
+    const safe: Record<string, unknown> = {};
+    for (const k of allowedKeys) {
+      if (k in input) safe[k] = (input as Record<string, unknown>)[k];
+    }
     const { data, error } = await supabase
       .from("quotes")
-      .update(input)
+      .update(safe)
       .eq("id", id)
       .eq("tenant_id", userData.tenant_id)
       .select()
