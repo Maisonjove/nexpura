@@ -25,9 +25,6 @@ export interface CachedUserProfile {
   tenant_id: string | null;
   role: string | null;
   full_name: string | null;
-  phone: string | null;
-  preferred_location_id: string | null;
-  is_super_admin: boolean;
   created_at: string;
   updated_at: string;
   // PR-05: surfaced so middleware can enforce the AAL2 gate without a
@@ -75,7 +72,7 @@ export async function getCachedUserProfile(
       const { data, error } = await admin
         .from("users")
         .select(
-          "id, email, tenant_id, role, full_name, phone, preferred_location_id, is_super_admin, created_at, updated_at, totp_enabled, " +
+          "id, email, tenant_id, role, full_name, created_at, updated_at, totp_enabled, " +
             "tenants(id, name, slug, business_name, business_type, currency, timezone, subscription_status, logo_url, phone, email, abn, address_line1, suburb, state, postcode, country, tax_rate, tax_name, tax_inclusive)",
         )
         .eq("id", userId)
