@@ -420,54 +420,64 @@ export default async function BlogPostPage({ params }: Props) {
   const relatedPosts = posts.filter((p) => p.slug !== slug).slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-m-ivory">
       {/* Hero */}
-      <section className="bg-stone-950 text-white py-20">
-        <div className="max-w-3xl mx-auto px-6">
+      <section className="bg-m-charcoal text-white py-24 lg:py-32 px-6 sm:px-10 lg:px-20">
+        <div className="max-w-[820px] mx-auto">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-2 text-stone-400 hover:text-amber-400 text-sm mb-8 transition-colors"
+            className="inline-flex items-center gap-2 text-m-champagne-soft hover:text-m-champagne text-[14px] mb-8 transition-colors duration-200"
           >
             <ArrowLeft size={14} />
             Back to blog
           </Link>
-          <div className="flex items-center gap-3 mb-6">
-            <span className="text-xs font-bold text-amber-400 bg-amber-600/20 border border-amber-600/30 px-3 py-1 rounded-full uppercase tracking-wider">
+          <div className="flex items-center gap-3 mb-6 flex-wrap">
+            <span className="text-[10px] font-medium text-m-charcoal bg-m-champagne-tint border border-m-champagne-soft px-2.5 py-0.5 rounded-full uppercase tracking-[0.12em]">
               {post.category}
             </span>
-            <span className="flex items-center gap-1.5 text-xs text-stone-400">
+            <span className="flex items-center gap-1.5 text-[12px] text-m-champagne-soft">
               <Calendar size={12} />
-              {new Date(post.date).toLocaleDateString("en-AU", { year: "numeric", month: "long", day: "numeric" })}
+              {new Date(post.date).toLocaleDateString("en-AU", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
             </span>
-            <span className="flex items-center gap-1.5 text-xs text-stone-400">
+            <span className="flex items-center gap-1.5 text-[12px] text-m-champagne-soft">
               <Clock size={12} />
               {post.readTime}
             </span>
           </div>
-          <h1 className="text-4xl font-semibold tracking-tight leading-tight mb-6">
+          <h1 className="font-serif text-[36px] sm:text-[44px] lg:text-[clamp(2.25rem,4vw,3.5rem)] font-normal leading-[1.1] tracking-[-0.015em] mb-6">
             {post.title}
           </h1>
-          <p className="text-lg text-stone-400 leading-relaxed">{post.excerpt}</p>
-          <div className="mt-6 text-sm text-stone-500">By {post.author}</div>
+          <p className="text-[16px] sm:text-[18px] text-m-champagne-soft leading-[1.55]">{post.excerpt}</p>
+          <div className="mt-6 text-[14px] text-m-champagne-soft">By {post.author}</div>
         </div>
       </section>
 
       {/* Content + Sidebar */}
-      <section className="py-16">
-        <div className="max-w-5xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <section className="py-16 lg:py-24 px-6 sm:px-10 lg:px-20">
+        <div className="max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Article content */}
-          <article className="lg:col-span-2 prose prose-stone prose-sm max-w-none">
+          <article className="lg:col-span-2 max-w-none">
             {post.content.split("\n\n").map((block, i) => {
               if (block.startsWith("## ")) {
                 return (
-                  <h2 key={i} className="text-xl font-semibold text-stone-900 mt-8 mb-3">
+                  <h2
+                    key={i}
+                    className="font-serif text-[24px] lg:text-[28px] text-m-charcoal mt-10 mb-3 leading-[1.25] font-medium"
+                  >
                     {block.replace("## ", "")}
                   </h2>
                 );
               }
               if (block.startsWith("### ")) {
                 return (
-                  <h3 key={i} className="text-base font-semibold text-stone-800 mt-6 mb-2">
+                  <h3
+                    key={i}
+                    className="font-sans font-semibold text-[18px] text-m-charcoal mt-7 mb-2"
+                  >
                     {block.replace("### ", "")}
                   </h3>
                 );
@@ -475,15 +485,20 @@ export default async function BlogPostPage({ params }: Props) {
               if (block.startsWith("- ")) {
                 const items = block.split("\n").filter((l) => l.startsWith("- "));
                 return (
-                  <ul key={i} className="list-disc list-inside space-y-1 text-stone-600 text-sm my-4">
+                  <ul
+                    key={i}
+                    className="list-disc list-outside ml-5 space-y-1.5 text-m-text-secondary text-[15px] leading-[1.65] my-4"
+                  >
                     {items.map((item, j) => (
-                      <li key={j}>{item.replace(/^- \*\*(.*?)\*\*:/, (_, m) => `${m}:`).replace("- ", "")}</li>
+                      <li key={j}>
+                        {item.replace(/^- \*\*(.*?)\*\*:/, (_, m) => `${m}:`).replace("- ", "")}
+                      </li>
                     ))}
                   </ul>
                 );
               }
               return (
-                <p key={i} className="text-stone-600 leading-relaxed text-sm my-4">
+                <p key={i} className="text-m-text-secondary leading-[1.65] text-[15px] my-4">
                   {block}
                 </p>
               );
@@ -493,8 +508,8 @@ export default async function BlogPostPage({ params }: Props) {
           {/* Sidebar */}
           <aside className="space-y-8">
             {/* Share */}
-            <div className="bg-stone-50 rounded-2xl p-6 border border-stone-200">
-              <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-stone-900">
+            <div className="bg-m-white-soft rounded-[18px] p-6 border border-m-border-soft">
+              <div className="flex items-center gap-2 mb-4 text-[14px] font-semibold text-m-charcoal">
                 <Share2 size={14} />
                 Share this article
               </div>
@@ -503,7 +518,7 @@ export default async function BlogPostPage({ params }: Props) {
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(`https://nexpura.com/blog/${post.slug}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full text-center px-4 py-2 bg-black text-white text-xs rounded-lg font-medium hover:bg-stone-800 transition-colors"
+                  className="block w-full text-center px-4 py-2.5 bg-m-charcoal text-white text-[13px] rounded-full font-medium hover:bg-m-charcoal-soft transition-colors duration-200"
                 >
                   Share on X / Twitter
                 </a>
@@ -511,7 +526,7 @@ export default async function BlogPostPage({ params }: Props) {
                   href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`https://nexpura.com/blog/${post.slug}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full text-center px-4 py-2 bg-blue-600 text-white text-xs rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  className="block w-full text-center px-4 py-2.5 bg-transparent border border-m-charcoal text-m-charcoal text-[13px] rounded-full font-medium hover:bg-m-champagne-tint transition-colors duration-200"
                 >
                   Share on LinkedIn
                 </a>
@@ -520,7 +535,7 @@ export default async function BlogPostPage({ params }: Props) {
 
             {/* Related posts */}
             <div>
-              <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-stone-900">
+              <div className="flex items-center gap-2 mb-4 text-[14px] font-semibold text-m-charcoal">
                 <Tag size={14} />
                 Related articles
               </div>
@@ -529,29 +544,29 @@ export default async function BlogPostPage({ params }: Props) {
                   <Link
                     key={related.slug}
                     href={`/blog/${related.slug}`}
-                    className="block p-4 bg-white border border-stone-200 rounded-xl hover:border-amber-300 hover:shadow-sm transition-all"
+                    className="block p-4 bg-m-white-soft border border-m-border-soft rounded-[14px] hover:border-m-border-hover hover:shadow-[0_4px_16px_rgba(0,0,0,0.04)] transition-all duration-200"
                   >
-                    <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">
+                    <span className="text-[10px] font-medium text-m-charcoal uppercase tracking-[0.12em] bg-m-champagne-tint border border-m-champagne-soft px-2 py-0.5 rounded-full inline-block">
                       {related.category}
                     </span>
-                    <p className="text-sm font-medium text-stone-800 mt-1 leading-snug">
+                    <p className="text-[14px] font-medium text-m-charcoal mt-2 leading-[1.35]">
                       {related.title}
                     </p>
-                    <p className="text-xs text-stone-400 mt-1">{related.readTime}</p>
+                    <p className="text-[12px] text-m-text-faint mt-1">{related.readTime}</p>
                   </Link>
                 ))}
               </div>
             </div>
 
             {/* CTA */}
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-              <h3 className="font-semibold text-stone-900 text-sm mb-2">Try Nexpura free</h3>
-              <p className="text-xs text-stone-500 mb-4 leading-relaxed">
+            <div className="bg-m-charcoal text-white rounded-[18px] p-6">
+              <h3 className="font-serif text-[20px] mb-2 leading-[1.25]">Try Nexpura free</h3>
+              <p className="text-[13px] text-m-champagne-soft mb-5 leading-[1.55]">
                 The all-in-one platform for modern jewellery businesses.
               </p>
               <Link
                 href="/signup"
-                className="block w-full text-center px-4 py-2 bg-amber-700 text-white text-xs rounded-lg font-medium hover:bg-amber-800 transition-colors"
+                className="block w-full text-center px-4 py-3 bg-white text-m-charcoal text-[14px] rounded-full font-semibold hover:bg-m-champagne-tint transition-colors duration-200"
               >
                 Start free trial
               </Link>
@@ -561,9 +576,12 @@ export default async function BlogPostPage({ params }: Props) {
       </section>
 
       {/* Back */}
-      <section className="py-10 bg-stone-50 border-t border-stone-200">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <Link href="/blog" className="text-sm text-stone-500 hover:text-amber-700 transition-colors font-medium">
+      <section className="py-10 bg-m-white-soft border-t border-m-border-soft">
+        <div className="max-w-[820px] mx-auto px-6 text-center">
+          <Link
+            href="/blog"
+            className="text-[14px] text-m-text-secondary hover:text-m-charcoal transition-colors font-medium"
+          >
             ← Back to The Jeweller&apos;s Journal
           </Link>
         </div>
