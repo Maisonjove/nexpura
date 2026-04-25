@@ -88,8 +88,20 @@ describe("two-factor-cookie helper (W1-001 HIGH)", () => {
 
   it("rejects a tampered HMAC signature", async () => {
     const cookie = (await signTwoFactorCookie("user-abc"))!;
-    // flip the last signature char
-    const tampered = cookie.slice(0, -1) + (cookie.slice(-1) === "A" ? "B" : "A");
+    // Flip the FIRST char of the signature segment (after the dot).
+    // Tampering the LAST char is unsafe in tests because base64-url of a
+    // 32-byte HMAC produces 43 chars where the final char's low 2 bits
+    // are unused — flipping A↔B can leave the decoded bytes identical
+    // and the HMAC verify still passes. CI surfaced this as a flaky
+    // failure: the test passed when the runtime HMAC ended on certain
+    // values and failed when it didn't. Mutating a high-position byte
+    // is collision-free.
+    const dot = cookie.lastIndexOf(".");
+    const sigFirst = cookie.charAt(dot + 1);
+    const tampered =
+      cookie.slice(0, dot + 1) +
+      (sigFirst === "A" ? "B" : "A") +
+      cookie.slice(dot + 2);
     expect(await verifyTwoFactorCookie(tampered, "user-abc")).toBe(false);
   });
 

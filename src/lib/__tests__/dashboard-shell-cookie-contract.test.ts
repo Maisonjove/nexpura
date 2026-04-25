@@ -80,8 +80,11 @@ describe("dashboard shell cookie — sign/verify contract", () => {
     const cookie = await signShellCookie(BASE_PAYLOAD);
     expect(cookie).toBeTruthy();
     const [body, sig] = cookie!.split(".");
-    // Flip a char in the body
-    const tamperedBody = body.slice(0, -1) + (body.endsWith("A") ? "B" : "A");
+    // Flip the FIRST char of the body. Tampering the LAST char is
+    // collision-prone with padding-less base64-url because the trailing
+    // bits get truncated (CI flake repro). Flipping a high-position
+    // byte always changes the decoded payload.
+    const tamperedBody = (body[0] === "A" ? "B" : "A") + body.slice(1);
     const tampered = `${tamperedBody}.${sig}`;
     const payload = await verifyShellCookie(tampered, BASE_PAYLOAD.userId);
     expect(payload).toBeNull();
@@ -91,7 +94,9 @@ describe("dashboard shell cookie — sign/verify contract", () => {
     const cookie = await signShellCookie(BASE_PAYLOAD);
     expect(cookie).toBeTruthy();
     const [body, sig] = cookie!.split(".");
-    const tamperedSig = sig.slice(0, -1) + (sig.endsWith("A") ? "B" : "A");
+    // Same reasoning as the tampered-body test — flip the FIRST sig
+    // char so the byte representation always changes.
+    const tamperedSig = (sig[0] === "A" ? "B" : "A") + sig.slice(1);
     const tampered = `${body}.${tamperedSig}`;
     const payload = await verifyShellCookie(tampered, BASE_PAYLOAD.userId);
     expect(payload).toBeNull();
