@@ -26,22 +26,26 @@ export async function sendWhatsAppMessage(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   // Use platform Twilio directly (env vars: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER)
   const result = await sendTwilioWhatsApp(params.to, params.message);
-  
-  if (result.success) {
-    // Log the notification send
-    const admin = createAdminClient();
-    try {
-      await admin.from("whatsapp_sends").insert({
-        tenant_id: tenantId,
-        phone: params.to,
-        message: params.message,
-        message_type: "notification",
-        status: "sent",
-        twilio_sid: result.messageId,
-      });
-    } catch (err) {
-      logger.warn("[whatsapp-notifications] Failed to log send:", err);
-    }
+
+  // Always log the attempt (success OR failure). Pre-fix the failure
+  // branch was silent — when Twilio rejected (e.g. sandbox-not-joined,
+  // unverified trial number), no DB row landed, so ops had no visibility
+  // into "why didn't my customer get the WhatsApp?". The other helpers
+  // in this file (notifyCustomerJobReady etc.) already log on both
+  // outcomes; this aligns sendWhatsAppMessage with the same pattern.
+  const admin = createAdminClient();
+  try {
+    await admin.from("whatsapp_sends").insert({
+      tenant_id: tenantId,
+      phone: params.to,
+      message: params.message,
+      message_type: "notification",
+      status: result.success ? "sent" : "failed",
+      twilio_sid: result.messageId,
+      error_message: result.error,
+    });
+  } catch (err) {
+    logger.warn("[whatsapp-notifications] Failed to log send:", err);
   }
 
   return result;
