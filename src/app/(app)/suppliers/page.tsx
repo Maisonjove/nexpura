@@ -30,10 +30,13 @@ export default async function SuppliersPage({
     if (!tenantId) redirect("/login");
   }
 
+  // Hide soft-deleted suppliers from the list (migration 20260425e
+  // added the column + a partial index for this filter).
   const { data: suppliers } = await admin
     .from("suppliers")
     .select("id, name, contact_name, email, phone, website, created_at")
     .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
     .order("name", { ascending: true });
 
   return <SupplierListClient suppliers={suppliers ?? []} />;

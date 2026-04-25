@@ -10,10 +10,20 @@ import logger from "@/lib/logger";
 // SECURITY: This is a super admin only endpoint
 export async function POST(request: NextRequest) {
   try {
+    // Rate-limit FIRST so we don't burn a super-admin DB lookup on
+    // every probe. Pre-fix order was: auth + super-admin check first,
+    // rate-limit second — meaning a denial-of-DB-roundtrips attacker
+    // could spam the super_admins SELECT before being rate-limited.
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "anonymous";
+    const { success } = await checkRateLimit(`admin-init-qa:${ip}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     // SECURITY: Require authentication and super admin status
     const serverClient = await createServerClient();
     const { data: { user } } = await serverClient.auth.getUser();
-    
+
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -25,16 +35,9 @@ export async function POST(request: NextRequest) {
       .select("id")
       .eq("user_id", user.id)
       .single();
-    
+
     if (!superAdmin) {
       return NextResponse.json({ error: "Forbidden - Super admin access required" }, { status: 403 });
-    }
-
-    // Rate limit admin operations by IP
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "anonymous";
-    const { success } = await checkRateLimit(`admin-init-qa:${ip}`);
-    if (!success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
     // Use pg_dump style connection via postgres protocol
     const supabase = createClient(

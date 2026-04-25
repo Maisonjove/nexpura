@@ -116,7 +116,13 @@ const PUBLIC_FIELDS_BY_TYPE: Record<IntegrationType, readonly string[]> = {
   xero: ["tenant_name", "expires_at", "connected_at"],
   mailchimp: ["dc", "server_prefix", "list_id", "connected_at"],
   google_calendar: ["calendar_id", "email", "connected_at"],
-  whatsapp: ["phone_number_id", "business_id", "connected_at"],
+  // Setup + connect routes write `business_account_id` (the canonical
+  // Meta WABA ID name); pre-fix the public list said `business_id`,
+  // so the WABA ID was treated as a secret + AES-encrypted at rest.
+  // Reads still worked because decryption merges public+secret, but
+  // any future filter or upsert keyed on the public column would
+  // miss. Align the list with what the routes actually write.
+  whatsapp: ["phone_number_id", "business_account_id", "connected_at"],
   insurance: ["enabled", "provider", "connected_at"],
   twilio: ["account_sid", "phone_number", "connected_at"],
   square: ["merchant_id", "connected_at"],

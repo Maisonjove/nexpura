@@ -38,6 +38,7 @@ export async function getSuppliers() {
     .from("suppliers")
     .select("id, name, contact_name, email, phone, website, created_at")
     .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
     .order("name", { ascending: true });
 
   return { data, error: error?.message ?? null };
@@ -214,9 +215,14 @@ export async function deleteSupplier(
     .eq("tenant_id", tenantId)
     .single();
 
+  // Pre-fix this hard-deleted the supplier row. inventory.supplier_id,
+  // purchase_orders.supplier_id, and memo_items.supplier_id are all
+  // ON DELETE SET NULL, so a hard delete silently severed every
+  // historical purchase record from its source. Soft-delete preserves
+  // the audit trail (migration 20260425e added the column).
   const { error } = await supabase
     .from("suppliers")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id)
     .eq("tenant_id", tenantId);
 

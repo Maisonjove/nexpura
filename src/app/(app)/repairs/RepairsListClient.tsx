@@ -70,6 +70,10 @@ interface Props {
 // ─── Stage data ───────────────────────────────────────────────────────────────
 
 // Stages must match REPAIR_WORKFLOW_STAGES in repairs/[id]/page.tsx exactly
+// Stages must match the DB CHECK constraint repairs_stage_valid.
+// 'quality_check' isn't allowed by the constraint and never gets
+// written, so the filter chip was dead UI — clicking it always
+// rendered "no repairs". Removed.
 export const ALL_REPAIR_STAGES = [
   { key: "all", label: "All" },
   { key: "intake", label: "Intake" },
@@ -77,7 +81,6 @@ export const ALL_REPAIR_STAGES = [
   { key: "quoted", label: "Quoted" },
   { key: "approved", label: "Approved" },
   { key: "in_progress", label: "In Progress" },
-  { key: "quality_check", label: "Quality Check" },
   { key: "ready", label: "Ready" },
   { key: "collected", label: "Collected" },
   { key: "cancelled", label: "Cancelled" },
