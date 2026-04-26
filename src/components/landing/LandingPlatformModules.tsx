@@ -1,66 +1,166 @@
-import SectionHeader from './ui/SectionHeader'
+// ============================================
+// "One system of record for every jewellery workflow"
+// Per Kaitlyn 2026-04-26 brief — replaces the previous 10-module
+// equal-weight list (preserved at LandingPlatformModules.legacy.tsx
+// for repurposing on the dedicated /features page later).
+// Verbatim from spec except the "Explore all features" <a opener was
+// missing in the spec — restored.
+// ============================================
 
-/**
- * Platform modules grid per Kaitlyn's brief (section 10). 10 modules,
- * 5×2 desktop / 2 cols mobile. Each card: champagne 12px number,
- * minimal icon, serif title, one-line body. Hover: lift 4px + champagne
- * border + warm tint + arrow → appears in top-right.
- */
+import React from "react"
+import Link from "next/link"
 
-interface Module {
-  n: string
+type Module = {
   title: string
   body: string
+  icon: React.ReactNode
 }
 
-const MODULES: readonly Module[] = [
-  { n: '01', title: 'POS', body: 'Process jewellery sales with connected customer, stock, and repair data.' },
-  { n: '02', title: 'Inventory', body: 'Track pieces, stones, metals, components, status, location, and movement history.' },
-  { n: '03', title: 'Repairs', body: 'Log, assign, update, and close repair jobs from intake to collection.' },
-  { n: '04', title: 'Bespoke Orders', body: 'Manage custom jobs with approvals, milestones, deposits, sourcing, and production notes.' },
-  { n: '05', title: 'CRM', body: 'Keep customer profiles, purchase history, preferences, and service records connected.' },
-  { n: '06', title: 'Invoicing', body: 'Generate invoices, receipts, balances, and supplier billing in one place.' },
-  { n: '07', title: 'Analytics', body: 'Track sales, workshop, and stock performance through clear reporting.' },
-  { n: '08', title: 'Digital Passports', body: 'Attach authenticity, provenance, materials, and service history to each piece.' },
-  { n: '09', title: 'Memo & Consignment', body: 'Track loaned pieces, returns, and commission splits clearly.' },
-  { n: '10', title: 'AI Copilot', body: 'Ask questions about your business and surface insights across stock, sales, jobs, and performance.' },
-] as const
+// Inline SVG icons — strokeWidth 1.5, currentColor for theming
+const Icon = {
+  pos: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="6" width="18" height="13" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 15h2" />
+      <path d="M13 15h3" />
+    </svg>
+  ),
+  repairs: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m4 20 8-8" />
+      <path d="M14 6a4 4 0 0 1 4 4l3 3-3 3-3-3a4 4 0 0 1-4-4 4 4 0 0 1 3-3Z" />
+    </svg>
+  ),
+  bespoke: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 9 12 3l6 6-6 12L6 9Z" />
+      <path d="M3 9h18" />
+    </svg>
+  ),
+  inventory: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8Z" />
+      <path d="M3.27 6.96 12 12l8.73-5.04" />
+      <path d="M12 22V12" />
+    </svg>
+  ),
+  crm: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+  insights: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 3v18h18" />
+      <path d="M7 15l4-4 3 3 5-6" />
+      <circle cx="18" cy="6" r="1.5" />
+    </svg>
+  ),
+}
+
+const MODULES: Module[] = [
+  {
+    title: "POS & Sales",
+    body:
+      "Process jewellery sales with connected customer, stock, payment, and item history.",
+    icon: Icon.pos,
+  },
+  {
+    title: "Repairs & Workshop",
+    body:
+      "Log, assign, update, and close repair jobs from intake to collection.",
+    icon: Icon.repairs,
+  },
+  {
+    title: "Bespoke Orders",
+    body:
+      "Manage custom jobs with quotes, approvals, milestones, deposits, sourcing, and production notes.",
+    icon: Icon.bespoke,
+  },
+  {
+    title: "Inventory & Memo",
+    body:
+      "Track pieces, stones, components, reservations, locations, memo, consignment, and movement history.",
+    icon: Icon.inventory,
+  },
+  {
+    title: "Customers & CRM",
+    body:
+      "Keep purchase history, preferences, repairs, bespoke jobs, and service records connected.",
+    icon: Icon.crm,
+  },
+  {
+    title: "Insights & AI",
+    body:
+      "Ask questions, surface risks, and understand what needs attention across stock, sales, jobs, and performance.",
+    icon: Icon.insights,
+  },
+]
 
 export default function LandingPlatformModules() {
   return (
-    <section className="bg-white py-24 lg:py-32 px-6 sm:px-12">
-      <div className="max-w-[1200px] mx-auto">
-        <SectionHeader
-          title="One platform. Every jewellery workflow connected."
-          subtitle="From the shop floor to the workshop, Nexpura connects the workflows generic retail systems leave scattered."
-        />
+    <section
+      id="platform-modules"
+      className="bg-m-ivory px-6 py-20 md:py-24 lg:py-28"
+      aria-labelledby="platform-modules-heading"
+    >
+      <div className="mx-auto max-w-6xl">
+        {/* Intro */}
+        <div className="mx-auto max-w-3xl text-center mb-12 md:mb-14">
+          <h2
+            id="platform-modules-heading"
+            className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
+          >
+            One system of record for every jewellery workflow
+          </h2>
+          <p className="mt-5 text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[680px] mx-auto">
+            Nexpura connects the operational data jewellers rely on every day —
+            sales, stock, repairs, bespoke jobs, customers, payments, passports,
+            and performance.
+          </p>
+        </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4 mt-14">
-          {MODULES.map((mod, i) => (
-            <article
-              key={mod.n}
-              className="m-reveal group relative bg-m-white-soft border border-m-border-soft rounded-2xl p-5 lg:p-6 transition-all duration-[250ms] [transition-timing-function:var(--m-ease)] hover:-translate-y-1 hover:border-m-border-hover hover:bg-[#FDFAF4] hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
-              style={{ transitionDelay: `${i * 60}ms` }}
+        {/* 3x2 grid on desktop, 2-up on tablet, stack on mobile */}
+        <ul
+          role="list"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6"
+        >
+          {MODULES.map((m) => (
+            <li
+              key={m.title}
+              className="group relative flex flex-col rounded-2xl border border-[#E4DBC9] bg-white/60 p-7 md:p-8 transition-all duration-200 hover:border-[#C9BFA9] hover:bg-white/80 hover:-translate-y-0.5"
             >
-              <span className="block text-[12px] tabular-nums font-medium text-m-champagne mb-3 transition-opacity duration-200 group-hover:opacity-100">
-                {mod.n}
-              </span>
-              <h3 className="font-serif text-[18px] text-m-charcoal leading-[1.2]">
-                {mod.title}
-              </h3>
-              <p className="mt-2 text-[13px] leading-[1.5] text-m-text-secondary">
-                {mod.body}
-              </p>
-
-              {/* Arrow that slides in from the left on hover */}
               <span
-                aria-hidden
-                className="absolute top-5 right-5 text-m-charcoal opacity-0 -translate-x-2 transition-all duration-200 [transition-timing-function:var(--m-ease)] group-hover:opacity-100 group-hover:translate-x-0"
+                className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-[#F1E9D8] text-m-charcoal mb-5"
+                aria-hidden="true"
               >
-                →
+                <span className="w-5 h-5 block">{m.icon}</span>
               </span>
-            </article>
+
+              <h3 className="font-serif text-m-charcoal text-[1.2rem] md:text-[1.3rem] leading-[1.25] mb-3">
+                {m.title}
+              </h3>
+
+              <p className="text-m-text-secondary text-[0.97rem] leading-[1.55]">
+                {m.body}
+              </p>
+            </li>
           ))}
+        </ul>
+
+        {/* CTA */}
+        <div className="text-center mt-12 md:mt-14">
+          <Link
+            href="/features"
+            className="inline-flex items-center gap-2 rounded-full bg-[#111] text-white border border-[#111] px-7 py-3.5 text-[0.95rem] font-medium transition-all duration-200 hover:bg-[#2a2a2a] hover:-translate-y-0.5"
+          >
+            Explore all features
+            <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </div>
     </section>

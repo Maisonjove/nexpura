@@ -4,9 +4,11 @@ import LandingHero from '@/components/landing/LandingHero'
 import LandingExplorePlatform from '@/components/landing/LandingExplorePlatform'
 // import LandingWhoItsFor from '@/components/landing/LandingWhoItsFor' — parked on 2026-04-26 alongside its JSX usage. Component file kept intact.
 import LandingPainPoints from '@/components/landing/LandingPainPoints'
-import LandingRepairs from '@/components/landing/LandingRepairs'
+import LandingProductDemo from '@/components/landing/LandingProductDemo'
+// import LandingRepairs from '@/components/landing/LandingRepairs' — removed on 2026-04-26 alongside its JSX usage. Repair workflow is already covered in problem section, product demo (Repairs tab), platform modules, comparison, and FAQ; component file kept intact for possible reuse on /platform/repairs.
 import LandingPlatformModules from '@/components/landing/LandingPlatformModules'
-import LandingScreenshots from '@/components/landing/LandingScreenshots'
+// LandingScreenshots removed on 2026-04-26 — superseded by LandingProductDemo (same six tabs, repositioned earlier in the page after the problem section). Component file kept at LandingScreenshots.tsx for repurposing.
+import LandingAICopilot from '@/components/landing/LandingAICopilot'
 import LandingMigration from '@/components/landing/LandingMigration'
 import LandingDigitalPassports from '@/components/landing/LandingDigitalPassports'
 import LandingInventory from '@/components/landing/LandingInventory'
@@ -26,10 +28,12 @@ export default function HomePage() {
         <LandingExplorePlatform />
         {/* <LandingWhoItsFor /> — parked on 2026-04-26. May reposition later, possibly after the Digital Passport section. Component file kept intact. */}
         <LandingPainPoints />
-        <LandingRepairs />
+        <LandingProductDemo />
+        {/* <LandingRepairs /> — removed on 2026-04-26. Repair workflow is already covered in problem section, product demo (Repairs tab), platform modules, comparison, and FAQ. Removing avoids duplication and trims homepage length. */}
         <LandingPlatformModules />
+        <LandingAICopilot />
         <LandingMigration />
-        <LandingScreenshots />
+        {/* LandingScreenshots removed 2026-04-26 — content moved into LandingProductDemo above and repositioned after the problem section. */}
         <LandingDigitalPassports />
         <LandingInventory />
         <LandingComparison />
