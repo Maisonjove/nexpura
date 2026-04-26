@@ -54,11 +54,24 @@ export async function POST(request: NextRequest) {
       ? (currency as CurrencyCode)
       : "USD";
 
-    const planRow = PLANS.find((p) => p.id === plan)!;
-    const priceId = planRow.pricing[resolvedCurrency].stripePriceId;
+    // When the deployment is running with a Stripe TEST key (preview /
+    // sandbox), live price IDs from src/data/pricing.ts will fail with
+    // "no such price". Read test-mode price IDs from env vars instead so
+    // the same code can run on preview (sk_test) and prod (sk_live).
+    const isTestMode = (process.env.STRIPE_SECRET_KEY ?? "").startsWith(
+      "sk_test_"
+    );
+    let priceId: string | undefined;
+    if (isTestMode) {
+      const envKey = `STRIPE_PRICE_TEST_${plan.toUpperCase()}_${resolvedCurrency}`;
+      priceId = process.env[envKey];
+    } else {
+      const planRow = PLANS.find((p) => p.id === plan)!;
+      priceId = planRow.pricing[resolvedCurrency].stripePriceId;
+    }
     if (!priceId) {
       logger.error(
-        `[stripe-checkout] missing stripePriceId for ${plan}/${resolvedCurrency}`
+        `[stripe-checkout] missing price for ${plan}/${resolvedCurrency} (testMode=${isTestMode})`
       );
       return NextResponse.json(
         { error: "Pricing not configured for that region. Please contact support." },
