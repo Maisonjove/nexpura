@@ -1,27 +1,39 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
 import Button from '@/components/landing/ui/Button'
+import { BUTTON } from '@/components/landing/_tokens'
+import {
+  PLANS,
+  SUPPORTED_CURRENCIES,
+  type CurrencyCode,
+} from '@/data/pricing'
 
 /**
  * Pricing page restyled to the homepage system per Kaitlyn brief #2
- * Section 10B. Structure, content, prices, plan names, feature lists,
- * comparison table rows, FAQ copy — all preserved verbatim. Only the
- * visual layer is brought in line with the marketing tokens:
+ * Section 10B. Structure, content, plan names, comparison table rows,
+ * FAQ copy — all preserved verbatim.
+ *
+ * 2026-04-26 update (Kaitlyn pricing brief on PR #42):
+ *  - Plan data moved to src/data/pricing.ts as a single source of truth
+ *    with multi-currency (AUD / USD / GBP / EUR) regional pricing.
+ *  - Adds <CurrencyPicker /> above the plan grid with localStorage
+ *    persistence. Initial currency comes from `x-vercel-ip-country`
+ *    server-side — see ./page.tsx.
+ *  - Plan card CTAs append &currency=… to their ctaHref so the future
+ *    Stripe checkout step can resolve the right stripePriceId per
+ *    (plan, currency) combo.
+ *  - "From" prefix shown only when isFromPrice (Atelier).
+ *  - "Most Popular" badge only when isFeatured (Studio).
+ *
+ * Visual layer (unchanged from previous polish-pass):
  *  - Page bg #FFFFFF → bg-m-ivory.
  *  - Plan cards use the standard card surface; featured plan is the
  *    one with a champagne border (was charcoal). 32px desktop /
  *    22px mobile padding meets the spacing token minimum.
- *  - Plan CTA buttons swap to the Button component (primary on the
- *    featured plan, secondary on the others) so heights, hover lift,
- *    radius, and focus ring all match every other CTA on the site.
- *  - Comparison table + FAQ accordion + final CTA all swap stone-*
- *    palette for the m-* tokens. FAQ accordion already had the +
- *    → × rotation Kaitlyn called for; only colours change.
- *  - Final CTA's bespoke heavy-shadow gradient pill is dropped for
- *    the standard primary Button. Tertiary "Explore the Platform"
- *    link uses the underline-grow tertiary variant.
+ *  - Comparison table + FAQ accordion + final CTA all use m-* tokens.
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -39,58 +51,6 @@ const fadeUp = (delay = 0) => ({
   viewport: { once: true } as const,
   transition: { duration: 1.2, ease: EASE, delay },
 })
-
-const plans = [
-  {
-    name: 'Boutique',
-    price: 89,
-    description:
-      'For single-store jewellers who need one connected system for sales, repairs, bespoke, and stock.',
-    cta: 'Start Free Trial',
-    ctaHref: '/signup',
-    highlights: [
-      'POS, inventory, repairs, and bespoke workflows',
-      'Customers CRM and invoicing',
-      'Command Centers and AI Copilot',
-      'Guided migration included',
-      '1 staff · 1 store',
-    ],
-    featured: false,
-  },
-  {
-    name: 'Studio',
-    price: 179,
-    description:
-      'For growing jewellery businesses that need deeper reporting, branding, and team visibility across locations.',
-    cta: 'Book a Demo',
-    ctaHref: '/contact',
-    highlights: [
-      'Everything in Boutique',
-      'Full analytics dashboard',
-      'Up to 5 staff · up to 3 stores',
-      'Custom branding',
-      'Website and digital presence tools',
-    ],
-    featured: true,
-  },
-  {
-    name: 'Atelier',
-    price: 299,
-    description:
-      'For multi-store jewellery businesses and high-volume workshops needing advanced support, analytics, and scale.',
-    cta: 'Talk to Sales',
-    ctaHref: '/contact',
-    highlights: [
-      'Everything in Studio',
-      'Unlimited staff and stores',
-      'Custom analytics',
-      'AI product descriptions',
-      'Priority migration support',
-      'Dedicated success contact',
-    ],
-    featured: false,
-  },
-]
 
 const comparisonGroups = [
   {
@@ -147,8 +107,110 @@ const faqs = [
   },
 ]
 
-export default function PricingClient() {
+// Order of precedence: localStorage → server-detected initialCurrency → AUD fallback (handled upstream)
+function useCurrency(initial: CurrencyCode) {
+  const [currency, setCurrencyState] = useState<CurrencyCode>(initial)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('nexpura_currency') as CurrencyCode | null
+      if (stored && SUPPORTED_CURRENCIES.includes(stored)) {
+        setCurrencyState(stored)
+      }
+    } catch {
+      // localStorage may be unavailable (SSR, privacy mode) — silently keep initial.
+    }
+  }, [])
+  const setCurrency = (next: CurrencyCode) => {
+    setCurrencyState(next)
+    try {
+      localStorage.setItem('nexpura_currency', next)
+    } catch {
+      // ignore — picker still works in-memory for the session.
+    }
+  }
+  return [currency, setCurrency] as const
+}
+
+function CurrencyPicker({
+  value,
+  onChange,
+}: {
+  value: CurrencyCode
+  onChange: (c: CurrencyCode) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className="flex items-center justify-center gap-2 mb-10 relative">
+      <span className="font-sans text-[0.85rem] text-[#8A8276]">Currency:</span>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          className="inline-flex items-center gap-1.5 font-sans text-[0.9rem] font-medium text-m-charcoal px-3 py-1.5 rounded-full border border-[#E4DBC9] hover:border-[#C9BFA9] transition-colors"
+        >
+          {value}
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            className="w-3.5 h-3.5"
+            aria-hidden
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        {open && (
+          <ul
+            role="listbox"
+            className="absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[100px] bg-white border border-[#E4DBC9] rounded-xl shadow-lg overflow-hidden z-10"
+          >
+            {SUPPORTED_CURRENCIES.map((c) => (
+              <li key={c}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={c === value}
+                  onClick={() => {
+                    onChange(c)
+                    setOpen(false)
+                  }}
+                  className={`block w-full text-left px-4 py-2 font-sans text-[0.9rem] hover:bg-[#F1E9D8] ${
+                    c === value
+                      ? 'bg-[#F1E9D8] font-medium text-m-charcoal'
+                      : 'text-[#5A554C]'
+                  }`}
+                >
+                  {c}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function PricingClient({
+  initialCurrency,
+}: {
+  initialCurrency: CurrencyCode
+}) {
   const [openFaq, setOpenFaq] = useState<number | null>(0)
+  const [currency, setCurrency] = useCurrency(initialCurrency)
 
   return (
     <div className="bg-m-ivory">
@@ -184,58 +246,81 @@ export default function PricingClient() {
 
       {/* Pricing cards */}
       <section className="pb-20 lg:pb-28 px-6 sm:px-10 lg:px-20">
-        <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {plans.map((plan, i) => (
-            <motion.div
-              key={plan.name}
-              {...fadeUp(i * 0.1)}
-              className={`relative flex flex-col p-[22px] sm:p-8 lg:p-10 rounded-[18px] border transition-all duration-[250ms] [transition-timing-function:var(--m-ease)] ${
-                plan.featured
-                  ? 'border-m-champagne bg-m-white-soft shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
-                  : 'border-m-border-soft bg-m-white-soft hover:-translate-y-1 hover:border-m-border-hover hover:shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
-              }`}
-            >
-              {plan.featured && (
-                <span className="absolute -top-3 left-8 px-3 py-1 bg-m-champagne text-m-charcoal text-[10px] tracking-[0.18em] uppercase font-medium rounded-full">
-                  Most Popular
-                </span>
-              )}
-              <h3 className="font-serif text-[28px] lg:text-[32px] font-medium text-m-charcoal mb-2 leading-[1.2]">
-                {plan.name}
-              </h3>
-              <p className="text-[14px] leading-[1.6] text-m-text-secondary mb-8 min-h-[2.5em]">
-                {plan.description}
-              </p>
+        <div className="max-w-[1200px] mx-auto">
+          <CurrencyPicker value={currency} onChange={setCurrency} />
 
-              <div className="mb-8 flex items-baseline gap-2">
-                <span className="font-serif text-[48px] lg:text-[56px] text-m-charcoal leading-none">
-                  ${plan.price}
-                </span>
-                <span className="text-[14px] text-m-text-faint">/ month</span>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {PLANS.map((plan, i) => {
+              const price = plan.pricing[currency]
+              const ctaUrl = plan.ctaHref.includes('?')
+                ? `${plan.ctaHref}&currency=${currency}`
+                : `${plan.ctaHref}?currency=${currency}`
+              const ctaClass = plan.id === 'boutique' ? BUTTON.primary : BUTTON.secondary
 
-              <Button
-                href={plan.ctaHref}
-                variant={plan.featured ? 'primary' : 'secondary'}
-                fullWidth
-                className="mb-10"
-              >
-                {plan.cta}
-              </Button>
+              return (
+                <motion.div
+                  key={plan.id}
+                  {...fadeUp(i * 0.1)}
+                  className={`relative flex flex-col p-[22px] sm:p-8 lg:p-10 rounded-[18px] border transition-all duration-[250ms] [transition-timing-function:var(--m-ease)] ${
+                    plan.isFeatured
+                      ? 'border-m-champagne bg-m-white-soft shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
+                      : 'border-m-border-soft bg-m-white-soft hover:-translate-y-1 hover:border-m-border-hover hover:shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
+                  }`}
+                >
+                  {plan.isFeatured && (
+                    <span className="absolute -top-3 left-8 px-3 py-1 bg-m-champagne text-m-charcoal text-[10px] tracking-[0.18em] uppercase font-medium rounded-full">
+                      Most Popular
+                    </span>
+                  )}
+                  <h3 className="font-serif text-[28px] lg:text-[32px] font-medium text-m-charcoal mb-2 leading-[1.2]">
+                    {plan.name}
+                  </h3>
+                  <p className="text-[14px] leading-[1.6] text-m-text-secondary mb-8 min-h-[2.5em]">
+                    {plan.description}
+                  </p>
 
-              <ul className="space-y-3 flex-1">
-                {plan.highlights.map((h) => (
-                  <li
-                    key={h}
-                    className="flex items-start gap-3 text-[14px] leading-[1.6] text-m-text-secondary"
+                  <div className="mb-2">
+                    <span className="font-sans text-[11px] tracking-[0.18em] uppercase text-m-text-faint font-medium">
+                      {currency}
+                    </span>
+                  </div>
+                  <div className="mb-8 flex items-baseline gap-2">
+                    {plan.isFromPrice && (
+                      <span className="font-sans text-[14px] text-m-text-faint">From</span>
+                    )}
+                    <span className="font-serif text-[48px] lg:text-[56px] text-m-charcoal leading-none">
+                      {price.symbol}
+                      {price.amount}
+                    </span>
+                    <span className="text-[14px] text-m-text-faint">/ month</span>
+                  </div>
+
+                  <Link
+                    href={ctaUrl}
+                    className={`${ctaClass} w-full mb-10`}
                   >
-                    <CheckIcon />
-                    <span>{h}</span>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
+                    {plan.ctaLabel}
+                  </Link>
+
+                  <ul className="space-y-3 flex-1">
+                    {plan.features.map((h) => (
+                      <li
+                        key={h}
+                        className="flex items-start gap-3 text-[14px] leading-[1.6] text-m-text-secondary"
+                      >
+                        <CheckIcon />
+                        <span>{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )
+            })}
+          </div>
+
+          <p className="font-sans text-[0.85rem] text-[#8A8276] text-center mt-10">
+            Prices shown based on region. Final billing currency is confirmed at checkout.
+          </p>
         </div>
       </section>
 
@@ -264,9 +349,9 @@ export default function PricingClient() {
                   <th className="text-left py-4 pr-4 text-[11px] tracking-[0.14em] uppercase text-m-text-muted font-medium w-1/2">
                     Feature
                   </th>
-                  {plans.map((p) => (
+                  {PLANS.map((p) => (
                     <th
-                      key={p.name}
+                      key={p.id}
                       className="text-center py-4 px-4 font-serif text-[20px] text-m-charcoal font-medium"
                     >
                       {p.name}
