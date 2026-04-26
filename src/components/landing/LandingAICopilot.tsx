@@ -1,61 +1,91 @@
 'use client'
 
 // ============================================
-// "Ask Nexpura what needs attention" — flagship AI section
-// Per Kaitlyn 2026-04-26 brief. Verbatim from spec except:
-//  - "use client" added (uses useState + onClick)
-//  - inline <style> keyframe block removed; the response paragraph
-//    now references a uniquely-named keyframe (nxFadeInUpAI, 8px)
-//    added to globals.css. This avoids stomping the existing
-//    @keyframes fadeInUp (16px translate) used elsewhere on the
-//    landing page.
+// "Ask Nexpura what needs attention" — flagship AI section.
+//
+// Originally a static demo (Kaitlyn 2026-04-26 brief). Per Joey 2026-04-26
+// the section is now LIVE — the input + prompt cards both call
+// /api/ai/landing-copilot which answers Nexpura questions via OpenAI
+// (gpt-4o-mini), rate-limited per IP via the Postgres "ai" bucket.
+//
+// Visual frame is unchanged from Kaitlyn's design (dark panel, gold
+// accents, pulsing dot, glowing input). Behaviour:
+//   - Initial state: a welcome message in the response slot
+//   - Prompt-card click: pre-fills the input + auto-submits
+//   - Input submit (Enter or arrow button): asks the API
+//   - Loading: pulsing "Thinking…" placeholder
+//   - Error: friendly fallback line + suggestion to email the team
+//   - 429: shows rate-limit message
+//   - The prompt set was rewritten from Kaitlyn's operational examples
+//     (which the public bot can't answer — no tenant data) to
+//     product-Q&A questions the system prompt CAN answer well.
 // ============================================
 
-import { useState } from "react"
+import { useState, type FormEvent } from "react"
 import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER } from "./_tokens"
 
-type Prompt = {
-  id: string
-  question: string
-  output: string
-}
+type Prompt = { id: string; question: string }
 
 const PROMPTS: Prompt[] = [
-  {
-    id: "overdue-repairs",
-    question: "Which repairs are overdue this week?",
-    output:
-      "7 repairs are overdue. 3 are assigned to workshop, 2 are waiting on customer approval, and 2 are ready but not collected.",
-  },
-  {
-    id: "slow-stock",
-    question: "What stock has not moved in 90 days?",
-    output:
-      "12 pieces have had no movement in 90 days. 4 are high-value items and 3 are currently reserved.",
-  },
-  {
-    id: "customer-summary",
-    question: "Summarise this customer before their appointment.",
-    output:
-      "Customer has purchased 2 diamond pieces, completed 1 resize, and has an active bespoke enquiry.",
-  },
-  {
-    id: "draft-update",
-    question: "Draft a repair update message.",
-    output:
-      "Hi Sarah, your ring repair is now in polishing and is expected to be ready by Friday.",
-  },
-  {
-    id: "sales-summary",
-    question: "What changed in sales this month?",
-    output:
-      "Sales are up 12%, but average order value is down 6%. Bridal enquiries increased across two locations.",
-  },
+  { id: "what-is-nexpura", question: "What does Nexpura actually do?" },
+  { id: "repairs", question: "How does Nexpura handle repairs?" },
+  { id: "migration", question: "Can I migrate from another POS?" },
+  { id: "passports", question: "How do digital passports work?" },
+  { id: "trial", question: "What's included in the free trial?" },
 ]
 
+const WELCOME =
+  "Ask me anything about Nexpura — features, workflows, migration, pricing, the free trial. I'm here to help."
+
 export default function LandingAICopilot() {
-  const [activeId, setActiveId] = useState<string>(PROMPTS[0].id)
-  const active = PROMPTS.find((p) => p.id === activeId)!
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [input, setInput] = useState("")
+  const [question, setQuestion] = useState<string>("") // last submitted
+  const [answer, setAnswer] = useState<string>(WELCOME)
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle")
+
+  async function ask(q: string) {
+    if (status === "loading") return
+    const trimmed = q.trim()
+    if (trimmed.length < 2) return
+    setQuestion(trimmed)
+    setStatus("loading")
+    setAnswer("")
+    try {
+      const res = await fetch("/api/ai/landing-copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: trimmed }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setStatus("error")
+        setAnswer(
+          body.error ||
+            "Couldn't reach the assistant. Email hello@nexpura.com or book a demo at nexpura.com/contact."
+        )
+        return
+      }
+      setStatus("idle")
+      setAnswer(body.answer || "")
+    } catch {
+      setStatus("error")
+      setAnswer(
+        "Couldn't reach the assistant. Email hello@nexpura.com or book a demo at nexpura.com/contact."
+      )
+    }
+  }
+
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    void ask(input)
+  }
+
+  function handlePromptClick(p: Prompt) {
+    setActiveId(p.id)
+    setInput(p.question)
+    void ask(p.question)
+  }
 
   return (
     <section
@@ -66,13 +96,8 @@ export default function LandingAICopilot() {
       <div className={CONTAINER.wide}>
         {/* Intro */}
         <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
-          <span className={HEADING.eyebrow}>
-            AI Copilot
-          </span>
-          <h2
-            id="ai-copilot-heading"
-            className={HEADING.h2}
-          >
+          <span className={HEADING.eyebrow}>AI Copilot</span>
+          <h2 id="ai-copilot-heading" className={HEADING.h2}>
             Ask Nexpura what needs attention
           </h2>
           <p className={`${HEADING.subhead} max-w-[680px] mx-auto`}>
@@ -104,35 +129,56 @@ export default function LandingAICopilot() {
                 </span>
               </div>
               <span className="font-sans text-[0.78rem] text-white/40">
-                Live data · just now
+                {status === "loading" ? "Thinking…" : "Live · ready"}
               </span>
             </div>
 
-            {/* User question bubble */}
-            <div className="mb-6">
-              <div className="font-sans text-[0.72rem] uppercase tracking-[0.16em] text-white/40 mb-2">
-                You
+            {/* User question bubble (only after first ask) */}
+            {question && (
+              <div className="mb-6">
+                <div className="font-sans text-[0.72rem] uppercase tracking-[0.16em] text-white/40 mb-2">
+                  You
+                </div>
+                <p className="font-serif text-white text-[1.15rem] md:text-[1.3rem] leading-[1.4]">
+                  {question}
+                </p>
               </div>
-              <p className="font-serif text-white text-[1.15rem] md:text-[1.3rem] leading-[1.4]">
-                {active.question}
-              </p>
-            </div>
+            )}
 
             {/* AI response */}
             <div className="mb-auto">
               <div className="font-sans text-[0.72rem] uppercase tracking-[0.16em] text-[#C9A24A] mb-2">
                 Nexpura
               </div>
-              <p
-                key={active.id}
-                className="text-white/85 text-[1rem] md:text-[1.05rem] leading-[1.65] animate-[nxFadeInUpAI_400ms_ease-out]"
-              >
-                {active.output}
-              </p>
+              {status === "loading" ? (
+                <p
+                  aria-live="polite"
+                  className="text-white/60 text-[1rem] md:text-[1.05rem] leading-[1.65] animate-pulse"
+                >
+                  Thinking…
+                </p>
+              ) : (
+                <p
+                  // key prompts the fade-in animation on each new answer
+                  key={`${question}-${answer.slice(0, 16)}`}
+                  aria-live="polite"
+                  className={
+                    status === "error"
+                      ? "text-white/85 text-[1rem] md:text-[1.05rem] leading-[1.65] animate-[nxFadeInUpAI_400ms_ease-out]"
+                      : "text-white/85 text-[1rem] md:text-[1.05rem] leading-[1.65] animate-[nxFadeInUpAI_400ms_ease-out]"
+                  }
+                >
+                  {answer}
+                </p>
+              )}
             </div>
 
-            {/* Glowing input row */}
-            <div className="mt-8 pt-6 border-t border-white/5">
+            {/* Input row */}
+            <form
+              onSubmit={handleSubmit}
+              className="mt-8 pt-6 border-t border-white/5"
+              aria-label="Ask Nexpura"
+            >
               <div className="relative flex items-center gap-3 rounded-full bg-white/[0.04] border border-white/10 px-5 py-3.5 transition-all duration-300 focus-within:border-[#C9A24A]/60 focus-within:bg-white/[0.06] focus-within:shadow-[0_0_0_4px_rgba(201,162,74,0.08),0_0_40px_-10px_rgba(201,162,74,0.4)]">
                 <svg
                   viewBox="0 0 24 24"
@@ -148,24 +194,29 @@ export default function LandingAICopilot() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Ask Nexpura anything about your business…"
+                  placeholder="Ask Nexpura anything about the platform…"
                   aria-label="Ask Nexpura"
-                  readOnly
-                  className="flex-1 bg-transparent border-none outline-none text-white/90 placeholder-white/35 text-[0.95rem] font-sans"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  disabled={status === "loading"}
+                  maxLength={500}
+                  className="flex-1 bg-transparent border-none outline-none text-white/90 placeholder-white/35 text-[0.95rem] font-sans disabled:opacity-50"
                 />
-                <span
-                  aria-hidden="true"
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#C9A24A] text-[#0E0E10]"
+                <button
+                  type="submit"
+                  disabled={status === "loading" || input.trim().length < 2}
+                  aria-label="Send"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#C9A24A] text-[#0E0E10] transition-opacity duration-200 hover:opacity-85 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
                     <path d="M5 12h14M13 6l6 6-6 6" />
                   </svg>
-                </span>
+                </button>
               </div>
-            </div>
+            </form>
           </div>
 
-          {/* RIGHT — Prompt cards */}
+          {/* RIGHT — Prompt cards (click to pre-fill + auto-submit) */}
           <div className="flex flex-col gap-3">
             <div className="font-sans text-[0.78rem] uppercase tracking-[0.18em] text-[#8A8276] mb-1">
               Try a prompt
@@ -175,11 +226,14 @@ export default function LandingAICopilot() {
               return (
                 <button
                   key={p.id}
-                  onClick={() => setActiveId(p.id)}
+                  type="button"
+                  onClick={() => handlePromptClick(p)}
+                  disabled={status === "loading"}
                   aria-pressed={isActive}
                   className={`
                     group text-left rounded-2xl border p-5
                     transition-all duration-200
+                    disabled:opacity-60 disabled:cursor-not-allowed
                     ${
                       isActive
                         ? "bg-[#0E0E10] border-[#0E0E10] text-white"
