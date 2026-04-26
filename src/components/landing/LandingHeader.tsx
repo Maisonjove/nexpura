@@ -6,7 +6,7 @@ import Link from 'next/link'
 /**
  * Sticky marketing nav. Updated 2026-04-26 per Kaitlyn's 9-fix follow-up:
  *
- * - Left cluster: Platform · Solutions · Pricing  (Migration removed)
+ * - Left cluster: Platform · Features · Pricing  (Migration removed)
  * - Centre: NEXPURA serif wordmark
  * - Right cluster: About · Book a Demo · Login (outlined pill) ·
  *   Start Free Trial (filled pill)
@@ -58,10 +58,12 @@ export default function LandingHeader() {
         aria-label="Primary"
         className="flex items-center justify-between max-w-[1200px] mx-auto px-6 sm:px-12 h-[72px]"
       >
-        {/* Left cluster: Platform · Solutions · Pricing  (Migration removed 2026-04-26) */}
+        {/* Left cluster: Platform · Features · Pricing  (Migration removed 2026-04-26;
+            label "Solutions" → "Features" 2026-04-26 to match destination /features —
+            the footer's separate Solutions column with /solutions/* links is unchanged). */}
         <div className="hidden md:flex items-center gap-8 flex-1">
           <NavLink href="/platform">Platform</NavLink>
-          <NavLink href="/features">Solutions</NavLink>
+          <NavLink href="/features">Features</NavLink>
           <NavLink href="/pricing">Pricing</NavLink>
         </div>
 
@@ -122,7 +124,7 @@ export default function LandingHeader() {
       >
         <div className="flex flex-col gap-1 px-6 py-4 bg-m-ivory border-t border-m-border-soft">
           <MobileLink href="/platform">Platform</MobileLink>
-          <MobileLink href="/features">Solutions</MobileLink>
+          <MobileLink href="/features">Features</MobileLink>
           <MobileLink href="/pricing">Pricing</MobileLink>
           <MobileLink href="/about">About</MobileLink>
           <MobileLink href="/contact">Book a Demo</MobileLink>
