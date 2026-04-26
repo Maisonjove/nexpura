@@ -2,21 +2,25 @@
 
 // ============================================
 // "See Nexpura in action" — main product proof section
-// Per Kaitlyn 2026-04-26 brief. Verbatim from spec except:
-//  - "use client" added (uses useState + onClick)
-//  - opening <a tag added on the "View feature" link (typo in spec)
-//  - image paths repointed at the existing /screenshots/* assets
-//    (per project; CRM falls back to dashboard.png until a dedicated
-//    CRM screenshot ships, mirroring the previous LandingScreenshots
-//    component's fallback)
-//  - inline <style> keyframe moved to globals.css to avoid the
-//    style-tag-in-component hydration warning
+// Per Kaitlyn 2026-04-26 brief, with revisions:
+//  - Per-tab "View feature →" CTAs removed (the per-feature destination
+//    pages don't exist yet); replaced with a single "Explore all
+//    features →" CTA below the tabpanel pointing at the live /features
+//    route.
+//  - Passport tab removed (Digital Passport has its own dedicated
+//    section later on the page; old tab also showed the wrong screen).
+//  - New POS tab added in the order: Repairs / Inventory / Bespoke /
+//    POS / Analytics / CRM. Image is /screenshots/dashboard.png as a
+//    placeholder until /screenshots/pos.png is supplied — same
+//    fallback strategy CRM uses.
+//  - "use client" because of useState + onClick.
 // ============================================
 
 import { useState } from "react"
+import Link from "next/link"
 import { SECTION_PADDING, HEADING, INTRO_SPACING, INLINE_LINK, CONTAINER } from "./_tokens"
 
-type TabKey = "repairs" | "inventory" | "bespoke" | "passport" | "analytics" | "crm"
+type TabKey = "repairs" | "inventory" | "bespoke" | "pos" | "analytics" | "crm"
 
 type Tab = {
   key: TabKey
@@ -24,7 +28,6 @@ type Tab = {
   title: string
   paragraph: string
   bullets: string[]
-  href: string
   image: { src: string; alt: string }
 }
 
@@ -40,7 +43,6 @@ const TABS: Tab[] = [
       "Assign work to staff or workshop queues",
       "Track status, balance, and collection readiness",
     ],
-    href: "/platform/repairs",
     image: { src: "/screenshots/repairs.png", alt: "Nexpura Repair Tracker — repair detail view with customer, item, financial summary, and stage timeline" },
   },
   {
@@ -54,7 +56,6 @@ const TABS: Tab[] = [
       "View location, cost, provenance, and movement history",
       "Filter stock by status, location, category, or availability",
     ],
-    href: "/platform/inventory",
     image: { src: "/screenshots/inventory.png", alt: "Nexpura Inventory Intelligence — live stock view with status, location, and provenance" },
   },
   {
@@ -68,22 +69,22 @@ const TABS: Tab[] = [
       "Track approvals, deposits, and production stages",
       "Connect every bespoke job to the customer record",
     ],
-    href: "/platform/bespoke",
     image: { src: "/screenshots/bespoke.png", alt: "Nexpura Bespoke Orders — custom job pipeline with sketches, approvals, and production stages" },
   },
   {
-    key: "passport",
-    label: "Passport",
-    title: "Digital Passport",
+    key: "pos",
+    label: "POS",
+    title: "POS & Sales",
     paragraph:
-      "Attach a QR-verifiable record to each eligible piece, including materials, provenance, craftsmanship, service history, and aftercare information.",
+      "Process sales with connected customer records, item history, inventory status, payment details, and post-sale service visibility.",
     bullets: [
-      "Give customers instant verification",
-      "Preserve materials and provenance details",
-      "Build trust beyond the point of sale",
+      "Connect every sale to the customer profile",
+      "Update stock status automatically",
+      "Keep item, payment, and passport records aligned",
     ],
-    href: "/platform/passport",
-    image: { src: "/screenshots/passport.png", alt: "Nexpura Digital Passport — QR-verifiable record with materials, provenance, and service history" },
+    // Placeholder — falls back to /screenshots/dashboard.png until a
+    // dedicated POS screenshot ships. Same pattern as CRM below.
+    image: { src: "/screenshots/dashboard.png", alt: "Nexpura POS — sales screen with connected customer, stock, and payment records" },
   },
   {
     key: "analytics",
@@ -96,14 +97,11 @@ const TABS: Tab[] = [
       "Identify overdue jobs and slow-moving stock",
       "View trends across locations and teams",
     ],
-    href: "/platform/analytics",
     image: { src: "/screenshots/analytics.png", alt: "Nexpura Performance Insights — dashboard with sales, repairs, and stock movement trends" },
   },
   {
     key: "crm",
     label: "CRM",
-    // Falls back to /screenshots/dashboard.png until a dedicated CRM
-    // screenshot lands — mirrors the prior LandingScreenshots fallback.
     title: "Customer Profiles",
     paragraph:
       "Keep purchase history, repair records, bespoke notes, preferences, digital passports, and communication history connected to each customer.",
@@ -112,7 +110,8 @@ const TABS: Tab[] = [
       "Connect purchases, repairs, and bespoke jobs",
       "Prepare better follow-ups and appointments",
     ],
-    href: "/platform/crm",
+    // Placeholder — falls back to /screenshots/dashboard.png until a
+    // dedicated CRM screenshot ships.
     image: { src: "/screenshots/dashboard.png", alt: "Nexpura Customer Profiles — unified customer history with purchases, repairs, and bespoke jobs" },
   },
 ]
@@ -195,7 +194,7 @@ export default function LandingProductDemo() {
             </div>
           </div>
 
-          {/* Copy block */}
+          {/* Copy block — no per-tab CTA; single section CTA below covers nav. */}
           <div className="order-2 lg:order-2">
             <h3 className="font-serif text-m-charcoal text-[1.6rem] md:text-[1.85rem] leading-[1.2] mb-4">
               {current.title}
@@ -204,7 +203,7 @@ export default function LandingProductDemo() {
               {current.paragraph}
             </p>
 
-            <ul role="list" className="space-y-3 mb-8">
+            <ul role="list" className="space-y-3">
               {current.bullets.map((b) => (
                 <li key={b} className="flex items-start gap-3 text-m-charcoal text-[0.97rem] leading-[1.55]">
                   <span
@@ -215,15 +214,16 @@ export default function LandingProductDemo() {
                 </li>
               ))}
             </ul>
-
-            <a
-              href={current.href}
-              className={`group ${INLINE_LINK}`}
-            >
-              View feature
-              <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-            </a>
           </div>
+        </div>
+
+        {/* Single section CTA — replaces the prior per-tab "View feature"
+            links. /features is a real route in src/app/(marketing)/features. */}
+        <div className="text-center mt-12 md:mt-14">
+          <Link href="/features" className={INLINE_LINK}>
+            Explore all features
+            <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </div>
     </section>

@@ -595,3 +595,23 @@ html { scroll-behavior: smooth; }
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* === Anchored sections offset from sticky header (Kaitlyn 2026-04-26
+   9-fix #7) ============================================================
+   The sticky header is 72px tall (LandingHeader.tsx h-[72px]). Adding a
+   16px buffer gives 88px of scroll-margin so eyebrows don't get clipped
+   when an in-page anchor link (e.g. "Explore Platform" → #explore-
+   platform) lands on a section. Mobile uses 80px (smaller buffer; same
+   header height but tighter viewport). */
+section[id] {
+  scroll-margin-top: 88px;
+}
+@media (max-width: 768px) {
+  section[id] {
+    scroll-margin-top: 80px;
+  }
+}
+
+/* The .nx-explore section had its own scroll-margin-top: 80px rule;
+   the global rule above now governs it (88px desktop), keeping the
+   eyebrow visible below the header. */

@@ -1,13 +1,16 @@
 // ============================================
 // Compact 3-step migration reassurance strip
 // Sits between Comparison and FAQ. Per Kaitlyn 2026-04-26
-// additive-pass brief. Spec was missing the opening <a tag on
-// "See full migration support" — restored.
+// additive-pass + the 9-fix follow-up:
+//  - Heading + subheading copy updated.
+//  - Trailing "See full migration support →" link removed (the
+//    /migration page doesn't exist yet — section ends at the cards).
+//  - Padding stays SECTION_PADDING.compact; intro spacing stays
+//    INTRO_SPACING.compact.
 // ============================================
 
 import React from "react"
-import Link from "next/link"
-import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, INLINE_LINK, CONTAINER } from "./_tokens"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, CONTAINER } from "./_tokens"
 
 type Step = {
   number: string
@@ -53,10 +56,11 @@ export default function LandingMigrationStrip() {
             id="migration-heading"
             className={HEADING.h2}
           >
-            Switching is guided, not solo
+            Switch with guidance at every step
           </h2>
           <p className={`${HEADING.subhead} max-w-[600px] mx-auto`}>
-            Move from your current setup with hands-on support at each stage.
+            Move from your current setup with hands-on support across data,
+            workflows, training, and go-live.
           </p>
         </div>
 
@@ -101,17 +105,6 @@ export default function LandingMigrationStrip() {
             </li>
           ))}
         </ol>
-
-        {/* Trailing link to dedicated migration page */}
-        <div className="text-center mt-10 md:mt-12">
-          <Link
-            href="/migration"
-            className={INLINE_LINK}
-          >
-            See full migration support
-            <span aria-hidden="true">→</span>
-          </Link>
-        </div>
       </div>
     </section>
   )
