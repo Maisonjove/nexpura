@@ -46,10 +46,10 @@ export const PLANS: Plan[] = [
       "1 staff · 1 store",
     ],
     pricing: {
-      AUD: { amount: 149, symbol: "$" },
-      USD: { amount: 99, symbol: "$" },
-      GBP: { amount: 79, symbol: "£" },
-      EUR: { amount: 89, symbol: "€" },
+      AUD: { amount: 149, symbol: "$", stripePriceId: "price_1TQOcjPO3tmWPoC06MfsG8Q9" },
+      USD: { amount:  99, symbol: "$", stripePriceId: "price_1TQOd2PO3tmWPoC0QbRGrlav" },
+      GBP: { amount:  79, symbol: "£", stripePriceId: "price_1TQOdIPO3tmWPoC0aDRAAuYo" },
+      EUR: { amount:  89, symbol: "€", stripePriceId: "price_1TQOdbPO3tmWPoC0Tvvohyrs" },
     },
   },
   {
@@ -69,10 +69,10 @@ export const PLANS: Plan[] = [
       "Website and digital presence tools",
     ],
     pricing: {
-      AUD: { amount: 299, symbol: "$" },
-      USD: { amount: 199, symbol: "$" },
-      GBP: { amount: 159, symbol: "£" },
-      EUR: { amount: 179, symbol: "€" },
+      AUD: { amount: 299, symbol: "$", stripePriceId: "price_1TQOezPO3tmWPoC0sfC3xuW6" },
+      USD: { amount: 199, symbol: "$", stripePriceId: "price_1TQOfOPO3tmWPoC0Hym9da51" },
+      GBP: { amount: 159, symbol: "£", stripePriceId: "price_1TQOfqPO3tmWPoC0lG2FoPZI" },
+      EUR: { amount: 179, symbol: "€", stripePriceId: "price_1TQOg9PO3tmWPoC02Obh12Cy" },
     },
   },
   {
@@ -93,10 +93,10 @@ export const PLANS: Plan[] = [
       "Dedicated success contact",
     ],
     pricing: {
-      AUD: { amount: 499, symbol: "$" },
-      USD: { amount: 329, symbol: "$" },
-      GBP: { amount: 269, symbol: "£" },
-      EUR: { amount: 299, symbol: "€" },
+      AUD: { amount: 499, symbol: "$", stripePriceId: "price_1TQOgmPO3tmWPoC0HR7HWjsv" },
+      USD: { amount: 329, symbol: "$", stripePriceId: "price_1TQOh0PO3tmWPoC0Q5CayeYC" },
+      GBP: { amount: 269, symbol: "£", stripePriceId: "price_1TQOhPPO3tmWPoC0KDM97KCZ" },
+      EUR: { amount: 299, symbol: "€", stripePriceId: "price_1TQOhnPO3tmWPoC0rVfjfqAM" },
     },
   },
 ]
