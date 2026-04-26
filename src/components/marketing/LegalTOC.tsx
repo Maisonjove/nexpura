@@ -65,7 +65,7 @@ export default function LegalTOC({ items }: { items: TOCItem[] }) {
   }, [items])
 
   return (
-    <nav aria-label="Contents" className="lg:sticky lg:top-[104px] lg:self-start">
+    <nav aria-label="Contents" className="lg:sticky lg:top-[88px] lg:self-start">
       <h2 className="font-sans text-[0.7rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-6">
         Contents
       </h2>
