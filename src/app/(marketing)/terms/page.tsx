@@ -1,22 +1,18 @@
 // ============================================
-// Terms of Service — restyled per Kaitlyn 2026-04-26 polish-pass.
-// Same shape as the new Privacy page (compact hero + sticky TOC two-
-// column body). Body copy preserved verbatim. Two label renames per
-// Kaitlyn's TOC: "Account Registration" → "Accounts", "Subscription
-// and Payment" → "Subscriptions".
+// Terms of Service — uses the shared LegalPageLayout (Kaitlyn
+// 2026-04-26 editorial-refinement pass). Body copy preserved
+// verbatim from the previous revision.
 // ============================================
 
 import type { Metadata } from "next"
-import { SECTION_PADDING, HEADING, CONTAINER } from "@/components/landing/_tokens"
+import LegalPageLayout, { type LegalSection } from "@/components/marketing/LegalPageLayout"
 
 export const metadata: Metadata = {
   title: "Terms of Service — Nexpura",
   description: "Nexpura Terms of Service — your agreement when using the platform.",
 }
 
-type Section = { id: string; title: string; body: string }
-
-const SECTIONS: Section[] = [
+const SECTIONS: LegalSection[] = [
   {
     id: "acceptance-of-terms",
     title: "Acceptance of Terms",
@@ -71,62 +67,10 @@ const SECTIONS: Section[] = [
 
 export default function TermsPage() {
   return (
-    <div className="bg-m-ivory">
-      {/* === Hero — compact tier ====================================== */}
-      <section className={`${SECTION_PADDING.compact} text-center`}>
-        <div className={CONTAINER.narrow}>
-          <span className={HEADING.eyebrow}>Legal</span>
-          <h1 className="font-serif text-m-charcoal text-[2rem] md:text-[2.4rem] leading-[1.12] tracking-[-0.005em] mb-3">
-            Terms of Service
-          </h1>
-          <p className="font-sans text-[0.92rem] text-m-text-secondary">
-            Last updated · March 2026
-          </p>
-        </div>
-      </section>
-
-      {/* === Body — two-column with sticky TOC on lg+ ================= */}
-      <section className="px-6 pb-16 md:pb-20">
-        <div className={`${CONTAINER.wide} grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-10 lg:gap-16`}>
-          {/* TOC */}
-          <nav aria-label="Terms of Service contents" className="lg:sticky lg:top-[104px] lg:self-start">
-            <h2 className="font-sans text-[0.72rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
-              Contents
-            </h2>
-            <ul role="list" className="space-y-2.5">
-              {SECTIONS.map((s) => (
-                <li key={s.id}>
-                  <a
-                    href={`#${s.id}`}
-                    className="font-sans text-[0.92rem] text-m-charcoal transition-opacity duration-200 hover:opacity-65"
-                  >
-                    {s.title}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          {/* Body */}
-          <div className="max-w-[680px]">
-            <div className="space-y-10">
-              {SECTIONS.map((s) => (
-                <section key={s.id} id={s.id} aria-labelledby={`${s.id}-heading`}>
-                  <h2
-                    id={`${s.id}-heading`}
-                    className="font-sans font-medium text-m-charcoal text-[1.15rem] md:text-[1.25rem] leading-[1.3] mb-4"
-                  >
-                    {s.title}
-                  </h2>
-                  <div className="space-y-4 font-sans text-[0.95rem] md:text-[1rem] leading-[1.65] text-m-text-secondary">
-                    <p>{s.body}</p>
-                  </div>
-                </section>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
+    <LegalPageLayout
+      pageTitle="Terms of Service"
+      lastUpdated="March 2026"
+      sections={SECTIONS}
+    />
   )
 }
