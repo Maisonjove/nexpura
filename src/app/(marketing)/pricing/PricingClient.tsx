@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import Button from '@/components/landing/ui/Button'
 import { BUTTON } from '@/components/landing/_tokens'
+import FAQSection, { type FAQItem } from '@/components/landing/FAQSection'
 import {
   PLANS,
   SUPPORTED_CURRENCIES,
@@ -84,26 +85,40 @@ const comparisonGroups = [
   },
 ]
 
-const faqs = [
+// Pricing FAQs — passed to the shared FAQSection so this page renders
+// the same component the homepage uses (per Kaitlyn 2026-04-26
+// reversal of the earlier "make pricing visually different" pass).
+// Copy is verbatim from the spec.
+const PRICING_FAQS: FAQItem[] = [
   {
-    q: 'Can I change plans later?',
-    a: 'Yes. Upgrade or downgrade at any time. Changes take effect at the next billing cycle. Upgrades apply immediately.',
+    id: 'change-plans',
+    question: 'Can I change plans later?',
+    answer:
+      'Yes. You can upgrade or downgrade at any time from your account settings, and changes take effect at the start of your next billing cycle.',
   },
   {
-    q: 'Is there a setup fee?',
-    a: 'Never. You only pay the monthly subscription. Free migration is included with every plan.',
+    id: 'setup-fee',
+    question: 'Is there a setup fee?',
+    answer:
+      'No setup fee. Guided onboarding and migration support are included with every plan.',
   },
   {
-    q: "What's included in the free trial?",
-    a: 'Full access to every feature in your chosen plan for 14 days. No credit card required.',
+    id: 'free-trial-includes',
+    question: "What's included in the free trial?",
+    answer:
+      "Full access to your selected plan's workflows for 14 days, including POS, repairs, bespoke, inventory, customers, and reporting.",
   },
   {
-    q: 'Do you offer annual billing?',
-    a: "Yes — annual billing gives you two months free. We can help you set it up when you're ready.",
+    id: 'annual-billing',
+    question: 'Do you offer annual billing?',
+    answer:
+      'Yes. Annual billing is available on all plans with a discount versus monthly. Speak to our team for current annual pricing.',
   },
   {
-    q: 'What happens after my trial ends?',
-    a: 'Your account stays active without losing data. Choose a plan to keep using Nexpura, or your tenant pauses in a read-only state until you decide.',
+    id: 'trial-ends',
+    question: 'What happens after my trial ends?',
+    answer:
+      'At the end of your 14-day trial, you can choose to continue on a paid plan or pause your account. Your data is retained either way.',
   },
 ]
 
@@ -209,7 +224,6 @@ export default function PricingClient({
 }: {
   initialCurrency: CurrencyCode
 }) {
-  const [openFaq, setOpenFaq] = useState<number | null>(0)
   const [currency, setCurrency] = useCurrency(initialCurrency)
 
   return (
@@ -369,64 +383,18 @@ export default function PricingClient({
         </div>
       </section>
 
-      {/* === FAQ — refined linear list per Kaitlyn 2026-04-26 polish-pass.
-          Deliberately distinct from the homepage FAQ (card-stack feel):
-          this one is a clean linear list — border-b only, no card bgs,
-          tighter padding, smaller stroke-icon plus/minus. */}
-      <section className="py-16 md:py-20 px-6 sm:px-10 lg:px-20 border-t border-m-border-soft">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center">
-            <motion.p
-              {...fadeUp()}
-              className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-4"
-            >
-              FAQ
-            </motion.p>
-            <motion.h2
-              {...fadeBlur}
-              className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
-            >
-              Pricing questions, answered
-            </motion.h2>
-          </div>
-
-          <div className="mt-12 md:mt-14 border-y border-[#E4DBC9] divide-y divide-[#E4DBC9]">
-            {faqs.map((faq, i) => (
-              <motion.div key={faq.q} {...fadeUp(i * 0.05)}>
-                <button
-                  type="button"
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  aria-expanded={openFaq === i}
-                  className="w-full flex items-center justify-between gap-6 py-4 md:py-5 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]/40 focus-visible:ring-offset-2 rounded"
-                >
-                  <span className="font-sans font-medium text-m-charcoal text-[1rem] md:text-[1.05rem] leading-[1.4]">
-                    {faq.q}
-                  </span>
-                  {/* Stroke-icon plus → × on open. No chip background. */}
-                  <span
-                    aria-hidden="true"
-                    className={`relative w-5 h-5 flex-shrink-0 text-m-text-secondary transition-transform duration-200 ${
-                      openFaq === i ? 'rotate-45' : ''
-                    }`}
-                  >
-                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 block w-3.5 h-px bg-current" />
-                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 block w-px h-3.5 bg-current" />
-                  </span>
-                </button>
-                <div
-                  className={`overflow-hidden transition-all duration-[300ms] [transition-timing-function:var(--m-ease)] ${
-                    openFaq === i ? 'max-h-48 pb-4 md:pb-5' : 'max-h-0'
-                  }`}
-                >
-                  <p className="font-sans text-[0.93rem] leading-[1.65] text-m-text-secondary max-w-[640px]">
-                    {faq.a}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* === FAQ — shared FAQSection component (Kaitlyn 2026-04-26 reversal
+          of the earlier "make pricing visually different" pass). Now
+          renders identically to the homepage FAQ; only the heading,
+          subheading, and faqs[] differ. The pricing FAQ intentionally
+          omits the trailingNote prop — the page already has a final CTA
+          + booking links nearby, so the homepage's "Talk to the team"
+          line would be redundant here. */}
+      <FAQSection
+        heading="Pricing questions, answered"
+        subheading="Trial, billing, and plan changes."
+        faqs={PRICING_FAQS}
+      />
 
       {/* Final CTA */}
       <section className="py-24 lg:py-36 px-6 sm:px-10 lg:px-20 text-center border-t border-m-border-soft bg-m-charcoal">

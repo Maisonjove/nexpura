@@ -1,4 +1,5 @@
 // Landing page - no auth check needed
+import Link from 'next/link'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingHero from '@/components/landing/LandingHero'
 import LandingExplorePlatform from '@/components/landing/LandingExplorePlatform'
@@ -15,8 +16,44 @@ import LandingComparison from '@/components/landing/LandingComparison'
 import LandingMigrationStrip from '@/components/landing/LandingMigrationStrip'
 // import LandingMigration from '@/components/landing/LandingMigration' — parked on 2026-04-26. Replaced on the homepage by the compact LandingMigrationStrip; the long-form section is repurposable for a future /migration page. Component file kept intact.
 // import LandingInventory from '@/components/landing/LandingInventory' — parked on 2026-04-26. Inventory is now covered by the Inventory tab in LandingProductDemo and the "Inventory & Memo" card in LandingPlatformModules. Component file kept intact.
-import LandingFAQ from '@/components/landing/LandingFAQ'
-// import LandingFaq from '@/components/landing/LandingFaq' — replaced 2026-04-26 by the new 5-question LandingFAQ.tsx (capital filename). Old file kept on disk for repurposing.
+import FAQSection, { type FAQItem } from '@/components/landing/FAQSection'
+// LandingFAQ.tsx was deleted 2026-04-26 — its job is now done by the
+// shared FAQSection component (renders identically on / and /pricing
+// with different content passed as props). LandingFaq.legacy.tsx (lower
+// case, the original pre-Phase-G version) is still on disk if needed.
+
+const HOMEPAGE_FAQS: FAQItem[] = [
+  {
+    id: 'replace-pos',
+    question: 'Can Nexpura replace my current POS?',
+    answer:
+      'Nexpura is designed to centralise jewellery retail workflows including POS, inventory, customers, repairs, bespoke orders, digital passports, and reporting. The best setup depends on your current tools and business needs.',
+  },
+  {
+    id: 'repairs-bespoke',
+    question: 'Does Nexpura support repairs and bespoke orders?',
+    answer:
+      'Yes. Nexpura includes repair tracking from intake to collection, plus bespoke workflows for quotes, approvals, deposits, sourcing, milestones, and production notes.',
+  },
+  {
+    id: 'migration',
+    question: 'Can I migrate my existing data?',
+    answer:
+      'Guided migration is available to help move key customer, inventory, repair, supplier, and business records into Nexpura.',
+  },
+  {
+    id: 'free-trial',
+    question: 'Is there a free trial?',
+    answer:
+      'Yes. You can start with a 14-day free trial and explore the core workflows before choosing a plan.',
+  },
+  {
+    id: 'book-demo',
+    question: 'Can I book a demo instead?',
+    answer:
+      'Yes. A guided walkthrough can help map Nexpura to your current POS, repair, bespoke, inventory, and customer workflows.',
+  },
+]
 // import LandingFinalCTA from '@/components/landing/LandingFinalCTA' — parked on 2026-04-26. CTAs already appear in hero, header, and throughout the page; the dedicated final CTA section was repetitive. Component file kept intact for landing pages / ad campaigns.
 // import LandingCta from '@/components/landing/LandingCta' — replaced 2026-04-26 by LandingFinalCTA (now also parked). Old file kept on disk for repurposing.
 import LandingFooter from '@/components/landing/LandingFooter'
@@ -42,7 +79,23 @@ export default function HomePage() {
         {/* <LandingInventory /> — parked on 2026-04-26. Inventory is already covered by the Inventory tab in Product Demo and the "Inventory & Memo" card in Platform Modules. Removing the standalone section to avoid triple-coverage and keep the homepage tight. */}
         {/* <LandingMigration /> — parked on 2026-04-26. Long-form migration content moved to a tighter 3-step LandingMigrationStrip below; the original component is the foundation for a future /migration page. */}
         <LandingMigrationStrip />
-        <LandingFAQ />
+        <FAQSection
+          heading="Questions jewellers ask before switching"
+          subheading="Clear answers about trial, migration, POS, repairs, and setup."
+          faqs={HOMEPAGE_FAQS}
+          trailingNote={
+            <p className="font-sans text-[0.95rem] text-m-text-secondary">
+              More questions about migration, pricing, or specific features?{' '}
+              <Link
+                href="/contact"
+                className="text-m-charcoal border-b border-m-charcoal pb-0.5 hover:opacity-70 transition-opacity"
+              >
+                Talk to the team
+              </Link>
+              .
+            </p>
+          }
+        />
         {/* <LandingFinalCTA /> — parked on 2026-04-26. CTAs already appear in hero, header, and throughout the page; the dedicated final CTA section was repetitive. Component file kept intact. */}
       </main>
       <LandingFooter />
