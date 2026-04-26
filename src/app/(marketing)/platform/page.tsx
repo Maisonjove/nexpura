@@ -1,3 +1,17 @@
+// ============================================
+// /platform — Kaitlyn 2026-04-26 polish-pass:
+//   - Removed the duplicate top hero (eyebrow "The Platform" + H1
+//     "The Nexpura Platform" + generic subhead). The first body section
+//     is LandingPlatformModules which already opens with "One system
+//     of record for every jewellery workflow" — landing visitors at
+//     that heading directly is tighter.
+//   - Dropped the legacy `pt-[72px]` div wrapper now that the
+//     marketing layout's main uses `.page-shell` (88px desktop /
+//     72px mobile) for the sticky-header offset.
+//   - Final CTA "Book a Demo" href stays /contact (was already
+//     correct here).
+// ============================================
+
 import LandingPlatformModules from '@/components/landing/LandingPlatformModules'
 import LandingScreenshots from '@/components/landing/LandingScreenshots'
 import LandingDemoExplainer from '@/components/landing/LandingDemoExplainer'
@@ -9,37 +23,9 @@ export const metadata = {
     'The complete operating system for jewellery businesses. POS, inventory, repairs, bespoke orders, CRM, invoicing, analytics, digital passports, and AI — all connected.',
 }
 
-/**
- * /platform — restyled to the homepage system per Kaitlyn brief #2
- * Section 10C. Body content is composed from the three landing
- * components (PlatformModules, Screenshots, DemoExplainer) which
- * already use the m-* tokens; only the page hero + final CTA needed
- * to be brought across.
- */
 export default function PlatformPage() {
   return (
-    <div className="pt-[72px] bg-m-ivory">
-      {/* Page hero */}
-      <section className="py-24 lg:py-36 px-6 sm:px-10 lg:px-20 text-center">
-        <p className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-6">
-          The Platform
-        </p>
-        <h1 className="font-serif text-[42px] sm:text-[56px] lg:text-[clamp(2.5rem,5vw,4.5rem)] font-normal leading-[1.06] tracking-[-0.015em] text-m-charcoal mb-6">
-          The Nexpura Platform
-        </h1>
-        <p className="text-[16px] sm:text-[18px] text-m-text-secondary leading-[1.55] max-w-[640px] mx-auto mb-10">
-          One connected system for jewellery retail, repairs, bespoke orders, inventory, invoicing, customer records, and digital trust.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-          <Button href="/signup" size="lg">
-            Start Free Trial
-          </Button>
-          <Button href="/contact" variant="tertiary">
-            Book a Demo
-          </Button>
-        </div>
-      </section>
-
+    <div className="bg-m-ivory">
       <LandingPlatformModules />
       <LandingScreenshots />
       <LandingDemoExplainer />

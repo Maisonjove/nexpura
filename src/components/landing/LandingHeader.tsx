@@ -77,7 +77,7 @@ export default function LandingHeader() {
         {/* Right cluster: About · Book a Demo · Login (outlined pill) · Start Free Trial (filled pill) */}
         <div className="hidden md:flex items-center gap-5 flex-1 justify-end">
           <NavLink href="/about">About</NavLink>
-          <NavLink href="/demo">Book a Demo</NavLink>
+          <NavLink href="/contact">Book a Demo</NavLink>
           <Link
             href="/login"
             className="inline-flex items-center justify-center rounded-full bg-transparent text-m-charcoal border border-m-charcoal px-5 py-2 font-sans text-[0.88rem] font-medium transition-all duration-200 hover:bg-m-charcoal hover:text-white"
@@ -125,7 +125,7 @@ export default function LandingHeader() {
           <MobileLink href="/features">Solutions</MobileLink>
           <MobileLink href="/pricing">Pricing</MobileLink>
           <MobileLink href="/about">About</MobileLink>
-          <MobileLink href="/demo">Book a Demo</MobileLink>
+          <MobileLink href="/contact">Book a Demo</MobileLink>
           <MobileLink href="/login">Login</MobileLink>
           <div className="pt-4 mt-2 border-t border-m-border-soft">
             <Link

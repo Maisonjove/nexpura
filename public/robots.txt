@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /(app)/
+Disallow: /verify/
+Disallow: /track/
+Disallow: /approve/
+Disallow: /invite/
+Disallow: /support-access/
+Disallow: /demo
+
+Sitemap: https://nexpura.com/sitemap.xml

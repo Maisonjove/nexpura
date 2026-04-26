@@ -166,7 +166,7 @@ function PassportVisual() {
               Digital Passport
             </div>
             <div className="font-serif text-m-charcoal text-[1.1rem] leading-tight">
-              Maison Joves
+              Maison Jové
             </div>
           </div>
           <div className="text-right">

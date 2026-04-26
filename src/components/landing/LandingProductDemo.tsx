@@ -17,10 +17,9 @@
 // ============================================
 
 import { useState } from "react"
-import Link from "next/link"
-import { SECTION_PADDING, HEADING, INTRO_SPACING, INLINE_LINK, CONTAINER } from "./_tokens"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER } from "./_tokens"
 
-type TabKey = "repairs" | "inventory" | "bespoke" | "pos" | "analytics" | "crm"
+type TabKey = "repairs" | "inventory" | "bespoke" | "pos" | "analytics"
 
 type Tab = {
   key: TabKey
@@ -99,21 +98,10 @@ const TABS: Tab[] = [
     ],
     image: { src: "/screenshots/analytics.png", alt: "Nexpura Performance Insights — dashboard with sales, repairs, and stock movement trends" },
   },
-  {
-    key: "crm",
-    label: "CRM",
-    title: "Customer Profiles",
-    paragraph:
-      "Keep purchase history, repair records, bespoke notes, preferences, digital passports, and communication history connected to each customer.",
-    bullets: [
-      "View full customer history in one place",
-      "Connect purchases, repairs, and bespoke jobs",
-      "Prepare better follow-ups and appointments",
-    ],
-    // Placeholder — falls back to /screenshots/dashboard.png until a
-    // dedicated CRM screenshot ships.
-    image: { src: "/screenshots/dashboard.png", alt: "Nexpura Customer Profiles — unified customer history with purchases, repairs, and bespoke jobs" },
-  },
+  // CRM tab temporarily removed 2026-04-26 — there's no dedicated CRM
+  // screenshot yet, and the placeholder dashboard.png was the same
+  // image the new POS tab uses, which read as fake. Restore this tab
+  // once /screenshots/crm.png ships.
 ]
 
 export default function LandingProductDemo() {
@@ -217,14 +205,10 @@ export default function LandingProductDemo() {
           </div>
         </div>
 
-        {/* Single section CTA — replaces the prior per-tab "View feature"
-            links. /features is a real route in src/app/(marketing)/features. */}
-        <div className="text-center mt-12 md:mt-14">
-          <Link href="/features" className={INLINE_LINK}>
-            Explore all features
-            <span aria-hidden="true">→</span>
-          </Link>
-        </div>
+        {/* Section CTA removed 2026-04-26 — same "Explore all features"
+            link already lives on the LandingPlatformModules card grid;
+            duplicating it here read as repetitive. The Product Demo
+            section now ends at the tabpanel. */}
       </div>
     </section>
   )

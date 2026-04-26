@@ -174,7 +174,7 @@ export default function AboutClient() {
           </p>
           <div className="mt-8 md:mt-9 flex flex-wrap justify-center gap-3 md:gap-4">
             <Link href="/signup" className={BUTTON.primary}>Start Free Trial</Link>
-            <Link href="/demo" className={BUTTON.secondary}>Book a Demo</Link>
+            <Link href="/contact" className={BUTTON.secondary}>Book a Demo</Link>
           </div>
           <p className="mt-6 font-sans text-[0.88rem] text-[#8A8276]">
             14-day free trial <span aria-hidden="true" className="text-[#B9B0A1]">·</span> Guided setup available

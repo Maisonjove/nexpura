@@ -110,14 +110,6 @@ function ComparisonCard({ col, featured }: { col: Column; featured: boolean }) {
           : undefined
       }
     >
-      {/* "Modern approach" tag — only on featured column */}
-      {featured && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 rounded-full bg-[#0E0E10] text-white px-3.5 py-1.5 font-sans text-[0.7rem] font-medium uppercase tracking-[0.18em]">
-          <span aria-hidden="true" className="inline-block w-1.5 h-1.5 rounded-full bg-[#C9A24A]" />
-          Modern approach
-        </span>
-      )}
-
       {/* Column label */}
       <div className="mb-6 pb-5 border-b border-[#E4DBC9]">
         <div className="font-sans text-[0.7rem] uppercase tracking-[0.22em] text-[#8A8276] mb-2">

@@ -284,10 +284,13 @@ export default function PricingClient() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="py-20 lg:py-32 px-6 sm:px-10 lg:px-20 border-t border-m-border-soft">
-        <div className="max-w-[820px] mx-auto">
-          <div className="text-center mb-16">
+      {/* === FAQ — refined linear list per Kaitlyn 2026-04-26 polish-pass.
+          Deliberately distinct from the homepage FAQ (card-stack feel):
+          this one is a clean linear list — border-b only, no card bgs,
+          tighter padding, smaller stroke-icon plus/minus. */}
+      <section className="py-16 md:py-20 px-6 sm:px-10 lg:px-20 border-t border-m-border-soft">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center">
             <motion.p
               {...fadeUp()}
               className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-4"
@@ -296,39 +299,41 @@ export default function PricingClient() {
             </motion.p>
             <motion.h2
               {...fadeBlur}
-              className="font-serif text-[36px] sm:text-[44px] lg:text-[48px] font-normal leading-[1.12] tracking-[-0.01em] text-m-charcoal"
+              className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
             >
               Pricing questions, answered
             </motion.h2>
           </div>
 
-          <div className="divide-y divide-m-border-soft border-y border-m-border-soft">
+          <div className="mt-12 md:mt-14 border-y border-[#E4DBC9] divide-y divide-[#E4DBC9]">
             {faqs.map((faq, i) => (
               <motion.div key={faq.q} {...fadeUp(i * 0.05)}>
                 <button
                   type="button"
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   aria-expanded={openFaq === i}
-                  className="w-full flex items-center justify-between gap-6 py-6 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m-champagne focus-visible:ring-offset-2 rounded"
+                  className="w-full flex items-center justify-between gap-6 py-4 md:py-5 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]/40 focus-visible:ring-offset-2 rounded"
                 >
-                  <span className="font-sans font-semibold text-[18px] lg:text-[20px] text-m-charcoal">
+                  <span className="font-sans font-medium text-m-charcoal text-[1rem] md:text-[1.05rem] leading-[1.4]">
                     {faq.q}
                   </span>
+                  {/* Stroke-icon plus → × on open. No chip background. */}
                   <span
-                    aria-hidden
-                    className={`text-m-text-faint text-[24px] transition-transform duration-300 [transition-timing-function:var(--m-ease)] flex-shrink-0 leading-none ${
+                    aria-hidden="true"
+                    className={`relative w-5 h-5 flex-shrink-0 text-m-text-secondary transition-transform duration-200 ${
                       openFaq === i ? 'rotate-45' : ''
                     }`}
                   >
-                    +
+                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 block w-3.5 h-px bg-current" />
+                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 block w-px h-3.5 bg-current" />
                   </span>
                 </button>
                 <div
-                  className={`overflow-hidden transition-all duration-[400ms] [transition-timing-function:var(--m-ease)] ${
-                    openFaq === i ? 'max-h-40 pb-6' : 'max-h-0'
+                  className={`overflow-hidden transition-all duration-[300ms] [transition-timing-function:var(--m-ease)] ${
+                    openFaq === i ? 'max-h-48 pb-4 md:pb-5' : 'max-h-0'
                   }`}
                 >
-                  <p className="text-[15px] leading-[1.6] text-m-text-secondary max-w-[680px]">
+                  <p className="font-sans text-[0.93rem] leading-[1.65] text-m-text-secondary max-w-[640px]">
                     {faq.a}
                   </p>
                 </div>

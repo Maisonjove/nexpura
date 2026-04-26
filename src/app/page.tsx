@@ -8,7 +8,7 @@ import LandingProductDemo from '@/components/landing/LandingProductDemo'
 import LandingPlatformModules from '@/components/landing/LandingPlatformModules'
 // LandingScreenshots removed on 2026-04-26 — superseded by LandingProductDemo (same six tabs, repositioned earlier in the page after the problem section). Component file kept at LandingScreenshots.tsx for repurposing.
 import LandingAICopilot from '@/components/landing/LandingAICopilot'
-import LandingDemoExplainer from '@/components/landing/LandingDemoExplainer'
+// import LandingDemoExplainer from '@/components/landing/LandingDemoExplainer' — parked on 2026-04-26. Kaitlyn's final order omits this section; component file kept intact for repurposing.
 import LandingDigitalPassport from '@/components/landing/LandingDigitalPassport'
 import LandingWhoItsFor from '@/components/landing/LandingWhoItsFor'
 import LandingComparison from '@/components/landing/LandingComparison'
@@ -17,8 +17,8 @@ import LandingMigrationStrip from '@/components/landing/LandingMigrationStrip'
 // import LandingInventory from '@/components/landing/LandingInventory' — parked on 2026-04-26. Inventory is now covered by the Inventory tab in LandingProductDemo and the "Inventory & Memo" card in LandingPlatformModules. Component file kept intact.
 import LandingFAQ from '@/components/landing/LandingFAQ'
 // import LandingFaq from '@/components/landing/LandingFaq' — replaced 2026-04-26 by the new 5-question LandingFAQ.tsx (capital filename). Old file kept on disk for repurposing.
-import LandingFinalCTA from '@/components/landing/LandingFinalCTA'
-// import LandingCta from '@/components/landing/LandingCta' — replaced 2026-04-26 by LandingFinalCTA. Old file kept on disk for repurposing.
+// import LandingFinalCTA from '@/components/landing/LandingFinalCTA' — parked on 2026-04-26. CTAs already appear in hero, header, and throughout the page; the dedicated final CTA section was repetitive. Component file kept intact for landing pages / ad campaigns.
+// import LandingCta from '@/components/landing/LandingCta' — replaced 2026-04-26 by LandingFinalCTA (now also parked). Old file kept on disk for repurposing.
 import LandingFooter from '@/components/landing/LandingFooter'
 import MarketingReveal from '@/components/landing/MarketingReveal'
 
@@ -34,7 +34,7 @@ export default function HomePage() {
         {/* <LandingRepairs /> — parked on 2026-04-26. Repair workflow is already covered in problem section, product demo (Repairs tab), platform modules, comparison, and FAQ. Removing avoids duplication and trims homepage length. */}
         <LandingPlatformModules />
         <LandingAICopilot />
-        <LandingDemoExplainer />
+        {/* <LandingDemoExplainer /> — parked on 2026-04-26. Kaitlyn's final order omits this section. Component file kept intact for repurposing. */}
         {/* LandingScreenshots removed 2026-04-26 — content moved into LandingProductDemo above and repositioned after the problem section. */}
         <LandingDigitalPassport />
         <LandingWhoItsFor />
@@ -43,7 +43,7 @@ export default function HomePage() {
         {/* <LandingMigration /> — parked on 2026-04-26. Long-form migration content moved to a tighter 3-step LandingMigrationStrip below; the original component is the foundation for a future /migration page. */}
         <LandingMigrationStrip />
         <LandingFAQ />
-        <LandingFinalCTA />
+        {/* <LandingFinalCTA /> — parked on 2026-04-26. CTAs already appear in hero, header, and throughout the page; the dedicated final CTA section was repetitive. Component file kept intact. */}
       </main>
       <LandingFooter />
       <MarketingReveal />

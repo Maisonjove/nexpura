@@ -35,7 +35,7 @@ export default function LandingFinalCTA() {
             Start Free Trial
           </Link>
 
-          <Link href="/demo" className={BUTTON.secondary}>
+          <Link href="/contact" className={BUTTON.secondary}>
             Book a Demo
           </Link>
         </div>
