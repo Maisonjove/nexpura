@@ -36,7 +36,12 @@ const SECTIONS: LegalSection[] = [
   {
     id: "cookies",
     title: "Cookies",
-    body: "We use cookies and similar technologies to maintain your authentication session, remember your preferences, and analyse aggregate usage patterns. Essential cookies are required for the Service to function. You can manage non-essential cookies through your browser settings.",
+    body: "We use cookies and similar technologies to maintain your authentication session, remember your preferences, and analyse aggregate usage patterns. Essential cookies are required for the Service to function. You can manage non-essential cookies through your browser settings. We also store a non-personal preference (your manually selected pricing-page currency) in your browser's localStorage so that returning visits remember your choice; this is held only on your device and is not transmitted to or stored on our servers.",
+  },
+  {
+    id: "region-detection",
+    title: "Region Detection",
+    body: "When you visit our pricing page we read an approximate country signal provided by our hosting platform's edge headers (derived from your IP address) to suggest an appropriate default currency for display. This signal is processed transiently at request time, is not linked to your account or identity, and is not retained. You can manually change the displayed currency at any time, and your selection takes precedence over the auto-detected default.",
   },
   {
     id: "your-rights",
