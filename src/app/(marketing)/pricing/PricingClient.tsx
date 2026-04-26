@@ -2,10 +2,11 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Button from '@/components/landing/ui/Button'
 import { BUTTON } from '@/components/landing/_tokens'
 import FAQSection, { type FAQItem } from '@/components/landing/FAQSection'
+import CurrencySelector from '@/components/pricing/CurrencySelector'
 import {
   PLANS,
   SUPPORTED_CURRENCIES,
@@ -146,78 +147,9 @@ function useCurrency(initial: CurrencyCode) {
   return [currency, setCurrency] as const
 }
 
-function CurrencyPicker({
-  value,
-  onChange,
-}: {
-  value: CurrencyCode
-  onChange: (c: CurrencyCode) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  return (
-    <div ref={ref} className="flex items-center justify-center gap-2 mb-10 relative">
-      <span className="font-sans text-[0.85rem] text-[#8A8276]">Currency:</span>
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          className="inline-flex items-center gap-1.5 font-sans text-[0.9rem] font-medium text-m-charcoal px-3 py-1.5 rounded-full border border-[#E4DBC9] hover:border-[#C9BFA9] transition-colors"
-        >
-          {value}
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            className="w-3.5 h-3.5"
-            aria-hidden
-          >
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </button>
-        {open && (
-          <ul
-            role="listbox"
-            className="absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[100px] bg-white border border-[#E4DBC9] rounded-xl shadow-lg overflow-hidden z-10"
-          >
-            {SUPPORTED_CURRENCIES.map((c) => (
-              <li key={c}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={c === value}
-                  onClick={() => {
-                    onChange(c)
-                    setOpen(false)
-                  }}
-                  className={`block w-full text-left px-4 py-2 font-sans text-[0.9rem] hover:bg-[#F1E9D8] ${
-                    c === value
-                      ? 'bg-[#F1E9D8] font-medium text-m-charcoal'
-                      : 'text-[#5A554C]'
-                  }`}
-                >
-                  {c}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  )
-}
+// Note: the inline CurrencyPicker that previously lived here was
+// replaced 2026-04-26 by the refined editorial control at
+// src/components/pricing/CurrencySelector.tsx.
 
 export default function PricingClient({
   initialCurrency,
@@ -261,7 +193,11 @@ export default function PricingClient({
       {/* Pricing cards */}
       <section className="pb-20 lg:pb-28 px-6 sm:px-10 lg:px-20">
         <div className="max-w-[1200px] mx-auto">
-          <CurrencyPicker value={currency} onChange={setCurrency} />
+          {/* Currency selector — right-aligned on lg, centred on smaller
+              screens so it doesn't feel detached on mobile. */}
+          <div className="flex justify-center md:justify-end mb-12">
+            <CurrencySelector value={currency} onChange={setCurrency} />
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {PLANS.map((plan, i) => {
