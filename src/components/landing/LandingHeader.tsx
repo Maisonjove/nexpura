@@ -2,24 +2,24 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Button from './ui/Button'
 
 /**
- * Sticky marketing nav per Kaitlyn's brief (section 4).
+ * Sticky marketing nav. Updated 2026-04-26 per Kaitlyn's 9-fix follow-up:
  *
- * - Left cluster: Platform · Solutions · Migration · Pricing
+ * - Left cluster: Platform · Features · Pricing · Verify Passport
  * - Centre: NEXPURA serif wordmark
- * - Right cluster: About · Login · Book a Demo (tertiary) · Start Free Trial (primary)
+ * - Right cluster: About · Book a Demo · Login (outlined pill) ·
+ *   Start Free Trial (filled pill)
+ *
+ * Login + Start Free Trial are now visible compact pill buttons at
+ * header scale (px-5 py-2 text-[0.88rem]) so they don't compete with
+ * the page-CTA-scale buttons in the Hero / FinalCTA. About + Book a
+ * Demo stay as plain text nav links — preserves the visual hierarchy
+ * (nav links → outline pill → filled pill).
  *
  * Sticky behaviour:
  *   - At scroll 0: ivory background, no shadow
- *   - After 40px: frosted glass (bg-rgba(250,247,242,0.78) + backdrop-blur)
- *     + border-bottom + subtle shadow
- *   - Transition 250ms
- *
- * Mobile: hamburger toggles a slide-down full-width panel; primary CTA
- * is a full-width filled pill at the bottom, with Book a Demo as a
- * ghost link below.
+ *   - After 40px: frosted glass + border-bottom + subtle shadow
  */
 export default function LandingHeader() {
   const [scrolled, setScrolled] = useState(false)
@@ -58,12 +58,19 @@ export default function LandingHeader() {
         aria-label="Primary"
         className="flex items-center justify-between max-w-[1200px] mx-auto px-6 sm:px-12 h-[72px]"
       >
-        {/* Left cluster: Platform · Solutions · Migration · Pricing */}
-        <div className="hidden md:flex items-center gap-8 flex-1">
+        {/* Left cluster: Platform · Features · Pricing · Verify Passport
+            (Migration removed 2026-04-26; "Solutions" → "Features" same day;
+            "Verify Passport" added 2026-04-26 — points at the existing
+            public verification page at /verify, restoring the entry point
+            that was cut during an earlier cleanup. Plain-text NavLink to
+            match the rest of the cluster — no pill, no badge.) Reduced
+            gap from gap-8 to gap-6 to keep all four items fitting cleanly
+            against the right cluster at 1280px without wrapping. */}
+        <div className="hidden md:flex items-center gap-6 flex-1">
           <NavLink href="/platform">Platform</NavLink>
-          <NavLink href="/features">Solutions</NavLink>
-          <NavLink href="/#migration">Migration</NavLink>
+          <NavLink href="/features">Features</NavLink>
           <NavLink href="/pricing">Pricing</NavLink>
+          <NavLink href="/verify">Verify Passport</NavLink>
         </div>
 
         {/* Centre: serif wordmark */}
@@ -75,19 +82,22 @@ export default function LandingHeader() {
           NEXPURA
         </Link>
 
-        {/* Right cluster: About · Login · Book a Demo (tertiary) · Start Free Trial (primary) */}
-        <div className="hidden md:flex items-center gap-6 flex-1 justify-end">
+        {/* Right cluster: About · Book a Demo · Login (outlined pill) · Start Free Trial (filled pill) */}
+        <div className="hidden md:flex items-center gap-5 flex-1 justify-end">
           <NavLink href="/about">About</NavLink>
-          <NavLink href="/login">Login</NavLink>
+          <NavLink href="/contact">Book a Demo</NavLink>
           <Link
-            href="/contact"
-            className="text-[14px] font-sans text-m-text-secondary transition-colors duration-200 hover:text-m-charcoal hover:underline underline-offset-4"
+            href="/login"
+            className="inline-flex items-center justify-center rounded-full bg-transparent text-m-charcoal border border-m-charcoal px-5 py-2 font-sans text-[0.88rem] font-medium transition-all duration-200 hover:bg-m-charcoal hover:text-white"
           >
-            Book a Demo
+            Login
           </Link>
-          <Button href="/signup" size="default">
+          <Link
+            href="/signup"
+            className="inline-flex items-center justify-center rounded-full bg-[#111] text-white border border-[#111] px-5 py-2 font-sans text-[0.88rem] font-medium transition-all duration-200 hover:bg-[#2a2a2a]"
+          >
             Start Free Trial
-          </Button>
+          </Link>
         </div>
 
         {/* Mobile toggle */}
@@ -120,21 +130,19 @@ export default function LandingHeader() {
       >
         <div className="flex flex-col gap-1 px-6 py-4 bg-m-ivory border-t border-m-border-soft">
           <MobileLink href="/platform">Platform</MobileLink>
-          <MobileLink href="/features">Solutions</MobileLink>
-          <MobileLink href="/#migration">Migration</MobileLink>
+          <MobileLink href="/features">Features</MobileLink>
           <MobileLink href="/pricing">Pricing</MobileLink>
+          <MobileLink href="/verify">Verify Passport</MobileLink>
           <MobileLink href="/about">About</MobileLink>
+          <MobileLink href="/contact">Book a Demo</MobileLink>
           <MobileLink href="/login">Login</MobileLink>
           <div className="pt-4 mt-2 border-t border-m-border-soft">
-            <Button href="/signup" fullWidth size="lg">
-              Start Free Trial
-            </Button>
             <Link
-              href="/contact"
-              className="block text-center mt-3 py-2 text-[14px] font-sans text-m-text-secondary hover:text-m-charcoal"
+              href="/signup"
+              className="block w-full text-center rounded-full bg-[#111] text-white border border-[#111] px-7 py-3.5 font-sans text-[0.95rem] font-medium transition-all duration-200 hover:bg-[#2a2a2a]"
               onClick={() => setMenuOpen(false)}
             >
-              Book a Demo
+              Start Free Trial
             </Link>
           </div>
         </div>

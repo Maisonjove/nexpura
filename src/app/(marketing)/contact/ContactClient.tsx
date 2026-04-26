@@ -1,60 +1,57 @@
 'use client'
 
+// ============================================
+// Contact — restyled per Kaitlyn 2026-04-26 polish-pass.
+//   - Compact hero
+//   - Form polish: tightened gaps, darker placeholder, custom dropdown
+//     chevron, BUTTON.primary on submit, focus-state #C9A24A/20 ring
+//     (lives in globals.css .m-form-input:focus)
+//   - Right-side info copy refreshed (EMAIL / LIVE CHAT / BOOK A DEMO)
+//   - "What happens in a demo" 5-step list refreshed verbatim
+//   - framer-motion removed; relies on the same static-token approach
+//     the rest of the marketing surface uses
+// Form submission logic unchanged — POSTs to /api/contact.
+// ============================================
+
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 import { useState, type FormEvent } from 'react'
-import Button from '@/components/landing/ui/Button'
+import { SECTION_PADDING, HEADING, BUTTON, CONTAINER } from '@/components/landing/_tokens'
 
-/**
- * Contact page restyled to the homepage system per Kaitlyn brief #2
- * Section 10G + wired to /api/contact in Joey's follow-up sweep
- * (item 2/6). Submitting POSTs JSON to /api/contact, which forwards
- * to hello@nexpura.com via Resend with reply-to set to the submitter.
- *
- * No DB persistence on the client side — if a CRM record is wanted
- * later, the API can be extended without changing this component.
- */
-
-const EASE = [0.22, 1, 0.36, 1] as const
-
-const fadeBlur = {
-  initial: { opacity: 0, filter: 'blur(6px)' },
-  whileInView: { opacity: 1, filter: 'blur(0px)' },
-  viewport: { once: true } as const,
-  transition: { duration: 1.2, ease: EASE },
+type Channel = {
+  label: string
+  lines: string[]
 }
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, filter: 'blur(4px)', y: 16 },
-  whileInView: { opacity: 1, filter: 'blur(0px)', y: 0 },
-  viewport: { once: true } as const,
-  transition: { duration: 1.2, ease: EASE, delay },
-})
-
-const channels = [
+const CHANNELS: Channel[] = [
   {
     label: 'Email',
-    value: 'hello@nexpura.com',
-    note: 'We respond within 24 hours',
+    lines: [
+      'hello@nexpura.com',
+      'We respond within 24 hours',
+    ],
   },
   {
-    label: 'Live chat',
-    value: 'Available inside the app',
-    note: 'Mon–Fri, 9am–5pm AEST',
+    label: 'Live Chat',
+    lines: [
+      'Available for active customers inside Nexpura',
+      'Monday–Friday, 9am–5pm AEST',
+    ],
   },
   {
-    label: 'Book a demo',
-    value: '30-minute walkthrough',
-    note: "We'll show you exactly what Nexpura can do",
+    label: 'Book a Demo',
+    lines: [
+      '30-minute personalised walkthrough',
+      'See how Nexpura maps to your POS, repair, bespoke, inventory, and customer workflows.',
+    ],
   },
 ]
 
-const expectations = [
-  'We learn about your business and current system',
-  'Walkthrough of the features most relevant to you',
-  'Live demonstration of repairs, bespoke, and POS',
-  'Migration plan for your existing data',
-  'Pricing and next steps — no pressure',
+const DEMO_STEPS: string[] = [
+  'We learn about your current setup',
+  'We walk through the workflows most relevant to your business',
+  'You see repairs, bespoke, POS, inventory, and passports in action',
+  'We discuss migration and setup options',
+  'You get clear next steps, with no pressure',
 ]
 
 export default function ContactClient() {
@@ -98,36 +95,24 @@ export default function ContactClient() {
 
   return (
     <div className="bg-m-ivory">
-      {/* Hero */}
-      <section className="pt-24 pb-20 lg:pt-32 lg:pb-24 px-6 sm:px-10 lg:px-20 text-center">
-        <div className="max-w-[820px] mx-auto">
-          <motion.p
-            {...fadeUp()}
-            className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-6"
-          >
-            Get in Touch
-          </motion.p>
-          <motion.h1
-            {...fadeBlur}
-            className="font-serif text-[42px] sm:text-[56px] lg:text-[clamp(2.75rem,5vw,4.5rem)] font-normal leading-[1.06] tracking-[-0.015em] text-m-charcoal mb-7"
-          >
-            Let&apos;s <em className="italic">talk</em>
-          </motion.h1>
-          <motion.p
-            {...fadeUp(0.3)}
-            className="text-[16px] sm:text-[18px] leading-[1.55] text-m-text-secondary max-w-[600px] mx-auto"
-          >
-            Book a demo, ask questions, or talk to our team about your migration.
-            We&apos;re real people who understand jewellery businesses.
-          </motion.p>
+      {/* === Hero — compact tier ====================================== */}
+      <section className={`${SECTION_PADDING.compact} text-center`}>
+        <div className={CONTAINER.narrow}>
+          <span className={HEADING.eyebrow}>Get in Touch</span>
+          <h1 className="font-serif text-m-charcoal text-[2rem] md:text-[2.4rem] leading-[1.12] tracking-[-0.005em] mb-4">
+            Let&apos;s talk
+          </h1>
+          <p className="font-sans text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[600px] mx-auto">
+            Book a demo, ask questions, or talk to our team about your migration. We&apos;re real people who understand jewellery businesses.
+          </p>
         </div>
       </section>
 
-      {/* Form + info */}
-      <section className="pb-24 lg:pb-32 px-6 sm:px-10 lg:px-20">
-        <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+      {/* === Form + info ============================================== */}
+      <section className={`${SECTION_PADDING.standard} pt-0 md:pt-0`}>
+        <div className={`${CONTAINER.wide} grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start`}>
           {/* Form */}
-          <motion.form {...fadeUp()} onSubmit={handleSubmit} className="space-y-5" noValidate>
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             <div className="grid grid-cols-2 gap-5">
               <Field label="First name" name="first_name" placeholder="Jane" required />
               <Field label="Last name" name="last_name" placeholder="Smith" />
@@ -144,19 +129,29 @@ export default function ContactClient() {
               <label htmlFor="contact-topic" className="m-form-label">
                 What are you enquiring about?
               </label>
-              <select
-                id="contact-topic"
-                name="topic"
-                className="m-form-input cursor-pointer"
-                defaultValue="demo"
-                required
-              >
-                <option value="demo">Book a product demo</option>
-                <option value="trial">Help with my free trial</option>
-                <option value="migration">Migration from another system</option>
-                <option value="pricing">Pricing and plans</option>
-                <option value="other">Something else</option>
-              </select>
+              <div className="relative">
+                <select
+                  id="contact-topic"
+                  name="topic"
+                  className="m-form-input cursor-pointer appearance-none pr-12"
+                  defaultValue="demo"
+                  required
+                >
+                  <option value="demo">Book a product demo</option>
+                  <option value="trial">Help with my free trial</option>
+                  <option value="migration">Migration from another system</option>
+                  <option value="pricing">Pricing and plans</option>
+                  <option value="other">Something else</option>
+                </select>
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-[#8A8276]"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
+              </div>
             </div>
             <div>
               <label htmlFor="contact-message" className="m-form-label">
@@ -178,7 +173,7 @@ export default function ContactClient() {
               <div
                 role="status"
                 aria-live="polite"
-                className="bg-m-champagne-tint border border-m-champagne-soft text-m-charcoal rounded-[14px] px-4 py-3 text-[14px] leading-[1.55]"
+                className="bg-[#F1E9D8] border border-[#E4DBC9] text-m-charcoal rounded-[14px] px-4 py-3 font-sans text-[0.92rem] leading-[1.55]"
               >
                 Thanks — your message is on its way to hello@nexpura.com. We&apos;ll be in touch within 24 hours.
               </div>
@@ -187,66 +182,70 @@ export default function ContactClient() {
               <p role="alert" className="m-form-error">{errorMsg}</p>
             )}
 
-            <Button type="submit" size="lg" className="mt-2" disabled={status === 'sending'}>
-              {status === 'sending' ? 'Sending…' : 'Send message'}
-            </Button>
-          </motion.form>
+            <button
+              type="submit"
+              className={`${BUTTON.primary} mt-2`}
+              disabled={status === 'sending'}
+            >
+              {status === 'sending' ? 'Sending…' : 'Send Message'}
+            </button>
+          </form>
 
-          {/* Info */}
-          <motion.div {...fadeUp(0.2)} className="space-y-12">
-            <div>
-              <p className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-6">
-                Other ways to reach us
-              </p>
-              <div className="divide-y divide-m-border-soft border-y border-m-border-soft">
-                {channels.map((c) => (
-                  <div key={c.label} className="py-5 flex flex-col gap-1">
-                    <span className="text-[11px] tracking-[0.14em] uppercase text-m-text-faint font-medium">
-                      {c.label}
-                    </span>
-                    <span className="font-serif text-[20px] text-m-charcoal">
-                      {c.value}
-                    </span>
-                    <span className="text-[13px] text-m-text-secondary">
-                      {c.note}
-                    </span>
-                  </div>
-                ))}
+          {/* Info column */}
+          <div className="space-y-8">
+            {CHANNELS.map((c) => (
+              <div key={c.label}>
+                <span className={HEADING.eyebrow}>{c.label}</span>
+                <div className="space-y-1">
+                  {c.lines.map((line, i) => (
+                    <p
+                      key={i}
+                      className={
+                        i === 0
+                          ? 'font-sans text-m-charcoal text-[1.05rem] md:text-[1.1rem] leading-[1.4]'
+                          : 'font-sans text-m-text-secondary text-[0.95rem] leading-[1.55]'
+                      }
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </div>
               </div>
-            </div>
+            ))}
 
-            <div>
-              <p className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-6">
-                What happens in a demo
-              </p>
-              <ul className="space-y-4">
-                {expectations.map((e, i) => (
+            <div className="border-t border-[#E4DBC9] pt-8">
+              <span className={HEADING.eyebrow}>What happens in a demo</span>
+              <ol role="list" className="space-y-3.5">
+                {DEMO_STEPS.map((step, i) => (
                   <li
-                    key={e}
-                    className="flex items-start gap-4 text-[15px] text-m-text-secondary leading-[1.6]"
+                    key={step}
+                    className="flex items-start gap-3 font-sans text-m-charcoal text-[0.95rem] leading-[1.55]"
                   >
-                    <span className="text-[13px] tabular-nums text-m-text-faint font-medium pt-0.5">
-                      {String(i + 1).padStart(2, '0')}
+                    <span
+                      aria-hidden="true"
+                      className="mt-0.5 inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#F1E9D8] border border-[#E4DBC9] text-[0.72rem] font-medium text-[#5A554C] flex-shrink-0 tabular-nums"
+                    >
+                      {i + 1}
                     </span>
-                    <span>{e}</span>
+                    <span>{step}</span>
                   </li>
                 ))}
-              </ul>
+              </ol>
             </div>
 
-            <div className="border-t border-m-border-soft pt-6">
-              <p className="text-[14px] text-m-text-secondary mb-2">
+            <div className="border-t border-[#E4DBC9] pt-6">
+              <p className="font-sans text-[0.92rem] text-m-text-secondary mb-2">
                 Already signed up?
               </p>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 text-[15px] font-sans font-medium text-m-charcoal hover:underline underline-offset-4 decoration-m-charcoal"
+                className="inline-flex items-center gap-1.5 font-sans text-[0.95rem] font-medium text-m-charcoal hover:underline underline-offset-4 decoration-m-charcoal"
               >
                 Sign in to your account
                 <span aria-hidden>→</span>
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
     </div>

@@ -79,7 +79,11 @@ export default function RootLayout({
     <html
       lang="en"
       dir="ltr"
-      className={cn("font-sans", geist.variable, instrumentSerif.variable)}
+      className={cn(
+        "font-sans",
+        geist.variable,
+        instrumentSerif.variable,
+      )}
     >
       <head>
         {/* Preconnect to Supabase to reduce connection latency */}

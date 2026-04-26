@@ -1,27 +1,44 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import Button from '@/components/landing/ui/Button'
+import { BUTTON } from '@/components/landing/_tokens'
+import FAQSection, { type FAQItem } from '@/components/landing/FAQSection'
+import CurrencySelector from '@/components/pricing/CurrencySelector'
+import {
+  PLANS,
+  SUPPORTED_CURRENCIES,
+  type CurrencyCode,
+} from '@/data/pricing'
 
 /**
  * Pricing page restyled to the homepage system per Kaitlyn brief #2
- * Section 10B. Structure, content, prices, plan names, feature lists,
- * comparison table rows, FAQ copy — all preserved verbatim. Only the
- * visual layer is brought in line with the marketing tokens:
+ * Section 10B. Structure, content, plan names, comparison table rows,
+ * FAQ copy — all preserved verbatim.
+ *
+ * 2026-04-26 update (Kaitlyn pricing brief on PR #42):
+ *  - Plan data moved to src/data/pricing.ts as a single source of truth
+ *    with multi-currency (AUD / USD / GBP / EUR) regional pricing.
+ *  - Adds <CurrencyPicker /> above the plan grid with localStorage
+ *    persistence. Initial currency comes from `x-vercel-ip-country`
+ *    server-side — see ./page.tsx.
+ *  - Plan card CTAs append &currency=… to their primaryHref (and
+ *    secondaryHref, when present) so the future Stripe checkout step
+ *    can resolve the right stripePriceId per (plan, currency) combo.
+ *  - Per-plan CTA shape (Kaitlyn 2026-04-26): all three plans share
+ *    "Start Free Trial" as primary; Studio + Atelier add a quieter
+ *    secondary text link ("or book a demo" / "or talk to sales").
+ *  - "From" prefix shown only when isFromPrice (Atelier).
+ *  - "Most Popular" badge only when isFeatured (Studio).
+ *
+ * Visual layer (unchanged from previous polish-pass):
  *  - Page bg #FFFFFF → bg-m-ivory.
  *  - Plan cards use the standard card surface; featured plan is the
  *    one with a champagne border (was charcoal). 32px desktop /
  *    22px mobile padding meets the spacing token minimum.
- *  - Plan CTA buttons swap to the Button component (primary on the
- *    featured plan, secondary on the others) so heights, hover lift,
- *    radius, and focus ring all match every other CTA on the site.
- *  - Comparison table + FAQ accordion + final CTA all swap stone-*
- *    palette for the m-* tokens. FAQ accordion already had the +
- *    → × rotation Kaitlyn called for; only colours change.
- *  - Final CTA's bespoke heavy-shadow gradient pill is dropped for
- *    the standard primary Button. Tertiary "Explore the Platform"
- *    link uses the underline-grow tertiary variant.
+ *  - Comparison table + FAQ accordion + final CTA all use m-* tokens.
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -39,58 +56,6 @@ const fadeUp = (delay = 0) => ({
   viewport: { once: true } as const,
   transition: { duration: 1.2, ease: EASE, delay },
 })
-
-const plans = [
-  {
-    name: 'Boutique',
-    price: 89,
-    description:
-      'For single-store jewellers who need one connected system for sales, repairs, bespoke, and stock.',
-    cta: 'Start Free Trial',
-    ctaHref: '/signup',
-    highlights: [
-      'POS, inventory, repairs, and bespoke workflows',
-      'Customers CRM and invoicing',
-      'Command Centers and AI Copilot',
-      'Guided migration included',
-      '1 staff · 1 store',
-    ],
-    featured: false,
-  },
-  {
-    name: 'Studio',
-    price: 179,
-    description:
-      'For growing jewellery businesses that need deeper reporting, branding, and team visibility across locations.',
-    cta: 'Book a Demo',
-    ctaHref: '/contact',
-    highlights: [
-      'Everything in Boutique',
-      'Full analytics dashboard',
-      'Up to 5 staff · up to 3 stores',
-      'Custom branding',
-      'Website and digital presence tools',
-    ],
-    featured: true,
-  },
-  {
-    name: 'Atelier',
-    price: 299,
-    description:
-      'For multi-store jewellery businesses and high-volume workshops needing advanced support, analytics, and scale.',
-    cta: 'Talk to Sales',
-    ctaHref: '/contact',
-    highlights: [
-      'Everything in Studio',
-      'Unlimited staff and stores',
-      'Custom analytics',
-      'AI product descriptions',
-      'Priority migration support',
-      'Dedicated success contact',
-    ],
-    featured: false,
-  },
-]
 
 const comparisonGroups = [
   {
@@ -124,27 +89,77 @@ const comparisonGroups = [
   },
 ]
 
-const faqs = [
+// Pricing FAQs — passed to the shared FAQSection so this page renders
+// the same component the homepage uses (per Kaitlyn 2026-04-26
+// reversal of the earlier "make pricing visually different" pass).
+// Copy is verbatim from the spec.
+const PRICING_FAQS: FAQItem[] = [
   {
-    q: 'Can I change plans later?',
-    a: 'Yes. Upgrade or downgrade at any time. Changes take effect at the next billing cycle. Upgrades apply immediately.',
+    id: 'change-plans',
+    question: 'Can I change plans later?',
+    answer:
+      'Yes. You can upgrade or downgrade at any time from your account settings, and changes take effect at the start of your next billing cycle.',
   },
   {
-    q: 'Is there a setup fee?',
-    a: 'Never. You only pay the monthly subscription. Free migration is included with every plan.',
+    id: 'setup-fee',
+    question: 'Is there a setup fee?',
+    answer:
+      'No setup fee. Guided onboarding and migration support are included with every plan.',
   },
   {
-    q: "What's included in the free trial?",
-    a: 'Full access to every feature in your chosen plan for 14 days. No credit card required.',
+    id: 'free-trial-includes',
+    question: "What's included in the free trial?",
+    answer:
+      "Full access to your selected plan's workflows for 14 days, including POS, repairs, bespoke, inventory, customers, and reporting.",
   },
   {
-    q: 'Do you offer annual billing?',
-    a: "Yes — annual billing gives you two months free. We can help you set it up when you're ready.",
+    id: 'annual-billing',
+    question: 'Do you offer annual billing?',
+    answer:
+      'Yes. Annual billing is available on all plans with a discount versus monthly. Speak to our team for current annual pricing.',
+  },
+  {
+    id: 'trial-ends',
+    question: 'What happens after my trial ends?',
+    answer:
+      'At the end of your 14-day trial, you can choose to continue on a paid plan or pause your account. Your data is retained either way.',
   },
 ]
 
-export default function PricingClient() {
-  const [openFaq, setOpenFaq] = useState<number | null>(0)
+// Order of precedence: localStorage → server-detected initialCurrency → AUD fallback (handled upstream)
+function useCurrency(initial: CurrencyCode) {
+  const [currency, setCurrencyState] = useState<CurrencyCode>(initial)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('nexpura_currency') as CurrencyCode | null
+      if (stored && SUPPORTED_CURRENCIES.includes(stored)) {
+        setCurrencyState(stored)
+      }
+    } catch {
+      // localStorage may be unavailable (SSR, privacy mode) — silently keep initial.
+    }
+  }, [])
+  const setCurrency = (next: CurrencyCode) => {
+    setCurrencyState(next)
+    try {
+      localStorage.setItem('nexpura_currency', next)
+    } catch {
+      // ignore — picker still works in-memory for the session.
+    }
+  }
+  return [currency, setCurrency] as const
+}
+
+// Note: the inline CurrencyPicker that previously lived here was
+// replaced 2026-04-26 by the refined editorial control at
+// src/components/pricing/CurrencySelector.tsx.
+
+export default function PricingClient({
+  initialCurrency,
+}: {
+  initialCurrency: CurrencyCode
+}) {
+  const [currency, setCurrency] = useCurrency(initialCurrency)
 
   return (
     <div className="bg-m-ivory">
@@ -180,58 +195,113 @@ export default function PricingClient() {
 
       {/* Pricing cards */}
       <section className="pb-20 lg:pb-28 px-6 sm:px-10 lg:px-20">
-        <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {plans.map((plan, i) => (
-            <motion.div
-              key={plan.name}
-              {...fadeUp(i * 0.1)}
-              className={`relative flex flex-col p-[22px] sm:p-8 lg:p-10 rounded-[18px] border transition-all duration-[250ms] [transition-timing-function:var(--m-ease)] ${
-                plan.featured
-                  ? 'border-m-champagne bg-m-white-soft shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
-                  : 'border-m-border-soft bg-m-white-soft hover:-translate-y-1 hover:border-m-border-hover hover:shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
-              }`}
-            >
-              {plan.featured && (
-                <span className="absolute -top-3 left-8 px-3 py-1 bg-m-champagne text-m-charcoal text-[10px] tracking-[0.18em] uppercase font-medium rounded-full">
-                  Most Popular
-                </span>
-              )}
-              <h3 className="font-serif text-[28px] lg:text-[32px] font-medium text-m-charcoal mb-2 leading-[1.2]">
-                {plan.name}
-              </h3>
-              <p className="text-[14px] leading-[1.6] text-m-text-secondary mb-8 min-h-[2.5em]">
-                {plan.description}
-              </p>
+        <div className="max-w-[1200px] mx-auto">
+          {/* Currency selector — centred above the plan grid. With the
+              4-tab inline pill switcher (Kaitlyn 2026-04-26), all options
+              are always visible so right-aligning would read detached.
+              Centred = a deliberate page-level control above the plans. */}
+          <div className="flex justify-center mt-8 md:mt-10 mb-12 md:mb-14">
+            <CurrencySelector value={currency} onChange={setCurrency} />
+          </div>
 
-              <div className="mb-8 flex items-baseline gap-2">
-                <span className="font-serif text-[48px] lg:text-[56px] text-m-charcoal leading-none">
-                  ${plan.price}
-                </span>
-                <span className="text-[14px] text-m-text-faint">/ month</span>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {PLANS.map((plan, i) => {
+              const price = plan.pricing[currency]
+              const withCurrency = (href: string) =>
+                href.includes('?')
+                  ? `${href}&currency=${currency}`
+                  : `${href}?currency=${currency}`
+              const primaryUrl = withCurrency(plan.cta.primaryHref)
+              const secondaryUrl = plan.cta.secondaryHref
+                ? withCurrency(plan.cta.secondaryHref)
+                : null
+              const ctaClass = plan.id === 'boutique' ? BUTTON.primary : BUTTON.secondary
 
-              <Button
-                href={plan.ctaHref}
-                variant={plan.featured ? 'primary' : 'secondary'}
-                fullWidth
-                className="mb-10"
-              >
-                {plan.cta}
-              </Button>
+              return (
+                <motion.div
+                  key={plan.id}
+                  {...fadeUp(i * 0.1)}
+                  className={`relative flex flex-col p-[22px] sm:p-8 lg:p-10 rounded-[18px] border transition-all duration-[250ms] [transition-timing-function:var(--m-ease)] ${
+                    plan.isFeatured
+                      ? 'border-m-champagne bg-m-white-soft shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
+                      : 'border-m-border-soft bg-m-white-soft hover:-translate-y-1 hover:border-m-border-hover hover:shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
+                  }`}
+                >
+                  {plan.isFeatured && (
+                    <span className="absolute -top-3 left-8 px-3 py-1 bg-m-champagne text-m-charcoal text-[10px] tracking-[0.18em] uppercase font-medium rounded-full">
+                      Most Popular
+                    </span>
+                  )}
+                  <h3 className="font-serif text-[28px] lg:text-[32px] font-medium text-m-charcoal mb-2 leading-[1.2]">
+                    {plan.name}
+                  </h3>
+                  <p className="text-[14px] leading-[1.6] text-m-text-secondary mb-8 min-h-[2.5em]">
+                    {plan.description}
+                  </p>
 
-              <ul className="space-y-3 flex-1">
-                {plan.highlights.map((h) => (
-                  <li
-                    key={h}
-                    className="flex items-start gap-3 text-[14px] leading-[1.6] text-m-text-secondary"
-                  >
-                    <CheckIcon />
-                    <span>{h}</span>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
+                  <div className="mb-2">
+                    <span className="font-sans text-[11px] tracking-[0.18em] uppercase text-m-text-faint font-medium">
+                      {currency}
+                    </span>
+                  </div>
+                  <div className="mb-8 flex items-baseline gap-2">
+                    {plan.isFromPrice && (
+                      <span className="font-sans text-[14px] text-m-text-faint">From</span>
+                    )}
+                    <span className="font-serif text-[48px] lg:text-[56px] text-m-charcoal leading-none">
+                      {price.symbol}
+                      {price.amount}
+                    </span>
+                    <span className="text-[14px] text-m-text-faint">/ month</span>
+                  </div>
+
+                  {/* Primary CTA + optional quieter secondary text link.
+                      Per Kaitlyn 2026-04-26: every plan ships "Start Free
+                      Trial" as primary so the row reads coherent; Studio
+                      and Atelier add a small secondary link beneath
+                      ("or book a demo" / "or talk to sales") for buyers
+                      who aren't ready to self-serve. Secondary link uses
+                      a quieter underline style and a fixed-height wrapper
+                      so the primary buttons stay horizontally aligned
+                      across all three cards. */}
+                  <div className="mb-10">
+                    <Link
+                      href={primaryUrl}
+                      className={`${ctaClass} w-full`}
+                    >
+                      {plan.cta.primaryLabel}
+                    </Link>
+                    <div className="h-6 mt-3 flex items-center justify-center">
+                      {secondaryUrl && (
+                        <Link
+                          href={secondaryUrl}
+                          className="font-sans text-[0.82rem] text-m-text-secondary hover:text-m-charcoal underline underline-offset-4 decoration-[#D6CDB8] hover:decoration-m-charcoal transition-colors duration-200"
+                        >
+                          {plan.cta.secondaryLabel}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+
+                  <ul className="space-y-3 flex-1">
+                    {plan.features.map((h) => (
+                      <li
+                        key={h}
+                        className="flex items-start gap-3 text-[14px] leading-[1.6] text-m-text-secondary"
+                      >
+                        <CheckIcon />
+                        <span>{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )
+            })}
+          </div>
+
+          <p className="font-sans text-[0.85rem] text-[#8A8276] text-center mt-10">
+            Prices shown based on region and exclude applicable taxes. Final billing currency is confirmed at checkout.
+          </p>
         </div>
       </section>
 
@@ -260,9 +330,9 @@ export default function PricingClient() {
                   <th className="text-left py-4 pr-4 text-[11px] tracking-[0.14em] uppercase text-m-text-muted font-medium w-1/2">
                     Feature
                   </th>
-                  {plans.map((p) => (
+                  {PLANS.map((p) => (
                     <th
-                      key={p.name}
+                      key={p.id}
                       className="text-center py-4 px-4 font-serif text-[20px] text-m-charcoal font-medium"
                     >
                       {p.name}
@@ -280,59 +350,18 @@ export default function PricingClient() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="py-20 lg:py-32 px-6 sm:px-10 lg:px-20 border-t border-m-border-soft">
-        <div className="max-w-[820px] mx-auto">
-          <div className="text-center mb-16">
-            <motion.p
-              {...fadeUp()}
-              className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-4"
-            >
-              Questions
-            </motion.p>
-            <motion.h2
-              {...fadeBlur}
-              className="font-serif text-[36px] sm:text-[44px] lg:text-[48px] font-normal leading-[1.12] tracking-[-0.01em] text-m-charcoal"
-            >
-              Common questions, answered
-            </motion.h2>
-          </div>
-
-          <div className="divide-y divide-m-border-soft border-y border-m-border-soft">
-            {faqs.map((faq, i) => (
-              <motion.div key={faq.q} {...fadeUp(i * 0.05)}>
-                <button
-                  type="button"
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  aria-expanded={openFaq === i}
-                  className="w-full flex items-center justify-between gap-6 py-6 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m-champagne focus-visible:ring-offset-2 rounded"
-                >
-                  <span className="font-sans font-semibold text-[18px] lg:text-[20px] text-m-charcoal">
-                    {faq.q}
-                  </span>
-                  <span
-                    aria-hidden
-                    className={`text-m-text-faint text-[24px] transition-transform duration-300 [transition-timing-function:var(--m-ease)] flex-shrink-0 leading-none ${
-                      openFaq === i ? 'rotate-45' : ''
-                    }`}
-                  >
-                    +
-                  </span>
-                </button>
-                <div
-                  className={`overflow-hidden transition-all duration-[400ms] [transition-timing-function:var(--m-ease)] ${
-                    openFaq === i ? 'max-h-40 pb-6' : 'max-h-0'
-                  }`}
-                >
-                  <p className="text-[15px] leading-[1.6] text-m-text-secondary max-w-[680px]">
-                    {faq.a}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* === FAQ — shared FAQSection component (Kaitlyn 2026-04-26 reversal
+          of the earlier "make pricing visually different" pass). Now
+          renders identically to the homepage FAQ; only the heading,
+          subheading, and faqs[] differ. The pricing FAQ intentionally
+          omits the trailingNote prop — the page already has a final CTA
+          + booking links nearby, so the homepage's "Talk to the team"
+          line would be redundant here. */}
+      <FAQSection
+        heading="Pricing questions, answered"
+        subheading="Trial, billing, and plan changes."
+        faqs={PRICING_FAQS}
+      />
 
       {/* Final CTA */}
       <section className="py-24 lg:py-36 px-6 sm:px-10 lg:px-20 text-center border-t border-m-border-soft bg-m-charcoal">

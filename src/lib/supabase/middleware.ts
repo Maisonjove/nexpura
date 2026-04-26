@@ -186,6 +186,10 @@ function isAlwaysPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/bespoke/approval-response") ||
     pathname.startsWith("/api/bespoke/approval-validate") ||
     pathname.startsWith("/api/contact") ||
+    // Public landing-page AI Copilot — answers Nexpura questions for
+    // unauthenticated visitors. Rate-limited per IP via the "ai" bucket
+    // (see src/app/api/ai/landing-copilot/route.ts).
+    pathname.startsWith("/api/ai/landing-copilot") ||
     // Stripe checkout (signup-time, no session yet)
     pathname.startsWith("/api/stripe") ||
     // Health + sandbox introspection

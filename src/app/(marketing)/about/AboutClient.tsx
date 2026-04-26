@@ -1,192 +1,185 @@
-'use client'
+// ============================================
+// About — restyled to the homepage token system per Kaitlyn 2026-04-26
+// polish-pass brief.
+//
+// Section order (Hero → Mission → Pillars → Principles → CTA → Footer)
+// matches the spec verbatim. The previous version used framer-motion
+// for blur/fade entrances; that's been removed in favour of the same
+// static-token approach the homepage uses (m-reveal handles the gentle
+// fade-in via CSS). All body copy is font-sans; only the page H1, the
+// section H2s, and the pillar tile titles use the site serif.
+// ============================================
 
-import { motion } from 'framer-motion'
-import Button from '@/components/landing/ui/Button'
+import Link from 'next/link'
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, BUTTON, CONTAINER } from '@/components/landing/_tokens'
 
-/**
- * About page restyled to the homepage system per Kaitlyn brief #2
- * Section 10G. Copy, mission text, stats, values, structure all
- * preserved verbatim — only the visual layer is brought in line with
- * the m-* token system + standard Button.
- */
-
-const EASE = [0.22, 1, 0.36, 1] as const
-
-const heroFadeBlur = {
-  initial: { opacity: 0, filter: 'blur(6px)' },
-  animate: { opacity: 1, filter: 'blur(0px)' },
-  transition: { duration: 1.2, ease: EASE },
+type Pillar = {
+  title: string
+  sub: string
 }
 
-const heroFadeUp = (delay = 0) => ({
-  initial: { opacity: 0, filter: 'blur(4px)', y: 16 },
-  animate: { opacity: 1, filter: 'blur(0px)', y: 0 },
-  transition: { duration: 1.2, ease: EASE, delay },
-})
-
-const fadeBlur = {
-  initial: { opacity: 0, filter: 'blur(6px)' },
-  whileInView: { opacity: 1, filter: 'blur(0px)' },
-  viewport: { once: true } as const,
-  transition: { duration: 1.2, ease: EASE },
-}
-
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, filter: 'blur(4px)', y: 16 },
-  whileInView: { opacity: 1, filter: 'blur(0px)', y: 0 },
-  viewport: { once: true } as const,
-  transition: { duration: 1.2, ease: EASE, delay },
-})
-
-const stats = [
-  { value: 'Repairs', label: 'Tracked end to end' },
-  { value: 'Bespoke', label: 'Structured commission workflow' },
-  { value: 'Inventory', label: 'Real time visibility' },
-  { value: 'Migration', label: 'Guided with every plan' },
+const PILLARS: Pillar[] = [
+  { title: 'Repairs', sub: 'Tracked end to end' },
+  { title: 'Bespoke', sub: 'Structured commission workflow' },
+  { title: 'Inventory', sub: 'Real-time stock visibility' },
+  { title: 'Passports', sub: 'Digital trust after the sale' },
 ]
 
-const values = [
+type Principle = {
+  number: string
+  title: string
+  body: string
+}
+
+const PRINCIPLES: Principle[] = [
   {
-    title: 'Craft over compromise',
-    desc: 'We build purpose-built features for jewellers — not watered-down versions of generic retail software.',
+    number: '01',
+    title: 'Purpose-built for jewellery',
+    body:
+      'We build around real jewellery workflows — repairs, bespoke orders, inventory, customer records, and digital trust — not watered-down retail templates.',
   },
   {
-    title: 'Your data, your business',
-    desc: 'Your customers, inventory, and business intelligence belong to you — always.',
+    number: '02',
+    title: 'Your data stays yours',
+    body:
+      'Customer records, stock history, repair notes, sales data, and business intelligence belong to your business.',
   },
   {
-    title: 'Partner, not vendor',
-    desc: 'We support implementation with guided migration, onboarding, and real human help when you need it.',
+    number: '03',
+    title: 'Support beyond software',
+    body:
+      'Nexpura supports implementation with guided migration, onboarding, and practical help when your team needs it.',
   },
 ]
 
 export default function AboutClient() {
   return (
     <div className="bg-m-ivory">
-      {/* Hero */}
-      <section className="pt-24 pb-24 lg:pt-32 lg:pb-32 px-6 sm:px-10 lg:px-20 text-center">
-        <div className="max-w-[820px] mx-auto">
-          <motion.p
-            {...heroFadeUp()}
-            className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-3"
+      {/* === Hero — compact tier per Kaitlyn ============================ */}
+      <section
+        id="about-hero"
+        className={`${SECTION_PADDING.compact} text-center`}
+        aria-labelledby="about-hero-heading"
+      >
+        <div className={`${CONTAINER.narrow}`}>
+          <span className={HEADING.eyebrow}>Our Story</span>
+          <h1
+            id="about-hero-heading"
+            className="font-serif text-m-charcoal text-[2.25rem] sm:text-[2.6rem] md:text-[3rem] leading-[1.1] tracking-[-0.01em] mb-5"
           >
-            Our Story
-          </motion.p>
-          <motion.h1
-            {...heroFadeBlur}
-            className="font-serif text-[42px] sm:text-[56px] lg:text-[clamp(2.75rem,5vw,4.5rem)] font-normal leading-[1.06] tracking-[-0.015em] text-m-charcoal mb-5"
-          >
-            Built exclusively <em className="italic">for </em>
-            <em className="italic">jewellers</em>
-          </motion.h1>
-          <motion.p
-            {...heroFadeUp(0.3)}
-            className="text-[16px] sm:text-[18px] leading-[1.55] text-m-text-secondary max-w-[600px] mx-auto"
-          >
-            Nexpura was created for jewellery businesses that outgrow generic retail tools. Repairs are more complex. Bespoke work needs structure. Inventory is more nuanced. Customer relationships are more personal. We built Nexpura to reflect that reality from the ground up.
-          </motion.p>
+            Built exclusively for jewellers
+          </h1>
+          <p className="font-sans text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[640px] mx-auto">
+            Nexpura was built for jewellery businesses that need more than
+            generic retail software. Repairs, bespoke commissions, high-value
+            inventory, customer relationships, and digital trust all require
+            structure. Nexpura brings those workflows into one modern operating
+            system designed specifically for the trade.
+          </p>
         </div>
       </section>
 
-      {/* Mission */}
-      <section className="py-20 lg:py-32 px-6 sm:px-10 lg:px-20 bg-m-white-soft border-t border-m-border-soft">
-        <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-          <div>
-            <motion.p
-              {...fadeUp()}
-              className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-4"
-            >
-              Our Mission
-            </motion.p>
-            <motion.h2
-              {...fadeBlur}
-              className="font-serif text-[36px] sm:text-[44px] lg:text-[48px] font-normal leading-[1.12] tracking-[-0.01em] text-m-charcoal mb-8"
-            >
-              World-class software for independent jewellers.
-            </motion.h2>
-            <motion.div {...fadeUp(0.1)} className="space-y-5 text-[16px] leading-[1.6] text-m-text-secondary">
-              <p>
-                Generic retail software was never designed for the way jewellers actually operate. Nexpura brings repairs, bespoke workflows, inventory, customer records, invoicing, and digital trust tools into one connected system built specifically for the trade.
-              </p>
-            </motion.div>
-          </div>
+      {/* === Mission — standard tier ==================================== */}
+      <section
+        id="about-mission"
+        className={`${SECTION_PADDING.standard}`}
+        aria-labelledby="about-mission-heading"
+      >
+        <div className={`${CONTAINER.narrow} text-center`}>
+          <span className={HEADING.eyebrow}>Our Mission</span>
+          <h2 id="about-mission-heading" className={HEADING.h2}>
+            Give jewellers the operating system they should have had years ago.
+          </h2>
+          <p className={`${HEADING.subhead} max-w-[680px] mx-auto`}>
+            Nexpura connects the daily work of jewellery businesses — POS,
+            repairs, bespoke jobs, inventory, customers, invoicing, digital
+            passports, and reporting — so teams can run with more visibility,
+            structure, and confidence.
+          </p>
+        </div>
+      </section>
 
-          <motion.div
-            {...fadeUp(0.2)}
-            className="grid grid-cols-2 gap-px bg-m-border-soft border border-m-border-soft rounded-[18px] overflow-hidden"
-          >
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-m-white-soft p-5 lg:p-8 flex flex-col items-start gap-2 transition-colors duration-200 hover:bg-m-warm-tint"
+      {/* === Product pillars (Migration → Passports) ==================== */}
+      <section
+        id="about-pillars"
+        className={`${SECTION_PADDING.standard}`}
+        aria-labelledby="about-pillars-heading"
+      >
+        <div className={CONTAINER.wide}>
+          <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
+            <h2 id="about-pillars-heading" className={HEADING.h2}>
+              The product, in four pillars
+            </h2>
+          </div>
+          <ul role="list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
+            {PILLARS.map((p) => (
+              <li
+                key={p.title}
+                className={`flex flex-col ${CARD.base} ${CARD.paddingStandard} ${CARD.hover}`}
               >
-                <span className="font-serif text-[36px] lg:text-[44px] text-m-charcoal leading-none">
-                  {stat.value}
-                </span>
-                <span className="text-[11px] tracking-[0.14em] uppercase text-m-text-faint font-medium">
-                  {stat.label}
-                </span>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Values */}
-      <section className="py-20 lg:py-32 px-6 sm:px-10 lg:px-20 border-t border-m-border-soft">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="text-center mb-16 lg:mb-20">
-            <motion.p
-              {...fadeUp()}
-              className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-4"
-            >
-              What We Stand For
-            </motion.p>
-            <motion.h2
-              {...fadeBlur}
-              className="font-serif text-[36px] sm:text-[44px] lg:text-[48px] font-normal leading-[1.12] tracking-[-0.01em] text-m-charcoal"
-            >
-              Principles that guide every line of code.
-            </motion.h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
-            {values.map((v, i) => (
-              <motion.div key={v.title} {...fadeUp(i * 0.1)} className="flex flex-col">
-                <span className="text-[14px] tabular-nums text-m-champagne font-medium mb-3">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <h3 className="font-serif text-[22px] lg:text-[24px] text-m-charcoal mb-3 leading-[1.25]">
-                  {v.title}
-                </h3>
-                <p className="text-[15px] leading-[1.6] text-m-text-secondary max-w-[300px]">
-                  {v.desc}
+                <h3 className={HEADING.h3}>{p.title}</h3>
+                <p className="mt-2 font-sans text-m-text-secondary text-[0.95rem] leading-[1.55]">
+                  {p.sub}
                 </p>
-              </motion.div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="py-24 lg:py-36 px-6 sm:px-10 lg:px-20 text-center border-t border-m-border-soft bg-m-charcoal">
-        <motion.h2
-          {...fadeBlur}
-          className="font-serif text-[36px] sm:text-[48px] lg:text-[56px] font-normal leading-[1.12] tracking-[-0.01em] text-white mb-4"
-        >
-          See how Nexpura fits your business
-        </motion.h2>
-        <p className="text-[15px] text-m-champagne-soft mb-10 max-w-md mx-auto">
-          Explore the platform in a personalised walkthrough built around your workflow.
-        </p>
-        <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-          <Button href="/signup" size="lg" className="!bg-white !text-m-charcoal hover:!bg-m-champagne-tint">
-            Start Free Trial
-          </Button>
-          <Button href="/contact" variant="tertiary" className="!text-white after:!bg-white">
-            Book a Demo
-          </Button>
-        </motion.div>
+      {/* === Principles ================================================= */}
+      <section
+        id="about-principles"
+        className={`${SECTION_PADDING.standard}`}
+        aria-labelledby="about-principles-heading"
+      >
+        <div className={CONTAINER.wide}>
+          <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
+            <h2 id="about-principles-heading" className={HEADING.h2}>
+              Principles behind the platform
+            </h2>
+          </div>
+          <ol role="list" className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            {PRINCIPLES.map((p) => (
+              <li key={p.number} className="flex flex-col">
+                <span className="font-sans text-[0.85rem] tabular-nums tracking-[0.05em] text-[#C9A24A] font-medium mb-3">
+                  {p.number}
+                </span>
+                <h3 className={`${HEADING.h3} mb-3`}>{p.title}</h3>
+                <p className="font-sans text-[0.95rem] leading-[1.6] text-m-text-secondary">
+                  {p.body}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* === Final CTA — standard tier ================================== */}
+      <section
+        id="about-cta"
+        className={`${SECTION_PADDING.standard}`}
+        aria-labelledby="about-cta-heading"
+      >
+        <div className={`${CONTAINER.narrow} text-center`}>
+          <h2
+            id="about-cta-heading"
+            className={HEADING.h2Closing}
+          >
+            See how Nexpura fits your jewellery business
+          </h2>
+          <p className={`${HEADING.subhead} max-w-[620px] mx-auto`}>
+            Start free or book a personalised walkthrough built around your
+            current POS, repair, bespoke, inventory, and customer workflows.
+          </p>
+          <div className="mt-8 md:mt-9 flex flex-wrap justify-center gap-3 md:gap-4">
+            <Link href="/signup" className={BUTTON.primary}>Start Free Trial</Link>
+            <Link href="/contact" className={BUTTON.secondary}>Book a Demo</Link>
+          </div>
+          <p className="mt-6 font-sans text-[0.88rem] text-[#8A8276]">
+            14-day free trial <span aria-hidden="true" className="text-[#B9B0A1]">·</span> Guided setup available
+          </p>
+        </div>
       </section>
     </div>
   )

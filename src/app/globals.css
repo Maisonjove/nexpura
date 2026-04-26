@@ -252,7 +252,7 @@
     transition: border-color var(--m-dur-micro) var(--m-ease),
                 box-shadow var(--m-dur-micro) var(--m-ease);
   }
-  .m-form-input::placeholder { color: #B8B1A8; }
+  .m-form-input::placeholder { color: #9A9085; }
   .m-form-input:focus {
     outline: none;
     border-color: var(--m-champagne);
@@ -511,3 +511,125 @@
     transform: translate(2%, -1.5%) scale(0.97) rotate(-1.5deg);
   }
 }
+
+/* === NEXPURA · MARKETING HERO smooth scroll ===
+   The hero itself is now Tailwind-only (see LandingHero.tsx after the
+   2026-04-26 video-restoration revision); only the smooth-scroll rule
+   below remains here because it's a global concern shared with the
+   Explore-Platform section anchor. */
+html { scroll-behavior: smooth; }
+
+/* === NEXPURA · EXPLORE-PLATFORM SECTION (Kaitlyn 2026-04-26) ===
+   Sits directly below the hero; #explore-platform is the scroll
+   target for the hero's secondary CTA. Heading font-family chains
+   through --font-instrument-serif to match the hero rule above
+   (the site's existing serif loaded via next/font in layout.tsx).
+   All other declarations are verbatim Kaitlyn's spec. */
+.nx-explore {
+  scroll-margin-top: 80px;
+  background: #F6F1E9;
+  padding: clamp(32px, 4vw, 56px) 24px clamp(32px, 4vw, 56px);
+  position: relative;
+}
+.nx-explore__rule {
+  width: 56px;
+  height: 1px;
+  background: #B9B0A1;
+  margin: 0 auto clamp(20px, 2.5vw, 32px);
+  opacity: 0.7;
+}
+.nx-explore__inner {
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+}
+.nx-explore__eyebrow {
+  display: inline-block;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #8A8276;
+  margin-bottom: 20px;
+}
+.nx-explore__heading {
+  font-family: var(--font-instrument-serif), 'Cormorant Garamond', Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(1.85rem, 3.6vw, 2.6rem);
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: #1A1A1A;
+  margin: 0 0 18px;
+}
+.nx-explore__lede {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(1rem, 1.25vw, 1.1rem);
+  line-height: 1.55;
+  color: #4B4B4B;
+  max-width: 580px;
+  margin: 0 auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+@media (max-width: 600px) {
+  .nx-explore__rule { margin-bottom: 22px; }
+  .nx-explore__eyebrow { font-size: 0.72rem; letter-spacing: 0.2em; }
+}
+
+/* === LandingProductDemo tab-panel fade keyframe (Kaitlyn 2026-04-26) ===
+   Scoped name (nxFadeInTab) so it doesn't override the broader fadeIn
+   keyframe used elsewhere on the landing page. Matches Kaitlyn's spec:
+   400ms opacity 0→1 + 6px translateY rise. */
+@keyframes nxFadeInTab {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* === LandingAICopilot response fade keyframe (Kaitlyn 2026-04-26) ===
+   Scoped name (nxFadeInUpAI) so it doesn't override the broader
+   fadeInUp keyframe (16px translate) used elsewhere on the landing
+   page. Matches Kaitlyn's spec: 400ms opacity 0→1 + 8px translateY. */
+@keyframes nxFadeInUpAI {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* === Anchored sections offset from sticky header (Kaitlyn 2026-04-26
+   9-fix #7) ============================================================
+   The sticky header is 72px tall (LandingHeader.tsx h-[72px]). Adding a
+   16px buffer gives 88px of scroll-margin so eyebrows don't get clipped
+   when an in-page anchor link (e.g. "Explore Platform" → #explore-
+   platform) lands on a section. Mobile uses 80px (smaller buffer; same
+   header height but tighter viewport). */
+section[id] {
+  scroll-margin-top: 88px;
+}
+@media (max-width: 768px) {
+  section[id] {
+    scroll-margin-top: 80px;
+  }
+}
+
+/* The .nx-explore section had its own scroll-margin-top: 80px rule;
+   the global rule above now governs it (88px desktop), keeping the
+   eyebrow visible below the header. */
+
+/* === Page-shell padding for routed (non-homepage) pages =============
+   Marketing-layout main element uses .page-shell to push content past
+   the 72px sticky header + a 16px buffer (88px desktop). Mobile uses
+   72px (no buffer; tighter viewport). Replaces the legacy pt-[72px]
+   that touched the header's bottom edge with no breathing room. */
+.page-shell {
+  padding-top: 88px;
+}
+@media (max-width: 768px) {
+  .page-shell {
+    padding-top: 72px;
+  }
+}
+
+/* (nxFadeInDropdown keyframe removed 2026-04-26: the pricing
+   CurrencySelector switched from a dropdown to inline pill tabs,
+   so the dropdown-fade animation has no callers.) */

@@ -1,62 +1,73 @@
-'use client'
-
-import Button from './ui/Button'
+import Link from 'next/link'
+import { BUTTON } from './_tokens'
 
 /**
- * Marketing hero per Kaitlyn's brief (section 5).
+ * Marketing hero — Kaitlyn 2026-04-26 redesign (revision: video restored).
  *
- * Copy updates:
- *  - Headline: keep "The Operating System for Modern Jewellers"
- *  - Subheading: replaced with the jewellery-specific list
- *  - Primary CTA: Start Free Trial (was: Book a Demo)
- *  - Secondary CTA: See the Platform
- *  - New microcopy line under the CTA row
- *  - New scroll cue centred below the hero content
+ * Two-column hero: text + CTAs on the left (centred on mobile, left-aligned
+ * on lg+), the long-standing /video.mp4 on the right. The original layout
+ * structure is recovered from main:src/components/landing/LandingHero.tsx
+ * (commit 6835e22). Copy, CTAs, and the four-item trust row are verbatim
+ * from Kaitlyn's 2026-04-26 brief.
  *
- * Hero media (right column) is left untouched per the brief's
- * non-negotiable constraint — the existing /video.mp4 element stays
- * exactly where it was in source, container size, and aspect ratio.
+ * Typography decisions kept from Kaitlyn's brief:
+ *  - Headline uses the site serif (font-serif → --font-instrument-serif)
+ *    at clamp(2.25rem, 5.2vw, 3.75rem), weight 500.
+ *  - Pill CTAs (rounded-full) — primary filled charcoal, secondary outline.
+ *  - Trust row uses dot separators (·) and Inter at 0.9rem.
+ *
+ * The previous commit's bottom scroll-cue button is intentionally dropped:
+ * the new "Explore Platform" CTA + #explore-platform anchor on
+ * LandingExplorePlatform serves the same purpose.
+ *
+ * NOTE on section padding: this section deliberately keeps its own
+ * asymmetric pt/pb (`pt-8 sm:pt-10 lg:pt-12 pb-16 lg:pb-0`) instead of
+ * `SECTION_PADDING.flagship`. The hero stretches to viewport min-height
+ * (`lg:min-h-[calc(100vh-72px)]`), so the standard symmetric tier doesn't
+ * apply — the asymmetric values were tightened earlier per Kaitlyn's brief
+ * to control how the hero anchors against the viewport top/bottom. The H1,
+ * subhead, and trust row remain inline because the hero typography is also
+ * unique (clamp-based responsive sizes, not the generic h2 token). Only
+ * the two CTA pills pull from BUTTON.{primary,secondary}.
  */
 export default function LandingHero() {
   return (
-    <section className="relative grid grid-cols-1 lg:grid-cols-2 min-h-0 pt-16 sm:pt-20 lg:pt-[72px] pb-16 lg:pb-0 lg:min-h-[calc(100vh-72px)] bg-m-ivory">
+    <section className="relative grid grid-cols-1 lg:grid-cols-2 min-h-0 pt-8 sm:pt-10 lg:pt-12 pb-16 lg:pb-0 lg:min-h-[calc(100vh-72px)] bg-m-ivory">
       {/* Content column */}
-      <div className="flex flex-col justify-center px-6 sm:px-10 lg:pl-24 lg:pr-12 text-center lg:text-left pb-12 lg:pb-0 max-w-[640px] lg:max-w-[560px] mx-auto lg:mx-0">
-        <h1
-          style={{ animationDelay: '0.1s' }}
-          className="nx-fade-in-blur font-serif text-4xl sm:text-5xl lg:text-[clamp(2.5rem,4.5vw,4.25rem)] font-normal leading-[1.15] tracking-[-0.01em] text-m-charcoal"
-        >
+      <div className="flex flex-col justify-start px-6 sm:px-10 lg:pl-24 lg:pr-12 text-center lg:text-left pb-12 lg:pb-0 max-w-[640px] lg:max-w-[560px] mx-auto lg:mx-0">
+        <h1 className="font-serif font-medium text-m-charcoal text-[clamp(2.25rem,5.2vw,3.75rem)] leading-[1.08] tracking-[-0.01em]">
           The Operating System for Modern Jewellers
         </h1>
-        <p
-          style={{ animationDelay: '0.25s' }}
-          className="nx-fade-in-blur text-[16px] sm:text-[17px] leading-[1.6] text-m-text-secondary max-w-[520px] mt-6 mx-auto lg:mx-0"
-        >
-          Run repairs, inventory, bespoke orders, sales, digital passports, and customer records from one jewellery-specific platform.
+
+        <p className="mt-5 text-[clamp(1.05rem,1.4vw,1.2rem)] leading-[1.55] text-m-text-secondary max-w-[520px] mx-auto lg:mx-0">
+          Run POS, repairs, bespoke orders, inventory, customer records,
+          digital passports, and performance insights from one
+          jewellery-specific platform.
         </p>
 
-        <div
-          style={{ animationDelay: '0.4s' }}
-          className="nx-fade-in-blur-up flex items-center flex-wrap gap-3 self-center lg:self-start mt-8"
-        >
-          <Button href="/signup" size="lg">
+        <div className="mt-8 flex items-center flex-wrap gap-4 justify-center lg:justify-start">
+          <Link href="/signup" className={BUTTON.primary}>
             Start Free Trial
-          </Button>
-          <Button href="/platform" variant="secondary" size="lg">
-            See the Platform
-          </Button>
+          </Link>
+          <a href="#explore-platform" className={BUTTON.secondary}>
+            Explore Platform
+          </a>
         </div>
 
-        <p
-          style={{ animationDelay: '0.55s' }}
-          className="nx-fade-in-blur text-[13px] font-sans tracking-[0.05em] text-m-text-muted mt-4 self-center lg:self-start"
-        >
-          14-day free trial · Guided migration available · No hidden fees
+        <p className="mt-5 flex flex-wrap gap-x-2.5 gap-y-1 justify-center lg:justify-start text-[0.9rem] leading-[1.5] text-m-text-muted max-w-[760px] mx-auto lg:mx-0">
+          <span>14-day free trial</span>
+          <span className="text-m-text-faint" aria-hidden="true">·</span>
+          <span>Guided migration available</span>
+          <span className="text-m-text-faint" aria-hidden="true">·</span>
+          <span>Built for jewellery workflows</span>
+          <span className="text-m-text-faint" aria-hidden="true">·</span>
+          <span>No hidden fees</span>
         </p>
       </div>
 
-      {/* Media column — UNTOUCHED per brief's non-negotiable constraint.
-          Keeps existing /video.mp4 exactly as it was in source. */}
+      {/* Media column — preserved from the original hero (main commit
+          6835e22). Same /video.mp4, same aspect-ratio container, same
+          object-cover fill, same mobile rounding. */}
       <div className="relative w-full mx-auto px-6 lg:px-0 aspect-[4/3] lg:aspect-auto">
         <video
           className="absolute inset-0 w-full h-full object-cover rounded-2xl lg:rounded-none"
@@ -68,29 +79,6 @@ export default function LandingHero() {
           <source src="/video.mp4" type="video/mp4" />
         </video>
       </div>
-
-      {/* Scroll cue — centred below the hero content (desktop only — on
-          mobile the hero is short enough that a cue is redundant).
-          Per Kaitlyn's correction Fix #5: real <button> with smooth-
-          scroll to the LandingWhoItsFor section's id="platform-overview"
-          anchor. The arrow is the only thing that bounces; the wrapper
-          is reduced-motion aware. */}
-      <button
-        type="button"
-        onClick={() => {
-          const target = document.getElementById('platform-overview')
-          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }}
-        aria-label="Scroll to platform overview"
-        className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 text-m-text-muted hover:text-m-charcoal text-[12px] font-sans tracking-[0.16em] uppercase font-medium px-3 py-2 bg-transparent border-0 cursor-pointer transition-colors duration-200 [transition-timing-function:var(--m-ease)] focus-visible:outline-2 focus-visible:outline-m-champagne focus-visible:outline-offset-4 rounded"
-      >
-        <span>Explore the platform</span>
-        <span aria-hidden className="inline-flex nx-bounce-y motion-reduce:animate-none">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M7 2v10M3 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-      </button>
     </section>
   )
 }
