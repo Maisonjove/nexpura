@@ -188,7 +188,7 @@ export default function PricingClient({
             {...fadeUp(0.45)}
             className="text-[12px] tracking-[0.16em] uppercase text-m-text-faint font-medium mt-8"
           >
-            14 day free trial · No credit card required
+            14-day free trial · Card required · Cancel anytime
           </motion.p>
         </div>
       </section>
@@ -380,7 +380,7 @@ export default function PricingClient({
           </Button>
         </motion.div>
         <p className="text-[12px] tracking-[0.16em] uppercase text-m-champagne-soft mt-8 font-medium">
-          14 days · Full access · No credit card
+          14 days free · Full access · Cancel anytime
         </p>
       </section>
     </div>

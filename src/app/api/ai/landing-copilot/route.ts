@@ -60,7 +60,7 @@ Core modules:
 
 # TRIAL / PRICING / DEMO
 
-- 14-day free trial, no credit card required
+- 14-day free trial; a valid payment method is collected at sign-up so billing can start automatically the day the trial ends. No charges during the trial. Cancel any time before day 15 to avoid being charged.
 - Pricing is plan-based — point users at https://nexpura.com/pricing for current tiers; do not quote dollar amounts you don't know
 - Annual billing typically gives ~2 months free
 - Guided migration is included — Nexpura's team helps move customer, inventory, repair, and supplier records across

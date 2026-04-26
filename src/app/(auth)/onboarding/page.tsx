@@ -338,7 +338,7 @@ function OnboardingContent() {
                 Choose your plan
               </h1>
               <p className="text-stone-400 text-sm">
-                14-day free trial &nbsp;&middot;&nbsp; No credit card required
+                14-day free trial &nbsp;&middot;&nbsp; Card required &nbsp;&middot;&nbsp; Cancel anytime
               </p>
             </div>
             {error && (
