@@ -1,6 +1,7 @@
 // Landing page - no auth check needed
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingHero from '@/components/landing/LandingHero'
+import LandingExplorePlatform from '@/components/landing/LandingExplorePlatform'
 import LandingWhoItsFor from '@/components/landing/LandingWhoItsFor'
 import LandingPainPoints from '@/components/landing/LandingPainPoints'
 import LandingRepairs from '@/components/landing/LandingRepairs'
@@ -22,12 +23,7 @@ export default function HomePage() {
       <LandingHeader />
       <main id="audience" className="flex-1">
         <LandingHero />
-        {/* Thin divider in place of the old "Explore the Platform ↓"
-            strip + 4-column trust band, both removed per Kaitlyn's
-            followup (2026-04-26): the new single-line trust row in the
-            hero makes that band redundant. */}
-        <hr className="nx-hero-divider" />
-        <div id="explore-platform" />
+        <LandingExplorePlatform />
         <LandingWhoItsFor />
         <LandingPainPoints />
         <LandingRepairs />

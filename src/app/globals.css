@@ -588,11 +588,61 @@ html { scroll-behavior: smooth; }
   .nx-hero__trust { font-size: 0.82rem; }
 }
 
-/* Thin divider used in place of the deleted "Explore the Platform"
-   strip per Kaitlyn's followup (sec 3 of the design followup). */
-.nx-hero-divider {
-  border: 0;
+/* === NEXPURA · EXPLORE-PLATFORM SECTION (Kaitlyn 2026-04-26) ===
+   Sits directly below the hero; #explore-platform is the scroll
+   target for the hero's secondary CTA. Heading font-family is chained
+   through --font-playfair to match the hero rule above (the previous
+   commit added Playfair via next/font/google and exposed it on <html>).
+   All other declarations are verbatim Kaitlyn's spec. */
+.nx-explore {
+  scroll-margin-top: 80px;
+  background: #F6F1E9;
+  padding: clamp(64px, 9vw, 120px) 24px clamp(48px, 6vw, 80px);
+  position: relative;
+}
+.nx-explore__rule {
+  width: 56px;
   height: 1px;
-  background: #E8DFD0;
-  margin: 0;
+  background: #B9B0A1;
+  margin: 0 auto clamp(40px, 5vw, 64px);
+  opacity: 0.7;
+}
+.nx-explore__inner {
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+}
+.nx-explore__eyebrow {
+  display: inline-block;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #8A8276;
+  margin-bottom: 20px;
+}
+.nx-explore__heading {
+  font-family: var(--font-playfair), 'Playfair Display', 'EB Garamond', Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(1.85rem, 3.6vw, 2.6rem);
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: #1A1A1A;
+  margin: 0 0 18px;
+}
+.nx-explore__lede {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(1rem, 1.25vw, 1.1rem);
+  line-height: 1.55;
+  color: #4B4B4B;
+  max-width: 580px;
+  margin: 0 auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+@media (max-width: 600px) {
+  .nx-explore__rule { margin-bottom: 36px; }
+  .nx-explore__eyebrow { font-size: 0.72rem; letter-spacing: 0.2em; }
 }
