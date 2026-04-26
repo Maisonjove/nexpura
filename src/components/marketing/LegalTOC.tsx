@@ -1,16 +1,21 @@
 'use client'
 
 // ============================================
-// Sticky table-of-contents sidebar for legal pages (Privacy, Terms).
-// Per Kaitlyn 2026-04-26 editorial-refinement pass.
+// Sticky table-of-contents sidebar for legal pages.
+// Editorial overhaul per Kaitlyn 2026-04-26 — refined to match the new
+// numbered-section body treatment:
 //
-// Active state is driven by an IntersectionObserver: as the user scrolls,
-// the topmost intersecting <section id="..."> wins. Clicking a link
-// triggers smooth scroll (browser default for hash links + the global
-// scroll-margin-top rule from globals.css).
-//
-// Inactive items: softer #5A554C, no underline, hover darkens to charcoal.
-// Active item: charcoal + medium weight + a 2px gold left-bar indicator.
+//   - "CONTENTS" eyebrow at 0.68rem, 0.22em tracking
+//   - Each entry: serif gold numeral (matches the body's gold "01"
+//     break) + plain-text title
+//   - Active state communicated with colour + weight ONLY (no left
+//     bar, no background, no border) — gold numeral, charcoal text,
+//     font-medium. Inactive: muted #B9B0A1 numeral, #8A8276 text.
+//   - Hover: text only darkens to #5A554C
+//   - Smaller overall scale (0.82rem) so the TOC reads quieter than
+//     the body — it's a navigational aid, not equal weight
+//   - IntersectionObserver still drives active state as the visitor
+//     scrolls; click sets active immediately
 // ============================================
 
 import { useEffect, useState } from 'react'
@@ -27,9 +32,7 @@ export default function LegalTOC({ items }: { items: TOCItem[] }) {
 
     if (sections.length === 0) return
 
-    // Track which sections are currently intersecting and which is closest
-    // to the top. The top one wins as the active anchor.
-    const visible = new Map<string, number>() // id → top distance from header
+    const visible = new Map<string, number>()
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -42,20 +45,13 @@ export default function LegalTOC({ items }: { items: TOCItem[] }) {
           }
         }
         if (visible.size === 0) return
-        // Pick the section whose top is closest to (but at or below) the
-        // header offset. Sort ascending by distance and take the first
-        // non-negative one; if all are negative (scrolled past), pick
-        // the last one (closest to 0 from below).
         const sorted = [...visible.entries()].sort((a, b) => a[1] - b[1])
         const firstAtOrBelow = sorted.find(([, top]) => top >= 0)
         const next = firstAtOrBelow ? firstAtOrBelow[0] : sorted[sorted.length - 1][0]
         setActiveId(next)
       },
       {
-        // Match scroll-margin-top (~88px) so the active rule fires
-        // exactly when a section's heading hits the bottom edge of
-        // the sticky header.
-        rootMargin: '-88px 0px -60% 0px',
+        rootMargin: '-128px 0px -60% 0px', // matches scroll-mt-32 (128px)
         threshold: [0, 0.1],
       }
     )
@@ -65,30 +61,49 @@ export default function LegalTOC({ items }: { items: TOCItem[] }) {
   }, [items])
 
   return (
-    <nav aria-label="Contents" className="lg:sticky lg:top-[88px] lg:self-start">
-      <h2 className="font-sans text-[0.7rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-6">
+    <nav aria-label="Contents" className="font-sans text-[0.82rem]">
+      <span className="block font-medium uppercase tracking-[0.22em] text-[#8A8276] text-[0.68rem] mb-6">
         Contents
-      </h2>
-      <ul role="list" className="space-y-1">
-        {items.map(({ id, title }) => {
-          const isActive = id === activeId
+      </span>
+
+      <ol role="list" className="space-y-3.5 list-none pl-0">
+        {items.map((s, i) => {
+          const isActive = activeId === s.id
+          const num = String(i + 1).padStart(2, '0')
           return (
-            <li key={id}>
+            <li key={s.id}>
               <a
-                href={`#${id}`}
-                onClick={() => setActiveId(id)}
+                href={`#${s.id}`}
+                onClick={() => setActiveId(s.id)}
                 className={
                   isActive
-                    ? 'relative block py-2 pl-4 transition-all duration-200 font-sans text-[0.92rem] font-medium leading-[1.5] text-m-charcoal before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-[2px] before:h-4 before:bg-[#C9A24A]'
-                    : 'relative block py-2 pl-4 transition-all duration-200 font-sans text-[0.92rem] font-normal leading-[1.5] text-[#5A554C] hover:text-m-charcoal'
+                    ? 'group flex items-baseline gap-3 transition-colors duration-200 text-m-charcoal'
+                    : 'group flex items-baseline gap-3 transition-colors duration-200 text-[#8A8276] hover:text-[#5A554C]'
                 }
               >
-                {title}
+                <span
+                  className={
+                    isActive
+                      ? 'font-serif text-[0.7rem] tabular-nums flex-shrink-0 transition-colors duration-200 text-[#C9A24A]'
+                      : 'font-serif text-[0.7rem] tabular-nums flex-shrink-0 transition-colors duration-200 text-[#B9B0A1]'
+                  }
+                >
+                  {num}
+                </span>
+                <span
+                  className={
+                    isActive
+                      ? 'leading-[1.4] font-medium'
+                      : 'leading-[1.4] font-normal'
+                  }
+                >
+                  {s.title}
+                </span>
               </a>
             </li>
           )
         })}
-      </ul>
+      </ol>
     </nav>
   )
 }
