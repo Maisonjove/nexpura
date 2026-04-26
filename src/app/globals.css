@@ -252,7 +252,7 @@
     transition: border-color var(--m-dur-micro) var(--m-ease),
                 box-shadow var(--m-dur-micro) var(--m-ease);
   }
-  .m-form-input::placeholder { color: #B8B1A8; }
+  .m-form-input::placeholder { color: #9A9085; }
   .m-form-input:focus {
     outline: none;
     border-color: var(--m-champagne);
@@ -615,3 +615,17 @@ section[id] {
 /* The .nx-explore section had its own scroll-margin-top: 80px rule;
    the global rule above now governs it (88px desktop), keeping the
    eyebrow visible below the header. */
+
+/* === Page-shell padding for routed (non-homepage) pages =============
+   Marketing-layout main element uses .page-shell to push content past
+   the 72px sticky header + a 16px buffer (88px desktop). Mobile uses
+   72px (no buffer; tighter viewport). Replaces the legacy pt-[72px]
+   that touched the header's bottom edge with no breathing room. */
+.page-shell {
+  padding-top: 88px;
+}
+@media (max-width: 768px) {
+  .page-shell {
+    padding-top: 72px;
+  }
+}

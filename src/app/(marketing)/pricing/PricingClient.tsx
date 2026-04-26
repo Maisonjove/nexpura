@@ -141,6 +141,10 @@ const faqs = [
     q: 'Do you offer annual billing?',
     a: "Yes — annual billing gives you two months free. We can help you set it up when you're ready.",
   },
+  {
+    q: 'What happens after my trial ends?',
+    a: 'Your account stays active without losing data. Choose a plan to keep using Nexpura, or your tenant pauses in a read-only state until you decide.',
+  },
 ]
 
 export default function PricingClient() {
@@ -288,13 +292,13 @@ export default function PricingClient() {
               {...fadeUp()}
               className="text-[12px] tracking-[0.18em] text-m-text-faint uppercase font-medium mb-4"
             >
-              Questions
+              FAQ
             </motion.p>
             <motion.h2
               {...fadeBlur}
               className="font-serif text-[36px] sm:text-[44px] lg:text-[48px] font-normal leading-[1.12] tracking-[-0.01em] text-m-charcoal"
             >
-              Common questions, answered
+              Pricing questions, answered
             </motion.h2>
           </div>
 

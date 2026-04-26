@@ -21,12 +21,12 @@ export default function LandingFinalCTA() {
           id="final-cta-heading"
           className={HEADING.h2Closing}
         >
-          Run your jewellery business from one connected system
+          See how Nexpura fits your jewellery business
         </h2>
 
-        <p className={`${HEADING.subhead} max-w-[620px] mx-auto`}>
-          Start with a free trial or book a walkthrough tailored to your
-          current workflows.
+        <p className={`${HEADING.subhead} max-w-[640px] mx-auto`}>
+          Start free or book a personalised walkthrough built around your
+          current POS, repair, bespoke, inventory, and customer workflows.
         </p>
 
         {/* CTA row */}
