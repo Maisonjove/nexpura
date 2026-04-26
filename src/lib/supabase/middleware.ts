@@ -186,6 +186,8 @@ function isAlwaysPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/bespoke/approval-response") ||
     pathname.startsWith("/api/bespoke/approval-validate") ||
     pathname.startsWith("/api/contact") ||
+    // Subdomain availability — used by the unauth signup page
+    pathname.startsWith("/api/check-subdomain") ||
     // Stripe checkout (signup-time, no session yet)
     pathname.startsWith("/api/stripe") ||
     // Health + sandbox introspection
