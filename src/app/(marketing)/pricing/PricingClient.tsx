@@ -319,7 +319,7 @@ export default function PricingClient({
           </div>
 
           <p className="font-sans text-[0.85rem] text-[#8A8276] text-center mt-10">
-            Prices shown based on region. Final billing currency is confirmed at checkout.
+            Prices shown based on region and exclude applicable taxes. Final billing currency is confirmed at checkout.
           </p>
         </div>
       </section>
