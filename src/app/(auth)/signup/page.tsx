@@ -60,13 +60,21 @@ const PLANS: PlanCard[] = [
   },
 ];
 
+type Currency = "AUD" | "USD" | "GBP" | "EUR";
+const SUPPORTED: Currency[] = ["AUD", "USD", "GBP", "EUR"];
+
 function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedPlan = searchParams.get("plan") as Plan | null;
+  const preselectedCurrency = (searchParams.get("currency") || "").toUpperCase();
+  const initialCurrency: Currency = SUPPORTED.includes(preselectedCurrency as Currency)
+    ? (preselectedCurrency as Currency)
+    : "USD";
 
   const [step, setStep] = useState(1);
   const [selectedPlan, setSelectedPlan] = useState<Plan>(preselectedPlan || "studio");
+  const [selectedCurrency] = useState<Currency>(initialCurrency);
 
   const [subdomain, setSubdomain] = useState("");
   const [subdomainStatus, setSubdomainStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
@@ -77,7 +85,6 @@ function SignupContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createClient();
@@ -152,7 +159,7 @@ function SignupContent() {
       // completeOnboarding to run as the OLD user and redirect them to the wrong account.
       await supabase.auth.signOut();
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -168,8 +175,30 @@ function SignupContent() {
         return;
       }
 
-      setSubmitted(true);
-      setLoading(false);
+      // Per Joey 2026-04-26: trial is "card upfront, auto-charge on day 15"
+      // — so we hand the user straight to Stripe Checkout. Stripe collects
+      // the card, starts the 14-day trial, and bills automatically the
+      // moment it ends. The webhook (api/webhooks/stripe) provisions the
+      // tenant on `checkout.session.completed`, and Supabase will email a
+      // confirmation link in parallel.
+      const checkoutRes = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan: selectedPlan,
+          currency: selectedCurrency,
+          subdomain,
+          email,
+          fullName,
+        }),
+      });
+      const checkoutData = (await checkoutRes.json()) as { url?: string; error?: string };
+      if (!checkoutRes.ok || !checkoutData.url) {
+        setError(checkoutData.error || "Could not start checkout. Please try again.");
+        setLoading(false);
+        return;
+      }
+      window.location.href = checkoutData.url;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
       setError(errorMessage);
@@ -178,42 +207,6 @@ function SignupContent() {
   }
 
   const planLabel = PLANS.find((p) => p.id === selectedPlan)?.name ?? selectedPlan;
-
-  if (submitted) {
-    return (
-      <div className="w-full max-w-md mx-auto">
-        <div className="text-center mb-10">
-          <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">
-            NEXPURA
-          </Link>
-        </div>
-        <div className="bg-white rounded-2xl border border-stone-200/60 p-10 shadow-sm text-center">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
-              <rect width="20" height="16" x="2" y="4" rx="2"/>
-              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-            </svg>
-          </div>
-          <h1 className="font-serif text-3xl text-stone-900 mb-3">Check your email</h1>
-          <p className="text-stone-500 text-sm mb-2">We sent a confirmation link to</p>
-          <p className="font-semibold text-stone-900 mb-6">{email}</p>
-          <p className="text-stone-400 text-xs leading-relaxed">
-            Click the link in the email to verify your account and complete setup.
-            If you don&apos;t see it, check your spam or junk folder.
-          </p>
-          <div className="mt-8 pt-6 border-t border-stone-100 text-xs text-stone-400">
-            Wrong email?{" "}
-            <button
-              onClick={() => { setSubmitted(false); setStep(3); }}
-              className="text-stone-600 underline hover:text-stone-900 transition-colors"
-            >
-              Go back
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -255,7 +248,7 @@ function SignupContent() {
         <div>
           <div className="text-center mb-10">
             <h1 className="font-serif text-3xl text-stone-900 mb-3">Choose your plan</h1>
-            <p className="text-stone-400 text-sm">14-day free trial Â· No credit card required</p>
+            <p className="text-stone-400 text-sm">14-day free trial · Card required · Cancel anytime</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

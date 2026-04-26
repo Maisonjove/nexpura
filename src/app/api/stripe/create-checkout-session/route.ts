@@ -3,22 +3,23 @@ import Stripe from "stripe";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
+import { PLANS, SUPPORTED_CURRENCIES, type CurrencyCode } from "@/data/pricing";
 
-// Stripe Product IDs for LIVE mode
-const STRIPE_PRICES: Record<string, string> = {
-  // These are Price IDs, not Product IDs
-  // Joey needs to create prices for each product, or we use the product ID with default price
-  boutique: process.env.STRIPE_PRICE_BOUTIQUE || "price_boutique_placeholder",
-  studio: process.env.STRIPE_PRICE_STUDIO || "price_studio_placeholder",
-  atelier: process.env.STRIPE_PRICE_ATELIER || "price_atelier_placeholder",
-};
-
-// Product IDs (for reference)
-// Boutique $89/month AUD - prod_UAJ5YPkVeuRXpw
-// Studio $179/month AUD - prod_UAJ5ggVHq4ChKY
-// Atelier $299/month AUD - prod_UAJ5cAOEp1PLvb
+// Multi-currency Stripe Checkout Session creation per Joey 2026-04-26.
+// Price IDs are read from src/data/pricing.ts (the single marketing source
+// of truth) keyed by (plan, currency). Trial is 14 days and Stripe collects
+// the card up-front under mode=subscription, so the customer is auto-charged
+// the moment the trial ends — no user re-engagement required.
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+type RequestBody = {
+  plan?: string;
+  currency?: string;
+  subdomain?: string;
+  email?: string;
+  fullName?: string;
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,8 +29,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const body = await request.json();
-    const { plan, subdomain, email, fullName } = body;
+    const body = (await request.json()) as RequestBody;
+    const { plan, currency, subdomain, email, fullName } = body;
 
     if (!plan || !subdomain || !email) {
       return NextResponse.json(
@@ -38,15 +39,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate plan
-    if (!["boutique", "studio", "atelier"].includes(plan)) {
+    if (!PLANS.some((p) => p.id === plan)) {
       return NextResponse.json(
         { error: "Invalid plan. Must be boutique, studio, or atelier" },
         { status: 400 }
       );
     }
 
-    // Validate subdomain format
+    // Default to USD when no/unknown currency arrives — matches the
+    // marketing-side fallback in src/data/pricing.ts countryToCurrency().
+    const resolvedCurrency: CurrencyCode = SUPPORTED_CURRENCIES.includes(
+      currency as CurrencyCode
+    )
+      ? (currency as CurrencyCode)
+      : "USD";
+
+    const planRow = PLANS.find((p) => p.id === plan)!;
+    const priceId = planRow.pricing[resolvedCurrency].stripePriceId;
+    if (!priceId) {
+      logger.error(
+        `[stripe-checkout] missing stripePriceId for ${plan}/${resolvedCurrency}`
+      );
+      return NextResponse.json(
+        { error: "Pricing not configured for that region. Please contact support." },
+        { status: 500 }
+      );
+    }
+
     const subdomainRegex = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
     if (!subdomainRegex.test(subdomain)) {
       return NextResponse.json(
@@ -70,14 +89,16 @@ export async function POST(request: NextRequest) {
     if (existingTenant) {
       return NextResponse.json(
         { error: "That subdomain is already taken. Please choose another." },
-        { status: 409 },
+        { status: 409 }
       );
     }
 
-    const priceId = STRIPE_PRICES[plan];
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com";
 
-    // Create Stripe Checkout Session
+    // mode=subscription with trial_period_days collects the card up-front
+    // and Stripe auto-charges on the day after the trial ends. No
+    // payment_method_collection override needed — that's the default for
+    // priced subscriptions.
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -87,34 +108,33 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      // Store metadata for webhook processing
+      automatic_tax: { enabled: true },
+      customer_email: email,
       metadata: {
         subdomain,
         plan,
+        currency: resolvedCurrency,
         full_name: fullName || "",
       },
-      customer_email: email,
       subscription_data: {
         trial_period_days: 14,
         metadata: {
           subdomain,
           plan,
+          currency: resolvedCurrency,
         },
       },
       success_url: `${baseUrl}/signup/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/signup?cancelled=true`,
+      cancel_url: `${baseUrl}/signup?cancelled=true&plan=${plan}&currency=${resolvedCurrency}`,
       allow_promotion_codes: true,
     });
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
     logger.error("Stripe checkout error:", error);
-    
+
     if (error instanceof Stripe.errors.StripeError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     return NextResponse.json(
