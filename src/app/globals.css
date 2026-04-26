@@ -511,3 +511,88 @@
     transform: translate(2%, -1.5%) scale(0.97) rotate(-1.5deg);
   }
 }
+
+/* === NEXPURA · MARKETING HERO (Kaitlyn 2026-04-26) ===
+   Per Kaitlyn's spec for the new landing hero. Class names + values
+   verbatim from her brief; do not refactor without her sign-off.
+   Playfair Display is loaded via next/font (see src/app/layout.tsx);
+   we reference it through the --font-playfair CSS variable so the
+   font class on <html> applies, then fall back to EB Garamond /
+   Georgia if it ever fails to load. */
+.nx-hero {
+  padding: clamp(48px, 7vw, 96px) 24px clamp(56px, 8vw, 110px);
+  background: #F6F1E9;
+  display: flex;
+  justify-content: center;
+}
+.nx-hero__inner { width: 100%; max-width: 920px; text-align: center; }
+.nx-hero__headline {
+  font-family: var(--font-playfair), 'Playfair Display', 'EB Garamond', Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(2.25rem, 5.2vw, 3.75rem);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  color: #1A1A1A;
+  margin: 0 0 20px;
+}
+.nx-hero__subhead {
+  font-family: 'Inter', 'Helvetica Neue', system-ui, sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+  line-height: 1.55;
+  color: #4B4B4B;
+  max-width: 720px;
+  margin: 0 auto 32px;
+}
+.nx-hero__ctas {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.nx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 36px;
+  border-radius: 999px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: transform .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
+  cursor: pointer;
+}
+.nx-btn--primary { background: #111; color: #fff; border: 1px solid #111; }
+.nx-btn--primary:hover { background: #2a2a2a; transform: translateY(-1px); }
+.nx-btn--secondary { background: transparent; color: #111; border: 1px solid #111; }
+.nx-btn--secondary:hover { background: #111; color: #fff; transform: translateY(-1px); }
+.nx-hero__trust {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.9rem;
+  color: #8A8276;
+  line-height: 1.5;
+  margin: 8px auto 0;
+  max-width: 760px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 10px;
+}
+.nx-dot { color: #B9B0A1; }
+html { scroll-behavior: smooth; }
+@media (max-width: 600px) {
+  .nx-btn { width: 100%; max-width: 320px; }
+  .nx-hero__trust { font-size: 0.82rem; }
+}
+
+/* Thin divider used in place of the deleted "Explore the Platform"
+   strip per Kaitlyn's followup (sec 3 of the design followup). */
+.nx-hero-divider {
+  border: 0;
+  height: 1px;
+  background: #E8DFD0;
+  margin: 0;
+}
