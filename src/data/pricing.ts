@@ -106,14 +106,18 @@ const EU_COUNTRIES = [
   "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
 ]
 
+// Fallback for unknown / unsupported regions is USD per Kaitlyn 2026-04-26.
+// Rationale: AU is a small slice of global traffic; defaulting unknown
+// visitors to USD is a more sensible "rest of the world" default for a
+// platform marketing in English first.
 export function countryToCurrency(country: string | undefined | null): CurrencyCode {
-  if (!country) return "AUD"
+  if (!country) return "USD"
   const c = country.toUpperCase()
   if (c === "AU") return "AUD"
   if (c === "US") return "USD"
   if (c === "GB" || c === "UK") return "GBP"
   if (EU_COUNTRIES.includes(c)) return "EUR"
-  return "AUD"
+  return "USD"
 }
 
 export const SUPPORTED_CURRENCIES: CurrencyCode[] = ["AUD", "USD", "GBP", "EUR"]
