@@ -20,8 +20,18 @@ export type Plan = {
   id: "boutique" | "studio" | "atelier"
   name: string
   description: string
-  ctaLabel: string
-  ctaHref: string // includes ?plan=… query already; you'll append &currency= at click time
+  /** Primary + optional secondary CTA per Kaitlyn 2026-04-26. All
+   *  three plans now share the same primary action ("Start Free
+   *  Trial") for visual consistency across the row; Studio + Atelier
+   *  add a quieter secondary text link beneath. Both hrefs include
+   *  `?plan=…` already; the &currency=… param is appended at click
+   *  time by the card. */
+  cta: {
+    primaryLabel: string
+    primaryHref: string
+    secondaryLabel?: string
+    secondaryHref?: string
+  }
   isFeatured: boolean // "Most Popular" badge
   isFromPrice: boolean // shows "From" prefix
   features: string[]
@@ -34,8 +44,10 @@ export const PLANS: Plan[] = [
     name: "Boutique",
     description:
       "For single-store jewellers who need one connected system for sales, repairs, bespoke, and stock.",
-    ctaLabel: "Start Free Trial",
-    ctaHref: "/signup?plan=boutique",
+    cta: {
+      primaryLabel: "Start Free Trial",
+      primaryHref: "/signup?plan=boutique",
+    },
     isFeatured: false,
     isFromPrice: false,
     features: [
@@ -57,8 +69,12 @@ export const PLANS: Plan[] = [
     name: "Studio",
     description:
       "For growing jewellery businesses that need deeper reporting, branding, and team visibility across locations.",
-    ctaLabel: "Book a Demo",
-    ctaHref: "/contact?plan=studio",
+    cta: {
+      primaryLabel: "Start Free Trial",
+      primaryHref: "/signup?plan=studio",
+      secondaryLabel: "or book a demo",
+      secondaryHref: "/contact?plan=studio&intent=demo",
+    },
     isFeatured: true,
     isFromPrice: false,
     features: [
@@ -80,8 +96,12 @@ export const PLANS: Plan[] = [
     name: "Atelier",
     description:
       "For multi-store jewellery businesses and high-volume workshops needing advanced support, analytics, and scale.",
-    ctaLabel: "Talk to Sales",
-    ctaHref: "/contact?plan=atelier",
+    cta: {
+      primaryLabel: "Start Free Trial",
+      primaryHref: "/signup?plan=atelier",
+      secondaryLabel: "or talk to sales",
+      secondaryHref: "/contact?plan=atelier&intent=sales",
+    },
     isFeatured: false,
     isFromPrice: true,
     features: [

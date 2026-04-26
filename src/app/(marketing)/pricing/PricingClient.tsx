@@ -24,9 +24,12 @@ import {
  *  - Adds <CurrencyPicker /> above the plan grid with localStorage
  *    persistence. Initial currency comes from `x-vercel-ip-country`
  *    server-side — see ./page.tsx.
- *  - Plan card CTAs append &currency=… to their ctaHref so the future
- *    Stripe checkout step can resolve the right stripePriceId per
- *    (plan, currency) combo.
+ *  - Plan card CTAs append &currency=… to their primaryHref (and
+ *    secondaryHref, when present) so the future Stripe checkout step
+ *    can resolve the right stripePriceId per (plan, currency) combo.
+ *  - Per-plan CTA shape (Kaitlyn 2026-04-26): all three plans share
+ *    "Start Free Trial" as primary; Studio + Atelier add a quieter
+ *    secondary text link ("or book a demo" / "or talk to sales").
  *  - "From" prefix shown only when isFromPrice (Atelier).
  *  - "Most Popular" badge only when isFeatured (Studio).
  *
@@ -204,9 +207,14 @@ export default function PricingClient({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {PLANS.map((plan, i) => {
               const price = plan.pricing[currency]
-              const ctaUrl = plan.ctaHref.includes('?')
-                ? `${plan.ctaHref}&currency=${currency}`
-                : `${plan.ctaHref}?currency=${currency}`
+              const withCurrency = (href: string) =>
+                href.includes('?')
+                  ? `${href}&currency=${currency}`
+                  : `${href}?currency=${currency}`
+              const primaryUrl = withCurrency(plan.cta.primaryHref)
+              const secondaryUrl = plan.cta.secondaryHref
+                ? withCurrency(plan.cta.secondaryHref)
+                : null
               const ctaClass = plan.id === 'boutique' ? BUTTON.primary : BUTTON.secondary
 
               return (
@@ -247,12 +255,33 @@ export default function PricingClient({
                     <span className="text-[14px] text-m-text-faint">/ month</span>
                   </div>
 
-                  <Link
-                    href={ctaUrl}
-                    className={`${ctaClass} w-full mb-10`}
-                  >
-                    {plan.ctaLabel}
-                  </Link>
+                  {/* Primary CTA + optional quieter secondary text link.
+                      Per Kaitlyn 2026-04-26: every plan ships "Start Free
+                      Trial" as primary so the row reads coherent; Studio
+                      and Atelier add a small secondary link beneath
+                      ("or book a demo" / "or talk to sales") for buyers
+                      who aren't ready to self-serve. Secondary link uses
+                      a quieter underline style and a fixed-height wrapper
+                      so the primary buttons stay horizontally aligned
+                      across all three cards. */}
+                  <div className="mb-10">
+                    <Link
+                      href={primaryUrl}
+                      className={`${ctaClass} w-full`}
+                    >
+                      {plan.cta.primaryLabel}
+                    </Link>
+                    <div className="h-6 mt-3 flex items-center justify-center">
+                      {secondaryUrl && (
+                        <Link
+                          href={secondaryUrl}
+                          className="font-sans text-[0.82rem] text-m-text-secondary hover:text-m-charcoal underline underline-offset-4 decoration-[#D6CDB8] hover:decoration-m-charcoal transition-colors duration-200"
+                        >
+                          {plan.cta.secondaryLabel}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
 
                   <ul className="space-y-3 flex-1">
                     {plan.features.map((h) => (
