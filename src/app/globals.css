@@ -528,14 +528,14 @@ html { scroll-behavior: smooth; }
 .nx-explore {
   scroll-margin-top: 80px;
   background: #F6F1E9;
-  padding: clamp(64px, 9vw, 120px) 24px clamp(48px, 6vw, 80px);
+  padding: clamp(32px, 4vw, 56px) 24px clamp(32px, 4vw, 56px);
   position: relative;
 }
 .nx-explore__rule {
   width: 56px;
   height: 1px;
   background: #B9B0A1;
-  margin: 0 auto clamp(40px, 5vw, 64px);
+  margin: 0 auto clamp(20px, 2.5vw, 32px);
   opacity: 0.7;
 }
 .nx-explore__inner {
@@ -574,6 +574,6 @@ html { scroll-behavior: smooth; }
   html { scroll-behavior: auto; }
 }
 @media (max-width: 600px) {
-  .nx-explore__rule { margin-bottom: 36px; }
+  .nx-explore__rule { margin-bottom: 22px; }
   .nx-explore__eyebrow { font-size: 0.72rem; letter-spacing: 0.2em; }
 }

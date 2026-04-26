@@ -21,9 +21,9 @@ import Link from 'next/link'
  */
 export default function LandingHero() {
   return (
-    <section className="relative grid grid-cols-1 lg:grid-cols-2 min-h-0 pt-16 sm:pt-20 lg:pt-[72px] pb-16 lg:pb-0 lg:min-h-[calc(100vh-72px)] bg-m-ivory">
+    <section className="relative grid grid-cols-1 lg:grid-cols-2 min-h-0 pt-8 sm:pt-10 lg:pt-12 pb-16 lg:pb-0 lg:min-h-[calc(100vh-72px)] bg-m-ivory">
       {/* Content column */}
-      <div className="flex flex-col justify-center px-6 sm:px-10 lg:pl-24 lg:pr-12 text-center lg:text-left pb-12 lg:pb-0 max-w-[640px] lg:max-w-[560px] mx-auto lg:mx-0">
+      <div className="flex flex-col justify-start px-6 sm:px-10 lg:pl-24 lg:pr-12 text-center lg:text-left pb-12 lg:pb-0 max-w-[640px] lg:max-w-[560px] mx-auto lg:mx-0">
         <h1 className="font-serif font-medium text-m-charcoal text-[clamp(2.25rem,5.2vw,3.75rem)] leading-[1.08] tracking-[-0.01em]">
           The Operating System for Modern Jewellers
         </h1>
