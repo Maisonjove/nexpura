@@ -1,146 +1,152 @@
-import Link from 'next/link'
-import { HugeiconsIcon } from '@hugeicons/react'
-import { InstagramIcon, Facebook01Icon, Linkedin01Icon, NewTwitterIcon } from '@hugeicons/core-free-icons'
+// ============================================
+// Five-column footer with link groups.
+// Per Kaitlyn 2026-04-26 brief — replaces the prior charcoal/social-row
+// footer. Spec was missing the opening <a tags everywhere — restored.
+// Internal-nav links use next/link (lint rule + SPA navigation).
+// Routes that don't exist yet are flagged hidden:true so we don't ship
+// dead links — the component filters them out before rendering, and an
+// entire column will be hidden if all of its links are hidden.
+//
+// Route audit (2026-04-26 against src/app/**):
+//   Product:    /platform, /features, /pricing, /security  → all live
+//   Solutions:  /solutions/{retail,repairs,bespoke,multi-store}
+//                                                         → all MISSING (hidden:true)
+//   Platform:   /platform/{pos,inventory,repairs,passports,analytics,ai-copilot}
+//                                                         → all MISSING (hidden:true)
+//   Company:    /about, /contact, /demo, /signup           → all live
+//   Legal:      /terms, /privacy                           → all live
+// Solutions + Platform-detail columns currently render as empty (filtered)
+// — flag to Kaitlyn that 8 placeholder pages need to be built before
+// those columns repopulate.
+// ============================================
 
-/**
- * Footer per Kaitlyn's brief (section 19). Charcoal background, four
- * link columns + a small Legal column, social icons row, and the brand
- * tagline. Hover state per link is a champagne underline that animates
- * in from the left.
- */
+import React from "react"
+import Link from "next/link"
 
-const COLUMNS = [
-  {
-    title: 'Solutions',
-    links: [
-      { label: 'Retail Jewellers', href: '/features' },
-      { label: 'Repairs & Workshop', href: '/features#repairs' },
-      { label: 'Bespoke Orders', href: '/features#bespoke' },
-      { label: 'Multi-Store Groups', href: '/features' },
-    ],
-  },
-  {
-    title: 'Platform',
-    links: [
-      { label: 'Features', href: '/features' },
-      { label: 'Inventory', href: '/features#inventory' },
-      { label: 'Repairs', href: '/features#repairs' },
-      { label: 'Digital Passport', href: '/verify' },
-      { label: 'Analytics', href: '/features#analytics' },
-    ],
-  },
-  {
-    title: 'Migration & Pricing',
-    links: [
-      { label: 'Migration', href: '/#migration' },
-      { label: 'Pricing', href: '/pricing' },
-      { label: 'Verify Passport', href: '/verify' },
-      { label: 'Security', href: '/security' },
-    ],
-  },
-  {
-    title: 'Company',
-    links: [
-      { label: 'About', href: '/about' },
-      { label: 'Contact', href: '/contact' },
-      { label: 'Book a Demo', href: '/contact' },
-      { label: 'Start Free Trial', href: '/signup' },
-    ],
-  },
-] as const
+type FooterLink = {
+  label: string
+  href: string
+  // If true, the link is hidden until the destination page exists.
+  // Filtered out before render — never shipped as a dead link.
+  hidden?: boolean
+}
 
-const SOCIALS = [
-  { icon: InstagramIcon, label: 'Instagram', href: 'https://instagram.com/nexpura' },
-  { icon: Facebook01Icon, label: 'Facebook', href: 'https://facebook.com/nexpura' },
-  { icon: Linkedin01Icon, label: 'LinkedIn', href: 'https://linkedin.com/company/nexpura' },
-  { icon: NewTwitterIcon, label: 'X', href: 'https://x.com/nexpura' },
-] as const
+type FooterColumn = {
+  heading: string
+  links: FooterLink[]
+}
+
+const FOOTER_COLUMNS: FooterColumn[] = [
+  {
+    heading: "Product",
+    links: [
+      { label: "Platform", href: "/platform" },
+      { label: "Features", href: "/features" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Security", href: "/security" },
+    ],
+  },
+  {
+    heading: "Solutions",
+    links: [
+      { label: "Retail Jewellers", href: "/solutions/retail", hidden: true },
+      { label: "Repairs & Workshops", href: "/solutions/repairs", hidden: true },
+      { label: "Bespoke Studios", href: "/solutions/bespoke", hidden: true },
+      { label: "Multi-Store Groups", href: "/solutions/multi-store", hidden: true },
+    ],
+  },
+  {
+    heading: "Platform",
+    links: [
+      { label: "POS", href: "/platform/pos", hidden: true },
+      { label: "Inventory", href: "/platform/inventory", hidden: true },
+      { label: "Repairs", href: "/platform/repairs", hidden: true },
+      { label: "Digital Passports", href: "/platform/passports", hidden: true },
+      { label: "Analytics", href: "/platform/analytics", hidden: true },
+      { label: "AI Copilot", href: "/platform/ai-copilot", hidden: true },
+    ],
+  },
+  {
+    heading: "Company",
+    links: [
+      { label: "About", href: "/about" },
+      { label: "Contact", href: "/contact" },
+      { label: "Book a Demo", href: "/demo" },
+      { label: "Start Free Trial", href: "/signup" },
+    ],
+  },
+  {
+    heading: "Legal",
+    links: [
+      { label: "Terms", href: "/terms" },
+      { label: "Privacy", href: "/privacy" },
+    ],
+  },
+]
 
 export default function LandingFooter() {
+  const currentYear = new Date().getFullYear()
+
   return (
-    <footer className="bg-m-charcoal text-white pt-20 pb-10 px-6 sm:px-12">
-      <div className="max-w-[1200px] mx-auto">
-        {/* Brand row */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-10 lg:gap-16 pb-12 border-b border-white/10">
-          <div className="max-w-[420px]">
-            <Link href="/" className="font-serif text-[24px] tracking-[0.12em] text-white">
+    <footer
+      className="bg-m-ivory border-t border-[#E4DBC9] px-6 pt-16 pb-10 md:pt-20 md:pb-12"
+      role="contentinfo"
+    >
+      <div className="mx-auto max-w-6xl">
+        {/* Top row: brand + columns */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-10 md:gap-8">
+
+          {/* Brand block — spans 2 cols on desktop */}
+          <div className="col-span-2 sm:col-span-3 lg:col-span-1">
+            <Link
+              href="/"
+              className="font-serif text-m-charcoal text-[1.4rem] tracking-[0.18em] inline-block"
+              aria-label="NEXPURA — home"
+            >
               NEXPURA
             </Link>
-            <p className="mt-4 text-[14px] leading-[1.6] text-white/60">
-              The operating system for jewellery retail, repairs, bespoke, and inventory.
+            <p className="mt-4 font-sans text-[0.88rem] leading-[1.6] text-m-text-secondary max-w-[220px]">
+              The operating system for modern jewellers.
             </p>
           </div>
-          {/* Legal column on the right of the brand row */}
-          <div className="text-[13px] text-white/60">
-            <h4 className="text-[12px] uppercase tracking-[0.15em] text-white/80 mb-4 font-medium">
-              Legal
-            </h4>
-            <ul className="space-y-2">
-              <li>
-                <FooterLink href="/terms">Terms of Service</FooterLink>
-              </li>
-              <li>
-                <FooterLink href="/privacy">Privacy Policy</FooterLink>
-              </li>
-            </ul>
-          </div>
+
+          {/* Link columns */}
+          {FOOTER_COLUMNS.map((col) => {
+            const visibleLinks = col.links.filter((l) => !l.hidden)
+            if (visibleLinks.length === 0) return null
+
+            return (
+              <nav key={col.heading} aria-label={col.heading}>
+                <h3 className="font-sans text-[0.72rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
+                  {col.heading}
+                </h3>
+                <ul role="list" className="space-y-3">
+                  {visibleLinks.map((link) => (
+                    <li key={link.label}>
+                      <Link
+                        href={link.href}
+                        className="font-sans text-[0.92rem] text-m-charcoal transition-opacity duration-200 hover:opacity-65"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            )
+          })}
         </div>
 
-        {/* Link columns */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 sm:gap-8 py-12">
-          {COLUMNS.map((col) => (
-            <div key={col.title}>
-              <h4 className="text-[12px] uppercase tracking-[0.15em] text-white/80 mb-4 font-medium">
-                {col.title}
-              </h4>
-              <ul className="space-y-2.5">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    <FooterLink href={link.href}>{link.label}</FooterLink>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        {/* Bottom row */}
-        <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <div className="flex items-center gap-3">
-            {SOCIALS.map((s) => (
-              <a
-                key={s.label}
-                href={s.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={s.label}
-                className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-white/80 transition-all duration-200 [transition-timing-function:var(--m-ease)] hover:-translate-y-0.5 hover:border-m-champagne hover:text-m-champagne"
-              >
-                <HugeiconsIcon icon={s.icon} size={14} strokeWidth={1.5} />
-              </a>
-            ))}
-          </div>
-          <div className="text-[12px] text-white/50 sm:text-right space-y-1">
-            <p>© 2026 Nexpura. All rights reserved.</p>
-            <p>Built for modern jewellers.</p>
-          </div>
+        {/* Bottom row: copyright */}
+        <div className="mt-16 md:mt-20 pt-8 border-t border-[#E4DBC9] flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-center justify-between">
+          <p className="font-sans text-[0.85rem] text-[#8A8276]">
+            © {currentYear} Nexpura. All rights reserved.
+          </p>
+          <p className="font-sans text-[0.85rem] text-[#8A8276]">
+            Built for jewellers.
+          </p>
         </div>
       </div>
     </footer>
-  )
-}
-
-function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="group relative inline-block text-[13px] text-white/60 transition-colors duration-200 hover:text-white"
-    >
-      {children}
-      <span
-        aria-hidden
-        className="absolute -bottom-0.5 left-0 right-0 h-px bg-m-champagne origin-left scale-x-0 transition-transform duration-200 [transition-timing-function:var(--m-ease)] group-hover:scale-x-100"
-      />
-    </Link>
   )
 }

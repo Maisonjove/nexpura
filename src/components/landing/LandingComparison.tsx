@@ -1,133 +1,176 @@
-import SectionHeader from './ui/SectionHeader'
+// ============================================
+// "Built for jewellers — not forced onto them"
+// 3-column category comparison per Kaitlyn 2026-04-26.
+// Replaces the prior 2-column compare (preserved at
+// LandingComparison.legacy.tsx).
+// ============================================
 
-/**
- * "Built for jewellers — not just adapted for them" comparison per
- * Kaitlyn's brief (section 15). Left card muted ivory ("what you get
- * with generic"), right card charcoal with champagne checkmarks ("what
- * Nexpura gives you instead"). Right rows animate in with a stagger;
- * hovering a right row brightens its checkmark + adds a faint
- * champagne underline.
- */
+import React from "react"
 
-const BEFORE = [
-  'Inventory tracked in spreadsheets',
-  'Generic POS not built for jewellery workflows',
-  'Repairs managed in notebooks, paper, or messages',
-  'No proper memo or consignment control',
-  'No digital passport or authenticity record',
-  'No structured bespoke workflow',
-  'Limited visibility across jobs, stock, and team activity',
-] as const
+type Column = {
+  key: "generic" | "legacy" | "nexpura"
+  label: string
+  points: string[]
+}
 
-const AFTER = [
-  'Live inventory across pieces, stones, and components',
-  'POS designed for jewellery retail',
-  'Repair tracking with customer updates built in',
-  'Memo and consignment tracking with return alerts',
-  'QR-verifiable digital passports',
-  'Structured bespoke workflow with milestone sign-off',
-  'Jewellery-specific visibility across stock, jobs, and performance',
-] as const
+const COLUMNS: Column[] = [
+  {
+    key: "generic",
+    label: "Generic POS",
+    points: [
+      "Built mainly for checkout",
+      "Limited repair visibility",
+      "Basic stock records",
+      "Weak bespoke workflow",
+      "No digital passport layer",
+      "Little jewellery-specific intelligence",
+    ],
+  },
+  {
+    key: "legacy",
+    label: "Legacy jewellery software",
+    points: [
+      "Jewellery-specific but often dated",
+      "Can feel complex to train staff on",
+      "Reporting can require manual work",
+      "Customer experience may feel disconnected",
+      "Less modern AI/product layer",
+      "Harder to present as premium to clients",
+    ],
+  },
+  {
+    key: "nexpura",
+    label: "Nexpura",
+    points: [
+      "Modern jewellery operating system",
+      "POS, repairs, bespoke, stock, CRM, and passports connected",
+      "AI Copilot for operational insights",
+      "QR-verifiable digital passports",
+      "Guided migration and onboarding",
+      "Built for premium jewellery teams",
+    ],
+  },
+]
 
 export default function LandingComparison() {
   return (
-    <section className="bg-m-ivory py-24 lg:py-32 px-6 sm:px-12">
-      <div className="max-w-[1200px] mx-auto">
-        <SectionHeader
-          title="Built for jewellers — not just adapted for them"
-          subtitle="Generic retail systems miss the workflows that make jewellery businesses complex. Nexpura is designed around repairs, bespoke orders, passports, inventory, and customer trust."
-        />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 mt-14">
-          {/* Left card — muted ivory (the problem state) */}
-          <div className="rounded-2xl bg-m-ivory border border-m-border-soft p-8 m-reveal">
-            <h3 className="text-[12px] font-medium text-m-text-muted uppercase tracking-[0.15em] mb-6">
-              What generic systems leave you with
-            </h3>
-            <ul className="space-y-3.5">
-              {BEFORE.map((item) => (
-                <li
-                  key={item}
-                  className="flex items-start gap-3 text-[15px] leading-[1.5] text-m-text-muted"
-                >
-                  <CrossIcon className="text-m-text-muted/60 shrink-0 mt-1" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Right card — charcoal with champagne checks (the win state) */}
-          <div
-            className="relative rounded-2xl bg-m-charcoal border border-[rgba(201,169,97,0.2)] p-8 overflow-hidden m-reveal"
+    <section
+      id="comparison"
+      className="bg-m-ivory px-6 py-20 md:py-24 lg:py-28"
+      aria-labelledby="comparison-heading"
+    >
+      <div className="mx-auto max-w-6xl">
+        {/* Intro */}
+        <div className="mx-auto max-w-3xl text-center mb-12 md:mb-16">
+          <span className="inline-block font-sans text-[0.78rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
+            The category
+          </span>
+          <h2
+            id="comparison-heading"
+            className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
           >
-            {/* Subtle champagne radial at top */}
-            <div
-              aria-hidden
-              className="absolute inset-0 pointer-events-none opacity-[0.10]"
-              style={{
-                background:
-                  'radial-gradient(ellipse at top, rgba(201,169,97,1) 0%, transparent 65%)',
-              }}
-            />
-            <h3 className="relative text-[12px] font-medium text-m-champagne uppercase tracking-[0.15em] mb-6">
-              What Nexpura gives you instead
-            </h3>
-            <ul className="relative space-y-3.5">
-              {AFTER.map((item, i) => (
-                <li
-                  key={item}
-                  className="m-reveal group flex items-start gap-3 text-[15px] leading-[1.5] text-white/90"
-                  style={{ transitionDelay: `${i * 80}ms` }}
-                >
-                  <CheckIcon className="text-m-champagne shrink-0 mt-[3px] transition-transform duration-200 [transition-timing-function:var(--m-ease)] group-hover:scale-110" />
-                  <span className="relative">
-                    {item}
-                    <span
-                      aria-hidden
-                      className="absolute left-0 right-0 -bottom-0.5 h-px bg-m-champagne/40 origin-left scale-x-0 transition-transform duration-200 group-hover:scale-x-100"
-                    />
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+            Built for jewellers — not forced onto them
+          </h2>
+          <p className="mt-5 text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[720px] mx-auto">
+            Generic POS systems are built for checkout. Legacy jewellery
+            software can feel heavy and dated. Nexpura is designed as a modern
+            operating system for jewellery workflows.
+          </p>
+        </div>
+
+        {/* 3-column grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 items-stretch">
+          {COLUMNS.map((col) => {
+            const isFeatured = col.key === "nexpura"
+            return (
+              <ComparisonCard key={col.key} col={col} featured={isFeatured} />
+            )
+          })}
         </div>
       </div>
     </section>
   )
 }
 
-function CheckIcon({ className }: { className?: string }) {
+function ComparisonCard({ col, featured }: { col: Column; featured: boolean }) {
   return (
-    <svg
-      aria-hidden
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      className={className}
+    <div
+      className={
+        featured
+          ? "relative flex flex-col rounded-2xl p-7 md:p-8 transition-all duration-200 bg-white border border-[#C9A24A]/40 shadow-[0_30px_80px_-30px_rgba(60,40,20,0.18)] md:-my-3"
+          : "relative flex flex-col rounded-2xl p-7 md:p-8 transition-all duration-200 bg-white/40 border border-[#E4DBC9]"
+      }
+      style={
+        featured
+          ? {
+              backgroundImage:
+                "radial-gradient(circle at 50% -10%, rgba(201,162,74,0.08), transparent 60%)",
+            }
+          : undefined
+      }
     >
-      <path d="M3 8.5L7 12.5L13 5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+      {/* "Modern approach" tag — only on featured column */}
+      {featured && (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 rounded-full bg-[#0E0E10] text-white px-3.5 py-1.5 font-sans text-[0.7rem] font-medium uppercase tracking-[0.18em]">
+          <span aria-hidden="true" className="inline-block w-1.5 h-1.5 rounded-full bg-[#C9A24A]" />
+          Modern approach
+        </span>
+      )}
+
+      {/* Column label */}
+      <div className="mb-6 pb-5 border-b border-[#E4DBC9]">
+        <div className="font-sans text-[0.7rem] uppercase tracking-[0.22em] text-[#8A8276] mb-2">
+          {featured ? "The platform" : "The old way"}
+        </div>
+        <h3
+          className={
+            featured
+              ? "font-serif leading-[1.2] text-m-charcoal text-[1.5rem] md:text-[1.7rem]"
+              : "font-serif leading-[1.2] text-[#5A554C] text-[1.25rem] md:text-[1.35rem]"
+          }
+        >
+          {col.label}
+        </h3>
+      </div>
+
+      {/* Points */}
+      <ul role="list" className="space-y-3.5">
+        {col.points.map((point) => (
+          <li
+            key={point}
+            className={
+              featured
+                ? "flex items-start gap-3 text-[0.94rem] leading-[1.55] text-m-charcoal"
+                : "flex items-start gap-3 text-[0.94rem] leading-[1.55] text-m-text-secondary"
+            }
+          >
+            <PointMark featured={featured} />
+            <span>{point}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
-function CrossIcon({ className }: { className?: string }) {
+// Tick for featured column, neutral dot for others
+function PointMark({ featured }: { featured: boolean }) {
+  if (featured) {
+    return (
+      <span
+        aria-hidden="true"
+        className="mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#C9A24A]/15 text-[#A8852C] flex-shrink-0"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      </span>
+    )
+  }
   return (
-    <svg
-      aria-hidden
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className={className}
-    >
-      <path d="M3 3L11 11M11 3L3 11" strokeLinecap="round" />
-    </svg>
+    <span
+      aria-hidden="true"
+      className="mt-2 inline-block w-1.5 h-1.5 rounded-full bg-[#B9B0A1] flex-shrink-0"
+    />
   )
 }

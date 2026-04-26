@@ -1,160 +1,141 @@
-import Card from './ui/Card'
-import Tag from './ui/Tag'
-import SectionHeader from './ui/SectionHeader'
+// ============================================
+// "Built around the way jewellers actually operate"
+// REVIVED + UPDATED from the parked version (Kaitlyn 2026-04-26).
+// Now renders late on the homepage, after LandingDigitalPassport.
+// ============================================
 
-/**
- * "Built for every corner of the jewellery trade" per Kaitlyn's brief
- * (section 7 + correction Fix #1).
- *
- * The cards are now purely informational — no per-card link, no router
- * push, no chevron icon, default cursor. Kaitlyn's brief explicitly
- * removes the "See {x} workflows →" CTAs because each routed to a page
- * that wasn't a real per-segment workflow surface, so we'd be promising
- * navigation we couldn't honour.
- *
- * Each card now closes with a "Workflow suite" footer row listing the
- * specific modules that segment uses (POS · Inventory · CRM · Repairs
- * etc). The footer is a non-interactive label, not a clickable list.
- */
+import React from "react"
 
-interface Audience {
+type Audience = {
   title: string
   body: string
-  tags: readonly string[]
-  /** Per-segment ordered list of modules that make up this workflow. */
-  workflow: readonly string[]
-  Icon: () => React.ReactElement
+  pills: string[]
+  icon: React.ReactNode
 }
 
-const SEGMENTS: readonly Audience[] = [
+const Icon = {
+  retail: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 8h14l-1 12H6L5 8Z" />
+      <path d="M9 8a3 3 0 1 1 6 0" />
+    </svg>
+  ),
+  workshop: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m4 20 8-8" />
+      <path d="M14 6a4 4 0 0 1 4 4l3 3-3 3-3-3a4 4 0 0 1-4-4 4 4 0 0 1 3-3Z" />
+    </svg>
+  ),
+  bespoke: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 9 12 3l6 6-6 12L6 9Z" />
+      <path d="M3 9h18" />
+    </svg>
+  ),
+  multistore: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 21V8l6-3v16" />
+      <path d="M9 21V11l8-3v13" />
+      <path d="M3 21h18" />
+    </svg>
+  ),
+}
+
+const AUDIENCES: Audience[] = [
   {
-    title: 'Retail Jewellers',
-    body: 'Connect POS, inventory, CRM, repairs, and customer records in one retail workspace.',
-    tags: ['POS', 'Inventory', 'CRM', 'Repairs'],
-    workflow: ['POS', 'Inventory', 'CRM', 'Repairs'],
-    Icon: RetailIcon,
+    title: "Retail jewellers",
+    body:
+      "Connect POS, stock, customer history, repairs, and digital passports at the point of sale.",
+    pills: ["POS", "Inventory", "CRM", "Passports"],
+    icon: Icon.retail,
   },
   {
-    title: 'Workshops & Repairs',
-    body: 'Track repairs, due dates, staff assignments, customer updates, photos, quotes, and collection readiness.',
-    tags: ['Repairs', 'Jobs', 'Staff', 'Updates'],
-    workflow: ['Repairs', 'Jobs', 'Staff', 'Updates'],
-    Icon: WorkshopIcon,
+    title: "Repairs & workshops",
+    body:
+      "Track intake, quotes, photos, staff assignment, due dates, customer updates, and collection readiness.",
+    pills: ["Repairs", "Jobs", "Staff", "Updates"],
+    icon: Icon.workshop,
   },
   {
-    title: 'Bespoke Studios',
-    body: 'Manage custom orders from enquiry to approval, production, deposits, sourcing, and final handover.',
-    tags: ['Bespoke', 'Approvals', 'Deposits', 'Sourcing'],
-    workflow: ['Bespoke', 'Approvals', 'Deposits', 'Sourcing'],
-    Icon: BespokeIcon,
+    title: "Bespoke studios",
+    body:
+      "Manage enquiries, quotes, sketches, approvals, deposits, sourcing, production notes, and final handover.",
+    pills: ["Bespoke", "Approvals", "Deposits", "Sourcing"],
+    icon: Icon.bespoke,
   },
   {
-    title: 'Multi-Store Groups',
-    body: 'Centralise stock, customers, reporting, visibility, and operations across every location.',
-    tags: ['Locations', 'Stock', 'Reports', 'Teams'],
-    workflow: ['Locations', 'Stock', 'Reports', 'Teams'],
-    Icon: MultiStoreIcon,
+    title: "Multi-store groups",
+    body:
+      "Centralise stock, staff, customers, reporting, locations, and workflow visibility across every store.",
+    pills: ["Locations", "Stock", "Teams", "Reports"],
+    icon: Icon.multistore,
   },
-] as const
+]
 
 export default function LandingWhoItsFor() {
   return (
     <section
-      id="platform-overview"
-      className="bg-m-ivory py-24 lg:py-32 px-6 sm:px-12"
+      id="who-its-for"
+      className="bg-m-ivory px-6 py-20 md:py-24 lg:py-28"
+      aria-labelledby="who-its-for-heading"
     >
-      <SectionHeader
-        title="Built for every corner of the jewellery trade"
-        subtitle="Whether you sell, repair, create, or manage multiple locations, Nexpura connects the workflows your business depends on."
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 max-w-[1200px] mx-auto mt-14">
-        {SEGMENTS.map(({ title, body, tags, workflow, Icon }, i) => (
-          <Card
-            key={title}
-            className="group flex flex-col m-reveal cursor-default"
-            as="article"
+      <div className="mx-auto max-w-6xl">
+        {/* Intro */}
+        <div className="mx-auto max-w-3xl text-center mb-12 md:mb-14">
+          <span className="inline-block font-sans text-[0.78rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
+            Built for jewellers
+          </span>
+          <h2
+            id="who-its-for-heading"
+            className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
           >
-            <div
-              className="text-m-charcoal mb-5"
-              style={{ transitionDelay: `${i * 80}ms` }}
+            Built around the way jewellers actually operate
+          </h2>
+          <p className="mt-5 text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[700px] mx-auto">
+            Whether you sell, repair, create, or manage multiple locations,
+            Nexpura supports the workflows that generic retail systems miss.
+          </p>
+        </div>
+
+        {/* 2x2 grid on desktop, stacks on mobile */}
+        <ul role="list" className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+          {AUDIENCES.map((a) => (
+            <li
+              key={a.title}
+              className="group relative flex flex-col rounded-2xl border border-[#E4DBC9] bg-white/60 p-7 md:p-8 transition-all duration-200 hover:border-[#C9BFA9] hover:bg-white/80 hover:-translate-y-0.5"
             >
-              <Icon />
-            </div>
-            <h3 className="font-serif text-[22px] leading-[1.2] text-m-charcoal">
-              {title}
-            </h3>
-            <p className="mt-3 text-[15px] leading-[1.6] text-m-text-secondary flex-1">
-              {body}
-            </p>
-            <ul className="flex flex-wrap gap-y-2.5 gap-x-2 mt-5">
-              {tags.map((t) => (
-                <li key={t}>
-                  <Tag>{t}</Tag>
-                </li>
-              ))}
-            </ul>
-            {/* Workflow-suite footer — informational, NOT interactive.
-                pointer-events-none + cursor-default keep stray clicks
-                from doing nothing-pretending-to-be-something. */}
-            <div className="mt-[22px] pt-[22px] border-t border-black/[0.06] flex flex-col gap-2 cursor-default pointer-events-none">
-              <span className="text-[11px] tracking-[0.08em] uppercase text-[#9A8F82] font-medium">
-                Workflow suite
+              <span
+                className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-[#F1E9D8] text-m-charcoal mb-5"
+                aria-hidden="true"
+              >
+                <span className="block w-5 h-5">{a.icon}</span>
               </span>
-              <span className="text-[14px] font-semibold text-[#1A1A1A] leading-[1.5]">
-                {workflow.join(' · ')}
-              </span>
-            </div>
-          </Card>
-        ))}
+
+              <h3 className="font-serif text-m-charcoal text-[1.25rem] md:text-[1.35rem] leading-[1.25] mb-3">
+                {a.title}
+              </h3>
+
+              <p className="text-m-text-secondary text-[0.97rem] leading-[1.55] mb-6">
+                {a.body}
+              </p>
+
+              {/* Spacer pushes pills to bottom for even card heights */}
+              <div className="flex-1" />
+
+              <ul role="list" className="flex flex-wrap gap-2">
+                {a.pills.map((pill) => (
+                  <li
+                    key={pill}
+                    className="inline-flex items-center rounded-full bg-[#F1E9D8] border border-[#E4DBC9] px-3 py-1.5 font-sans text-[0.78rem] font-medium tracking-[0.01em] text-[#5A554C]"
+                  >
+                    {pill}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
-  )
-}
-
-/* ─── Icons (24px line icons, charcoal stroke) ─── */
-
-function RetailIcon() {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M4 7h16l-1 13H5z" />
-      <path d="M9 7V5a3 3 0 0 1 6 0v2" />
-    </svg>
-  )
-}
-function WorkshopIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M14 7l-1.4-1.4a2 2 0 0 0-2.8 0L4 11.4l3 3 5.8-5.8a2 2 0 0 0 0-2.8z" />
-      <path d="M14.5 11l4.8 4.8a2 2 0 0 1 0 2.8l-.7.7a2 2 0 0 1-2.8 0L11 14.5" />
-    </svg>
-  )
-}
-function BespokeIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 3l8 4.5L12 12 4 7.5z" />
-      <path d="M4 7.5v9L12 21l8-4.5v-9" />
-      <path d="M12 12v9" />
-    </svg>
-  )
-}
-function MultiStoreIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 9l1.5-4h15L21 9" />
-      <path d="M4 9v11h16V9" />
-      <path d="M9 20v-5h6v5" />
-    </svg>
   )
 }
