@@ -2,7 +2,7 @@
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingHero from '@/components/landing/LandingHero'
 import LandingExplorePlatform from '@/components/landing/LandingExplorePlatform'
-import LandingWhoItsFor from '@/components/landing/LandingWhoItsFor'
+// import LandingWhoItsFor from '@/components/landing/LandingWhoItsFor' — parked on 2026-04-26 alongside its JSX usage. Component file kept intact.
 import LandingPainPoints from '@/components/landing/LandingPainPoints'
 import LandingRepairs from '@/components/landing/LandingRepairs'
 import LandingPlatformModules from '@/components/landing/LandingPlatformModules'
@@ -24,7 +24,7 @@ export default function HomePage() {
       <main id="audience" className="flex-1">
         <LandingHero />
         <LandingExplorePlatform />
-        <LandingWhoItsFor />
+        {/* <LandingWhoItsFor /> — parked on 2026-04-26. May reposition later, possibly after the Digital Passport section. Component file kept intact. */}
         <LandingPainPoints />
         <LandingRepairs />
         <LandingPlatformModules />
