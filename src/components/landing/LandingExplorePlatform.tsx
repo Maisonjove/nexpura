@@ -9,7 +9,8 @@
  * Class names + copy are verbatim from Kaitlyn's brief; styles live in
  * src/app/globals.css under the "NEXPURA · EXPLORE-PLATFORM SECTION"
  * section. The heading's font-family is chained through
- * `--font-playfair` to match how the hero rule was authored.
+ * `--font-instrument-serif` (the site's existing serif) to match the
+ * hero rule above.
  */
 export default function LandingExplorePlatform() {
   return (

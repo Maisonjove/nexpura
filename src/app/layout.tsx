@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Geist, Instrument_Serif, Playfair_Display } from "next/font/google";
+import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -22,17 +22,6 @@ const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
   style: ["normal", "italic"],
-  display: "swap",
-});
-
-// Playfair Display — used by Kaitlyn's marketing hero (2026-04-26).
-// Loaded via next/font so the class on <html> exposes --font-playfair
-// to the CSS in globals.css. Fallbacks in the rule chain to EB Garamond
-// / Georgia / serif if for any reason the font fails to load.
-const playfairDisplay = Playfair_Display({
-  variable: "--font-playfair",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -94,7 +83,6 @@ export default function RootLayout({
         "font-sans",
         geist.variable,
         instrumentSerif.variable,
-        playfairDisplay.variable,
       )}
     >
       <head>
