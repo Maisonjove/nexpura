@@ -12,6 +12,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, INLINE_LINK, CONTAINER } from "./_tokens"
 
 type FAQ = {
   id: string
@@ -58,22 +59,22 @@ export default function LandingFAQ() {
   return (
     <section
       id="faq"
-      className="bg-m-ivory px-6 py-20 md:py-24 lg:py-28"
+      className={`bg-m-ivory ${SECTION_PADDING.compact}`}
       aria-labelledby="faq-heading"
     >
-      <div className="mx-auto max-w-3xl">
+      <div className={CONTAINER.narrow}>
         {/* Intro */}
-        <div className="text-center mb-12 md:mb-14">
-          <span className="inline-block font-sans text-[0.78rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
+        <div className={`text-center ${INTRO_SPACING.compact}`}>
+          <span className={HEADING.eyebrow}>
             FAQ
           </span>
           <h2
             id="faq-heading"
-            className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
+            className={HEADING.h2}
           >
             Questions jewellers ask before switching
           </h2>
-          <p className="mt-5 text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55]">
+          <p className={HEADING.subhead}>
             Clear answers about trial, migration, POS, repairs, and setup.
           </p>
         </div>
@@ -126,7 +127,7 @@ export default function LandingFAQ() {
             More questions about migration, pricing, or specific features?{" "}
             <Link
               href="/contact"
-              className="text-m-charcoal border-b border-m-charcoal pb-0.5 hover:opacity-70 transition-opacity"
+              className={INLINE_LINK}
             >
               Talk to the team
             </Link>

@@ -12,6 +12,7 @@
 // ============================================
 
 import { useState } from "react"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER } from "./_tokens"
 
 type Prompt = {
   id: string
@@ -59,22 +60,22 @@ export default function LandingAICopilot() {
   return (
     <section
       id="ai-copilot"
-      className="bg-m-ivory px-6 py-20 md:py-24 lg:py-28"
+      className={`bg-m-ivory ${SECTION_PADDING.premium}`}
       aria-labelledby="ai-copilot-heading"
     >
-      <div className="mx-auto max-w-6xl">
+      <div className={CONTAINER.wide}>
         {/* Intro */}
-        <div className="mx-auto max-w-3xl text-center mb-12 md:mb-16">
-          <span className="inline-block font-sans text-[0.78rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
+        <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
+          <span className={HEADING.eyebrow}>
             AI Copilot
           </span>
           <h2
             id="ai-copilot-heading"
-            className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
+            className={HEADING.h2}
           >
             Ask Nexpura what needs attention
           </h2>
-          <p className="mt-5 text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[680px] mx-auto">
+          <p className={`${HEADING.subhead} max-w-[680px] mx-auto`}>
             The AI Copilot helps jewellers turn daily operational data into
             clear next steps across repairs, stock, customers, bespoke jobs,
             and sales performance.

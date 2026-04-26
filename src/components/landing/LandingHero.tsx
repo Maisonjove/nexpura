@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BUTTON } from './_tokens'
 
 /**
  * Marketing hero — Kaitlyn 2026-04-26 redesign (revision: video restored).
@@ -18,6 +19,16 @@ import Link from 'next/link'
  * The previous commit's bottom scroll-cue button is intentionally dropped:
  * the new "Explore Platform" CTA + #explore-platform anchor on
  * LandingExplorePlatform serves the same purpose.
+ *
+ * NOTE on section padding: this section deliberately keeps its own
+ * asymmetric pt/pb (`pt-8 sm:pt-10 lg:pt-12 pb-16 lg:pb-0`) instead of
+ * `SECTION_PADDING.flagship`. The hero stretches to viewport min-height
+ * (`lg:min-h-[calc(100vh-72px)]`), so the standard symmetric tier doesn't
+ * apply — the asymmetric values were tightened earlier per Kaitlyn's brief
+ * to control how the hero anchors against the viewport top/bottom. The H1,
+ * subhead, and trust row remain inline because the hero typography is also
+ * unique (clamp-based responsive sizes, not the generic h2 token). Only
+ * the two CTA pills pull from BUTTON.{primary,secondary}.
  */
 export default function LandingHero() {
   return (
@@ -35,16 +46,10 @@ export default function LandingHero() {
         </p>
 
         <div className="mt-8 flex items-center flex-wrap gap-4 justify-center lg:justify-start">
-          <Link
-            href="/signup"
-            className="inline-flex items-center justify-center px-9 py-4 rounded-full bg-m-charcoal text-white text-[1rem] font-medium tracking-[0.01em] border border-m-charcoal transition-[transform,background] duration-200 hover:bg-m-charcoal-soft hover:-translate-y-px"
-          >
+          <Link href="/signup" className={BUTTON.primary}>
             Start Free Trial
           </Link>
-          <a
-            href="#explore-platform"
-            className="inline-flex items-center justify-center px-9 py-4 rounded-full bg-transparent text-m-charcoal text-[1rem] font-medium tracking-[0.01em] border border-m-charcoal transition-[transform,background,color] duration-200 hover:bg-m-charcoal hover:text-white hover:-translate-y-px"
-          >
+          <a href="#explore-platform" className={BUTTON.secondary}>
             Explore Platform
           </a>
         </div>

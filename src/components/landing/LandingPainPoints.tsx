@@ -1,5 +1,6 @@
 import Card from './ui/Card'
 import SectionHeader from './ui/SectionHeader'
+import { SECTION_PADDING } from './_tokens'
 
 /**
  * Pain points per Kaitlyn's 2026-04-26 spec (PR #42 revision). 2x2 grid
@@ -39,7 +40,7 @@ const PAINS: readonly Pain[] = [
 
 export default function LandingPainPoints() {
   return (
-    <section className="bg-white py-24 lg:py-32 px-6 sm:px-12">
+    <section className={`bg-white ${SECTION_PADDING.standard}`}>
       <div className="max-w-[1200px] mx-auto">
         <SectionHeader
           title="Jewellery workflows were never built for generic POS"

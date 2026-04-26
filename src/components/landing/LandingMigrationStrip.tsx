@@ -7,6 +7,7 @@
 
 import React from "react"
 import Link from "next/link"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, INLINE_LINK, CONTAINER } from "./_tokens"
 
 type Step = {
   number: string
@@ -39,22 +40,22 @@ export default function LandingMigrationStrip() {
   return (
     <section
       id="migration"
-      className="bg-m-ivory px-6 py-20 md:py-24"
+      className={`bg-m-ivory ${SECTION_PADDING.compact}`}
       aria-labelledby="migration-heading"
     >
-      <div className="mx-auto max-w-5xl">
+      <div className={CONTAINER.medium}>
         {/* Intro */}
-        <div className="mx-auto max-w-3xl text-center mb-12 md:mb-14">
-          <span className="inline-block font-sans text-[0.78rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
+        <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.compact}`}>
+          <span className={HEADING.eyebrow}>
             Migration
           </span>
           <h2
             id="migration-heading"
-            className="font-serif text-m-charcoal text-[1.7rem] leading-[1.15] tracking-[-0.005em] md:text-[2.2rem]"
+            className={HEADING.h2}
           >
             Switching is guided, not solo
           </h2>
-          <p className="mt-4 text-m-text-secondary text-[1rem] leading-[1.55] max-w-[600px] mx-auto">
+          <p className={`${HEADING.subhead} max-w-[600px] mx-auto`}>
             Move from your current setup with hands-on support at each stage.
           </p>
         </div>
@@ -67,7 +68,7 @@ export default function LandingMigrationStrip() {
           {STEPS.map((step, i) => (
             <li
               key={step.number}
-              className="relative flex flex-col rounded-2xl border border-[#E4DBC9] bg-white/60 p-6 md:p-7 transition-all duration-200 hover:border-[#C9BFA9] hover:bg-white/80"
+              className={`relative flex flex-col ${CARD.base} ${CARD.paddingCompact} ${CARD.hover}`}
             >
               {/* Step number */}
               <div className="flex items-center gap-3 mb-4">
@@ -105,7 +106,7 @@ export default function LandingMigrationStrip() {
         <div className="text-center mt-10 md:mt-12">
           <Link
             href="/migration"
-            className="inline-flex items-center gap-2 font-sans text-[0.95rem] font-medium text-m-charcoal border-b border-m-charcoal pb-0.5 transition-opacity duration-200 hover:opacity-70"
+            className={INLINE_LINK}
           >
             See full migration support
             <span aria-hidden="true">→</span>

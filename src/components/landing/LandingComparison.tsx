@@ -6,6 +6,7 @@
 // ============================================
 
 import React from "react"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER } from "./_tokens"
 
 type Column = {
   key: "generic" | "legacy" | "nexpura"
@@ -56,22 +57,22 @@ export default function LandingComparison() {
   return (
     <section
       id="comparison"
-      className="bg-m-ivory px-6 py-20 md:py-24 lg:py-28"
+      className={`bg-m-ivory ${SECTION_PADDING.standard}`}
       aria-labelledby="comparison-heading"
     >
-      <div className="mx-auto max-w-6xl">
+      <div className={CONTAINER.wide}>
         {/* Intro */}
-        <div className="mx-auto max-w-3xl text-center mb-12 md:mb-16">
-          <span className="inline-block font-sans text-[0.78rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
+        <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
+          <span className={HEADING.eyebrow}>
             The category
           </span>
           <h2
             id="comparison-heading"
-            className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
+            className={HEADING.h2}
           >
             Built for jewellers — not forced onto them
           </h2>
-          <p className="mt-5 text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[720px] mx-auto">
+          <p className={`${HEADING.subhead} max-w-[720px] mx-auto`}>
             Generic POS systems are built for checkout. Legacy jewellery
             software can feel heavy and dated. Nexpura is designed as a modern
             operating system for jewellery workflows.

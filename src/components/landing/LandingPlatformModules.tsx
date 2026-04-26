@@ -9,6 +9,7 @@
 
 import React from "react"
 import Link from "next/link"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, BUTTON, CONTAINER } from "./_tokens"
 
 type Module = {
   title: string
@@ -105,19 +106,19 @@ export default function LandingPlatformModules() {
   return (
     <section
       id="platform-modules"
-      className="bg-m-ivory px-6 py-20 md:py-24 lg:py-28"
+      className={`bg-m-ivory ${SECTION_PADDING.standard}`}
       aria-labelledby="platform-modules-heading"
     >
-      <div className="mx-auto max-w-6xl">
+      <div className={CONTAINER.wide}>
         {/* Intro */}
-        <div className="mx-auto max-w-3xl text-center mb-12 md:mb-14">
+        <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
           <h2
             id="platform-modules-heading"
-            className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
+            className={HEADING.h2}
           >
             One system of record for every jewellery workflow
           </h2>
-          <p className="mt-5 text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[680px] mx-auto">
+          <p className={`${HEADING.subhead} max-w-[680px] mx-auto`}>
             Nexpura connects the operational data jewellers rely on every day —
             sales, stock, repairs, bespoke jobs, customers, payments, passports,
             and performance.
@@ -132,7 +133,7 @@ export default function LandingPlatformModules() {
           {MODULES.map((m) => (
             <li
               key={m.title}
-              className="group relative flex flex-col rounded-2xl border border-[#E4DBC9] bg-white/60 p-7 md:p-8 transition-all duration-200 hover:border-[#C9BFA9] hover:bg-white/80 hover:-translate-y-0.5"
+              className={`group relative flex flex-col ${CARD.base} ${CARD.paddingStandard} ${CARD.hover}`}
             >
               <span
                 className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-[#F1E9D8] text-m-charcoal mb-5"
@@ -141,7 +142,7 @@ export default function LandingPlatformModules() {
                 <span className="w-5 h-5 block">{m.icon}</span>
               </span>
 
-              <h3 className="font-serif text-m-charcoal text-[1.2rem] md:text-[1.3rem] leading-[1.25] mb-3">
+              <h3 className={`${HEADING.h3} mb-3`}>
                 {m.title}
               </h3>
 
@@ -156,7 +157,7 @@ export default function LandingPlatformModules() {
         <div className="text-center mt-12 md:mt-14">
           <Link
             href="/features"
-            className="inline-flex items-center gap-2 rounded-full bg-[#111] text-white border border-[#111] px-7 py-3.5 text-[0.95rem] font-medium transition-all duration-200 hover:bg-[#2a2a2a] hover:-translate-y-0.5"
+            className={`${BUTTON.primary} gap-2`}
           >
             Explore all features
             <span aria-hidden="true">→</span>

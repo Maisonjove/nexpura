@@ -14,6 +14,7 @@
 // ============================================
 
 import { useState } from "react"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, INLINE_LINK, CONTAINER } from "./_tokens"
 
 type TabKey = "repairs" | "inventory" | "bespoke" | "passport" | "analytics" | "crm"
 
@@ -123,19 +124,19 @@ export default function LandingProductDemo() {
   return (
     <section
       id="product-demo"
-      className="bg-m-ivory px-6 py-20 md:py-24 lg:py-28"
+      className={`bg-m-ivory ${SECTION_PADDING.flagship}`}
       aria-labelledby="product-demo-heading"
     >
-      <div className="mx-auto max-w-6xl">
+      <div className={CONTAINER.wide}>
         {/* Intro */}
-        <div className="mx-auto max-w-3xl text-center mb-10 md:mb-12">
+        <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
           <h2
             id="product-demo-heading"
-            className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
+            className={HEADING.h2}
           >
             See Nexpura in action
           </h2>
-          <p className="mt-5 text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[680px] mx-auto">
+          <p className={`${HEADING.subhead} max-w-[680px] mx-auto`}>
             A closer look at the daily screens your team uses to manage repairs,
             stock, bespoke jobs, customers, passports, and performance.
           </p>
@@ -217,7 +218,7 @@ export default function LandingProductDemo() {
 
             <a
               href={current.href}
-              className="group inline-flex items-center gap-2 text-[0.95rem] font-medium text-m-charcoal border-b border-m-charcoal pb-0.5 transition-opacity duration-200 hover:opacity-70"
+              className={`group ${INLINE_LINK}`}
             >
               View feature
               <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>

@@ -7,40 +7,35 @@
 
 import React from "react"
 import Link from "next/link"
+import { SECTION_PADDING, HEADING, BUTTON, CONTAINER } from "./_tokens"
 
 export default function LandingFinalCTA() {
   return (
     <section
       id="final-cta"
-      className="bg-m-ivory px-6 py-20 md:py-24 lg:py-28"
+      className={`bg-m-ivory ${SECTION_PADDING.standard}`}
       aria-labelledby="final-cta-heading"
     >
-      <div className="mx-auto max-w-3xl text-center">
+      <div className={`${CONTAINER.narrow} text-center`}>
         <h2
           id="final-cta-heading"
-          className="font-serif text-m-charcoal text-[2rem] leading-[1.12] tracking-[-0.005em] md:text-[2.6rem]"
+          className={HEADING.h2Closing}
         >
           Run your jewellery business from one connected system
         </h2>
 
-        <p className="mt-5 text-m-text-secondary text-[1.05rem] md:text-[1.15rem] leading-[1.55] max-w-[620px] mx-auto">
+        <p className={`${HEADING.subhead} max-w-[620px] mx-auto`}>
           Start with a free trial or book a walkthrough tailored to your
           current workflows.
         </p>
 
         {/* CTA row */}
         <div className="mt-8 md:mt-9 flex flex-wrap justify-center gap-3 md:gap-4">
-          <Link
-            href="/signup"
-            className="inline-flex items-center justify-center rounded-full bg-[#111] text-white border border-[#111] px-7 py-3.5 font-sans text-[0.95rem] font-medium transition-all duration-200 hover:bg-[#2a2a2a] hover:-translate-y-0.5"
-          >
+          <Link href="/signup" className={BUTTON.primary}>
             Start Free Trial
           </Link>
 
-          <Link
-            href="/demo"
-            className="inline-flex items-center justify-center rounded-full bg-transparent text-m-charcoal border border-m-charcoal px-7 py-3.5 font-sans text-[0.95rem] font-medium transition-all duration-200 hover:bg-m-charcoal hover:text-white hover:-translate-y-0.5"
-          >
+          <Link href="/demo" className={BUTTON.secondary}>
             Book a Demo
           </Link>
         </div>

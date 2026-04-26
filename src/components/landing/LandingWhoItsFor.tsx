@@ -5,6 +5,7 @@
 // ============================================
 
 import React from "react"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, CONTAINER } from "./_tokens"
 
 type Audience = {
   title: string
@@ -76,22 +77,22 @@ export default function LandingWhoItsFor() {
   return (
     <section
       id="who-its-for"
-      className="bg-m-ivory px-6 py-20 md:py-24 lg:py-28"
+      className={`bg-m-ivory ${SECTION_PADDING.standard}`}
       aria-labelledby="who-its-for-heading"
     >
-      <div className="mx-auto max-w-6xl">
+      <div className={CONTAINER.wide}>
         {/* Intro */}
-        <div className="mx-auto max-w-3xl text-center mb-12 md:mb-14">
-          <span className="inline-block font-sans text-[0.78rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
+        <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
+          <span className={HEADING.eyebrow}>
             Built for jewellers
           </span>
           <h2
             id="who-its-for-heading"
-            className="font-serif text-m-charcoal text-[1.85rem] leading-[1.15] tracking-[-0.005em] md:text-[2.4rem]"
+            className={HEADING.h2}
           >
             Built around the way jewellers actually operate
           </h2>
-          <p className="mt-5 text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[700px] mx-auto">
+          <p className={`${HEADING.subhead} max-w-[700px] mx-auto`}>
             Whether you sell, repair, create, or manage multiple locations,
             Nexpura supports the workflows that generic retail systems miss.
           </p>
@@ -102,7 +103,7 @@ export default function LandingWhoItsFor() {
           {AUDIENCES.map((a) => (
             <li
               key={a.title}
-              className="group relative flex flex-col rounded-2xl border border-[#E4DBC9] bg-white/60 p-7 md:p-8 transition-all duration-200 hover:border-[#C9BFA9] hover:bg-white/80 hover:-translate-y-0.5"
+              className={`group relative flex flex-col ${CARD.base} ${CARD.paddingStandard} ${CARD.hover}`}
             >
               <span
                 className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-[#F1E9D8] text-m-charcoal mb-5"
