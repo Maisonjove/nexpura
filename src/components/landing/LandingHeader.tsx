@@ -6,7 +6,7 @@ import Link from 'next/link'
 /**
  * Sticky marketing nav. Updated 2026-04-26 per Kaitlyn's 9-fix follow-up:
  *
- * - Left cluster: Platform · Features · Pricing  (Migration removed)
+ * - Left cluster: Platform · Features · Pricing · Verify Passport
  * - Centre: NEXPURA serif wordmark
  * - Right cluster: About · Book a Demo · Login (outlined pill) ·
  *   Start Free Trial (filled pill)
@@ -58,13 +58,19 @@ export default function LandingHeader() {
         aria-label="Primary"
         className="flex items-center justify-between max-w-[1200px] mx-auto px-6 sm:px-12 h-[72px]"
       >
-        {/* Left cluster: Platform · Features · Pricing  (Migration removed 2026-04-26;
-            label "Solutions" → "Features" 2026-04-26 to match destination /features —
-            the footer's separate Solutions column with /solutions/* links is unchanged). */}
-        <div className="hidden md:flex items-center gap-8 flex-1">
+        {/* Left cluster: Platform · Features · Pricing · Verify Passport
+            (Migration removed 2026-04-26; "Solutions" → "Features" same day;
+            "Verify Passport" added 2026-04-26 — points at the existing
+            public verification page at /verify, restoring the entry point
+            that was cut during an earlier cleanup. Plain-text NavLink to
+            match the rest of the cluster — no pill, no badge.) Reduced
+            gap from gap-8 to gap-6 to keep all four items fitting cleanly
+            against the right cluster at 1280px without wrapping. */}
+        <div className="hidden md:flex items-center gap-6 flex-1">
           <NavLink href="/platform">Platform</NavLink>
           <NavLink href="/features">Features</NavLink>
           <NavLink href="/pricing">Pricing</NavLink>
+          <NavLink href="/verify">Verify Passport</NavLink>
         </div>
 
         {/* Centre: serif wordmark */}
@@ -126,6 +132,7 @@ export default function LandingHeader() {
           <MobileLink href="/platform">Platform</MobileLink>
           <MobileLink href="/features">Features</MobileLink>
           <MobileLink href="/pricing">Pricing</MobileLink>
+          <MobileLink href="/verify">Verify Passport</MobileLink>
           <MobileLink href="/about">About</MobileLink>
           <MobileLink href="/contact">Book a Demo</MobileLink>
           <MobileLink href="/login">Login</MobileLink>
