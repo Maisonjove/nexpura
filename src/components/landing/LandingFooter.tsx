@@ -1,8 +1,18 @@
+'use client'
+
 // ============================================
 // Five-column footer with link groups.
 // Per Kaitlyn 2026-04-26 brief — replaces the prior charcoal/social-row
 // footer. Spec was missing the opening <a tags everywhere — restored.
 // Internal-nav links use next/link (lint rule + SPA navigation).
+//
+// "use client" is required because of `new Date().getFullYear()` in the
+// copyright row. Under Next 16's cacheComponents mode, reading the
+// current time in a server component without first reading uncached
+// data (cookies/headers/searchParams) bails out the static prerender —
+// this fired on /terms and aborted the build. Making the footer a
+// client component is the smallest fix that preserves Kaitlyn's
+// auto-updating year intent.
 // Routes that don't exist yet are flagged hidden:true so we don't ship
 // dead links — the component filters them out before rendering, and an
 // entire column will be hidden if all of its links are hidden.
