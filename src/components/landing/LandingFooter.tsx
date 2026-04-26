@@ -1,18 +1,15 @@
-'use client'
-
 // ============================================
 // Five-column footer with link groups.
 // Per Kaitlyn 2026-04-26 brief — replaces the prior charcoal/social-row
 // footer. Spec was missing the opening <a tags everywhere — restored.
 // Internal-nav links use next/link (lint rule + SPA navigation).
 //
-// "use client" is required because of `new Date().getFullYear()` in the
-// copyright row. Under Next 16's cacheComponents mode, reading the
-// current time in a server component without first reading uncached
-// data (cookies/headers/searchParams) bails out the static prerender —
-// this fired on /terms and aborted the build. Making the footer a
-// client component is the smallest fix that preserves Kaitlyn's
-// auto-updating year intent.
+// Note on the copyright year: under Next 16's cacheComponents mode,
+// `new Date()` in either a server OR client component bails out the
+// static prerender (server: needs an uncached read first; client: needs
+// a Suspense boundary). Both shapes broke the build on /terms and
+// /switching. We hardcode the year here. Update at the start of each
+// calendar year — small annual cost vs the build/Suspense ceremony.
 // Routes that don't exist yet are flagged hidden:true so we don't ship
 // dead links — the component filters them out before rendering, and an
 // entire column will be hidden if all of its links are hidden.
@@ -94,9 +91,10 @@ const FOOTER_COLUMNS: FooterColumn[] = [
   },
 ]
 
-export default function LandingFooter() {
-  const currentYear = new Date().getFullYear()
+// Hardcoded — see header comment. Bump at the start of the next calendar year.
+const COPYRIGHT_YEAR = 2026
 
+export default function LandingFooter() {
   return (
     <footer
       className="bg-m-ivory border-t border-[#E4DBC9] px-6 pt-16 pb-10 md:pt-20 md:pb-12"
@@ -150,7 +148,7 @@ export default function LandingFooter() {
         {/* Bottom row: copyright */}
         <div className="mt-16 md:mt-20 pt-8 border-t border-[#E4DBC9] flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-center justify-between">
           <p className="font-sans text-[0.85rem] text-[#8A8276]">
-            © {currentYear} Nexpura. All rights reserved.
+            © {COPYRIGHT_YEAR} Nexpura. All rights reserved.
           </p>
           <p className="font-sans text-[0.85rem] text-[#8A8276]">
             Built for jewellers.
