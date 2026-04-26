@@ -21,7 +21,8 @@ import { z } from "zod"
 import logger from "@/lib/logger"
 import { checkRateLimit } from "@/lib/rate-limit"
 
-export const runtime = "nodejs"
+// Note: not exporting `runtime` — Next 16 + cacheComponents forbids
+// per-route runtime config and the project defaults are correct here.
 export const maxDuration = 30
 
 // 500-char cap on the question — long enough for any genuine prospect
