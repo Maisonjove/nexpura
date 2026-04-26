@@ -630,11 +630,6 @@ section[id] {
   }
 }
 
-/* === Pricing CurrencySelector dropdown fade keyframe (Kaitlyn 2026-04-26) ===
-   Scoped name (nxFadeInDropdown) so it doesn't override the broader
-   fadeInUp keyframe (16px translate) used elsewhere on the landing
-   page. Selector dropdown is a tight 4px translate down → 0. */
-@keyframes nxFadeInDropdown {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* (nxFadeInDropdown keyframe removed 2026-04-26: the pricing
+   CurrencySelector switched from a dropdown to inline pill tabs,
+   so the dropdown-fade animation has no callers.) */

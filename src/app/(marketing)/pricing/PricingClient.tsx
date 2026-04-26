@@ -193,9 +193,11 @@ export default function PricingClient({
       {/* Pricing cards */}
       <section className="pb-20 lg:pb-28 px-6 sm:px-10 lg:px-20">
         <div className="max-w-[1200px] mx-auto">
-          {/* Currency selector — right-aligned on lg, centred on smaller
-              screens so it doesn't feel detached on mobile. */}
-          <div className="flex justify-center md:justify-end mb-12">
+          {/* Currency selector — centred above the plan grid. With the
+              4-tab inline pill switcher (Kaitlyn 2026-04-26), all options
+              are always visible so right-aligning would read detached.
+              Centred = a deliberate page-level control above the plans. */}
+          <div className="flex justify-center mt-8 md:mt-10 mb-12 md:mb-14">
             <CurrencySelector value={currency} onChange={setCurrency} />
           </div>
 
