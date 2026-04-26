@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { getSubdomain, getTenantBySlug } from "@/lib/subdomain";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeCompare } from "@/lib/timing-safe-compare";
+import { isReservedScannerBaitPath } from "@/lib/reserved-scanner-bait";
 
 // Review / staff bypass tokens. Prefer the canonical NEXPURA_* names
 // (matches src/lib/auth/review.ts); fall back to the legacy REVIEW_BYPASS_TOKEN
@@ -430,6 +431,16 @@ export async function middleware(request: NextRequest) {
 }
 
 async function _proxyInner(request: NextRequest) {
+  // QA-002: short-circuit reserved scanner-bait paths with a real 404
+  // BEFORE the dynamic shop route ever matches. Otherwise paths like
+  // `/.env` or `/swagger` were caught by `(shop)/[subdomain]/page.tsx`,
+  // which calls `notFound()` but renders the marketing 404 UI — and the
+  // catch-all matcher on apex made the response 200 for SEO/scanner
+  // triage purposes. An explicit NextResponse with status 404 closes that.
+  if (isReservedScannerBaitPath(request.nextUrl.pathname)) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const host = request.headers.get("host") ?? "";
   const subdomain = getSubdomain(host);
 
