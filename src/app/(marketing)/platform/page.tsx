@@ -13,8 +13,14 @@
 // ============================================
 
 import LandingPlatformModules from '@/components/landing/LandingPlatformModules'
-import LandingScreenshots from '@/components/landing/LandingScreenshots'
+import LandingProductDemo from '@/components/landing/LandingProductDemo'
 import LandingDemoExplainer from '@/components/landing/LandingDemoExplainer'
+// LandingScreenshots no longer imported here (2026-04-26) — it was the
+// pre-Phase-G "See Nexpura in action" tabbed section that has since
+// been replaced on the homepage by LandingProductDemo. Both pages now
+// render the same canonical LandingProductDemo component (5 tabs, no
+// CRM/Passport drift). LandingScreenshots.tsx is kept on disk for
+// repurposing.
 import Button from '@/components/landing/ui/Button'
 
 export const metadata = {
@@ -27,7 +33,7 @@ export default function PlatformPage() {
   return (
     <div className="bg-m-ivory">
       <LandingPlatformModules />
-      <LandingScreenshots />
+      <LandingProductDemo />
       <LandingDemoExplainer />
 
       {/* Final CTA */}
