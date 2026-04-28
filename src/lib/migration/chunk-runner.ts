@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   parseCSVFull, parseXLSXFull, applyMappings, buildDefaultMappings,
@@ -465,30 +464,36 @@ export async function runChunkContinue(
     return NextResponse.json({ ok: true, done: true });
   }
 
-  // SCHEDULE the actual chunk work in after(). The HTTP response
-  // returns IMMEDIATELY so the parent lambda's after() (which is
-  // bounded by the parent's remaining maxDuration budget) doesn't
-  // wait for THIS chunk's processing to finish. Pre-fix this was
-  // synchronous, which meant chunk N's after() awaited chunk N+1's
-  // full ~3min processing — and after() shares the parent's 300s
-  // budget. The chain stalled around chunk 4 (~12min in), because
-  // chunk 1's after() ran out of budget waiting for chunk 2 → 3 →
-  // 4 to all return. Now each lambda gets its own clean 300s.
-  after(async () => {
-    try {
-      await runChunk(req, admin, jobId, internalToken);
-    } catch (e) {
-      logger.error('[migration-execute] chunk runner threw', {
-        jobId,
-        error: e instanceof Error ? e.message : String(e),
-        stack: e instanceof Error ? e.stack : undefined,
-      });
-      // Don't auto-mark the job failed here — leave it in 'running'
-      // so a deferred stale-job sweeper or manual retry can resume.
-    }
-  });
+  // Run the chunk SYNCHRONOUSLY (in the request lifecycle, not in
+  // after()). Two prior attempts:
+  //   • #71  the whole chain inside the FIRST lambda's call tree —
+  //          stalled at ~chunk 4 because each chunk's await fetch
+  //          accumulated waiting for downstream chunks to respond,
+  //          all bounded by the original lambda's 300s budget.
+  //   • #72  scheduled work in after(), returned {accepted} fast.
+  //          Stalled at chunk 1 → 2 — the after() block apparently
+  //          isn't reliable for outbound fetches on Vercel; chunk 2
+  //          never started even though chunk 1's work completed.
+  //
+  // This version: do the work synchronously (each lambda has full
+  // 300s for its own ~3min chunk), then dispatch the next chunk
+  // via fire-and-forget fetch with `keepalive: true` so Node sends
+  // the request even if the lambda terminates immediately after.
+  // No after() involved.
+  try {
+    await runChunk(req, admin, jobId, internalToken);
+  } catch (e) {
+    logger.error('[migration-execute] chunk runner threw', {
+      jobId,
+      error: e instanceof Error ? e.message : String(e),
+      stack: e instanceof Error ? e.stack : undefined,
+    });
+    // Don't auto-mark the job failed here — leave it in 'running'
+    // so a deferred stale-job sweeper or manual retry can resume.
+    return NextResponse.json({ ok: false, error: 'Chunk runner threw' }, { status: 500 });
+  }
 
-  return NextResponse.json({ ok: true, accepted: true });
+  return NextResponse.json({ ok: true });
 }
 
 /**
@@ -720,18 +725,31 @@ export async function finaliseJob(
 // Forwarding session cookies was actively harmful here because they
 // rotate during multi-minute imports and the middleware would 401
 // the chain mid-way through.
-export async function dispatchNextChunk(req: NextRequest, jobId: string, internalToken: string): Promise<void> {
+export function dispatchNextChunk(req: NextRequest, jobId: string, internalToken: string): void {
   const origin = req.nextUrl.origin;
   const dispatchHeaders = {
     'Content-Type': 'application/json',
     'Origin': origin,
     'Referer': `${origin}/`,
   };
+  // Fire-and-forget. `keepalive: true` is the magic ingredient —
+  // tells Node to allow the request to outlive the originating
+  // lambda's request scope so the connection actually completes.
+  // We do NOT await — the dispatcher's lambda is free to return
+  // its response and terminate immediately; the next chunk's
+  // fresh lambda starts independently with its own clean 300s
+  // budget. Errors are still logged via .catch() but not retried.
   try {
-    await fetch(`${origin}/api/migration/execute-chunk`, {
+    fetch(`${origin}/api/migration/execute-chunk`, {
       method: 'POST',
       headers: dispatchHeaders,
       body: JSON.stringify({ jobId, internalToken }),
+      keepalive: true,
+    }).catch((e) => {
+      logger.error('[migration-execute] dispatch fetch failed', {
+        jobId,
+        error: e instanceof Error ? e.message : String(e),
+      });
     });
   } catch (e) {
     // MVP: if the fetch dispatch itself throws (network
