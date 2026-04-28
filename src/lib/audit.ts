@@ -73,7 +73,9 @@ export type AuditAction =
   | 'campaign_send'
   | 'campaign_delete'
   | 'login'
-  | 'logout';
+  | 'logout'
+  | 'stripe_connect_disconnect'
+  | 'stripe_connect_deauthorize_failed';
 
 export type EntityType =
   | 'inventory'
@@ -100,7 +102,8 @@ export type EntityType =
   | 'memo'
   | 'enquiry'
   | 'eod_reconciliation'
-  | 'campaign';
+  | 'campaign'
+  | 'tenant';
 
 interface AuditLogEntry {
   tenantId: string;
