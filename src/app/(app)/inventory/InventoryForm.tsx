@@ -122,10 +122,20 @@ export default function InventoryForm({ categories: initialCategories, item, mod
 
     startTransition(async () => {
       try {
-        if (mode === "create") {
-          await createInventoryItem(formData);
-        } else if (item) {
-          await updateInventoryItem(item.id, formData);
+        // The action returns `{ error }` for validation failures (e.g. user
+        // is in "All Locations" view) and `redirect()`s on success — Next.js
+        // sanitises thrown errors in production so the form would otherwise
+        // see a generic "Server Components render" message instead of the
+        // actionable reason. Read the return value and surface it.
+        const result =
+          mode === "create"
+            ? await createInventoryItem(formData)
+            : item
+              ? await updateInventoryItem(item.id, formData)
+              : undefined;
+        if (result && typeof result === "object" && "error" in result && result.error) {
+          setError(String(result.error));
+          return;
         }
       } catch (err) {
         // Next.js redirect() throws a sentinel error we must re-throw so the

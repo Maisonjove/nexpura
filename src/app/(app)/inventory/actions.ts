@@ -94,10 +94,17 @@ export async function createInventoryItem(formData: FormData) {
   // Resolve which location this item belongs to. Never silently NULL when
   // the tenant has multiple active locations — see src/lib/active-location.ts
   // for the policy (cookie → single-location auto → multi-location reject).
-  if (!user?.id) throw new Error("Not authenticated");
+  if (!user?.id) return { error: "Not authenticated" };
   const locResolution = await resolveLocationForCreate(tenantId, user.id);
   if (locResolution.needsSelection) {
-    throw new Error(LOCATION_REQUIRED_MESSAGE);
+    // Return the message as data instead of throwing. Next.js sanitises
+    // thrown errors from Server Actions in production builds — the user
+    // would see the generic "An error occurred in the Server Components
+    // render. The specific message is omitted in production builds…"
+    // banner instead of the actionable LOCATION_REQUIRED_MESSAGE. The
+    // sibling quick-create path at line ~755 already does this; aligning
+    // both so the form surfaces the real reason.
+    return { error: LOCATION_REQUIRED_MESSAGE };
   }
   const activeLocationId = locResolution.locationId;
   const core: Record<string, unknown> = {
