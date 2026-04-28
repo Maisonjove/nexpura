@@ -90,6 +90,49 @@ function getMappingsForFile(file: MigrationFile): MappingEntry[] {
   return [];
 }
 
+/**
+ * Resolve a customer reference for repairs / bespoke / invoices import
+ * rows. Audit fix: pre-fix when a row carried a customer_email or
+ * customer_name that didn't resolve in either the in-session map or
+ * findDuplicateCustomer, we silently inserted with customer_id=null —
+ * orphaned jobs the jeweller couldn't reconcile post-import.
+ *
+ * Now: if the row references a customer (email or name set) and the
+ * lookup fails, return an explicit error so the row lands in the
+ * error count with a clear message. Only allow customer_id=null when
+ * the source row has no customer reference at all (truly orphan in
+ * the source data).
+ */
+async function resolveCustomerForJob(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  mappedData: Record<string, unknown>,
+  emailToCustomerId: Map<string, string>,
+): Promise<{ customerId?: string; error?: string }> {
+  const email = String(mappedData.customer_email || '').toLowerCase();
+  const name = (mappedData.customer_name as string | undefined) || undefined;
+  const referencesCustomer = Boolean(email || name);
+
+  if (!referencesCustomer) return { customerId: undefined };
+
+  if (email && emailToCustomerId.has(email)) {
+    return { customerId: emailToCustomerId.get(email) };
+  }
+
+  const found = await findDuplicateCustomer(admin, tenantId, {
+    email: mappedData.customer_email as string | undefined,
+    full_name: name,
+  });
+  if (found) {
+    if (email) emailToCustomerId.set(email, found);
+    return { customerId: found };
+  }
+
+  return {
+    error: `Customer not found in this migration: ${email || name}. Import the customers file before this one, or correct the reference.`,
+  };
+}
+
 export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   try {
@@ -238,50 +281,29 @@ export async function POST(req: NextRequest) {
         } else if (entity === 'suppliers') {
           result = await importSupplier(admin, ctx, importRow, mappedData);
         } else if (entity === 'repairs') {
-          let customerId: string | undefined;
-          const email = String(mappedData.customer_email || '').toLowerCase();
-          if (email && emailToCustomerId.has(email)) {
-            customerId = emailToCustomerId.get(email);
-          } else if (mappedData.customer_email || mappedData.customer_name) {
-            const found = await findDuplicateCustomer(admin, tenantId, {
-              email: mappedData.customer_email as string | undefined,
-              full_name: mappedData.customer_name as string | undefined,
-            });
-            customerId = found ?? undefined;
-            if (customerId && email) emailToCustomerId.set(email, customerId);
+          const lookup = await resolveCustomerForJob(admin, tenantId, mappedData, emailToCustomerId);
+          if (lookup.error) {
+            result = { status: 'error', error: lookup.error };
+          } else {
+            result = await importRepair(admin, ctx, importRow, mappedData, lookup.customerId);
           }
-          result = await importRepair(admin, ctx, importRow, mappedData, customerId);
         } else if (entity === 'bespoke') {
-          let customerId: string | undefined;
-          const email = String(mappedData.customer_email || '').toLowerCase();
-          if (email && emailToCustomerId.has(email)) {
-            customerId = emailToCustomerId.get(email);
-          } else if (mappedData.customer_email || mappedData.customer_name) {
-            const found = await findDuplicateCustomer(admin, tenantId, {
-              email: mappedData.customer_email as string | undefined,
-              full_name: mappedData.customer_name as string | undefined,
-            });
-            customerId = found ?? undefined;
-            if (customerId && email) emailToCustomerId.set(email, customerId);
+          const lookup = await resolveCustomerForJob(admin, tenantId, mappedData, emailToCustomerId);
+          if (lookup.error) {
+            result = { status: 'error', error: lookup.error };
+          } else {
+            result = await importBespokeJob(admin, ctx, importRow, mappedData, lookup.customerId);
           }
-          result = await importBespokeJob(admin, ctx, importRow, mappedData, customerId);
         } else if (entity === 'invoices') {
-          let customerId: string | undefined;
-          const email = String(mappedData.customer_email || '').toLowerCase();
-          if (email && emailToCustomerId.has(email)) {
-            customerId = emailToCustomerId.get(email);
-          } else if (mappedData.customer_email || mappedData.customer_name) {
-            const found = await findDuplicateCustomer(admin, tenantId, {
-              email: mappedData.customer_email as string | undefined,
-              full_name: mappedData.customer_name as string | undefined,
-            });
-            customerId = found ?? undefined;
-            if (customerId && email) emailToCustomerId.set(email, customerId);
-          }
-          result = await importInvoice(admin, ctx, importRow, mappedData, customerId);
-          if ((result.status === 'success' || result.status === 'duplicate') && result.recordId) {
-            const invNum = result.invoiceNumber || String(mappedData.invoice_number || '');
-            if (invNum) invoiceNumberToId.set(invNum, result.recordId);
+          const lookup = await resolveCustomerForJob(admin, tenantId, mappedData, emailToCustomerId);
+          if (lookup.error) {
+            result = { status: 'error', error: lookup.error };
+          } else {
+            result = await importInvoice(admin, ctx, importRow, mappedData, lookup.customerId);
+            if ((result.status === 'success' || result.status === 'duplicate') && result.recordId) {
+              const invNum = result.invoiceNumber || String(mappedData.invoice_number || '');
+              if (invNum) invoiceNumberToId.set(invNum, result.recordId);
+            }
           }
         } else if (entity === 'payments') {
           let invoiceId: string | undefined;

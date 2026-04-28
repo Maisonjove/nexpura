@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { buildEncryptedCustomerPiiUpdate } from '@/lib/customer-pii';
 
 export interface ImportRow {
   sourceRowNumber: number;
@@ -313,6 +314,23 @@ export async function importCustomer(
 
     if (duplicateId) return { status: 'duplicate', recordId: duplicateId };
 
+    // W6-HIGH-14: route PII (notes, ring_size, address bundle) through
+    // the encryption helper so migrated customers land sealed at rest,
+    // matching what /settings/import + /customers/new + /customers/edit
+    // already do post-Phase-3.
+    const piiUpdate = await buildEncryptedCustomerPiiUpdate({
+      address: (mappedData.address as string | null) ?? null,
+      address_line1: (mappedData.address_line1 as string | null) ?? null,
+      suburb: (mappedData.suburb as string | null) ?? null,
+      state: (mappedData.state as string | null) ?? null,
+      postcode: (mappedData.postcode as string | null) ?? null,
+      country: (mappedData.country as string | null) ?? null,
+      notes: (mappedData.notes as string | null) ?? null,
+      ring_size: (mappedData.ring_size as string | null) ?? null,
+      preferred_metal: (mappedData.preferred_metal as string | null) ?? null,
+      preferred_stone: (mappedData.preferred_stone as string | null) ?? null,
+    });
+
     const { data: created, error } = await admin
       .from('customers')
       .insert({
@@ -322,9 +340,8 @@ export async function importCustomer(
         mobile: ((mappedData.mobile || mappedData.phone) || null) as string | null,
         birthday: (mappedData.birthday || null) as string | null,
         anniversary: (mappedData.anniversary || null) as string | null,
-        ring_size: (mappedData.ring_size || null) as string | null,
         store_credit: parseFloat(String(mappedData.store_credit || '0')) || 0,
-        notes: (mappedData.notes || null) as string | null,
+        ...piiUpdate,
         import_metadata: buildImportMetadata(ctx, row.sourceRowNumber, row.sourceExternalId),
       })
       .select('id')
