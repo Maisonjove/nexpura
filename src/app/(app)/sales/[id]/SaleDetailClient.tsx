@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateSaleStatus, deleteSale, generatePassportFromSaleItem } from "../actions";
 import { processRefund } from "../../refunds/actions";
-import { recordLaybyPayment } from "../actions-layby";
+import { recordLaybyPayment } from "@/app/(app)/pos/layby-actions";
 
 interface SaleItem {
   id: string;
@@ -175,22 +175,26 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
       return;
     }
     startTransition(async () => {
-      const result = await recordLaybyPayment({
-        saleId: sale.id,
+      // Routed to the POS version of recordLaybyPayment (the canonical
+      // one — has idempotency + correct stock-deduction). Old
+      // sales/actions-layby took an object arg with paymentDate (always
+      // ignored server-side); the POS shape is positional and uses
+      // server-now() for the timestamp. paymentDate dropped here.
+      const result = await recordLaybyPayment(
+        sale.id,
         amount,
-        paymentMethod: laybyMethod,
-        notes: laybyNotes || undefined,
-        paymentDate: laybyDate,
-      });
+        laybyMethod,
+        laybyNotes || "",
+      );
       if (result.error) {
         setLaybyError(result.error);
       } else {
-        const newPaid = result.newAmountPaid ?? currentAmountPaid + amount;
+        const newPaid = currentAmountPaid + amount;
         setCurrentAmountPaid(newPaid);
         setLaybyAmount("");
         setLaybyNotes("");
         setShowLaybyModal(false);
-        if (result.fullyPaid) {
+        if (result.completed) {
           setLaybySuccess("Layby complete — payment received in full");
         } else {
           setLaybySuccess(`Payment of ${fmtCurrency(amount)} recorded successfully`);
