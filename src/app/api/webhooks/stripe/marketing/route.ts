@@ -215,6 +215,43 @@ async function sendWhatsAppCampaign(
     recipients = data || [];
   }
 
+  // Dedupe by phone number — a customer can be in multiple
+  // segments/tags, or have duplicate CRM rows; without dedup they
+  // receive the same campaign N times. Pick the customer record with
+  // the longest name (proxy for "most complete profile") when
+  // collapsing duplicates so personalisation still works.
+  const byPhone = new Map<string, typeof recipients[number]>();
+  for (const r of recipients) {
+    const phoneNumber = r.mobile || r.phone;
+    if (!phoneNumber) continue;
+    const norm = phoneNumber.replace(/\D/g, "");
+    if (!norm) continue;
+    const existing = byPhone.get(norm);
+    if (!existing || (r.full_name?.length ?? 0) > (existing.full_name?.length ?? 0)) {
+      byPhone.set(norm, r);
+    }
+  }
+  const dedupedRecipients = Array.from(byPhone.values());
+
+  // Idempotency on retry: filter out recipients we've already sent
+  // this campaign to. Stripe webhooks retry on non-2xx + on timeout;
+  // without this guard a flaky network during the very first send
+  // would re-blast everyone we already messaged. We key on
+  // (campaign_id, phone) since phone is the durable identifier.
+  const { data: priorSends } = await admin
+    .from("whatsapp_sends")
+    .select("phone")
+    .eq("tenant_id", tenantId)
+    .eq("campaign_id", campaignId)
+    .in("status", ["sent", "delivered"]);
+  const alreadySentPhones = new Set(
+    (priorSends ?? []).map((p) => (p.phone ?? "").replace(/\D/g, "")).filter(Boolean),
+  );
+  const recipientsToSend = dedupedRecipients.filter((r) => {
+    const norm = (r.mobile || r.phone || "").replace(/\D/g, "");
+    return norm && !alreadySentPhones.has(norm);
+  });
+
   let sent = 0;
   let failed = 0;
   let delivered = 0;
@@ -223,14 +260,14 @@ async function sendWhatsAppCampaign(
   const BATCH_SIZE = 10;
   const BATCH_DELAY = 1000; // 1 second between batches
 
-  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-    const batch = recipients.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < recipientsToSend.length; i += BATCH_SIZE) {
+    const batch = recipientsToSend.slice(i, i + BATCH_SIZE);
 
     const promises = batch.map(async (recipient) => {
       // Get phone number (prefer mobile, fallback to phone)
       const phoneNumber = recipient.mobile || recipient.phone;
       if (!phoneNumber) return; // Skip if no phone number
-      
+
       // Personalize message
       let message = campaign.message;
       message = message.replace(/\{\{\s*customer_name\s*\}\}/gi, recipient.full_name || "there");
@@ -260,7 +297,7 @@ async function sendWhatsAppCampaign(
         }
       } catch (err) {
         logger.error(`[sendWhatsAppCampaign] Error sending to ${phoneNumber}:`, err);
-        
+
         await admin.from("whatsapp_sends").insert({
           tenant_id: tenantId,
           campaign_id: campaignId,
@@ -290,7 +327,7 @@ async function sendWhatsAppCampaign(
     }
 
     // Wait between batches to respect rate limits
-    if (i + BATCH_SIZE < recipients.length) {
+    if (i + BATCH_SIZE < recipientsToSend.length) {
       await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY));
     }
   }
