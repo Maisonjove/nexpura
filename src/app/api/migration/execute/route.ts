@@ -57,12 +57,31 @@ async function downloadFile(
   }
 }
 
+// Audit fix: parseFileFromStorage is called during execute, AFTER
+// upload validation. Pre-fix the 20MB cap was only checked in
+// /api/migration/upload — a tampered storage object (or a CSV that
+// ballooned during a failed previous upload) could load arbitrary
+// bytes here and OOM the lambda mid-import (Vercel Pro lambda is
+// 1GB; ExcelJS workbook representations can multiply input size 5-10x
+// in memory). Match the upload limit here too.
+const MAX_PARSE_BYTES = 20 * 1024 * 1024;
+
 async function parseFileFromStorage(
   admin: ReturnType<typeof createAdminClient>,
   file: MigrationFile
 ): Promise<Array<Record<string, unknown>>> {
   const bytes = await downloadFile(admin, file.storage_path);
   if (!bytes) return [];
+  if (bytes.byteLength > MAX_PARSE_BYTES) {
+    logger.error('[migration-execute] file exceeds parse-time size limit', {
+      fileId: file.id,
+      bytes: bytes.byteLength,
+      max: MAX_PARSE_BYTES,
+    });
+    throw new Error(
+      `File too large to parse: ${(bytes.byteLength / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_PARSE_BYTES / 1024 / 1024} MB cap. Re-upload a smaller file.`,
+    );
+  }
   const name = file.original_name.toLowerCase();
   if (name.endsWith('.csv')) {
     const text = new TextDecoder('utf-8').decode(bytes);
@@ -140,9 +159,14 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Rate limit migration executions per user (stricter limit since it's a heavy operation)
-    const { success: rateLimitOk } = await checkRateLimit(`migration-execute:${user.id}`);
-    if (!rateLimitOk) {
+    // Rate limit migration executions per user AND per tenant. The
+    // per-tenant guard closes the audit's TOCTOU race window where two
+    // owner/admins on the same tenant could each kick off a concurrent
+    // import and the SELECT-then-INSERT dedupe in findDuplicateCustomer
+    // could allow two rows for the same email (no DB-level unique
+    // constraint exists on (tenant_id, lower(email))).
+    const { success: userRateOk } = await checkRateLimit(`migration-execute:user:${user.id}`, 'heavy');
+    if (!userRateOk) {
       return NextResponse.json({ error: 'Migration already in progress. Please wait before starting another.' }, { status: 429 });
     }
 
@@ -168,6 +192,12 @@ export async function POST(req: NextRequest) {
     const role = (profile as { role?: string } | null)?.role ?? 'staff';
     if (!['owner', 'admin'].includes(role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Per-tenant rate limit (closes the TOCTOU race — see comment above).
+    const { success: tenantRateOk } = await checkRateLimit(`migration-execute:tenant:${tenantId}`, 'heavy');
+    if (!tenantRateOk) {
+      return NextResponse.json({ error: 'Another import is already running for this tenant. Wait for it to finish before starting another.' }, { status: 429 });
     }
 
     const body = await req.json();
@@ -407,7 +437,23 @@ export async function POST(req: NextRequest) {
         });
 
         if (jobRecords.length >= BATCH_SIZE) {
-          await admin.from('migration_job_records').insert(jobRecords.splice(0, BATCH_SIZE));
+          // Audit fix: pre-fix a failure of the audit-log batch insert
+          // (e.g. a single row violating a constraint, payload-too-large)
+          // would crash the entire row loop unhandled, leaving the
+          // migration_jobs counter stale and the file in mid-import
+          // state. Now: catch + log + continue. The actual customer/
+          // inventory/etc rows are already inserted at this point —
+          // this is bookkeeping, so degraded audit log > aborted import.
+          const batch = jobRecords.splice(0, BATCH_SIZE);
+          const { error: jobRecordsErr } = await admin.from('migration_job_records').insert(batch);
+          if (jobRecordsErr) {
+            logger.error('[migration-execute] audit-log batch insert failed', {
+              jobId: job.id,
+              fileId: file.id,
+              batchSize: batch.length,
+              error: jobRecordsErr.message,
+            });
+          }
           await admin.from('migration_jobs').update({
             processed_records: processed,
             success_count: success,
@@ -418,7 +464,15 @@ export async function POST(req: NextRequest) {
       }
 
       if (jobRecords.length > 0) {
-        await admin.from('migration_job_records').insert(jobRecords);
+        const { error: tailErr } = await admin.from('migration_job_records').insert(jobRecords);
+        if (tailErr) {
+          logger.error('[migration-execute] audit-log tail insert failed', {
+            jobId: job.id,
+            fileId: file.id,
+            tailSize: jobRecords.length,
+            error: tailErr.message,
+          });
+        }
       }
       await admin.from('migration_files').update({ status: 'imported' }).eq('id', file.id);
     }
