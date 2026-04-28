@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { logAuditEvent } from "@/lib/audit";
 import { requireAuth, requirePermission } from "@/lib/auth-context";
+import logger from "@/lib/logger";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -229,19 +230,28 @@ export async function countItem(
       .eq("id", itemId)
       .eq("tenant_id", tenantId);
 
-    // Update totals
-    const { data: allItems } = await admin
-      .from("stocktake_items")
-      .select("counted_qty, discrepancy")
-      .eq("stocktake_id", stocktakeId);
-
-    const counted = (allItems ?? []).filter((i) => i.counted_qty !== null).length;
-    const discrepancies = (allItems ?? []).filter((i) => i.discrepancy !== 0 && i.counted_qty !== null).length;
-
-    await admin
-      .from("stocktakes")
-      .update({ total_items_counted: counted, total_discrepancies: discrepancies })
-      .eq("id", stocktakeId);
+    // Atomic recompute via SQL. Pre-fix this read all stocktake_items
+    // in JS, computed counts, and UPDATEd the parent — two staff
+    // counting at the same time could each read pre-other-write,
+    // undercounting on the second write. Worse, the SELECT pulled a
+    // `discrepancy` column that doesn't exist on stocktake_items, so
+    // the discrepancies count was effectively always equal to
+    // total-counted. The RPC compares counted_qty to expected_qty
+    // directly (the actual data source) inside a single SQL statement.
+    // See migration 20260428_recompute_stocktake_totals.sql.
+    const { error: rpcErr } = await admin.rpc("recompute_stocktake_totals", {
+      p_stocktake_id: stocktakeId,
+      p_tenant_id: tenantId,
+    });
+    if (rpcErr) {
+      // Log loudly but don't fail the count — the user's individual
+      // count is already persisted; the parent summary will be a tick
+      // stale until the next successful call.
+      logger.error("[countItem] recompute_stocktake_totals failed", {
+        stocktakeId,
+        error: rpcErr,
+      });
+    }
 
     revalidatePath(`/stocktakes/${stocktakeId}`);
     return {};

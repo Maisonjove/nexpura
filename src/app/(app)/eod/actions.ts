@@ -5,6 +5,44 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 
+/**
+ * Convert a YYYY-MM-DD calendar date in a named IANA timezone to UTC ISO
+ * boundaries spanning that local day. Used by EOD reconciliation so that
+ * a Sydney tenant's "28 April" EOD pulls sales recorded between 28 Apr
+ * 00:00 AEST (= 27 Apr 14:00 UTC) and 28 Apr 23:59 AEST (= 28 Apr 12:59
+ * UTC), not 28 Apr 00:00–23:59 UTC.
+ *
+ * Pure-JS, no extra deps — uses Intl.DateTimeFormat to read the offset
+ * the named timezone has on the target date. DST-safe at noon (the
+ * snapshot point) for any reasonable jurisdiction; sales right around
+ * the spring-forward / fall-back boundary may still drift by an hour
+ * but that's a fundamentally ambiguous time anyway.
+ */
+function localDayBoundsToUtcIso(
+  dateStr: string,
+  tz: string,
+): { startOfDay: string; endOfDay: string } {
+  // Read the timezone's offset for the target date (using noon as the
+  // reference so DST transitions don't bite the boundary calculation).
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    timeZoneName: "longOffset",
+  });
+  const parts = fmt.formatToParts(new Date(`${dateStr}T12:00:00Z`));
+  const tzName =
+    parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT+00:00";
+  const m = tzName.match(/GMT([+-])(\d{1,2}):(\d{2})/);
+  const sign = m?.[1] === "-" ? -1 : 1;
+  const offsetMs =
+    sign * ((m ? parseInt(m[2], 10) : 0) * 3600 + (m ? parseInt(m[3], 10) : 0) * 60) * 1000;
+
+  // tenant-local 00:00 = UTC equivalent (00:00 - offset).
+  const utcDayStart = new Date(`${dateStr}T00:00:00Z`).getTime() - offsetMs;
+  const startOfDay = new Date(utcDayStart).toISOString();
+  const endOfDay = new Date(utcDayStart + 24 * 3600 * 1000 - 1).toISOString();
+  return { startOfDay, endOfDay };
+}
+
 async function getAuthContext() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -61,24 +99,36 @@ export async function getEODSummary(date?: string, locationId?: string | null): 
   // Without this, users in AEST (UTC+11) see "yesterday" during the early
   // morning hours because UTC is still on the previous calendar day.
   let targetDate = date;
-  if (!targetDate) {
-    try {
-      const { data: tenantData } = await admin
-        .from("tenants")
-        .select("timezone")
-        .eq("id", tenantId)
-        .single();
-      const tz = tenantData?.timezone ?? "Australia/Sydney";
-      // en-CA locale formats date as YYYY-MM-DD, matching our DB date format
-      targetDate = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-    } catch {
-      // Fallback to UTC if tenant lookup fails
-      targetDate = new Date().toISOString().split("T")[0];
-    }
+  let tenantTimezone = "Australia/Sydney";
+  try {
+    const { data: tenantData } = await admin
+      .from("tenants")
+      .select("timezone")
+      .eq("id", tenantId)
+      .single();
+    tenantTimezone = tenantData?.timezone ?? "Australia/Sydney";
+  } catch {
+    // Fallback to default tz on lookup failure
   }
 
-  const startOfDay = `${targetDate}T00:00:00.000Z`;
-  const endOfDay = `${targetDate}T23:59:59.999Z`;
+  if (!targetDate) {
+    // en-CA locale formats date as YYYY-MM-DD, matching our DB date format
+    targetDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tenantTimezone,
+    }).format(new Date());
+  }
+
+  // Compute the UTC-equivalent boundaries for the tenant-local date.
+  // Pre-fix this hardcoded `${targetDate}T00:00:00.000Z` which is UTC
+  // midnight, not tenant-local midnight. For a Sydney tenant (UTC+10/+11)
+  // running 28 April EOD, the bounds need to be 27 April 13:00 UTC →
+  // 28 April 12:59 UTC, not 28 April 00:00–23:59 UTC. Without this,
+  // sales recorded at 11 PM Sydney on 27 April land in the WRONG day's
+  // EOD and reconciliation comes up short.
+  const { startOfDay, endOfDay } = localDayBoundsToUtcIso(
+    targetDate,
+    tenantTimezone,
+  );
 
   // Fetch all sales for the day (optionally filtered by location)
   let salesQuery = admin
