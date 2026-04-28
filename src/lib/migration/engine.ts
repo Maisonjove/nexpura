@@ -48,8 +48,14 @@ export const CUSTOMER_DEFAULT_MAPPINGS: PatternMap[] = [
   // substring "name" and gets pulled into full_name, dropping
   // last_name silently — every Shopify / Square / Lightspeed CSV
   // (which split first/last) loses surnames on import.
-  { sourcePatterns: ['first name', 'fname', 'given name', 'forename'], dest: 'first_name' },
-  { sourcePatterns: ['last name', 'lname', 'surname', 'family name'], dest: 'last_name' },
+  // Edge POS uses bare "First" / "Last" headers; older Square uses
+  // "Surname" (handled by 'family name' / 'last name' below). The
+  // bare "first" / "last" / "fname" / "lname" patterns are short
+  // enough that substring matching would false-positive on headers
+  // like "First Order" or "Last Visit" — see normalizeHeader matcher
+  // below; patterns of <= 5 chars are matched on exact equality only.
+  { sourcePatterns: ['first name', 'fname', 'given name', 'forename', 'first'], dest: 'first_name' },
+  { sourcePatterns: ['last name', 'lname', 'surname', 'family name', 'last'], dest: 'last_name' },
   { sourcePatterns: ['customer name', 'full name', 'name', 'client', 'client name'], dest: 'full_name' },
   { sourcePatterns: ['email', 'email address', 'e-mail'], dest: 'email' },
   { sourcePatterns: ['mobile', 'phone', 'phone no', 'phone no.', 'cell', 'telephone', 'contact number', 'mob'], dest: 'mobile' },
@@ -168,11 +174,23 @@ export function buildDefaultMappings(headers: string[], patterns: PatternMap[]):
   const result: MappingEntry[] = [];
   const usedDests = new Set<string>();
 
+  // Pattern matching:
+  //   - Patterns with <= 5 chars (e.g. 'first', 'last', 'sku', 'qty')
+  //     require EXACT equality after normalization. Substring match on
+  //     short patterns false-positives heavily ("first" inside "First
+  //     Order", "qty" inside "Quantity Discount", etc).
+  //   - Patterns with > 5 chars allow substring (so "Default Address
+  //     Address1" still hits "address line 1" via includes).
   for (const header of headers) {
     const norm = normalizeHeader(header);
     for (const pat of patterns) {
       if (usedDests.has(pat.dest)) continue;
-      if (pat.sourcePatterns.some(p => normalizeHeader(p) === norm || norm.includes(normalizeHeader(p)))) {
+      const hit = pat.sourcePatterns.some(p => {
+        const np = normalizeHeader(p);
+        if (np.length <= 5) return np === norm;
+        return np === norm || norm.includes(np);
+      });
+      if (hit) {
         result.push({ sourceColumn: header, destinationField: pat.dest });
         usedDests.add(pat.dest);
         break;
@@ -252,9 +270,15 @@ function normalizeValue(val: unknown, field: string, _transformation?: string): 
       };
       const ddmm = tryBuild(n2, n1); // DD first, MM second
       const mmdd = tryBuild(n1, n2); // MM first, DD second
-      if (ddmm && mmdd && ddmm !== mmdd) {
-        throw new Error(`Ambiguous date "${strVal}" for field ${field}: could be DD/MM/YYYY (${ddmm}) or MM/DD/YYYY (${mmdd}). Re-export with ISO YYYY-MM-DD format and re-import.`);
-      }
+      // Audit follow-up: pre-fix this threw on every ambiguous date,
+      // which meant a real Lightspeed export with DD/MM dates landed
+      // 67% of customers as errors (only entries with day > 12 had
+      // an unambiguous read). Nexpura is an AU product; default the
+      // ambiguous case to DD/MM/YYYY so jewellers don't see their
+      // entire customer base land in the error column. US-format
+      // exports (which would silently misparse a few dates a year
+      // here, e.g. Jan 2 → Feb 1) need to either re-export ISO or
+      // be manually fixed in the source file.
       if (ddmm) return ddmm;
       if (mmdd) return mmdd;
     }
