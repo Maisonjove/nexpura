@@ -43,9 +43,26 @@ interface PatternMap {
 }
 
 export const CUSTOMER_DEFAULT_MAPPINGS: PatternMap[] = [
+  // first_name / last_name MUST come BEFORE the catch-all "name"
+  // pattern. Otherwise normalizeHeader("First Name") includes the
+  // substring "name" and gets pulled into full_name, dropping
+  // last_name silently — every Shopify / Square / Lightspeed CSV
+  // (which split first/last) loses surnames on import.
+  { sourcePatterns: ['first name', 'fname', 'given name', 'forename'], dest: 'first_name' },
+  { sourcePatterns: ['last name', 'lname', 'surname', 'family name'], dest: 'last_name' },
   { sourcePatterns: ['customer name', 'full name', 'name', 'client', 'client name'], dest: 'full_name' },
   { sourcePatterns: ['email', 'email address', 'e-mail'], dest: 'email' },
   { sourcePatterns: ['mobile', 'phone', 'phone no', 'phone no.', 'cell', 'telephone', 'contact number', 'mob'], dest: 'mobile' },
+  // Address fields — separate columns. The legacy single-column
+  // 'address' pattern stays last so it only matches when no
+  // structured address columns are present.
+  { sourcePatterns: ['address line 1', 'address1', 'street', 'street address', 'address'], dest: 'address_line1' },
+  { sourcePatterns: ['suburb', 'city', 'town'], dest: 'suburb' },
+  { sourcePatterns: ['state', 'region', 'province'], dest: 'state' },
+  { sourcePatterns: ['postcode', 'post code', 'postal code', 'zip', 'zip code'], dest: 'postcode' },
+  { sourcePatterns: ['country'], dest: 'country' },
+  { sourcePatterns: ['preferred metal', 'metal preference'], dest: 'preferred_metal' },
+  { sourcePatterns: ['preferred stone', 'stone preference'], dest: 'preferred_stone' },
   { sourcePatterns: ['ring size', 'ring sz', 'finger size', 'ring sz.'], dest: 'ring_size' },
   { sourcePatterns: ['birthday', 'dob', 'date of birth', 'birth date'], dest: 'birthday' },
   { sourcePatterns: ['anniversary', 'anniv', 'anniv date', 'wedding date'], dest: 'anniversary' },
@@ -347,14 +364,25 @@ export async function importCustomer(
   mappedData: Record<string, unknown>
 ): Promise<ImportResult> {
   try {
-    if (!mappedData.full_name && !mappedData.email && !mappedData.mobile) {
+    // Derive full_name from first/last when the source CSV split them
+    // (Shopify, Square, Lightspeed, WJewel etc.). Pre-fix: only the
+    // 'name' pattern matched 'First Name' → full_name became "Alice"
+    // and the 'Last Name' column dropped on the floor.
+    const firstName = (mappedData.first_name as string | undefined)?.trim() || '';
+    const lastName = (mappedData.last_name as string | undefined)?.trim() || '';
+    const derivedFullName = (mappedData.full_name as string | undefined)?.trim()
+      || [firstName, lastName].filter(Boolean).join(' ')
+      || (mappedData.name as string | undefined)?.trim()
+      || '';
+
+    if (!derivedFullName && !mappedData.email && !mappedData.mobile) {
       return { status: 'error', error: 'Row missing name, email, and phone — cannot identify customer' };
     }
 
     const duplicateId = await findDuplicateCustomer(admin, ctx.tenantId, {
       email: mappedData.email as string | undefined,
       phone: (mappedData.mobile || mappedData.phone) as string | undefined,
-      full_name: mappedData.full_name as string | undefined,
+      full_name: derivedFullName || undefined,
     });
 
     if (duplicateId) return { status: 'duplicate', recordId: duplicateId };
@@ -380,7 +408,9 @@ export async function importCustomer(
       .from('customers')
       .insert({
         tenant_id: ctx.tenantId,
-        full_name: (mappedData.full_name || mappedData.name || 'Unknown') as string,
+        first_name: firstName || null,
+        last_name: lastName || null,
+        full_name: derivedFullName || 'Unknown',
         email: (mappedData.email || null) as string | null,
         mobile: ((mappedData.mobile || mappedData.phone) || null) as string | null,
         birthday: (mappedData.birthday || null) as string | null,

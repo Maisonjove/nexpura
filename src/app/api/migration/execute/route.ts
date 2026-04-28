@@ -321,7 +321,11 @@ export async function POST(req: NextRequest) {
             tenant_id: tenantId,
             session_id: sessionId,
             job_id: job.id,
-            file_id: file.id,
+            // Schema column is source_file_id, not file_id. Pre-fix
+            // every batch that contained even one parse-error row was
+            // rejected by Postgres ("column file_id does not exist"),
+            // wiping the audit log for the entire 50-row chunk.
+            source_file_id: file.id,
             entity_type: entity,
             destination_table: entity,
             source_row_number: rowNum,
