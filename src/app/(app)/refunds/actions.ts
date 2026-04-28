@@ -83,8 +83,15 @@ export async function processRefund(params: {
         (sum, r) => sum + Number(r.total ?? 0),
         0,
       );
+      // SERVER-AUTHORITATIVE line totals. The client previously sent
+      // `line_total` directly and we summed those — meaning a crafted
+      // request with `quantity:1, unit_price:10, line_total:500` would
+      // pass the bound check at remaining-refundable so long as 500 <
+      // remaining, even if the original line was $10. Recompute every
+      // line as quantity × unit_price ourselves and ignore whatever
+      // the client put in `line_total`.
       const requestedSubtotal = params.items.reduce(
-        (sum, i) => sum + Number(i.line_total ?? 0),
+        (sum, i) => sum + Number(i.quantity ?? 0) * Number(i.unit_price ?? 0),
         0,
       );
       // tax added below; compare subtotals (pre-tax) against sale subtotal.
@@ -123,7 +130,13 @@ export async function processRefund(params: {
     .single();
   const taxRate = tenantData?.tax_rate ?? 0.1;
 
-  const subtotal = params.items.reduce((sum, i) => sum + i.line_total, 0);
+  // Recompute subtotal server-side from quantity × unit_price for the
+  // same reason as the bound check above — never trust client-supplied
+  // line_total values.
+  const subtotal = params.items.reduce(
+    (sum, i) => sum + Number(i.quantity ?? 0) * Number(i.unit_price ?? 0),
+    0,
+  );
   const taxAmount = Math.round(subtotal * taxRate * 100) / 100;
   const total = subtotal + taxAmount;
 
@@ -219,7 +232,10 @@ export async function processRefund(params: {
     }
   }
 
-  // Insert refund items
+  // Insert refund items — bulk insert so it succeeds-or-fails atomically.
+  // Recompute line_total server-side. If the bulk insert fails after the
+  // refund row is committed, roll back the refund row so we don't leave
+  // a money-out record with no line-item detail.
   const refundItemsData = params.items.map((item) => ({
     tenant_id: tenantId,
     refund_id: refund.id,
@@ -228,11 +244,25 @@ export async function processRefund(params: {
     description: item.description,
     quantity: item.quantity,
     unit_price: item.unit_price,
-    line_total: item.line_total,
+    line_total: Number(item.quantity ?? 0) * Number(item.unit_price ?? 0),
     restock: item.restock,
   }));
 
-  await admin.from("refund_items").insert(refundItemsData);
+  const { error: refundItemsErr } = await admin
+    .from("refund_items")
+    .insert(refundItemsData);
+  if (refundItemsErr) {
+    logger.error("[processRefund] refund_items insert failed — rolling back refund", {
+      refundId: refund.id,
+      error: refundItemsErr,
+    });
+    await admin
+      .from("refunds")
+      .delete()
+      .eq("id", refund.id)
+      .eq("tenant_id", tenantId);
+    return { error: "Failed to record refund items — refund rolled back. Please retry." };
+  }
 
   // Return stock for items marked for restock. Pre-fix this did
   // SELECT-then-UPDATE-then-INSERT which collided with the BEFORE INSERT
