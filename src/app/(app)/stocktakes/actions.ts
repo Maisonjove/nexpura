@@ -162,11 +162,19 @@ export async function startStocktake(stocktakeId: string): Promise<{ error?: str
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
-    // Auto-import all current inventory items as expected
+    // Auto-import all current inventory items as expected.
+    // Filter out soft-deleted (archived) rows — without this guard
+    // archived items with quantity > 0 get pulled into the snapshot,
+    // the staff count marks them missing (variance), and the
+    // adjustment could push them back to active in the quantity field
+    // (effectively un-archiving them by a side door). The sibling
+    // createStocktakeWithInventory path around line 380 already filters
+    // deleted_at; keeping the two paths consistent.
     const { data: inventory } = await admin
       .from("inventory")
       .select("id, name, sku, quantity, barcode_value")
       .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
       .gt("quantity", 0);
 
     if (inventory && inventory.length > 0) {

@@ -3,6 +3,36 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+// Whitelist of MIME types we let users attach to tasks. Pre-fix the
+// route only enforced size (10MB) and trusted file.type from the
+// browser, which means an attacker could upload .exe / .sh / archives
+// and host them under our domain — risk is malware distribution from
+// nexpura.com (domain reputation hit) + security scanners flagging us.
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+  "text/plain",
+  "text/csv",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",       // xlsx
+  "application/msword",                                                       // doc
+  "application/vnd.ms-excel",                                                 // xls
+]);
+
+// Reject extensions a malicious uploader could ride past a spoofed
+// content-type header. Even if file.type says "application/pdf", the
+// extension on the persisted URL doesn't lie.
+const BLOCKED_EXTENSIONS = new Set([
+  "exe", "bat", "cmd", "sh", "ps1", "vbs", "msi", "scr", "pif", "com",
+  "jar", "app", "dmg", "deb", "rpm", "apk", "iso",
+  "html", "htm", "svg", // these can host JS in a same-origin file
+]);
+
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
@@ -29,6 +59,23 @@ export async function POST(req: NextRequest) {
 
   if (file.size > 10 * 1024 * 1024) {
     return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
+  }
+
+  // MIME + extension whitelist. We check both because a malicious client
+  // can spoof the content-type header but the extension persists in the
+  // storage URL once we serve it.
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    return NextResponse.json(
+      { error: `Unsupported file type "${file.type || "unknown"}". Allowed: PDF, images, plain text, Office docs.` },
+      { status: 400 },
+    );
+  }
+  const fileExt = (file.name.split(".").pop() ?? "").toLowerCase();
+  if (BLOCKED_EXTENSIONS.has(fileExt)) {
+    return NextResponse.json(
+      { error: `Filename extension ".${fileExt}" is not allowed.` },
+      { status: 400 },
+    );
   }
 
   try {
