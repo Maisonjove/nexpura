@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { decryptCustomerPiiList } from "@/lib/customer-pii";
 
 /**
  * Data Export API (GDPR Compliant)
@@ -95,7 +96,10 @@ export async function POST(request: NextRequest) {
       exported_at: new Date().toISOString(),
       tenant: tenant,
       users: usersResult.data || [],
-      customers: customersResult.data || [],
+      // W6-HIGH-14: GDPR export must surface plaintext PII to the
+      // requester (it's their data), so decrypt the bundle before
+      // including it in the export.
+      customers: await decryptCustomerPiiList(customersResult.data || []),
       inventory: inventoryResult.data || [],
       sales: salesResult.data || [],
       sale_items: saleItemsResult.data || [],

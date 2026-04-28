@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { requireRole } from "@/lib/auth-context";
 import { buildCsv } from "@/lib/csv/escape";
+import { decryptCustomerPiiList } from "@/lib/customer-pii";
 
 // ──────────────────────────────────────────────────────────
 // Auth helper
@@ -589,15 +590,18 @@ export async function exportCustomers(): Promise<{ csv: string; error?: string }
     const adminClient = createAdminClient();
     const { data } = await adminClient
       .from("customers")
-      .select("id,full_name,email,mobile,phone,address,birthday,ring_size,is_vip,notes,created_at")
+      .select("id,full_name,email,mobile,phone,address,birthday,ring_size,is_vip,notes,created_at,pii_enc")
       .eq("tenant_id", ctx.tenantId)
       .is("deleted_at", null)
       .order("created_at", { ascending: true });
 
     if (!data) return { csv: "", error: "No data" };
 
+    // W6-HIGH-14: decrypt PII bundle before exposing in CSV.
+    const decrypted = await decryptCustomerPiiList(data);
+
     const headers = ["id","full_name","email","mobile","phone","address","birthday","ring_size","is_vip","notes","created_at"];
-    return { csv: buildCSVString(headers, data) };
+    return { csv: buildCSVString(headers, decrypted) };
   } catch (error) {
     logger.error("exportCustomers failed", { error });
     return { csv: "", error: "Operation failed" };

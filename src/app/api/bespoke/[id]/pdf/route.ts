@@ -6,6 +6,7 @@ import BespokeSheetPDF from "@/lib/pdf/BespokeSheetPDF";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
+import { decryptCustomerPii } from "@/lib/customer-pii";
 
 export async function GET(
   _request: NextRequest,
@@ -56,7 +57,7 @@ export async function GET(
        client_notes, internal_notes,
        quoted_price, final_price, deposit_amount, deposit_received,
        due_date, created_at,
-       customers(full_name, email, phone, address)`
+       customers(full_name, email, phone, address, pii_enc)`
     )
     .eq("id", id)
     .eq("tenant_id", userData.tenant_id)
@@ -81,7 +82,9 @@ export async function GET(
     .eq("id", userData.tenant_id)
     .single();
 
-  const customer = Array.isArray(job.customers) ? job.customers[0] : job.customers;
+  const customerJoin = Array.isArray(job.customers) ? job.customers[0] : job.customers;
+  // W6-HIGH-14: decrypt PII bundle before reading address.
+  const customer = customerJoin ? await decryptCustomerPii(customerJoin) : null;
 
   const tenantAddress = [tenant?.address_line1, tenant?.suburb, tenant?.state, tenant?.postcode].filter(Boolean).join(", ");
 

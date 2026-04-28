@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { getAuthContext } from "@/lib/auth-context";
 import { matchesReviewOrStaffToken } from "@/lib/auth/review";
 import CustomerDetailClient from "./CustomerDetailClient";
+import { decryptCustomerPii } from "@/lib/customer-pii";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
@@ -51,7 +52,7 @@ export default async function CustomerDetailPage({
   }
 
   // Phase 1: Core customer record — scoped to tenant
-  const { data: customer } = await admin
+  const { data: customerRaw } = await admin
     .from("customers")
     .select("*")
     .eq("id", id)
@@ -59,7 +60,11 @@ export default async function CustomerDetailPage({
     .is("deleted_at", null)
     .single();
 
-  if (!customer) notFound();
+  if (!customerRaw) notFound();
+
+  // W6-HIGH-14: decrypt PII bundle before any downstream code reads
+  // address / notes / preferences off the row.
+  const customer = await decryptCustomerPii(customerRaw);
 
   // Phase 2: Fetch ALL related data in parallel — 10 queries at once
   const [

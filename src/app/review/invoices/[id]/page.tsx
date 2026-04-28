@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import InvoiceDetailClient from "@/app/(app)/invoices/[id]/InvoiceDetailClient";
 import { decryptBankDetails } from "@/lib/tenant-banking";
+import { decryptCustomerPii } from "@/lib/customer-pii";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const DEFAULT_ID = "2c6672d1-884e-4d96-accf-b8a88ab2e27e";
@@ -23,7 +24,7 @@ export default async function ReviewInvoiceDetailPage({
            subtotal, tax_amount, discount_amount, total, amount_paid,
            tax_name, tax_rate, tax_inclusive, notes, footer_text, reference_type,
            created_at, stripe_payment_link,
-           customers(id, full_name, email, phone, mobile, address_line1, suburb, state, postcode)`
+           customers(id, full_name, email, phone, mobile, address_line1, suburb, state, postcode, pii_enc)`
         )
         .eq("id", id)
         .eq("tenant_id", TENANT_ID)
@@ -54,9 +55,11 @@ export default async function ReviewInvoiceDetailPage({
     );
   }
 
-  const rawCustomer = Array.isArray(invoice.customers)
+  const rawCustomerJoin = Array.isArray(invoice.customers)
     ? (invoice.customers[0] ?? null)
     : invoice.customers;
+  // W6-HIGH-14: decrypt PII bundle before reading address fields.
+  const rawCustomer = rawCustomerJoin ? await decryptCustomerPii(rawCustomerJoin) : null;
 
   const normalizedCustomer = rawCustomer ? {
     id: rawCustomer.id,

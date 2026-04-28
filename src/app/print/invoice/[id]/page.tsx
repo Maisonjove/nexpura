@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import { decryptBankDetails } from "@/lib/tenant-banking";
+import { decryptCustomerPii } from "@/lib/customer-pii";
 
 export default function PrintInvoicePageWrapper(props: { params: Promise<{ id: string }> }) {
   return (
@@ -96,8 +97,9 @@ async function PrintInvoicePage({
 
   let customer = null;
   if (invoice.customer_id) {
-    const { data: cust } = await admin.from("customers").select("full_name, email, mobile, phone, address_line1, suburb, state, postcode").eq("id", invoice.customer_id).single();
-    customer = cust;
+    const { data: cust } = await admin.from("customers").select("full_name, email, mobile, phone, address_line1, suburb, state, postcode, pii_enc").eq("id", invoice.customer_id).single();
+    // W6-HIGH-14: decrypt PII bundle before reading address fields.
+    customer = cust ? await decryptCustomerPii(cust) : null;
   }
 
   const { data: lineItems } = await admin.from("invoice_line_items").select("*").eq("invoice_id", id).order("sort_order");
