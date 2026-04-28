@@ -54,8 +54,12 @@ export const CUSTOMER_DEFAULT_MAPPINGS: PatternMap[] = [
   // enough that substring matching would false-positive on headers
   // like "First Order" or "Last Visit" — see normalizeHeader matcher
   // below; patterns of <= 5 chars are matched on exact equality only.
-  { sourcePatterns: ['first name', 'fname', 'given name', 'forename', 'first'], dest: 'first_name' },
-  { sourcePatterns: ['last name', 'lname', 'surname', 'family name', 'last'], dest: 'last_name' },
+  // 'firstname'/'lastname' (no separator) cover Magento's
+  // lowercase-concatenated headers — the camelCase splitter in
+  // normalizeHeader can't break them because there's no case
+  // boundary to split on.
+  { sourcePatterns: ['first name', 'firstname', 'fname', 'given name', 'forename', 'first'], dest: 'first_name' },
+  { sourcePatterns: ['last name', 'lastname', 'lname', 'surname', 'family name', 'last'], dest: 'last_name' },
   { sourcePatterns: ['customer name', 'full name', 'name', 'client', 'client name'], dest: 'full_name' },
   { sourcePatterns: ['email', 'email address', 'e-mail'], dest: 'email' },
   { sourcePatterns: ['mobile', 'phone', 'phone no', 'phone no.', 'cell', 'telephone', 'contact number', 'mob'], dest: 'mobile' },
@@ -164,9 +168,54 @@ export const REPAIR_DEFAULT_MAPPINGS: PatternMap[] = [
   { sourcePatterns: ['notes', 'note', 'instructions', 'work instructions', 'workshop notes'], dest: 'notes' },
 ];
 
-/** Normalize a column header for fuzzy matching */
+/**
+ * Normalize a column header for fuzzy matching.
+ *
+ * Splits camelCase / PascalCase ("fullName" → "full Name"), replaces
+ * underscores and hyphens with spaces, lowercases, strips remaining
+ * non-alphanumeric characters, and collapses multi-spaces. The result
+ * is a canonical "word soup" of lowercase tokens separated by single
+ * spaces.
+ *
+ * Examples:
+ *   "First Name"   → "first name"
+ *   "FirstName"    → "first name"
+ *   "first_name"   → "first name"
+ *   "first-name"   → "first name"
+ *   "emailAddress" → "email address"
+ *   "Bill City"    → "bill city"
+ */
 function normalizeHeader(h: string): string {
-  return h.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+  return h
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')   // camelCase split
+    .replace(/[_\-]+/g, ' ')                    // _ - → space
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')                // strip other punctuation
+    .replace(/\s+/g, ' ')                       // collapse spaces
+    .trim();
+}
+
+/**
+ * Patterns that match only when the entire normalized header is
+ * EXACTLY the pattern. Without this guard, bare "first" would
+ * over-match "First Order" / "First Visit", and bare "last" would
+ * over-match "Last Order" / "Last Visit". These ambiguous bare
+ * tokens are listed so the matcher can demand strict equality.
+ */
+const EXACT_ONLY_PATTERNS = new Set(['first', 'last', 'fname', 'lname', 'qty']);
+
+/**
+ * Whole-word match of `pattern` inside `tokens`. Both inputs are
+ * already normalized to space-separated lowercase tokens. So "email"
+ * matches "Email" and "Email Address"; "street" matches "Bill
+ * Street"; but "first" only matches the bare "First" header (not
+ * "First Order") because it's in EXACT_ONLY_PATTERNS.
+ */
+function matchPattern(pattern: string, tokens: string): boolean {
+  const np = normalizeHeader(pattern);
+  if (!np) return false;
+  if (EXACT_ONLY_PATTERNS.has(np)) return np === tokens;
+  return ` ${tokens} `.includes(` ${np} `);
 }
 
 /** Build a mapping config from default patterns for a given set of source headers */
@@ -174,23 +223,11 @@ export function buildDefaultMappings(headers: string[], patterns: PatternMap[]):
   const result: MappingEntry[] = [];
   const usedDests = new Set<string>();
 
-  // Pattern matching:
-  //   - Patterns with <= 5 chars (e.g. 'first', 'last', 'sku', 'qty')
-  //     require EXACT equality after normalization. Substring match on
-  //     short patterns false-positives heavily ("first" inside "First
-  //     Order", "qty" inside "Quantity Discount", etc).
-  //   - Patterns with > 5 chars allow substring (so "Default Address
-  //     Address1" still hits "address line 1" via includes).
   for (const header of headers) {
     const norm = normalizeHeader(header);
     for (const pat of patterns) {
       if (usedDests.has(pat.dest)) continue;
-      const hit = pat.sourcePatterns.some(p => {
-        const np = normalizeHeader(p);
-        if (np.length <= 5) return np === norm;
-        return np === norm || norm.includes(np);
-      });
-      if (hit) {
+      if (pat.sourcePatterns.some(p => matchPattern(p, norm))) {
         result.push({ sourceColumn: header, destinationField: pat.dest });
         usedDests.add(pat.dest);
         break;
