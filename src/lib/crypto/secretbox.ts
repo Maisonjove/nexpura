@@ -36,6 +36,12 @@ export interface Sealed {
 }
 
 const KEY_ENV = "NEXPURA_INTEGRATIONS_ENCRYPTION_KEY";
+// Optional grace-window key. During a key rotation, set the previous key
+// here so existing ciphertext stays decryptable while the re-encrypt
+// script (scripts/rotate-encryption-key.ts) walks every sealed row and
+// rewrites it under the new key. Once that completes, unset this and
+// redeploy. encrypt() always uses the current key only.
+const PREV_KEY_ENV = "NEXPURA_INTEGRATIONS_ENCRYPTION_KEY_PREVIOUS";
 
 function decodeKey(raw: string): Uint8Array {
   // Prefer base64; fall back to hex. Reject anything < 32 bytes.
@@ -64,25 +70,32 @@ function decodeKey(raw: string): Uint8Array {
   );
 }
 
-async function loadKey(): Promise<CryptoKey> {
-  const raw = process.env[KEY_ENV];
-  if (!raw || raw.length === 0) {
-    throw new Error(`[secretbox] ${KEY_ENV} is not set — refusing to encrypt/decrypt`);
-  }
+async function importKeyFromEnv(envName: string, usages: KeyUsage[]): Promise<CryptoKey | null> {
+  const raw = process.env[envName];
+  if (!raw || raw.length === 0) return null;
   const bytes = decodeKey(raw);
   if (bytes.length !== 32) {
-    throw new Error(`[secretbox] key decoded to ${bytes.length} bytes, need 32`);
+    throw new Error(`[secretbox] ${envName} decoded to ${bytes.length} bytes, need 32`);
   }
-  // Copy into a fresh ArrayBuffer so TS narrows to non-SharedArrayBuffer.
   const buf = new ArrayBuffer(32);
   new Uint8Array(buf).set(bytes);
-  return globalThis.crypto.subtle.importKey(
-    "raw",
-    buf,
-    { name: "AES-GCM" },
-    false,
-    ["encrypt", "decrypt"],
-  );
+  return globalThis.crypto.subtle.importKey("raw", buf, { name: "AES-GCM" }, false, usages);
+}
+
+async function loadKey(): Promise<CryptoKey> {
+  const key = await importKeyFromEnv(KEY_ENV, ["encrypt", "decrypt"]);
+  if (!key) {
+    throw new Error(`[secretbox] ${KEY_ENV} is not set — refusing to encrypt/decrypt`);
+  }
+  return key;
+}
+
+/**
+ * Decryption-only fallback for the rotation grace window. Returns null
+ * when no previous key is configured, which is the steady state.
+ */
+async function loadPrevKey(): Promise<CryptoKey | null> {
+  return importKeyFromEnv(PREV_KEY_ENV, ["decrypt"]);
 }
 
 function u8ToB64(u8: Uint8Array): string {
@@ -127,20 +140,38 @@ export async function decrypt(sealed: Sealed): Promise<string> {
   if (!sealed || sealed.v !== 1 || !sealed.c || !sealed.i) {
     throw new Error("[secretbox] malformed sealed record");
   }
+  // Load the key BEFORE parsing the iv/ct bytes — keeps the
+  // "fail-closed on missing key env" contract that the existing
+  // secretbox.test.ts pins (otherwise atob() of a malformed/test
+  // payload would throw a generic decoding error and mask the missing
+  // key).
   const key = await loadKey();
   const ivBytes = b64ToU8(sealed.i);
   const ctBytes = b64ToU8(sealed.c);
-  // Ensure we pass a real ArrayBuffer-backed view for TS narrowing.
   const ivBuf = new ArrayBuffer(ivBytes.length);
   new Uint8Array(ivBuf).set(ivBytes);
   const ctBuf = new ArrayBuffer(ctBytes.length);
   new Uint8Array(ctBuf).set(ctBytes);
-  const pt = await globalThis.crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: new Uint8Array(ivBuf) },
-    key,
-    ctBuf,
-  );
-  return new TextDecoder().decode(pt);
+
+  try {
+    const pt = await globalThis.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: new Uint8Array(ivBuf) },
+      key,
+      ctBuf,
+    );
+    return new TextDecoder().decode(pt);
+  } catch (primaryErr) {
+    // GCM auth-tag mismatch — try the rotation-grace previous key if
+    // configured. Steady-state this is a no-op (env var unset → null).
+    const prev = await loadPrevKey();
+    if (!prev) throw primaryErr;
+    const pt = await globalThis.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: new Uint8Array(ivBuf) },
+      prev,
+      ctBuf,
+    );
+    return new TextDecoder().decode(pt);
+  }
 }
 
 /**
