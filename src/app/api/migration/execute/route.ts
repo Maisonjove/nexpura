@@ -452,24 +452,70 @@ async function handleChunkContinue(
     return NextResponse.json({ error: 'Missing jobId or internalToken' }, { status: 400 });
   }
 
+  // Quick token check before scheduling the heavy work in after().
+  const { data: jobRow } = await admin
+    .from('migration_jobs')
+    .select('id, internal_token, status')
+    .eq('id', jobId)
+    .single();
+  const jobShallow = jobRow as { id: string; internal_token: string | null; status: string } | null;
+  if (!jobShallow) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  if (!jobShallow.internal_token || jobShallow.internal_token !== internalToken) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (jobShallow.status !== 'running') {
+    logger.info('[migration-execute] chunk skipped (job not running)', { jobId, status: jobShallow.status });
+    return NextResponse.json({ ok: true, done: true });
+  }
+
+  // SCHEDULE the actual chunk work in after(). The HTTP response
+  // returns IMMEDIATELY so the parent lambda's after() (which is
+  // bounded by the parent's remaining maxDuration budget) doesn't
+  // wait for THIS chunk's processing to finish. Pre-fix this was
+  // synchronous, which meant chunk N's after() awaited chunk N+1's
+  // full ~3min processing — and after() shares the parent's 300s
+  // budget. The chain stalled around chunk 4 (~12min in), because
+  // chunk 1's after() ran out of budget waiting for chunk 2 → 3 →
+  // 4 to all return. Now each lambda gets its own clean 300s.
+  after(async () => {
+    try {
+      await runChunk(req, admin, jobId, internalToken);
+    } catch (e) {
+      logger.error('[migration-execute] chunk runner threw', {
+        jobId,
+        error: e instanceof Error ? e.message : String(e),
+        stack: e instanceof Error ? e.stack : undefined,
+      });
+      // Don't auto-mark the job failed here — leave it in 'running'
+      // so a deferred stale-job sweeper or manual retry can resume.
+    }
+  });
+
+  return NextResponse.json({ ok: true, accepted: true });
+}
+
+/**
+ * The actual chunk processor. Runs inside after() so it has the
+ * full 300s of THIS lambda's budget, independent of the dispatching
+ * parent's budget.
+ */
+async function runChunk(
+  req: NextRequest,
+  admin: ReturnType<typeof createAdminClient>,
+  jobId: string,
+  internalToken: string,
+): Promise<void> {
   const { data: jobRow } = await admin
     .from('migration_jobs')
     .select('*')
     .eq('id', jobId)
     .single();
-
   const job = jobRow as MigrationJobRow | null;
-  if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-  if (!job.internal_token || job.internal_token !== internalToken) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!job) {
+    logger.error('[migration-execute] runChunk: job vanished', { jobId });
+    return;
   }
-
-  // If the job was cancelled (job-status route POST?action=cancel
-  // sets status=failed) or already completed, stop dispatching.
-  if (job.status !== 'running') {
-    logger.info('[migration-execute] chunk skipped (job not running)', { jobId, status: job.status });
-    return NextResponse.json({ ok: true, done: true });
-  }
+  if (job.status !== 'running') return;
 
   const tenantId = job.tenant_id;
   const sessionId = job.session_id;
@@ -487,7 +533,7 @@ async function handleChunkContinue(
       error_message: 'Session disappeared mid-import',
       completed_at: new Date().toISOString(),
     }).eq('id', jobId);
-    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    return;
   }
 
   const { data: rawFiles } = await admin
@@ -495,33 +541,24 @@ async function handleChunkContinue(
     .select('*, migration_mappings(*)')
     .eq('session_id', sessionId)
     .in('status', ['classified', 'ready', 'pending', 'imported']);
-
   const files = (rawFiles ?? []) as MigrationFile[];
-  // Sort identically to first-call so current_file_index points at
-  // the same file across dispatches. (Note: we include 'imported'
-  // here so already-finished files keep their slot in the sorted
-  // list — otherwise current_file_index would shift after a file
-  // completes.)
   const sortedFiles = [...files].sort((a, b) =>
     entitySortKey(a.detected_entity ?? 'unknown') - entitySortKey(b.detected_entity ?? 'unknown')
   );
 
-  // Past the last file → finalise.
   if (job.current_file_index >= sortedFiles.length) {
-    return finaliseJob(admin, job, tenantId, sessionId);
+    await finaliseJob(admin, job, tenantId, sessionId);
+    return;
   }
 
   const currentFile = sortedFiles[job.current_file_index];
-
-  // If this file is already imported, skip ahead to the next file
-  // and dispatch — defensive against any state drift.
   if (currentFile && (currentFile as unknown as { status?: string }).status === 'imported') {
     await admin.from('migration_jobs').update({
       current_file_index: job.current_file_index + 1,
       current_row_offset: 0,
     }).eq('id', jobId);
     dispatchNextChunk(req, jobId, internalToken);
-    return NextResponse.json({ ok: true, more: true });
+    return;
   }
 
   let rows: Array<Record<string, unknown>>;
@@ -538,7 +575,7 @@ async function handleChunkContinue(
       error_message: e instanceof Error ? e.message : String(e),
       completed_at: new Date().toISOString(),
     }).eq('id', jobId);
-    return NextResponse.json({ error: 'Parse failed' }, { status: 500 });
+    return;
   }
 
   const mappings = getMappingsForFile(currentFile);
@@ -552,8 +589,6 @@ async function handleChunkContinue(
     dataScope: session.data_scope ?? 'active_and_recent',
   };
 
-  // Restore running totals from the job row so the chunk continues
-  // accumulating, not overwriting.
   const acc: ChunkAccumulators = {
     processed: job.processed_records ?? 0,
     success: job.success_count ?? 0,
@@ -563,18 +598,10 @@ async function handleChunkContinue(
     duplicates: 0,
     byEntity: (job.results_summary?.by_entity as ChunkAccumulators['byEntity']) ?? {},
   };
-  // warnings/duplicates are only used to compute warning_count at
-  // finalisation; we backfill from results_summary if present so the
-  // counter stays monotonic across chunks.
   if (job.results_summary && typeof job.results_summary.total_duplicates === 'number') {
     acc.duplicates = job.results_summary.total_duplicates;
   }
 
-  // Cross-chunk lookup maps: NOT persisted by design (see route
-  // header comment). Each chunk rebuilds an empty Map and falls
-  // through to findDuplicateCustomer / DB invoice lookup, which
-  // already handles the cross-chunk case via the duplicate-detect
-  // path.
   const emailToCustomerId = new Map<string, string>();
   const invoiceNumberToId = new Map<string, string>();
 
@@ -587,9 +614,6 @@ async function handleChunkContinue(
 
   const newOffset = fromOffset + rowsProcessed;
   const fileFinished = newOffset >= rows.length;
-
-  // Build updated results_summary so the next chunk can resume
-  // byEntity totals.
   const updatedSummary = {
     by_entity: acc.byEntity,
     total_processed: acc.processed,
@@ -612,22 +636,19 @@ async function handleChunkContinue(
       results_summary: updatedSummary,
     }).eq('id', jobId);
 
-    // More files? dispatch next chunk. Else finalise.
     if (job.current_file_index + 1 < sortedFiles.length) {
       dispatchNextChunk(req, jobId, internalToken);
-      return NextResponse.json({ ok: true, more: true });
+      return;
     }
-    // Reload the (just-updated) job so finaliseJob sees the latest
-    // counters in results_summary.
     const { data: refreshed } = await admin
       .from('migration_jobs')
       .select('*')
       .eq('id', jobId)
       .single();
-    return finaliseJob(admin, (refreshed as MigrationJobRow) ?? job, tenantId, sessionId);
+    await finaliseJob(admin, (refreshed as MigrationJobRow) ?? job, tenantId, sessionId);
+    return;
   }
 
-  // Mid-file: advance the row cursor, persist counters, dispatch.
   await admin.from('migration_jobs').update({
     current_row_offset: newOffset,
     processed_records: acc.processed,
@@ -639,7 +660,6 @@ async function handleChunkContinue(
   }).eq('id', jobId);
 
   dispatchNextChunk(req, jobId, internalToken);
-  return NextResponse.json({ ok: true, more: true });
 }
 
 async function finaliseJob(
@@ -687,16 +707,18 @@ async function finaliseJob(
   return NextResponse.json({ ok: true, done: true });
 }
 
-// Dispatch the next chunk via Next.js after(). The fetch is
-// fire-and-forget — the current lambda returns to the client
-// without waiting for the next chunk to start, and the next
-// chunk runs in its own fresh lambda with a full 300s budget.
+// Dispatch the next chunk via fetch. Called from inside runChunk
+// (which is itself inside after()), so we don't need a NESTED
+// after() — the fetch awaits chunk N+1's quick { accepted: true }
+// response, then runChunk completes and the lambda terminates
+// cleanly. Chunk N+1's actual processing happens in its own after()
+// with its own 300s budget.
 //
 // Origin + Referer + Cookie are set so the global CSRF middleware
 // (which gates /api/** mutating requests) lets the call through —
 // see PR #69 for the same pattern on /api/migration/upload's
 // internal classify call.
-function dispatchNextChunk(req: NextRequest, jobId: string, internalToken: string): void {
+async function dispatchNextChunk(req: NextRequest, jobId: string, internalToken: string): Promise<void> {
   const origin = req.nextUrl.origin;
   const dispatchHeaders = {
     'Content-Type': 'application/json',
@@ -704,26 +726,24 @@ function dispatchNextChunk(req: NextRequest, jobId: string, internalToken: strin
     'Referer': `${origin}/`,
     'Cookie': req.headers.get('cookie') || '',
   };
-  after(async () => {
-    try {
-      await fetch(`${origin}/api/migration/execute`, {
-        method: 'POST',
-        headers: dispatchHeaders,
-        body: JSON.stringify({ jobId, _continueChunk: true, internalToken }),
-      });
-    } catch (e) {
-      // MVP: if the fetch dispatch itself throws (network
-      // hiccup, lambda cold start refusal, etc) we do NOT
-      // auto-retry. The job row's cursor is unchanged so a
-      // manual retry — or a stale-job sweeper — could resume
-      // from where we left off. Stale-job recovery is a
-      // deferred operational concern.
-      logger.error('[migration-execute] failed to dispatch next chunk', {
-        jobId,
-        error: e instanceof Error ? e.message : String(e),
-      });
-    }
-  });
+  try {
+    await fetch(`${origin}/api/migration/execute`, {
+      method: 'POST',
+      headers: dispatchHeaders,
+      body: JSON.stringify({ jobId, _continueChunk: true, internalToken }),
+    });
+  } catch (e) {
+    // MVP: if the fetch dispatch itself throws (network
+    // hiccup, lambda cold start refusal, etc) we do NOT
+    // auto-retry. The job row's cursor is unchanged so a
+    // manual retry — or a stale-job sweeper — could resume
+    // from where we left off. Stale-job recovery is a
+    // deferred operational concern.
+    logger.error('[migration-execute] failed to dispatch next chunk', {
+      jobId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -885,7 +905,12 @@ export async function POST(req: NextRequest) {
     // Dispatch the FIRST chunk via after() — fresh lambda, full
     // 300s budget. The client gets { jobId, success: true } back
     // immediately and starts polling /api/migration/job-status.
-    dispatchNextChunk(req, job.id, internalToken);
+    // Wrapped in after() so the fetch is allowed to complete after
+    // the HTTP response has been sent — otherwise Vercel may
+    // terminate the lambda before the request reaches the wire.
+    after(async () => {
+      await dispatchNextChunk(req, job.id, internalToken);
+    });
 
     return NextResponse.json({
       jobId: job.id,
