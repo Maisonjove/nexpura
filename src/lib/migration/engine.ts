@@ -285,6 +285,11 @@ export function applyMappings(
 
 // ─── Duplicate detection ──────────────────────────────────────────────────────
 
+// Audit fix: dedupe must filter `deleted_at IS NULL` — pre-fix a
+// soft-deleted customer/inventory still matched, so re-importing a
+// previously-deleted record was reported as a duplicate that linked
+// the new "import" to the deleted record. The user couldn't see
+// their re-imported data because the row stayed soft-deleted.
 export async function findDuplicateCustomer(
   admin: ReturnType<typeof createAdminClient>,
   tenantId: string,
@@ -296,6 +301,7 @@ export async function findDuplicateCustomer(
       .select('id')
       .eq('tenant_id', tenantId)
       .eq('email', data.email)
+      .is('deleted_at', null)
       .maybeSingle();
     if (existing) return (existing as { id: string }).id;
   }
@@ -305,6 +311,7 @@ export async function findDuplicateCustomer(
       .select('id')
       .eq('tenant_id', tenantId)
       .eq('mobile', data.phone)
+      .is('deleted_at', null)
       .maybeSingle();
     if (existing) return (existing as { id: string }).id;
   }
@@ -322,6 +329,7 @@ export async function findDuplicateInventory(
       .select('id')
       .eq('tenant_id', tenantId)
       .eq('sku', data.sku)
+      .is('deleted_at', null)
       .maybeSingle();
     if (existing) return (existing as { id: string }).id;
   }
@@ -331,6 +339,7 @@ export async function findDuplicateInventory(
       .select('id')
       .eq('tenant_id', tenantId)
       .eq('barcode', data.barcode)
+      .is('deleted_at', null)
       .maybeSingle();
     if (existing) return (existing as { id: string }).id;
   }
@@ -616,12 +625,14 @@ export async function importSupplier(
       return { status: 'error', error: 'Supplier missing name' };
     }
 
-    // Duplicate check: by name exact match
+    // Duplicate check: by name exact match. Filter out soft-deleted
+    // suppliers — see same fix on findDuplicateCustomer.
     const { data: existing } = await admin
       .from('suppliers')
       .select('id')
       .eq('tenant_id', ctx.tenantId)
       .ilike('name', mappedData.name)
+      .is('deleted_at', null)
       .maybeSingle();
     if (existing) return { status: 'duplicate', recordId: (existing as { id: string }).id };
 
@@ -632,6 +643,7 @@ export async function importSupplier(
         .select('id')
         .eq('tenant_id', ctx.tenantId)
         .eq('email', mappedData.email)
+        .is('deleted_at', null)
         .maybeSingle();
       if (emailMatch) return { status: 'duplicate', recordId: (emailMatch as { id: string }).id };
     }
@@ -667,13 +679,15 @@ export async function importInvoice(
   customerId?: string
 ): Promise<ImportResult & { invoiceNumber?: string }> {
   try {
-    // Check for duplicate by invoice_number
+    // Check for duplicate by invoice_number — exclude soft-deleted
+    // (same fix as findDuplicateCustomer).
     if (mappedData.invoice_number) {
       const { data: existing } = await admin
         .from('invoices')
         .select('id')
         .eq('tenant_id', ctx.tenantId)
         .eq('invoice_number', mappedData.invoice_number)
+        .is('deleted_at', null)
         .maybeSingle();
       if (existing) return { status: 'duplicate', recordId: (existing as { id: string }).id, invoiceNumber: mappedData.invoice_number };
     }
