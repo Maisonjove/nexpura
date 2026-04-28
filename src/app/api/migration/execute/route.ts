@@ -749,10 +749,27 @@ async function dispatchNextChunk(req: NextRequest, jobId: string, internalToken:
 export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   try {
-    // Branch on body shape: chunk-continue calls carry
-    // `_continueChunk: true` and skip auth/rate-limit (they're
-    // gated by the internal_token instead).
-    const body = await req.json();
+    // DEBUG: trace the body branch decision (this PR is diagnostic;
+    // remove after the chunk-continue dispatch issue is understood).
+    let bodyText = '';
+    try { bodyText = await req.text(); } catch {}
+    let body: { _continueChunk?: unknown } = {};
+    try { body = bodyText ? JSON.parse(bodyText) : {}; } catch { body = {}; }
+    // DEBUG: short-circuit and return the diag info directly so we
+    // can see what the lambda sees without runtime-log access.
+    if (req.headers.get('x-debug-trace') === 'yes-please') {
+      return NextResponse.json({
+        debug: true,
+        bodyTextLen: bodyText.length,
+        bodyTextPrefix: bodyText.slice(0, 200),
+        bodyKeys: Object.keys(body || {}),
+        _continueChunkType: typeof body._continueChunk,
+        _continueChunkValue: body._continueChunk,
+        branchTaken: body._continueChunk === true ? 'chunk-continue' : 'first-call',
+        cookieLen: (req.headers.get('cookie') || '').length,
+        contentType: req.headers.get('content-type'),
+      });
+    }
     if (body && body._continueChunk === true) {
       return await handleChunkContinue(req, body);
     }
