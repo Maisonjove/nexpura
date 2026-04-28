@@ -140,6 +140,12 @@ export async function decrypt(sealed: Sealed): Promise<string> {
   if (!sealed || sealed.v !== 1 || !sealed.c || !sealed.i) {
     throw new Error("[secretbox] malformed sealed record");
   }
+  // Load the key BEFORE parsing the iv/ct bytes — keeps the
+  // "fail-closed on missing key env" contract that the existing
+  // secretbox.test.ts pins (otherwise atob() of a malformed/test
+  // payload would throw a generic decoding error and mask the missing
+  // key).
+  const key = await loadKey();
   const ivBytes = b64ToU8(sealed.i);
   const ctBytes = b64ToU8(sealed.c);
   const ivBuf = new ArrayBuffer(ivBytes.length);
@@ -147,7 +153,6 @@ export async function decrypt(sealed: Sealed): Promise<string> {
   const ctBuf = new ArrayBuffer(ctBytes.length);
   new Uint8Array(ctBuf).set(ctBytes);
 
-  const key = await loadKey();
   try {
     const pt = await globalThis.crypto.subtle.decrypt(
       { name: "AES-GCM", iv: new Uint8Array(ivBuf) },
