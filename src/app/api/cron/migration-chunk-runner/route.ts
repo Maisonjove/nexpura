@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   // dispatchNextChunk and produced 4162 duplicate customer rows
   // on the first 10k test (10000 distinct emails, 14162 rows).
   const { data: claimed, error: claimErr } = await admin.rpc('claim_migration_chunk', {
-    p_stale_window_seconds: 30,
+    p_chunk_max_seconds: 300,
   });
   if (claimErr) {
     logger.error('[cron migration-chunk-runner] claim_migration_chunk failed', { error: claimErr });
