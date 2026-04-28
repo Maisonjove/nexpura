@@ -155,75 +155,51 @@ export async function completeLayby(
     .eq("sale_id", saleId)
     .eq("tenant_id", tenantId);
 
-  for (const item of saleItems || []) {
-    if (!item.inventory_id) continue;
+  // Stock deduction via stock_movements ONLY. Pre-fix did SELECT
+  // inventory + direct UPDATE (with broken CAS retry — the retry
+  // path didn't re-validate that newQty >= 0) AND inserted a
+  // stock_movements row. The DB trigger
+  // sync_inventory_on_stock_movement_insert applies the
+  // quantity_change to inventory.quantity itself, so the direct
+  // UPDATE was double-applying every layby completion's stock
+  // deduction. Refunds were already fixed to this pattern (refunds/
+  // actions.ts and api/pos/refund/route.ts); aligning layby.
+  //
+  // The inventory_quantity_non_negative CHECK constraint
+  // (quantity >= 0) means an insert that would drive stock negative
+  // fails with a 23514 constraint violation — the trigger fires
+  // BEFORE INSERT, so the constraint check happens on the would-be
+  // new quantity. We catch that and roll back the sale.status.
+  const itemsToDeduct = (saleItems ?? []).filter((it) => it.inventory_id);
+  const movementRows = itemsToDeduct.map((item) => ({
+    tenant_id: tenantId,
+    inventory_id: item.inventory_id!,
+    movement_type: "sale",
+    quantity_change: -(item.quantity || 1),
+    notes: `Layby completed — ${saleNumber}`,
+  }));
 
-    const { data: inv } = await admin
-      .from("inventory")
-      .select("quantity")
-      .eq("id", item.inventory_id)
-      .eq("tenant_id", tenantId)
-      .single();
-
-    if (inv) {
-      const oldQty = inv.quantity || 0;
-      const qty = item.quantity || 1;
-      const newQty = oldQty - qty;
-
-      // HARD FAIL: Do not allow completion if insufficient stock
-      if (newQty < 0) {
-        // Rollback layby status
-        await admin
-          .from("sales")
-          .update({ status: "layby" })
-          .eq("id", saleId)
-          .eq("tenant_id", tenantId);
-        return { error: `Insufficient stock for "${item.description}". Available: ${oldQty}, Required: ${qty}` };
-      }
-
-      // Conditional update with retry
-      const { count: updateCount } = await admin
-        .from("inventory")
-        .update({ quantity: newQty })
-        .eq("id", item.inventory_id)
-        .eq("tenant_id", tenantId)
-        .eq("quantity", oldQty);
-
-      let finalQty = newQty;
-      if (updateCount === 0) {
-        // Race occurred — retry
-        const { data: invRetry } = await admin
-          .from("inventory")
-          .select("quantity")
-          .eq("id", item.inventory_id)
-          .eq("tenant_id", tenantId)
-          .single();
-        if (invRetry) {
-          finalQty = (invRetry.quantity || 0) - qty;
-          if (finalQty < 0) {
-            await admin
-              .from("sales")
-              .update({ status: "layby" })
-              .eq("id", saleId)
-              .eq("tenant_id", tenantId);
-            return { error: `Item "${item.description}" just sold out. Cannot complete layby.` };
-          }
-          await admin
-            .from("inventory")
-            .update({ quantity: finalQty })
-            .eq("id", item.inventory_id)
-            .eq("tenant_id", tenantId);
-        }
-      }
-
-      await admin.from("stock_movements").insert({
-        tenant_id: tenantId,
-        inventory_id: item.inventory_id,
-        movement_type: "sale",
-        quantity_change: -qty,
-        quantity_after: finalQty,
-        notes: `Layby completed — ${saleNumber}`,
-      });
+  if (movementRows.length > 0) {
+    const { error: stockMoveErr } = await admin
+      .from("stock_movements")
+      .insert(movementRows);
+    if (stockMoveErr) {
+      // CHECK constraint violation (23514) means at least one item
+      // would have gone negative. Other errors (network, FK) are
+      // also fatal here. Roll back the sale.status so the layby
+      // stays "layby" and can be retried after stock arrives.
+      await admin
+        .from("sales")
+        .update({ status: "layby" })
+        .eq("id", saleId)
+        .eq("tenant_id", tenantId);
+      const isNegativeStock = (stockMoveErr.code === "23514")
+        || /quantity.*non.*negative/i.test(stockMoveErr.message ?? "");
+      return {
+        error: isNegativeStock
+          ? "Insufficient stock for one or more layby items. Layby left as-is — receive stock first then re-complete."
+          : `Failed to record stock movement: ${stockMoveErr.message}`,
+      };
     }
   }
 
