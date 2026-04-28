@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
+import { decryptBankDetails } from "@/lib/tenant-banking";
 
 export default function PrintInvoicePageWrapper(props: { params: Promise<{ id: string }> }) {
   return (
@@ -41,14 +42,14 @@ async function PrintInvoicePage({
     .from("invoices")
     .select(`
       *,
-      tenants(name, business_name, abn, phone, email, logo_url, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer)
+      tenants(name, business_name, abn, phone, email, logo_url, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, bank_bsb_enc, bank_account_enc, invoice_footer)
     `)
     .eq("id", id)
     .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
     .single();
   if (!invoice) notFound();
 
-  const tenant = invoice.tenants as {
+  const rawTenant = invoice.tenants as {
     name?: string;
     business_name?: string;
     abn?: string;
@@ -59,11 +60,34 @@ async function PrintInvoicePage({
     suburb?: string;
     state?: string;
     postcode?: string;
-    bank_name?: string;
-    bank_bsb?: string;
-    bank_account?: string;
+    bank_name?: string | null;
+    bank_bsb?: string | null;
+    bank_account?: string | null;
+    bank_bsb_enc?: unknown;
+    bank_account_enc?: unknown;
     invoice_footer?: string;
   } | null;
+
+  // W6-HIGH-13: BSB + bank account are encrypted at rest.
+  const bankDisplay = await decryptBankDetails(
+    rawTenant
+      ? {
+          bank_name: rawTenant.bank_name ?? null,
+          bank_bsb: rawTenant.bank_bsb ?? null,
+          bank_account: rawTenant.bank_account ?? null,
+          bank_bsb_enc: (rawTenant.bank_bsb_enc as never) ?? null,
+          bank_account_enc: (rawTenant.bank_account_enc as never) ?? null,
+        }
+      : null
+  );
+  const tenant = rawTenant
+    ? {
+        ...rawTenant,
+        bank_name: bankDisplay.bank_name ?? undefined,
+        bank_bsb: bankDisplay.bank_bsb ?? undefined,
+        bank_account: bankDisplay.bank_account ?? undefined,
+      }
+    : null;
 
   const businessName = tenant?.business_name || tenant?.name || "Business";
   const businessAddress = [tenant?.address_line1, tenant?.suburb, tenant?.state, tenant?.postcode]

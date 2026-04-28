@@ -4,6 +4,31 @@ import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { requireRole } from "@/lib/auth-context";
+import { buildEncryptedBankUpdate, decryptBankDetails, type DisplayableBankDetails } from "@/lib/tenant-banking";
+
+/**
+ * W6-HIGH-13: settings/page.tsx is a client component, so it cannot
+ * decrypt bank columns directly (the AES key is server-only). This
+ * server action returns the *decrypted* banking display payload for
+ * the authenticated user's own tenant — no positional tenantId, owner
+ * role required, never returns ciphertext to the browser.
+ */
+export async function getBankingForSettings(): Promise<{ data?: DisplayableBankDetails; error?: string }> {
+  let authCtx;
+  try {
+    authCtx = await requireRole("owner");
+  } catch {
+    return { error: "Only the account owner can view banking details." };
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tenants")
+    .select("bank_name, bank_bsb, bank_account, bank_bsb_enc, bank_account_enc")
+    .eq("id", authCtx.tenantId)
+    .single();
+  if (error) return { error: error.message };
+  return { data: await decryptBankDetails(data) };
+}
 
 async function verifyTenantOwnership(supabase: Awaited<ReturnType<typeof createClient>>, tenantId: string): Promise<{ error?: string }> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -153,10 +178,17 @@ export async function saveBanking(tenantId: string, formData: FormData) {
     }
     const effectiveTenantId = authCtx.tenantId;
 
+    // W6-HIGH-13: BSB + account number are encrypted at rest via
+    // buildEncryptedBankUpdate. The plain columns get nulled on save so
+    // any reader still pointing at the legacy columns gets nothing
+    // instead of stale data.
+    const encryptedBank = await buildEncryptedBankUpdate({
+      bank_name: (formData.get("bank_name") as string) || null,
+      bank_bsb: (formData.get("bank_bsb") as string) || null,
+      bank_account: (formData.get("bank_account") as string) || null,
+    });
     const updates = {
-      bank_name: formData.get("bank_name") as string || null,
-      bank_bsb: formData.get("bank_bsb") as string || null,
-      bank_account: formData.get("bank_account") as string || null,
+      ...encryptedBank,
       invoice_footer: formData.get("invoice_footer") as string || null,
       updated_at: new Date().toISOString(),
     };

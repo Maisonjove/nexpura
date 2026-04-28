@@ -13,6 +13,7 @@ import {
   saveTaxCurrency,
   saveBanking,
   saveAccount,
+  getBankingForSettings,
 } from "./actions";
 import LogoUpload from "./LogoUpload";
 import SecurityTab from "./SecurityTab";
@@ -98,7 +99,18 @@ export default function SettingsPage() {
           .single();
 
         if (tenantData) {
-          setTenant(tenantData as Tenant);
+          // W6-HIGH-13: bank_bsb + bank_account are encrypted at rest.
+          // Fetch decrypted values via server action (the AES key is
+          // server-only) and merge over the raw tenant row before
+          // hydrating the form.
+          const banking = await getBankingForSettings();
+          const merged: Tenant = {
+            ...(tenantData as Tenant),
+            bank_name: banking.data?.bank_name ?? tenantData.bank_name ?? null,
+            bank_bsb: banking.data?.bank_bsb ?? null,
+            bank_account: banking.data?.bank_account ?? null,
+          };
+          setTenant(merged);
           if (tenantData.logo_url) setLogoPreview(tenantData.logo_url);
         }
 

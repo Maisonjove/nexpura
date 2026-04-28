@@ -8,6 +8,7 @@ import React, { type JSXElementConstructor, type ReactElement } from "react";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
+import { decryptBankDetails } from "@/lib/tenant-banking";
 
 export async function GET(
   request: NextRequest,
@@ -97,7 +98,7 @@ export async function GET(
   const { data: tenant } = await adminClient
     .from("tenants")
     .select(
-      "name, business_name, abn, logo_url, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer, invoice_accent_color, tax_name, tax_rate, tax_inclusive"
+      "name, business_name, abn, logo_url, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, bank_bsb_enc, bank_account_enc, invoice_footer, invoice_accent_color, tax_name, tax_rate, tax_inclusive"
     )
     .eq("id", userData.tenant_id)
     .single();
@@ -155,6 +156,8 @@ export async function GET(
     total: Number((item as Record<string, unknown>).line_total ?? (item as Record<string, unknown>).total ?? 0),
   }));
 
+  // W6-HIGH-13: BSB + bank account are encrypted at rest.
+  const bankDisplay = await decryptBankDetails(tenant ?? null);
   const tenantData = tenant
     ? {
         name: tenant.name ?? "",
@@ -167,9 +170,9 @@ export async function GET(
         suburb: tenant.suburb ?? null,
         state: tenant.state ?? null,
         postcode: tenant.postcode ?? null,
-        bank_name: tenant.bank_name ?? null,
-        bank_bsb: tenant.bank_bsb ?? null,
-        bank_account: tenant.bank_account ?? null,
+        bank_name: bankDisplay.bank_name,
+        bank_bsb: bankDisplay.bank_bsb,
+        bank_account: bankDisplay.bank_account,
         invoice_footer: tenant.invoice_footer ?? null,
       invoice_accent_color: tenant.invoice_accent_color ?? null,
       }

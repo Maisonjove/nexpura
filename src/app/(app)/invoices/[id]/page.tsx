@@ -6,6 +6,7 @@ import { AUTH_HEADERS } from "@/lib/cached-auth";
 import InvoiceDetailClient from "./InvoiceDetailClient";
 import { resolveReadLocationScope } from "@/lib/location-read-scope";
 import { matchesReviewOrStaffToken } from "@/lib/auth/review";
+import { decryptBankDetails } from "@/lib/tenant-banking";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
@@ -75,7 +76,7 @@ export default async function InvoiceDetailPage({
         .order("sort_order"),
       adminClient
         .from("tenants")
-        .select("name, slug, logo_url, brand_color, business_name, abn, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer")
+        .select("name, slug, logo_url, brand_color, business_name, abn, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, bank_bsb_enc, bank_account_enc, invoice_footer")
         .eq("id", tenantId ?? "")
         .single(),
       // Fetch real payment records — balance due = total - sum(payments)
@@ -127,15 +128,17 @@ export default async function InvoiceDetailPage({
     amount_due: amountDue,
   };
 
-  // Normalize tenant to full shape including bank details and ABN
+  // W6-HIGH-13: BSB + bank account are encrypted at rest. Decrypt at
+  // the render boundary before handing to the client component.
+  const bankDisplay = await decryptBankDetails(tenant ?? null);
   const normalizedTenant = tenant ? {
     name: tenant.name,
     business_name: tenant.business_name ?? tenant.name,
     abn: (tenant as { abn?: string | null }).abn ?? null,
     logo_url: tenant.logo_url,
-    bank_name: (tenant as { bank_name?: string | null }).bank_name ?? null,
-    bank_bsb: (tenant as { bank_bsb?: string | null }).bank_bsb ?? null,
-    bank_account: (tenant as { bank_account?: string | null }).bank_account ?? null,
+    bank_name: bankDisplay.bank_name,
+    bank_bsb: bankDisplay.bank_bsb,
+    bank_account: bankDisplay.bank_account,
     address_line1: (tenant as { address_line1?: string | null }).address_line1 ?? null,
     suburb: (tenant as { suburb?: string | null }).suburb ?? null,
     state: (tenant as { state?: string | null }).state ?? null,
