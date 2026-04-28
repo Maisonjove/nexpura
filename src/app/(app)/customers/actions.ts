@@ -11,6 +11,31 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { customerCreateSchema } from "@/lib/schemas/customers";
 import { requireAuth } from "@/lib/auth-context";
+import { buildEncryptedCustomerPiiUpdate } from "@/lib/customer-pii";
+
+/**
+ * W6-HIGH-14: Take the customer-row payload and add `pii_enc` (an
+ * AES-GCM-256 sealed bundle of the address + notes + preferences
+ * fields). This PR keeps the plaintext columns alongside the
+ * encrypted bundle so unconverted readers continue to work — a
+ * follow-up PR flips the writer to stop writing plaintext once every
+ * reader has been hooked through decryptCustomerPii().
+ */
+async function withEncryptedPii<T extends Record<string, unknown>>(row: T): Promise<T & { pii_enc: unknown }> {
+  const enc = await buildEncryptedCustomerPiiUpdate({
+    address_line1: (row.address_line1 as string | null) ?? null,
+    suburb: (row.suburb as string | null) ?? null,
+    state: (row.state as string | null) ?? null,
+    postcode: (row.postcode as string | null) ?? null,
+    country: (row.country as string | null) ?? null,
+    address: (row.address as string | null) ?? null,
+    notes: (row.notes as string | null) ?? null,
+    ring_size: (row.ring_size as string | null) ?? null,
+    preferred_metal: (row.preferred_metal as string | null) ?? null,
+    preferred_stone: (row.preferred_stone as string | null) ?? null,
+  });
+  return { ...row, pii_enc: enc.pii_enc };
+}
 
 export type CustomerListRow = {
   id: string;
@@ -185,7 +210,7 @@ export async function createCustomer(formData: FormData): Promise<{ id?: string;
       return { error: `${firstIssue.path.join(".")}: ${firstIssue.message}` };
     }
 
-    const customerData = buildCustomerData(formData, userData.tenant_id, user.id);
+    const customerData = await withEncryptedPii(buildCustomerData(formData, userData.tenant_id, user.id));
 
     // Graceful duplicate detection: if email or mobile is supplied and a
     // customer with the same value already exists for this tenant, surface
@@ -269,7 +294,7 @@ export async function updateCustomer(
     if (!tenantId) return { error: "Not authenticated" };
 
     const customerData = {
-      ...buildCustomerData(formData),
+      ...(await withEncryptedPii(buildCustomerData(formData))),
       updated_at: new Date().toISOString(),
     };
 
