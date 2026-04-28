@@ -173,8 +173,17 @@ function normalizeValue(val: unknown, field: string, _transformation?: string): 
 
   const numericFields = ['retail_price', 'cost_price', 'quoted_price', 'deposit_amount', 'amount_paid', 'store_credit', 'quantity', 'stone_carat'];
   if (numericFields.includes(field)) {
-    const num = parseFloat(strVal.replace(/[$,\s]/g, ''));
-    return isNaN(num) ? null : num;
+    // Audit fix: pre-fix "POA" / "1k" / "TBD" / "N/A" / blank-ish values
+    // silently became NULL with no signal to the operator — a wholesale
+    // import of 500 items with cost_price="POA" (price-on-application)
+    // would land 500 rows with cost_price=null and the operator would
+    // never know the data was lost. Now: reject explicitly so the row
+    // surfaces as an error with the raw input in the message.
+    const cleaned = strVal.replace(/[$,\s]/g, '');
+    const num = parseFloat(cleaned);
+    if (!isNaN(num) && isFinite(num) && /^-?\d*(\.\d+)?$/.test(cleaned)) return num;
+    // Don't silently null — throw so the row error surfaces with context.
+    throw new Error(`Cannot parse ${field}=\"${strVal}\" as number. Clean the source data (e.g. replace "POA"/"TBD"/"~5k" with explicit values or leave blank) and re-import.`);
   }
 
   const boolFields = ['deposit_paid', 'is_active', 'published'];
@@ -185,18 +194,54 @@ function normalizeValue(val: unknown, field: string, _transformation?: string): 
   const dateFields = ['due_date', 'birthday', 'anniversary', 'invoice_date', 'created_at'];
   if (dateFields.includes(field)) {
     if (!strVal) return null;
-    const d = new Date(strVal);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-    // Try DD/MM/YYYY
+
+    // Audit fix: pre-fix the parser tried `new Date(str)` first which
+    // is locale-sensitive (V8 reads "03/13/2026" as Mar 13 in US-style
+    // locales but the fallback rejected it because the second part
+    // was 13 > 12), and the fallback assumed DD/MM/YYYY without checks
+    // — silently NULLing US-formatted dates from US POS exports.
+    //
+    // New strategy:
+    //   1. Prefer ISO-style YYYY-MM-DD (unambiguous).
+    //   2. If split into 3 numeric parts AND first part is 4-digit → ISO.
+    //   3. Else split by / - .: try BOTH DD/MM and MM/DD; if both produce
+    //      a valid distinct date, throw an explicit ambiguity error so
+    //      the operator picks. If only one is valid (e.g. day > 12),
+    //      use that one. If neither, throw.
+
+    const isoMatch = strVal.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (isoMatch) {
+      const [, y, m, dd] = isoMatch;
+      const d = new Date(`${y}-${m.padStart(2,'0')}-${dd.padStart(2,'0')}`);
+      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    }
+
     const parts = strVal.split(/[/\-.]/);
     if (parts.length === 3) {
-      const [a, b, c] = parts;
-      if (parseInt(a) <= 31 && parseInt(b) <= 12) {
-        const d2 = new Date(`${c}-${b.padStart(2, '0')}-${a.padStart(2, '0')}`);
-        if (!isNaN(d2.getTime())) return d2.toISOString().split('T')[0];
+      const [a, b, c] = parts.map(p => p.trim());
+      // Determine year: assume the 4-digit part is year.
+      let year: string | null = null;
+      let p1: string | null = null, p2: string | null = null;
+      if (/^\d{4}$/.test(a)) { year = a; p1 = b; p2 = c; }
+      else if (/^\d{4}$/.test(c)) { year = c; p1 = a; p2 = b; }
+      else { year = (parseInt(c) < 50 ? `20${c.padStart(2,'0')}` : `19${c.padStart(2,'0')}`); p1 = a; p2 = b; }
+      const n1 = parseInt(p1!);
+      const n2 = parseInt(p2!);
+      const tryBuild = (mm: number, dd: number) => {
+        const s = `${year}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+        const d = new Date(s);
+        return !isNaN(d.getTime()) && d.getMonth() + 1 === mm && d.getDate() === dd ? s : null;
+      };
+      const ddmm = tryBuild(n2, n1); // DD first, MM second
+      const mmdd = tryBuild(n1, n2); // MM first, DD second
+      if (ddmm && mmdd && ddmm !== mmdd) {
+        throw new Error(`Ambiguous date "${strVal}" for field ${field}: could be DD/MM/YYYY (${ddmm}) or MM/DD/YYYY (${mmdd}). Re-export with ISO YYYY-MM-DD format and re-import.`);
       }
+      if (ddmm) return ddmm;
+      if (mmdd) return mmdd;
     }
-    return null;
+
+    throw new Error(`Cannot parse ${field}="${strVal}" as a date. Use ISO YYYY-MM-DD format and re-import.`);
   }
 
   if (field === 'ring_size') return strVal.toUpperCase().replace(/\s/g, '');

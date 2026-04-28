@@ -147,6 +147,21 @@ export async function POST(req: NextRequest) {
     const session = sessionData as MigrationSession | null;
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
 
+    // Audit fix: session-level replay guard. The migration_files filter
+    // below skips already-imported files (they transition to
+    // status='imported'), so a re-execute on a successful session
+    // becomes a no-op the user can't distinguish from success. For
+    // sessions in 'complete' / 'complete_with_errors', refuse outright
+    // so the operator must create a new session — otherwise repairs/
+    // bespoke jobs (no unique constraint) could duplicate if a partial
+    // file got re-processed via a status edge case.
+    const sessionStatus = (session as { status?: string }).status;
+    if (sessionStatus === 'complete' || sessionStatus === 'complete_with_errors') {
+      return NextResponse.json({
+        error: `Migration session already executed (status=${sessionStatus}). Create a new session to re-run.`,
+      }, { status: 409 });
+    }
+
     const { data: rawFiles } = await admin
       .from('migration_files')
       .select('*, migration_mappings(*)')
@@ -215,7 +230,40 @@ export async function POST(req: NextRequest) {
       for (let i = 0; i < rows.length; i++) {
         const sourceRow = rows[i];
         const rowNum = i + 1;
-        const mappedData = applyMappings(sourceRow, mappings);
+
+        // applyMappings calls normalizeValue which now THROWS on
+        // unparseable numbers / ambiguous dates instead of silently
+        // returning null. Catch here so a single bad row becomes a
+        // row-level error in the summary instead of killing the whole
+        // file's import loop.
+        let mappedData: Record<string, unknown>;
+        try {
+          mappedData = applyMappings(sourceRow, mappings);
+        } catch (e) {
+          const result = { status: 'error', error: e instanceof Error ? e.message : String(e) };
+          processed++;
+          errors++;
+          byEntity[entity].error++;
+          jobRecords.push({
+            tenant_id: tenantId,
+            session_id: sessionId,
+            job_id: job.id,
+            file_id: file.id,
+            entity_type: entity,
+            destination_table: entity,
+            source_row_number: rowNum,
+            source_external_id: '',
+            source_data: sourceRow,
+            status: 'error',
+            error_message: result.error,
+          });
+          if (jobRecords.length >= BATCH_SIZE) {
+            await admin.from('migration_job_records').insert(jobRecords);
+            jobRecords.length = 0;
+          }
+          continue;
+        }
+
         const importRow: ImportRow = {
           sourceRowNumber: rowNum,
           sourceData: sourceRow,
