@@ -199,19 +199,34 @@ export async function POST(req: NextRequest) {
       return { status: 500, payload: { error: refundErr?.message ?? "Failed to create refund" } };
     }
 
-    // Create refund items and restore inventory. refund_items columns
-    // are `original_sale_item_id` + `line_total` (matches processRefund);
-    // `description` is NOT NULL on the schema — copy it from the original
-    // sale_items row so the line is human-readable in the refund detail.
+    // Build refund_items + their target inventory_ids in one pass so we
+    // can do a SINGLE bulk insert (succeeds-or-fails atomically). Pre-fix
+    // looped one-by-one inserts: if item N failed mid-loop, items 1..N-1
+    // were committed + their stock restored, but the refund row was
+    // already committed too — leaving a money-out record without full
+    // line detail and partial inventory restoration. That's the gap.
+    const refundItemRows: Array<{
+      tenant_id: string;
+      refund_id: string;
+      original_sale_item_id: string;
+      inventory_id: string | null;
+      description: string;
+      quantity: number;
+      unit_price: number;
+      line_total: number;
+      restock: boolean;
+    }> = [];
+    const stockReturnTargets: Array<{ inventoryId: string; quantity: number }> = [];
+
     for (const item of items2) {
-      const lineTotal = Number(item.quantity ?? 0) * Number(item.unitPrice ?? 0);
       const { data: srcSaleItem } = await admin
         .from("sale_items")
         .select("inventory_id, description")
         .eq("id", item.saleItemId)
         .eq("tenant_id", tenantId)
         .single();
-      const { error: refundItemErr } = await admin.from("refund_items").insert({
+      const lineTotal = Number(item.quantity ?? 0) * Number(item.unitPrice ?? 0);
+      refundItemRows.push({
         tenant_id: tenantId,
         refund_id: refund.id,
         original_sale_item_id: item.saleItemId,
@@ -222,40 +237,74 @@ export async function POST(req: NextRequest) {
         line_total: lineTotal,
         restock: true,
       });
-      if (refundItemErr) {
-        reportServerError("pos/refund:refund_items.insert", refundItemErr, {
+      if (srcSaleItem?.inventory_id) {
+        stockReturnTargets.push({
+          inventoryId: srcSaleItem.inventory_id,
+          quantity: item.quantity,
+        });
+      }
+    }
+
+    // Bulk insert refund_items — atomic from PostgREST's perspective
+    // (single SQL statement). If it fails, roll back the refund row so
+    // we don't leave a refund record with money flagged out and no
+    // backing line items.
+    const { error: refundItemErr } = await admin
+      .from("refund_items")
+      .insert(refundItemRows);
+    if (refundItemErr) {
+      reportServerError("pos/refund:refund_items.insert", refundItemErr, {
+        refundId: refund.id,
+        tenantId,
+      });
+      const { error: rollbackErr } = await admin
+        .from("refunds")
+        .delete()
+        .eq("id", refund.id)
+        .eq("tenant_id", tenantId);
+      if (rollbackErr) {
+        reportServerError("pos/refund:refund_rollback_failed", rollbackErr, {
           refundId: refund.id,
-          saleItemId: item.saleItemId,
           tenantId,
         });
-        return {
-          status: 500,
-          payload: { error: "Failed to record refund item. Refund has been halted — please retry." },
-        };
       }
+      return {
+        status: 500,
+        payload: {
+          error: "Failed to record refund items — refund rolled back. Please retry.",
+        },
+      };
+    }
 
-      // Restore inventory by inserting a stock_movements row. The
-      // sync_inventory_quantity trigger applies quantity_change to the
-      // inventory row + sets quantity_after — so the route does NOT
-      // touch inventory directly. Same pattern as inventory create-item
-      // (commit 00d9e91) + pos_deduct_stock (commit 2b0850b): direct
-      // updates compete with the trigger and double-apply.
-      if (srcSaleItem?.inventory_id) {
-        const { error: stockMoveErr } = await admin.from("stock_movements").insert({
-          tenant_id: tenantId,
-          inventory_id: srcSaleItem.inventory_id,
-          movement_type: "return",
-          quantity_change: item.quantity,
-          notes: `Refund ${refundNumber}`,
-          created_by: userId,
+    // Bulk insert stock_movements. The sync_inventory_quantity trigger
+    // applies quantity_change to the inventory row + sets quantity_after
+    // — so the route does NOT touch inventory directly. Same pattern as
+    // inventory create-item (commit 00d9e91) + pos_deduct_stock (commit
+    // 2b0850b): direct updates compete with the trigger and double-apply.
+    //
+    // If stock_movements fails after refund_items succeeded, the audit
+    // trail of the refund stays intact — but inventory is short. Log
+    // loudly so ops can reconcile manually; do NOT roll back the refund
+    // (the customer's money is already accounted for).
+    if (stockReturnTargets.length > 0) {
+      const { error: stockMoveErr } = await admin
+        .from("stock_movements")
+        .insert(
+          stockReturnTargets.map((t) => ({
+            tenant_id: tenantId,
+            inventory_id: t.inventoryId,
+            movement_type: "return",
+            quantity_change: t.quantity,
+            notes: `Refund ${refundNumber}`,
+            created_by: userId,
+          })),
+        );
+      if (stockMoveErr) {
+        reportServerError("pos/refund:stock_movements.insert", stockMoveErr, {
+          tenantId,
+          refundId: refund.id,
+          targetCount: stockReturnTargets.length,
         });
-        if (stockMoveErr) {
-          reportServerError("pos/refund:stock_movements.insert", stockMoveErr, {
-            inventoryId: srcSaleItem.inventory_id,
-            tenantId,
-            refundId: refund.id,
-          });
-        }
       }
     }
 

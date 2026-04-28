@@ -247,6 +247,25 @@ export async function updateRepair(
   redirect(`/repairs/${id}`);
 }
 
+// Whitelist of valid repair stages. Mirrors the DB CHECK constraint
+// `repairs_stage_valid` exactly. Pre-fix the action accepted any string;
+// the DB would reject invalid values with a raw 23514 constraint
+// violation that surfaced as an opaque error in the UI. Catching it
+// here gives a clean message AND blocks bad transitions before the
+// round-trip + before the BEFORE-trigger side effects fire.
+const VALID_REPAIR_STAGES = new Set([
+  "intake",
+  "assessed",
+  "quoted",
+  "approved",
+  "in_progress",
+  "ready",
+  "collected",
+  "completed",
+  "cancelled",
+  "on_hold",
+]);
+
 export async function advanceRepairStage(
   repairId: string,
   newStage: string,
@@ -260,6 +279,10 @@ export async function advanceRepairStage(
   }
 
   const { supabase, userId, tenantId } = ctx;
+
+  if (!VALID_REPAIR_STAGES.has(newStage)) {
+    return { error: `Invalid repair stage "${newStage}".` };
+  }
 
   // Update repair stage
   const { error: updateError } = await supabase

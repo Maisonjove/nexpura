@@ -260,6 +260,28 @@ export async function updateBespokeJob(
   redirect(`/bespoke/${id}`);
 }
 
+// Whitelist of valid bespoke job stages. Mirrors the DB CHECK
+// constraint `bespoke_jobs_stage_valid` exactly. Same defense as
+// advanceRepairStage in repairs/actions.ts — catch invalid stages
+// before the DB round-trip + before the BEFORE-trigger side effects
+// fire (notification dispatch, status_history append, etc).
+const VALID_BESPOKE_STAGES = new Set([
+  "enquiry",
+  "consultation",
+  "intake",
+  "design",
+  "design_review",
+  "assessed",
+  "quoted",
+  "approved",
+  "in_progress",
+  "ready",
+  "collected",
+  "completed",
+  "cancelled",
+  "on_hold",
+]);
+
 export async function advanceJobStage(
   jobId: string,
   newStage: string,
@@ -273,6 +295,10 @@ export async function advanceJobStage(
   }
 
   const { supabase, userId, tenantId } = ctx;
+
+  if (!VALID_BESPOKE_STAGES.has(newStage)) {
+    return { error: `Invalid bespoke stage "${newStage}".` };
+  }
 
   // Update job stage
   const { error: updateError } = await supabase

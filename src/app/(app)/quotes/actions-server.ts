@@ -7,6 +7,7 @@ import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth-context";
 import { getTenantTaxConfig, computeMoneyTotals } from "@/lib/tenant-tax";
+import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export interface QuoteItem {
@@ -382,7 +383,11 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<{ id?: str
     }
 
     // Update quote status — non-fatal; invoice is committed.
-    const { error: updateError } = await supabase.from("quotes").update({ status: "converted" }).eq("id", quoteId);
+    // Defense in depth: tenant scope on the UPDATE even though the SELECT
+    // above already filtered. Without `.eq("tenant_id", tenantId)` here
+    // we'd rely entirely on RLS to block a forged quote_id from another
+    // tenant — this gives us belt-and-braces.
+    const { error: updateError } = await supabase.from("quotes").update({ status: "converted" }).eq("id", quoteId).eq("tenant_id", tenantId);
     if (updateError) {
       logger.error("[convertQuoteToInvoice] Failed to update quote status:", updateError);
     }
@@ -434,6 +439,16 @@ export async function convertQuoteToBespoke(quoteId: string): Promise<{ id?: str
       return { error: "Quote not found" };
     }
 
+    // Resolve which location this bespoke job belongs to. Without
+    // setting location_id explicitly the job inserts NULL, which makes
+    // it invisible from any location-filtered view and silently
+    // orphans jobs in multi-location tenants. Same shape as the
+    // inventory fix in PR #44.
+    const bespokeLoc = await resolveLocationForCreate(tenantId, user.id);
+    if (bespokeLoc.needsSelection) {
+      return { error: LOCATION_REQUIRED_MESSAGE };
+    }
+
     // Generate job number
     const { data: numData, error: numError } = await supabase.rpc("next_job_number", { p_tenant_id: quote.tenant_id });
     if (numError) {
@@ -444,6 +459,7 @@ export async function convertQuoteToBespoke(quoteId: string): Promise<{ id?: str
     // Create bespoke job
     const jobData = {
       tenant_id: quote.tenant_id,
+      location_id: bespokeLoc.locationId,
       customer_id: quote.customer_id,
       job_number: numData,
       title: `Bespoke Job from Quote ${quote.quote_number || quoteId.slice(0, 8)}`,
@@ -478,7 +494,11 @@ export async function convertQuoteToBespoke(quoteId: string): Promise<{ id?: str
     }
 
     // Update quote status
-    const { error: updateError } = await supabase.from("quotes").update({ status: "converted" }).eq("id", quoteId);
+    // Defense in depth: tenant scope on the UPDATE even though the SELECT
+    // above already filtered. Without `.eq("tenant_id", tenantId)` here
+    // we'd rely entirely on RLS to block a forged quote_id from another
+    // tenant — this gives us belt-and-braces.
+    const { error: updateError } = await supabase.from("quotes").update({ status: "converted" }).eq("id", quoteId).eq("tenant_id", tenantId);
     if (updateError) {
       logger.error("[convertQuoteToBespoke] Failed to update quote status:", updateError);
       // Non-fatal - job was created successfully
@@ -531,6 +551,12 @@ export async function convertQuoteToRepair(quoteId: string): Promise<{ id?: stri
       return { error: "Quote not found" };
     }
 
+    // Resolve location_id same as the bespoke conversion path.
+    const repairLoc = await resolveLocationForCreate(tenantId, user.id);
+    if (repairLoc.needsSelection) {
+      return { error: LOCATION_REQUIRED_MESSAGE };
+    }
+
     // Generate repair number
     const { data: numData, error: numError } = await supabase.rpc("next_repair_number", { p_tenant_id: quote.tenant_id });
     if (numError) {
@@ -541,6 +567,7 @@ export async function convertQuoteToRepair(quoteId: string): Promise<{ id?: stri
     // Create repair
     const repairData = {
       tenant_id: quote.tenant_id,
+      location_id: repairLoc.locationId,
       customer_id: quote.customer_id,
       repair_number: numData,
       item_type: "Jewellery",
@@ -577,7 +604,11 @@ export async function convertQuoteToRepair(quoteId: string): Promise<{ id?: stri
     }
 
     // Update quote status
-    const { error: updateError } = await supabase.from("quotes").update({ status: "converted" }).eq("id", quoteId);
+    // Defense in depth: tenant scope on the UPDATE even though the SELECT
+    // above already filtered. Without `.eq("tenant_id", tenantId)` here
+    // we'd rely entirely on RLS to block a forged quote_id from another
+    // tenant — this gives us belt-and-braces.
+    const { error: updateError } = await supabase.from("quotes").update({ status: "converted" }).eq("id", quoteId).eq("tenant_id", tenantId);
     if (updateError) {
       logger.error("[convertQuoteToRepair] Failed to update quote status:", updateError);
       // Non-fatal - repair was created successfully
