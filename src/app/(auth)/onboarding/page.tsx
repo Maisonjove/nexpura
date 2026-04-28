@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { completeOnboarding } from "./actions";
 import { createClient } from "@/lib/supabase/client";
+import { PLANS } from "@/data/pricing";
 
 type Plan = "boutique" | "studio" | "atelier";
 
@@ -16,75 +17,19 @@ const BUSINESS_TYPES = [
   "Other",
 ];
 
-interface PlanCard {
-  id: Plan;
-  name: string;
-  price: string;
-  features: string[];
-  recommended?: boolean;
-}
+// 2026-04-28: dropped the inline PLANS array + step-2 plan picker. The
+// user already chose plan + currency on /pricing and paid through Stripe
+// before reaching this page, so re-asking here was both redundant and
+// shipping stale hardcoded prices ($89/$179/$299 AUD) that disagreed
+// with the live multi-currency tier. Onboarding now only collects the
+// pieces the Stripe form doesn't (business name + business type).
 
-// FIXED: Staff counts now match src/lib/plans.ts (boutique=1, studio=5, atelier=unlimited)
-const PLANS: PlanCard[] = [
-  {
-    id: "boutique",
-    name: "Boutique",
-    price: "AUD $89",
-    features: [
-      "1 staff member",
-      "Customers & CRM",
-      "Bespoke Jobs & Repairs",
-      "Inventory Management",
-      "Invoicing & Payments",
-      "Digital Jewellery Passports",
-      "5GB storage",
-    ],
-  },
-  {
-    id: "studio",
-    name: "Studio",
-    price: "AUD $179",
-    features: [
-      "Up to 5 staff",
-      "Everything in Boutique",
-      "AI Business Copilot",
-      "20GB storage",
-      "Priority support",
-    ],
-    recommended: true,
-  },
-  {
-    id: "atelier",
-    name: "Atelier",
-    price: "$299",
-    features: [
-      "Unlimited staff",
-      "Unlimited stores",
-      "Everything in Studio",
-      "AI Website Builder",
-      "Custom domain",
-      "100GB storage",
-    ],
-  },
-];
-
-const CheckIcon = () => (
-  <svg
-    className="w-3.5 h-3.5 text-stone-900 flex-shrink-0"
-    fill="currentColor"
-    viewBox="0 0 20 20"
-  >
-    <path
-      fillRule="evenodd"
-      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-
-// Derive the workspace URL from a slug.
-// In production the user lands on slug.nexpura.com; in local dev we just
-// redirect to /dashboard so the developer session isn't broken.
+// Derive the workspace URL from a slug. The app routes tenants under a
+// PATH segment (nexpura.com/<slug>/dashboard), not a subdomain. The
+// previous subdomain-based URL https://<slug>.nexpura.com/dashboard
+// produced "Safari can't open this page" on signup because (a) wildcard
+// DNS isn't pointed at Vercel, and (b) for slug "nexpura" it generated
+// the recursive nexpura.nexpura.com which browsers reject outright.
 function getWorkspaceUrl(slug: string): string {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
@@ -92,7 +37,7 @@ function getWorkspaceUrl(slug: string): string {
       return "/dashboard";
     }
   }
-  return `https://${slug}.nexpura.com/dashboard`;
+  return `https://nexpura.com/${slug}/dashboard`;
 }
 
 // Inner component that reads search params (must be wrapped in Suspense)
@@ -109,7 +54,10 @@ function OnboardingContent() {
   const [error, setError] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState("");
   const [businessType, setBusinessType] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<Plan>(initialPlan);
+  // selectedPlan is read-only now — the plan picker step is gone, but
+  // we still pass it to completeOnboarding for backwards compat with old
+  // sessions that pre-date the webhook-creates-tenant flow.
+  const [selectedPlan] = useState<Plan>(initialPlan);
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
@@ -129,7 +77,10 @@ function OnboardingContent() {
   }, []);
 
   useEffect(() => {
-    if (step !== 3 || emailVerified) return;
+    // Once on step 2 (Done / email gate), poll Supabase for the email
+    // confirmation. The wizard used to be 3 steps with the email gate at
+    // step 3; renumbered after the plan picker was dropped.
+    if (step !== 2 || emailVerified) return;
     const supabase = createClient();
     const interval = setInterval(async () => {
       await supabase.auth.refreshSession();
@@ -161,17 +112,18 @@ function OnboardingContent() {
 
   function handleContinue() {
     if (!businessName.trim()) return;
+    // Plan was set in Stripe Checkout — skip the plan picker step and go
+    // straight to the "verify email + go to dashboard" confirmation step.
     setStep(2);
-  }
-
-  function handleSelectPlan(plan: Plan) {
-    setSelectedPlan(plan);
-    setStep(3);
+    handleGoToDashboard();
   }
 
   function handleGoToDashboard() {
     setError(null);
     startTransition(async () => {
+      // selectedPlan is still passed for backwards-compat with old sessions
+      // that pre-date the webhook-creates-tenant flow; it's a no-op when
+      // the user already has a Stripe-paid tenant linked (the typical case).
       const result = await completeOnboarding(
         businessName,
         businessType,
@@ -179,7 +131,7 @@ function OnboardingContent() {
       );
       if (result?.error) {
         setError(result.error);
-        setStep(2);
+        setStep(1);
         return;
       }
       if (result?.slug) {
@@ -210,10 +162,11 @@ function OnboardingContent() {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
-        {/* Progress indicator */}
+        {/* Progress indicator — 2 steps now (Business → Done). Plan
+            picker step removed; plan was already chosen on /pricing. */}
         <div className="w-full max-w-2xl mb-12">
           <div className="flex items-center justify-center gap-0">
-            {[1, 2, 3].map((s) => (
+            {[1, 2].map((s) => (
               <div key={s} className="flex items-center">
                 <div className="flex flex-col items-center">
                   <div
@@ -248,10 +201,10 @@ function OnboardingContent() {
                       s === step ? "text-stone-900" : "text-stone-400"
                     }`}
                   >
-                    {s === 1 ? "Business" : s === 2 ? "Choose Plan" : "Done"}
+                    {s === 1 ? "Business" : "Done"}
                   </span>
                 </div>
-                {s < 3 && (
+                {s < 2 && (
                   <div
                     className={`w-24 h-0.5 mb-5 mx-1 ${
                       s < step ? "bg-stone-900" : "bg-stone-200"
@@ -330,103 +283,11 @@ function OnboardingContent() {
           </div>
         )}
 
-        {/* Step 2 - Choose Plan */}
+        {/* Step 2 - Confirmation / Email gate
+            (was step 3 in the 3-step wizard; the old Plan-picker step
+            between Business and Done has been removed — see the comment
+            at the top of this file.) */}
         {step === 2 && (
-          <div className="w-full max-w-4xl">
-            <div className="text-center mb-10">
-              <h1 className="font-serif text-3xl text-stone-900 mb-3">
-                Choose your plan
-              </h1>
-              <p className="text-stone-400 text-sm">
-                14-day free trial &nbsp;&middot;&nbsp; Card required &nbsp;&middot;&nbsp; Cancel anytime
-              </p>
-            </div>
-            {error && (
-              <div className="max-w-md mx-auto mb-6 bg-red-50 border border-red-100 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-              {PLANS.map((plan) => (
-                <div
-                  key={plan.id}
-                  className={`relative bg-white rounded-2xl border-2 transition-all hover:shadow-md ${
-                    plan.recommended
-                      ? "border-stone-900 shadow-sm"
-                      : "border-stone-200 hover:border-stone-300"
-                  }`}
-                >
-                  {plan.recommended && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-stone-900 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                        Most popular
-                      </span>
-                    </div>
-                  )}
-                  <div className="p-6">
-                    <div className="mb-4">
-                      <h3 className="font-serif text-xl text-stone-900 mb-1">
-                        {plan.name}
-                      </h3>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-bold text-stone-900">
-                          {plan.price}
-                        </span>
-                        <span className="text-stone-400 text-sm">/mo</span>
-                      </div>
-                    </div>
-                    <ul className="space-y-2 mb-6">
-                      {plan.features.map((feature) => (
-                        <li
-                          key={feature}
-                          className="flex items-center gap-2 text-sm text-stone-600"
-                        >
-                          <CheckIcon />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                    <button
-                      onClick={() => handleSelectPlan(plan.id)}
-                      className={`w-full py-2.5 rounded-full font-semibold text-sm transition-all ${
-                        plan.recommended
-                          ? "bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] text-white shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
-                          : "bg-white border-2 border-stone-200 text-stone-700 hover:border-stone-300"
-                      }`}
-                    >
-                      Start Free Trial
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="text-center text-sm text-stone-400">
-              You can upgrade or downgrade anytime.
-            </p>
-            <button
-              onClick={() => setStep(1)}
-              className="mt-4 mx-auto flex items-center gap-1.5 text-sm text-stone-400 hover:text-stone-700 transition-colors"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-              Back
-            </button>
-          </div>
-        )}
-
-        {/* Step 3 - Confirmation / Email gate */}
-        {step === 3 && (
           <div className="w-full max-w-md">
             {emailVerified === false ? (
               /* Email not yet verified */

@@ -19,6 +19,11 @@ type RequestBody = {
   subdomain?: string;
   email?: string;
   fullName?: string;
+  /** Supabase auth user_id captured from signUp() in /signup. Round-tripped
+   *  through Stripe metadata so the webhook can link the user to the
+   *  tenant it creates — fixes the duplicate-tenant bug where /onboarding
+   *  was creating a second orphan tenant when it couldn't find the link. */
+  userId?: string | null;
 };
 
 export async function POST(request: NextRequest) {
@@ -30,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as RequestBody;
-    const { plan, currency, subdomain, email, fullName } = body;
+    const { plan, currency, subdomain, email, fullName, userId } = body;
 
     if (!plan || !subdomain || !email) {
       return NextResponse.json(
@@ -128,6 +133,7 @@ export async function POST(request: NextRequest) {
         plan,
         currency: resolvedCurrency,
         full_name: fullName || "",
+        user_id: userId || "",
       },
       subscription_data: {
         trial_period_days: 14,
@@ -135,6 +141,7 @@ export async function POST(request: NextRequest) {
           subdomain,
           plan,
           currency: resolvedCurrency,
+          user_id: userId || "",
         },
       },
       success_url: `${baseUrl}/signup/success?session_id={CHECKOUT_SESSION_ID}`,

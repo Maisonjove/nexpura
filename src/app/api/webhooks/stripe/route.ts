@@ -128,10 +128,15 @@ async function handleCheckoutCompleted(
   supabase: ReturnType<typeof createAdminClient>,
   session: Stripe.Checkout.Session
 ) {
-  // Extract metadata
+  // Extract metadata. user_id is set by the new /signup → checkout flow
+  // (PR #46) so the webhook can link the auth user to the tenant it
+  // creates. Older sessions without user_id fall back to the previous
+  // behaviour (tenant exists, user link gets created later by
+  // completeOnboarding).
   const subdomain = session.metadata?.subdomain;
   const plan = session.metadata?.plan || "boutique";
   const fullName = session.metadata?.full_name || "";
+  const userId = session.metadata?.user_id || null;
   const customerEmail = session.customer_email;
   const stripeCustomerId = session.customer as string;
   const stripeSubscriptionId = session.subscription as string;
@@ -149,6 +154,8 @@ async function handleCheckoutCompleted(
     .eq("subdomain", subdomain)
     .maybeSingle();
 
+  let tenantId: string;
+
   if (existingTenant) {
     await supabase
       .from("tenants")
@@ -156,44 +163,80 @@ async function handleCheckoutCompleted(
         stripe_customer_id: stripeCustomerId,
         stripe_subscription_id: stripeSubscriptionId,
         plan,
+        email: customerEmail,
       })
       .eq("id", existingTenant.id);
-    return;
-  }
+    tenantId = existingTenant.id;
+  } else {
+    // Create tenant
+    const { data: tenant, error: tenantErr } = await supabase
+      .from("tenants")
+      .insert({
+        name: fullName || subdomain,
+        slug: subdomain,
+        subdomain,
+        plan,
+        email: customerEmail,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: stripeSubscriptionId,
+        subscription_status: "trialing",
+      })
+      .select()
+      .single();
 
-  // Create tenant
-  const { data: tenant, error: tenantErr } = await supabase
-    .from("tenants")
-    .insert({
-      name: fullName || subdomain,
-      slug: subdomain,
-      subdomain,
+    if (tenantErr || !tenant) {
+      logger.error("Failed to create tenant:", tenantErr);
+      return;
+    }
+    tenantId = tenant.id;
+
+    // Create subscription record
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
+    await supabase.from("subscriptions").insert({
+      tenant_id: tenantId,
       plan,
+      status: "trialing",
       stripe_customer_id: stripeCustomerId,
-      stripe_subscription_id: stripeSubscriptionId,
-      subscription_status: "trialing",
-    })
-    .select()
-    .single();
+      stripe_sub_id: stripeSubscriptionId,
+      trial_ends_at: trialEndsAt.toISOString(),
+    });
 
-  if (tenantErr || !tenant) {
-    logger.error("Failed to create tenant:", tenantErr);
-    return;
+    // Default location — onboarding used to do this; do it here so that
+    // the tenant is fully usable the moment the webhook lands. Idempotent:
+    // if onboarding later runs and finds a row, it'll skip insertion.
+    await supabase
+      .from("locations")
+      .insert({
+        tenant_id: tenantId,
+        name: `${fullName || subdomain} - Main Store`.slice(0, 100),
+        type: "retail",
+        is_active: true,
+      });
   }
 
-  // Create subscription record
-  const trialEndsAt = new Date();
-  trialEndsAt.setDate(trialEndsAt.getDate() + 14);
-
-  await supabase.from("subscriptions").insert({
-    tenant_id: tenant.id,
-    plan,
-    status: "trialing",
-    stripe_customer_id: stripeCustomerId,
-    stripe_sub_id: stripeSubscriptionId,
-    trial_ends_at: trialEndsAt.toISOString(),
-  });
-
+  // Link the auth user to this tenant. Without this, completeOnboarding
+  // looks at users.tenant_id, finds nothing, and creates a SECOND
+  // orphaned tenant — that's the bug Joey hit on 2026-04-28 where one
+  // signup produced two tenants and the user got linked to the wrong one.
+  if (userId) {
+    const { error: userLinkErr } = await supabase
+      .from("users")
+      .upsert(
+        {
+          id: userId,
+          tenant_id: tenantId,
+          email: customerEmail,
+          full_name: fullName || "Owner",
+          role: "owner",
+        },
+        { onConflict: "id" },
+      );
+    if (userLinkErr) {
+      logger.error("[stripe-webhook] failed to link user → tenant:", userLinkErr);
+    }
+  }
 }
 
 async function handleSubscriptionUpdated(
