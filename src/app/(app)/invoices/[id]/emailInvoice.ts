@@ -9,6 +9,7 @@ import { resend } from "@/lib/email/resend";
 import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
+import { decryptBankDetails } from "@/lib/tenant-banking";
 
 function fmtDate(d: string | null): string {
   if (!d) return "—";
@@ -80,7 +81,7 @@ export async function emailInvoice(
       supabase
         .from("tenants")
         .select(
-          "name, business_name, abn, logo_url, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer, tax_name, tax_rate, tax_inclusive, invoice_accent_color"
+          "name, business_name, abn, logo_url, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, bank_bsb_enc, bank_account_enc, invoice_footer, tax_name, tax_rate, tax_inclusive, invoice_accent_color"
         )
         .eq("id", userData.tenant_id)
         .single(),
@@ -149,6 +150,8 @@ export async function emailInvoice(
       ),
     }));
 
+    // W6-HIGH-13: BSB + bank account are encrypted at rest.
+    const bankDisplay = await decryptBankDetails(tenant ?? null);
     const tenantData = tenant
       ? {
           name: tenant.name ?? "",
@@ -161,9 +164,9 @@ export async function emailInvoice(
           suburb: tenant.suburb ?? null,
           state: tenant.state ?? null,
           postcode: tenant.postcode ?? null,
-          bank_name: tenant.bank_name ?? null,
-          bank_bsb: tenant.bank_bsb ?? null,
-          bank_account: tenant.bank_account ?? null,
+          bank_name: bankDisplay.bank_name,
+          bank_bsb: bankDisplay.bank_bsb,
+          bank_account: bankDisplay.bank_account,
           invoice_footer: tenant.invoice_footer ?? null,
           invoice_accent_color: tenant.invoice_accent_color ?? null,
         }

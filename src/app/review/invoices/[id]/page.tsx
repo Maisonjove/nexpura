@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import InvoiceDetailClient from "@/app/(app)/invoices/[id]/InvoiceDetailClient";
+import { decryptBankDetails } from "@/lib/tenant-banking";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const DEFAULT_ID = "2c6672d1-884e-4d96-accf-b8a88ab2e27e";
@@ -34,7 +35,7 @@ export default async function ReviewInvoiceDetailPage({
         .order("sort_order"),
       admin
         .from("tenants")
-        .select("name, slug, logo_url, brand_color, business_name, abn, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, invoice_footer")
+        .select("name, slug, logo_url, brand_color, business_name, abn, phone, email, address_line1, suburb, state, postcode, bank_name, bank_bsb, bank_account, bank_bsb_enc, bank_account_enc, invoice_footer")
         .eq("id", TENANT_ID)
         .single(),
       admin
@@ -82,14 +83,16 @@ export default async function ReviewInvoiceDetailPage({
     amount_due: amountDue,
   };
 
+  // W6-HIGH-13: BSB + bank account are encrypted at rest.
+  const bankDisplay = await decryptBankDetails(tenant ?? null);
   const normalizedTenant = tenant ? {
     name: tenant.name,
     business_name: tenant.business_name ?? tenant.name,
     abn: (tenant as { abn?: string | null }).abn ?? null,
     logo_url: tenant.logo_url,
-    bank_name: (tenant as { bank_name?: string | null }).bank_name ?? null,
-    bank_bsb: (tenant as { bank_bsb?: string | null }).bank_bsb ?? null,
-    bank_account: (tenant as { bank_account?: string | null }).bank_account ?? null,
+    bank_name: bankDisplay.bank_name,
+    bank_bsb: bankDisplay.bank_bsb,
+    bank_account: bankDisplay.bank_account,
     address_line1: (tenant as { address_line1?: string | null }).address_line1 ?? null,
     suburb: (tenant as { suburb?: string | null }).suburb ?? null,
     state: (tenant as { state?: string | null }).state ?? null,

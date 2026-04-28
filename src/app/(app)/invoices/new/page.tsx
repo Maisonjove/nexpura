@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import InvoiceForm from "../InvoiceForm";
 import { redirect } from "next/navigation";
+import { decryptBankDetails } from "@/lib/tenant-banking";
 
 export default async function NewInvoicePage({
     searchParams,
@@ -31,7 +32,7 @@ export default async function NewInvoicePage({
                   .order("full_name"),
                 supabase
                   .from("tenants")
-                  .select("name, slug, logo_url, tax_name, tax_rate, tax_inclusive, bank_name, bank_bsb, bank_account")
+                  .select("name, slug, logo_url, tax_name, tax_rate, tax_inclusive, bank_name, bank_bsb, bank_account, bank_bsb_enc, bank_account_enc")
                   .eq("id", tenantId ?? "")
                   .single(),
                 supabase
@@ -45,16 +46,17 @@ export default async function NewInvoicePage({
     const tenantTaxRate = tenant?.tax_rate ?? 0.1;
     const tenantTaxInclusive = tenant?.tax_inclusive ?? true;
 
-  // Normalize tenant to what InvoiceForm expects
+  // W6-HIGH-13: BSB + bank account are encrypted at rest.
+  const bankDisplay = await decryptBankDetails(tenant ?? null);
   const tenantSettings = {
         name: tenant?.name ?? null,
         business_name: tenant?.name ?? null,
         tax_name: tenantTaxName,
         tax_rate: tenantTaxRate,
         tax_inclusive: tenantTaxInclusive,
-        bank_name: tenant?.bank_name ?? null,
-        bank_bsb: tenant?.bank_bsb ?? null,
-        bank_account: tenant?.bank_account ?? null,
+        bank_name: bankDisplay.bank_name,
+        bank_bsb: bankDisplay.bank_bsb,
+        bank_account: bankDisplay.bank_account,
   };
 
   // Pre-fill existing if coming from a bespoke/repair/sale context
