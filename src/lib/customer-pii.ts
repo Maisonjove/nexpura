@@ -97,22 +97,27 @@ export async function decryptCustomerPiiList<T extends CustomerPiiRow>(rows: T[]
 
 /**
  * Build the row payload for a customer save. Encrypts all PII fields
- * into a single sealed bundle in pii_enc. For now also keeps writing
- * the plaintext fields so unconverted readers still work — the
- * follow-up PR flips this off.
+ * into a single sealed bundle in pii_enc and writes NULL into the
+ * plaintext mirror columns.
+ *
+ * Phase 3 (W6-HIGH-14): the plaintext mirror is now off — every
+ * server-side reader was converted in Phase 2 (#59) and the backfill
+ * sealed every existing row. Any reader still relying on the plain
+ * columns will silently see nulls; that's the trip-wire that surfaces
+ * a missed reader in QA.
  */
 export async function buildEncryptedCustomerPiiUpdate(input: Partial<CustomerPiiBundle>): Promise<{
   pii_enc: Sealed;
-  address_line1: string | null;
-  suburb: string | null;
-  state: string | null;
-  postcode: string | null;
-  country: string | null;
-  address: string | null;
-  notes: string | null;
-  ring_size: string | null;
-  preferred_metal: string | null;
-  preferred_stone: string | null;
+  address_line1: null;
+  suburb: null;
+  state: null;
+  postcode: null;
+  country: null;
+  address: null;
+  notes: null;
+  ring_size: null;
+  preferred_metal: null;
+  preferred_stone: null;
 }> {
   const bundle: CustomerPiiBundle = { ...emptyBundle() };
   for (const f of PII_FIELDS) {
@@ -120,5 +125,17 @@ export async function buildEncryptedCustomerPiiUpdate(input: Partial<CustomerPii
     bundle[f] = (v ?? null) as CustomerPiiBundle[typeof f];
   }
   const pii_enc = await encryptJson(bundle);
-  return { pii_enc, ...bundle };
+  return {
+    pii_enc,
+    address_line1: null,
+    suburb: null,
+    state: null,
+    postcode: null,
+    country: null,
+    address: null,
+    notes: null,
+    ring_size: null,
+    preferred_metal: null,
+    preferred_stone: null,
+  };
 }
