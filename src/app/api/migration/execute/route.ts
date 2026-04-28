@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { after } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -164,20 +163,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ jobId: job.id, success: true });
     }
 
-    // Dispatch the FIRST chunk via after() — fresh lambda, full
-    // 300s budget. The client gets { jobId, success: true } back
-    // immediately and starts polling /api/migration/job-status.
-    // Wrapped in after() so the fetch is allowed to complete after
-    // the HTTP response has been sent — otherwise Vercel may
-    // terminate the lambda before the request reaches the wire.
-    // dispatchNextChunk targets /api/migration/execute-chunk, which
-    // is exempted from the supabase middleware AAL2 gate and gates
-    // itself by the per-job internal_token (cookies rotate during
-    // multi-minute imports → forwarded session auth is unreliable
-    // lambda-to-lambda).
-    after(async () => {
-      await dispatchNextChunk(req, job.id, internalToken);
-    });
+    // Dispatch the FIRST chunk via fire-and-forget keepalive fetch
+    // (no after()). dispatchNextChunk's keepalive: true tells Node
+    // to keep the request alive even after this lambda terminates,
+    // so the next chunk's fresh lambda starts independently.
+    // Targets /api/migration/execute-chunk, which is exempted from
+    // the supabase middleware AAL2 gate and gates itself by the
+    // per-job internal_token (cookies rotate during multi-minute
+    // imports → forwarded session auth is unreliable lambda-to-
+    // lambda).
+    dispatchNextChunk(req, job.id, internalToken);
 
     return NextResponse.json({
       jobId: job.id,
