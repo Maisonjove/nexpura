@@ -14,14 +14,19 @@ import { requireAuth } from "@/lib/auth-context";
 import { buildEncryptedCustomerPiiUpdate, decryptCustomerPii } from "@/lib/customer-pii";
 
 /**
- * W6-HIGH-14: Take the customer-row payload and add `pii_enc` (an
- * AES-GCM-256 sealed bundle of the address + notes + preferences
- * fields). This PR keeps the plaintext columns alongside the
- * encrypted bundle so unconverted readers continue to work — a
- * follow-up PR flips the writer to stop writing plaintext once every
- * reader has been hooked through decryptCustomerPii().
+ * W6-HIGH-14: Take the customer-row payload and replace the PII fields
+ * with the encrypted bundle. Phase 3 of the rollout: plaintext PII
+ * columns are nulled on save (encrypted bundle in pii_enc is the
+ * source of truth). The whole `enc` object is spread back over `row`
+ * so its plaintext nulls overwrite whatever buildCustomerData put
+ * there — that's the actual kill-switch for at-rest plaintext.
+ *
+ * Hotfix (2026-04-28): pre-fix this function only spread `pii_enc`,
+ * so the plaintext fields from buildCustomerData were kept and the
+ * plaintext mirror columns continued to be populated on every save.
+ * Verified in prod via debug create after the Phase 3 PR merged.
  */
-async function withEncryptedPii<T extends Record<string, unknown>>(row: T): Promise<T & { pii_enc: unknown }> {
+async function withEncryptedPii<T extends Record<string, unknown>>(row: T): Promise<T> {
   const enc = await buildEncryptedCustomerPiiUpdate({
     address_line1: (row.address_line1 as string | null) ?? null,
     suburb: (row.suburb as string | null) ?? null,
@@ -34,7 +39,7 @@ async function withEncryptedPii<T extends Record<string, unknown>>(row: T): Prom
     preferred_metal: (row.preferred_metal as string | null) ?? null,
     preferred_stone: (row.preferred_stone as string | null) ?? null,
   });
-  return { ...row, pii_enc: enc.pii_enc };
+  return { ...row, ...enc } as unknown as T;
 }
 
 export type CustomerListRow = {
