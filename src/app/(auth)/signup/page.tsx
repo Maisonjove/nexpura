@@ -130,7 +130,7 @@ function SignupContent() {
       // completeOnboarding to run as the OLD user and redirect them to the wrong account.
       await supabase.auth.signOut();
 
-      const { error: authError } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -145,6 +145,12 @@ function SignupContent() {
         setLoading(false);
         return;
       }
+
+      // Capture user_id so the Stripe checkout session can carry it as
+      // metadata. The webhook uses it to link this user to the tenant
+      // it's about to create — without it, /onboarding creates a SECOND
+      // orphan tenant (the duplicate-tenant bug Joey hit 2026-04-28).
+      const userId = authData?.user?.id ?? null;
 
       // Per Joey 2026-04-26: trial is "card upfront, auto-charge on day 15"
       // — so we hand the user straight to Stripe Checkout. Stripe collects
@@ -161,6 +167,7 @@ function SignupContent() {
           subdomain,
           email,
           fullName,
+          userId,
         }),
       });
       const checkoutData = (await checkoutRes.json()) as { url?: string; error?: string };
