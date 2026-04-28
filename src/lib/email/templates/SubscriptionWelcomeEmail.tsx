@@ -52,7 +52,7 @@ export default function SubscriptionWelcomeEmail({
                               <td style={{ padding: '20px 24px' }}>
                                 <p style={{ margin: 0, fontSize: '11px', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: '600' }}>Free Trial Ends</p>
                                 <p style={{ margin: '6px 0 0', fontSize: '18px', fontWeight: '700', color: '#071A0D' }}>{trialDate}</p>
-                                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#4a5568' }}>No credit card required until then. Explore everything Nexpura has to offer.</p>
+                                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#4a5568' }}>You won&apos;t be charged during the trial. Cancel anytime before then to avoid being billed.</p>
                               </td>
                             </tr>
                           </tbody>
