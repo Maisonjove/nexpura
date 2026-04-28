@@ -8,73 +8,49 @@ import { createClient } from "@/lib/supabase/client";
 import { Check, X, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
 import { debounce } from "@/lib/utils";
 import PasswordStrength, { scorePassword } from "@/components/PasswordStrength";
+import { PLANS, SUPPORTED_CURRENCIES, type CurrencyCode } from "@/data/pricing";
+
+// Two-step wizard: Subdomain → Account.
+// The plan + currency picker lives on /pricing — that's where users come
+// from. We read the chosen plan + currency from the URL; if either is
+// missing we send the user back to /pricing instead of resurrecting an
+// out-of-date duplicate plan-picker here. (Joey 2026-04-28: the old
+// step-1 picker still showed hardcoded $89/$179/$299 AUD prices that
+// had since been replaced by the multi-currency tier on /pricing.)
 
 type Plan = "boutique" | "studio" | "atelier";
-
-interface PlanCard {
-  id: Plan;
-  name: string;
-  price: string;
-  features: string[];
-  recommended?: boolean;
-}
-
-const PLANS: PlanCard[] = [
-  {
-    id: "boutique",
-    name: "Boutique",
-    price: "$89",
-    features: [
-      "1 staff member",
-      "Customers & CRM",
-      "Repairs & Bespoke",
-      "Inventory Management",
-      "Invoicing & Payments",
-      "Digital Passports",
-    ],
-  },
-  {
-    id: "studio",
-    name: "Studio",
-    price: "$179",
-    features: [
-      "Up to 5 staff",
-      "Everything in Boutique",
-      "Website Builder",
-      "Full Analytics",
-      "Priority support",
-    ],
-    recommended: true,
-  },
-  {
-    id: "atelier",
-    name: "Atelier",
-    price: "$299",
-    features: [
-      "Unlimited staff & stores",
-      "Everything in Studio",
-      "AI Website Copy",
-      "Custom domain",
-      "White-label options",
-    ],
-  },
-];
-
-type Currency = "AUD" | "USD" | "GBP" | "EUR";
-const SUPPORTED: Currency[] = ["AUD", "USD", "GBP", "EUR"];
+const PLAN_IDS: Plan[] = ["boutique", "studio", "atelier"];
 
 function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const preselectedPlan = searchParams.get("plan") as Plan | null;
-  const preselectedCurrency = (searchParams.get("currency") || "").toUpperCase();
-  const initialCurrency: Currency = SUPPORTED.includes(preselectedCurrency as Currency)
-    ? (preselectedCurrency as Currency)
-    : "USD";
+  const planParam = searchParams.get("plan") as Plan | null;
+  const currencyParam = (searchParams.get("currency") || "").toUpperCase();
+
+  const validPlan = planParam && PLAN_IDS.includes(planParam) ? planParam : null;
+  const validCurrency: CurrencyCode | null = SUPPORTED_CURRENCIES.includes(
+    currencyParam as CurrencyCode,
+  )
+    ? (currencyParam as CurrencyCode)
+    : null;
+
+  // Send the user back to /pricing if they landed here without picking
+  // a plan + currency first. Anything else would mean making a fake
+  // default choice on their behalf.
+  useEffect(() => {
+    if (!validPlan || !validCurrency) {
+      router.replace("/pricing");
+    }
+  }, [validPlan, validCurrency, router]);
+
+  const selectedPlan = validPlan ?? "studio";
+  const selectedCurrency = validCurrency ?? "USD";
+
+  const planRow = PLANS.find((p) => p.id === selectedPlan);
+  const planLabel = planRow?.name ?? selectedPlan;
+  const planPrice = planRow?.pricing[selectedCurrency];
 
   const [step, setStep] = useState(1);
-  const [selectedPlan, setSelectedPlan] = useState<Plan>(preselectedPlan || "studio");
-  const [selectedCurrency] = useState<Currency>(initialCurrency);
 
   const [subdomain, setSubdomain] = useState("");
   const [subdomainStatus, setSubdomainStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
@@ -125,21 +101,16 @@ function SignupContent() {
     checkSubdomain(normalized);
   }, [subdomain, checkSubdomain]);
 
-  function handleSelectPlan(plan: Plan) {
-    setSelectedPlan(plan);
-    setStep(2);
-  }
-
   function handleSubdomainContinue() {
     if (subdomainStatus !== "available") return;
-    setStep(3);
+    setStep(2);
   }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     if (subdomainStatus !== "available") {
       setError("Please choose an available subdomain");
-      setStep(2);
+      setStep(1);
       return;
     }
 
@@ -206,7 +177,16 @@ function SignupContent() {
     }
   }
 
-  const planLabel = PLANS.find((p) => p.id === selectedPlan)?.name ?? selectedPlan;
+  // While the redirect to /pricing is in flight (URL missing plan/currency),
+  // show a brief spinner instead of flashing a half-formed wizard.
+  if (!validPlan || !validCurrency) {
+    return (
+      <div className="w-full max-w-md mx-auto text-center">
+        <div className="font-serif text-2xl tracking-[0.12em] text-stone-900 mb-6">NEXPURA</div>
+        <Loader2 size={32} className="text-stone-400 animate-spin mx-auto" />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -218,9 +198,9 @@ function SignupContent() {
         <p className="text-sm text-stone-400 mt-2">The modern platform for jewellers</p>
       </div>
 
-      {/* Progress indicator */}
+      {/* Progress indicator — 2 steps now (Subdomain → Account) */}
       <div className="flex items-center justify-center gap-0 mb-12">
-        {[1, 2, 3].map((s) => (
+        {[1, 2].map((s) => (
           <div key={s} className="flex items-center">
             <div className="flex flex-col items-center">
               <div
@@ -235,83 +215,16 @@ function SignupContent() {
                 {s < step ? <Check size={16} /> : s}
               </div>
               <span className={`mt-1.5 text-xs font-medium ${s === step ? "text-stone-900" : "text-stone-400"}`}>
-                {s === 1 ? "Plan" : s === 2 ? "Subdomain" : "Account"}
+                {s === 1 ? "Subdomain" : "Account"}
               </span>
             </div>
-            {s < 3 && <div className={`w-20 h-0.5 mb-5 mx-1 ${s < step ? "bg-stone-900" : "bg-stone-200"}`} />}
+            {s < 2 && <div className={`w-20 h-0.5 mb-5 mx-1 ${s < step ? "bg-stone-900" : "bg-stone-200"}`} />}
           </div>
         ))}
       </div>
 
-      {/* Step 1: Choose Plan */}
+      {/* Step 1: Choose Subdomain */}
       {step === 1 && (
-        <div>
-          <div className="text-center mb-10">
-            <h1 className="font-serif text-3xl text-stone-900 mb-3">Choose your plan</h1>
-            <p className="text-stone-400 text-sm">14-day free trial · Card required · Cancel anytime</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {PLANS.map((plan) => (
-              <div
-                key={plan.id}
-                className={`relative bg-white rounded-2xl border-2 transition-all hover:shadow-md cursor-pointer ${
-                  plan.recommended ? "border-stone-900 shadow-sm" : "border-stone-200 hover:border-stone-300"
-                } ${selectedPlan === plan.id ? "ring-2 ring-stone-900 ring-offset-2" : ""}`}
-                onClick={() => setSelectedPlan(plan.id)}
-              >
-                {plan.recommended && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-stone-900 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                      Most popular
-                    </span>
-                  </div>
-                )}
-                <div className="p-6">
-                  <div className="mb-4">
-                    <h3 className="font-serif text-xl text-stone-900 mb-1">{plan.name}</h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-stone-900">{plan.price}</span>
-                      <span className="text-stone-400 text-sm">AUD/mo</span>
-                    </div>
-                  </div>
-                  <ul className="space-y-2 mb-6">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm text-stone-600">
-                        <Check size={14} className="text-stone-900 flex-shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectPlan(plan.id);
-                    }}
-                    className={`w-full py-2.5 rounded-full font-semibold text-sm transition-all ${
-                      plan.recommended || selectedPlan === plan.id
-                        ? "bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] text-white shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]"
-                        : "bg-white border-2 border-stone-200 text-stone-700 hover:border-stone-300"
-                    }`}
-                  >
-                    Select {plan.name}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-center text-sm text-stone-400 mt-8">
-            Already have an account?{" "}
-            <Link href="/login" className="text-stone-900 hover:opacity-70 transition-opacity font-medium">
-              Sign in
-            </Link>
-          </p>
-        </div>
-      )}
-
-      {/* Step 2: Choose Subdomain */}
-      {step === 2 && (
         <div className="max-w-md mx-auto">
           <div className="text-center mb-10">
             <h1 className="font-serif text-3xl text-stone-900 mb-3">Choose your subdomain</h1>
@@ -357,11 +270,17 @@ function SignupContent() {
               </div>
             </div>
 
-            <div className="bg-stone-50 rounded-lg p-4 mb-6">
-              <p className="text-xs text-stone-500">
-                <strong>Selected plan:</strong> {planLabel} (${PLANS.find((p) => p.id === selectedPlan)?.price.replace("$", "")}/mo)
-              </p>
-            </div>
+            {planPrice && (
+              <div className="bg-stone-50 rounded-lg p-4 mb-6">
+                <p className="text-xs text-stone-500">
+                  <strong>Selected plan:</strong> {planLabel} ({planPrice.symbol}{planPrice.amount} {selectedCurrency}/mo)
+                </p>
+                <p className="text-xs text-stone-400 mt-1">
+                  Want a different plan?{" "}
+                  <Link href="/pricing" className="underline hover:text-stone-700">Go back to pricing</Link>
+                </p>
+              </div>
+            )}
 
             <button
               onClick={handleSubdomainContinue}
@@ -371,20 +290,19 @@ function SignupContent() {
               Continue
               <ArrowRight size={16} />
             </button>
-
-            <button
-              onClick={() => setStep(1)}
-              className="w-full mt-4 text-sm text-stone-400 hover:text-stone-600 transition-colors flex items-center justify-center gap-1"
-            >
-              <ArrowLeft size={14} />
-              Back to plans
-            </button>
           </div>
+
+          <p className="text-center text-sm text-stone-400 mt-8">
+            Already have an account?{" "}
+            <Link href="/login" className="text-stone-900 hover:opacity-70 transition-opacity font-medium">
+              Sign in
+            </Link>
+          </p>
         </div>
       )}
 
-      {/* Step 3: Create Account */}
-      {step === 3 && (
+      {/* Step 2: Create Account */}
+      {step === 2 && (
         <div className="max-w-md mx-auto">
           <div className="text-center mb-10">
             <h1 className="font-serif text-3xl text-stone-900 mb-3">Create your account</h1>
@@ -395,6 +313,7 @@ function SignupContent() {
             <div className="bg-stone-50 border border-stone-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-stone-700">
                 <strong>{subdomain}.nexpura.com</strong> on the <strong>{planLabel}</strong> plan
+                {planPrice && ` · ${planPrice.symbol}${planPrice.amount} ${selectedCurrency}/mo after the 14-day trial`}
               </p>
             </div>
 
@@ -478,7 +397,7 @@ function SignupContent() {
             </p>
 
             <button
-              onClick={() => setStep(2)}
+              onClick={() => setStep(1)}
               className="w-full mt-6 text-sm text-stone-400 hover:text-stone-600 transition-colors flex items-center justify-center gap-1"
             >
               <ArrowLeft size={14} />
