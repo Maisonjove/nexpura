@@ -97,10 +97,10 @@ export async function GET(req: NextRequest) {
 
     // Store campaign analytics in DB for historical tracking
     const admin = createAdminClient();
-    
+
     for (const campaign of campaigns) {
       if (!campaign.report_summary) continue;
-      
+
       const analyticsData = {
         tenant_id: tenantId,
         mailchimp_campaign_id: campaign.id,
@@ -124,6 +124,43 @@ export async function GET(req: NextRequest) {
         analyticsData,
         { onConflict: "tenant_id,mailchimp_campaign_id", ignoreDuplicates: false }
       );
+
+      // Sync individual unsubscribes back to customers.email_opted_out.
+      // Without this a customer who unsubs via Mailchimp keeps receiving
+      // our other channels (WhatsApp, transactional email, etc.) — a
+      // direct compliance miss (CAN-SPAM, GDPR honour-the-unsubscribe).
+      // Best-effort: log + continue if Mailchimp errors, since the
+      // analytics record already landed and we don't want to fail the
+      // whole sync over a single endpoint hiccup.
+      if ((campaign.report_summary.unsubscribes ?? 0) > 0) {
+        try {
+          const unsubData = await mailchimpFetch(
+            api_key,
+            serverPrefix,
+            `/reports/${campaign.id}/unsubscribed?count=1000&fields=unsubscribes.email_address`,
+          );
+          const unsubEmails: string[] = (unsubData?.unsubscribes ?? [])
+            .map((u: { email_address?: string }) => u.email_address)
+            .filter((e: unknown): e is string => typeof e === "string" && e.length > 0)
+            .map((e: string) => e.toLowerCase());
+
+          if (unsubEmails.length > 0) {
+            await admin
+              .from("customers")
+              .update({
+                email_opted_out: true,
+                email_opted_out_at: new Date().toISOString(),
+              })
+              .eq("tenant_id", tenantId)
+              .in("email", unsubEmails);
+          }
+        } catch (e) {
+          logger.error("[mailchimp/campaigns] unsubscribe sync failed for campaign", {
+            campaignId: campaign.id,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
     }
 
     // Update last sync time
