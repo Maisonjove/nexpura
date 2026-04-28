@@ -190,6 +190,13 @@ function isAlwaysPublicApiPath(pathname: string): boolean {
     // unauthenticated visitors. Rate-limited per IP via the "ai" bucket
     // (see src/app/api/ai/landing-copilot/route.ts).
     pathname.startsWith("/api/ai/landing-copilot") ||
+    // Subdomain availability — called from the unauth /signup wizard's
+    // step 2. Without this exemption the AAL2 enforcement returns 401
+    // and the "Continue" button never enables, blocking every signup.
+    // The dedicated fix on branch fix/qa-005-check-subdomain-public
+    // (commit 1e4b851) was opened as PR #40 but never merged to main;
+    // re-applying here so prod signup actually works.
+    pathname.startsWith("/api/check-subdomain") ||
     // Stripe checkout (signup-time, no session yet)
     pathname.startsWith("/api/stripe") ||
     // Health + sandbox introspection
