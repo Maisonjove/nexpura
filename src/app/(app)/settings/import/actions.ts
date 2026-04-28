@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { requireRole } from "@/lib/auth-context";
 import { buildCsv } from "@/lib/csv/escape";
-import { decryptCustomerPiiList } from "@/lib/customer-pii";
+import { decryptCustomerPiiList, buildEncryptedCustomerPiiUpdate } from "@/lib/customer-pii";
 
 // ──────────────────────────────────────────────────────────
 // Auth helper
@@ -239,19 +239,27 @@ export async function importCustomers(rows: CustomerRow[]): Promise<ImportResult
           continue;
         }
 
+        // W6-HIGH-14 phase 3: PII fields go through buildEncrypted... so
+        // they land in pii_enc and the plaintext mirror columns are
+        // null. Non-PII fields (full_name, email, phone, mobile,
+        // birthday, is_vip) stay plaintext per the deferred-fields
+        // policy.
+        const piiUpdate = await buildEncryptedCustomerPiiUpdate({
+          address: r.address?.trim() || null,
+          ring_size: r.ring_size?.trim() || null,
+          preferred_metal: r.preferred_metal?.trim() || null,
+          preferred_stone: r.preferred_stone?.trim() || null,
+          notes: r.notes?.trim() || null,
+        });
         const record: Record<string, unknown> = {
           tenant_id: tenantId,
           full_name: fullName,
           email: r.email?.trim() || null,
           phone: r.phone?.trim() || null,
           mobile: r.mobile?.trim() || null,
-          address: r.address?.trim() || null,
           birthday: r.birthday?.trim() || null,
-          ring_size: r.ring_size?.trim() || null,
           is_vip: r.is_vip === "true" || r.is_vip === true || r.is_vip === "yes" || r.is_vip === "1",
-          preferred_metal: r.preferred_metal?.trim() || null,
-          preferred_stone: r.preferred_stone?.trim() || null,
-          notes: r.notes?.trim() || null,
+          ...piiUpdate,
         };
 
         // Upsert on email if provided
