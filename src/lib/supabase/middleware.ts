@@ -199,6 +199,15 @@ function isAlwaysPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/check-subdomain") ||
     // Stripe checkout (signup-time, no session yet)
     pathname.startsWith("/api/stripe") ||
+    // Migration chunk-continue runs server-to-server lambda → lambda
+    // during a multi-minute import. Auth is via the per-job
+    // internal_token persisted on migration_jobs (validated inside
+    // the route handler), NOT via session cookies — cookies rotate
+    // during the import and forwarding them between lambdas would
+    // get the chain 401'd by this AAL2 gate mid-way through. CSRF
+    // is still enforced by the global middleware via Origin/Referer,
+    // which dispatchNextChunk sets correctly.
+    pathname.startsWith("/api/migration/execute-chunk") ||
     // Health + sandbox introspection
     pathname.startsWith("/api/health") ||
     // Demo session route (returns 410 — see api/demo/session/route.ts)
