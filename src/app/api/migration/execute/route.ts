@@ -6,7 +6,7 @@ import {
   parseCSVFull, parseXLSXFull, applyMappings, buildDefaultMappings,
   importCustomer, importInventory, importRepair, importBespokeJob,
   importSupplier, importInvoice, importPayment,
-  findDuplicateCustomer,
+  findDuplicateCustomer, normaliseMappingEntry,
   CUSTOMER_DEFAULT_MAPPINGS, INVENTORY_DEFAULT_MAPPINGS,
   REPAIR_DEFAULT_MAPPINGS, BESPOKE_DEFAULT_MAPPINGS,
   SUPPLIER_DEFAULT_MAPPINGS, INVOICE_DEFAULT_MAPPINGS, PAYMENT_DEFAULT_MAPPINGS,
@@ -96,7 +96,16 @@ async function parseFileFromStorage(
 
 function getMappingsForFile(file: MigrationFile): MappingEntry[] {
   const storedMappings = file.migration_mappings?.[0]?.mappings;
-  if (storedMappings && storedMappings.length > 0) return storedMappings;
+  if (storedMappings && storedMappings.length > 0) {
+    // The classify endpoint persists mappings with snake_case keys
+    // (source_col / destination_field), but the engine's MappingEntry
+    // is camelCase. normaliseMappingEntry handles either casing so
+    // post-classify mappings don't throw on
+    // m.sourceColumn.toLowerCase() in applyMappings.
+    return storedMappings
+      .map((m) => normaliseMappingEntry(m))
+      .filter((m): m is MappingEntry => m !== null);
+  }
   const headers = file.column_headers ?? [];
   const entity = (file.detected_entity ?? 'unknown') as EntityType;
   if (entity === 'customers') return buildDefaultMappings(headers, CUSTOMER_DEFAULT_MAPPINGS);
