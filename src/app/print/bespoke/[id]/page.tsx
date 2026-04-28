@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
+import { decryptCustomerPii } from "@/lib/customer-pii";
 
 export default function PrintBespokePageWrapper(props: { params: Promise<{ id: string }> }) {
   return (
@@ -58,7 +59,7 @@ async function PrintBespokePage({
 
   const { data: job } = await admin
     .from("bespoke_jobs")
-    .select("*, customers(id, full_name, email, mobile, address_line1, suburb, state, postcode)")
+    .select("*, customers(id, full_name, email, mobile, address_line1, suburb, state, postcode, pii_enc)")
     .eq("id", id)
     .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
     .single();
@@ -78,7 +79,9 @@ async function PrintBespokePage({
     throw e;
   }
 
-  const customer = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
+  const customerJoin = Array.isArray(job.customers) ? job.customers[0] ?? null : job.customers;
+  // W6-HIGH-14: decrypt PII bundle before reading address fields.
+  const customer = customerJoin ? await decryptCustomerPii(customerJoin) : null;
 
   let invoice = null;
   let lineItems: { description: string; quantity: number; unit_price: number }[] = [];

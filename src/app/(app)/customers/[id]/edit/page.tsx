@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import Link from "next/link";
 import CustomerForm from "../../CustomerForm";
+import { decryptCustomerPii } from "@/lib/customer-pii";
 
 export default async function EditCustomerPage({
   params,
@@ -18,7 +19,7 @@ export default async function EditCustomerPage({
   const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
   if (!tenantId) redirect("/login");
 
-  const { data: customer } = await supabase
+  const { data: customerRaw } = await supabase
     .from("customers")
     .select("*")
     .eq("id", id)
@@ -26,7 +27,12 @@ export default async function EditCustomerPage({
     .is("deleted_at", null)
     .single();
 
-  if (!customer) notFound();
+  if (!customerRaw) notFound();
+
+  // W6-HIGH-14: decrypt PII bundle so the edit form pre-fills with
+  // the real address / notes / preferences instead of stale plaintext
+  // (or, post-Phase-3, instead of nulls).
+  const customer = await decryptCustomerPii(customerRaw);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

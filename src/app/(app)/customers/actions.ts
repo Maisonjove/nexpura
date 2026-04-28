@@ -11,7 +11,7 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { customerCreateSchema } from "@/lib/schemas/customers";
 import { requireAuth } from "@/lib/auth-context";
-import { buildEncryptedCustomerPiiUpdate } from "@/lib/customer-pii";
+import { buildEncryptedCustomerPiiUpdate, decryptCustomerPii } from "@/lib/customer-pii";
 
 /**
  * W6-HIGH-14: Take the customer-row payload and add `pii_enc` (an
@@ -407,13 +407,19 @@ export async function addCustomerNote(
     const tenantId = await getTenantId().catch(() => null);
     if (!tenantId) return { error: "Not authenticated" };
 
-    // Fetch existing notes
-    const { data: existing } = await supabase
+    // W6-HIGH-14: addCustomerNote is the only PII partial-update path —
+    // we must decrypt the existing bundle, append the new note line,
+    // and reseal the entire bundle (otherwise pii_enc drifts from the
+    // plaintext mirror and once the writer-flip PR lands, notes are
+    // lost on append).
+    const { data: existingRaw } = await supabase
       .from("customers")
-      .select("notes")
+      .select("address_line1, suburb, state, postcode, country, address, notes, ring_size, preferred_metal, preferred_stone, pii_enc")
       .eq("id", customerId)
       .eq("tenant_id", tenantId)
       .single();
+
+    const existing = existingRaw ? await decryptCustomerPii(existingRaw) : null;
 
     const timestamp = new Date().toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" });
     const newNote = `[${timestamp}] ${note}`;
@@ -421,9 +427,22 @@ export async function addCustomerNote(
       ? `${existing.notes}\n\n${newNote}`
       : newNote;
 
+    const reseal = await buildEncryptedCustomerPiiUpdate({
+      address_line1: existing?.address_line1 ?? null,
+      suburb: existing?.suburb ?? null,
+      state: existing?.state ?? null,
+      postcode: existing?.postcode ?? null,
+      country: existing?.country ?? null,
+      address: existing?.address ?? null,
+      notes: updatedNotes,
+      ring_size: existing?.ring_size ?? null,
+      preferred_metal: existing?.preferred_metal ?? null,
+      preferred_stone: existing?.preferred_stone ?? null,
+    });
+
     const { error } = await supabase
       .from("customers")
-      .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
+      .update({ ...reseal, updated_at: new Date().toISOString() })
       .eq("id", customerId)
       .eq("tenant_id", tenantId);
 

@@ -8,6 +8,7 @@ import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 import { escapeHtml } from "@/lib/sanitize";
+import { decryptCustomerPii } from "@/lib/customer-pii";
 
 export async function POST(
   _req: NextRequest,
@@ -56,7 +57,7 @@ export async function POST(
        repair_type, work_description,
        priority, stage, quoted_price, final_price, deposit_amount, deposit_paid,
        due_date, collected_at, internal_notes, client_notes, created_at,
-       customers(full_name, email, phone, address)`
+       customers(full_name, email, phone, address, pii_enc)`
     )
     .eq("id", id)
     .eq("tenant_id", userData.tenant_id)
@@ -78,7 +79,9 @@ export async function POST(
     throw e;
   }
 
-  const customerRaw = Array.isArray(repair.customers) ? repair.customers[0] : repair.customers;
+  const customerJoin = Array.isArray(repair.customers) ? repair.customers[0] : repair.customers;
+  // W6-HIGH-14: decrypt PII bundle before reading address.
+  const customerRaw = customerJoin ? await decryptCustomerPii(customerJoin) : null;
   const recipientEmail = customerRaw?.email ?? repair.customer_email;
 
   if (!recipientEmail)

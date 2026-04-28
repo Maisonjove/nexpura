@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import CustomerDetailClient from "@/app/(app)/customers/[id]/CustomerDetailClient";
+import { decryptCustomerPii } from "@/lib/customer-pii";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const DEFAULT_ID = "fdc45e28-9c50-4c0c-8d5b-796a39ec0f0a";
@@ -13,13 +14,16 @@ export default async function ReviewCustomerDetailPage({
   const id = rawId || DEFAULT_ID;
   const admin = createAdminClient();
 
-  const { data: customer } = await admin
+  const { data: customerRaw } = await admin
     .from("customers")
     .select("*")
     .eq("id", id)
     .eq("tenant_id", TENANT_ID)
     .is("deleted_at", null)
     .single();
+
+  // W6-HIGH-14: decrypt PII bundle for the review sandbox display.
+  const customer = customerRaw ? await decryptCustomerPii(customerRaw) : null;
 
   if (!customer) {
     return (

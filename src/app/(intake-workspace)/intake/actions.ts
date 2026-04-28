@@ -10,6 +10,7 @@ import logger from "@/lib/logger";
 import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/active-location";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { ilikeOrValue, eqOrValue } from "@/lib/db/or-escape";
+import { decryptCustomerPiiList } from "@/lib/customer-pii";
 
 // Intake inserts (repair / bespoke / sale) all go through the shared
 // resolveLocationForCreate policy: cookie → single-location auto →
@@ -113,7 +114,7 @@ export async function searchCustomers(query: string): Promise<{ data?: CustomerS
 
     const { data, error } = await supabase
       .from("customers")
-      .select("id, full_name, first_name, last_name, email, mobile, phone, notes")
+      .select("id, full_name, first_name, last_name, email, mobile, phone, notes, pii_enc")
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
       .or(`full_name.${ilikeVal},email.${ilikeVal},mobile.${ilikeVal},phone.${ilikeVal}`)
@@ -121,7 +122,9 @@ export async function searchCustomers(query: string): Promise<{ data?: CustomerS
       .limit(10);
 
     if (error) return { error: error.message };
-    return { data: data ?? [] };
+    // W6-HIGH-14: decrypt PII bundle before returning notes downstream.
+    const decrypted = await decryptCustomerPiiList(data ?? []);
+    return { data: decrypted };
   } catch (err) {
     logger.error("[searchCustomers] Error:", err);
     return { error: err instanceof Error ? err.message : "Search failed" };

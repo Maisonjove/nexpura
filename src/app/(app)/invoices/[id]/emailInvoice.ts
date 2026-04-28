@@ -10,6 +10,7 @@ import React, { type JSXElementConstructor, type ReactElement } from "react";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 import { decryptBankDetails } from "@/lib/tenant-banking";
+import { decryptCustomerPii } from "@/lib/customer-pii";
 
 function fmtDate(d: string | null): string {
   if (!d) return "—";
@@ -66,7 +67,7 @@ export async function emailInvoice(
            subtotal, tax_amount, discount_amount, total, paid_at,
            tax_name, tax_rate, tax_inclusive, notes, footer_text,
            customer_id,
-           customers(full_name, email, phone, address)`
+           customers(full_name, email, phone, address, pii_enc)`
         )
         .eq("id", invoiceId)
         .eq("tenant_id", userData.tenant_id)
@@ -96,9 +97,12 @@ export async function emailInvoice(
     const lineItemsRaw = lineItemsResult.data ?? [];
 
     // Get customer
-    const customerRaw = Array.isArray(invoice.customers)
+    const customerJoin = Array.isArray(invoice.customers)
       ? (invoice.customers[0] ?? null)
       : invoice.customers;
+
+    // W6-HIGH-14: decrypt PII bundle before reading address.
+    const customerRaw = customerJoin ? await decryptCustomerPii(customerJoin) : null;
 
     // Check customer email
     const customerEmail = customerRaw?.email ?? null;

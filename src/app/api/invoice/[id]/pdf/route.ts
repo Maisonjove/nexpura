@@ -9,6 +9,7 @@ import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 import { decryptBankDetails } from "@/lib/tenant-banking";
+import { decryptCustomerPii } from "@/lib/customer-pii";
 
 export async function GET(
   request: NextRequest,
@@ -55,7 +56,7 @@ export async function GET(
       `id, invoice_number, status, invoice_date, due_date, location_id,
        subtotal, tax_amount, discount_amount, total, paid_at, amount_paid,
        tax_name, tax_rate, tax_inclusive, notes, footer_text, layout,
-       customers(full_name, email, phone, address)`
+       customers(full_name, email, phone, address, pii_enc)`
     )
     .eq("id", id)
     .eq("tenant_id", userData.tenant_id)
@@ -114,9 +115,11 @@ export async function GET(
   const paperWidth = (printerConfig?.paper_width as string) || "80mm";
 
   // Build typed invoice data
-  const customerRaw = Array.isArray(invoice.customers)
+  const customerJoin = Array.isArray(invoice.customers)
     ? (invoice.customers[0] ?? null)
     : invoice.customers;
+  // W6-HIGH-14: decrypt PII bundle before reading address.
+  const customerRaw = customerJoin ? await decryptCustomerPii(customerJoin) : null;
 
   const invoiceData = {
     id: invoice.id,
