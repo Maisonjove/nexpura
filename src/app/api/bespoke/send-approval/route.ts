@@ -5,11 +5,32 @@ import { randomUUID } from "crypto";
 import logger from "@/lib/logger";
 import { getAuthContext } from "@/lib/auth-context";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext();
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Audit follow-up (2026-04-28): every send hits Resend, which is
+  // metered + paid. Without this an authed staff member (or a hijacked
+  // session) could spam the "Send approval" button and burn through
+  // the email budget. Three layered keys mirror /api/copilot/chat:
+  // IP keeps a single attacker on a single network bounded; per-user
+  // keeps a rogue staffer on a hot-spotted phone bounded; per-tenant
+  // caps the whole jeweller's bill on a busy day.
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const [ipRl, userRl, tenantRl] = await Promise.all([
+    checkRateLimit(ip, "heavy"),
+    checkRateLimit(`bespoke-approval:user:${auth.userId}`, "heavy"),
+    checkRateLimit(`bespoke-approval:tenant:${auth.tenantId}`, "heavy"),
+  ]);
+  if (!ipRl.success || !userRl.success || !tenantRl.success) {
+    return NextResponse.json(
+      { error: "Too many approval emails — wait a minute and try again." },
+      { status: 429 },
+    );
   }
 
   const body = await req.json();
