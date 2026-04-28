@@ -103,6 +103,48 @@ export async function completeOnboarding(
 
     const adminClient = createAdminClient();
 
+    // Defense against the webhook ↔ onboarding race:
+    // The Stripe webhook is what creates the user→tenant link in
+    // public.users (PR #46). Webhooks usually fire within seconds, but
+    // if Stripe retries due to a transient error, or if the user verifies
+    // their email faster than usual, we could reach this point with
+    // public.users.tenant_id still NULL while the matching tenant
+    // already exists in the DB.
+    //
+    // Look up by email match against tenants.email (also written by the
+    // webhook). If found, link the user to that tenant instead of
+    // creating a duplicate — the duplicate-tenant bug Joey hit on
+    // 2026-04-28 was exactly this race materialising the wrong way.
+    if (user.email) {
+      const { data: stripePaidTenant } = await adminClient
+        .from("tenants")
+        .select("id, slug")
+        .eq("email", user.email)
+        .not("stripe_customer_id", "is", null)
+        .maybeSingle();
+
+      if (stripePaidTenant?.id) {
+        // Link the user to the existing Stripe-paid tenant + update its
+        // business name/type from this onboarding submission.
+        await adminClient.from("users").upsert(
+          {
+            id: user.id,
+            tenant_id: stripePaidTenant.id,
+            email: user.email,
+            full_name: sanitizedName.slice(0, 100),
+            role: "owner",
+          },
+          { onConflict: "id" },
+        );
+        await adminClient
+          .from("tenants")
+          .update({ name: sanitizedName, business_type: sanitizedType })
+          .eq("id", stripePaidTenant.id);
+        await invalidateUserCache(user.id);
+        return { slug: stripePaidTenant.slug ?? "" };
+      }
+    }
+
     // Generate unique slug
     let slug = slugify(sanitizedName);
     if (!slug) slug = "business";
