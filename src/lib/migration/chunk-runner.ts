@@ -558,10 +558,8 @@ async function runChunk(
     await admin.from('migration_jobs').update({
       current_file_index: job.current_file_index + 1,
       current_row_offset: 0,
+      chunk_claim_until: null,
     }).eq('id', jobId);
-    // dispatchNextChunk removed: the cron is the sole chunk driver.
-    // After updated_at goes stale (>30s) the next cron tick claims
-    // and runs the next chunk via FOR UPDATE SKIP LOCKED RPC.
     return;
   }
 
@@ -638,6 +636,8 @@ async function runChunk(
       error_count: acc.errors,
       skipped_count: acc.skipped,
       results_summary: updatedSummary,
+      // Clear the long-held cron claim — see same comment below.
+      chunk_claim_until: null,
     }).eq('id', jobId);
 
     if (job.current_file_index + 1 < sortedFiles.length) {
@@ -663,9 +663,11 @@ async function runChunk(
     error_count: acc.errors,
     skipped_count: acc.skipped,
     results_summary: updatedSummary,
+    // Clear the long-held cron claim so the next cron tick can
+    // immediately pick up this job (instead of waiting up to 5min
+    // for chunk_claim_until to expire).
+    chunk_claim_until: null,
   }).eq('id', jobId);
-
-  dispatchNextChunk(req, jobId, internalToken);
 }
 
 export async function finaliseJob(
