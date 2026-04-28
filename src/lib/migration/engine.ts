@@ -218,6 +218,28 @@ function matchPattern(pattern: string, tokens: string): boolean {
   return ` ${tokens} `.includes(` ${np} `);
 }
 
+/**
+ * Normalise a stored mapping row into the engine's MappingEntry
+ * shape. Pre-fix the classify endpoint persisted mappings with
+ * snake_case keys (`source_col` / `destination_field`) and the engine
+ * read them with camelCase (`sourceColumn` / `destinationField`),
+ * which threw "Cannot read properties of undefined (reading
+ * 'toLowerCase')" on every row of a classified import. This shim
+ * accepts either casing without forcing a DB rewrite.
+ */
+export function normaliseMappingEntry(m: unknown): MappingEntry | null {
+  if (!m || typeof m !== 'object') return null;
+  const r = m as Record<string, unknown>;
+  const sourceColumn = (r.sourceColumn ?? r.source_col) as string | undefined;
+  const destinationField = (r.destinationField ?? r.destination_field) as string | undefined;
+  if (!sourceColumn || !destinationField) return null;
+  return {
+    sourceColumn,
+    destinationField,
+    transformation: ((r.transformation ?? null) as string | undefined) || undefined,
+  };
+}
+
 /** Build a mapping config from default patterns for a given set of source headers */
 export function buildDefaultMappings(headers: string[], patterns: PatternMap[]): MappingEntry[] {
   const result: MappingEntry[] = [];
@@ -337,6 +359,7 @@ export function applyMappings(
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const m of mappings) {
+    if (!m || !m.sourceColumn || !m.destinationField) continue;
     const rawVal = sourceRow[m.sourceColumn] ?? sourceRow[m.sourceColumn.toLowerCase()] ?? null;
     if (rawVal === null || rawVal === undefined || rawVal === '') continue;
     result[m.destinationField] = normalizeValue(rawVal, m.destinationField, m.transformation);
