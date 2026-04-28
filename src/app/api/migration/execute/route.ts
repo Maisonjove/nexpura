@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { checkRateLimit } from '@/lib/rate-limit';
 import {
-  dispatchNextChunk,
   entitySortKey,
   type MigrationFile,
   type MigrationSession,
@@ -163,17 +162,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ jobId: job.id, success: true });
     }
 
-    // Dispatch the FIRST chunk via fire-and-forget keepalive fetch
-    // (no after()). dispatchNextChunk's keepalive: true tells Node
-    // to keep the request alive even after this lambda terminates,
-    // so the next chunk's fresh lambda starts independently.
-    // Targets /api/migration/execute-chunk, which is exempted from
-    // the supabase middleware AAL2 gate and gates itself by the
-    // per-job internal_token (cookies rotate during multi-minute
-    // imports → forwarded session auth is unreliable lambda-to-
-    // lambda).
-    dispatchNextChunk(req, job.id, internalToken);
-
+    // No in-process dispatch. The cron at /api/cron/migration-chunk-
+    // runner picks up the job on its next tick (≤60s). Pre-fix the
+    // first-call dispatched the first chunk synchronously, but the
+    // in-process pattern raced with the cron and produced duplicate
+    // rows on the 10k test (10000 distinct emails, 14162 rows).
+    // Cron is now the sole driver, gated by an atomic claim_migration
+    // _chunk RPC using FOR UPDATE SKIP LOCKED.
     return NextResponse.json({
       jobId: job.id,
       success: true,

@@ -559,7 +559,9 @@ async function runChunk(
       current_file_index: job.current_file_index + 1,
       current_row_offset: 0,
     }).eq('id', jobId);
-    dispatchNextChunk(req, jobId, internalToken);
+    // dispatchNextChunk removed: the cron is the sole chunk driver.
+    // After updated_at goes stale (>30s) the next cron tick claims
+    // and runs the next chunk via FOR UPDATE SKIP LOCKED RPC.
     return;
   }
 
@@ -639,7 +641,9 @@ async function runChunk(
     }).eq('id', jobId);
 
     if (job.current_file_index + 1 < sortedFiles.length) {
-      dispatchNextChunk(req, jobId, internalToken);
+      // dispatchNextChunk removed: the cron is the sole chunk driver.
+    // After updated_at goes stale (>30s) the next cron tick claims
+    // and runs the next chunk via FOR UPDATE SKIP LOCKED RPC.
       return;
     }
     const { data: refreshed } = await admin

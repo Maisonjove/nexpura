@@ -41,32 +41,25 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Find the oldest 'running' job whose updated_at is stale. Stale
-  // window: 30s. A chunk that's actively being processed updates
-  // migration_jobs every ~30s during its run (each batch insert of
-  // job_records triggers an update), so a truly running chunk
-  // should refresh updated_at within that window.
-  const staleCutoff = new Date(Date.now() - 30_000).toISOString();
-  const { data: candidates, error } = await admin
-    .from('migration_jobs')
-    .select('id, internal_token, tenant_id, session_id, current_file_index, current_row_offset')
-    .eq('status', 'running')
-    .lt('updated_at', staleCutoff)
-    .order('started_at', { ascending: true })
-    .limit(1);
-
-  if (error) {
-    logger.error('[cron migration-chunk-runner] candidate query failed', { error });
-    return NextResponse.json({ error: 'query failed' }, { status: 500 });
+  // Atomically claim the oldest stale 'running' job via the RPC,
+  // which uses FOR UPDATE SKIP LOCKED inside a CTE so concurrent
+  // crons can never read the same row. Pre-fix the cron used a
+  // plain SELECT + ordering, which raced with the in-process
+  // dispatchNextChunk and produced 4162 duplicate customer rows
+  // on the first 10k test (10000 distinct emails, 14162 rows).
+  const { data: claimed, error: claimErr } = await admin.rpc('claim_migration_chunk', {
+    p_stale_window_seconds: 30,
+  });
+  if (claimErr) {
+    logger.error('[cron migration-chunk-runner] claim_migration_chunk failed', { error: claimErr });
+    return NextResponse.json({ error: 'claim failed' }, { status: 500 });
   }
-
-  const job = candidates?.[0];
-  if (!job) {
+  const job = claimed as { id: string; internal_token: string | null } | null;
+  if (!job || !job.id) {
     return NextResponse.json({ ok: true, picked: 0 });
   }
-
   if (!job.internal_token) {
-    logger.warn('[cron migration-chunk-runner] job missing internal_token', { jobId: job.id });
+    logger.warn('[cron migration-chunk-runner] claimed job missing internal_token', { jobId: job.id });
     return NextResponse.json({ ok: false, error: 'job missing internal_token', jobId: job.id });
   }
 
