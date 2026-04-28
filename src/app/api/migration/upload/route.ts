@@ -212,11 +212,28 @@ export async function POST(req: NextRequest) {
 
     if (dbError) throw dbError;
 
-    // Trigger AI classification asynchronously
+    // Trigger AI classification asynchronously. Audit fix: this
+    // server-to-server fetch hit the CSRF middleware (which checks
+    // origin/referer for /api/** mutating requests) — Node fetch
+    // doesn't auto-set Origin, so the middleware 403'd silently and
+    // the file landed in the DB with detected_entity=null forever.
+    // Result: AI auto-classify was effectively dead in prod for any
+    // jeweller migrating a non-trivial file.
+    //
+    // Fix: explicitly pass Origin matching this deployment so the
+    // CSRF check passes, and surface the failure path with a logger
+    // call instead of swallowing silently — so a future regression
+    // on the classify API surfaces in Vercel logs.
     try {
-      const classifyRes = await fetch(`${req.nextUrl.origin}/api/migration/classify`, {
+      const origin = req.nextUrl.origin;
+      const classifyRes = await fetch(`${origin}/api/migration/classify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': req.headers.get('cookie') || '' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': req.headers.get('cookie') || '',
+          'Origin': origin,
+          'Referer': `${origin}/`,
+        },
         body: JSON.stringify({
           fileId: (fileRecord as { id: string }).id,
           fileName: file.name,
@@ -230,8 +247,15 @@ export async function POST(req: NextRequest) {
         const classifyData = await classifyRes.json();
         return NextResponse.json({ file: { ...(fileRecord as object), ...classifyData }, success: true });
       }
-    } catch {
-      // Classification failed gracefully — file still uploaded
+      logger.warn('[migration-upload] internal classify call returned non-OK', {
+        status: classifyRes.status,
+        fileId: (fileRecord as { id: string }).id,
+      });
+    } catch (err) {
+      logger.error('[migration-upload] internal classify call threw', {
+        error: err instanceof Error ? err.message : String(err),
+        fileId: (fileRecord as { id: string }).id,
+      });
     }
 
     return NextResponse.json({ file: fileRecord, success: true });
