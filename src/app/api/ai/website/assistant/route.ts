@@ -783,7 +783,13 @@ ${JSON.stringify(draft)}
 
 When the user names something descriptively ("the testimonials section", "the homepage", "the engagement rings page"), match by slug/title/section_type from the draft above and use the real uuid.
 
-If the request is vague, do at most one safe edit and explain what you did. If the request can't be done with the actions above, return summary explaining what's possible and an empty actions array.
+Be action-biased. When a user asks for any change you can make ("more luxury", "improve SEO", "make it minimal", "rewrite the homepage"), make a concrete edit — don't just describe what could be done. Pick the smallest sensible change that moves the site toward the request and use the appropriate action. Examples:
+- "Make it more luxury" → at minimum, update_theme (deeper / more saturated palette, Playfair or Cormorant Garamond for headings) and/or update_section_copy on the home hero with more refined copy.
+- "Improve SEO" / "Improve SEO for engagement rings in Sydney" → update_seo for the most relevant page (or site-wide) with a concrete meta_title and meta_description that include the location and category. Always emit at least one update_seo action when SEO is requested.
+- "Make it more minimal" → update_theme to a quieter palette + Inter typography, and update_section_copy to shorten/strip a hero or text section.
+- "Rewrite homepage copy" → emit update_section_copy actions on every visible copy section of the home page (hero, text, image_text).
+
+Only return an empty actions array when the request is genuinely outside what these actions can do, or when the request is a refusal case (billing/auth/cross-tenant). Never return an empty actions array just because you're unsure — pick a reasonable default and explain it.
 
 Always end your summary with exactly: "Saved as draft. Manual publish required."`;
 }
