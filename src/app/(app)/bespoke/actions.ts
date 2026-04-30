@@ -6,7 +6,7 @@ import { after } from "next/server";
 import { sendJobReadyEmail } from "@/lib/email/send";
 import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { sendTwilioSms } from "@/lib/twilio-sms";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { logStatusChange, sendTrackingEmail } from "@/lib/tracking";
@@ -336,16 +336,18 @@ export async function advanceJobStage(
   if (newStage === "ready") {
     await sendJobReadyEmail(jobId);
 
-    // WhatsApp notification — fire & forget
+    // Customer SMS — fire & forget. Per Joey 2026-04-30: customer-facing
+    // ready notifications use SMS (lands reliably regardless of whether
+    // the customer has WhatsApp installed; no Meta template approval).
     try {
       const admin = createAdminClient();
       const { data: jobData } = await admin
         .from("bespoke_jobs")
-        .select("jewellery_type, title, customers(full_name, phone), tenants(business_name, name)")
+        .select("customer_id, jewellery_type, title, customers(full_name, mobile, phone), tenants(business_name, name)")
         .eq("id", jobId)
         .single();
       if (jobData) {
-        type CustomerInfo = { full_name?: string; phone?: string };
+        type CustomerInfo = { full_name?: string; mobile?: string; phone?: string };
         type TenantInfo = { business_name?: string; name?: string };
         const customer = Array.isArray(jobData.customers)
           ? jobData.customers[0] as CustomerInfo
@@ -353,19 +355,30 @@ export async function advanceJobStage(
         const tenantInfo = Array.isArray(jobData.tenants)
           ? jobData.tenants[0] as TenantInfo
           : (jobData.tenants as TenantInfo | null);
-        const phone = customer?.phone;
+        const phone = customer?.mobile || customer?.phone;
         if (phone) {
           const storeName = tenantInfo?.business_name || tenantInfo?.name || "our store";
-          const customerName = customer?.full_name || "Valued Customer";
+          const firstName = (customer?.full_name || "there").split(" ")[0];
           const jobType = jobData.jewellery_type
             ? jobData.jewellery_type.replace(/_/g, " ")
             : jobData.title || "bespoke piece";
-          const message = `Hi ${customerName}, your ${jobType} is ready for collection at ${storeName}. Please contact us to arrange pickup.`;
-          await sendWhatsAppMessage(tenantId, phone, message);
+          const message = `Hi ${firstName}, your ${jobType} is ready for collection at ${storeName}. Please contact us to arrange pickup.`;
+          const smsResult = await sendTwilioSms(phone, message);
+          if (smsResult.success) {
+            await admin.from("sms_sends").insert({
+              tenant_id: tenantId,
+              customer_id: jobData.customer_id ?? null,
+              phone,
+              message,
+              status: "sent",
+              twilio_sid: smsResult.messageId ?? null,
+              context: { job_id: jobId, type: "bespoke_ready_notification" },
+            });
+          }
         }
       }
     } catch (e) {
-      logger.error("[bespoke/advanceJobStage] WhatsApp notification failed:", e);
+      logger.error("[bespoke/advanceJobStage] Ready SMS failed:", e);
     }
   }
 
