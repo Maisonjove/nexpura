@@ -311,7 +311,13 @@ function WebsiteBuilderClientInner({ initial, tenantId }: Props) {
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">Website Builder</h1>
           <p className="text-stone-500 mt-1">
-            Build and publish your public jewellery storefront.
+            Build and publish your public jewellery storefront.{" "}
+            <a
+              href="/website/templates"
+              className="text-amber-700 hover:text-amber-800 underline underline-offset-2 font-medium"
+            >
+              Browse templates
+            </a>
           </p>
         </div>
         {websiteType === "hosted" && (
