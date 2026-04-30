@@ -907,7 +907,7 @@ const modernMinimal: Template = {
               "Every piece is designed to live on you — through the gym, the shower, the school run. Tested, finished and finished again.",
             image_side: "right",
           },
-          styles: { background_color: "#f4efe8" },
+          styles: { background_color: "#f4efe8", text_color: "#1a1a1a" },
         },
         {
           type: "collection_grid",
@@ -930,6 +930,7 @@ const modernMinimal: Template = {
               "Recycled metal, lab-grown stones, and a packaging box you can plant. Nothing is shouted about. It just is.",
             image_side: "left",
           },
+          styles: { background_color: "#ffffff", text_color: "#1a1a1a" },
         },
         {
           type: "text",

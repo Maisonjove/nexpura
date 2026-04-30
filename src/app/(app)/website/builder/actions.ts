@@ -344,6 +344,42 @@ export async function saveSections(pageId: string, sections: Omit<SiteSection, "
   }
 }
 
+/**
+ * Phase 2 manual publish — flips `published` from draft (false) → live (true)
+ * for every page on this tenant in a single click. AI never calls this; it's
+ * the human merchant's "I'm happy with the draft, push it live" button.
+ *
+ * If `pageId` is provided, only that one page is published. Without it, every
+ * draft page on the tenant goes live (the common case after an AI session).
+ */
+export async function publishAllPages(
+  pageId?: string,
+): Promise<{ error?: string; published?: number }> {
+  try {
+    const authCtx = await requireAuth();
+    if (!authCtx.isManager && !authCtx.isOwner) {
+      return { error: "Only owner or manager can publish site pages." };
+    }
+    const { tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+
+    let q = admin
+      .from("site_pages")
+      .update({ published: true, updated_at: new Date().toISOString() })
+      .eq("tenant_id", tenantId);
+    if (pageId) q = q.eq("id", pageId);
+
+    const { data, error } = await q.select("id");
+    if (error) return { error: error.message };
+
+    revalidatePath("/website");
+    revalidatePath("/website/builder");
+    return { published: (data || []).length };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to publish pages." };
+  }
+}
+
 export async function deleteSection(sectionId: string): Promise<{ error?: string }> {
   try {
     // RBAC: removing a section from a published/draft page mutates
