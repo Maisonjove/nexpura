@@ -372,7 +372,6 @@ export async function advanceJobStage(
               message,
               status: "sent",
               twilio_sid: smsResult.messageId ?? null,
-              context: { job_id: jobId, type: "bespoke_ready_notification" },
             });
           }
         }

@@ -531,6 +531,9 @@ export async function updateRepairStage(
           const message = `Hi ${firstName}, your ${description} is ready for collection at ${businessName}. Please contact us to arrange pickup.`;
           const smsResult = await sendTwilioSms(customerPhone, message);
           if (smsResult.success) {
+            // sms_sends has no `context` column in this schema (verified
+            // via information_schema 2026-04-30) — keep the insert minimal
+            // and put the repair linkage on job_events instead.
             await admin.from("sms_sends").insert({
               tenant_id: tenantId,
               customer_id: repairRow.customer_id,
@@ -538,7 +541,6 @@ export async function updateRepairStage(
               message,
               status: "sent",
               twilio_sid: smsResult.messageId ?? null,
-              context: { repair_id: repairId, type: "ready_notification" },
             });
             await admin.from("job_events").insert({
               tenant_id: tenantId,
