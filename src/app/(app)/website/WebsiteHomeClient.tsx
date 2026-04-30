@@ -25,6 +25,7 @@ import {
 } from "./components";
 import logger from "@/lib/logger";
 
+// Phase 2 entry: page list + AI chat assistant + manual publish.
 // Lazy-load AI chat panel — only the shop-owner who opens it pays the cost.
 const AssistantPanel = dynamic(() => import("./components/AssistantPanel"), {
   ssr: false,
