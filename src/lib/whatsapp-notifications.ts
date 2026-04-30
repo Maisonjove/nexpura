@@ -4,7 +4,8 @@ import logger from "@/lib/logger";
  * Notifications - Powered by Nexpura Platform
  * Uses platform Twilio account for all notifications (free for jewellers)
  * - Customer notifications: WhatsApp (when available)
- * - Employee notifications: SMS (smart number selection AU/US)
+ * - Employee task assignment: WhatsApp (rich formatting, native app)
+ * - Employee status-change / urgent flags: SMS (smart number selection AU/US)
  * No per-tenant Twilio setup needed
  */
 
@@ -80,7 +81,7 @@ export async function isTaskNotificationsEnabled(tenantId: string): Promise<bool
     .single();
 
   const settings = tenant?.notification_settings as Record<string, boolean> | null;
-  return settings?.whatsapp_task_assignment_enabled ?? false; // Default to disabled
+  return settings?.whatsapp_task_assignment_enabled ?? true; // Default to enabled
 }
 
 /**
@@ -154,7 +155,7 @@ export async function notifyCustomerJobReady(
 }
 
 /**
- * Notify employee of new task assignment via SMS
+ * Notify employee of new task assignment via WhatsApp
  */
 export async function notifyTaskAssignment(
   tenantId: string,
@@ -186,33 +187,30 @@ export async function notifyTaskAssignment(
     return { sent: false, error: "Employee opted out of notifications" };
   }
 
-  // Build message (keep concise for SMS)
   const taskType = task.type === "repair" ? "Repair" : task.type === "bespoke" ? "Bespoke job" : "Task";
-  let message = `New ${taskType.toLowerCase()}: ${task.description}`;
-  
+  let message = `🔔 New ${taskType.toLowerCase()} assigned: ${task.description}`;
+
   if (task.customerName) {
-    message += ` - ${task.customerName}`;
+    message += ` — ${task.customerName}`;
   }
-  
+
   if (task.dueDate) {
     const date = new Date(task.dueDate);
-    message += ` Due: ${date.toLocaleDateString()}`;
+    message += `\nDue: ${date.toLocaleDateString()}`;
   }
 
-  // Use SMS instead of WhatsApp for employees
-  const result = await sendTwilioSms(member.phone_number, message);
+  const result = await sendTwilioWhatsApp(member.phone_number, message);
 
-  // Log the send
   const admin = createAdminClient();
   try {
-    await admin.from("sms_sends").insert({
+    await admin.from("whatsapp_sends").insert({
       tenant_id: tenantId,
       phone: member.phone_number,
       message,
+      message_type: "task_assignment",
       status: result.success ? "sent" : "failed",
       twilio_sid: result.messageId,
       error_message: result.error,
-      context: { type: "task_assignment", assignee_id: assigneeId },
     });
   } catch (err) {
     logger.warn("[notifyTaskAssignment] Failed to log send:", err);

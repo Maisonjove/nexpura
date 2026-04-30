@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import { sendTwilioSms } from "@/lib/twilio-sms";
+import { notifyCustomerJobReady } from "@/lib/whatsapp-notifications";
 import { generateDraftInvoiceNumber } from "@/lib/invoices/draft-number";
 import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
@@ -485,6 +486,63 @@ export async function updateRepairStage(
     } catch (emailErr) {
       logger.error("Auto email on stage change failed:", emailErr);
       // Non-fatal
+    }
+  }
+
+  // ── Auto-WhatsApp customer when repair becomes ready ────────────────────
+  // Pre-fix: this UI path (the active "Mark Ready" button on /repairs/[id])
+  // had no WhatsApp send wired in — only the dead `advanceRepairStage`
+  // function did, and its only caller (RepairDetailClient.tsx) was replaced
+  // by RepairCommandCenter and is no longer rendered. So jewellers marking
+  // repairs ready never notified customers via WhatsApp.
+  if (stage === "ready") {
+    try {
+      const { data: repairRow } = await admin
+        .from("repairs")
+        .select("repair_number, item_description, item_type, customer_id")
+        .eq("id", repairId)
+        .single();
+
+      if (repairRow?.customer_id) {
+        const { data: customer } = await admin
+          .from("customers")
+          .select("id, full_name, mobile, phone")
+          .eq("id", repairRow.customer_id)
+          .single();
+
+        const customerPhone = customer?.mobile || customer?.phone;
+        if (customer && customerPhone) {
+          const { data: tenant } = await admin
+            .from("tenants")
+            .select("name, business_name")
+            .eq("id", tenantId)
+            .single();
+          const businessName = tenant?.business_name || tenant?.name || "your jeweller";
+          const description =
+            repairRow.item_description ||
+            (repairRow.item_type ? `your ${repairRow.item_type}` : `repair ${repairRow.repair_number ?? ""}`);
+
+          const result = await notifyCustomerJobReady(
+            tenantId,
+            { id: customer.id, phone: customerPhone, name: customer.full_name || "there" },
+            { id: repairId, description, type: "repair" },
+            businessName,
+          );
+          if (result.sent) {
+            await admin.from("job_events").insert({
+              tenant_id: tenantId,
+              job_type: "repair",
+              job_id: repairId,
+              event_type: "whatsapp_sent",
+              description: `Ready notification sent to ${customerPhone} via WhatsApp`,
+              actor: userId,
+            });
+          }
+        }
+      }
+    } catch (waErr) {
+      logger.error("Auto WhatsApp on stage change failed:", waErr);
+      // Non-fatal — stage was updated successfully
     }
   }
 
