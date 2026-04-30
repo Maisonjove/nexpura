@@ -6,7 +6,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import { sendTwilioSms } from "@/lib/twilio-sms";
-import { notifyCustomerJobReady } from "@/lib/whatsapp-notifications";
 import { generateDraftInvoiceNumber } from "@/lib/invoices/draft-number";
 import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
@@ -489,12 +488,18 @@ export async function updateRepairStage(
     }
   }
 
-  // ── Auto-WhatsApp customer when repair becomes ready ────────────────────
-  // Pre-fix: this UI path (the active "Mark Ready" button on /repairs/[id])
-  // had no WhatsApp send wired in — only the dead `advanceRepairStage`
-  // function did, and its only caller (RepairDetailClient.tsx) was replaced
-  // by RepairCommandCenter and is no longer rendered. So jewellers marking
-  // repairs ready never notified customers via WhatsApp.
+  // ── Auto-SMS customer when repair becomes ready ─────────────────────────
+  // Customer "ready" notifications go via SMS (per Joey 2026-04-30):
+  // SMS lands reliably even for customers without WhatsApp installed and
+  // doesn't require Meta business templates. Employee task assignments
+  // stay on WhatsApp; only customer-facing repair/bespoke ready use SMS.
+  //
+  // Pre-fix history: the active UI path (RepairCommandCenter →
+  // updateRepairStage) had no working customer notification at all. The
+  // dead `advanceRepairStage` function in repairs/actions.ts had logic
+  // wired but its only caller (RepairDetailClient.tsx) was retired; and
+  // the per-tenant SMS branch above reads from `tenant_integrations`,
+  // a table that doesn't exist in the schema, so it silently no-op'd.
   if (stage === "ready") {
     try {
       const { data: repairRow } = await admin
@@ -506,42 +511,53 @@ export async function updateRepairStage(
       if (repairRow?.customer_id) {
         const { data: customer } = await admin
           .from("customers")
-          .select("id, full_name, mobile, phone")
+          .select("full_name, mobile, phone")
           .eq("id", repairRow.customer_id)
           .single();
 
         const customerPhone = customer?.mobile || customer?.phone;
-        if (customer && customerPhone) {
+        if (customerPhone) {
           const { data: tenant } = await admin
             .from("tenants")
             .select("name, business_name")
             .eq("id", tenantId)
             .single();
           const businessName = tenant?.business_name || tenant?.name || "your jeweller";
+          const firstName = (customer?.full_name || "there").split(" ")[0];
           const description =
             repairRow.item_description ||
-            (repairRow.item_type ? `your ${repairRow.item_type}` : `repair ${repairRow.repair_number ?? ""}`);
+            (repairRow.item_type ? repairRow.item_type : `repair ${repairRow.repair_number ?? ""}`);
 
-          const result = await notifyCustomerJobReady(
-            tenantId,
-            { id: customer.id, phone: customerPhone, name: customer.full_name || "there" },
-            { id: repairId, description, type: "repair" },
-            businessName,
-          );
-          if (result.sent) {
+          const message = `Hi ${firstName}, your ${description} is ready for collection at ${businessName}. Please contact us to arrange pickup.`;
+          const smsResult = await sendTwilioSms(customerPhone, message);
+          if (smsResult.success) {
+            await admin.from("sms_sends").insert({
+              tenant_id: tenantId,
+              customer_id: repairRow.customer_id,
+              phone: customerPhone,
+              message,
+              status: "sent",
+              twilio_sid: smsResult.messageId ?? null,
+              context: { repair_id: repairId, type: "ready_notification" },
+            });
             await admin.from("job_events").insert({
               tenant_id: tenantId,
               job_type: "repair",
               job_id: repairId,
-              event_type: "whatsapp_sent",
-              description: `Ready notification sent to ${customerPhone} via WhatsApp`,
+              event_type: "sms_sent",
+              description: `Ready SMS sent to ${customerPhone}`,
               actor: userId,
+            });
+          } else {
+            logger.warn("[updateRepairStage] Ready SMS failed", {
+              error: smsResult.error,
+              repairId,
             });
           }
         }
       }
-    } catch (waErr) {
-      logger.error("Auto WhatsApp on stage change failed:", waErr);
+    } catch (smsErr) {
+      logger.error("Auto SMS on stage change failed:", smsErr);
       // Non-fatal — stage was updated successfully
     }
   }
