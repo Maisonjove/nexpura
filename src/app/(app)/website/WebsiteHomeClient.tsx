@@ -5,8 +5,10 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { saveWebsiteConfig, type WebsiteConfigData } from "./actions";
+import { saveWebsiteConfig, switchWebsiteType, type WebsiteConfigData } from "./actions";
 import { publishAllPages } from "./builder/actions";
+import { TEMPLATES } from "@/lib/templates/data";
+import TemplateGalleryClient from "./templates/TemplateGalleryClient";
 import {
   validateEmail,
   validatePhone,
@@ -182,11 +184,35 @@ function WebsiteHomeInner({
     });
   }
 
+  function handleSwitchToConnect() {
+    if (isPending) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        "Switch to 'connect existing website'? You can switch back any time from Setup.",
+      )
+    ) {
+      return;
+    }
+    const t = toast.loading("Switching mode…");
+    startTransition(async () => {
+      const r = await switchWebsiteType("connect");
+      if (r.error) {
+        toast.error(r.error, { id: t });
+      } else {
+        toast.success("Switched to connect mode", { id: t });
+        // page.tsx will route to legacy WebsiteBuilderClient → ConnectMode
+        router.refresh();
+      }
+    });
+  }
+
   const previewUrl = config.subdomain
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/${config.subdomain}?preview=true`
     : null;
 
   const draftCount = pages.filter((p) => !p.published).length;
+  const hasTemplate = pages.length > 0;
   const homeBuilderHref = (() => {
     const home = pages.find((p) => p.page_type === "home") || pages[0];
     return home ? `/website/builder/${home.id}` : "/website/builder";
@@ -202,25 +228,41 @@ function WebsiteHomeInner({
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">Your website</h1>
-          <p className="text-stone-500 mt-1 text-sm">
-            {pages.length} page{pages.length === 1 ? "" : "s"} ·{" "}
-            {draftCount > 0 ? (
-              <span className="text-amber-700 font-medium">
-                {draftCount} draft change{draftCount === 1 ? "" : "s"} pending publish
-              </span>
-            ) : (
-              <span className="text-green-700">All changes published</span>
-            )}
-          </p>
+          {hasTemplate ? (
+            <p className="text-stone-500 mt-1 text-sm">
+              {pages.length} page{pages.length === 1 ? "" : "s"} ·{" "}
+              {draftCount > 0 ? (
+                <span className="text-amber-700 font-medium">
+                  {draftCount} draft change{draftCount === 1 ? "" : "s"} pending publish
+                </span>
+              ) : (
+                <span className="text-green-700">All changes published</span>
+              )}
+            </p>
+          ) : (
+            <p className="text-stone-500 mt-1 text-sm">
+              Pick a template below to start, or{" "}
+              <button
+                type="button"
+                onClick={handleSwitchToConnect}
+                disabled={isPending}
+                className="text-amber-700 hover:text-amber-800 underline underline-offset-2 disabled:opacity-50"
+              >
+                connect an existing site instead →
+              </button>
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/website/templates"
-            className="px-3.5 py-2 text-sm font-medium rounded-lg border border-stone-300 text-stone-700 hover:border-stone-500 transition-colors"
-          >
-            Browse templates
-          </Link>
-          {previewUrl && (
+          {hasTemplate && (
+            <Link
+              href="/website/templates"
+              className="px-3.5 py-2 text-sm font-medium rounded-lg border border-stone-300 text-stone-700 hover:border-stone-500 transition-colors"
+            >
+              Browse templates
+            </Link>
+          )}
+          {previewUrl && hasTemplate && (
             <a
               href={previewUrl}
               target="_blank"
@@ -230,14 +272,16 @@ function WebsiteHomeInner({
               Preview
             </a>
           )}
-          <button
-            onClick={handlePublishAll}
-            disabled={isPending || draftCount === 0}
-            className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title={draftCount === 0 ? "No draft changes to publish" : "Publish all draft pages"}
-          >
-            {isPending ? "Publishing…" : draftCount === 0 ? "Published" : "Publish"}
-          </button>
+          {hasTemplate && (
+            <button
+              onClick={handlePublishAll}
+              disabled={isPending || draftCount === 0}
+              className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={draftCount === 0 ? "No draft changes to publish" : "Publish all draft pages"}
+            >
+              {isPending ? "Publishing…" : draftCount === 0 ? "Published" : "Publish"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -262,81 +306,113 @@ function WebsiteHomeInner({
 
       {activeTab === "site" && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
-          {/* Page + section list */}
+          {/* Main column: page list when a template is applied, gallery otherwise */}
           <div className="space-y-4">
-            <div className="rounded-xl border border-stone-200 bg-white">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
-                <div>
-                  <h2 className="text-sm font-semibold text-stone-900">Pages</h2>
-                  <p className="text-xs text-stone-500">
-                    Click a page to edit sections. The AI assistant edits everything in place.
-                  </p>
-                </div>
-                <Link
-                  href={homeBuilderHref}
-                  className="text-xs text-amber-700 hover:text-amber-800 font-medium"
-                >
-                  Open builder →
-                </Link>
-              </div>
-              <ul className="divide-y divide-stone-100">
-                {pages.map((p) => (
-                  <li key={p.id} className="px-4 py-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/website/builder/${p.id}`}
-                          className="font-medium text-stone-900 hover:text-amber-700 truncate"
-                        >
-                          {p.title}
-                        </Link>
-                        <span className="text-[11px] uppercase tracking-wide text-stone-400">
-                          /{p.slug}
-                        </span>
-                      </div>
-                      <div className="text-xs text-stone-500 mt-0.5">
-                        {p.page_type}
-                        {p.meta_title ? ` · ${p.meta_title.slice(0, 60)}` : ""}
-                      </div>
+            {hasTemplate ? (
+              <>
+                <div className="rounded-xl border border-stone-200 bg-white">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
+                    <div>
+                      <h2 className="text-sm font-semibold text-stone-900">Pages</h2>
+                      <p className="text-xs text-stone-500">
+                        Click a page to edit sections. The AI assistant edits everything in place.
+                      </p>
                     </div>
-                    <span
-                      className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                        p.published
-                          ? "bg-green-100 text-green-700"
-                          : "bg-amber-100 text-amber-700"
-                      }`}
+                    <Link
+                      href={homeBuilderHref}
+                      className="text-xs text-amber-700 hover:text-amber-800 font-medium"
                     >
-                      {p.published ? "Live" : "Draft"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
-              <div className="flex items-start gap-3">
-                <div className="text-amber-700 text-xl leading-none">✦</div>
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-stone-900">
-                    Edit with AI
-                  </h3>
-                  <p className="text-xs text-stone-600 mt-1 leading-relaxed">
-                    Tell the assistant what to change — colours, copy, sections, pages, SEO. Every change saves as a draft until you click Publish.
-                  </p>
-                  <button
-                    onClick={() => setChatOpen(true)}
-                    className="mt-3 px-3.5 py-2 text-xs font-medium rounded-lg bg-stone-900 text-white hover:bg-stone-700 transition-colors lg:hidden"
-                  >
-                    Open assistant
-                  </button>
+                      Open builder →
+                    </Link>
+                  </div>
+                  <ul className="divide-y divide-stone-100">
+                    {pages.map((p) => (
+                      <li key={p.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/website/builder/${p.id}`}
+                              className="font-medium text-stone-900 hover:text-amber-700 truncate"
+                            >
+                              {p.title}
+                            </Link>
+                            <span className="text-[11px] uppercase tracking-wide text-stone-400">
+                              /{p.slug}
+                            </span>
+                          </div>
+                          <div className="text-xs text-stone-500 mt-0.5">
+                            {p.page_type}
+                            {p.meta_title ? ` · ${p.meta_title.slice(0, 60)}` : ""}
+                          </div>
+                        </div>
+                        <span
+                          className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                            p.published
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {p.published ? "Live" : "Draft"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
-            </div>
+
+                <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="text-amber-700 text-xl leading-none">✦</div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-stone-900">
+                        Edit with AI
+                      </h3>
+                      <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                        Tell the assistant what to change — colours, copy, sections, pages, SEO. Every change saves as a draft until you click Publish.
+                      </p>
+                      <button
+                        onClick={() => setChatOpen(true)}
+                        className="mt-3 px-3.5 py-2 text-xs font-medium rounded-lg bg-stone-900 text-white hover:bg-stone-700 transition-colors lg:hidden"
+                      >
+                        Open assistant
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <TemplateGalleryClient templates={TEMPLATES} embedded />
+                {/* Mobile-only "open assistant" launcher mirrors the with-template layout */}
+                <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 lg:hidden">
+                  <div className="flex items-start gap-3">
+                    <div className="text-amber-700 text-xl leading-none">✦</div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-stone-900">
+                        Ask the AI assistant
+                      </h3>
+                      <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                        Not sure which template fits? Ask the assistant — it can recommend a starting point.
+                      </p>
+                      <button
+                        onClick={() => setChatOpen(true)}
+                        className="mt-3 px-3.5 py-2 text-xs font-medium rounded-lg bg-stone-900 text-white hover:bg-stone-700 transition-colors"
+                      >
+                        Open assistant
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Desktop sidebar chat */}
+          {/* Desktop sidebar chat — visible regardless of template state */}
           <div className="hidden lg:block sticky top-4">
-            <AssistantPanel tenantId={tenantId} variant="sidebar" />
+            <AssistantPanel
+              tenantId={tenantId}
+              variant="sidebar"
+              hasTemplate={hasTemplate}
+            />
           </div>
         </div>
       )}
@@ -431,7 +507,11 @@ function WebsiteHomeInner({
               </button>
             </div>
             <div className="flex-1 overflow-hidden">
-              <AssistantPanel tenantId={tenantId} variant="modal" />
+              <AssistantPanel
+                tenantId={tenantId}
+                variant="modal"
+                hasTemplate={hasTemplate}
+              />
             </div>
           </div>
         </div>

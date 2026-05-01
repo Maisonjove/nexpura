@@ -4,8 +4,6 @@ import { redirect } from "next/navigation";
 import { getEntitlementContext } from "@/lib/auth/entitlements";
 import { planIncludes, PLAN_NAMES, PlanId } from "@/lib/plans";
 import Link from "next/link";
-import { TEMPLATES } from "@/lib/templates/data";
-import TemplateGalleryClient from "./templates/TemplateGalleryClient";
 import WebsiteHomeClient from "./WebsiteHomeClient";
 import WebsiteBuilderClient from "./WebsiteBuilderClient";
 
@@ -14,13 +12,12 @@ export const metadata = { title: "Website Builder — Nexpura" };
 /**
  * Phase 2 entry point.
  *
- * If this tenant has no `site_pages` rows yet → land directly on the
- * template gallery. Picking a template seeds rows and brings them into the
- * "your site" view on the next visit.
- *
- * If this tenant already has site_pages → land on the new "your site" view
- * (page list + AI chat panel + publish button + the surviving Setup/Domain/
- * Advanced/Preview tabs).
+ * - website_type !== "hosted" → legacy WebsiteBuilderClient handles
+ *   ConnectMode and DomainGuideMode.
+ * - website_type === "hosted" → render WebsiteHomeClient regardless of
+ *   whether pages exist. WebsiteHomeClient swaps its main panel between the
+ *   template gallery (no pages) and the page list (has pages) and keeps the
+ *   tab chrome + AI assistant reachable in both states.
  *
  * The legacy /website?tab=branding|content|ai routes simply fall back to
  * Setup since those tabs no longer exist; the AI panel takes over their job.
@@ -80,7 +77,6 @@ export default async function WebsitePage() {
   ]);
 
   const websiteType = (config?.website_type as string | undefined) ?? "hosted";
-  const hasTemplate = (pages?.length ?? 0) > 0;
 
   // Connect / domain-guide modes use the legacy client, untouched. The Phase 2
   // gallery + AI flow only applies to "hosted" tenants — connecting to an
@@ -94,21 +90,11 @@ export default async function WebsitePage() {
     );
   }
 
-  // No template applied yet — gallery is the entry point.
-  if (!hasTemplate) {
-    return (
-      <div className="space-y-4">
-        <div className="max-w-6xl mx-auto px-4 pt-2">
-          <p className="text-xs text-stone-500">
-            Pick a template to start. Once applied you can edit it visually or via the AI assistant.
-          </p>
-        </div>
-        <TemplateGalleryClient templates={TEMPLATES} />
-      </div>
-    );
-  }
-
-  // Tenant has pages — show the new "your site" home with AI assistant.
+  // Hosted tenant — always render WebsiteHomeClient so the tab chrome
+  // (Setup / Domain / Advanced / Preview) and the AI assistant panel stay
+  // reachable. When `pages` is empty the "Your Site" tab renders the
+  // template gallery as its main content; once a template is applied the
+  // same view shows the page list.
   return (
     <WebsiteHomeClient
       initialConfig={config}

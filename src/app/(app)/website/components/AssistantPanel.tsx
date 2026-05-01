@@ -18,6 +18,13 @@ const QUICK_PROMPTS = [
   "Make it bridal focused",
 ];
 
+const NO_TEMPLATE_PROMPTS = [
+  "Which template fits a bridal jeweller?",
+  "Show me a minimal template",
+  "What if I sell mostly watches?",
+  "Compare Maison and Atelier templates",
+];
+
 type ActionResult = { type: string; applied: boolean; error?: string };
 type ChatTurn =
   | { role: "user"; text: string }
@@ -26,11 +33,16 @@ type ChatTurn =
 
 export default function AssistantPanel({
   variant = "sidebar",
+  hasTemplate = true,
 }: {
   // tenantId is intentionally NOT a prop — the server resolves it from the
   // session. We accept the same shape callers were using to avoid surprise.
   tenantId?: string;
   variant?: "sidebar" | "modal";
+  // When no template has been applied, render an empty-state hint above the
+  // quick prompts. Chat input remains enabled — the AI route handles
+  // template-less tenants gracefully.
+  hasTemplate?: boolean;
 }) {
   const router = useRouter();
   const [turns, setTurns] = useState<ChatTurn[]>([]);
@@ -120,13 +132,20 @@ export default function AssistantPanel({
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {turns.length === 0 && !hasTemplate && (
+          <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5 text-xs text-amber-900 leading-relaxed">
+            Pick a template first to unlock customisation. Or ask me anything about which template fits your business.
+          </div>
+        )}
         {turns.length === 0 && (
           <div className="space-y-3">
             <p className="text-xs text-stone-500">
-              Tell the assistant what to change. A few ideas:
+              {hasTemplate
+                ? "Tell the assistant what to change. A few ideas:"
+                : "A few questions you can ask right now:"}
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {QUICK_PROMPTS.map((p) => (
+              {(hasTemplate ? QUICK_PROMPTS : NO_TEMPLATE_PROMPTS).map((p) => (
                 <button
                   key={p}
                   type="button"

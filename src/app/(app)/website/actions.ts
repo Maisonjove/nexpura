@@ -164,6 +164,52 @@ export async function publishWebsite(publish: boolean): Promise<{ success?: bool
   }
 }
 
+/**
+ * Flip the tenant's website_type. Used by the Phase 2 entry view to let a
+ * user opt out of the hosted/template flow and reach the legacy
+ * ConnectMode (website_type === "connect") in WebsiteBuilderClient.
+ *
+ * Schema/RLS untouched — this only updates the existing column.
+ */
+export async function switchWebsiteType(
+  websiteType: "hosted" | "connect",
+): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+
+    const { data: existing } = await supabase
+      .from("website_config")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase
+        .from("website_config")
+        .update({ website_type: websiteType })
+        .eq("tenant_id", tenantId);
+      if (error) {
+        logger.error("[switchWebsiteType] Update error:", error);
+        return { error: error.message };
+      }
+    } else {
+      const { error } = await supabase
+        .from("website_config")
+        .insert({ tenant_id: tenantId, website_type: websiteType });
+      if (error) {
+        logger.error("[switchWebsiteType] Insert error:", error);
+        return { error: error.message };
+      }
+    }
+
+    revalidatePath("/website");
+    return { success: true };
+  } catch (err) {
+    logger.error("[switchWebsiteType] Unexpected error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to switch website type" };
+  }
+}
+
 export async function checkSubdomainAvailable(subdomain: string, currentTenantId?: string): Promise<{ available: boolean; reason?: string }> {
   try {
     const { supabase, tenantId } = await getAuthContext();
