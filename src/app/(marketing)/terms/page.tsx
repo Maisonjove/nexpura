@@ -10,11 +10,11 @@ import LegalPageLayout, { type LegalSection } from "@/components/marketing/Legal
 export const metadata: Metadata = {
   title: "Terms of Service — Nexpura",
   description:
-    "The Nexpura Terms of Service — your agreement when subscribing to and using the Nexpura platform.",
+    "The Nexpura Terms of Service — your agreement when subscribing to and using the Nexpura jewellery operating system, including billing, data, and acceptable use.",
   openGraph: {
     title: "Terms of Service — Nexpura",
     description:
-      "The Nexpura Terms of Service — your agreement when using the Nexpura platform.",
+      "The Nexpura Terms of Service — your agreement when subscribing to and using the Nexpura jewellery operating system, including billing, data, and acceptable use.",
     images: ["/og-image.png"],
     type: "website",
     siteName: "Nexpura",

@@ -4,7 +4,7 @@ import ContactClient from "./ContactClient";
 export const metadata: Metadata = {
   title: "Contact — Nexpura",
   description:
-    "Get in touch with the Nexpura team, ask a question, or book a guided demo tailored to your jewellery business.",
+    "Get in touch with the Nexpura team, ask product or onboarding questions, or book a guided demo tailored to your jewellery business and workflow.",
   openGraph: {
     title: "Contact — Nexpura",
     description:

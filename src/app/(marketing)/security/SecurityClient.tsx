@@ -117,7 +117,7 @@ const pillars: Pillar[] = [
     body:
       'Your data and your day-to-day operations are designed to keep running, even when things wobble.',
     bullets: [
-      'Automated daily database backups with point-in-time recovery',
+      'Automated daily database backups retained by our hosting platform',
       'Globally distributed edge infrastructure',
       'Architected for high availability, with monitoring on every critical path',
     ],

@@ -10,11 +10,11 @@ import LegalPageLayout, { type LegalSection } from "@/components/marketing/Legal
 export const metadata: Metadata = {
   title: "Privacy Policy — Nexpura",
   description:
-    "How Nexpura collects, uses, and protects your data — including subprocessors, retention, export, and deletion rights.",
+    "How Nexpura collects, uses, and protects your data — covering subprocessors, retention, encryption, export, and deletion rights for your jewellery business.",
   openGraph: {
     title: "Privacy Policy — Nexpura",
     description:
-      "How Nexpura collects, uses, and protects your data — including subprocessors, retention, export, and deletion rights.",
+      "How Nexpura collects, uses, and protects your data — covering subprocessors, retention, encryption, export, and deletion rights for your jewellery business.",
     images: ["/og-image.png"],
     type: "website",
     siteName: "Nexpura",
