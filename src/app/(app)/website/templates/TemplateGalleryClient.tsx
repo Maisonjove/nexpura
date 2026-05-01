@@ -34,9 +34,13 @@ export default function TemplateGalleryClient({
         toast.error(result.error);
         return;
       }
-      toast.success(`${template.name} applied. Edit in the builder.`);
-      // Land on the page list so the user can see what was created
-      window.location.href = "/website/builder";
+      toast.success(`${template.name} applied. Edit with AI or by section.`);
+      // Land on /website (Phase 2 WebsiteHomeClient) so the AI assistant + page
+      // list + Setup/Domain/Advanced/Preview tabs are all visible. Pre-fix this
+      // pointed at /website/builder which is the legacy page-list view with no
+      // AI panel — that's why Joey reported "i dont see the ai bot helper" on
+      // the post-apply screen.
+      window.location.href = "/website";
     });
   }
 
