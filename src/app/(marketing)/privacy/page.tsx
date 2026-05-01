@@ -9,7 +9,16 @@ import LegalPageLayout, { type LegalSection } from "@/components/marketing/Legal
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Nexpura",
-  description: "How Nexpura collects, uses, and protects your data.",
+  description:
+    "How Nexpura collects, uses, and protects your data — including subprocessors, retention, export, and deletion rights.",
+  openGraph: {
+    title: "Privacy Policy — Nexpura",
+    description:
+      "How Nexpura collects, uses, and protects your data — including subprocessors, retention, export, and deletion rights.",
+    images: ["/og-image.png"],
+    type: "website",
+    siteName: "Nexpura",
+  },
 }
 
 const SECTIONS: LegalSection[] = [
@@ -30,8 +39,17 @@ const SECTIONS: LegalSection[] = [
   },
   {
     id: "third-party-services",
-    title: "Third-Party Services",
-    body: "Nexpura uses a limited set of third-party services to operate the platform: Stripe for payment processing, Supabase for database and authentication, Vercel for application hosting, and Resend for transactional email. Each maintains their own privacy and security commitments. We do not sell or share your data with third parties for marketing purposes.",
+    title: "Service Providers",
+    body: "Nexpura uses a small, named set of third-party service providers (subprocessors) to operate the platform. Each maintains their own privacy and security commitments, and we limit what we share with each provider to what is strictly required to deliver the service. We do not sell or share your data with third parties for marketing purposes.",
+    providers: [
+      { name: "Vercel", purpose: "Application hosting and edge delivery." },
+      { name: "Supabase", purpose: "Primary database, authentication, and file storage." },
+      { name: "Stripe", purpose: "Payment processing for subscriptions and in-app charges." },
+      { name: "Resend", purpose: "Transactional email — invoices, receipts, password resets." },
+      { name: "Twilio", purpose: "SMS and WhatsApp notifications where you have opted in." },
+      { name: "Anthropic", purpose: "AI assistance for in-app features (e.g. quote/invoice parsing)." },
+      { name: "OpenAI", purpose: "AI assistance for in-app features (e.g. quote/invoice parsing)." },
+    ],
   },
   {
     id: "cookies",
@@ -46,12 +64,22 @@ const SECTIONS: LegalSection[] = [
   {
     id: "your-rights",
     title: "Your Rights",
-    body: "You have the right to access, correct, or delete your personal data at any time. You may export your business data from within the platform. To request deletion of your account, contact us at hello@nexpura.com. We will process your request within 30 days.",
+    body: "You have the right to access, correct, or delete your personal data at any time. You may also request a portable copy of your data, restrict certain uses, or object to processing where applicable under your local data protection law.",
+  },
+  {
+    id: "data-export",
+    title: "Data Export",
+    body: "Account owners and managers can export a complete copy of their tenant's data — customers, inventory, invoices, repairs, bespoke jobs, and related records — in JSON format from inside the application. The export covers everything you have entered into Nexpura and is available on demand from your account settings.",
+  },
+  {
+    id: "data-deletion",
+    title: "Data Deletion",
+    body: "Account owners can submit a deletion request from within the application or by writing to hello@nexpura.com. Deletion is processed as a 30-day soft-delete window during which the request can be cancelled and the account restored. After the 30-day window, your tenant data is permanently and irreversibly deleted from our active systems. Routine encrypted backups follow a separate, time-limited retention schedule before being purged.",
   },
   {
     id: "data-retention",
     title: "Data Retention",
-    body: "We retain your data for as long as your account is active or as needed to provide the Service. If you cancel, your data will be retained for 90 days to allow for reactivation, after which it will be permanently deleted. Anonymised, aggregated statistical data may be retained indefinitely.",
+    body: "We retain your data for as long as your account is active or as needed to provide the Service. If you cancel, your data is retained for 90 days to allow for reactivation, after which it is permanently deleted. Anonymised, aggregated statistical data may be retained indefinitely. Records that we are legally required to keep — for example tax invoices and payment records — are retained for the period required by applicable law.",
   },
   {
     id: "changes-to-this-policy",
@@ -61,7 +89,7 @@ const SECTIONS: LegalSection[] = [
   {
     id: "contact",
     title: "Contact",
-    body: "For privacy-related questions or to exercise your data rights, please contact us at hello@nexpura.com.",
+    body: "For questions about this Privacy Policy or to exercise your data rights, contact us at hello@nexpura.com.",
   },
 ]
 
@@ -69,8 +97,9 @@ export default function PrivacyPage() {
   return (
     <LegalPageLayout
       pageTitle="Privacy Policy"
-      lastUpdated="March 2026"
+      lastUpdated="April 2026"
       sections={SECTIONS}
+      closingNote="For questions about this Privacy Policy, contact us at hello@nexpura.com."
     />
   )
 }

@@ -4,7 +4,15 @@ import SecurityClient from "./SecurityClient";
 export const metadata: Metadata = {
   title: "Security — Nexpura",
   description:
-    "Learn how Nexpura protects your customer records, inventory data, and financial information.",
+    "How Nexpura protects your customer records, inventory, and financials — encryption, role-based access, audit trails, and data ownership.",
+  openGraph: {
+    title: "Security — Nexpura",
+    description:
+      "Encryption, role-based access, audit trails, and data ownership — how Nexpura keeps jewellery business data safe.",
+    images: ["/og-image.png"],
+    type: "website",
+    siteName: "Nexpura",
+  },
 };
 
 export default function SecurityPage() {

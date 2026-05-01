@@ -28,7 +28,15 @@ import PlatformPageClient from './PlatformPageClient'
 export const metadata = {
   title: 'Platform — Nexpura',
   description:
-    'The jewellery operating system behind every sale, repair, bespoke order, and passport. Tour the modules, the workflow, the command centre, and how Nexpura connects every piece of your business.',
+    'The jewellery operating system behind every sale, repair, bespoke order, and passport. Tour the modules, the workflow, and the owner command centre.',
+  openGraph: {
+    title: 'Platform — Nexpura',
+    description:
+      'Tour the eight modules, the workflow, and the owner command centre that make up the Nexpura platform.',
+    images: ['/og-image.png'],
+    type: 'website',
+    siteName: 'Nexpura',
+  },
 }
 
 export default function PlatformPage() {

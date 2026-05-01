@@ -30,19 +30,42 @@
 
 import LegalTOC from './LegalTOC'
 
+export type ProviderRow = {
+  name: string
+  purpose: string
+}
+
 export type LegalSection = {
   id: string
   title: string
   body: string
+  /**
+   * Optional structured table beneath the body paragraph. Used by the
+   * Privacy page to present subprocessors (Stripe, Supabase, etc.) in
+   * a clean definition-list format. When provided, renders below
+   * `body` inside the same section.
+   */
+  providers?: ProviderRow[]
 }
 
 type Props = {
   pageTitle: string
   lastUpdated: string
   sections: LegalSection[]
+  /**
+   * Quiet closing line at the bottom of the reading column. Defaults to
+   * the Privacy Policy phrasing; the Terms page passes its own copy
+   * ("these Terms") to keep contact wording correct per page.
+   */
+  closingNote?: string
 }
 
-export default function LegalPageLayout({ pageTitle, lastUpdated, sections }: Props) {
+export default function LegalPageLayout({
+  pageTitle,
+  lastUpdated,
+  sections,
+  closingNote = 'For questions about this Privacy Policy, contact us at hello@nexpura.com.',
+}: Props) {
   const tocItems = sections.map(({ id, title }) => ({ id, title }))
 
   return (
@@ -114,6 +137,23 @@ export default function LegalPageLayout({ pageTitle, lastUpdated, sections }: Pr
 
                   <div className={bodyClass}>
                     <p>{s.body}</p>
+                    {s.providers && s.providers.length > 0 && (
+                      <dl className="mt-7 grid grid-cols-1 sm:grid-cols-[140px_minmax(0,1fr)] gap-x-6 gap-y-3 border-t border-[#E4DBC9] pt-6">
+                        {s.providers.map((p) => (
+                          <div
+                            key={p.name}
+                            className="contents sm:contents"
+                          >
+                            <dt className="font-sans text-[0.92rem] font-medium text-m-charcoal tracking-tight">
+                              {p.name}
+                            </dt>
+                            <dd className="font-sans text-[0.92rem] text-[#3F3A33] leading-[1.55] sm:mt-0 mb-2 sm:mb-0">
+                              {p.purpose}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
                   </div>
                 </section>
               )
@@ -121,7 +161,7 @@ export default function LegalPageLayout({ pageTitle, lastUpdated, sections }: Pr
 
             {/* Quiet closing note — no CTA, no link cluster, just contact */}
             <p className="mt-20 md:mt-24 font-sans text-[0.85rem] text-[#8A8276]">
-              For questions about this policy, contact us at hello@nexpura.com.
+              {closingNote}
             </p>
           </article>
         </div>
