@@ -360,10 +360,14 @@ export default function FeaturesClient() {
 // ============================================
 function ModuleSection({ module, index }: { module: Module; index: number }) {
   const Icon = module.icon
+  // Note: previously wrapped in <motion.section> with whileInView; that
+  // hid sections below the fold from full-page screenshots and from any
+  // user with reduced-motion preferences who scrolled past the trigger.
+  // A plain <section> renders every module statically — animation isn't
+  // load-bearing for this page and indexability + visibility matter more.
   return (
-    <motion.section
+    <section
       id={module.id}
-      {...fadeUp()}
       aria-labelledby={`${module.id}-heading`}
       className="scroll-mt-[140px]"
     >
@@ -445,7 +449,7 @@ function ModuleSection({ module, index }: { module: Module; index: number }) {
           )}
         </div>
       </div>
-    </motion.section>
+    </section>
   )
 }
 
