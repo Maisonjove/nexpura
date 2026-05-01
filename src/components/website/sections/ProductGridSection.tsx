@@ -72,10 +72,14 @@ export default function ProductGridSection({
                 }}
               >
                 {item.image_url ? (
+                  // Product grid sits below the hero in every template — lazy
+                  // so initial paint isn't blocked by N image decodes.
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={item.image_url}
                     alt={item.name || ""}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (

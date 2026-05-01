@@ -19,11 +19,17 @@ export default function HeroSection({ content, styles, theme }: SectionProps) {
       style={{ backgroundColor: baseBg, color: baseFg }}
     >
       {bgImage && (
-        // Use a plain img — works for any external URL without next/image config
+        // Use a plain img — works for any external URL without next/image config.
+        // fetchPriority + loading=eager: hero bg is almost always the LCP element
+        // when set, so signal the browser to fetch ASAP and avoid lazy-load
+        // delaying the paint.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={bgImage}
           alt=""
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover"
           style={{ opacity: 1 - overlay }}
         />

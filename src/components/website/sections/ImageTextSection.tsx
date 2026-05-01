@@ -36,6 +36,8 @@ export default function ImageTextSection({
             <img
               src={imageUrl}
               alt={heading || ""}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover"
             />
           ) : (

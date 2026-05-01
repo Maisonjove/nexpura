@@ -65,10 +65,15 @@ export default function GallerySection({
                 }}
               >
                 {item.image_url ? (
+                  // Below-the-fold for almost every layout — lazy-load so the
+                  // gallery doesn't compete with the hero for bandwidth/decode
+                  // time on initial paint.
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={item.image_url}
                     alt={item.name || ""}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                 ) : (
