@@ -3,13 +3,12 @@
 // Per Kaitlyn 2026-04-26 brief — replaces the previous 10-module
 // equal-weight list (preserved at LandingPlatformModules.legacy.tsx
 // for repurposing on the dedicated /features page later).
-// Verbatim from spec except the "Explore all features" <a opener was
-// missing in the spec — restored.
+// Per Kaitlyn 2026-04-28 (Batch 4): the "Explore all features →" CTA
+// below the grid was removed; the section ends with the cards.
 // ============================================
 
 import React from "react"
-import Link from "next/link"
-import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, BUTTON, CONTAINER } from "./_tokens"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, CONTAINER } from "./_tokens"
 
 type Module = {
   title: string
@@ -152,16 +151,8 @@ export default function LandingPlatformModules() {
           ))}
         </ul>
 
-        {/* CTA */}
-        <div className="text-center mt-12 md:mt-14">
-          <Link
-            href="/features"
-            className={`${BUTTON.primary} gap-2`}
-          >
-            Explore all features
-            <span aria-hidden="true">→</span>
-          </Link>
-        </div>
+        {/* Batch 4: removed dark "Explore all features →" CTA pill below
+            the modules grid. Kaitlyn dropped the per-section onward links. */}
       </div>
     </section>
   )

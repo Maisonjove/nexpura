@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" width="480" height="320" role="img" aria-label="Customer record card mockup">
+  <rect width="480" height="320" fill="#faf7f2"/>
+  <rect x="0.5" y="0.5" width="479" height="319" fill="none" stroke="#e8e1d4"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="480" height="40" fill="#ffffff"/>
+  <line x1="0" y1="40" x2="480" y2="40" stroke="#e8e1d4"/>
+  <text x="20" y="25" font-family="Georgia, serif" font-size="13" fill="#1a1a1a">Customer profile</text>
+
+  <!-- Customer card -->
+  <rect x="20" y="56" width="200" height="244" rx="10" fill="#ffffff" stroke="#e8e1d4"/>
+  <circle cx="60" cy="92" r="22" fill="#f1e9d8"/>
+  <text x="60" y="98" font-family="Georgia, serif" font-size="16" fill="#1a1a1a" text-anchor="middle">EW</text>
+  <text x="92" y="86" font-family="Georgia, serif" font-size="14" fill="#1a1a1a">Eleanor</text>
+  <text x="92" y="102" font-family="Georgia, serif" font-size="14" fill="#1a1a1a">Whitfield</text>
+  <rect x="92" y="110" width="32" height="16" rx="8" fill="#fef3e0" stroke="#e8d2a3"/>
+  <text x="108" y="121" font-family="system-ui, sans-serif" font-size="9" fill="#a8852c" text-anchor="middle">VIP</text>
+
+  <line x1="36" y1="138" x2="204" y2="138" stroke="#f0e9da"/>
+  <g font-family="system-ui, sans-serif" font-size="10" fill="#5a554c">
+    <text x="36" y="158" fill="#8a8276">Anniversary</text>
+    <text x="204" y="158" text-anchor="end" font-family="Georgia, serif" font-size="11" fill="#1a1a1a">14 May</text>
+    <text x="36" y="178" fill="#8a8276">Ring size</text>
+    <text x="204" y="178" text-anchor="end" font-family="Georgia, serif" font-size="11" fill="#1a1a1a">N</text>
+    <text x="36" y="198" fill="#8a8276">Preferred metal</text>
+    <text x="204" y="198" text-anchor="end" font-family="Georgia, serif" font-size="11" fill="#1a1a1a">18ct W. Gold</text>
+    <text x="36" y="218" fill="#8a8276">Lifetime spend</text>
+    <text x="204" y="218" text-anchor="end" font-family="Georgia, serif" font-size="11" fill="#1a1a1a">$24,180</text>
+    <text x="36" y="238" fill="#8a8276">Pieces owned</text>
+    <text x="204" y="238" text-anchor="end" font-family="Georgia, serif" font-size="11" fill="#1a1a1a">6</text>
+  </g>
+  <line x1="36" y1="252" x2="204" y2="252" stroke="#f0e9da"/>
+  <text x="36" y="272" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="1.5">REMINDERS</text>
+  <circle cx="42" cy="288" r="3" fill="#c9a24a"/>
+  <text x="50" y="291" font-family="system-ui, sans-serif" font-size="10" fill="#5a554c">Anniversary in 16 days</text>
+
+  <!-- Right column — purchase history -->
+  <rect x="236" y="56" width="224" height="244" rx="10" fill="#ffffff" stroke="#e8e1d4"/>
+  <text x="252" y="78" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">PURCHASE &amp; SERVICE HISTORY</text>
+  <line x1="252" y1="88" x2="444" y2="88" stroke="#f0e9da"/>
+
+  <g font-family="system-ui, sans-serif" font-size="10">
+    <!-- Item 1 -->
+    <circle cx="258" cy="108" r="2.5" fill="#c9a24a"/>
+    <text x="270" y="111" fill="#8a8276" font-size="9">14 MAR 2026 · REPAIR</text>
+    <text x="270" y="125" font-family="Georgia, serif" font-size="11" fill="#1a1a1a">Solitaire ring · resize · workshop</text>
+
+    <line x1="252" y1="136" x2="444" y2="136" stroke="#f0e9da"/>
+
+    <!-- Item 2 -->
+    <circle cx="258" cy="156" r="2.5" fill="#c9a24a"/>
+    <text x="270" y="159" fill="#8a8276" font-size="9">22 SEP 2025 · SALE</text>
+    <text x="270" y="173" font-family="Georgia, serif" font-size="11" fill="#1a1a1a">Stud earrings · 18ct white gold · $1,250</text>
+
+    <line x1="252" y1="184" x2="444" y2="184" stroke="#f0e9da"/>
+
+    <!-- Item 3 -->
+    <circle cx="258" cy="204" r="2.5" fill="#c9a24a"/>
+    <text x="270" y="207" fill="#8a8276" font-size="9">08 FEB 2025 · BESPOKE</text>
+    <text x="270" y="221" font-family="Georgia, serif" font-size="11" fill="#1a1a1a">Solitaire engagement ring — handover</text>
+
+    <line x1="252" y1="232" x2="444" y2="232" stroke="#f0e9da"/>
+
+    <!-- Item 4 -->
+    <circle cx="258" cy="252" r="2.5" fill="#c9bfa9"/>
+    <text x="270" y="255" fill="#8a8276" font-size="9">11 NOV 2024 · SALE</text>
+    <text x="270" y="269" font-family="Georgia, serif" font-size="11" fill="#1a1a1a">Tennis bracelet · 5ct · $8,400</text>
+
+    <line x1="252" y1="280" x2="444" y2="280" stroke="#f0e9da"/>
+
+    <text x="252" y="295" fill="#8a8276" font-size="9">+ 2 earlier transactions</text>
+  </g>
+</svg>

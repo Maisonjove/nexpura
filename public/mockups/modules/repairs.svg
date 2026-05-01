@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" width="480" height="320" role="img" aria-label="Repairs queue interface mockup">
+  <rect width="480" height="320" fill="#faf7f2"/>
+  <rect x="0.5" y="0.5" width="479" height="319" fill="none" stroke="#e8e1d4"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="480" height="40" fill="#ffffff"/>
+  <line x1="0" y1="40" x2="480" y2="40" stroke="#e8e1d4"/>
+  <text x="20" y="25" font-family="Georgia, serif" font-size="13" fill="#1a1a1a">Repairs &amp; Workshop</text>
+  <text x="460" y="25" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276" text-anchor="end">12 active</text>
+
+  <!-- Filter chips -->
+  <g font-family="system-ui, sans-serif" font-size="10">
+    <rect x="20" y="56" width="58" height="22" rx="11" fill="#1a1a1a"/>
+    <text x="49" y="71" fill="#ffffff" text-anchor="middle">All</text>
+    <rect x="86" y="56" width="64" height="22" rx="11" fill="none" stroke="#e8e1d4"/>
+    <text x="118" y="71" fill="#5a554c" text-anchor="middle">Intake</text>
+    <rect x="158" y="56" width="86" height="22" rx="11" fill="none" stroke="#e8e1d4"/>
+    <text x="201" y="71" fill="#5a554c" text-anchor="middle">In progress</text>
+    <rect x="252" y="56" width="58" height="22" rx="11" fill="none" stroke="#e8e1d4"/>
+    <text x="281" y="71" fill="#5a554c" text-anchor="middle">Ready</text>
+    <rect x="318" y="56" width="68" height="22" rx="11" fill="#fef3e0" stroke="#e8d2a3"/>
+    <text x="352" y="71" fill="#a8852c" text-anchor="middle">Overdue</text>
+  </g>
+
+  <!-- Table head -->
+  <text x="20" y="106" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">CUSTOMER</text>
+  <text x="180" y="106" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">JOB</text>
+  <text x="320" y="106" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">DUE</text>
+  <text x="395" y="106" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">STATUS</text>
+  <line x1="20" y1="114" x2="460" y2="114" stroke="#f0e9da"/>
+
+  <!-- Row 1 — Ready -->
+  <g font-family="system-ui, sans-serif" font-size="11" fill="#1a1a1a">
+    <text x="20" y="138" font-family="Georgia, serif" font-size="12">Eleanor Whitfield</text>
+    <text x="20" y="151" fill="#8a8276" font-size="10">VIP · NX-CUST-04219</text>
+    <text x="180" y="138">Solitaire ring · resize</text>
+    <text x="180" y="151" fill="#8a8276" font-size="10">Workshop bench 2</text>
+    <text x="320" y="142">14 May</text>
+    <rect x="395" y="128" width="56" height="20" rx="10" fill="#e8f0e3" stroke="#c8d8be"/>
+    <text x="423" y="142" fill="#4a6a3a" text-anchor="middle" font-size="10">Ready</text>
+  </g>
+  <line x1="20" y1="166" x2="460" y2="166" stroke="#f0e9da"/>
+
+  <!-- Row 2 — In progress -->
+  <g font-family="system-ui, sans-serif" font-size="11" fill="#1a1a1a">
+    <text x="20" y="190" font-family="Georgia, serif" font-size="12">James Holloway</text>
+    <text x="20" y="203" fill="#8a8276" font-size="10">NX-CUST-03104</text>
+    <text x="180" y="190">Tennis bracelet · clasp</text>
+    <text x="180" y="203" fill="#8a8276" font-size="10">Setting · in progress</text>
+    <text x="320" y="194">18 May</text>
+    <rect x="395" y="180" width="56" height="20" rx="10" fill="#fef3e0" stroke="#e8d2a3"/>
+    <text x="423" y="194" fill="#a8852c" text-anchor="middle" font-size="10">Active</text>
+  </g>
+  <line x1="20" y1="218" x2="460" y2="218" stroke="#f0e9da"/>
+
+  <!-- Row 3 — Overdue -->
+  <g font-family="system-ui, sans-serif" font-size="11" fill="#1a1a1a">
+    <text x="20" y="242" font-family="Georgia, serif" font-size="12">Sophia Marchetti</text>
+    <text x="20" y="255" fill="#8a8276" font-size="10">NX-CUST-02871</text>
+    <text x="180" y="242">Pendant · stone reset</text>
+    <text x="180" y="255" fill="#8a8276" font-size="10">Workshop bench 1</text>
+    <text x="320" y="246" fill="#a8521c">22 Apr</text>
+    <rect x="395" y="232" width="56" height="20" rx="10" fill="#fbe6e0" stroke="#e8b8a3"/>
+    <text x="423" y="246" fill="#a8521c" text-anchor="middle" font-size="10">Overdue</text>
+  </g>
+  <line x1="20" y1="270" x2="460" y2="270" stroke="#f0e9da"/>
+
+  <!-- Row 4 — Intake -->
+  <g font-family="system-ui, sans-serif" font-size="11" fill="#1a1a1a">
+    <text x="20" y="294" font-family="Georgia, serif" font-size="12">Diana Pace</text>
+    <text x="20" y="307" fill="#8a8276" font-size="10">New customer · today</text>
+    <text x="180" y="294">Wedding band · polish</text>
+    <text x="180" y="307" fill="#8a8276" font-size="10">Awaiting deposit</text>
+    <text x="320" y="298">28 May</text>
+    <rect x="395" y="284" width="56" height="20" rx="10" fill="#ffffff" stroke="#e8e1d4"/>
+    <text x="423" y="298" fill="#5a554c" text-anchor="middle" font-size="10">Intake</text>
+  </g>
+</svg>

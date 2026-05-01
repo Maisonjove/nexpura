@@ -18,6 +18,17 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import {
+  MessageSquare,
+  FileText,
+  Tag,
+  Wrench,
+  CreditCard,
+  ShieldCheck,
+  Sparkles,
+  RotateCw,
+  type LucideIcon,
+} from 'lucide-react'
+import {
   SECTION_PADDING,
   HEADING,
   INTRO_SPACING,
@@ -269,11 +280,11 @@ export default function PlatformPageClient() {
       </section>
 
       {/* ============================================
-          2. Connected Workflow Map
+          2. Connected Workflow Map — Batch 4 redesign
           ============================================ */}
       <section
         id="platform-workflow"
-        className={`bg-m-white-soft border-y border-m-border-soft ${SECTION_PADDING.standard}`}
+        className="bg-m-white-soft border-y border-m-border-soft px-6 py-20 md:py-28"
         aria-labelledby="platform-workflow-heading"
       >
         <div className={CONTAINER.wide}>
@@ -711,82 +722,139 @@ export default function PlatformPageClient() {
 }
 
 // ============================================
-// Section 2 — WorkflowMap (pill-node + connector flow)
+// Section 2 — WorkflowMap (Batch 4 luxury redesign)
+//
+// Replaces the original sans-pills + chevron flow with a softer
+// timeline aesthetic per Kaitlyn's Batch 4 brief:
+//
+//  - Step labels in serif (matches the NEXPURA wordmark + section
+//    headings) instead of sans
+//  - Thin line-icon above each step in champagne accent (Lucide,
+//    stroke-1)
+//  - Connectors are dotted lines with a small champagne dot at each
+//    join — replacing the chevron ">"
+//  - Hover: pill lifts -2px, card border deepens, dotted line on
+//    either side fades up
+//  - Mobile: vertical stack, dots become a vertical dotted column
 // ============================================
+type WorkflowStep = {
+  label: string
+  icon: LucideIcon
+}
+
+const WORKFLOW_STEPS: WorkflowStep[] = [
+  { label: 'Enquiry', icon: MessageSquare },
+  { label: 'Quote', icon: FileText },
+  { label: 'Sale', icon: Tag },
+  { label: 'Repair / Bespoke Job', icon: Wrench },
+  { label: 'Payment', icon: CreditCard },
+  { label: 'Passport', icon: ShieldCheck },
+  { label: 'Aftercare', icon: Sparkles },
+  { label: 'Reorder', icon: RotateCw },
+]
+
 function WorkflowMap() {
-  const NODES = [
-    'Enquiry',
-    'Quote',
-    'Sale',
-    'Repair / Bespoke Job',
-    'Payment',
-    'Passport',
-    'Aftercare',
-    'Reporting',
-  ]
   return (
     <div className="relative">
-      {/* Desktop: horizontal flow with chevron connectors */}
+      {/* ============================================
+          Desktop: horizontal timeline (≥lg).
+          Each step is an icon + serif label stacked, connected by a
+          dotted line with a champagne dot at each join. Layout uses
+          flex with the connector consuming the gap so the dot caps
+          align horizontally with each pill.
+          ============================================ */}
       <ol
         role="list"
-        className="hidden lg:flex flex-wrap items-center justify-center gap-x-2 gap-y-3"
+        className="hidden lg:flex items-stretch justify-center"
       >
-        {NODES.map((node, i) => (
-          <li key={node} className="flex items-center gap-2">
-            <span
-              className={`${CARD.base} px-4 py-2.5 font-sans text-[0.88rem] font-medium text-m-charcoal whitespace-nowrap shadow-[0_2px_8px_rgba(0,0,0,0.04)]`}
-            >
-              {node}
-            </span>
-            {i < NODES.length - 1 && (
-              <span aria-hidden="true" className="text-m-champagne">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-              </span>
-            )}
+        {WORKFLOW_STEPS.map((step, i) => (
+          <li
+            key={step.label}
+            className="flex items-stretch"
+          >
+            <WorkflowStepCard step={step} />
+            {i < WORKFLOW_STEPS.length - 1 && <WorkflowConnector />}
           </li>
         ))}
       </ol>
 
-      {/* Mobile/tablet: vertical flow */}
-      <ol role="list" className="lg:hidden flex flex-col items-center gap-2">
-        {NODES.map((node, i) => (
-          <li key={node} className="flex flex-col items-center gap-1">
-            <span
-              className={`${CARD.base} px-4 py-2.5 font-sans text-[0.88rem] font-medium text-m-charcoal text-center min-w-[220px]`}
-            >
-              {node}
-            </span>
-            {i < NODES.length - 1 && (
-              <span aria-hidden="true" className="text-m-champagne my-1">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 5v14M6 13l6 6 6-6" />
-                </svg>
+      {/* ============================================
+          Mobile / tablet: vertical stack.
+          Connector becomes a vertical dotted line between steps.
+          ============================================ */}
+      <ol role="list" className="lg:hidden flex flex-col items-center">
+        {WORKFLOW_STEPS.map((step, i) => (
+          <li key={step.label} className="flex flex-col items-center">
+            <WorkflowStepCard step={step} />
+            {i < WORKFLOW_STEPS.length - 1 && (
+              <span
+                aria-hidden="true"
+                className="my-2 flex flex-col items-center gap-1"
+              >
+                <span className="block w-1.5 h-1.5 rounded-full bg-[#C9A24A]" />
+                <span className="block w-px h-8 border-l border-dotted border-[#C9BFA9]" />
+                <span className="block w-1.5 h-1.5 rounded-full bg-[#C9A24A]" />
               </span>
             )}
           </li>
         ))}
       </ol>
     </div>
+  )
+}
+
+function WorkflowStepCard({ step }: { step: WorkflowStep }) {
+  const Icon = step.icon
+  return (
+    <div
+      className={[
+        // Step pill — cream card, soft shadow, hover lift
+        'group flex flex-col items-center justify-start gap-3 min-w-[112px] lg:min-w-[120px]',
+        'rounded-2xl border border-[#E4DBC9] bg-white/70 px-4 py-5',
+        'shadow-[0_2px_10px_rgba(0,0,0,0.04)]',
+        'transition-all duration-200 ease-out',
+        'hover:-translate-y-[2px] hover:border-[#C9BFA9] hover:bg-white/90 hover:shadow-[0_8px_22px_rgba(0,0,0,0.06)]',
+      ].join(' ')}
+    >
+      {/* Line icon — stroke-1, champagne accent */}
+      <span
+        aria-hidden="true"
+        className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#FAF6EC] border border-[#EFE6D2] text-[#A8852C] transition-colors duration-200 group-hover:border-[#C9A24A]"
+      >
+        <Icon size={18} strokeWidth={1} />
+      </span>
+      {/* Serif label */}
+      <span className="font-serif text-m-charcoal text-[0.95rem] leading-[1.2] text-center whitespace-nowrap">
+        {step.label}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * Horizontal connector: champagne dot — dotted line — champagne dot.
+ * Sits inside the flex row so the line widens/narrows with viewport
+ * width but never falls below ~40px. Vertically centred against the
+ * step icon row (icon top-padding is py-5 + 36px icon, so the line
+ * naturally aligns with the icon centre via `items-stretch` + a
+ * margin-top below).
+ */
+function WorkflowConnector() {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex items-center gap-1.5 px-2 group-hover/workflow:opacity-100 transition-opacity duration-300"
+      // Vertical centre alignment with the step icon (pill top padding
+      // py-5 = 20px + icon 36px ÷ 2 = 38px from top)
+      style={{ marginTop: '38px', alignSelf: 'flex-start' }}
+    >
+      <span className="block w-1.5 h-1.5 rounded-full bg-[#C9A24A]" />
+      <span
+        className="block min-w-[28px] flex-1 border-t border-dotted border-[#C9BFA9]"
+        style={{ width: '40px' }}
+      />
+      <span className="block w-1.5 h-1.5 rounded-full bg-[#C9A24A]" />
+    </span>
   )
 }
 

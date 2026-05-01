@@ -1,7 +1,6 @@
-import Link from 'next/link'
 import Card from './ui/Card'
 import SectionHeader from './ui/SectionHeader'
-import { SECTION_PADDING, INLINE_LINK } from './_tokens'
+import { SECTION_PADDING } from './_tokens'
 
 /**
  * Pain points per Kaitlyn's 2026-04-26 spec (PR #42 revision). 2x2 grid
@@ -66,12 +65,7 @@ export default function LandingPainPoints() {
           ))}
         </div>
 
-        <div className="text-center mt-12 md:mt-14">
-          <Link href="/platform" className={INLINE_LINK}>
-            See how the platform fits together
-            <span aria-hidden="true">→</span>
-          </Link>
-        </div>
+        {/* Batch 4: removed onward CTA "See how the platform fits together". */}
       </div>
     </section>
   )

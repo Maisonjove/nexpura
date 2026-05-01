@@ -17,8 +17,7 @@
 // ============================================
 
 import { useState } from "react"
-import Link from "next/link"
-import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER, INLINE_LINK } from "./_tokens"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER } from "./_tokens"
 
 type TabKey = "repairs" | "inventory" | "bespoke" | "pos" | "analytics"
 
@@ -207,16 +206,8 @@ export default function LandingProductDemo() {
           </div>
         </div>
 
-        {/* Onward link — Batch 2: each homepage section ends with a tease
-            and a link, rather than fully explaining inline. Wording is
-            distinct from the LandingPlatformModules CTA below to avoid
-            duplication. */}
-        <div className="text-center mt-12 md:mt-14">
-          <Link href="/platform" className={INLINE_LINK}>
-            Take the full product tour
-            <span aria-hidden="true">→</span>
-          </Link>
-        </div>
+        {/* Batch 4: removed onward CTA "Take the full product tour".
+            Kaitlyn dropped the per-section onward links from Batch 2. */}
       </div>
     </section>
   )

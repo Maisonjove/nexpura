@@ -617,17 +617,19 @@ section[id] {
    eyebrow visible below the header. */
 
 /* === Page-shell padding for routed (non-homepage) pages =============
-   Marketing-layout main element uses .page-shell to push content past
-   the 72px sticky header + a 16px buffer (88px desktop). Mobile uses
-   72px (no buffer; tighter viewport). Replaces the legacy pt-[72px]
-   that touched the header's bottom edge with no breathing room. */
+   Marketing-layout main element previously added 88px (desktop) /
+   72px (mobile) of top padding to push content below the sticky
+   header. The sticky header already occupies 72px of document flow
+   on its own, so the extra padding-top compounded into a visible
+   white-space gap above every section's hero (Kaitlyn flagged in
+   Batch 4 — Item 9).
+   Removed the padding-top entirely 2026-04-28 (Batch 4): each
+   marketing section provides its own top padding via SECTION_PADDING
+   (Tier 1–4), so the header→content rhythm now lands as designed
+   without a phantom 88/72px band. The class is kept (no-op) so
+   existing references in the marketing layout continue to compile. */
 .page-shell {
-  padding-top: 88px;
-}
-@media (max-width: 768px) {
-  .page-shell {
-    padding-top: 72px;
-  }
+  /* intentionally empty — see comment above. */
 }
 
 /* (nxFadeInDropdown keyframe removed 2026-04-26: the pricing

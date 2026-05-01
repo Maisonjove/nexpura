@@ -84,6 +84,8 @@ const MODULES: Module[] = [
     id: 'pos',
     title: 'Point of Sale',
     icon: ShoppingBag,
+    image: '/mockups/modules/pos.svg',
+    imageAlt: 'Point of Sale interface — cart panel with three line items and a serif total of $6,387',
     intro:
       'A jewellery POS that connects every sale to the customer record, the piece, and the post-sale service trail.',
     bullets: [
@@ -154,6 +156,8 @@ const MODULES: Module[] = [
     id: 'customers',
     title: 'Customers / CRM',
     icon: Users,
+    image: '/mockups/modules/customers.svg',
+    imageAlt: 'Customer profile — Eleanor Whitfield VIP card with anniversary, ring size, lifetime spend, and recent purchase and service history',
     intro:
       'A jeweller-specific CRM that keeps purchase history, repairs, bespoke jobs, preferences, and reminders in one record.',
     bullets: [
@@ -170,6 +174,8 @@ const MODULES: Module[] = [
     id: 'invoicing',
     title: 'Invoicing',
     icon: FileText,
+    image: '/mockups/modules/invoicing.svg',
+    imageAlt: 'Invoice INV-2026-0218 — line items, deposit received, and a $2,300 balance due',
     intro:
       'Branded invoices, balance tracking, and payments connected directly to repairs, bespoke jobs, and sales.',
     bullets: [
@@ -186,6 +192,8 @@ const MODULES: Module[] = [
     id: 'suppliers',
     title: 'Suppliers',
     icon: Truck,
+    image: '/mockups/modules/suppliers.svg',
+    imageAlt: 'Supplier list — four suppliers with last-order date, on-time performance bar, and YTD spend',
     intro:
       'Supplier records, purchase orders, receiving, and reconciliation connected to inventory and bespoke sourcing.',
     bullets: [
@@ -202,6 +210,8 @@ const MODULES: Module[] = [
     id: 'command-center',
     title: 'Command Centers',
     icon: LayoutGrid,
+    image: '/mockups/modules/command-centers.svg',
+    imageAlt: 'Owner command centre dashboard — four metric cards covering overdue repairs, low stock, unpaid balances, and approvals waiting',
     intro:
       'Every repair and bespoke job gets its own operational screen with status, finances, photos, and activity history.',
     bullets: [
@@ -274,17 +284,28 @@ export default function FeaturesClient() {
       {/* ============================================
           In-page module index — anchor nav
           ============================================ */}
+      {/* Module index — Batch 4 update.
+          Previously: `overflow-x-auto` + `whitespace-nowrap` so the
+          strip scrolled horizontally on every viewport.
+          Now: flex-wrap + justify-center so all 9 modules fit on a
+          single line at ≥1280px and wrap centred onto subsequent
+          lines on tablet/mobile. Tightened item gap (gap-x-4 md:gap-x-5,
+          previously gap-5 md:gap-7) so the canonical 9 fit cleanly
+          inside the 1200px container without overflow. */}
       <nav
         aria-label="Module index"
-        className="sticky top-[72px] z-30 bg-[rgba(250,247,242,0.95)] backdrop-blur-xl border-y border-m-border-soft"
+        className="sticky top-[72px] z-30 bg-[rgba(250,247,242,0.95)] backdrop-blur-xl border-y border-m-border-soft overflow-x-hidden"
       >
-        <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-20 overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-          <ul role="list" className="flex items-center gap-5 md:gap-7 py-3.5 whitespace-nowrap">
+        <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-12">
+          <ul
+            role="list"
+            className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 md:gap-x-5 py-3"
+          >
             {MODULES.map((m, i) => (
               <li key={m.id}>
                 <a
                   href={`#${m.id}`}
-                  className="font-sans text-[0.85rem] text-m-text-secondary hover:text-m-charcoal transition-colors duration-200"
+                  className="inline-flex items-baseline whitespace-nowrap font-sans text-[0.84rem] text-m-text-secondary hover:text-m-charcoal transition-colors duration-200"
                 >
                   <span className="font-mono tabular-nums text-m-text-faint mr-1.5">
                     {String(i + 1).padStart(2, '0')}
@@ -416,8 +437,12 @@ function ModuleSection({ module, index }: { module: Module; index: number }) {
           </div>
         </div>
 
-        {/* Visual column — real screenshot when supplied, otherwise placeholder */}
-        <div className="lg:sticky lg:top-[160px]">
+        {/* Visual column — real screenshot when supplied, otherwise
+            stylised SVG mockup. Batch 4: removed `lg:sticky lg:top-[160px]`
+            so the image stays planted in document flow next to its
+            text — Kaitlyn flagged the prior sticky behaviour as parallax-y
+            on long scrolls. */}
+        <div>
           {module.image ? (
             <div className="relative rounded-2xl overflow-hidden bg-m-white-soft border border-m-border-soft shadow-[0_18px_45px_rgba(0,0,0,0.06)]">
               <img

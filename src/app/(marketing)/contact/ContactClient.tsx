@@ -280,18 +280,27 @@ function ContactClientInner() {
               <div key={c.label}>
                 <span className={HEADING.eyebrow}>{c.label}</span>
                 <div className="space-y-1">
-                  {c.lines.map((line, i) => (
-                    <p
-                      key={i}
-                      className={
-                        i === 0
-                          ? 'font-sans text-m-charcoal text-[1.05rem] md:text-[1.1rem] leading-[1.4]'
-                          : 'font-sans text-m-text-secondary text-[0.95rem] leading-[1.55]'
-                      }
-                    >
-                      {line}
-                    </p>
-                  ))}
+                  {c.lines.map((line, i) => {
+                    const isEmail = line === 'hello@nexpura.com'
+                    const baseClass =
+                      i === 0
+                        ? 'font-sans text-m-charcoal text-[1.05rem] md:text-[1.1rem] leading-[1.4]'
+                        : 'font-sans text-m-text-secondary text-[0.95rem] leading-[1.55]'
+                    return (
+                      <p key={i} className={baseClass}>
+                        {isEmail ? (
+                          <a
+                            href="mailto:hello@nexpura.com"
+                            className="text-amber-700 underline-offset-4 hover:underline"
+                          >
+                            {line}
+                          </a>
+                        ) : (
+                          line
+                        )}
+                      </p>
+                    )
+                  })}
                 </div>
               </div>
             ))}

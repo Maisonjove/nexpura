@@ -30,6 +30,31 @@
 
 import LegalTOC from './LegalTOC'
 
+/**
+ * Render a string and replace any "hello@nexpura.com" occurrence with a
+ * styled mailto anchor (Batch 4). Returns a React fragment so callers
+ * can drop it inside a <p> or other text container.
+ */
+function withEmailLink(text: string) {
+  const email = 'hello@nexpura.com'
+  if (!text.includes(email)) return text
+  const parts = text.split(email)
+  return parts.flatMap((part, i) =>
+    i < parts.length - 1
+      ? [
+          part,
+          <a
+            key={i}
+            href={`mailto:${email}`}
+            className="text-amber-700 underline-offset-4 hover:underline"
+          >
+            {email}
+          </a>,
+        ]
+      : [part],
+  )
+}
+
 export type ProviderRow = {
   name: string
   purpose: string
@@ -136,7 +161,7 @@ export default function LegalPageLayout({
                   </h2>
 
                   <div className={bodyClass}>
-                    <p>{s.body}</p>
+                    <p>{withEmailLink(s.body)}</p>
                     {s.providers && s.providers.length > 0 && (
                       <dl className="mt-7 grid grid-cols-1 sm:grid-cols-[140px_minmax(0,1fr)] gap-x-6 gap-y-3 border-t border-[#E4DBC9] pt-6">
                         {s.providers.map((p) => (
@@ -161,7 +186,7 @@ export default function LegalPageLayout({
 
             {/* Quiet closing note — no CTA, no link cluster, just contact */}
             <p className="mt-20 md:mt-24 font-sans text-[0.85rem] text-[#8A8276]">
-              {closingNote}
+              {withEmailLink(closingNote)}
             </p>
           </article>
         </div>

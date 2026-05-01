@@ -61,10 +61,12 @@ import LandingFinalCTA from '@/components/landing/LandingFinalCTA'
 // import LandingCta from '@/components/landing/LandingCta' — replaced 2026-04-26 by LandingFinalCTA. Old file kept on disk for repurposing.
 import LandingFooter from '@/components/landing/LandingFooter'
 import MarketingReveal from '@/components/landing/MarketingReveal'
+import ScrollToTop from '@/components/landing/ScrollToTop'
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-m-ivory flex flex-col">
+      <ScrollToTop />
       <LandingHeader />
       <main id="audience" className="flex-1">
         <LandingHero />

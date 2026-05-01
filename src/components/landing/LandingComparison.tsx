@@ -6,8 +6,7 @@
 // ============================================
 
 import React from "react"
-import Link from "next/link"
-import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER, INLINE_LINK } from "./_tokens"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER } from "./_tokens"
 
 type Column = {
   key: "generic" | "legacy" | "nexpura"
@@ -90,13 +89,7 @@ export default function LandingComparison() {
           })}
         </div>
 
-        {/* Onward link — Batch 2 */}
-        <div className="text-center mt-12 md:mt-14">
-          <Link href="/platform" className={INLINE_LINK}>
-            Compare the platform side by side
-            <span aria-hidden="true">→</span>
-          </Link>
-        </div>
+        {/* Batch 4: removed onward CTA "Compare the platform side by side". */}
       </div>
     </section>
   )

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" width="480" height="320" role="img" aria-label="Point of Sale interface mockup">
+  <!-- Cream canvas + soft inner border -->
+  <rect width="480" height="320" fill="#faf7f2"/>
+  <rect x="0.5" y="0.5" width="479" height="319" fill="none" stroke="#e8e1d4"/>
+
+  <!-- Top bar -->
+  <rect x="0" y="0" width="480" height="40" fill="#ffffff"/>
+  <line x1="0" y1="40" x2="480" y2="40" stroke="#e8e1d4"/>
+  <text x="20" y="25" font-family="Georgia, serif" font-size="13" fill="#1a1a1a">Point of Sale</text>
+  <circle cx="450" cy="20" r="4" fill="#c9a24a"/>
+  <text x="430" y="24" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276" text-anchor="end">Sage</text>
+
+  <!-- Left: search + items -->
+  <rect x="20" y="56" width="260" height="32" rx="6" fill="#ffffff" stroke="#e8e1d4"/>
+  <text x="32" y="76" font-family="system-ui, sans-serif" font-size="11" fill="#8a8276">Search SKU or scan barcode…</text>
+
+  <g font-family="system-ui, sans-serif" font-size="11" fill="#1a1a1a">
+    <!-- Item row 1 -->
+    <rect x="20" y="100" width="260" height="48" rx="6" fill="#ffffff" stroke="#e8e1d4"/>
+    <rect x="28" y="108" width="32" height="32" rx="4" fill="#f1e9d8"/>
+    <text x="68" y="121" font-family="Georgia, serif" font-size="12">Solitaire Engagement Ring</text>
+    <text x="68" y="136" fill="#8a8276" font-size="10">SKU NX-RNG-0421 · 18ct White Gold</text>
+    <text x="270" y="129" text-anchor="end" font-family="Georgia, serif" font-size="13">$4,800</text>
+
+    <!-- Item row 2 -->
+    <rect x="20" y="156" width="260" height="48" rx="6" fill="#ffffff" stroke="#e8e1d4"/>
+    <rect x="28" y="164" width="32" height="32" rx="4" fill="#f1e9d8"/>
+    <text x="68" y="177" font-family="Georgia, serif" font-size="12">Diamond Stud Earrings</text>
+    <text x="68" y="192" fill="#8a8276" font-size="10">SKU NX-EAR-0118 · 0.5ct pair</text>
+    <text x="270" y="185" text-anchor="end" font-family="Georgia, serif" font-size="13">$1,250</text>
+
+    <!-- Item row 3 -->
+    <rect x="20" y="212" width="260" height="48" rx="6" fill="#ffffff" stroke="#e8e1d4"/>
+    <rect x="28" y="220" width="32" height="32" rx="4" fill="#f1e9d8"/>
+    <text x="68" y="233" font-family="Georgia, serif" font-size="12">Resize · existing piece</text>
+    <text x="68" y="248" fill="#8a8276" font-size="10">Service · workshop</text>
+    <text x="270" y="241" text-anchor="end" font-family="Georgia, serif" font-size="13">$120</text>
+  </g>
+
+  <!-- Right: cart total panel -->
+  <rect x="296" y="56" width="164" height="244" rx="10" fill="#ffffff" stroke="#e8e1d4"/>
+  <text x="312" y="78" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276" letter-spacing="2">CART · 3 ITEMS</text>
+  <line x1="312" y1="90" x2="444" y2="90" stroke="#f0e9da"/>
+
+  <g font-family="system-ui, sans-serif" font-size="11" fill="#1a1a1a">
+    <text x="312" y="110">Subtotal</text>
+    <text x="444" y="110" text-anchor="end">$6,170</text>
+    <text x="312" y="130">Tax (10%)</text>
+    <text x="444" y="130" text-anchor="end">$617</text>
+    <text x="312" y="150" fill="#8a8276">Trade-in</text>
+    <text x="444" y="150" text-anchor="end" fill="#8a8276">−$400</text>
+  </g>
+  <line x1="312" y1="166" x2="444" y2="166" stroke="#e8e1d4"/>
+  <text x="312" y="190" font-family="Georgia, serif" font-size="12" fill="#1a1a1a">Total</text>
+  <text x="444" y="190" font-family="Georgia, serif" font-size="18" fill="#1a1a1a" text-anchor="end">$6,387</text>
+
+  <rect x="312" y="208" width="132" height="34" rx="17" fill="#1a1a1a"/>
+  <text x="378" y="229" font-family="system-ui, sans-serif" font-size="11" fill="#ffffff" text-anchor="middle">Charge card</text>
+
+  <rect x="312" y="250" width="132" height="34" rx="17" fill="none" stroke="#1a1a1a"/>
+  <text x="378" y="271" font-family="system-ui, sans-serif" font-size="11" fill="#1a1a1a" text-anchor="middle">Split tender</text>
+</svg>
