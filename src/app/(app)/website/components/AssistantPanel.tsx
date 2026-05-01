@@ -217,11 +217,24 @@ function Turn({ turn }: { turn: ChatTurn }) {
       </div>
     );
   }
-  // Assistant
+  // Assistant.
+  // The model writes its summary BEFORE actions execute, so a `create_page`
+  // that returns applied:false (slug already exists, etc.) leaves a cheerful
+  // "Page created!" summary that doesn't reflect reality. Surface a banner
+  // when ANY action failed so the user sees the contradiction clearly.
+  const failedActions = turn.actions.filter((a) => !a.applied);
+  const allFailed = turn.actions.length > 0 && failedActions.length === turn.actions.length;
   return (
     <div className="flex justify-start">
       <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-stone-100 text-stone-900 px-3 py-2 text-sm space-y-2 whitespace-pre-line">
         <div>{turn.text}</div>
+        {failedActions.length > 0 && (
+          <div className="text-[11px] rounded-md bg-amber-50 border border-amber-200 text-amber-900 px-2 py-1.5">
+            {allFailed
+              ? "Heads up — none of these changes were applied. See details below."
+              : `Heads up — ${failedActions.length} change${failedActions.length === 1 ? "" : "s"} couldn't be applied. See details below.`}
+          </div>
+        )}
         {turn.actions.length > 0 && (
           <ul className="text-[11px] text-stone-600 space-y-0.5 border-t border-stone-200 pt-2">
             {turn.actions.map((a, i) => (

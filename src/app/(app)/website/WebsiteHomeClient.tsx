@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { saveWebsiteConfig, switchWebsiteType, type WebsiteConfigData } from "./actions";
-import { publishAllPages } from "./builder/actions";
+import { publishAllPages, unpublishAllPages } from "./builder/actions";
 import { TEMPLATES } from "@/lib/templates/data";
 import TemplateGalleryClient from "./templates/TemplateGalleryClient";
 import {
@@ -184,6 +184,28 @@ function WebsiteHomeInner({
     });
   }
 
+  function handleUnpublishAll() {
+    if (isPending) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        "Take your site offline? Visitors will see a coming-soon page until you publish again.",
+      )
+    ) {
+      return;
+    }
+    const t = toast.loading("Taking site offline…");
+    startTransition(async () => {
+      const r = await unpublishAllPages();
+      if (r.error) {
+        toast.error(r.error, { id: t });
+      } else {
+        toast.success(`Unpublished ${r.unpublished ?? 0} page${r.unpublished === 1 ? "" : "s"}`, { id: t });
+        router.refresh();
+      }
+    });
+  }
+
   function handleSwitchToConnect() {
     if (isPending) return;
     if (
@@ -271,6 +293,16 @@ function WebsiteHomeInner({
             >
               Preview
             </a>
+          )}
+          {hasTemplate && pages.some((p) => p.published) && (
+            <button
+              onClick={handleUnpublishAll}
+              disabled={isPending}
+              className="px-3.5 py-2 text-sm font-medium rounded-lg border border-stone-300 text-stone-700 hover:border-stone-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Take the site offline (drafts only — visitors see a coming-soon page)"
+            >
+              Unpublish
+            </button>
           )}
           {hasTemplate && (
             <button

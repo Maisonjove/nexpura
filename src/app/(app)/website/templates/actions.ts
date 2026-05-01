@@ -101,7 +101,13 @@ export async function applyTemplate(
       }
     }
 
-    // Step 3: insert fresh pages
+    // Step 3: insert fresh pages.
+    // Templates seed AS DRAFT (`published: false`) so the merchant reviews
+    // (and optionally edits via the AI panel) before anything goes live.
+    // Pre-fix this seeded `published: true`, which conflicted with the AI
+    // assistant's draft-first semantics ("Saved as draft. Manual publish
+    // required.") and the WebsiteHomeClient header copy ("Drafts only —
+    // publish when ready"). One Publish click takes the whole site live.
     const pageRows = template.pages.map((p) => ({
       tenant_id: tenantId,
       slug: p.slug,
@@ -109,7 +115,7 @@ export async function applyTemplate(
       page_type: p.type,
       meta_title: p.metaTitle,
       meta_description: p.metaDescription,
-      published: true,
+      published: false,
     }));
 
     const { data: insertedPages, error: pageErr } = await admin

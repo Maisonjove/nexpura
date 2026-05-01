@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import type { Template } from "@/lib/templates/types";
@@ -16,6 +17,7 @@ export default function TemplateGalleryClient({
   // website builder" + page heading — the host already provides those.
   embedded?: boolean;
 }) {
+  const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -34,13 +36,14 @@ export default function TemplateGalleryClient({
         toast.error(result.error);
         return;
       }
-      toast.success(`${template.name} applied. Edit with AI or by section.`);
-      // Land on /website (Phase 2 WebsiteHomeClient) so the AI assistant + page
-      // list + Setup/Domain/Advanced/Preview tabs are all visible. Pre-fix this
-      // pointed at /website/builder which is the legacy page-list view with no
-      // AI panel — that's why Joey reported "i dont see the ai bot helper" on
-      // the post-apply screen.
-      window.location.href = "/website";
+      toast.success(`${template.name} applied. Saved as draft — review then publish.`);
+      // Client-side navigate to /website (WebsiteHomeClient) instead of a hard
+      // `window.location.href` reload. Pre-fix the hard reload caused a 5–8s
+      // skeleton state because Next had to refetch and re-hydrate the whole
+      // tree. router.push reuses the existing React tree, and applyTemplate
+      // already calls revalidatePath so the new server data is fresh.
+      router.push("/website");
+      router.refresh();
     });
   }
 
