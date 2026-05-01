@@ -239,7 +239,17 @@ export async function checkSubdomainAvailable(subdomain: string, currentTenantId
       return { available: false, reason: "This subdomain is reserved" };
     }
 
-    const { data, error } = await supabase
+    // Subdomain uniqueness is a GLOBAL property — we have to be able to see
+    // every tenant's website_config row to detect collisions. Pre-fix this
+    // query used the RLS-scoped `supabase` client from getAuthContext, which
+    // returns NULL for any other tenant's row (RLS blocks the read). The
+    // code then read the NULL as "no collision" and returned available:true
+    // for subdomains that were actually taken — Joey hit this with
+    // "maisonjove" in the QA pass. Switched to the admin client so the
+    // existence check sees every row; we still exclude the caller's own
+    // tenant_id so users can re-confirm their existing subdomain.
+    const admin = createAdminClient();
+    const { data, error } = await admin
       .from("website_config")
       .select("tenant_id")
       .eq("subdomain", trimmed)
