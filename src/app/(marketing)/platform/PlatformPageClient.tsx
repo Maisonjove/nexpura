@@ -347,9 +347,14 @@ export default function PlatformPageClient() {
           </div>
 
           {/* Tab panels — every panel is in the DOM at all times.
-              Inactive panels use `hidden` so they're not visible but stay
-              indexable. */}
-          <div className="max-w-[920px] mx-auto">
+              Inactive panels are visually hidden but their content stays
+              indexable. We use a sr-only-style approach (clip + position
+              absolute) instead of `display:none` because Tailwind's
+              `grid` utility otherwise overrides the [hidden] UA rule
+              (Tailwind's `display: grid` has higher specificity than
+              the user-agent stylesheet). Sticking with the visible
+              panel as a `display:grid` block. */}
+          <div className="max-w-[920px] mx-auto relative">
             {MODULE_TABS.map((tab) => {
               const isActive = activeTab === tab.id
               return (
@@ -358,8 +363,12 @@ export default function PlatformPageClient() {
                   id={`panel-${tab.id}`}
                   role="tabpanel"
                   aria-labelledby={`tab-${tab.id}`}
-                  hidden={!isActive}
-                  className={`${CARD.base} ${CARD.paddingStandard} grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 md:gap-10`}
+                  aria-hidden={!isActive}
+                  className={
+                    isActive
+                      ? `${CARD.base} ${CARD.paddingStandard} grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 md:gap-10`
+                      : 'sr-only'
+                  }
                 >
                   <div>
                     <h3 className="font-serif text-m-charcoal text-[1.4rem] md:text-[1.6rem] leading-[1.2] mb-3">
