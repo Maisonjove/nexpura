@@ -136,6 +136,24 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Phase 2 builder writes the chosen subdomain to website_config.subdomain
+    // (unique constraint at the DB level), not tenants.subdomain — so the two
+    // checks above miss collisions for any tenant that's gone through the new
+    // builder flow. Pre-fix this returned available:true for taken subdomains
+    // and the user only learned at save time via an opaque DB UNIQUE error.
+    const { data: existingByConfig } = await supabase
+      .from("website_config")
+      .select("tenant_id")
+      .eq("subdomain", normalized)
+      .maybeSingle();
+
+    if (existingByConfig) {
+      return NextResponse.json({
+        available: false,
+        error: "This subdomain is already taken",
+      });
+    }
+
     return NextResponse.json({
       available: true,
       subdomain: normalized,
