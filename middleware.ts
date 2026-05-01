@@ -167,6 +167,12 @@ function isExemptPath(pathname: string): boolean {
     pathname.startsWith("/billing") ||
     pathname.startsWith("/pricing") ||
     pathname.startsWith("/features") ||
+    pathname.startsWith("/platform") ||
+    pathname.startsWith("/about") ||
+    pathname.startsWith("/contact") ||
+    pathname.startsWith("/security") ||
+    pathname.startsWith("/blog") ||
+    pathname.startsWith("/switching") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/privacy") ||
     pathname.startsWith("/dashboard") ||
