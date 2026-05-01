@@ -119,9 +119,8 @@ export default function LandingPlatformModules() {
             One system of record for every jewellery workflow
           </h2>
           <p className={`${HEADING.subhead} max-w-[680px] mx-auto`}>
-            Nexpura connects the operational data jewellers rely on every day —
-            sales, stock, repairs, bespoke jobs, customers, payments, passports,
-            and performance.
+            One connected system of record for the daily work — built so every
+            sale, repair, bespoke job, and aftercare moment lives in the same place.
           </p>
         </div>
 

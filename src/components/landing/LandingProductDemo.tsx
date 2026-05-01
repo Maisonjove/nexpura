@@ -17,7 +17,8 @@
 // ============================================
 
 import { useState } from "react"
-import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER } from "./_tokens"
+import Link from "next/link"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER, INLINE_LINK } from "./_tokens"
 
 type TabKey = "repairs" | "inventory" | "bespoke" | "pos" | "analytics"
 
@@ -124,8 +125,9 @@ export default function LandingProductDemo() {
             See Nexpura in action
           </h2>
           <p className={`${HEADING.subhead} max-w-[680px] mx-auto`}>
-            A closer look at the daily screens your team uses to manage repairs,
-            stock, bespoke jobs, customers, passports, and performance.
+            A closer look at the daily screens your team uses — track every
+            repair from intake to collection, see what's overdue before a
+            customer asks, and keep stock, jobs, and customers in lockstep.
           </p>
         </div>
 
@@ -205,10 +207,16 @@ export default function LandingProductDemo() {
           </div>
         </div>
 
-        {/* Section CTA removed 2026-04-26 — same "Explore all features"
-            link already lives on the LandingPlatformModules card grid;
-            duplicating it here read as repetitive. The Product Demo
-            section now ends at the tabpanel. */}
+        {/* Onward link — Batch 2: each homepage section ends with a tease
+            and a link, rather than fully explaining inline. Wording is
+            distinct from the LandingPlatformModules CTA below to avoid
+            duplication. */}
+        <div className="text-center mt-12 md:mt-14">
+          <Link href="/platform" className={INLINE_LINK}>
+            Take the full product tour
+            <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       </div>
     </section>
   )

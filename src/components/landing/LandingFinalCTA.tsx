@@ -1,8 +1,6 @@
 // ============================================
-// "Run your jewellery business from one connected system"
-// Per Kaitlyn 2026-04-26 brief — replaces the prior LandingCta
-// (kept on disk for repurposing). Spec was missing the opening
-// <a tags on both CTA buttons — restored.
+// Final CTA — Batch 2 copy lock from Kaitlyn 2026-04-28.
+// Heading + footnote text fixed by spec; layout / tokens unchanged.
 // ============================================
 
 import React from "react"
@@ -21,13 +19,8 @@ export default function LandingFinalCTA() {
           id="final-cta-heading"
           className={HEADING.h2Closing}
         >
-          Run the workflows your team can finally connect
+          Start running your jewellery business from one connected platform.
         </h2>
-
-        <p className={`${HEADING.subhead} max-w-[640px] mx-auto`}>
-          Start free or book a personalised walkthrough built around your
-          current POS, repair, bespoke, inventory, and customer workflows.
-        </p>
 
         {/* CTA row */}
         <div className="mt-8 md:mt-9 flex flex-wrap justify-center gap-3 md:gap-4">
@@ -35,12 +28,12 @@ export default function LandingFinalCTA() {
             Start Free Trial
           </Link>
 
-          <Link href="/contact" className={BUTTON.secondary}>
+          <Link href="/contact?intent=demo" className={BUTTON.secondary}>
             Book a Guided Demo
           </Link>
         </div>
 
-        {/* Small trust line */}
+        {/* Small trust line — exact copy per Batch 2 spec */}
         <p className="mt-6 font-sans text-[0.88rem] text-[#8A8276]">
           14-day free trial <span aria-hidden="true" className="text-[#B9B0A1]">·</span> No charge today <span aria-hidden="true" className="text-[#B9B0A1]">·</span> Cancel anytime before your trial ends
         </p>

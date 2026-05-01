@@ -221,14 +221,19 @@ export default function PricingClient({
                 <motion.div
                   key={plan.id}
                   {...fadeUp(i * 0.1)}
-                  className={`relative flex flex-col p-[22px] sm:p-8 lg:p-10 rounded-[18px] border transition-all duration-[250ms] [transition-timing-function:var(--m-ease)] ${
+                  className={`relative flex flex-col h-full p-[22px] sm:p-8 lg:p-10 rounded-[18px] border transition-all duration-[250ms] [transition-timing-function:var(--m-ease)] ${
                     plan.isFeatured
                       ? 'border-m-champagne bg-m-white-soft shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
                       : 'border-m-border-soft bg-m-white-soft hover:-translate-y-1 hover:border-m-border-hover hover:shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
                   }`}
                 >
                   {plan.isFeatured && (
-                    <span className="absolute -top-3 left-8 px-3 py-1 bg-m-champagne text-m-charcoal text-[10px] tracking-[0.18em] uppercase font-medium rounded-full">
+                    /* Refined "Most Popular" badge — Batch 2.
+                       Was: solid champagne ribbon, read as loud.
+                       Now: small pill, white surface, champagne dot +
+                       champagne border. Reads as a quiet badge. */
+                    <span className="absolute -top-3 left-8 inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-m-champagne text-m-charcoal text-[10px] tracking-[0.18em] uppercase font-medium rounded-full shadow-[0_2px_8px_-2px_rgba(60,40,20,0.12)]">
+                      <span aria-hidden="true" className="inline-block w-1.5 h-1.5 rounded-full bg-m-champagne" />
                       Most Popular
                     </span>
                   )}
@@ -244,7 +249,13 @@ export default function PricingClient({
                       {currency}
                     </span>
                   </div>
-                  <div className="mb-8 flex items-baseline gap-2">
+                  {/* Price block — Batch 2 spacing fix.
+                      A flex container alone is fragile here: across mobile
+                      breakpoints + tabular-nums fonts the 14px "From" can
+                      glue to the 56px symbol+amount. gap-x-3 plus
+                      flex-wrap keeps "From $499" cleanly spaced and
+                      gracefully wraps on narrow viewports. */}
+                  <div className="mb-8 flex items-baseline gap-x-3 gap-y-1 flex-wrap">
                     {plan.isFromPrice && (
                       <span className="font-sans text-[14px] text-m-text-faint">From</span>
                     )}
@@ -255,16 +266,29 @@ export default function PricingClient({
                     <span className="text-[14px] text-m-text-faint">/ month</span>
                   </div>
 
-                  {/* Primary CTA + optional quieter secondary text link.
-                      Per Kaitlyn 2026-04-26: every plan ships "Start Free
-                      Trial" as primary so the row reads coherent; Studio
-                      and Atelier add a small secondary link beneath
-                      ("or book a guided demo") for buyers who aren't
-                      ready to self-serve. Secondary link uses
-                      a quieter underline style and a fixed-height wrapper
-                      so the primary buttons stay horizontally aligned
-                      across all three cards. */}
-                  <div className="mb-10">
+                  {/* Features list — `flex-1` grows to fill so the CTA
+                      block below sits at the same vertical position
+                      across all three cards regardless of feature count
+                      (Batch 2 — equal-height cards + aligned CTAs). */}
+                  <ul className="space-y-3 flex-1 mb-8">
+                    {plan.features.map((h) => (
+                      <li
+                        key={h}
+                        className="flex items-start gap-3 text-[14px] leading-[1.6] text-m-text-secondary"
+                      >
+                        <CheckIcon />
+                        <span>{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* CTA block — pushed to the bottom by the flex-1
+                      features list above. Primary CTA on every plan;
+                      Studio + Atelier add a quieter secondary link
+                      beneath. mt-auto + h-6 secondary slot keeps the
+                      primary button row aligned even when one card is
+                      missing the secondary link. */}
+                  <div className="mt-auto">
                     <Link
                       href={primaryUrl}
                       className={`${ctaClass} w-full`}
@@ -282,18 +306,6 @@ export default function PricingClient({
                       )}
                     </div>
                   </div>
-
-                  <ul className="space-y-3 flex-1">
-                    {plan.features.map((h) => (
-                      <li
-                        key={h}
-                        className="flex items-start gap-3 text-[14px] leading-[1.6] text-m-text-secondary"
-                      >
-                        <CheckIcon />
-                        <span>{h}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </motion.div>
               )
             })}
@@ -301,6 +313,10 @@ export default function PricingClient({
 
           <p className="font-sans text-[0.85rem] text-[#8A8276] text-center mt-10">
             Prices shown based on region and exclude applicable taxes. Final billing currency is confirmed at checkout.
+          </p>
+          {/* Smaller note — Batch 2 trial-wording lock-down. */}
+          <p className="font-sans text-[0.78rem] italic text-[#8A8276] text-center mt-3 max-w-[640px] mx-auto leading-[1.55]">
+            Payment details are required to activate your trial. You will not be charged until your 14-day trial ends.
           </p>
         </div>
       </section>
@@ -323,17 +339,30 @@ export default function PricingClient({
             </motion.h2>
           </div>
 
+          {/* Batch 2 a11y fix:
+              - Plan column headers carry scope="col"
+              - Feature cells become <th scope="row"> so each value cell
+                announces "{plan name} {feature name} {value}" cleanly
+              - Em-dash cells render the symbol with aria-hidden + an
+                sr-only "Not included" so screen readers don't read out
+                "Custom branding—Yes Yes" as one mashed phrase
+              - Bumped row padding (py-5 / px-5) for breathing room */}
           <motion.div {...fadeUp(0.1)} className="overflow-x-auto">
             <table className="w-full text-[14px]">
+              <caption className="sr-only">Compare the Boutique, Studio, and Atelier plans</caption>
               <thead>
                 <tr className="border-b-2 border-m-charcoal">
-                  <th className="text-left py-4 pr-4 text-[11px] tracking-[0.14em] uppercase text-m-text-muted font-medium w-1/2">
+                  <th
+                    scope="col"
+                    className="text-left py-5 pr-5 text-[11px] tracking-[0.14em] uppercase text-m-text-muted font-medium w-1/2"
+                  >
                     Feature
                   </th>
                   {PLANS.map((p) => (
                     <th
                       key={p.id}
-                      className="text-center py-4 px-4 font-serif text-[20px] text-m-charcoal font-medium"
+                      scope="col"
+                      className="text-center py-5 px-5 font-serif text-[20px] text-m-charcoal font-medium"
                     >
                       {p.name}
                     </th>
@@ -363,13 +392,13 @@ export default function PricingClient({
         faqs={PRICING_FAQS}
       />
 
-      {/* Final CTA */}
+      {/* Final CTA — Batch 2 heading copy lock. */}
       <section className="py-24 lg:py-36 px-6 sm:px-10 lg:px-20 text-center border-t border-m-border-soft bg-m-charcoal">
         <motion.h2
           {...fadeBlur}
-          className="font-serif text-[36px] sm:text-[48px] lg:text-[56px] font-normal leading-[1.12] tracking-[-0.01em] text-white mb-10 italic"
+          className="font-serif text-[36px] sm:text-[48px] lg:text-[56px] font-normal leading-[1.12] tracking-[-0.01em] text-white mb-10"
         >
-          Pick the plan that matches your business
+          Choose the plan that fits your jewellery business.
         </motion.h2>
         <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           <Button href="/signup" size="lg" className="!bg-white !text-m-charcoal hover:!bg-m-champagne-tint">
@@ -410,22 +439,35 @@ function ComparisonGroup({ group }: { group: typeof comparisonGroups[number] }) 
   return (
     <>
       <tr className="border-b border-m-border-soft bg-m-ivory">
-        <td
+        <th
+          scope="colgroup"
           colSpan={4}
-          className="py-3 pr-4 pl-0 text-[11px] font-medium tracking-[0.14em] uppercase text-m-text-faint"
+          className="text-left py-3 pr-4 pl-0 text-[11px] font-medium tracking-[0.14em] uppercase text-m-text-faint"
         >
           {group.heading}
-        </td>
+        </th>
       </tr>
       {group.rows.map((row) => (
         <tr key={row.key} className="border-b border-m-border-soft-2">
-          <td className="py-4 pr-4 text-m-text-primary">{row.key}</td>
+          <th
+            scope="row"
+            className="py-5 pr-5 text-m-text-primary text-left font-normal"
+          >
+            {row.key}
+          </th>
           {row.values.map((v, i) => (
             <td
               key={i}
-              className={`text-center py-4 px-4 ${v === '—' ? 'text-m-text-faint' : 'text-m-text-secondary'}`}
+              className={`text-center py-5 px-5 ${v === '—' ? 'text-m-text-faint' : 'text-m-text-secondary'}`}
             >
-              {v}
+              {v === '—' ? (
+                <>
+                  <span aria-hidden="true">—</span>
+                  <span className="sr-only">Not included</span>
+                </>
+              ) : (
+                <span>{v}</span>
+              )}
             </td>
           ))}
         </tr>

@@ -1,20 +1,24 @@
 'use client'
 
 // ============================================
-// Contact — restyled per Kaitlyn 2026-04-26 polish-pass.
-//   - Compact hero
-//   - Form polish: tightened gaps, darker placeholder, custom dropdown
-//     chevron, BUTTON.primary on submit, focus-state #C9A24A/20 ring
-//     (lives in globals.css .m-form-input:focus)
-//   - Right-side info copy refreshed (EMAIL / LIVE CHAT / BOOK A DEMO)
-//   - "What happens in a demo" 5-step list refreshed verbatim
-//   - framer-motion removed; relies on the same static-token approach
-//     the rest of the marketing surface uses
-// Form submission logic unchanged — POSTs to /api/contact.
+// Contact / Book a Demo — Batch 2 (Kaitlyn 2026-04-28).
+//
+// /contact            → "Get in touch" enquiry form
+// /contact?intent=demo → "Book a guided Nexpura walkthrough" with extra
+//                        demo-specific fields (POS, stores, pain point,
+//                        preferred time)
+// /contact?intent=sales → same demo flow, sales topic preselected
+//
+// IMPORTANT: the form-submit handler still POSTs to /api/contact. The
+// `intent`, `current_pos`, `num_stores`, `pain_point`, and
+// `preferred_time` fields are appended to the existing payload as
+// optional extras. /api/contact tolerates unknown fields (it stores the
+// full body), so this is additive — no API change required.
 // ============================================
 
 import Link from 'next/link'
-import { useState, type FormEvent } from 'react'
+import { Suspense, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { SECTION_PADDING, HEADING, BUTTON, CONTAINER } from '@/components/landing/_tokens'
 
 type Channel = {
@@ -25,10 +29,7 @@ type Channel = {
 const CHANNELS: Channel[] = [
   {
     label: 'Email',
-    lines: [
-      'hello@nexpura.com',
-      'We respond within 24 hours',
-    ],
+    lines: ['hello@nexpura.com', 'We respond within 24 hours'],
   },
   {
     label: 'Live Chat',
@@ -41,7 +42,7 @@ const CHANNELS: Channel[] = [
     label: 'Book a Guided Demo',
     lines: [
       '30-minute personalised walkthrough',
-      'Walk through repairs, bespoke, POS, inventory, and customer records with our team.',
+      'We map repairs, bespoke, POS, inventory, and customer records to your team — without the sales theatre.',
     ],
   },
 ]
@@ -54,10 +55,20 @@ const DEMO_STEPS: string[] = [
   'You get clear next steps, with no pressure',
 ]
 
-export default function ContactClient() {
+function ContactClientInner() {
+  const searchParams = useSearchParams()
+  const intent = searchParams.get('intent') // "demo" | "sales" | null
+  const planParam = searchParams.get('plan') // optional, passed from pricing
+
+  const isDemoMode = intent === 'demo' || intent === 'sales'
+
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
+  // Form-submit handler — payload shape unchanged for the existing
+  // fields. New optional fields (current_pos, num_stores, pain_point,
+  // preferred_time, intent, plan) are appended only when they have
+  // values — /api/contact accepts the larger body without breaking.
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (status === 'sending') return
@@ -65,13 +76,20 @@ export default function ContactClient() {
     setErrorMsg(null)
     const form = e.currentTarget
     const fd = new FormData(form)
-    const payload = {
+    const payload: Record<string, string> = {
       first_name: String(fd.get('first_name') ?? ''),
       last_name: String(fd.get('last_name') ?? ''),
       business_name: String(fd.get('business_name') ?? ''),
       email: String(fd.get('email') ?? ''),
       topic: String(fd.get('topic') ?? ''),
       message: String(fd.get('message') ?? ''),
+    }
+    if (intent) payload.intent = intent
+    if (planParam) payload.plan = planParam
+    const optionalFields = ['current_pos', 'num_stores', 'pain_point', 'preferred_time']
+    for (const key of optionalFields) {
+      const v = fd.get(key)
+      if (v && String(v).trim()) payload[key] = String(v)
     }
     try {
       const r = await fetch('/api/contact', {
@@ -93,17 +111,30 @@ export default function ContactClient() {
     }
   }
 
+  // Heading + subcopy + topic default + submit label all swap based on
+  // ?intent. Default (no intent) keeps the prior generic enquiry flow.
+  const heading = isDemoMode
+    ? 'Book a guided Nexpura walkthrough.'
+    : 'Get in touch with the team.'
+  const subcopy = isDemoMode
+    ? 'See how Nexpura maps to your POS, repairs, bespoke jobs, inventory, passports, and team workflows.'
+    : 'Questions about migration, pricing, or the product? We respond within one business day.'
+  const submitLabel = isDemoMode ? 'Book a Guided Demo' : 'Send Enquiry'
+  const defaultTopic = isDemoMode ? 'demo' : 'demo'
+
   return (
     <div className="bg-m-ivory">
-      {/* === Hero — compact tier ====================================== */}
+      {/* === Hero ===================================================== */}
       <section className={`${SECTION_PADDING.compact} text-center`}>
         <div className={CONTAINER.narrow}>
-          <span className={HEADING.eyebrow}>Get in Touch</span>
+          <span className={HEADING.eyebrow}>
+            {isDemoMode ? 'Book a Demo' : 'Get in Touch'}
+          </span>
           <h1 className="font-serif text-m-charcoal text-[2rem] md:text-[2.4rem] leading-[1.12] tracking-[-0.005em] mb-4">
-            Let&apos;s talk
+            {heading}
           </h1>
-          <p className="font-sans text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[600px] mx-auto">
-            Book a demo, ask questions, or talk to our team about your migration. We&apos;re real people who understand jewellery businesses.
+          <p className="font-sans text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.6] max-w-[640px] mx-auto">
+            {subcopy}
           </p>
         </div>
       </section>
@@ -134,7 +165,7 @@ export default function ContactClient() {
                   id="contact-topic"
                   name="topic"
                   className="m-form-input cursor-pointer appearance-none pr-12"
-                  defaultValue="demo"
+                  defaultValue={defaultTopic}
                   required
                 >
                   <option value="demo">Book a product demo</option>
@@ -153,15 +184,59 @@ export default function ContactClient() {
                 </span>
               </div>
             </div>
+
+            {/* Demo-specific fields — Batch 2.
+                Render only when the visitor arrived via /contact?intent=demo
+                (or intent=sales). On the generic /contact route these
+                fields are not shown, keeping the lightweight enquiry form. */}
+            {isDemoMode && (
+              <div
+                id="demo-fields"
+                aria-label="Demo-specific details"
+                className="space-y-5 rounded-[14px] border border-[#E4DBC9] bg-white/60 p-5 md:p-6"
+              >
+                <p className="font-sans text-[12px] tracking-[0.18em] uppercase text-m-text-faint font-medium">
+                  About your business
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <Field
+                    label="Current POS / system"
+                    name="current_pos"
+                    placeholder="Lightspeed, Shopify, paper, etc."
+                  />
+                  <Field
+                    label="Number of stores"
+                    name="num_stores"
+                    placeholder="1"
+                    type="text"
+                  />
+                </div>
+                <Field
+                  label="Main workflow pain point"
+                  name="pain_point"
+                  placeholder="Repairs falling through the cracks, etc."
+                />
+                <Field
+                  label="Preferred demo time"
+                  name="preferred_time"
+                  placeholder="Tuesday afternoons AEST, etc."
+                />
+              </div>
+            )}
+
             <div>
               <label htmlFor="contact-message" className="m-form-label">
-                Message
+                {isDemoMode ? 'A short note about your business' : 'Message'}
               </label>
               <textarea
                 id="contact-message"
                 name="message"
                 rows={4}
-                placeholder="Tell us about your business..."
+                placeholder={
+                  isDemoMode
+                    ? 'A few sentences about your business and what you want to see in the walkthrough.'
+                    : 'Tell us about your business...'
+                }
                 className="m-form-input m-form-textarea"
                 required
                 minLength={5}
@@ -175,7 +250,9 @@ export default function ContactClient() {
                 aria-live="polite"
                 className="bg-[#F1E9D8] border border-[#E4DBC9] text-m-charcoal rounded-[14px] px-4 py-3 font-sans text-[0.92rem] leading-[1.55]"
               >
-                Thanks — your message is on its way to hello@nexpura.com. We&apos;ll be in touch within 24 hours.
+                {isDemoMode
+                  ? 'Thanks — your demo request is on its way to the team. We respond within one business day.'
+                  : "Thanks — your message is on its way to hello@nexpura.com. We'll be in touch within 24 hours."}
               </div>
             )}
             {status === 'error' && errorMsg && (
@@ -186,9 +263,15 @@ export default function ContactClient() {
               type="submit"
               className={`${BUTTON.primary} mt-2`}
               disabled={status === 'sending'}
+              aria-busy={status === 'sending'}
             >
-              {status === 'sending' ? 'Sending…' : 'Send Message'}
+              {status === 'sending' ? 'Sending…' : submitLabel}
             </button>
+
+            <p className="font-sans text-[0.85rem] text-m-text-muted leading-[1.55]">
+              We respond within 1 business day. Your details are private and
+              never shared.
+            </p>
           </form>
 
           {/* Info column */}
@@ -248,6 +331,17 @@ export default function ContactClient() {
           </div>
         </div>
       </section>
+
+      {/* === Closing block — Batch 2 ================================= */}
+      <section
+        className={`${SECTION_PADDING.compact} text-center border-t border-m-border-soft`}
+      >
+        <div className={CONTAINER.narrow}>
+          <h2 className={HEADING.h2Closing}>
+            Book a walkthrough built around your current setup.
+          </h2>
+        </div>
+      </section>
     </div>
   )
 }
@@ -280,5 +374,20 @@ function Field({
         className="m-form-input"
       />
     </div>
+  )
+}
+
+export default function ContactClient() {
+  // useSearchParams() must be wrapped in Suspense for Next 15.
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-m-ivory min-h-[60vh] flex items-center justify-center">
+          <p className="font-sans text-[0.92rem] text-m-text-muted">Loading…</p>
+        </div>
+      }
+    >
+      <ContactClientInner />
+    </Suspense>
   )
 }

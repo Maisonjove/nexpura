@@ -5,7 +5,8 @@
 // ============================================
 
 import React from "react"
-import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, CONTAINER } from "./_tokens"
+import Link from "next/link"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, CONTAINER, INLINE_LINK } from "./_tokens"
 
 type Audience = {
   title: string
@@ -136,6 +137,14 @@ export default function LandingWhoItsFor() {
             </li>
           ))}
         </ul>
+
+        {/* Onward link — Batch 2 */}
+        <div className="text-center mt-12 md:mt-14">
+          <Link href="/features" className={INLINE_LINK}>
+            See the workflows for your business
+            <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       </div>
     </section>
   )

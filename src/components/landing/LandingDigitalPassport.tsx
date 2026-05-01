@@ -6,7 +6,8 @@
 // ============================================
 
 import React from "react"
-import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, CONTAINER } from "./_tokens"
+import Link from "next/link"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, CONTAINER, INLINE_LINK } from "./_tokens"
 
 type Card = {
   title: string
@@ -129,6 +130,14 @@ export default function LandingDigitalPassport() {
               </li>
             ))}
           </ul>
+        </div>
+
+        {/* Onward link — Batch 2 */}
+        <div className="text-center mt-12 md:mt-14">
+          <Link href="/features#digital-passport" className={INLINE_LINK}>
+            Learn more about Digital Passports
+            <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </div>
     </section>

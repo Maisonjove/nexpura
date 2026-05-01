@@ -57,9 +57,7 @@ export default function LandingHero() {
         <p className="mt-5 flex flex-wrap gap-x-2.5 gap-y-1 justify-center lg:justify-start text-[0.9rem] leading-[1.5] text-m-text-muted max-w-[760px] mx-auto lg:mx-0">
           <span>14-day free trial</span>
           <span className="text-m-text-faint" aria-hidden="true">·</span>
-          <span>Guided migration available</span>
-          <span className="text-m-text-faint" aria-hidden="true">·</span>
-          <span>Built for jewellery workflows</span>
+          <span>Guided migration</span>
           <span className="text-m-text-faint" aria-hidden="true">·</span>
           <span>No hidden fees</span>
         </p>

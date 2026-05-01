@@ -6,7 +6,8 @@
 // ============================================
 
 import React from "react"
-import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER } from "./_tokens"
+import Link from "next/link"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER, INLINE_LINK } from "./_tokens"
 
 type Column = {
   key: "generic" | "legacy" | "nexpura"
@@ -44,7 +45,7 @@ const COLUMNS: Column[] = [
     label: "Nexpura",
     points: [
       "Modern jewellery operating system",
-      "POS, repairs, bespoke, stock, CRM, and passports connected",
+      "Every sale, repair, and bespoke job stays connected to the customer",
       "AI Copilot for operational insights",
       "QR-verifiable digital passports",
       "Guided migration and onboarding",
@@ -87,6 +88,14 @@ export default function LandingComparison() {
               <ComparisonCard key={col.key} col={col} featured={isFeatured} />
             )
           })}
+        </div>
+
+        {/* Onward link — Batch 2 */}
+        <div className="text-center mt-12 md:mt-14">
+          <Link href="/platform" className={INLINE_LINK}>
+            Compare the platform side by side
+            <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </div>
     </section>
