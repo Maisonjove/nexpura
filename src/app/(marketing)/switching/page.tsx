@@ -209,7 +209,7 @@ export default function SwitchingPage() {
         </ul>
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Button href="/contact" size="lg" className="!bg-white !text-m-charcoal hover:!bg-m-champagne-tint">
-            Book a Demo
+            Book a Guided Demo
           </Button>
           <Link
             href="/platform"

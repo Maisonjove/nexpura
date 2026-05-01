@@ -562,13 +562,13 @@ export default async function BlogPostPage({ params }: Props) {
             <div className="bg-m-charcoal text-white rounded-[18px] p-6">
               <h3 className="font-serif text-[20px] mb-2 leading-[1.25]">Try Nexpura free</h3>
               <p className="text-[13px] text-m-champagne-soft mb-5 leading-[1.55]">
-                The all-in-one platform for modern jewellery businesses.
+                The connected platform for modern jewellery businesses.
               </p>
               <Link
                 href="/signup"
                 className="block w-full text-center px-4 py-3 bg-white text-m-charcoal text-[14px] rounded-full font-semibold hover:bg-m-champagne-tint transition-colors duration-200"
               >
-                Start free trial
+                Start Free Trial
               </Link>
             </div>
           </aside>

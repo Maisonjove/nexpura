@@ -155,7 +155,7 @@ export default function LandingMigration() {
               Start Free Trial
             </Button>
             <Button href="/contact" variant="secondary" size="lg">
-              Talk to Migration Support
+              Book a Guided Demo
             </Button>
           </div>
           <p className="text-[13px] tracking-[0.05em] text-m-text-muted">

@@ -4,12 +4,21 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 /**
- * Sticky marketing nav. Updated 2026-04-26 per Kaitlyn's 9-fix follow-up:
+ * Sticky marketing nav. Updated 2026-04-28 (Batch 1 site refinement):
  *
  * - Left cluster: Platform · Features · Pricing · Verify Passport
  * - Centre: NEXPURA serif wordmark
  * - Right cluster: About · Book a Demo · Login (outlined pill) ·
  *   Start Free Trial (filled pill)
+ *
+ * 2026-04-28 (Batch 1): the right-side text-link demo CTA stays
+ * "Book a Demo" — the spec's "Book a Guided Demo" form is reserved for
+ * page-level CTAs where it has room to breathe. In the header, the
+ * extra word forces a wrap at 1024–1280px and crowds the right cluster
+ * against the wordmark, so we keep the short form here. (Footer +
+ * page CTAs use "Book a Guided Demo".) Verify Passport stays as a
+ * plain NavLink so it reads as utility, visually subordinate to Login
+ * and Start Free Trial.
  *
  * Login + Start Free Trial are now visible compact pill buttons at
  * header scale (px-5 py-2 text-[0.88rem]) so they don't compete with

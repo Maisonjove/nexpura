@@ -72,7 +72,7 @@ export const PLANS: Plan[] = [
     cta: {
       primaryLabel: "Start Free Trial",
       primaryHref: "/signup?plan=studio",
-      secondaryLabel: "or book a demo",
+      secondaryLabel: "or book a guided demo",
       secondaryHref: "/contact?plan=studio&intent=demo",
     },
     isFeatured: true,
@@ -99,7 +99,7 @@ export const PLANS: Plan[] = [
     cta: {
       primaryLabel: "Start Free Trial",
       primaryHref: "/signup?plan=atelier",
-      secondaryLabel: "or talk to sales",
+      secondaryLabel: "or book a guided demo",
       secondaryHref: "/contact?plan=atelier&intent=sales",
     },
     isFeatured: false,

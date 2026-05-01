@@ -38,10 +38,10 @@ const CHANNELS: Channel[] = [
     ],
   },
   {
-    label: 'Book a Demo',
+    label: 'Book a Guided Demo',
     lines: [
       '30-minute personalised walkthrough',
-      'See how Nexpura maps to your POS, repair, bespoke, inventory, and customer workflows.',
+      'Walk through repairs, bespoke, POS, inventory, and customer records with our team.',
     ],
   },
 ]

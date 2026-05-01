@@ -21,7 +21,7 @@ export default function LandingFinalCTA() {
           id="final-cta-heading"
           className={HEADING.h2Closing}
         >
-          See how Nexpura fits your jewellery business
+          Run the workflows your team can finally connect
         </h2>
 
         <p className={`${HEADING.subhead} max-w-[640px] mx-auto`}>
@@ -36,13 +36,13 @@ export default function LandingFinalCTA() {
           </Link>
 
           <Link href="/contact" className={BUTTON.secondary}>
-            Book a Demo
+            Book a Guided Demo
           </Link>
         </div>
 
         {/* Small trust line */}
         <p className="mt-6 font-sans text-[0.88rem] text-[#8A8276]">
-          14-day free trial <span aria-hidden="true" className="text-[#B9B0A1]">·</span> Guided setup available
+          14-day free trial <span aria-hidden="true" className="text-[#B9B0A1]">·</span> No charge today <span aria-hidden="true" className="text-[#B9B0A1]">·</span> Cancel anytime before your trial ends
         </p>
       </div>
     </section>

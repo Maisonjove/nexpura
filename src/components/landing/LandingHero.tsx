@@ -17,7 +17,7 @@ import { BUTTON } from './_tokens'
  *  - Trust row uses dot separators (·) and Inter at 0.9rem.
  *
  * The previous commit's bottom scroll-cue button is intentionally dropped:
- * the new "Explore Platform" CTA + #explore-platform anchor on
+ * the new "See the Platform" CTA + #explore-platform anchor on
  * LandingExplorePlatform serves the same purpose.
  *
  * NOTE on section padding: this section deliberately keeps its own
@@ -50,7 +50,7 @@ export default function LandingHero() {
             Start Free Trial
           </Link>
           <a href="#explore-platform" className={BUTTON.secondary}>
-            Explore Platform
+            See the Platform
           </a>
         </div>
 

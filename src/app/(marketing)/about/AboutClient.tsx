@@ -166,18 +166,19 @@ export default function AboutClient() {
             id="about-cta-heading"
             className={HEADING.h2Closing}
           >
-            See how Nexpura fits your jewellery business
+            Run the workflows your team can finally connect
           </h2>
           <p className={`${HEADING.subhead} max-w-[620px] mx-auto`}>
-            Start free or book a personalised walkthrough built around your
-            current POS, repair, bespoke, inventory, and customer workflows.
+            Start free or walk through the platform with our team — we will
+            map repairs, bespoke, and your existing customer records into
+            Nexpura together.
           </p>
           <div className="mt-8 md:mt-9 flex flex-wrap justify-center gap-3 md:gap-4">
             <Link href="/signup" className={BUTTON.primary}>Start Free Trial</Link>
-            <Link href="/contact" className={BUTTON.secondary}>Book a Demo</Link>
+            <Link href="/contact" className={BUTTON.secondary}>Book a Guided Demo</Link>
           </div>
           <p className="mt-6 font-sans text-[0.88rem] text-[#8A8276]">
-            14-day free trial <span aria-hidden="true" className="text-[#B9B0A1]">·</span> Guided setup available
+            14-day free trial <span aria-hidden="true" className="text-[#B9B0A1]">·</span> No charge today <span aria-hidden="true" className="text-[#B9B0A1]">·</span> Cancel anytime before your trial ends
           </p>
         </div>
       </section>

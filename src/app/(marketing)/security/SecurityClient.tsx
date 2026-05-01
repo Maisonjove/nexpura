@@ -105,7 +105,7 @@ export default function SecurityClient() {
         </motion.p>
         <motion.div {...fadeUp(0.2)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           <Button href="/contact" size="lg" className="!bg-white !text-m-charcoal hover:!bg-m-champagne-tint">
-            Book a Demo
+            Book a Guided Demo
           </Button>
         </motion.div>
       </section>

@@ -27,9 +27,9 @@ import {
  *  - Plan card CTAs append &currency=… to their primaryHref (and
  *    secondaryHref, when present) so the future Stripe checkout step
  *    can resolve the right stripePriceId per (plan, currency) combo.
- *  - Per-plan CTA shape (Kaitlyn 2026-04-26): all three plans share
- *    "Start Free Trial" as primary; Studio + Atelier add a quieter
- *    secondary text link ("or book a demo" / "or talk to sales").
+ *  - Per-plan CTA shape: all three plans share "Start Free Trial" as
+ *    primary; Studio + Atelier add a quieter secondary text link
+ *    ("or book a guided demo") for buyers not ready to self-serve.
  *  - "From" prefix shown only when isFromPrice (Atelier).
  *  - "Most Popular" badge only when isFeatured (Studio).
  *
@@ -188,7 +188,7 @@ export default function PricingClient({
             {...fadeUp(0.45)}
             className="text-[12px] tracking-[0.16em] uppercase text-m-text-faint font-medium mt-8"
           >
-            14-day free trial · Card required · Cancel anytime
+            14-day free trial · No charge today · Cancel anytime before your trial ends
           </motion.p>
         </div>
       </section>
@@ -259,8 +259,8 @@ export default function PricingClient({
                       Per Kaitlyn 2026-04-26: every plan ships "Start Free
                       Trial" as primary so the row reads coherent; Studio
                       and Atelier add a small secondary link beneath
-                      ("or book a demo" / "or talk to sales") for buyers
-                      who aren't ready to self-serve. Secondary link uses
+                      ("or book a guided demo") for buyers who aren't
+                      ready to self-serve. Secondary link uses
                       a quieter underline style and a fixed-height wrapper
                       so the primary buttons stay horizontally aligned
                       across all three cards. */}
@@ -369,18 +369,18 @@ export default function PricingClient({
           {...fadeBlur}
           className="font-serif text-[36px] sm:text-[48px] lg:text-[56px] font-normal leading-[1.12] tracking-[-0.01em] text-white mb-10 italic"
         >
-          See how Nexpura fits your business
+          Pick the plan that matches your business
         </motion.h2>
         <motion.div {...fadeUp(0.1)} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           <Button href="/signup" size="lg" className="!bg-white !text-m-charcoal hover:!bg-m-champagne-tint">
             Start Free Trial
           </Button>
           <Button href="/contact" variant="tertiary" className="!text-white after:!bg-white">
-            Book a Demo
+            Book a Guided Demo
           </Button>
         </motion.div>
         <p className="text-[12px] tracking-[0.16em] uppercase text-m-champagne-soft mt-8 font-medium">
-          14 days free · Full access · Cancel anytime
+          14-day free trial · No charge today · Cancel anytime before your trial ends
         </p>
       </section>
     </div>
