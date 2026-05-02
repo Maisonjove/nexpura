@@ -3,14 +3,32 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
-import Link from "next/link";
-import { Plus } from "lucide-react";
+import {
+  UserPlus,
+  Users,
+  Search,
+  MessageCircle,
+  CalendarClock,
+  Sparkles,
+  Tag,
+  History,
+  Crown,
+  Inbox,
+} from "lucide-react";
 import { getAuthContext } from "@/lib/auth-context";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { ilikeOrValue } from "@/lib/db/or-escape";
 import { Skeleton } from "@/components/ui/skeleton";
 import { matchesReviewOrStaffToken } from "@/lib/auth/review";
+import {
+  HubHeader,
+  KpiCard,
+  KpiStrip,
+  QuickActionGroup,
+  SectionPanel,
+  HubEmptyState,
+} from "@/components/hub/HubPrimitives";
 import CustomerListClient from "./CustomerListClient";
 
 export const metadata = { title: "Customers — Nexpura" };
@@ -19,6 +37,17 @@ const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
 const DEFAULT_PAGE_SIZE = 200;
 
+/**
+ * Customers Hub — Section 7 of Kaitlyn's 2026-05-02 redesign brief.
+ *
+ * Wraps the existing CustomerRows streaming pattern (preserves the
+ * unstable_cache + visibility-RLS dance) inside a hub shell:
+ *   - HubHeader + "New customer" CTA
+ *   - KPI strip (total customers / follow-ups / VIP / birthdays / requests)
+ *   - Quick actions (CREATE / ENGAGE / SEGMENT)
+ *   - Customer list panel (existing CustomerListClient with hideTitleBlock)
+ *   - Empty state when no customers exist
+ */
 export default async function CustomersPage({
   searchParams,
 }: {
@@ -28,12 +57,8 @@ export default async function CustomersPage({
   const q = params.q || "";
   const page = parseInt(params.page || "1");
 
-  // W7-HIGH-04: matchesReviewOrStaffToken compares constant-time
-  // against env-loaded secrets. Empty env => returns false => bypass
-  // disabled (fail-closed).
   const isReviewMode = matchesReviewOrStaffToken(params.rt);
 
-  // Fast-path tenant resolution — no DB call, headers-only.
   let tenantId: string;
   let userId: string | null = null;
   if (isReviewMode) {
@@ -47,25 +72,198 @@ export default async function CustomersPage({
   }
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
-      {/* Shell — streams in the first HTML packet, before any DB query. */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Customers</h1>
-        <Link
-          href="/customers/new"
-          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-nexpura-charcoal hover:bg-nexpura-charcoal-700 text-white h-10 px-4 py-2"
-        >
-          <Plus className="w-4 h-4 mr-2" /> Add Customer
-        </Link>
+    <div className="space-y-7 max-w-[1400px]">
+      <HubHeader
+        title="Customers"
+        subtitle="Profiles, follow-ups, VIPs, segments and clienteling notes."
+        ctas={[
+          { label: "New customer", href: "/customers/new", variant: "primary", icon: UserPlus },
+        ]}
+      />
+
+      <Suspense key={`kpis:${tenantId}`} fallback={<KpiStripSkeleton />}>
+        <CustomerKpis tenantId={tenantId} />
+      </Suspense>
+
+      <div className="space-y-6">
+        <QuickActionGroup
+          label="Create"
+          actions={[
+            {
+              label: "New customer",
+              description: "Add a customer profile with contact, preferences and notes.",
+              href: "/customers/new",
+              icon: UserPlus,
+            },
+            {
+              label: "Find customer",
+              description: "Search the entire client database by name, email or phone.",
+              href: "/customers",
+              icon: Search,
+            },
+          ]}
+        />
+        <QuickActionGroup
+          label="Engage"
+          actions={[
+            {
+              label: "Communications",
+              description: "Email and message history across every customer.",
+              href: "/communications",
+              icon: MessageCircle,
+            },
+            {
+              label: "Follow-ups",
+              description: "Reminders due today and upcoming for the team.",
+              href: "/reminders",
+              icon: CalendarClock,
+            },
+            {
+              label: "Clienteling notes",
+              description: "Personal notes, preferences and milestones for each client.",
+              // /customers/communications doesn't exist — fallback to the
+              // global communications list (closest existing surface).
+              href: "/communications",
+              icon: Sparkles,
+            },
+          ]}
+        />
+        <QuickActionGroup
+          label="Segment"
+          actions={[
+            {
+              label: "VIP clients",
+              description: "Top-spend and high-touch customers in one view.",
+              href: "/customers?segment=vip",
+              icon: Crown,
+            },
+            {
+              label: "Segments",
+              description: "Saved customer segments for marketing campaigns.",
+              href: "/marketing/segments",
+              icon: Tag,
+            },
+            {
+              label: "Purchase history",
+              description: "Recent purchases across the client base.",
+              href: "/sales",
+              icon: History,
+            },
+          ]}
+        />
       </div>
 
-      {/* Row table + count + export button stream in behind Suspense. */}
+      {/* Customer list panel — existing client component, unchanged data flow */}
       <Suspense key={`${q}:${page}`} fallback={<CustomerTableSkeleton />}>
         <CustomerRows tenantId={tenantId} userId={userId} q={q} page={page} isReviewMode={isReviewMode} />
       </Suspense>
     </div>
   );
 }
+
+// ─── KPI strip (server) ───────────────────────────────────────────────────
+
+async function CustomerKpis({ tenantId }: { tenantId: string }) {
+  const admin = createAdminClient();
+
+  const now = new Date();
+  const monthIdx = now.getMonth() + 1; // postgres months are 1-indexed
+  const todayIso = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+
+  // Birthdays this month: filter by EXTRACT(MONTH FROM birthday).
+  // PostgREST exposes this via the `extract.month` filter when the column is
+  // a date. If the function isn't available, the query degrades to 0.
+  // Using a raw rpc-less approach: fetch counts with `birthday` not null and
+  // post-filter in JS over a (small) bound.
+  const [
+    totalCustomers,
+    vipCustomers,
+    followUps,
+    requests,
+    birthdayCustomers,
+  ] = await Promise.all([
+    admin
+      .from("customers")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null),
+    admin
+      .from("customers")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("is_vip", true)
+      .is("deleted_at", null),
+    // Follow-ups due — tasks with due_date <= today AND status != done.
+    // Some tenants store these under `reminders` instead; we count tasks
+    // here since the dashboard does.
+    admin
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .lte("due_date", todayIso)
+      .not("status", "in", '("done","completed","cancelled")'),
+    // Open client requests — best-effort: enquiries table if present.
+    // Schema-tolerant: missing table → result.error is non-null, count = 0.
+    admin
+      .from("enquiries")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .not("status", "in", '("closed","converted","cancelled")'),
+    // Birthdays this month — pull birthdays and filter client-side. The
+    // customers table is unlikely to be huge for any single tenant.
+    admin
+      .from("customers")
+      .select("birthday")
+      .eq("tenant_id", tenantId)
+      .not("birthday", "is", null)
+      .is("deleted_at", null),
+  ]);
+
+  const birthdaysThisMonth = (birthdayCustomers.data ?? []).filter((c) => {
+    if (!c.birthday) return false;
+    const d = new Date(c.birthday);
+    if (Number.isNaN(d.getTime())) return false;
+    return d.getMonth() + 1 === monthIdx;
+  }).length;
+
+  const total = totalCustomers.count ?? 0;
+  const vip = vipCustomers.count ?? 0;
+  const followUpCount = followUps.count ?? 0;
+  // Enquiries count is null when the table doesn't exist; treat as 0.
+  const requestCount = requests.error ? 0 : (requests.count ?? 0);
+
+  return (
+    <KpiStrip>
+      <KpiCard label="Total customers" value={total} href="/customers" tone="neutral" />
+      <KpiCard
+        label="Follow-ups due"
+        value={followUpCount}
+        href="/reminders"
+        tone={followUpCount > 0 ? "warn" : "neutral"}
+      />
+      <KpiCard
+        label="VIP clients"
+        value={vip}
+        href="/customers?segment=vip"
+        tone="neutral"
+      />
+      <KpiCard
+        label="Birthdays this month"
+        value={birthdaysThisMonth}
+        tone="neutral"
+        hint={birthdaysThisMonth > 0 ? "Reach out" : undefined}
+      />
+      <KpiCard
+        label="Open client requests"
+        value={requestCount}
+        href="/enquiries"
+        tone={requestCount > 0 ? "warn" : "neutral"}
+      />
+    </KpiStrip>
+  );
+}
+
+// ─── Customer rows (existing pattern, wrapped in SectionPanel) ────────────
 
 async function CustomerRows({
   tenantId,
@@ -83,11 +281,7 @@ async function CustomerRows({
   const offset = (page - 1) * DEFAULT_PAGE_SIZE;
   const admin = createAdminClient();
 
-  // Location-scoped customer visibility. All-access users get every
-  // tenant customer; restricted users get only those linked to their
-  // allowed locations via sales/repairs/bespoke (or with no location-
-  // scoped activity at all). See migration
-  // 20260421_customer_location_visibility.sql.
+  // Location-scoped customer visibility (preserved from prior page).
   let visibleIds: string[] | null = null;
   if (!isReviewMode && userId) {
     const { data: member } = await admin
@@ -121,7 +315,6 @@ async function CustomerRows({
         if (visibleIds.length === 0) return { rows: [], count: 0 };
         listQ = listQ.in("id", visibleIds);
       }
-      // W2-004: quote user input so PostgREST metachars can't escape.
       const qIlike = q ? ilikeOrValue(q) : null;
       if (qIlike) {
         listQ = listQ.or(
@@ -162,28 +355,67 @@ async function CustomerRows({
   ]);
   if (!isReviewMode && !auth) redirect("/login");
 
+  if (payload.count === 0 && !q) {
+    return (
+      <SectionPanel title="Customers">
+        <HubEmptyState
+          icon={Users}
+          title="No customer profiles yet"
+          description="No customer profiles yet. Create profiles to track purchases, repairs, preferences and follow-ups."
+          ctas={[
+            { label: "New customer", href: "/customers/new", variant: "primary", icon: UserPlus },
+            { label: "Import customers", href: "/settings/import", variant: "secondary", icon: Inbox },
+          ]}
+        />
+      </SectionPanel>
+    );
+  }
+
   return (
-    <CustomerListClient
-      initialCustomers={payload.rows}
-      totalCount={payload.count}
-      initialPage={page}
-      pageSize={DEFAULT_PAGE_SIZE}
-      q={q}
-      hideTitleBlock
-    />
+    <SectionPanel
+      title="All customers"
+      description={`${payload.count} total`}
+    >
+      <div className="p-5">
+        <CustomerListClient
+          initialCustomers={payload.rows}
+          totalCount={payload.count}
+          initialPage={page}
+          pageSize={DEFAULT_PAGE_SIZE}
+          q={q}
+          hideTitleBlock
+        />
+      </div>
+    </SectionPanel>
+  );
+}
+
+// ─── Skeletons ────────────────────────────────────────────────────────────
+
+function KpiStripSkeleton() {
+  return (
+    <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className="bg-nexpura-ivory-elevated rounded-xl px-4 py-3.5 border border-nexpura-taupe-100"
+        >
+          <Skeleton className="h-3 w-20 mb-3" />
+          <Skeleton className="h-6 w-12" />
+        </div>
+      ))}
+    </section>
   );
 }
 
 function CustomerTableSkeleton() {
   return (
     <div className="space-y-6">
-      {/* Filter bar shape */}
       <div className="flex items-center gap-3">
         <Skeleton className="h-10 flex-1 max-w-sm rounded-lg" />
         <Skeleton className="h-10 w-32 rounded-lg" />
         <Skeleton className="h-10 w-40 rounded-lg" />
       </div>
-      {/* Table shape */}
       <div className="nx-table-wrapper">
         <div className="px-6 py-3 border-b border-stone-100 bg-stone-50/50 flex gap-4">
           <Skeleton className="h-4 w-32" />

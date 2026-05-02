@@ -8,6 +8,13 @@ import { MapPin } from "lucide-react";
 
 interface Props {
   initialSales: SaleWithLocation[];
+  /**
+   * When the Sales Hub renders the recent-sales panel below its own header,
+   * the list client should skip its built-in H1 + "New Sale" button and
+   * cap the rendered rows. Set both flags from the hub shell.
+   */
+  hideHeader?: boolean;
+  limit?: number;
 }
 
 const STATUS_COLOURS: Record<string, string> = {
@@ -39,7 +46,7 @@ function fmtCurrency(amount: number) {
   }).format(amount);
 }
 
-export default function SalesListClient({ initialSales }: Props) {
+export default function SalesListClient({ initialSales, hideHeader = false, limit }: Props) {
   const { getFilterLocationIds, viewMode, currentLocationId, hasMultipleLocations } = useLocation();
   const [sales, setSales] = useState<SaleWithLocation[]>(initialSales);
   const [isPending, startTransition] = useTransition();
@@ -47,6 +54,9 @@ export default function SalesListClient({ initialSales }: Props) {
 
   // Determine if we should show the location column
   const showLocationColumn = hasMultipleLocations && (viewMode === "all" || !currentLocationId);
+
+  // Hub embed: cap visible rows for the "recent sales" panel.
+  const visibleSales = typeof limit === "number" ? sales.slice(0, limit) : sales;
 
   // Refetch when location changes
   useEffect(() => {
@@ -70,18 +80,20 @@ export default function SalesListClient({ initialSales }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Sales</h1>
-        <Link
-          href="/sales/new"
-          className="inline-flex items-center gap-2 bg-nexpura-charcoal text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Sale
-        </Link>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h1 className="font-semibold text-2xl font-semibold text-stone-900">Sales</h1>
+          <Link
+            href="/sales/new"
+            className="inline-flex items-center gap-2 bg-nexpura-charcoal text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Sale
+          </Link>
+        </div>
+      )}
 
       {/* Loading state */}
       {isPending && (
@@ -91,7 +103,7 @@ export default function SalesListClient({ initialSales }: Props) {
       )}
 
       {/* Table */}
-      {sales.length === 0 ? (
+      {visibleSales.length === 0 ? (
         <div className="bg-white border border-stone-200 rounded-xl p-16 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
             <svg className="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,7 +158,7 @@ export default function SalesListClient({ initialSales }: Props) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-platinum">
-                {sales.map((sale) => (
+                {visibleSales.map((sale) => (
                   <tr key={sale.id} className="hover:bg-stone-50/60 transition-colors">
                     <td className="px-5 py-3 text-xs font-mono text-stone-500">
                       {sale.sale_number}
