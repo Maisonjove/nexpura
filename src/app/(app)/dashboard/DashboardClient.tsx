@@ -250,7 +250,7 @@ function KpiChip({
       className={`group flex items-center justify-between gap-3 bg-nexpura-ivory-elevated rounded-xl px-4 py-3.5 border ${borderColor} hover:border-nexpura-taupe-200 hover:shadow-md transition-all duration-200`}
     >
       <div className="min-w-0">
-        <p className="font-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-nexpura-taupe-400 truncate">
+        <p className="font-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-nexpura-taupe-400 leading-tight">
           {label}
         </p>
         <p
