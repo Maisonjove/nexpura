@@ -81,35 +81,7 @@ export default function WorkshopJobsPage({
   );
 }
 
-async function WorkshopJobsBody(props: {
-  searchParams: Promise<{ status?: string; type?: string; filter?: string }>;
-}) {
-  // Catch any thrown error inside the body and render a debug message
-  // INSIDE the page rather than letting it bubble up to error.tsx.
-  // This makes the actual failure visible on the preview deploy without
-  // needing Vercel runtime logs (which seem to be sampled/disabled).
-  try {
-    return await renderWorkshopJobsBody(props);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack ?? "" : "";
-    return (
-      <div className="rounded-xl border border-nexpura-oxblood/30 bg-nexpura-oxblood-bg/40 p-6 text-sm">
-        <p className="font-semibold text-nexpura-oxblood mb-2">
-          Workshop jobs render failed
-        </p>
-        <p className="text-nexpura-charcoal-700 mb-3 break-words">{msg}</p>
-        {stack && (
-          <pre className="text-[11px] text-nexpura-charcoal-500 overflow-auto max-h-64 whitespace-pre-wrap">
-            {stack.split("\n").slice(0, 10).join("\n")}
-          </pre>
-        )}
-      </div>
-    );
-  }
-}
-
-async function renderWorkshopJobsBody({
+async function WorkshopJobsBody({
   searchParams,
 }: {
   searchParams: Promise<{ status?: string; type?: string; filter?: string }>;
