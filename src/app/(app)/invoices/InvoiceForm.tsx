@@ -198,6 +198,21 @@ export default function InvoiceForm({
     setLineItems((prev) => prev.filter((li) => li.id !== id));
   };
 
+  // Up/down arrow handlers — re-render the visible order, then the
+  // submit path stamps `sort_order` from the array index so the DB
+  // sees the new ordering without a separate save.
+  const moveLineItem = (id: string, direction: "up" | "down") => {
+    setLineItems((prev) => {
+      const idx = prev.findIndex((li) => li.id === id);
+      if (idx < 0) return prev;
+      const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+      const next = prev.slice();
+      [next[idx], next[targetIdx]] = [next[targetIdx], next[idx]];
+      return next;
+    });
+  };
+
   const updateLineItem = useCallback(
     (id: string, field: keyof LineItemRow, value: string | number | null) => {
       setLineItems((prev) =>
@@ -522,13 +537,34 @@ export default function InvoiceForm({
                     </td>
                     {!isSentEdit && (
                       <td className="py-2 pl-2">
-                        <button
-                          type="button"
-                          onClick={() => removeLineItem(item.id)}
-                          className="w-6 h-6 flex items-center justify-center text-stone-400 hover:text-red-400 transition-colors rounded"
-                        >
-                          ×
-                        </button>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => moveLineItem(item.id, "up")}
+                            disabled={lineItems.indexOf(item) === 0}
+                            aria-label="Move line up"
+                            className="w-6 h-6 flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors rounded disabled:opacity-30"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveLineItem(item.id, "down")}
+                            disabled={lineItems.indexOf(item) === lineItems.length - 1}
+                            aria-label="Move line down"
+                            className="w-6 h-6 flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors rounded disabled:opacity-30"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeLineItem(item.id)}
+                            aria-label="Remove line"
+                            className="w-6 h-6 flex items-center justify-center text-stone-400 hover:text-red-400 transition-colors rounded"
+                          >
+                            ×
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
