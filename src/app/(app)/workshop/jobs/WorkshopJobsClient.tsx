@@ -23,19 +23,17 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
+import {
+  STATUS_FILTERS,
+  TYPE_FILTERS,
+  type StatusFilter,
+  type TypeFilter,
+} from "./constants";
 
-// Public union types — the server page uses these to type its props
-// without re-declaring the constants.
-export const STATUS_FILTERS = [
-  "active",
-  "overdue",
-  "ready-for-pickup",
-  "completed",
-] as const;
-export type StatusFilter = (typeof STATUS_FILTERS)[number];
-
-export const TYPE_FILTERS = ["all", "repair", "bespoke", "appraisal"] as const;
-export type TypeFilter = (typeof TYPE_FILTERS)[number];
+// Re-export so existing call sites that imported from this module still
+// resolve (some places pull `StatusFilter` from here).
+export { STATUS_FILTERS, TYPE_FILTERS };
+export type { StatusFilter, TypeFilter };
 
 export interface UnifiedJob {
   id: string;

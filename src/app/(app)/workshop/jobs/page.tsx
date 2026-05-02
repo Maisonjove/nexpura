@@ -5,13 +5,13 @@ import { Plus } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthContext } from "@/lib/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
-import WorkshopJobsClient, {
-  type UnifiedJob,
+import WorkshopJobsClient, { type UnifiedJob } from "./WorkshopJobsClient";
+import {
   type StatusFilter,
   type TypeFilter,
   STATUS_FILTERS,
   TYPE_FILTERS,
-} from "./WorkshopJobsClient";
+} from "./constants";
 
 // W4-WORKSHOP-JOBS: unified status-filtered view across repairs +
 // bespoke_jobs + appraisals. Replaces the broken `?status=...` routes
