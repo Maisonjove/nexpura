@@ -64,6 +64,8 @@ export default function LandingPainPoints() {
             </Card>
           ))}
         </div>
+
+        {/* Batch 4: removed onward CTA "See how the platform fits together". */}
       </div>
     </section>
   )

@@ -20,11 +20,11 @@ export default function LandingExplorePlatform() {
       <div className="nx-explore__inner">
         <span className="nx-explore__eyebrow">Explore the Platform</span>
         <h2 className="nx-explore__heading">
-          Every part of your jewellery business, in one place.
+          From the front counter to the workshop bench.
         </h2>
         <p className="nx-explore__lede">
-          From the front counter to the workshop bench — see how NEXPURA
-          replaces the patchwork of tools modern jewellers outgrow.
+          The patchwork of tools modern jewellers outgrow — replaced with
+          one operating system designed for the trade.
         </p>
       </div>
     </section>

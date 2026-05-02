@@ -5,7 +5,15 @@ import Button from "@/components/landing/ui/Button";
 export const metadata = {
   title: "Switch to Nexpura — Migration Hub",
   description:
-    "Migrate from your current system to Nexpura with zero data loss. Guided migration for jewellery businesses.",
+    "Migrate from Lightspeed, Shopify, Jewel360, spreadsheets, or any other system to Nexpura with guided migration and zero data loss.",
+  openGraph: {
+    title: "Switch to Nexpura — Migration Hub",
+    description:
+      "Migrate from your current system to Nexpura with zero data loss. Guided migration for jewellery businesses.",
+    images: ["/og-image.png"],
+    type: "website",
+    siteName: "Nexpura",
+  },
 };
 
 /**
@@ -209,7 +217,7 @@ export default function SwitchingPage() {
         </ul>
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Button href="/contact" size="lg" className="!bg-white !text-m-charcoal hover:!bg-m-champagne-tint">
-            Book a Demo
+            Book a Guided Demo
           </Button>
           <Link
             href="/platform"

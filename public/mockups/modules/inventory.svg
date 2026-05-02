@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" width="480" height="320" role="img" aria-label="Inventory list mockup">
+  <rect width="480" height="320" fill="#faf7f2"/>
+  <rect x="0.5" y="0.5" width="479" height="319" fill="none" stroke="#e8e1d4"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="480" height="40" fill="#ffffff"/>
+  <line x1="0" y1="40" x2="480" y2="40" stroke="#e8e1d4"/>
+  <text x="20" y="25" font-family="Georgia, serif" font-size="13" fill="#1a1a1a">Inventory</text>
+  <text x="460" y="25" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276" text-anchor="end">2,148 SKUs · 3 stores</text>
+
+  <!-- Filter row -->
+  <g font-family="system-ui, sans-serif" font-size="10">
+    <rect x="20" y="56" width="58" height="22" rx="11" fill="#1a1a1a"/>
+    <text x="49" y="71" fill="#ffffff" text-anchor="middle">All</text>
+    <rect x="86" y="56" width="64" height="22" rx="11" fill="none" stroke="#e8e1d4"/>
+    <text x="118" y="71" fill="#5a554c" text-anchor="middle">Pieces</text>
+    <rect x="158" y="56" width="64" height="22" rx="11" fill="none" stroke="#e8e1d4"/>
+    <text x="190" y="71" fill="#5a554c" text-anchor="middle">Stones</text>
+    <rect x="230" y="56" width="58" height="22" rx="11" fill="none" stroke="#e8e1d4"/>
+    <text x="259" y="71" fill="#5a554c" text-anchor="middle">Memo</text>
+    <rect x="296" y="56" width="74" height="22" rx="11" fill="#fef3e0" stroke="#e8d2a3"/>
+    <text x="333" y="71" fill="#a8852c" text-anchor="middle">Low stock</text>
+  </g>
+
+  <!-- Table head -->
+  <text x="20" y="106" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">PIECE</text>
+  <text x="240" y="106" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">SKU</text>
+  <text x="320" y="106" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">LOCATION</text>
+  <text x="430" y="106" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">STOCK</text>
+  <line x1="20" y1="114" x2="460" y2="114" stroke="#f0e9da"/>
+
+  <!-- Row 1 -->
+  <rect x="20" y="124" width="36" height="36" rx="6" fill="#f1e9d8"/>
+  <circle cx="38" cy="142" r="5" fill="#c9a24a"/>
+  <text x="68" y="138" font-family="Georgia, serif" font-size="12" fill="#1a1a1a">Solitaire ring · 1.2ct</text>
+  <text x="68" y="153" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276">18ct white gold</text>
+  <text x="240" y="146" font-family="system-ui, sans-serif" font-size="11" fill="#5a554c">NX-RNG-0421</text>
+  <text x="320" y="146" font-family="system-ui, sans-serif" font-size="11" fill="#5a554c">Mayfair</text>
+  <text x="450" y="146" font-family="Georgia, serif" font-size="12" fill="#1a1a1a" text-anchor="end">3</text>
+  <line x1="20" y1="172" x2="460" y2="172" stroke="#f0e9da"/>
+
+  <!-- Row 2 -->
+  <rect x="20" y="182" width="36" height="36" rx="6" fill="#f1e9d8"/>
+  <circle cx="38" cy="200" r="3.5" fill="#c9a24a"/>
+  <circle cx="38" cy="200" r="3.5" fill="#c9a24a" transform="translate(8 0)"/>
+  <text x="68" y="196" font-family="Georgia, serif" font-size="12" fill="#1a1a1a">Diamond stud earrings</text>
+  <text x="68" y="211" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276">0.5ct pair · 18ct</text>
+  <text x="240" y="204" font-family="system-ui, sans-serif" font-size="11" fill="#5a554c">NX-EAR-0118</text>
+  <text x="320" y="204" font-family="system-ui, sans-serif" font-size="11" fill="#5a554c">Mayfair · Knightsbridge</text>
+  <text x="450" y="204" font-family="Georgia, serif" font-size="12" fill="#a8521c" text-anchor="end">2 · low</text>
+  <line x1="20" y1="230" x2="460" y2="230" stroke="#f0e9da"/>
+
+  <!-- Row 3 -->
+  <rect x="20" y="240" width="36" height="36" rx="6" fill="#f1e9d8"/>
+  <path d="M28 258 l10 -10 l10 10 l-10 10 z" fill="none" stroke="#c9a24a" stroke-width="1.2"/>
+  <text x="68" y="254" font-family="Georgia, serif" font-size="12" fill="#1a1a1a">Sapphire pendant</text>
+  <text x="68" y="269" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276">Cushion · 2.4ct · platinum</text>
+  <text x="240" y="262" font-family="system-ui, sans-serif" font-size="11" fill="#5a554c">NX-PND-0096</text>
+  <text x="320" y="262" font-family="system-ui, sans-serif" font-size="11" fill="#5a554c">Memo · J. Holloway</text>
+  <text x="450" y="262" font-family="Georgia, serif" font-size="12" fill="#1a1a1a" text-anchor="end">1</text>
+  <line x1="20" y1="288" x2="460" y2="288" stroke="#f0e9da"/>
+
+  <text x="20" y="308" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276">12 SKUs below threshold · 4 reorders queued</text>
+</svg>

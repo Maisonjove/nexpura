@@ -1,30 +1,21 @@
 // ============================================
-// Five-column footer with link groups.
-// Per Kaitlyn 2026-04-26 brief — replaces the prior charcoal/social-row
-// footer. Spec was missing the opening <a tags everywhere — restored.
-// Internal-nav links use next/link (lint rule + SPA navigation).
+// Four-column marketing footer.
+// 2026-04-28 (Batch 1 site refinement): refactored from the prior
+// five-column layout (which filtered two empty columns, Solutions +
+// Platform-detail). New layout — verbatim from Kaitlyn's spec —
+// surfaces Verify Passport in its own "For Customers" column so it
+// doesn't compete with the buyer CTAs in Company.
+//
+// Columns:
+//   Product:        Platform · Features · Pricing · Security
+//   Company:        About · Contact · Book a Guided Demo · Start Free Trial
+//   For Customers:  Verify Passport
+//   Legal:          Terms · Privacy
 //
 // Note on the copyright year: under Next 16's cacheComponents mode,
 // `new Date()` in either a server OR client component bails out the
-// static prerender (server: needs an uncached read first; client: needs
-// a Suspense boundary). Both shapes broke the build on /terms and
-// /switching. We hardcode the year here. Update at the start of each
-// calendar year — small annual cost vs the build/Suspense ceremony.
-// Routes that don't exist yet are flagged hidden:true so we don't ship
-// dead links — the component filters them out before rendering, and an
-// entire column will be hidden if all of its links are hidden.
-//
-// Route audit (2026-04-26 against src/app/**):
-//   Product:    /platform, /features, /pricing, /security  → all live
-//   Solutions:  /solutions/{retail,repairs,bespoke,multi-store}
-//                                                         → all MISSING (hidden:true)
-//   Platform:   /platform/{pos,inventory,repairs,passports,analytics,ai-copilot}
-//                                                         → all MISSING (hidden:true)
-//   Company:    /about, /contact, /demo, /signup           → all live
-//   Legal:      /terms, /privacy                           → all live
-// Solutions + Platform-detail columns currently render as empty (filtered)
-// — flag to Kaitlyn that 8 placeholder pages need to be built before
-// those columns repopulate.
+// static prerender. We hardcode the year here. Update at the start of
+// each calendar year.
 // ============================================
 
 import React from "react"
@@ -33,9 +24,6 @@ import Link from "next/link"
 type FooterLink = {
   label: string
   href: string
-  // If true, the link is hidden until the destination page exists.
-  // Filtered out before render — never shipped as a dead link.
-  hidden?: boolean
 }
 
 type FooterColumn = {
@@ -54,32 +42,18 @@ const FOOTER_COLUMNS: FooterColumn[] = [
     ],
   },
   {
-    heading: "Solutions",
-    links: [
-      { label: "Retail Jewellers", href: "/solutions/retail", hidden: true },
-      { label: "Repairs & Workshops", href: "/solutions/repairs", hidden: true },
-      { label: "Bespoke Studios", href: "/solutions/bespoke", hidden: true },
-      { label: "Multi-Store Groups", href: "/solutions/multi-store", hidden: true },
-    ],
-  },
-  {
-    heading: "Platform",
-    links: [
-      { label: "POS", href: "/platform/pos", hidden: true },
-      { label: "Inventory", href: "/platform/inventory", hidden: true },
-      { label: "Repairs", href: "/platform/repairs", hidden: true },
-      { label: "Digital Passports", href: "/platform/passports", hidden: true },
-      { label: "Analytics", href: "/platform/analytics", hidden: true },
-      { label: "AI Copilot", href: "/platform/ai-copilot", hidden: true },
-    ],
-  },
-  {
     heading: "Company",
     links: [
       { label: "About", href: "/about" },
       { label: "Contact", href: "/contact" },
-      { label: "Book a Demo", href: "/contact" },
+      { label: "Book a Guided Demo", href: "/contact" },
       { label: "Start Free Trial", href: "/signup" },
+    ],
+  },
+  {
+    heading: "For Customers",
+    links: [
+      { label: "Verify Passport", href: "/verify" },
     ],
   },
   {
@@ -91,7 +65,6 @@ const FOOTER_COLUMNS: FooterColumn[] = [
   },
 ]
 
-// Hardcoded — see header comment. Bump at the start of the next calendar year.
 const COPYRIGHT_YEAR = 2026
 
 export default function LandingFooter() {
@@ -101,14 +74,17 @@ export default function LandingFooter() {
       role="contentinfo"
     >
       <div className="mx-auto max-w-6xl">
-        {/* Top row: brand + columns */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-10 md:gap-8">
+        {/* Top row: brand + 4 link columns
+            Desktop: 5-col grid (1 brand + 4 link cols).
+            Tablet:  3 cols, brand spans 3.
+            Mobile:  2 cols, brand spans 2. */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-10 md:gap-8">
 
-          {/* Brand block — spans 2 cols on desktop */}
+          {/* Brand block */}
           <div className="col-span-2 sm:col-span-3 lg:col-span-1">
             <Link
               href="/"
-              className="font-serif text-m-charcoal text-[1.4rem] tracking-[0.18em] inline-block"
+              className="font-serif text-m-charcoal text-[1.4rem] tracking-[0.18em] inline-block transition-opacity duration-200 hover:opacity-70"
               aria-label="NEXPURA — home"
             >
               NEXPURA
@@ -119,30 +95,25 @@ export default function LandingFooter() {
           </div>
 
           {/* Link columns */}
-          {FOOTER_COLUMNS.map((col) => {
-            const visibleLinks = col.links.filter((l) => !l.hidden)
-            if (visibleLinks.length === 0) return null
-
-            return (
-              <nav key={col.heading} aria-label={col.heading}>
-                <h3 className="font-sans text-[0.72rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
-                  {col.heading}
-                </h3>
-                <ul role="list" className="space-y-3">
-                  {visibleLinks.map((link) => (
-                    <li key={link.label}>
-                      <Link
-                        href={link.href}
-                        className="font-sans text-[0.92rem] text-m-charcoal transition-opacity duration-200 hover:opacity-65"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            )
-          })}
+          {FOOTER_COLUMNS.map((col) => (
+            <nav key={col.heading} aria-label={col.heading}>
+              <h3 className="font-sans text-[0.72rem] font-medium uppercase tracking-[0.22em] text-[#8A8276] mb-4">
+                {col.heading}
+              </h3>
+              <ul role="list" className="space-y-3">
+                {col.links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="font-sans text-[0.92rem] text-m-charcoal transition-opacity duration-200 hover:opacity-65"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
         </div>
 
         {/* Bottom row: copyright */}

@@ -97,11 +97,13 @@ test.describe('Auth Flow', () => {
 
   test('login page links to signup', async ({ page }) => {
     await page.goto('/login');
-    
+
     // Check for signup link
     const signupLink = page.locator('a[href="/signup"]');
     await expect(signupLink).toBeVisible();
-    await expect(page.locator('text=Sign up free')).toBeVisible();
+    // Batch 2 (2026-04-28): Login page CTA copy was changed from
+    // "Sign up free" to "Start your free trial" per Kaitlyn's spec.
+    await expect(page.locator('text=Start your free trial')).toBeVisible();
   });
 
   test('signup page links to login', async ({ page }) => {

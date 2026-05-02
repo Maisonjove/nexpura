@@ -39,12 +39,12 @@ export default function LandingCta() {
             size="lg"
             className="!bg-transparent !text-white border border-white hover:!bg-white/10"
           >
-            Book a Demo
+            Book a Guided Demo
           </Button>
         </div>
 
         <p className="mt-5 text-[13px] font-sans tracking-[0.05em] text-white/50">
-          14-day free trial · Guided setup available · Migration support included
+          14-day free trial · No charge today · Cancel anytime before your trial ends
         </p>
       </div>
     </section>

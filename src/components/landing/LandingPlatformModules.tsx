@@ -3,13 +3,13 @@
 // Per Kaitlyn 2026-04-26 brief — replaces the previous 10-module
 // equal-weight list (preserved at LandingPlatformModules.legacy.tsx
 // for repurposing on the dedicated /features page later).
-// Verbatim from spec except the "Explore all features" <a opener was
-// missing in the spec — restored.
+// Per Kaitlyn 2026-04-28 (Batch 4): the "Explore all features →" CTA
+// below the grid was removed; the section ends with the cards.
 // ============================================
 
 import React from "react"
 import Link from "next/link"
-import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, BUTTON, CONTAINER } from "./_tokens"
+import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, CONTAINER } from "./_tokens"
 
 type Module = {
   title: string
@@ -119,9 +119,8 @@ export default function LandingPlatformModules() {
             One system of record for every jewellery workflow
           </h2>
           <p className={`${HEADING.subhead} max-w-[680px] mx-auto`}>
-            Nexpura connects the operational data jewellers rely on every day —
-            sales, stock, repairs, bespoke jobs, customers, payments, passports,
-            and performance.
+            One connected system of record for the daily work — built so every
+            sale, repair, bespoke job, and aftercare moment lives in the same place.
           </p>
         </div>
 
@@ -153,11 +152,18 @@ export default function LandingPlatformModules() {
           ))}
         </ul>
 
-        {/* CTA */}
-        <div className="text-center mt-12 md:mt-14">
+        {/* Batch 5: re-add the "Explore all features →" CTA below the
+            grid. Subtle outlined style (charcoal border, charcoal text,
+            transparent background) — reads lighter than the primary
+            dark pill that lives in the hero, and still reads as a clear
+            call to the /features page. Generous mt-12/16 so it doesn't
+            crowd the cards. Uses next/link for client-side nav so the
+            Features active-state in LandingHeader (wired in Batch 4 via
+            usePathname) updates without a full reload. */}
+        <div className="mt-12 md:mt-16 flex justify-center">
           <Link
             href="/features"
-            className={`${BUTTON.primary} gap-2`}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-m-charcoal bg-transparent text-m-charcoal px-6 py-3 font-sans text-[0.9rem] font-medium transition-all duration-200 hover:bg-m-charcoal hover:text-white hover:-translate-y-0.5"
           >
             Explore all features
             <span aria-hidden="true">→</span>

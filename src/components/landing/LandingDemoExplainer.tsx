@@ -41,9 +41,9 @@ export default function LandingDemoExplainer() {
             <ul className="relative mt-6 mb-8 space-y-2.5 text-[14px] text-white/85">
               {[
                 '14-day free trial',
+                'No charge today',
+                'Cancel anytime before your trial ends',
                 'Explore core workflows',
-                'No hidden fees',
-                'Guided setup available',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2.5">
                   <CheckIcon className="text-m-champagne shrink-0 mt-[3px]" />
@@ -88,7 +88,7 @@ export default function LandingDemoExplainer() {
             </ul>
             <div className="mt-auto">
               <Button href="/contact" variant="secondary" fullWidth>
-                Book a Demo
+                Book a Guided Demo
               </Button>
             </div>
           </Card>

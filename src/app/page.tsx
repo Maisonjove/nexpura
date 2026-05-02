@@ -54,14 +54,19 @@ const HOMEPAGE_FAQS: FAQItem[] = [
       'Yes. A guided walkthrough can help map Nexpura to your current POS, repair, bespoke, inventory, and customer workflows.',
   },
 ]
-// import LandingFinalCTA from '@/components/landing/LandingFinalCTA' — parked on 2026-04-26. CTAs already appear in hero, header, and throughout the page; the dedicated final CTA section was repetitive. Component file kept intact for landing pages / ad campaigns.
-// import LandingCta from '@/components/landing/LandingCta' — replaced 2026-04-26 by LandingFinalCTA (now also parked). Old file kept on disk for repurposing.
+// LandingFinalCTA reactivated 2026-04-28 (Batch 2). Kaitlyn's spec
+// asked for an explicit closing CTA block with new heading + footnote
+// copy. The component itself was updated; we just import + render it.
+import LandingFinalCTA from '@/components/landing/LandingFinalCTA'
+// import LandingCta from '@/components/landing/LandingCta' — replaced 2026-04-26 by LandingFinalCTA. Old file kept on disk for repurposing.
 import LandingFooter from '@/components/landing/LandingFooter'
 import MarketingReveal from '@/components/landing/MarketingReveal'
+import ScrollToTop from '@/components/landing/ScrollToTop'
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-m-ivory flex flex-col">
+      <ScrollToTop />
       <LandingHeader />
       <main id="audience" className="flex-1">
         <LandingHero />
@@ -96,7 +101,7 @@ export default function HomePage() {
             </p>
           }
         />
-        {/* <LandingFinalCTA /> — parked on 2026-04-26. CTAs already appear in hero, header, and throughout the page; the dedicated final CTA section was repetitive. Component file kept intact. */}
+        <LandingFinalCTA />
       </main>
       <LandingFooter />
       <MarketingReveal />

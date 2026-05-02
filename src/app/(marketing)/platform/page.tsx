@@ -1,58 +1,44 @@
 // ============================================
-// /platform — Kaitlyn 2026-04-26 polish-pass:
-//   - Removed the duplicate top hero (eyebrow "The Platform" + H1
-//     "The Nexpura Platform" + generic subhead). The first body section
-//     is LandingPlatformModules which already opens with "One system
-//     of record for every jewellery workflow" — landing visitors at
-//     that heading directly is tighter.
-//   - Dropped the legacy `pt-[72px]` div wrapper now that the
-//     marketing layout's main uses `.page-shell` (88px desktop /
-//     72px mobile) for the sticky-header offset.
-//   - Final CTA "Book a Demo" href stays /contact (was already
-//     correct here).
+// /platform — 10-section product tour.
+// Rebuilt 2026-04-28 (Batch 1 site refinement).
+//
+// Replaces the prior thin LandingPlatformModules + LandingProductDemo
+// + LandingDemoExplainer combination, which read like a homepage echo.
+// New structure (verbatim copy from Kaitlyn's Batch 1 spec):
+//
+//   1.  Platform Hero
+//   2.  Connected Workflow Map
+//   3.  Interactive Product Tour (8 module tabs)
+//   4.  One Customer, One Item History
+//   5.  Owner Command Centre (8 cards)
+//   6.  Role-Based Views (4 cards)
+//   7.  Digital Passport Integration
+//   8.  Migration & Setup (6 steps)
+//   9.  Security & Trust mini
+//   10. Final CTA
+//
+// Module tabs render every panel's content into the DOM at all times
+// (visibility toggled via `hidden`) so the content stays indexable
+// by search and by accessibility tools — addresses the bug Kaitlyn
+// flagged on /features where tab contents were not in the static HTML.
 // ============================================
 
-import LandingPlatformModules from '@/components/landing/LandingPlatformModules'
-import LandingProductDemo from '@/components/landing/LandingProductDemo'
-import LandingDemoExplainer from '@/components/landing/LandingDemoExplainer'
-// LandingScreenshots no longer imported here (2026-04-26) — it was the
-// pre-Phase-G "See Nexpura in action" tabbed section that has since
-// been replaced on the homepage by LandingProductDemo. Both pages now
-// render the same canonical LandingProductDemo component (5 tabs, no
-// CRM/Passport drift). LandingScreenshots.tsx is kept on disk for
-// repurposing.
-import Button from '@/components/landing/ui/Button'
+import PlatformPageClient from './PlatformPageClient'
 
 export const metadata = {
   title: 'Platform — Nexpura',
   description:
-    'The complete operating system for jewellery businesses. POS, inventory, repairs, bespoke orders, CRM, invoicing, analytics, digital passports, and AI — all connected.',
+    'The jewellery operating system behind every sale, repair, bespoke order, and passport. Tour the modules, the workflow, and the owner command centre.',
+  openGraph: {
+    title: 'Platform — Nexpura',
+    description:
+      'Tour the eight modules, the workflow, and the owner command centre that make up the Nexpura platform.',
+    images: ['/og-image.png'],
+    type: 'website',
+    siteName: 'Nexpura',
+  },
 }
 
 export default function PlatformPage() {
-  return (
-    <div className="bg-m-ivory">
-      <LandingPlatformModules />
-      <LandingProductDemo />
-      <LandingDemoExplainer />
-
-      {/* Final CTA */}
-      <section className="py-24 lg:py-32 px-6 sm:px-10 lg:px-20 text-center border-t border-m-border-soft bg-m-charcoal">
-        <h2 className="font-serif text-[36px] sm:text-[48px] lg:text-[56px] font-normal leading-[1.12] tracking-[-0.01em] text-white mb-4">
-          See how Nexpura fits your workflow
-        </h2>
-        <p className="text-[15px] text-m-champagne-soft mb-10 max-w-md mx-auto">
-          Explore the platform in a personalised walkthrough built around your business.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-          <Button href="/signup" size="lg" className="!bg-white !text-m-charcoal hover:!bg-m-champagne-tint">
-            Start Free Trial
-          </Button>
-          <Button href="/contact" variant="tertiary" className="!text-white after:!bg-white">
-            Book a Demo
-          </Button>
-        </div>
-      </section>
-    </div>
-  )
+  return <PlatformPageClient />
 }

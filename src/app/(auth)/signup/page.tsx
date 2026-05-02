@@ -196,13 +196,43 @@ function SignupContent() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-5xl mx-auto">
       {/* Logo */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-8">
         <Link href="/" className="font-serif text-2xl tracking-[0.12em] text-stone-900">
           NEXPURA
         </Link>
-        <p className="text-sm text-stone-400 mt-2">The modern platform for jewellers</p>
+      </div>
+
+      {/* === Premium intro block — Batch 2.
+          Adds Kaitlyn's spec headline + subcopy + trust bullets + a
+          quieter "book a demo" link, all sitting above the existing
+          wizard. The wizard's form-submit handlers + Supabase auth
+          flow are untouched. */}
+      <div className="text-center max-w-2xl mx-auto mb-10">
+        <h1 className="font-serif text-3xl sm:text-4xl text-stone-900 leading-[1.12] tracking-[-0.005em]">
+          Start your 14-day Nexpura trial.
+        </h1>
+        <p className="mt-4 text-stone-500 text-[0.95rem] sm:text-[1rem] leading-[1.55] max-w-xl mx-auto">
+          Explore POS, repairs, bespoke, inventory, digital passports, and
+          reporting in one jewellery-specific platform.
+        </p>
+        <ul
+          role="list"
+          className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[0.82rem] text-stone-500"
+        >
+          {[
+            "No charge today",
+            "Guided setup available",
+            "Cancel anytime before your trial ends",
+            "Built for jewellery workflows",
+          ].map((bullet) => (
+            <li key={bullet} className="inline-flex items-center gap-2">
+              <Check size={13} className="text-emerald-600 flex-shrink-0" aria-hidden="true" />
+              <span>{bullet}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Progress indicator — 2 steps now (Subdomain → Account) */}
@@ -299,7 +329,17 @@ function SignupContent() {
             </button>
           </div>
 
-          <p className="text-center text-sm text-stone-400 mt-8">
+          <p className="text-center text-sm text-stone-400 mt-6">
+            Prefer a walkthrough?{" "}
+            <Link
+              href="/contact?intent=demo"
+              className="text-stone-900 hover:opacity-70 transition-opacity font-medium underline underline-offset-4 decoration-stone-300 hover:decoration-stone-900"
+            >
+              Book a Guided Demo
+            </Link>
+          </p>
+
+          <p className="text-center text-sm text-stone-400 mt-3">
             Already have an account?{" "}
             <Link href="/login" className="text-stone-900 hover:opacity-70 transition-opacity font-medium">
               Sign in
@@ -390,17 +430,34 @@ function SignupContent() {
                   </>
                 ) : (
                   <>
-                    Start 14-day free trial
+                    Start Free Trial
                     <ArrowRight size={16} />
                   </>
                 )}
               </button>
             </form>
 
+            {/* Trial wording note — Batch 2 spec lock. */}
+            <p className="text-center text-[12px] italic text-stone-500 mt-4 leading-[1.55]">
+              Payment details are required to activate your trial. You will not be
+              charged until your 14-day trial ends. You can cancel anytime before then.
+            </p>
+
             <p className="text-center text-xs text-stone-400 mt-5">
               By signing up you agree to our{" "}
               <a href="/terms" className="underline">Terms</a> and{" "}
               <a href="/privacy" className="underline">Privacy Policy</a>.
+            </p>
+
+            {/* Secondary "book a demo" link — Batch 2 */}
+            <p className="text-center text-[13px] text-stone-500 mt-5">
+              Prefer a walkthrough?{" "}
+              <Link
+                href="/contact?intent=demo"
+                className="text-stone-900 hover:opacity-70 transition-opacity font-medium underline underline-offset-4 decoration-stone-300 hover:decoration-stone-900"
+              >
+                Book a Guided Demo
+              </Link>
             </p>
 
             <button

@@ -130,6 +130,8 @@ export default function LandingDigitalPassport() {
             ))}
           </ul>
         </div>
+        {/* Batch 4: removed onward CTA "Learn more about Digital Passports".
+            Kaitlyn dropped the per-section onward links from Batch 2. */}
       </div>
     </section>
   )

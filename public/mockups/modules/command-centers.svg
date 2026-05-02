@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" width="480" height="320" role="img" aria-label="Owner command centre dashboard mockup">
+  <rect width="480" height="320" fill="#faf7f2"/>
+  <rect x="0.5" y="0.5" width="479" height="319" fill="none" stroke="#e8e1d4"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="480" height="40" fill="#ffffff"/>
+  <line x1="0" y1="40" x2="480" y2="40" stroke="#e8e1d4"/>
+  <text x="20" y="25" font-family="Georgia, serif" font-size="13" fill="#1a1a1a">Command Centre</text>
+  <text x="460" y="25" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276" text-anchor="end">All stores · Today</text>
+
+  <!-- Card 1 — Overdue repairs -->
+  <rect x="20" y="60" width="208" height="112" rx="10" fill="#ffffff" stroke="#e8e1d4"/>
+  <text x="36" y="80" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">OVERDUE REPAIRS</text>
+  <text x="36" y="118" font-family="Georgia, serif" font-size="34" fill="#a8521c">4</text>
+  <text x="92" y="118" font-family="system-ui, sans-serif" font-size="10" fill="#5a554c">jobs past due</text>
+  <line x1="36" y1="134" x2="212" y2="134" stroke="#f0e9da"/>
+  <text x="36" y="152" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276">Workshop bench 1 · 2 jobs</text>
+  <text x="36" y="166" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276">Workshop bench 2 · 2 jobs</text>
+
+  <!-- Card 2 — Low stock -->
+  <rect x="252" y="60" width="208" height="112" rx="10" fill="#ffffff" stroke="#e8e1d4"/>
+  <text x="268" y="80" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">LOW STOCK</text>
+  <text x="268" y="118" font-family="Georgia, serif" font-size="34" fill="#a8852c">12</text>
+  <text x="332" y="118" font-family="system-ui, sans-serif" font-size="10" fill="#5a554c">SKUs below threshold</text>
+  <line x1="268" y1="134" x2="444" y2="134" stroke="#f0e9da"/>
+  <!-- Mini bar chart -->
+  <g>
+    <rect x="268" y="148" width="6" height="14" fill="#c9a24a"/>
+    <rect x="282" y="142" width="6" height="20" fill="#c9a24a"/>
+    <rect x="296" y="150" width="6" height="12" fill="#c9bfa9"/>
+    <rect x="310" y="138" width="6" height="24" fill="#c9a24a"/>
+    <rect x="324" y="146" width="6" height="16" fill="#c9bfa9"/>
+    <rect x="338" y="152" width="6" height="10" fill="#c9bfa9"/>
+    <rect x="352" y="140" width="6" height="22" fill="#c9a24a"/>
+    <rect x="366" y="148" width="6" height="14" fill="#c9bfa9"/>
+  </g>
+
+  <!-- Card 3 — Unpaid balances -->
+  <rect x="20" y="184" width="208" height="116" rx="10" fill="#ffffff" stroke="#e8e1d4"/>
+  <text x="36" y="204" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">UNPAID BALANCES</text>
+  <text x="36" y="242" font-family="Georgia, serif" font-size="28" fill="#1a1a1a">$8,420</text>
+  <text x="36" y="258" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276">across 9 customers</text>
+  <line x1="36" y1="270" x2="212" y2="270" stroke="#f0e9da"/>
+  <text x="36" y="288" font-family="system-ui, sans-serif" font-size="10" fill="#8a8276">3 over 30 days</text>
+
+  <!-- Card 4 — Bespoke approvals -->
+  <rect x="252" y="184" width="208" height="116" rx="10" fill="#ffffff" stroke="#e8e1d4"/>
+  <text x="268" y="204" font-family="system-ui, sans-serif" font-size="9" fill="#8a8276" letter-spacing="2">APPROVALS WAITING</text>
+  <text x="268" y="242" font-family="Georgia, serif" font-size="34" fill="#a8852c">3</text>
+  <text x="312" y="242" font-family="system-ui, sans-serif" font-size="10" fill="#5a554c">awaiting client sign-off</text>
+  <line x1="268" y1="270" x2="444" y2="270" stroke="#f0e9da"/>
+  <g font-family="system-ui, sans-serif" font-size="10" fill="#8a8276">
+    <circle cx="274" cy="287" r="2.5" fill="#c9a24a"/>
+    <text x="284" y="290">BSP-0218 · Whitfield</text>
+  </g>
+</svg>

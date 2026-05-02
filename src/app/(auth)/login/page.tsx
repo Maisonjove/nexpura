@@ -9,6 +9,7 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -124,11 +125,21 @@ function LoginPageContent() {
   return (
     <div className="w-full max-w-md">
       {/* Logo */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-8">
         <Link href="/" className="font-serif text-2xl tracking-[0.32em] text-m-charcoal">
           NEXPURA
         </Link>
         <p className="text-[13px] text-m-text-faint mt-2">The modern platform for jewellers</p>
+      </div>
+
+      {/* Title block — Batch 2 polish (visual only, form-submit logic untouched) */}
+      <div className="text-center mb-6">
+        <h1 className="font-serif text-[28px] sm:text-[32px] text-m-charcoal leading-[1.15] tracking-[-0.005em]">
+          Log in to Nexpura
+        </h1>
+        <p className="mt-2 text-[14px] text-m-text-secondary">
+          Access your jewellery operating system.
+        </p>
       </div>
 
       <div className="bg-m-white-soft rounded-[18px] border border-m-border-soft p-8 sm:p-10 w-full shadow-[0_18px_45px_rgba(0,0,0,0.06)]">
@@ -146,10 +157,6 @@ function LoginPageContent() {
             </div>
           </div>
         )}
-
-        <h2 className="font-serif text-[24px] text-m-charcoal mb-8">
-          Welcome back
-        </h2>
 
         <form onSubmit={handlePasswordLogin} className="space-y-5" aria-label="Login form">
           <div>
@@ -170,19 +177,40 @@ function LoginPageContent() {
           </div>
           <div>
             <label htmlFor="password" className="m-form-label">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              aria-required="true"
-              aria-describedby={error ? "login-error" : undefined}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              className="m-form-input"
-            />
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                aria-required="true"
+                aria-describedby={error ? "login-error" : undefined}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                className="m-form-input pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-m-text-muted hover:text-m-charcoal transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center justify-between">
@@ -238,9 +266,13 @@ function LoginPageContent() {
         </form>
 
         <p className="text-center text-[14px] text-m-text-muted mt-8">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-m-charcoal hover:opacity-70 transition-opacity font-medium">
-            Sign up free
+          New to Nexpura?{" "}
+          <Link
+            href="/signup"
+            className="text-m-charcoal hover:opacity-70 transition-opacity font-medium inline-flex items-center gap-1"
+          >
+            Start your free trial
+            <span aria-hidden="true">→</span>
           </Link>
         </p>
       </div>

@@ -1,28 +1,50 @@
 // ============================================
-// About — restyled to the homepage token system per Kaitlyn 2026-04-26
-// polish-pass brief.
+// About — rewritten for Batch 2 (Kaitlyn 2026-04-28).
 //
-// Section order (Hero → Mission → Pillars → Principles → CTA → Footer)
-// matches the spec verbatim. The previous version used framer-motion
-// for blur/fade entrances; that's been removed in favour of the same
-// static-token approach the homepage uses (m-reveal handles the gentle
-// fade-in via CSS). All body copy is font-sans; only the page H1, the
-// section H2s, and the pillar tile titles use the site serif.
+// The previous version mirrored the homepage too closely (feature list,
+// "Run the workflows" CTA, generic mission copy). This rewrite gives
+// the page its own job:
+//   - WHY Nexpura exists (the categories of tools jewellers outgrow)
+//   - WHY jewellery deserves its own operating system
+//   - PRODUCT PHILOSOPHY (operational, not flashy)
+//   - STANDARDS (security, data ownership, customer trust)
+//   - Closing CTA pointing onward at Trial / Platform
+//
+// No founder bio block — there's no approved photo + copy on disk yet.
+// Adding one with placeholder content would be invented content. If
+// Kaitlyn supplies a founder note, it slots cleanly between the
+// Standards section and the closing CTA.
 // ============================================
 
 import Link from 'next/link'
 import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, BUTTON, CONTAINER } from '@/components/landing/_tokens'
 
-type Pillar = {
+type Outgrown = {
   title: string
-  sub: string
+  body: string
 }
 
-const PILLARS: Pillar[] = [
-  { title: 'Repairs', sub: 'Tracked end to end' },
-  { title: 'Bespoke', sub: 'Structured commission workflow' },
-  { title: 'Inventory', sub: 'Real-time stock visibility' },
-  { title: 'Passports', sub: 'Digital trust after the sale' },
+const OUTGROWN_TOOLS: Outgrown[] = [
+  {
+    title: 'Generic POS',
+    body:
+      'Built for checkout. Treats a repair, a bespoke commission, and a memo loan as if they were the same transaction.',
+  },
+  {
+    title: 'Spreadsheets',
+    body:
+      'Capture data, but not workflow — and quietly drift out of sync between staff, locations, and devices.',
+  },
+  {
+    title: 'Paper repair books',
+    body:
+      'Hold the job, but lose the timeline, the photos, the deposits, the customer updates, and the search history.',
+  },
+  {
+    title: 'Disconnected customer records',
+    body:
+      'A name in the till, a number in your phone, a thread in WhatsApp. None of it tells you who they are.',
+  },
 ]
 
 type Principle = {
@@ -34,92 +56,97 @@ type Principle = {
 const PRINCIPLES: Principle[] = [
   {
     number: '01',
-    title: 'Purpose-built for jewellery',
+    title: 'Built for the floor, not the demo',
     body:
-      'We build around real jewellery workflows — repairs, bespoke orders, inventory, customer records, and digital trust — not watered-down retail templates.',
+      'Every screen is designed to be used during a real shift — at the counter, at the bench, on a service call — by people who have customers waiting.',
   },
   {
     number: '02',
-    title: 'Your data stays yours',
+    title: 'Operational over flashy',
     body:
-      'Customer records, stock history, repair notes, sales data, and business intelligence belong to your business.',
+      'We add a feature when it removes a manual step or a known failure mode. We do not add it because it looks good in a deck.',
   },
   {
     number: '03',
-    title: 'Support beyond software',
+    title: 'One record, many lenses',
     body:
-      'Nexpura supports implementation with guided migration, onboarding, and practical help when your team needs it.',
+      'A piece, a customer, a job, a sale — they should all read the same on the till, in the workshop, and in the customer’s aftercare email. One source of truth, surfaced where it is needed.',
+  },
+]
+
+type Standard = {
+  title: string
+  body: string
+}
+
+const STANDARDS: Standard[] = [
+  {
+    title: 'Your data is yours',
+    body:
+      'Customer records, stock history, repair notes, and sales data belong to your business. You can export them, segment them, and take them with you.',
+  },
+  {
+    title: 'Security as default',
+    body:
+      'Role-based access, audit trails, and encrypted transport are how the platform ships — not options to opt into.',
+  },
+  {
+    title: 'Customer trust by design',
+    body:
+      'Digital passports, verifiable provenance, and aftercare records give your customers something to keep — not just a receipt to lose.',
   },
 ]
 
 export default function AboutClient() {
   return (
     <div className="bg-m-ivory">
-      {/* === Hero — compact tier per Kaitlyn ============================ */}
+      {/* === Hero ====================================================== */}
       <section
         id="about-hero"
         className={`${SECTION_PADDING.compact} text-center`}
         aria-labelledby="about-hero-heading"
       >
         <div className={`${CONTAINER.narrow}`}>
-          <span className={HEADING.eyebrow}>Our Story</span>
+          <span className={HEADING.eyebrow}>Why Nexpura</span>
           <h1
             id="about-hero-heading"
-            className="font-serif text-m-charcoal text-[2.25rem] sm:text-[2.6rem] md:text-[3rem] leading-[1.1] tracking-[-0.01em] mb-5"
+            className="font-serif text-m-charcoal text-[2.25rem] sm:text-[2.6rem] md:text-[3rem] leading-[1.1] tracking-[-0.01em] mb-6"
           >
-            Built exclusively for jewellers
+            An operating system for the jewellery trade.
           </h1>
-          <p className="font-sans text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.55] max-w-[640px] mx-auto">
-            Nexpura was built for jewellery businesses that need more than
-            generic retail software. Repairs, bespoke commissions, high-value
-            inventory, customer relationships, and digital trust all require
-            structure. Nexpura brings those workflows into one modern operating
-            system designed specifically for the trade.
+          <p className="font-sans text-m-text-secondary text-[1rem] md:text-[1.1rem] leading-[1.6] max-w-[680px] mx-auto">
+            Nexpura was built for jewellery businesses that have outgrown
+            generic POS, spreadsheets, paper repair books, and disconnected
+            customer records.
           </p>
         </div>
       </section>
 
-      {/* === Mission — standard tier ==================================== */}
+      {/* === What jewellers outgrow =================================== */}
       <section
-        id="about-mission"
+        id="about-outgrown"
         className={`${SECTION_PADDING.standard}`}
-        aria-labelledby="about-mission-heading"
-      >
-        <div className={`${CONTAINER.narrow} text-center`}>
-          <span className={HEADING.eyebrow}>Our Mission</span>
-          <h2 id="about-mission-heading" className={HEADING.h2}>
-            Give jewellers the operating system they should have had years ago.
-          </h2>
-          <p className={`${HEADING.subhead} max-w-[680px] mx-auto`}>
-            Nexpura connects the daily work of jewellery businesses — POS,
-            repairs, bespoke jobs, inventory, customers, invoicing, digital
-            passports, and reporting — so teams can run with more visibility,
-            structure, and confidence.
-          </p>
-        </div>
-      </section>
-
-      {/* === Product pillars (Migration → Passports) ==================== */}
-      <section
-        id="about-pillars"
-        className={`${SECTION_PADDING.standard}`}
-        aria-labelledby="about-pillars-heading"
+        aria-labelledby="about-outgrown-heading"
       >
         <div className={CONTAINER.wide}>
           <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
-            <h2 id="about-pillars-heading" className={HEADING.h2}>
-              The product, in four pillars
+            <h2 id="about-outgrown-heading" className={HEADING.h2}>
+              What jewellers outgrow
             </h2>
+            <p className={`${HEADING.subhead} max-w-[640px] mx-auto`}>
+              The tools most independents start with stop scaling at exactly
+              the moment the business does.
+            </p>
           </div>
-          <ul role="list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
-            {PILLARS.map((p) => (
+          <ul role="list" className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
+            {OUTGROWN_TOOLS.map((t) => (
               <li
-                key={p.title}
+                key={t.title}
                 className={`flex flex-col ${CARD.base} ${CARD.paddingStandard} ${CARD.hover}`}
               >
-                <h3 className={HEADING.h3}>{p.title}</h3>
-                <p className="mt-2 font-sans text-m-text-secondary text-[0.95rem] leading-[1.55]">
-                  {p.sub}
+                <h3 className={HEADING.h3}>{t.title}</h3>
+                <p className="mt-3 font-sans text-m-text-secondary text-[0.97rem] leading-[1.6]">
+                  {t.body}
                 </p>
               </li>
             ))}
@@ -127,7 +154,29 @@ export default function AboutClient() {
         </div>
       </section>
 
-      {/* === Principles ================================================= */}
+      {/* === Why jewellery needs its own system ======================= */}
+      <section
+        id="about-category"
+        className={`${SECTION_PADDING.standard}`}
+        aria-labelledby="about-category-heading"
+      >
+        <div className={`${CONTAINER.narrow} text-center`}>
+          <span className={HEADING.eyebrow}>The category</span>
+          <h2 id="about-category-heading" className={HEADING.h2}>
+            Jewellery isn&apos;t retail.
+          </h2>
+          <p className={`${HEADING.subhead} max-w-[680px] mx-auto`}>
+            A repair holds emotional weight. A bespoke commission holds
+            months of trust. A piece outlives the receipt. Generic retail
+            software treats every transaction as the same; jewellery
+            businesses live with the consequences when it doesn&apos;t.
+            Nexpura is designed around the parts of the work that other
+            categories don&apos;t have.
+          </p>
+        </div>
+      </section>
+
+      {/* === Product philosophy ======================================= */}
       <section
         id="about-principles"
         className={`${SECTION_PADDING.standard}`}
@@ -135,8 +184,9 @@ export default function AboutClient() {
       >
         <div className={CONTAINER.wide}>
           <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
+            <span className={HEADING.eyebrow}>How we build</span>
             <h2 id="about-principles-heading" className={HEADING.h2}>
-              Principles behind the platform
+              Product philosophy
             </h2>
           </div>
           <ol role="list" className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
@@ -155,7 +205,36 @@ export default function AboutClient() {
         </div>
       </section>
 
-      {/* === Final CTA — standard tier ================================== */}
+      {/* === Standards / what we work to ============================== */}
+      <section
+        id="about-standards"
+        className={`${SECTION_PADDING.standard}`}
+        aria-labelledby="about-standards-heading"
+      >
+        <div className={CONTAINER.wide}>
+          <div className={`${CONTAINER.narrow} text-center ${INTRO_SPACING.standard}`}>
+            <span className={HEADING.eyebrow}>Standards</span>
+            <h2 id="about-standards-heading" className={HEADING.h2}>
+              The standards we work to
+            </h2>
+          </div>
+          <ul role="list" className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+            {STANDARDS.map((s) => (
+              <li
+                key={s.title}
+                className={`flex flex-col ${CARD.base} ${CARD.paddingStandard} ${CARD.hover}`}
+              >
+                <h3 className={HEADING.h3}>{s.title}</h3>
+                <p className="mt-3 font-sans text-m-text-secondary text-[0.97rem] leading-[1.6]">
+                  {s.body}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* === Final CTA — Batch 2 lock ================================= */}
       <section
         id="about-cta"
         className={`${SECTION_PADDING.standard}`}
@@ -166,18 +245,14 @@ export default function AboutClient() {
             id="about-cta-heading"
             className={HEADING.h2Closing}
           >
-            See how Nexpura fits your jewellery business
+            See why jewellery businesses are switching to Nexpura.
           </h2>
-          <p className={`${HEADING.subhead} max-w-[620px] mx-auto`}>
-            Start free or book a personalised walkthrough built around your
-            current POS, repair, bespoke, inventory, and customer workflows.
-          </p>
           <div className="mt-8 md:mt-9 flex flex-wrap justify-center gap-3 md:gap-4">
             <Link href="/signup" className={BUTTON.primary}>Start Free Trial</Link>
-            <Link href="/contact" className={BUTTON.secondary}>Book a Demo</Link>
+            <Link href="/platform" className={BUTTON.secondary}>See the Platform</Link>
           </div>
           <p className="mt-6 font-sans text-[0.88rem] text-[#8A8276]">
-            14-day free trial <span aria-hidden="true" className="text-[#B9B0A1]">·</span> Guided setup available
+            14-day free trial <span aria-hidden="true" className="text-[#B9B0A1]">·</span> No charge today <span aria-hidden="true" className="text-[#B9B0A1]">·</span> Cancel anytime before your trial ends
           </p>
         </div>
       </section>

@@ -5,7 +5,15 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Blog — Nexpura",
   description:
-    "Insights, guides, and industry news for jewellery business owners. Learn how to grow your jewellery business with Nexpura.",
+    "Insights, guides, and industry news for jewellery business owners — practical advice on inventory, repairs, bespoke, and growing your store.",
+  openGraph: {
+    title: "Blog — Nexpura",
+    description:
+      "Insights and guides for jewellery business owners — practical advice on inventory, repairs, bespoke, and growth.",
+    images: ["/og-image.png"],
+    type: "website",
+    siteName: "Nexpura",
+  },
 };
 
 const posts = [

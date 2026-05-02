@@ -44,7 +44,7 @@ const COLUMNS: Column[] = [
     label: "Nexpura",
     points: [
       "Modern jewellery operating system",
-      "POS, repairs, bespoke, stock, CRM, and passports connected",
+      "Every sale, repair, and bespoke job stays connected to the customer",
       "AI Copilot for operational insights",
       "QR-verifiable digital passports",
       "Guided migration and onboarding",
@@ -88,6 +88,8 @@ export default function LandingComparison() {
             )
           })}
         </div>
+
+        {/* Batch 4: removed onward CTA "Compare the platform side by side". */}
       </div>
     </section>
   )

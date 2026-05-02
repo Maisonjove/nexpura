@@ -2,14 +2,35 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 /**
- * Sticky marketing nav. Updated 2026-04-26 per Kaitlyn's 9-fix follow-up:
+ * Match a link href against the current pathname.
+ *  - "/" only matches the literal homepage
+ *  - any other href matches exact OR child paths (e.g. /platform/foo)
+ */
+function isActive(href: string, pathname: string | null) {
+  if (!pathname) return false
+  if (href === '/') return pathname === '/'
+  return pathname === href || pathname.startsWith(href + '/')
+}
+
+/**
+ * Sticky marketing nav. Updated 2026-04-28 (Batch 1 site refinement):
  *
  * - Left cluster: Platform · Features · Pricing · Verify Passport
  * - Centre: NEXPURA serif wordmark
  * - Right cluster: About · Book a Demo · Login (outlined pill) ·
  *   Start Free Trial (filled pill)
+ *
+ * 2026-04-28 (Batch 1): the right-side text-link demo CTA stays
+ * "Book a Demo" — the spec's "Book a Guided Demo" form is reserved for
+ * page-level CTAs where it has room to breathe. In the header, the
+ * extra word forces a wrap at 1024–1280px and crowds the right cluster
+ * against the wordmark, so we keep the short form here. (Footer +
+ * page CTAs use "Book a Guided Demo".) Verify Passport stays as a
+ * plain NavLink so it reads as utility, visually subordinate to Login
+ * and Start Free Trial.
  *
  * Login + Start Free Trial are now visible compact pill buttons at
  * header scale (px-5 py-2 text-[0.88rem]) so they don't compete with
@@ -24,6 +45,7 @@ import Link from 'next/link'
 export default function LandingHeader() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     function onScroll() {
@@ -67,10 +89,10 @@ export default function LandingHeader() {
             gap from gap-8 to gap-6 to keep all four items fitting cleanly
             against the right cluster at 1280px without wrapping. */}
         <div className="hidden md:flex items-center gap-6 flex-1">
-          <NavLink href="/platform">Platform</NavLink>
-          <NavLink href="/features">Features</NavLink>
-          <NavLink href="/pricing">Pricing</NavLink>
-          <NavLink href="/verify">Verify Passport</NavLink>
+          <NavLink href="/platform" pathname={pathname}>Platform</NavLink>
+          <NavLink href="/features" pathname={pathname}>Features</NavLink>
+          <NavLink href="/pricing" pathname={pathname}>Pricing</NavLink>
+          <NavLink href="/verify" pathname={pathname}>Verify Passport</NavLink>
         </div>
 
         {/* Centre: serif wordmark */}
@@ -84,8 +106,8 @@ export default function LandingHeader() {
 
         {/* Right cluster: About · Book a Demo · Login (outlined pill) · Start Free Trial (filled pill) */}
         <div className="hidden md:flex items-center gap-5 flex-1 justify-end">
-          <NavLink href="/about">About</NavLink>
-          <NavLink href="/contact">Book a Demo</NavLink>
+          <NavLink href="/about" pathname={pathname}>About</NavLink>
+          <NavLink href="/contact" pathname={pathname}>Book a Demo</NavLink>
           <Link
             href="/login"
             className="inline-flex items-center justify-center rounded-full bg-transparent text-m-charcoal border border-m-charcoal px-5 py-2 font-sans text-[0.88rem] font-medium transition-all duration-200 hover:bg-m-charcoal hover:text-white"
@@ -129,13 +151,13 @@ export default function LandingHeader() {
         }`}
       >
         <div className="flex flex-col gap-1 px-6 py-4 bg-m-ivory border-t border-m-border-soft">
-          <MobileLink href="/platform">Platform</MobileLink>
-          <MobileLink href="/features">Features</MobileLink>
-          <MobileLink href="/pricing">Pricing</MobileLink>
-          <MobileLink href="/verify">Verify Passport</MobileLink>
-          <MobileLink href="/about">About</MobileLink>
-          <MobileLink href="/contact">Book a Demo</MobileLink>
-          <MobileLink href="/login">Login</MobileLink>
+          <MobileLink href="/platform" pathname={pathname}>Platform</MobileLink>
+          <MobileLink href="/features" pathname={pathname}>Features</MobileLink>
+          <MobileLink href="/pricing" pathname={pathname}>Pricing</MobileLink>
+          <MobileLink href="/verify" pathname={pathname}>Verify Passport</MobileLink>
+          <MobileLink href="/about" pathname={pathname}>About</MobileLink>
+          <MobileLink href="/contact" pathname={pathname}>Book a Demo</MobileLink>
+          <MobileLink href="/login" pathname={pathname}>Login</MobileLink>
           <div className="pt-4 mt-2 border-t border-m-border-soft">
             <Link
               href="/signup"
@@ -151,23 +173,59 @@ export default function LandingHeader() {
   )
 }
 
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+function NavLink({
+  href,
+  pathname,
+  children,
+}: {
+  href: string
+  pathname: string | null
+  children: React.ReactNode
+}) {
+  // Active state treatment: full-opacity charcoal text + medium font-weight
+  // (vs muted secondary + normal weight for inactive). Underline grows on
+  // hover for inactive links and stays visible at full width for active.
+  const active = isActive(href, pathname)
   return (
     <Link
       href={href}
-      className="group relative text-[15px] font-sans font-normal text-m-text-secondary transition-colors duration-200 hover:text-m-charcoal"
+      aria-current={active ? 'page' : undefined}
+      className={[
+        'group relative text-[15px] font-sans transition-colors duration-200',
+        active
+          ? 'text-m-charcoal font-medium'
+          : 'text-m-text-secondary font-normal hover:text-m-charcoal',
+      ].join(' ')}
     >
       {children}
-      <span className="absolute bottom-[-4px] left-0 w-0 h-px bg-m-charcoal transition-[width] duration-300 group-hover:w-full" />
+      <span
+        className={[
+          'absolute bottom-[-4px] left-0 h-px bg-m-charcoal transition-[width] duration-300',
+          active ? 'w-full' : 'w-0 group-hover:w-full',
+        ].join(' ')}
+      />
     </Link>
   )
 }
 
-function MobileLink({ href, children }: { href: string; children: React.ReactNode }) {
+function MobileLink({
+  href,
+  pathname,
+  children,
+}: {
+  href: string
+  pathname: string | null
+  children: React.ReactNode
+}) {
+  const active = isActive(href, pathname)
   return (
     <Link
       href={href}
-      className="block py-3 px-2 text-[16px] font-sans text-m-charcoal min-h-[48px] flex items-center hover:bg-m-champagne-soft rounded-lg transition-colors"
+      aria-current={active ? 'page' : undefined}
+      className={[
+        'block py-3 px-2 text-[16px] font-sans text-m-charcoal min-h-[48px] flex items-center hover:bg-m-champagne-soft rounded-lg transition-colors',
+        active ? 'font-medium bg-m-champagne-soft/60' : 'font-normal',
+      ].join(' ')}
     >
       {children}
     </Link>

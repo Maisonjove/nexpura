@@ -9,7 +9,16 @@ import LegalPageLayout, { type LegalSection } from "@/components/marketing/Legal
 
 export const metadata: Metadata = {
   title: "Terms of Service — Nexpura",
-  description: "Nexpura Terms of Service — your agreement when using the platform.",
+  description:
+    "The Nexpura Terms of Service — your agreement when subscribing to and using the Nexpura jewellery operating system, including billing, data, and acceptable use.",
+  openGraph: {
+    title: "Terms of Service — Nexpura",
+    description:
+      "The Nexpura Terms of Service — your agreement when subscribing to and using the Nexpura jewellery operating system, including billing, data, and acceptable use.",
+    images: ["/og-image.png"],
+    type: "website",
+    siteName: "Nexpura",
+  },
 }
 
 const SECTIONS: LegalSection[] = [
@@ -31,7 +40,7 @@ const SECTIONS: LegalSection[] = [
   {
     id: "subscriptions",
     title: "Subscriptions",
-    body: "Nexpura offers tiered subscription plans (Boutique, Studio, and Atelier) billed monthly or annually. Pricing is shown in your regional currency (AUD, USD, GBP, or EUR) based on your location, and prices listed on the pricing page are exclusive of applicable taxes; taxes (such as GST, VAT, or US sales tax) are calculated and added at checkout based on your billing address. New accounts may start with a 14-day free trial. A valid payment method is required at sign-up to begin the trial; no charges are made during the trial period, and the payment method on file is automatically charged on the day the trial ends unless the subscription is cancelled before that date. All payments are processed securely through Stripe. Subscriptions automatically renew unless cancelled before the renewal date. You may cancel at any time through your account settings.",
+    body: "Nexpura offers tiered subscription plans (Boutique, Studio, and Atelier) billed monthly or annually. Pricing is shown in your regional currency (AUD, USD, GBP, or EUR) based on your location, and prices listed on the pricing page are exclusive of applicable taxes; taxes (such as GST, VAT, or US sales tax) are calculated and added at checkout based on your billing address. New accounts begin with a 14-day free trial. Payment details are required to activate your trial. You will not be charged until your 14-day trial ends. You can cancel anytime before then. All payments are processed securely through Stripe. Subscriptions automatically renew unless cancelled before the renewal date. You may cancel at any time through your account settings.",
   },
   {
     id: "data-and-privacy",
@@ -69,8 +78,9 @@ export default function TermsPage() {
   return (
     <LegalPageLayout
       pageTitle="Terms of Service"
-      lastUpdated="March 2026"
+      lastUpdated="April 2026"
       sections={SECTIONS}
+      closingNote="For questions about these Terms, contact us at hello@nexpura.com."
     />
   )
 }
