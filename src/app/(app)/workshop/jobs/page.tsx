@@ -26,6 +26,12 @@ export const metadata = { title: "Workshop Jobs — Nexpura" };
 // supabase/migrations/20260421_stage_check_constraints.sql.
 const REPAIR_TERMINAL = ["collected", "picked_up", "completed", "cancelled"];
 const BESPOKE_TERMINAL = ["collected", "delivered", "completed", "cancelled"];
+// Format string values for PostgREST `.not("col","in", "(...)")` calls.
+// Without the surrounding quotes the values get interpreted as
+// identifiers, which throws on the Supabase side. Mirrors the pattern
+// used in /invoices/page.tsx.
+const quoteForIn = (vals: readonly string[]) =>
+  `(${vals.map((v) => `"${v}"`).join(",")})`;
 // "ready" is the pickup-ready stage for both tables.
 const READY_REPAIR = ["ready"];
 const READY_BESPOKE = ["ready"];
@@ -140,7 +146,7 @@ async function WorkshopJobsBody({
           .eq("tenant_id", tenantId)
           .is("deleted_at", null);
         if (status === "active" || status === "overdue") {
-          q = q.not("stage", "in", `(${REPAIR_TERMINAL.concat(READY_REPAIR).join(",")})`);
+          q = q.not("stage", "in", quoteForIn(REPAIR_TERMINAL.concat(READY_REPAIR)));
         } else if (status === "ready-for-pickup") {
           q = q.in("stage", READY_REPAIR);
         } else if (status === "completed") {
@@ -161,7 +167,7 @@ async function WorkshopJobsBody({
           .eq("tenant_id", tenantId)
           .is("deleted_at", null);
         if (status === "active" || status === "overdue") {
-          q = q.not("stage", "in", `(${BESPOKE_TERMINAL.concat(READY_BESPOKE).join(",")})`);
+          q = q.not("stage", "in", quoteForIn(BESPOKE_TERMINAL.concat(READY_BESPOKE)));
         } else if (status === "ready-for-pickup") {
           q = q.in("stage", READY_BESPOKE);
         } else if (status === "completed") {
