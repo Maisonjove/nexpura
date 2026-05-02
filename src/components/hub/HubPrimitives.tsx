@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * Shared hub primitives — Section 4 of Kaitlyn's 2026-05-02 workspace
  * redesign brief. The four module hubs (Sales, Customers, Marketing, Admin)
@@ -13,9 +11,13 @@
  *
  * Tokens come from the `nexpura.*` Tailwind namespace; no raw hex.
  *
- * NOTE: marked "use client" because tiles use Link and the chevron animates
- * via group-hover. Server pages can import these freely — Next will bundle
- * them as a client island.
+ * Server-renderable: no client-only hooks. The chevron-on-hover animates
+ * via CSS group-hover, so no JS state is needed. Keeping this file as a
+ * server component is required so the Lucide `icon: LucideIcon` props on
+ * HubHeader/QuickActionTile can be passed straight from server pages
+ * (Customers/Workshop/Digital). If this were "use client", those icon
+ * function-component props would fail to serialize across the server →
+ * client boundary at render time and the whole hub page would error.
  */
 
 import Link from "next/link";
