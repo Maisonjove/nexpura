@@ -134,7 +134,7 @@ async function WorkshopJobsBody({
         let q = admin
           .from("repairs")
           .select(
-            `id, repair_number, item_type, item_description, repair_type, stage, priority, due_date, created_at, updated_at, deposit_amount, quoted_price, final_price, assigned_to,
+            `id, repair_number, item_type, item_description, repair_type, stage, priority, due_date, created_at, updated_at, deposit_amount, quoted_price, final_price,
              customers(id, full_name)`,
           )
           .eq("tenant_id", tenantId)
@@ -155,7 +155,7 @@ async function WorkshopJobsBody({
         let q = admin
           .from("bespoke_jobs")
           .select(
-            `id, job_number, title, stage, priority, due_date, created_at, updated_at, deposit_amount, quoted_price, final_price, assigned_to,
+            `id, job_number, title, stage, priority, due_date, created_at, updated_at, deposit_amount, quoted_price, final_price,
              customers(id, full_name)`,
           )
           .eq("tenant_id", tenantId)
@@ -211,7 +211,6 @@ async function WorkshopJobsBody({
     deposit_amount: number | null;
     quoted_price: number | null;
     final_price: number | null;
-    assigned_to: string | null;
     customers:
       | { id: string; full_name: string | null }
       | { id: string; full_name: string | null }[]
@@ -229,7 +228,6 @@ async function WorkshopJobsBody({
     deposit_amount: number | null;
     quoted_price: number | null;
     final_price: number | null;
-    assigned_to: string | null;
     customers:
       | { id: string; full_name: string | null }
       | { id: string; full_name: string | null }[]
@@ -254,28 +252,10 @@ async function WorkshopJobsBody({
       | null;
   };
 
-  // Resolve assignee names in one round-trip, shared across repair+bespoke.
-  const assigneeIds = new Set<string>();
-  for (const r of (repairsRes.data ?? []) as RawRepair[]) {
-    if (r.assigned_to) assigneeIds.add(r.assigned_to);
-  }
-  for (const b of (bespokeRes.data ?? []) as RawBespoke[]) {
-    if (b.assigned_to) assigneeIds.add(b.assigned_to);
-  }
-  let assigneeMap: Record<string, string> = {};
-  if (assigneeIds.size > 0) {
-    const { data: usersData } = await admin
-      .from("users")
-      .select("id, full_name, email")
-      .in("id", Array.from(assigneeIds));
-    type UserRow = { id: string; full_name: string | null; email: string | null };
-    assigneeMap = Object.fromEntries(
-      ((usersData ?? []) as UserRow[]).map((u) => [
-        u.id,
-        u.full_name || u.email || "—",
-      ]),
-    );
-  }
+  // Assignee resolution removed — repairs/bespoke_jobs/appraisals don't
+  // have an `assigned_to` column today. UnifiedJob.assignedName stays
+  // `null` until that column lands, at which point reintroduce the
+  // batch user-name lookup here.
 
   const flatCustomer = (
     c:
@@ -305,7 +285,7 @@ async function WorkshopJobsBody({
       stage: r.stage,
       priority: r.priority ?? "normal",
       dueDate: r.due_date,
-      assignedName: r.assigned_to ? assigneeMap[r.assigned_to] ?? null : null,
+      assignedName: null,
       depositAmount: r.deposit_amount,
       balanceDue: balance,
       lastUpdate: r.updated_at ?? r.created_at,
@@ -328,7 +308,7 @@ async function WorkshopJobsBody({
       stage: b.stage,
       priority: b.priority ?? "normal",
       dueDate: b.due_date,
-      assignedName: b.assigned_to ? assigneeMap[b.assigned_to] ?? null : null,
+      assignedName: null,
       depositAmount: b.deposit_amount,
       balanceDue: balance,
       lastUpdate: b.updated_at ?? b.created_at,
