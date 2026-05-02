@@ -197,11 +197,25 @@ async function WorkshopJobsBody({
       })()
     : Promise.resolve({ data: [] as unknown[] });
 
-  const [repairsRes, bespokeRes, appraisalsRes] = await Promise.all([
+  // Resilient — degrade per-source on error so one failing query
+  // (RLS/policy/schema drift) doesn't take down the whole page.
+  const settled = await Promise.allSettled([
     repairsPromise,
     bespokePromise,
     appraisalsPromise,
   ]);
+  const safeRes = (i: number): { data: unknown[] | null; error?: unknown } => {
+    const r = settled[i];
+    if (r.status === "fulfilled") return r.value as { data: unknown[] | null };
+    console.error(
+      `[/workshop/jobs] query ${["repairs", "bespoke", "appraisals"][i]} failed:`,
+      r.reason,
+    );
+    return { data: [], error: r.reason };
+  };
+  const repairsRes = safeRes(0);
+  const bespokeRes = safeRes(1);
+  const appraisalsRes = safeRes(2);
 
   type RawRepair = {
     id: string;
