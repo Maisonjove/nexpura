@@ -14,6 +14,19 @@ const MOVEMENT_TYPES = [
   { value: "transfer", label: "Transfer" },
 ];
 
+// Per-spec reasons that must accompany a stock adjustment so the audit
+// trail captures *why* the qty shifted. Required field — no more "I just
+// changed the number" entries with empty notes.
+const ADJUSTMENT_REASONS = [
+  { value: "stocktake", label: "Stocktake / count correction" },
+  { value: "damage", label: "Damage" },
+  { value: "theft", label: "Theft / loss" },
+  { value: "supplier_short", label: "Supplier under-shipped" },
+  { value: "supplier_extra", label: "Supplier over-shipped" },
+  { value: "return", label: "Customer return" },
+  { value: "other", label: "Other (specify in notes)" },
+];
+
 interface Props {
   inventoryId: string;
   itemName: string;
@@ -24,6 +37,7 @@ interface Props {
 export default function AdjustClient({ inventoryId, itemName, itemSku, currentQty }: Props) {
   const router = useRouter();
   const [movementType, setMovementType] = useState("adjustment");
+  const [reason, setReason] = useState("");
   const [quantity, setQuantity] = useState("");
   const [direction, setDirection] = useState<"add" | "remove">("add");
   const [notes, setNotes] = useState("");
@@ -44,10 +58,24 @@ export default function AdjustClient({ inventoryId, itemName, itemSku, currentQt
       setError("Stock cannot go below 0");
       return;
     }
+    if (!reason) {
+      setError("Reason is required so the audit trail captures why the qty changed.");
+      return;
+    }
+    if (reason === "other" && !notes.trim()) {
+      setError("'Other' reason requires a note explaining the adjustment.");
+      return;
+    }
     setError(null);
+    // Reason is prefixed into the persisted notes so the existing
+    // stock_movements.notes column carries it without a schema change.
+    const reasonLabel = ADJUSTMENT_REASONS.find((r) => r.value === reason)?.label ?? reason;
+    const persistedNotes = notes.trim()
+      ? `[${reasonLabel}] ${notes.trim()}`
+      : `[${reasonLabel}]`;
     startTransition(async () => {
       try {
-        await adjustStock(inventoryId, movementType, quantityChange, notes);
+        await adjustStock(inventoryId, movementType, quantityChange, persistedNotes);
         router.push(`/inventory/${inventoryId}`);
       } catch (err) {
         if (err instanceof Error && !err.message.includes("NEXT_REDIRECT")) {
@@ -102,6 +130,28 @@ export default function AdjustClient({ inventoryId, itemName, itemSku, currentQt
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">
+              Reason <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              required
+              className="w-full px-3 py-2.5 text-sm border border-stone-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
+            >
+              <option value="">Select a reason…</option>
+              {ADJUSTMENT_REASONS.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-stone-500 mt-1">
+              Captured in the audit trail. "Other" requires a note below.
+            </p>
           </div>
 
           <div>
@@ -176,7 +226,7 @@ export default function AdjustClient({ inventoryId, itemName, itemSku, currentQt
           <div className="flex gap-3 pt-4 border-t border-stone-100">
             <button
               type="submit"
-              disabled={!hydrated || isPending || !quantity || parseInt(quantity) <= 0 || newQty < 0}
+              disabled={!hydrated || isPending || !quantity || parseInt(quantity) <= 0 || newQty < 0 || !reason || (reason === "other" && !notes.trim())}
               className="px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {!hydrated ? (

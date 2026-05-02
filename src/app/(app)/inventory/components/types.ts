@@ -57,6 +57,8 @@ export interface InventoryItem {
   consignment_end_date?: string | null;
   consignment_commission_pct?: number | null;
   supplier_invoice_ref?: string | null;
+  primary_image?: string | null;
+  images?: string[] | null;
 }
 
 export interface InventoryFormProps {

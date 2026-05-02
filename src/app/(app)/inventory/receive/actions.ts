@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
-import { getAuthContext } from "@/lib/auth-context";
+import { getAuthContext, requirePermission } from "@/lib/auth-context";
 
 interface ReceiveLine {
   inventoryId: string;
@@ -21,6 +21,15 @@ export async function batchReceiveStock(
   params: BatchReceiveParams
 ): Promise<{ success?: boolean; error?: string }> {
   try {
+    // RBAC: receiving stock is an inventory mutation; gate on edit_inventory
+    // (Owner/Manager bypass per role matrix). Staff without the permission
+    // can no longer batch-receive supplier shipments.
+    try {
+      await requirePermission("edit_inventory");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "You don't have permission to receive stock." : "Not authenticated" };
+    }
     // SECURITY: Session-derive tenantId + userId. Previously (W3-CRIT-01)
     // this action took tenantId + userId from the request body, allowing
     // cross-tenant stock tampering + audit-log pollution.
