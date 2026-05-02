@@ -123,7 +123,7 @@ export default function SetupTab({
                 type="checkbox"
                 checked={config.show_prices ?? true}
                 onChange={(e) => update("show_prices", e.target.checked)}
-                className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600"
+                className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-nexpura-bronze"
               />
               <span className="text-sm text-stone-700">Show prices on catalogue</span>
             </label>
@@ -132,7 +132,7 @@ export default function SetupTab({
                 type="checkbox"
                 checked={config.allow_enquiry ?? true}
                 onChange={(e) => update("allow_enquiry", e.target.checked)}
-                className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600"
+                className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-nexpura-bronze"
               />
               <span className="text-sm text-stone-700">Allow customer enquiries</span>
             </label>
@@ -142,7 +142,7 @@ export default function SetupTab({
                   type="checkbox"
                   checked={config.stripe_enabled ?? false}
                   onChange={(e) => update("stripe_enabled", e.target.checked)}
-                  className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600"
+                  className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-nexpura-bronze"
                 />
                 <span className="text-sm text-stone-700">Enable Stripe payments</span>
               </label>

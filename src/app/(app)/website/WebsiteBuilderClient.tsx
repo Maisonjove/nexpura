@@ -261,7 +261,7 @@ function WebsiteBuilderClientInner({ initial, tenantId }: Props) {
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 config.published
                   ? "bg-stone-200 text-stone-700 hover:bg-stone-300"
-                  : "bg-amber-700 text-white hover:bg-[#7a6349]"
+                  : "bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700"
               } disabled:opacity-50`}
             >
               {config.published ? "Unpublish" : "Publish Site"}
@@ -305,7 +305,7 @@ function WebsiteBuilderClientInner({ initial, tenantId }: Props) {
                 }`}
               >
                 {opt.badge && (
-                  <span className="absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 bg-amber-700 text-white rounded-full">
+                  <span className="absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 bg-nexpura-charcoal text-white rounded-full">
                     {opt.badge}
                   </span>
                 )}

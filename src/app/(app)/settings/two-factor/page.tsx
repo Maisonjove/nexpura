@@ -428,7 +428,7 @@ export default function TwoFactorSettingsPage() {
               value={verifyCode}
               onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
               placeholder="000000"
-              className="w-full px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              className="w-full px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
               autoComplete="one-time-code"
             />
           </div>
@@ -448,7 +448,7 @@ export default function TwoFactorSettingsPage() {
             <button
               onClick={handleVerifyTOTP}
               disabled={loading || verifyCode.length !== 6}
-              className="flex-1 bg-amber-700 text-white font-medium py-2.5 rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+              className="flex-1 bg-nexpura-charcoal text-white font-medium py-2.5 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
             >
               {loading ? 'Verifying...' : 'Verify & Enable'}
             </button>
@@ -473,7 +473,7 @@ export default function TwoFactorSettingsPage() {
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder="+61 400 000 000"
-              className="w-full px-4 py-3 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              className="w-full px-4 py-3 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
             />
             <p className="text-xs text-stone-400 mt-2">Include country code (e.g., +61 for Australia)</p>
           </div>
@@ -491,7 +491,7 @@ export default function TwoFactorSettingsPage() {
             <button
               onClick={handleSetupSMS}
               disabled={loading || !phoneNumber}
-              className="flex-1 bg-amber-700 text-white font-medium py-2.5 rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+              className="flex-1 bg-nexpura-charcoal text-white font-medium py-2.5 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
             >
               {loading ? 'Sending...' : 'Send Code'}
             </button>
@@ -516,7 +516,7 @@ export default function TwoFactorSettingsPage() {
               value={verifyCode}
               onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
               placeholder="000000"
-              className="w-full px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              className="w-full px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
               autoComplete="one-time-code"
             />
           </div>
@@ -534,7 +534,7 @@ export default function TwoFactorSettingsPage() {
             <button
               onClick={handleVerifySMS}
               disabled={loading || verifyCode.length !== 6}
-              className="flex-1 bg-amber-700 text-white font-medium py-2.5 rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+              className="flex-1 bg-nexpura-charcoal text-white font-medium py-2.5 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
             >
               {loading ? 'Verifying...' : 'Verify & Enable'}
             </button>
@@ -600,7 +600,7 @@ export default function TwoFactorSettingsPage() {
               setBackupCodes([]);
               checkTwoFactorStatus();
             }}
-            className="w-full bg-amber-700 text-white font-medium py-2.5 rounded-lg hover:bg-amber-800 transition-colors"
+            className="w-full bg-nexpura-charcoal text-white font-medium py-2.5 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
           >
             I&apos;ve Saved My Codes
           </button>

@@ -341,7 +341,7 @@ export default function TemplatesClient({ templates, tenantId, businessName }: P
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Monthly Newsletter"
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                 />
               </div>
 
@@ -354,7 +354,7 @@ export default function TemplatesClient({ templates, tenantId, businessName }: P
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                   placeholder="e.g., 🎉 Special offer just for you, {{customer_name}}!"
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                 />
               </div>
 
@@ -367,7 +367,7 @@ export default function TemplatesClient({ templates, tenantId, businessName }: P
                   onChange={(e) => setFormData({ ...formData, body: e.target.value })}
                   placeholder="<p>Dear {{customer_name}},</p>..."
                   rows={10}
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40 font-mono text-sm"
+                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40 font-mono text-sm"
                 />
                 <p className="text-xs text-stone-500 mt-1">
                   Supports HTML formatting

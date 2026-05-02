@@ -71,7 +71,7 @@ export default function TaskDetailClient({
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
                   task.status === "completed" 
                     ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
-                    : "bg-amber-700 text-white shadow-sm"
+                    : "bg-nexpura-charcoal text-white shadow-sm"
                 }`}
               >
                 {task.status === "completed" ? <CheckCircle2 size={18} /> : <Circle size={18} />}
@@ -145,9 +145,9 @@ export default function TaskDetailClient({
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
                 placeholder="Type a comment..."
-                className="flex-1 bg-stone-50 border-none rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-amber-600"
+                className="flex-1 bg-stone-50 border-none rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-nexpura-bronze"
               />
-              <button className="p-2 bg-amber-700 text-white rounded-xl hover:bg-amber-800 transition-colors">
+              <button className="p-2 bg-nexpura-charcoal text-white rounded-xl hover:bg-nexpura-charcoal-700 transition-colors">
                 <Send size={18} />
               </button>
             </form>

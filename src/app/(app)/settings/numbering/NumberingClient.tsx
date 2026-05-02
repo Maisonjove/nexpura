@@ -68,7 +68,7 @@ function SequenceRow({ label, prefix, field, currentValue, currentNumber }: Sequ
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+          className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50 flex items-center gap-2"
         >
           {saving ? (
             <>

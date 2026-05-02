@@ -45,7 +45,7 @@ export default function ProductGrid({
             placeholder="Search inventory by name or SKU…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+            className="flex-1 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
           />
           {onOpenRefund && (
             <button
@@ -72,7 +72,7 @@ export default function ProductGrid({
               onClick={() => setCategoryFilter(cat)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 categoryFilter === cat
-                  ? "bg-amber-700 text-white"
+                  ? "bg-nexpura-charcoal text-white"
                   : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >

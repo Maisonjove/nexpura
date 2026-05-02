@@ -144,7 +144,7 @@ export default function TaskTemplatesPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowNew(true)}
-            className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800"
+            className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700"
           >
             + New Template
           </button>
@@ -165,7 +165,7 @@ export default function TaskTemplatesPage() {
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="e.g. Ring Polishing"
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze"
               />
             </div>
             <div>
@@ -173,7 +173,7 @@ export default function TaskTemplatesPage() {
               <select
                 value={newDepartment}
                 onChange={(e) => setNewDepartment(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
               >
                 <option value="">None</option>
                 <option value="Workshop">Workshop</option>
@@ -188,7 +188,7 @@ export default function TaskTemplatesPage() {
               <select
                 value={newPriority}
                 onChange={(e) => setNewPriority(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -204,11 +204,11 @@ export default function TaskTemplatesPage() {
               onChange={(e) => setNewDescription(e.target.value)}
               rows={3}
               placeholder={"Detailed instructions..."}
-              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 resize-none"
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze resize-none"
             />
           </div>
           <div className="flex gap-2">
-            <button onClick={handleCreateTemplate} className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800">
+            <button onClick={handleCreateTemplate} className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700">
               Create Template
             </button>
             <button onClick={() => setShowNew(false)} className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">
@@ -237,14 +237,14 @@ export default function TaskTemplatesPage() {
                         type="text"
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
-                        className="w-full px-3 py-2 text-sm font-semibold border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600"
+                        className="w-full px-3 py-2 text-sm font-semibold border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze"
                       />
                     </div>
                     <div>
                       <select
                         value={editDepartment}
                         onChange={(e) => setEditDepartment(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                       >
                         <option value="">No Department</option>
                         <option value="Workshop">Workshop</option>
@@ -258,7 +258,7 @@ export default function TaskTemplatesPage() {
                       <select
                         value={editPriority}
                         onChange={(e) => setEditPriority(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                       >
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
@@ -271,10 +271,10 @@ export default function TaskTemplatesPage() {
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     rows={4}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze resize-none"
                   />
                   <div className="flex gap-2">
-                    <button onClick={saveEdit} className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800">Save Changes</button>
+                    <button onClick={saveEdit} className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700">Save Changes</button>
                     <button onClick={() => setEditId(null)} className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">Cancel</button>
                   </div>
                 </div>

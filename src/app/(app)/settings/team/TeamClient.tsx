@@ -276,7 +276,7 @@ export default function TeamClient({
             </div>
             <Link 
               href="/billing"
-              className="px-4 py-2 bg-amber-700 text-white text-xs font-bold rounded-lg hover:bg-amber-800 transition-all shadow-sm shadow-amber-900/10 whitespace-nowrap"
+              className="px-4 py-2 bg-nexpura-charcoal text-white text-xs font-bold rounded-lg hover:bg-nexpura-charcoal-700 transition-all shadow-sm shadow-amber-900/10 whitespace-nowrap"
             >
               View Plans →
             </Link>
@@ -420,7 +420,7 @@ export default function TeamClient({
                                 });
                               }}
                               disabled={isPending}
-                              className="h-3.5 w-3.5 rounded border-stone-300 text-amber-600 focus:ring-amber-500 disabled:opacity-50"
+                              className="h-3.5 w-3.5 rounded border-stone-300 text-amber-600 focus:ring-nexpura-bronze disabled:opacity-50"
                             />
                             <span className="text-[11px] text-stone-500 group-hover:text-stone-700">
                               New repairs
@@ -441,7 +441,7 @@ export default function TeamClient({
                                 });
                               }}
                               disabled={isPending}
-                              className="h-3.5 w-3.5 rounded border-stone-300 text-amber-600 focus:ring-amber-500 disabled:opacity-50"
+                              className="h-3.5 w-3.5 rounded border-stone-300 text-amber-600 focus:ring-nexpura-bronze disabled:opacity-50"
                             />
                             <span className="text-[11px] text-stone-500 group-hover:text-stone-700">
                               New custom orders

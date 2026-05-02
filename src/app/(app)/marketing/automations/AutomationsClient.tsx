@@ -287,7 +287,7 @@ export default function AutomationsClient({ automations, templates, tenantId }: 
                   disabled={loading === type}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-stone-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/40 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                <div className="w-11 h-6 bg-stone-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nexpura-bronze/40 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
               </label>
             </div>
           </div>
@@ -313,7 +313,7 @@ export default function AutomationsClient({ automations, templates, tenantId }: 
                         )
                       }
                       disabled={loading === type}
-                      className="px-3 py-1.5 bg-[#252525] border border-white/[0.06] rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                      className="px-3 py-1.5 bg-[#252525] border border-white/[0.06] rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                     >
                       {setting.options?.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -334,7 +334,7 @@ export default function AutomationsClient({ automations, templates, tenantId }: 
                         disabled={loading === type}
                         className="sr-only peer"
                       />
-                      <div className="w-9 h-5 bg-stone-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/40 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                      <div className="w-9 h-5 bg-stone-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nexpura-bronze/40 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
                     </label>
                   )}
                 </div>

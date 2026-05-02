@@ -279,7 +279,7 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
               <select
                 value={formData.segment_id}
                 onChange={(e) => setFormData((prev) => ({ ...prev, segment_id: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
               >
                 <option value="">Select a segment...</option>
                 {segments.map((segment) => (
@@ -326,7 +326,7 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
                     placeholder="Search customers..."
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    className="w-full pl-10 pr-4 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                   />
                 </div>
 
@@ -363,7 +363,7 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
                         type="checkbox"
                         checked={formData.selected_customers.includes(customer.id)}
                         onChange={() => toggleCustomer(customer.id)}
-                        className="w-4 h-4 rounded border-stone-600 bg-stone-700 text-amber-500 focus:ring-amber-500"
+                        className="w-4 h-4 rounded border-stone-600 bg-stone-700 text-amber-500 focus:ring-nexpura-bronze"
                       />
                       <div>
                         <p className="text-white text-sm">{customer.full_name || "No name"}</p>
@@ -394,7 +394,7 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
                 value={formData.subject}
                 onChange={(e) => setFormData((prev) => ({ ...prev, subject: e.target.value }))}
                 placeholder="e.g., Important Update from Our Store"
-                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
               />
             </div>
 
@@ -423,7 +423,7 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
                   onChange={(e) => setFormData((prev) => ({ ...prev, body: e.target.value }))}
                   placeholder="Write your message here..."
                   rows={8}
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                 />
               )}
               <p className="text-xs text-stone-500 mt-1">

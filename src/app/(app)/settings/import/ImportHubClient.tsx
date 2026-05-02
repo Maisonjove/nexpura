@@ -521,7 +521,7 @@ function ImportHubClientInner({ counts = {} }: ImportHubClientProps) {
                     <select
                       value={columnMap[sf] || ""}
                       onChange={(e) => setColumnMap((prev) => ({ ...prev, [sf]: e.target.value }))}
-                      className="w-full text-sm border border-amber-300 rounded-md px-2 py-1.5 bg-white text-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                      className="w-full text-sm border border-amber-300 rounded-md px-2 py-1.5 bg-white text-stone-700 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                     >
                       <option value="">— skip —</option>
                       {csvHeaders.map((h) => (
@@ -549,7 +549,7 @@ function ImportHubClientInner({ counts = {} }: ImportHubClientProps) {
                 <button
                   onClick={handleImport}
                   disabled={importing || isPending}
-                  className="flex items-center gap-2 px-5 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
                 >
                   {importing || isPending ? (
                     <>

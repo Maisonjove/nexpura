@@ -103,7 +103,7 @@ function FieldInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 pr-9"
+          className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze pr-9"
         />
         {sensitive && (
           <button
@@ -620,7 +620,7 @@ function InsuranceCard({
             <select
               value={valuationBasis}
               onChange={(e) => setValuationBasis(e.target.value)}
-              className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+              className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
             >
               <option value="replacement_value">Replacement Value</option>
               <option value="market_value">Market Value</option>
@@ -728,7 +728,7 @@ export default function IntegrationsPage() {
         <div className="bg-white rounded-xl border border-amber-600/20 overflow-hidden shadow-sm md:col-span-2">
           <div className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-lg bg-amber-700 text-white">
+              <div className="p-2.5 rounded-lg bg-nexpura-charcoal text-white">
                 <Key size={24} />
               </div>
               <h3 className="text-lg font-semibold text-stone-900">API Access</h3>

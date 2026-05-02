@@ -93,7 +93,7 @@ export default function QuoteListClient() {
               </button>
               <button
                 onClick={() => handleConvert(confirmConvertId)}
-                className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-xl hover:bg-[#7a6447] transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-nexpura-charcoal text-white rounded-xl hover:bg-[#7a6447] transition-colors"
               >
                 Convert
               </button>
@@ -109,7 +109,7 @@ export default function QuoteListClient() {
         </div>
         <Link
           href="/quotes/new"
-          className="flex items-center gap-2 bg-amber-700 text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium shadow-sm"
+          className="flex items-center gap-2 bg-nexpura-charcoal text-white px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors font-medium shadow-sm"
         >
           <Plus size={18} />
           New Quote
@@ -122,7 +122,7 @@ export default function QuoteListClient() {
           <input
             type="text"
             placeholder="Search by customer or quote #..."
-            className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
+            className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

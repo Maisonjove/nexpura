@@ -303,7 +303,7 @@ export default function SegmentsClient({ segments, tenantId }: Props) {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Big Spenders"
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                 />
               </div>
 
@@ -316,7 +316,7 @@ export default function SegmentsClient({ segments, tenantId }: Props) {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Optional description"
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                 />
               </div>
 
@@ -327,7 +327,7 @@ export default function SegmentsClient({ segments, tenantId }: Props) {
                 <select
                   value={formData.rule_type}
                   onChange={(e) => setFormData({ ...formData, rule_type: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                 >
                   <option value="new">New Customers (by days)</option>
                   <option value="lapsed">Lapsed Customers (by months)</option>
@@ -358,7 +358,7 @@ export default function SegmentsClient({ segments, tenantId }: Props) {
                         ? "1000"
                         : "10"
                     }
-                    className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                   />
                 </div>
               )}

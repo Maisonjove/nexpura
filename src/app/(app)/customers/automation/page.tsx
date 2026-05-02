@@ -265,7 +265,7 @@ export default function AutomationPage() {
                     {"Use code: AUTO10 at checkout."}
                   </div>
                   <div className="flex gap-2 mt-2">
-                    <button className="text-xs bg-amber-700 text-white px-3 py-1.5 rounded-md hover:bg-amber-800 transition-colors">
+                    <button className="text-xs bg-nexpura-charcoal text-white px-3 py-1.5 rounded-md hover:bg-nexpura-charcoal-700 transition-colors">
                       Edit Template
                     </button>
                     <button className="text-xs bg-stone-100 text-stone-700 px-3 py-1.5 rounded-md hover:bg-stone-200 transition-colors">
@@ -289,7 +289,7 @@ export default function AutomationPage() {
             Changes are saved automatically when you toggle automations
           </p>
         </div>
-        <button className="bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-800 transition-colors">
+        <button className="bg-nexpura-charcoal text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors">
           Save Settings
         </button>
       </div>

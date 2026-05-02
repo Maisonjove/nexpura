@@ -205,7 +205,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     setSelectedTask((prev) => prev ? { ...prev, status: newStatus } : null);
                     startTransition(async () => { await updateTask(selectedTask.id, { status: newStatus }); router.refresh(); });
                   }}
-                  className="text-xs border border-stone-200 rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                  className="text-xs border border-stone-200 rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                 >
                   <option value="todo">To Do</option>
                   <option value="in_progress">In Progress</option>
@@ -329,12 +329,12 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Add a comment…"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 resize-none mb-2"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 resize-none mb-2"
                 />
                 <button
                   onClick={handleAddComment}
                   disabled={addingComment || !commentText.trim()}
-                  className="w-full py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
+                  className="w-full py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50 transition-colors"
                 >
                   {addingComment ? "Adding…" : "Add Comment"}
                 </button>
@@ -411,7 +411,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   type="text"
                   value={form.title}
                   onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 />
               </div>
               <div>
@@ -420,7 +420,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   rows={3}
                   value={form.description}
                   onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -429,7 +429,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   <select
                     value={form.assigned_to}
                     onChange={(e) => setForm((p) => ({ ...p, assigned_to: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   >
                     <option value="">Unassigned</option>
                     {teamMembers.map((m) => (
@@ -443,7 +443,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     type="date"
                     value={form.due_date}
                     onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   />
                 </div>
                 <div>
@@ -451,7 +451,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   <select
                     value={form.priority}
                     onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   >
                     <option value="low">Low</option>
                     <option value="normal">Normal</option>
@@ -464,7 +464,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   <select
                     value={form.status}
                     onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   >
                     <option value="todo">To Do</option>
                     <option value="in_progress">In Progress</option>
@@ -480,7 +480,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                 <select
                   value={form.linked_type}
                   onChange={(e) => setForm((p) => ({ ...p, linked_type: e.target.value, linked_id: "" }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 >
                   <option value="">None</option>
                   <option value="repair">Repair</option>
@@ -497,7 +497,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     value={form.linked_id}
                     onChange={(e) => setForm((p) => ({ ...p, linked_id: e.target.value }))}
                     placeholder="Paste ID here"
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   />
                 </div>
               )}
@@ -506,7 +506,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   isPending={isPending}
                   idleLabel="Create Task"
                   pendingLabel="Creating…"
-                  className="flex-1 py-2.5 bg-amber-700 text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-nexpura-charcoal text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                 />
                 <button
                   type="button"

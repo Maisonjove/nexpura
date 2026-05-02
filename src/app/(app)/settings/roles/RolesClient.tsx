@@ -518,7 +518,7 @@ function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Pr
                         value={selectedMember.role}
                         onChange={(e) => handleRoleChange(selectedMember.id, e.target.value)}
                         disabled={isPending}
-                        className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                        className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                       >
                         {ROLE_OPTIONS.filter(r => r.value !== "owner").map(r => (
                           <option key={r.value} value={r.value}>{r.label}</option>
@@ -781,7 +781,7 @@ function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Pr
                       value={inviteName}
                       onChange={(e) => setInviteName(e.target.value)}
                       placeholder="John Smith"
-                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                     />
                   </div>
                   
@@ -793,7 +793,7 @@ function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Pr
                       value={inviteEmail}
                       onChange={(e) => setInviteEmail(e.target.value)}
                       placeholder="john@example.com"
-                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                     />
                   </div>
 
@@ -807,7 +807,7 @@ function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Pr
                       value={invitePhone}
                       onChange={(e) => setInvitePhone(e.target.value)}
                       placeholder="+44 7700 900000"
-                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                     />
                     <p className="text-xs text-stone-400 mt-1">For WhatsApp task notifications</p>
                   </div>
@@ -818,7 +818,7 @@ function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Pr
                     <select
                       value={inviteRole}
                       onChange={(e) => setInviteRole(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                      className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                     >
                       {ROLE_OPTIONS.filter(r => r.value !== "owner").map(r => (
                         <option key={r.value} value={r.value}>{r.label} — {r.desc}</option>
@@ -837,7 +837,7 @@ function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Pr
                             name="locationAccess"
                             checked={inviteLocations === null}
                             onChange={() => setInviteLocations(null)}
-                            className="text-amber-600 focus:ring-amber-600"
+                            className="text-amber-600 focus:ring-nexpura-bronze"
                           />
                           <span className="text-sm text-stone-700">All stores</span>
                         </label>
@@ -847,7 +847,7 @@ function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Pr
                             name="locationAccess"
                             checked={inviteLocations !== null}
                             onChange={() => setInviteLocations([])}
-                            className="text-amber-600 focus:ring-amber-600"
+                            className="text-amber-600 focus:ring-nexpura-bronze"
                           />
                           <span className="text-sm text-stone-700">Specific stores only</span>
                         </label>
@@ -865,7 +865,7 @@ function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Pr
                                       setInviteLocations(inviteLocations.filter(id => id !== loc.id));
                                     }
                                   }}
-                                  className="text-amber-600 focus:ring-amber-600"
+                                  className="text-amber-600 focus:ring-nexpura-bronze"
                                 />
                                 <span className="text-sm text-stone-700">{loc.name}</span>
                                 <span className="text-xs text-stone-400 capitalize">({loc.type})</span>
@@ -933,7 +933,7 @@ function RolesClientInner({ members, locations, isOwnerOrManager, tenantId }: Pr
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
                   placeholder="+44 7700 900000"
-                  className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 />
                 <p className="text-xs text-stone-400 mt-1">
                   Include country code for WhatsApp notifications

@@ -48,7 +48,7 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
         <h1 className="font-semibold text-2xl font-semibold text-stone-900">Expenses</h1>
         <Link
           href="/expenses/new"
-          className="inline-flex items-center gap-2 bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-800 transition-colors"
+          className="inline-flex items-center gap-2 bg-nexpura-charcoal text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -97,7 +97,7 @@ export default function ExpenseListClient({ expenses, monthTotals, monthTotal, m
           <p className="text-stone-500 mt-1 text-sm">Track your business expenses here.</p>
           <Link
             href="/expenses/new"
-            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
+            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
           >
             Add first expense
           </Link>

@@ -151,7 +151,7 @@ export default function BuilderPageListClient({ initialPages }: Props) {
           </Link>
           <button
             onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors"
+            className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
           >
             + Add Page
           </button>
@@ -171,7 +171,7 @@ export default function BuilderPageListClient({ initialPages }: Props) {
                   value={newTitle}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   placeholder="e.g. Our Story"
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
                   autoFocus
                 />
               </div>
@@ -193,7 +193,7 @@ export default function BuilderPageListClient({ initialPages }: Props) {
                 <select
                   value={newType}
                   onChange={(e) => setNewType(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                 >
                   {PAGE_TYPE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -212,7 +212,7 @@ export default function BuilderPageListClient({ initialPages }: Props) {
               <button
                 onClick={handleCreate}
                 disabled={isPending || !newTitle.trim() || !newSlug.trim()}
-                className="flex-1 px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
               >
                 {isPending ? "Creating…" : "Create Page"}
               </button>

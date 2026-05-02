@@ -149,7 +149,7 @@ export default function LocationDetailClient({ location, assignedMembers, isOwne
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="text-xl font-semibold text-stone-900 border border-stone-200 rounded-lg px-3 py-1 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className="text-xl font-semibold text-stone-900 border border-stone-200 rounded-lg px-3 py-1 focus:ring-2 focus:ring-nexpura-bronze focus:outline-none"
                 />
               ) : (
                 <h2 className="text-xl font-semibold text-stone-900">{location.name}</h2>
@@ -170,7 +170,7 @@ export default function LocationDetailClient({ location, assignedMembers, isOwne
                   <button
                     onClick={handleSave}
                     disabled={isPending}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50 transition-colors"
                   >
                     <Save size={14} />
                     {isPending ? "Saving..." : "Save"}
@@ -201,20 +201,20 @@ export default function LocationDetailClient({ location, assignedMembers, isOwne
                     placeholder="Street Address"
                     value={form.address_line1}
                     onChange={(e) => setForm({ ...form, address_line1: e.target.value })}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-nexpura-bronze focus:outline-none"
                   />
                   <div className="grid grid-cols-2 gap-3">
                     <input
                       placeholder="City / Suburb"
                       value={form.suburb}
                       onChange={(e) => setForm({ ...form, suburb: e.target.value })}
-                      className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-nexpura-bronze focus:outline-none"
                     />
                     <input
                       placeholder="State / Province"
                       value={form.state}
                       onChange={(e) => setForm({ ...form, state: e.target.value })}
-                      className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-nexpura-bronze focus:outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -222,13 +222,13 @@ export default function LocationDetailClient({ location, assignedMembers, isOwne
                       placeholder="Postcode / ZIP"
                       value={form.postcode}
                       onChange={(e) => setForm({ ...form, postcode: e.target.value })}
-                      className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-nexpura-bronze focus:outline-none"
                     />
                     <input
                       placeholder="Country"
                       value={form.country}
                       onChange={(e) => setForm({ ...form, country: e.target.value })}
-                      className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-nexpura-bronze focus:outline-none"
                     />
                   </div>
                 </div>
@@ -251,7 +251,7 @@ export default function LocationDetailClient({ location, assignedMembers, isOwne
                     placeholder="+61 2 9000 0000"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-nexpura-bronze focus:outline-none"
                   />
                 ) : (
                   <p className="text-sm text-stone-700">
@@ -277,7 +277,7 @@ export default function LocationDetailClient({ location, assignedMembers, isOwne
                     placeholder="store@example.com"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-nexpura-bronze focus:outline-none"
                   />
                 ) : (
                   <p className="text-sm text-stone-700">
@@ -330,7 +330,7 @@ export default function LocationDetailClient({ location, assignedMembers, isOwne
                             ...hours,
                             [day]: { ...hours[day], closed: e.target.checked }
                           })}
-                          className="rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                          className="rounded border-stone-300 text-amber-600 focus:ring-nexpura-bronze"
                         />
                         <span className="text-xs text-stone-500">Closed</span>
                       </label>

@@ -69,7 +69,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
         </div>
         <button
           onClick={() => setShowNew(true)}
-          className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors"
+          className="px-4 py-2 bg-nexpura-charcoal text-white rounded-lg text-sm font-medium hover:bg-nexpura-charcoal-700 transition-colors"
         >
           + New Stocktake
         </button>
@@ -87,7 +87,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. End of Month Count – March 2026"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                 />
               </div>
               <div>
@@ -96,7 +96,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. Main Showroom, Back Office…"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                 />
               </div>
               <div>
@@ -105,7 +105,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 resize-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 resize-none"
                 />
               </div>
               {error && <p className="text-xs text-red-500">{error}</p>}
@@ -129,7 +129,7 @@ export default function StocktakesClient({ stocktakes, tenantId, userRole }: Pro
                 <button
                   onClick={handleCreate}
                   disabled={isPending || !name.trim()}
-                  className="flex-1 px-3 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-60"
+                  className="flex-1 px-3 py-2 bg-nexpura-charcoal text-white rounded-lg text-sm font-medium hover:bg-nexpura-charcoal-700 disabled:opacity-60"
                 >
                   {isPending ? "Creating…" : "Create Empty"}
                 </button>

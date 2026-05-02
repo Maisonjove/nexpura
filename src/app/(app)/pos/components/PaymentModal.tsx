@@ -262,7 +262,7 @@ function StoreCreditTab({ selectedCustomer, total, isPending, onCharge }: {
       <button
         onClick={onCharge}
         disabled={isPending || (selectedCustomer.store_credit || 0) < total}
-        className="w-full py-4 bg-amber-700 text-white rounded-xl font-bold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50 shadow-sm"
+        className="w-full py-4 bg-nexpura-charcoal text-white rounded-xl font-bold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50 shadow-sm"
       >
         {isPending ? "Processing…" : "Pay with Store Credit"}
       </button>
@@ -280,7 +280,7 @@ function CardTab({ hasStripe, isPending, onCharge }: {
       <button
         onClick={onCharge}
         disabled={isPending}
-        className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+        className="w-full py-4 bg-nexpura-charcoal text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
       >
         {isPending ? "Processing…" : "Record Card Payment"}
       </button>
@@ -331,7 +331,7 @@ function CashTab({ total, cashTendered, setCashTendered, change, isPending, onCh
           placeholder="0.00"
           value={cashTendered}
           onChange={(e) => setCashTendered(e.target.value)}
-          className="w-full border border-stone-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-600"
+          className="w-full border border-stone-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
         />
       </div>
       {parseFloat(cashTendered) >= total && (
@@ -343,7 +343,7 @@ function CashTab({ total, cashTendered, setCashTendered, change, isPending, onCh
       <button
         onClick={onCharge}
         disabled={isPending || (parseFloat(cashTendered) || 0) < total}
-        className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+        className="w-full py-4 bg-nexpura-charcoal text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
       >
         {isPending ? "Processing…" : "Complete Cash Sale"}
       </button>
@@ -421,14 +421,14 @@ function SplitTab({
             <label className="block text-xs text-stone-500 mb-1">Card amount</label>
             <input type="number" min="0" step="0.01" placeholder="0.00" value={splitCard}
               onChange={(e) => setSplitCard(e.target.value)}
-              className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
             />
           </div>
           <div>
             <label className="block text-xs text-stone-500 mb-1">Cash amount</label>
             <input type="number" min="0" step="0.01" placeholder="0.00" value={splitCash}
               onChange={(e) => setSplitCash(e.target.value)}
-              className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
             />
           </div>
           {(parseFloat(splitCard) || 0) + (parseFloat(splitCash) || 0) !== total && (
@@ -449,7 +449,7 @@ function SplitTab({
                 placeholder="Enter voucher code…"
                 value={splitVoucherCode}
                 onChange={(e) => { setSplitVoucherCode(e.target.value.toUpperCase()); setSplitVoucherData(null); setSplitVoucherError(null); }}
-                className="flex-1 border border-stone-200 rounded-xl px-4 py-3 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-amber-600"
+                className="flex-1 border border-stone-200 rounded-xl px-4 py-3 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
               />
               <button
                 onClick={onSplitVoucherLookup}
@@ -487,7 +487,7 @@ function SplitTab({
                     type="number" min="0" step="0.01" placeholder="0.00"
                     value={splitMode === "voucher+card" ? splitCard : splitCash}
                     onChange={(e) => splitMode === "voucher+card" ? setSplitCard(e.target.value) : setSplitCash(e.target.value)}
-                    className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   />
                 </div>
               )}
@@ -499,7 +499,7 @@ function SplitTab({
       <button
         onClick={onSplitCharge}
         disabled={isPending}
-        className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+        className="w-full py-4 bg-nexpura-charcoal text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
       >
         {isPending ? "Processing…" : "Complete Split Payment"}
       </button>
@@ -540,7 +540,7 @@ function VoucherTab({
           placeholder="Enter voucher code…"
           value={voucherCode}
           onChange={(e) => { setVoucherCode(e.target.value.toUpperCase()); setVoucherData(null); setVoucherError(null); }}
-          className="flex-1 border border-stone-200 rounded-xl px-4 py-3 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-amber-600"
+          className="flex-1 border border-stone-200 rounded-xl px-4 py-3 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
         />
         <button
           onClick={onVoucherLookup}
@@ -567,7 +567,7 @@ function VoucherTab({
       <button
         onClick={onVoucherCharge}
         disabled={isPending || !voucherData || voucherData.balance < total}
-        className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+        className="w-full py-4 bg-nexpura-charcoal text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
       >
         {isPending ? "Processing…" : "Redeem Voucher"}
       </button>
@@ -618,7 +618,7 @@ function LaybyTab({
           placeholder="0.00"
           value={laybyDeposit}
           onChange={(e) => setLaybyDeposit(e.target.value)}
-          className="w-full border border-stone-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-600"
+          className="w-full border border-stone-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
         />
       </div>
       {parseFloat(laybyDeposit) > 0 && parseFloat(laybyDeposit) < total && (
@@ -633,7 +633,7 @@ function LaybyTab({
       <button
         onClick={onLaybyCreate}
         disabled={isPending || !laybyDeposit || parseFloat(laybyDeposit) <= 0}
-        className="w-full py-4 bg-amber-700 text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+        className="w-full py-4 bg-nexpura-charcoal text-white rounded-xl font-semibold text-base hover:bg-[#7a6447] transition-colors disabled:opacity-50"
       >
         {isPending ? "Processing…" : "Create Layby"}
       </button>

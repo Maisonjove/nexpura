@@ -156,7 +156,7 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
             <button
               onClick={handleStart}
               disabled={isPending}
-              className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-60"
+              className="px-4 py-2 bg-nexpura-charcoal text-white rounded-lg text-sm font-medium hover:bg-nexpura-charcoal-700 disabled:opacity-60"
             >
               {isPending ? "Starting…" : "▶ Start Count"}
             </button>
@@ -191,7 +191,7 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
               <button
                 onClick={() => handleComplete(true)}
                 disabled={isPending}
-                className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-60"
+                className="px-4 py-2 bg-nexpura-charcoal text-white rounded-lg text-sm font-medium hover:bg-nexpura-charcoal-700 disabled:opacity-60"
               >
                 ✓ Apply & Complete
               </button>
@@ -253,14 +253,14 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search items…"
-            className="flex-1 min-w-48 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+            className="flex-1 min-w-48 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
           />
           {(["all", "uncounted", "counted", "discrepancy"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
-                filter === f ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                filter === f ? "bg-nexpura-charcoal text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >
               {f === "discrepancy" ? "⚠️ Discrepancies" : f.replace("_", " ")}
@@ -325,12 +325,12 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
                             onKeyDown={(e) => e.key === "Enter" && handleCountSave(item.id)}
                             min="0"
                             autoFocus
-                            className="w-20 px-2 py-1.5 border border-amber-600 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                            className="w-20 px-2 py-1.5 border border-amber-600 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                           />
                           <button
                             onClick={() => handleCountSave(item.id)}
                             disabled={isPending}
-                            className="px-3 py-1.5 bg-amber-700 text-white rounded-lg text-xs font-medium"
+                            className="px-3 py-1.5 bg-nexpura-charcoal text-white rounded-lg text-xs font-medium"
                           >
                             ✓
                           </button>
@@ -350,7 +350,7 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                             hasCounted
                               ? "border border-stone-200 text-stone-600 hover:bg-stone-50"
-                              : "bg-amber-700 text-white hover:bg-amber-800"
+                              : "bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700"
                           }`}
                         >
                           {hasCounted ? "Edit" : "Count"}
@@ -421,7 +421,7 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={() => setShowAddManual(false)} className="flex-1 px-3 py-2 border border-stone-200 text-stone-600 rounded-lg text-sm">Cancel</button>
-              <button onClick={handleAddManual} disabled={isPending || !manualName.trim()} className="flex-1 px-3 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium disabled:opacity-60">
+              <button onClick={handleAddManual} disabled={isPending || !manualName.trim()} className="flex-1 px-3 py-2 bg-nexpura-charcoal text-white rounded-lg text-sm font-medium disabled:opacity-60">
                 {isPending ? "Adding…" : "Add"}
               </button>
             </div>

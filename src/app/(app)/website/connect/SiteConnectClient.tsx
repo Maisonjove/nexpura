@@ -221,7 +221,7 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
             </ul>
             <Link 
               href="/billing"
-              className="block w-full py-3 bg-amber-700 text-white rounded-lg font-bold hover:bg-amber-800 transition-all shadow-lg shadow-amber-900/10"
+              className="block w-full py-3 bg-nexpura-charcoal text-white rounded-lg font-bold hover:bg-nexpura-charcoal-700 transition-all shadow-lg shadow-amber-900/10"
             >
               View Pricing →
             </Link>
@@ -357,12 +357,12 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="https://yourjewellerystore.com"
-              className="flex-1 px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600"
+              className="flex-1 px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze"
             />
             <button
               onClick={saveUrl}
               disabled={isPending}
-              className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 disabled:opacity-50"
+              className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save"}
             </button>
@@ -387,7 +387,7 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
             <p className="text-sm text-stone-500 mb-3">No site connected yet. Add your website URL to start embedding widgets.</p>
             <button
               onClick={() => setEditingUrl(true)}
-              className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800"
+              className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700"
             >
               Add Site URL
             </button>
@@ -549,7 +549,7 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
                   value={wooStoreUrl}
                   onChange={(e) => setWooStoreUrl(e.target.value)}
                   placeholder="https://yourstore.com"
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-nexpura-bronze focus:border-amber-500"
                 />
               </div>
 
@@ -560,7 +560,7 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
                   value={wooConsumerKey}
                   onChange={(e) => setWooConsumerKey(e.target.value)}
                   placeholder="ck_xxxxxxxx"
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-sm"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-nexpura-bronze focus:border-amber-500 font-mono text-sm"
                 />
               </div>
 
@@ -571,7 +571,7 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
                   value={wooConsumerSecret}
                   onChange={(e) => setWooConsumerSecret(e.target.value)}
                   placeholder="cs_xxxxxxxx"
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-sm"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-nexpura-bronze focus:border-amber-500 font-mono text-sm"
                 />
               </div>
 

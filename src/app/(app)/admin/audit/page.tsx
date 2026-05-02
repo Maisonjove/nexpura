@@ -49,7 +49,7 @@ export default function AuditLogsPage() {
         <div className="flex gap-2">
            <div className="relative">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
-             <input placeholder="Search logs..." className="pl-10 pr-4 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-amber-600" />
+             <input placeholder="Search logs..." className="pl-10 pr-4 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-nexpura-bronze" />
            </div>
            <button className="flex items-center gap-2 px-4 py-2 border border-stone-200 bg-white rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-50">
              <Filter size={16} /> Filter

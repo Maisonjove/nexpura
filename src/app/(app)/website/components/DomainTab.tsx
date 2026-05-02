@@ -52,7 +52,7 @@ export default function DomainTab({
             value={customDomainInput}
             onChange={(e) => setCustomDomainInput(e.target.value)}
             placeholder="yourdomain.com.au"
-            className="flex-1 px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
+            className="flex-1 px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
           />
           <button
             onClick={onSave}

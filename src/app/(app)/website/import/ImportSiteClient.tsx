@@ -132,7 +132,7 @@ export default function ImportSiteClient() {
       <div className="flex items-center gap-2">
         {[1, 2, 3].map((s) => (
           <div key={s} className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= s ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-400"}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= s ? "bg-nexpura-charcoal text-white" : "bg-stone-100 text-stone-400"}`}>
               {s}
             </div>
             {s < 3 && <div className={`h-0.5 w-12 ${step > s ? "bg-amber-700" : "bg-stone-200"}`} />}
@@ -157,7 +157,7 @@ export default function ImportSiteClient() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://myjewelleryshop.com"
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
+              className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
             />
           </div>
 
@@ -181,7 +181,7 @@ export default function ImportSiteClient() {
           <button
             onClick={handleAnalyze}
             disabled={loading || !url.trim() || !platform}
-            className="w-full py-3 bg-amber-700 text-white font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
+            className="w-full py-3 bg-nexpura-charcoal text-white font-medium rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50 transition-colors"
           >
             {loading ? "Analysing…" : "Analyse Site →"}
           </button>
@@ -241,7 +241,7 @@ export default function ImportSiteClient() {
             <button
               onClick={handleRecreate}
               disabled={importing}
-              className="flex-1 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
+              className="flex-1 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50 transition-colors"
             >
               {importing ? "Creating pages…" : "Recreate in Nexpura Builder →"}
             </button>

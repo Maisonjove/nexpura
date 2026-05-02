@@ -53,7 +53,7 @@ export default async function CustomersPage({
         <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Customers</h1>
         <Link
           href="/customers/new"
-          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-nexpura-charcoal hover:bg-nexpura-charcoal-700 text-white h-10 px-4 py-2"
         >
           <Plus className="w-4 h-4 mr-2" /> Add Customer
         </Link>

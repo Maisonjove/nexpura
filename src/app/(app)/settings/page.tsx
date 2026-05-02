@@ -281,7 +281,7 @@ export default function SettingsPage() {
                 <input
                   name="business_name"
                   defaultValue={tenant?.business_name || tenant?.name || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   placeholder="My Jewellery Studio"
                 />
               </div>
@@ -290,7 +290,7 @@ export default function SettingsPage() {
                 <select
                   name="business_type"
                   defaultValue={tenant?.business_type || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                 >
                   <option value="">Select type…</option>
                   <option value="jeweller">Jeweller</option>
@@ -307,7 +307,7 @@ export default function SettingsPage() {
                 <select
                   name="business_mode"
                   defaultValue={tenant?.business_mode || "full"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white font-medium text-amber-700"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white font-medium text-amber-700"
                 >
                   <option value="full">Full (All Features)</option>
                   <option value="retail">Retail Focus (POS + Inventory)</option>
@@ -322,7 +322,7 @@ export default function SettingsPage() {
                   name="phone"
                   type="tel"
                   defaultValue={tenant?.phone || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   placeholder="+61 2 9000 0000"
                 />
               </div>
@@ -332,7 +332,7 @@ export default function SettingsPage() {
                   name="email"
                   type="email"
                   defaultValue={tenant?.email || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   placeholder="hello@mybusiness.com"
                 />
               </div>
@@ -342,7 +342,7 @@ export default function SettingsPage() {
                   name="website"
                   type="url"
                   defaultValue={tenant?.website || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   placeholder="https://mybusiness.com"
                 />
               </div>
@@ -351,7 +351,7 @@ export default function SettingsPage() {
                 <input
                   name="abn"
                   defaultValue={tenant?.abn || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   placeholder="12 345 678 901"
                 />
               </div>
@@ -367,7 +367,7 @@ export default function SettingsPage() {
                 <input
                   name="address_line1"
                   defaultValue={tenant?.address_line1 || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   placeholder="123 Main Street"
                 />
               </div>
@@ -377,7 +377,7 @@ export default function SettingsPage() {
                   <input
                     name="suburb"
                     defaultValue={tenant?.suburb || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                     placeholder="Sydney"
                   />
                 </div>
@@ -386,7 +386,7 @@ export default function SettingsPage() {
                   <select
                     name="state"
                     defaultValue={tenant?.state || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   >
                     <option value="">State</option>
                     <option value="NSW">NSW</option>
@@ -404,7 +404,7 @@ export default function SettingsPage() {
                   <input
                     name="postcode"
                     defaultValue={tenant?.postcode || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                     placeholder="2000"
                   />
                 </div>
@@ -413,7 +413,7 @@ export default function SettingsPage() {
                   <select
                     name="country"
                     defaultValue={tenant?.country || "Australia"}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   >
                     <option value="Australia">Australia</option>
                     <option value="New Zealand">New Zealand</option>
@@ -449,7 +449,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save changes"}
             </button>
@@ -468,7 +468,7 @@ export default function SettingsPage() {
                 <select
                   name="currency"
                   defaultValue={tenant?.currency || "AUD"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                 >
                   <option value="AUD">AUD — Australian Dollar</option>
                   <option value="NZD">NZD — New Zealand Dollar</option>
@@ -482,7 +482,7 @@ export default function SettingsPage() {
                 <select
                   name="timezone"
                   defaultValue={tenant?.timezone || "Australia/Sydney"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                 >
                   <option value="Australia/Sydney">Australia/Sydney (AEDT)</option>
                   <option value="Australia/Melbourne">Australia/Melbourne (AEDT)</option>
@@ -507,7 +507,7 @@ export default function SettingsPage() {
                 <select
                   name="tax_name"
                   defaultValue={tenant?.tax_name || "GST"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                 >
                   <option value="GST">GST</option>
                   <option value="VAT">VAT</option>
@@ -536,7 +536,7 @@ export default function SettingsPage() {
                   max="100"
                   step="0.01"
                   defaultValue={tenant?.tax_rate != null ? (tenant.tax_rate * 100).toFixed(0) : "10"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   placeholder="10"
                 />
               </div>
@@ -562,7 +562,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save changes"}
             </button>
@@ -591,7 +591,7 @@ export default function SettingsPage() {
                 <input
                   name="bank_name"
                   defaultValue={tenant?.bank_name || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   placeholder="Commonwealth Bank"
                 />
               </div>
@@ -600,7 +600,7 @@ export default function SettingsPage() {
                 <input
                   name="bank_bsb"
                   defaultValue={tenant?.bank_bsb || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   placeholder="062-000"
                 />
               </div>
@@ -609,7 +609,7 @@ export default function SettingsPage() {
                 <input
                   name="bank_account"
                   defaultValue={tenant?.bank_account || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   placeholder="1234 5678"
                 />
               </div>
@@ -626,7 +626,7 @@ export default function SettingsPage() {
                 name="invoice_footer"
                 defaultValue={tenant?.invoice_footer || ""}
                 rows={3}
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white resize-none"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white resize-none"
                 placeholder="Thank you for your business. Payment due within 7 days."
               />
             </div>
@@ -636,7 +636,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save changes"}
             </button>
@@ -671,7 +671,7 @@ export default function SettingsPage() {
                 </span>
               </div>
               {subscription?.plan !== "atelier" && subscription?.plan !== "group" && subscription?.plan !== "ultimate" && (
-                <Link href="/billing" className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors text-center">
+                <Link href="/billing" className="px-4 py-2 text-sm font-medium bg-nexpura-charcoal text-white rounded-lg hover:bg-nexpura-charcoal-700 transition-colors text-center">
                   Upgrade plan
                 </Link>
               )}
@@ -688,7 +688,7 @@ export default function SettingsPage() {
                   <input
                     name="full_name"
                     defaultValue={user?.full_name || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                   />
                 </div>
                 <div className="sm:col-span-2 space-y-1.5">
@@ -719,7 +719,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+                className="px-6 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
               >
                 {isPending ? "Saving…" : "Save changes"}
               </button>

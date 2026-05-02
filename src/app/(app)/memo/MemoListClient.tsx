@@ -94,7 +94,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
           <button 
             onClick={() => setShowReports(!showReports)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
-              showReports ? "bg-amber-700 text-white border-amber-600" : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+              showReports ? "bg-nexpura-charcoal text-white border-amber-600" : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
             }`}
           >
             <BarChart2 size={18} />
@@ -102,7 +102,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
           </button>
           <Link
             href={`/memo/new?type=${tab}`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-shadow shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-nexpura-charcoal text-white rounded-lg text-sm font-medium hover:bg-nexpura-charcoal-700 transition-shadow shadow-sm"
           >
             <Plus size={16} />
             New {tab === "memo" ? "Memo" : "Consignment"}
@@ -138,7 +138,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
             <button
               onClick={() => setTab("memo")}
               className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                tab === "memo" ? "bg-amber-700 text-white shadow-sm" : "text-stone-600 hover:bg-stone-50"
+                tab === "memo" ? "bg-nexpura-charcoal text-white shadow-sm" : "text-stone-600 hover:bg-stone-50"
               }`}
             >
               <span>Memo Out</span>
@@ -149,7 +149,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
             <button
               onClick={() => setTab("consignment")}
               className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                tab === "consignment" ? "bg-amber-700 text-white shadow-sm" : "text-stone-600 hover:bg-stone-50"
+                tab === "consignment" ? "bg-nexpura-charcoal text-white shadow-sm" : "text-stone-600 hover:bg-stone-50"
               }`}
             >
               <span>Consignment In</span>
@@ -164,7 +164,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={14} />
               <input 
                 placeholder="Search items..." 
-                className="w-full pl-9 pr-3 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-600"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-nexpura-bronze"
               />
             </div>
             <div className="space-y-2">
@@ -309,7 +309,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
                 </button>
                 <button 
                   onClick={() => handleQuickStatus(selectedItem.id, "sold")}
-                  className="px-4 py-2.5 bg-amber-700 text-white rounded-xl text-sm font-medium hover:bg-amber-800 transition-colors"
+                  className="px-4 py-2.5 bg-nexpura-charcoal text-white rounded-xl text-sm font-medium hover:bg-nexpura-charcoal-700 transition-colors"
                 >
                   Mark as Sold
                 </button>
@@ -360,7 +360,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
                 <button 
                   type="submit" 
                   disabled={isPending}
-                  className="w-full py-3 bg-amber-700 text-white rounded-xl font-bold hover:bg-amber-800 transition-all disabled:opacity-50"
+                  className="w-full py-3 bg-nexpura-charcoal text-white rounded-xl font-bold hover:bg-nexpura-charcoal-700 transition-all disabled:opacity-50"
                 >
                   {isPending ? "Saving..." : "Create Entry"}
                 </button>

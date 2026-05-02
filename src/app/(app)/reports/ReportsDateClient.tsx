@@ -211,7 +211,7 @@ export default function ReportsDateClient({ canViewMargins }: Props) {
               onClick={() => setPreset(p.id)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 preset === p.id
-                  ? "bg-amber-700 text-white"
+                  ? "bg-nexpura-charcoal text-white"
                   : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >
@@ -235,7 +235,7 @@ export default function ReportsDateClient({ canViewMargins }: Props) {
         <button
           onClick={handleLoad}
           disabled={isPending}
-          className="px-6 py-2.5 bg-amber-700 text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 bg-nexpura-charcoal text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
         >
           {isPending ? "Loading…" : "Load Reports"}
         </button>
