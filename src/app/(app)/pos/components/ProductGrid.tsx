@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Camera } from "lucide-react";
 import type { InventoryItem } from "./types";
 import { CATEGORIES, CATEGORY_LABELS } from "./constants";
 
@@ -58,10 +59,11 @@ export default function ProductGrid({
           )}
           <button
             onClick={onOpenCameraScanner}
-            className="px-3 py-2 border border-stone-200 rounded-xl text-stone-500 hover:border-amber-600 hover:text-amber-700 transition-colors text-lg"
+            className="px-3 py-2 border border-stone-200 rounded-xl text-stone-500 hover:border-nexpura-bronze hover:text-nexpura-bronze transition-colors"
             title="Scan barcode with camera"
+            aria-label="Scan barcode with camera"
           >
-            📷
+            <Camera className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
         {/* Category pills */}
