@@ -346,12 +346,13 @@ export default function LaybyDetailClient({
             </div>
           </div>
 
-          {/* Actions */}
-          {isActive && (
+          {/* Actions — render for active and completed laybys; cancelled
+              shows just the terminal-state notice below. */}
+          {(isActive || isCompleted) && (
             <div className="bg-white border border-stone-200 rounded-xl shadow-sm p-5 space-y-3">
               <h2 className="text-sm font-semibold text-stone-900">Actions</h2>
 
-              {!isFullyPaid && !showPayForm && (
+              {isActive && !isFullyPaid && !showPayForm && (
                 <button
                   onClick={() => setShowPayForm(true)}
                   className="w-full px-4 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-[#7a6347] transition-colors"
@@ -426,7 +427,7 @@ export default function LaybyDetailClient({
                 </div>
               )}
 
-              {isFullyPaid && !showCompleteConfirm && (
+              {isActive && isFullyPaid && !showCompleteConfirm && (
                 <button
                   onClick={() => setShowCompleteConfirm(true)}
                   className="w-full px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
@@ -435,7 +436,7 @@ export default function LaybyDetailClient({
                 </button>
               )}
 
-              {showCompleteConfirm && (
+              {isActive && showCompleteConfirm && (
                 <div className="space-y-3">
                   <p className="text-sm text-stone-600">
                     Mark this layby as complete? This will deduct items from inventory.
