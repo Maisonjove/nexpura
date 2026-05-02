@@ -7,6 +7,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SessionExpiryModal } from "@/components/SessionExpiryModal";
 import { SkipToContent } from "@/components/SkipToContent";
 import { AUTH_HEADERS, getCachedUserProfile } from "@/lib/cached-auth";
+import { LocationProvider } from "@/contexts/LocationContext";
+import { getSelectedLocationIdFromCookie } from "@/lib/locations";
 
 // Same revalidate as (app) — user/tenant data is cached via Redis.
 // (The `export const revalidate = 60` has been stripped on this preview
@@ -35,14 +37,31 @@ export default function IntakeWorkspaceLayout({
             tabIndex={-1}
             className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-6 lg:py-8 focus:outline-none"
           >
-            <Suspense fallback={null}>
-              <IntakeAuthGuard>{children}</IntakeAuthGuard>
+            <Suspense fallback={<IntakeShellNoLocation>{children}</IntakeShellNoLocation>}>
+              <IntakeAuthGuard>
+                <LocatedIntakeShell>{children}</LocatedIntakeShell>
+              </IntakeAuthGuard>
             </Suspense>
           </main>
         </ErrorBoundary>
         <SessionExpiryModal />
       </div>
     </>
+  );
+}
+
+async function LocatedIntakeShell({ children }: { children: React.ReactNode }) {
+  const initialCurrentLocationId = await getSelectedLocationIdFromCookie();
+  return (
+    <LocationProvider initialCurrentLocationId={initialCurrentLocationId}>
+      {children}
+    </LocationProvider>
+  );
+}
+
+function IntakeShellNoLocation({ children }: { children: React.ReactNode }) {
+  return (
+    <LocationProvider initialCurrentLocationId={null}>{children}</LocationProvider>
   );
 }
 

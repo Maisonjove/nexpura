@@ -4,6 +4,7 @@ import { useState, useTransition, useRef, useCallback, useEffect, useMemo } from
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { AlertCircle, X, WifiOff } from "lucide-react";
+import { useLocation } from "@/contexts/LocationContext";
 import {
   createRepairFromIntake,
   createBespokeFromIntake,
@@ -253,6 +254,49 @@ function LoadingOverlay({ jobType }: { jobType: JobType }) {
 }
 
 // ────────────────────────────────────────────────────────────────
+// Location Gate — surfaced when the tenant has 2+ locations and no
+// specific location has been selected yet. The server's
+// resolveLocationForCreate would reject the create in this state, and
+// the (intake-workspace) shell doesn't render the TopNav location
+// switcher, so without this banner the user has no way to satisfy the
+// requirement from inside /intake.
+// ────────────────────────────────────────────────────────────────
+
+function LocationGate() {
+  const { locations, currentLocationId, setCurrentLocationId, setViewMode } = useLocation();
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" strokeWidth={1.75} aria-hidden />
+        <div className="flex-1">
+          <h4 className="font-medium text-amber-900 mb-1">Pick a location to continue</h4>
+          <p className="text-sm text-amber-800 mb-3">
+            New jobs are stamped with a single location. You're currently viewing all locations — choose one before creating this job.
+          </p>
+          <select
+            value={currentLocationId || ""}
+            onChange={(e) => {
+              const id = e.target.value;
+              if (id) {
+                setCurrentLocationId(id);
+                setViewMode("single");
+              }
+            }}
+            className="w-full max-w-sm px-3 py-2 bg-white border border-amber-300 rounded-lg text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+          >
+            <option value="">Select a location…</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>{loc.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────
 // Main Component
 // ────────────────────────────────────────────────────────────────
 
@@ -263,6 +307,15 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<"validation" | "server" | "network">("server");
+
+  // The server's resolveLocationForCreate rejects creates when the user is in
+  // "All Locations" view AND the tenant has 2+ active locations. Surface that
+  // upfront so the Save button stays disabled and the missing-fields hint
+  // tells the user what to do, instead of letting them fill the entire form
+  // and only failing at submit.
+  const { locations: visibleLocations, currentLocationId } = useLocation();
+  const requiresLocationSelection =
+    visibleLocations.length >= 2 && !currentLocationId;
 
   // Double-submit prevention
   const isSubmittingRef = useRef(false);
@@ -472,6 +525,9 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   // ─── Missing required fields (with step links) ────────────────
   const missingFields: MissingField[] = useMemo(() => {
     const out: MissingField[] = [];
+    if (requiresLocationSelection) {
+      out.push({ label: "Pick a location (use the switcher in the header)", stepIndex: 0 });
+    }
     if (!customerComplete) {
       out.push({ label: "Customer (or tick walk-in)", stepIndex: 0 });
     }
@@ -485,6 +541,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
     }
     return out;
   }, [
+    requiresLocationSelection,
     customerComplete,
     jobType,
     repairData.item_type,
@@ -748,6 +805,10 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
           />
 
           <div id="intake-form-area">
+            {requiresLocationSelection && (
+              <LocationGate />
+            )}
+
             {/* Customer Section — id="step-customer" lives inside */}
             <CustomerSection
               initialCustomers={initialCustomers}
