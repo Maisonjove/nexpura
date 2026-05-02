@@ -125,6 +125,7 @@ export default function DashboardWrapper({ criticalData, initialStats, initialLo
       businessType={criticalData.businessType}
       currency={criticalData.currency}
       isManager={criticalData.isManager}
+      userEmail={criticalData.userEmail}
       // Stats - show loading skeletons if not yet loaded
       salesThisMonthRevenue={currentStats.salesThisMonthRevenue}
       salesThisMonthCount={currentStats.salesThisMonthCount}

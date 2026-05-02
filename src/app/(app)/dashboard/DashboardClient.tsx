@@ -20,6 +20,7 @@ import {
 import { DashboardClock } from "./DashboardClock";
 import { useLocation } from "@/contexts/LocationContext";
 import { Card } from "@/components/ui/card";
+import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 
 /**
  * Dashboard — "Workspace Command Centre".
@@ -139,6 +140,8 @@ interface DashboardClientProps {
   }[];
   teamTaskSummary: TeamTaskSummary[];
   isManager: boolean;
+  /** Logged-in user email — used to gate the Admin module card. */
+  userEmail?: string | null;
   activeRepairs: ActiveRepair[];
   activeBespokeJobs: ActiveBespokeJob[];
   currency: string;
@@ -467,6 +470,7 @@ export default function DashboardClient({
   currency,
   recentSales,
   recentRepairsList,
+  userEmail,
   isStatsLoading = false,
 }: DashboardClientProps) {
   const bp = basePath || "";
@@ -482,19 +486,19 @@ export default function DashboardClient({
     {
       label: "Active jobs",
       count: activeJobsTotal,
-      href: `${bp}/workshop?status=active`,
+      href: `${bp}/workshop/jobs?status=active`,
       style: "neutral",
     },
     {
       label: "Overdue jobs",
       count: overdueRepairs.length,
-      href: `${bp}/workshop?status=overdue`,
+      href: `${bp}/workshop/jobs?status=overdue`,
       style: overdueRepairs.length > 0 ? "danger" : "neutral",
     },
     {
       label: "Ready for pickup",
       count: readyForPickup.length,
-      href: `${bp}/workshop?status=ready-for-pickup`,
+      href: `${bp}/workshop/jobs?status=ready-for-pickup`,
       style: readyForPickup.length > 0 ? "success" : "neutral",
     },
     {
@@ -757,26 +761,31 @@ export default function DashboardClient({
               secondaryCtas={[{ label: "Connect site", href: `${bp}/website/connect` }]}
             />
 
-            {/* 8. Admin — tenant admin lives at /settings; /admin is platform-only. */}
-            <ModuleCard
-              icon={Settings}
-              label="Admin"
-              isEmpty={myTasks.length === 0}
-              emptyMessage="Settings, billing and team controls live here. Nothing demanding attention right now."
-              primary={{
-                value:
-                  myTasks.length > 0
-                    ? `${myTasks.length} task${myTasks.length === 1 ? "" : "s"}`
-                    : "All clear",
-                subtitle: myTasks.length > 0 ? "Due today" : "No tasks due today",
-              }}
-              signals={[]}
-              primaryCta={{ label: "Open admin", href: `${bp}/settings` }}
-              secondaryCtas={[
-                { label: "Billing", href: `${bp}/billing` },
-                { label: "Team", href: `${bp}/settings/roles` },
-              ]}
-            />
+            {/* 8. Admin — gated to the platform-admin allowlist per Joey's
+                QA group 1 spec. Other roles reach workspace settings via
+                the TopNav settings cog; the dashboard module card is
+                reserved for platform-admin operations. */}
+            {isAllowlistedAdmin(userEmail) && (
+              <ModuleCard
+                icon={Settings}
+                label="Admin"
+                isEmpty={myTasks.length === 0}
+                emptyMessage="Settings, billing and team controls live here. Nothing demanding attention right now."
+                primary={{
+                  value:
+                    myTasks.length > 0
+                      ? `${myTasks.length} task${myTasks.length === 1 ? "" : "s"}`
+                      : "All clear",
+                  subtitle: myTasks.length > 0 ? "Due today" : "No tasks due today",
+                }}
+                signals={[]}
+                primaryCta={{ label: "Open admin", href: `${bp}/admin` }}
+                secondaryCtas={[
+                  { label: "Tenants", href: `${bp}/admin/tenants` },
+                  { label: "Revenue", href: `${bp}/admin/revenue` },
+                ]}
+              />
+            )}
           </div>
         </section>
       </div>
