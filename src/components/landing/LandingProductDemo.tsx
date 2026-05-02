@@ -18,6 +18,7 @@
 
 import { useState } from "react"
 import { SECTION_PADDING, HEADING, INTRO_SPACING, CONTAINER } from "./_tokens"
+import ModulePlaceholder from "./ModulePlaceholder"
 
 type TabKey = "repairs" | "inventory" | "bespoke" | "pos" | "analytics"
 
@@ -170,17 +171,17 @@ export default function LandingProductDemo() {
           key={current.key}
           className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-10 lg:gap-14 items-center animate-[nxFadeInTab_400ms_ease-out]"
         >
-          {/* Product image — large, prominent */}
+          {/* Product image — placeholder until real screenshots ship.
+              Per Kaitlyn 2026-05-02: the prior /screenshots/*.png renders
+              read as fake (they showed a stylised Nexpura UI that doesn't
+              match the actual product). Routed through the same
+              ModulePlaceholder component used on /features and /platform
+              for consistency — single source of truth for the placeholder
+              language across the site. The `image` field on each tab is
+              kept on the data model (and the PNGs stay on disk) so a single
+              component swap takes us back to live screenshots later. */}
           <div className="order-1 lg:order-1">
-            <div className="relative rounded-2xl overflow-hidden bg-white border border-[#E4DBC9] shadow-[0_20px_60px_-20px_rgba(60,40,20,0.18)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={current.image.src}
-                alt={current.image.alt}
-                className="w-full h-auto block"
-                loading="lazy"
-              />
-            </div>
+            <ModulePlaceholder name={current.title} aspectRatio="16 / 11" />
           </div>
 
           {/* Copy block — no per-tab CTA; single section CTA below covers nav. */}
