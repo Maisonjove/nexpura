@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect , Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Paperclip, User, List, Wrench, Gem, Link as LinkIcon } from "lucide-react";
 import { createTask, updateTask, deleteTask, getTaskComments, addTaskComment, getTaskAttachments, deleteTaskAttachment } from "./actions";
 import type { StaffTask, TaskComment, TaskAttachment } from "./actions";
 import TaskKanbanView from "./TaskKanbanView";
@@ -266,7 +267,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                             <Image src={a.file_url} alt={a.file_name} width={200} height={80} className="w-full h-20 object-cover" unoptimized />
                           ) : (
                             <div className="w-full h-20 bg-stone-50 flex items-center justify-center">
-                              <span className="text-2xl">📎</span>
+                              <Paperclip className="w-6 h-6 text-nexpura-taupe-400" strokeWidth={1.5} />
                             </div>
                           )}
                           <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
@@ -367,9 +368,10 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
               <button
                 onClick={() => setViewMode("list")}
                 title="List view"
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === "list" ? "bg-white shadow-sm text-stone-900" : "text-stone-500"}`}
+                aria-label="List view"
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors inline-flex items-center gap-1 ${viewMode === "list" ? "bg-white shadow-sm text-stone-900" : "text-stone-500"}`}
               >
-                ☰ List
+                <List className="w-3 h-3" strokeWidth={1.5} /> List
               </button>
               <button
                 onClick={() => setViewMode("kanban")}
@@ -658,8 +660,9 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     )}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       {assignee ? (
-                        <span className="text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
-                          👤 {assignee.full_name}
+                        <span className="inline-flex items-center gap-1 text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                          <User className="w-3 h-3" strokeWidth={1.5} />
+                          {assignee.full_name}
                         </span>
                       ) : (
                         <span className="text-xs text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
@@ -671,14 +674,18 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                           href={`${LINKED_TYPE_HREFS[task.linked_type] || "/"}${task.linked_id}`}
                           onClick={(e) => e.stopPropagation()}
                           className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border transition-colors hover:underline ${
-                            task.linked_type === "repair"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : task.linked_type === "bespoke"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                            task.linked_type === "repair" || task.linked_type === "bespoke"
+                              ? "bg-nexpura-champagne text-nexpura-bronze border-nexpura-taupe-100"
                               : "bg-stone-50 text-stone-600 border-stone-200"
                           }`}
                         >
-                          {task.linked_type === "repair" ? "🔧" : task.linked_type === "bespoke" ? "💎" : "🔗"}
+                          {task.linked_type === "repair" ? (
+                            <Wrench className="w-3 h-3" strokeWidth={1.5} />
+                          ) : task.linked_type === "bespoke" ? (
+                            <Gem className="w-3 h-3" strokeWidth={1.5} />
+                          ) : (
+                            <LinkIcon className="w-3 h-3" strokeWidth={1.5} />
+                          )}
                           {" "}{LINKED_TYPE_LABELS[task.linked_type] || task.linked_type}
                         </Link>
                       )}
