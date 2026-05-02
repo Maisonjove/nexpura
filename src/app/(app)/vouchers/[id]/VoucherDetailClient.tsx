@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { voidVoucher } from "../actions";
+import { useRouter } from "next/navigation";
+import { voidVoucher, redeemVoucherManual, emailVoucher } from "../actions";
 
 interface Voucher {
   id: string;
@@ -42,15 +43,57 @@ function fmtCurrency(n: number) {
 }
 
 export default function VoucherDetailClient({ voucher, redemptions }: Props) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showVoid, setShowVoid] = useState(false);
+  const [showRedeem, setShowRedeem] = useState(false);
+  const [redeemAmount, setRedeemAmount] = useState("");
+  const [redeemNotes, setRedeemNotes] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [emailMsg, setEmailMsg] = useState<string | null>(null);
 
   const usedAmount = voucher.original_amount - voucher.balance;
   const usedPct = (usedAmount / voucher.original_amount) * 100;
 
+  // Compute the displayed status: an active voucher whose expiry passed
+  // shows as "expired" in the UI even though the DB still says active.
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isExpired = voucher.status === "active" && !!voucher.expires_at && voucher.expires_at < todayStr;
+  const displayStatus = isExpired ? "expired" : voucher.status;
+  const canTransact = voucher.status === "active" && !isExpired;
+
   function handleVoid() {
     startTransition(async () => {
       await voidVoucher(voucher.id);
+    });
+  }
+
+  function handleRedeem() {
+    setError(null);
+    const amount = parseFloat(redeemAmount);
+    if (!amount || amount <= 0) { setError("Enter an amount > 0"); return; }
+    if (amount > voucher.balance + 0.01) {
+      setError(`Amount exceeds remaining balance (${fmtCurrency(voucher.balance)})`);
+      return;
+    }
+    startTransition(async () => {
+      const result = await redeemVoucherManual(voucher.id, amount, redeemNotes);
+      if (result.error) { setError(result.error); return; }
+      setShowRedeem(false);
+      setRedeemAmount("");
+      setRedeemNotes("");
+      router.refresh();
+    });
+  }
+
+  function handleEmail() {
+    setError(null);
+    setEmailMsg(null);
+    startTransition(async () => {
+      const result = await emailVoucher(voucher.id);
+      if (result.error) { setError(result.error); return; }
+      setEmailMsg("Voucher emailed to customer.");
+      setTimeout(() => setEmailMsg(null), 4000);
     });
   }
 
@@ -65,10 +108,17 @@ export default function VoucherDetailClient({ voucher, redemptions }: Props) {
             <p className="text-stone-500 mt-0.5 text-sm">Issued to {voucher.issued_to_name}</p>
           )}
         </div>
-        <span className={`inline-flex text-sm font-medium px-3 py-1 rounded-full capitalize ${STATUS_COLOURS[voucher.status] || "bg-stone-100 text-stone-500"}`}>
-          {voucher.status}
+        <span className={`inline-flex text-sm font-medium px-3 py-1 rounded-full capitalize ${STATUS_COLOURS[displayStatus] || "bg-stone-100 text-stone-500"}`}>
+          {displayStatus}
         </span>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">{error}</div>
+      )}
+      {emailMsg && (
+        <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg">{emailMsg}</div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Balance Card */}
@@ -163,12 +213,69 @@ export default function VoucherDetailClient({ voucher, redemptions }: Props) {
           </div>
 
           {/* Actions */}
-          {voucher.status === "active" && (
+          {canTransact && (
             <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm space-y-3">
               <h3 className="text-base font-semibold text-stone-900">Actions</h3>
-              <p className="text-xs text-stone-500">
-                To redeem this voucher, use code <strong className="font-mono">{voucher.code}</strong> in the POS payment screen.
+
+              {showRedeem ? (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-stone-500 uppercase">Amount to redeem</label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    max={voucher.balance}
+                    value={redeemAmount}
+                    onChange={(e) => setRedeemAmount(e.target.value)}
+                    placeholder={`max ${fmtCurrency(voucher.balance)}`}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
+                  />
+                  <input
+                    type="text"
+                    value={redeemNotes}
+                    onChange={(e) => setRedeemNotes(e.target.value)}
+                    placeholder="Notes (optional)"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleRedeem}
+                      disabled={isPending}
+                      className="flex-1 py-2 bg-nexpura-charcoal text-white text-xs font-medium rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                    >
+                      {isPending ? "Redeeming…" : "Redeem"}
+                    </button>
+                    <button
+                      onClick={() => { setShowRedeem(false); setRedeemAmount(""); setRedeemNotes(""); }}
+                      className="flex-1 py-2 bg-stone-100 text-stone-700 text-xs font-medium rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setShowRedeem(true); setRedeemAmount(voucher.balance.toFixed(2)); }}
+                  disabled={isPending}
+                  className="w-full py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                >
+                  Redeem (full or partial)
+                </button>
+              )}
+
+              <button
+                onClick={handleEmail}
+                disabled={isPending || !voucher.issued_to_email}
+                title={voucher.issued_to_email ? `Email ${voucher.issued_to_email}` : "No recipient email on file"}
+                className="w-full py-2 bg-white border border-stone-200 text-stone-700 text-sm font-medium rounded-lg hover:border-stone-900 hover:text-stone-900 transition-all disabled:opacity-50"
+              >
+                Email to Customer
+              </button>
+
+              <p className="text-xs text-stone-500 pt-2">
+                Or redeem via POS using code <strong className="font-mono">{voucher.code}</strong>.
               </p>
+
               {showVoid ? (
                 <div className="space-y-2">
                   <p className="text-xs text-red-600">Void this voucher? It cannot be reactivated.</p>
@@ -196,6 +303,11 @@ export default function VoucherDetailClient({ voucher, redemptions }: Props) {
                   Void voucher…
                 </button>
               )}
+            </div>
+          )}
+          {!canTransact && (
+            <div className="bg-stone-50 border border-stone-200 rounded-xl p-5 text-sm text-stone-500 italic">
+              Voucher is {displayStatus} — no further actions.
             </div>
           )}
         </div>

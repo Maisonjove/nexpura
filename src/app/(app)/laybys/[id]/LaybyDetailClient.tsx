@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { recordLaybyPayment, completeLayby } from "@/app/(app)/pos/layby-actions";
+import { recordLaybyPayment, completeLayby, cancelLayby, markLaybyCollected } from "@/app/(app)/pos/layby-actions";
 
 interface SaleItem {
   id: string;
@@ -60,10 +60,15 @@ export default function LaybyDetailClient({
   // Complete confirm
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [completedMsg, setCompletedMsg] = useState<string | null>(null);
+  // Cancel + collect state
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelNotes, setCancelNotes] = useState("");
 
   const remaining = Math.max(0, sale.total - sale.amountPaid);
   const isFullyPaid = remaining <= 0.01;
   const isActive = sale.status === "layby";
+  const isCompleted = sale.status === "completed";
+  const isCancelled = sale.status === "cancelled";
 
   function handleRecordPayment() {
     const amount = parseFloat(payAmount);
@@ -108,6 +113,43 @@ export default function LaybyDetailClient({
         router.refresh();
       }
     });
+  }
+
+  function handleCancel() {
+    setError(null);
+    startTransition(async () => {
+      const result = await cancelLayby(sale.id, cancelNotes);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setShowCancelConfirm(false);
+        const credit = result.storeCredit ?? 0;
+        setCompletedMsg(
+          credit > 0
+            ? `Layby cancelled. ${formatCurrency(credit)} issued as store credit.`
+            : "Layby cancelled."
+        );
+        router.refresh();
+      }
+    });
+  }
+
+  function handleMarkCollected() {
+    setError(null);
+    startTransition(async () => {
+      const result = await markLaybyCollected(sale.id);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setSuccessMsg("Marked as collected.");
+        setTimeout(() => setSuccessMsg(null), 4000);
+        router.refresh();
+      }
+    });
+  }
+
+  function formatCurrency(n: number) {
+    return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(n);
   }
 
   return (
@@ -304,12 +346,13 @@ export default function LaybyDetailClient({
             </div>
           </div>
 
-          {/* Actions */}
-          {isActive && (
+          {/* Actions — render for active and completed laybys; cancelled
+              shows just the terminal-state notice below. */}
+          {(isActive || isCompleted) && (
             <div className="bg-white border border-stone-200 rounded-xl shadow-sm p-5 space-y-3">
               <h2 className="text-sm font-semibold text-stone-900">Actions</h2>
 
-              {!isFullyPaid && !showPayForm && (
+              {isActive && !isFullyPaid && !showPayForm && (
                 <button
                   onClick={() => setShowPayForm(true)}
                   className="w-full px-4 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-[#7a6347] transition-colors"
@@ -384,7 +427,7 @@ export default function LaybyDetailClient({
                 </div>
               )}
 
-              {isFullyPaid && !showCompleteConfirm && (
+              {isActive && isFullyPaid && !showCompleteConfirm && (
                 <button
                   onClick={() => setShowCompleteConfirm(true)}
                   className="w-full px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
@@ -393,7 +436,7 @@ export default function LaybyDetailClient({
                 </button>
               )}
 
-              {showCompleteConfirm && (
+              {isActive && showCompleteConfirm && (
                 <div className="space-y-3">
                   <p className="text-sm text-stone-600">
                     Mark this layby as complete? This will deduct items from inventory.
@@ -414,6 +457,64 @@ export default function LaybyDetailClient({
                     </button>
                   </div>
                 </div>
+              )}
+
+              {/* Cancel Layby — only on active laybys; issues store credit
+                  for whatever the customer has paid in. */}
+              {isActive && !showCancelConfirm && (
+                <button
+                  onClick={() => setShowCancelConfirm(true)}
+                  className="w-full px-4 py-2 border border-nexpura-oxblood/40 text-nexpura-oxblood text-sm font-medium rounded-lg hover:bg-nexpura-oxblood-bg transition-colors"
+                >
+                  Cancel Layby…
+                </button>
+              )}
+              {showCancelConfirm && (
+                <div className="space-y-3 border border-nexpura-oxblood/30 rounded-lg p-3 bg-nexpura-oxblood-bg/30">
+                  <p className="text-sm text-stone-700">
+                    Cancel this layby? The customer's deposit + instalments
+                    (${sale.amountPaid.toFixed(2)}) will be issued as store credit.
+                  </p>
+                  <input
+                    type="text"
+                    value={cancelNotes}
+                    onChange={(e) => setCancelNotes(e.target.value)}
+                    placeholder="Reason / notes (optional)"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-oxblood/30"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCancel}
+                      disabled={isPending}
+                      className="flex-1 px-4 py-2 bg-nexpura-oxblood text-white text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
+                    >
+                      {isPending ? "Cancelling…" : "Confirm Cancel"}
+                    </button>
+                    <button
+                      onClick={() => { setShowCancelConfirm(false); setCancelNotes(""); }}
+                      className="px-4 py-2 border border-stone-200 text-stone-600 text-sm rounded-lg hover:bg-stone-50 transition-colors"
+                    >
+                      Back
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Mark Collected — only when layby is fully paid (completed) */}
+              {isCompleted && (
+                <button
+                  onClick={handleMarkCollected}
+                  disabled={isPending}
+                  className="w-full px-4 py-2 bg-white border border-stone-300 text-stone-700 text-sm font-medium rounded-lg hover:border-stone-900 hover:text-stone-900 transition-all disabled:opacity-50"
+                >
+                  Mark Collected
+                </button>
+              )}
+
+              {isCancelled && (
+                <p className="text-sm italic text-stone-500">
+                  Layby cancelled — terminal state, no further actions.
+                </p>
               )}
             </div>
           )}

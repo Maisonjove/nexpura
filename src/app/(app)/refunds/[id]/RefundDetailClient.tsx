@@ -1,6 +1,9 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { voidRefund } from "../actions";
 
 interface RefundItem {
   id: string;
@@ -27,18 +30,87 @@ interface Refund {
   created_at: string;
 }
 
+interface AuditEntry {
+  id: string;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  new_data: Record<string, unknown> | null;
+  created_at: string;
+  user_id: string | null;
+}
+
 interface Props {
   refund: Refund;
   items: RefundItem[];
+  auditLogs?: AuditEntry[];
 }
 
 function fmtCurrency(n: number) {
   return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(n);
 }
 
-export default function RefundDetailClient({ refund, items }: Props) {
+const STATUS_BADGE: Record<string, string> = {
+  pending: "bg-amber-50 text-amber-700",
+  approved: "bg-blue-50 text-blue-700",
+  rejected: "bg-stone-100 text-stone-600",
+  completed: "bg-red-50 text-red-700",
+  processed: "bg-red-50 text-red-700",
+  voided: "bg-stone-100 text-stone-500",
+};
+
+export default function RefundDetailClient({ refund, items, auditLogs = [] }: Props) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [showVoidConfirm, setShowVoidConfirm] = useState(false);
+
+  const isTerminal = refund.status === "voided" || refund.status === "rejected";
+  const statusLabel = refund.status === "completed" ? "processed" : refund.status;
+
+  function handleVoid() {
+    setError(null);
+    startTransition(async () => {
+      const result = await voidRefund(refund.id);
+      if (result.error) {
+        setError(result.error);
+        setShowVoidConfirm(false);
+      } else {
+        setShowVoidConfirm(false);
+        router.refresh();
+      }
+    });
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {showVoidConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+            <h3 className="font-bold text-stone-900 text-lg mb-2">Void Refund?</h3>
+            <p className="text-sm text-stone-500 mb-6">
+              This will reverse the inventory restock + store-credit issued by this refund and flip the original sale's status back. Voided refunds remain on record.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowVoidConfirm(false)}
+                disabled={isPending}
+                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleVoid}
+                disabled={isPending}
+                className="px-4 py-2 text-sm font-medium bg-nexpura-oxblood text-white rounded-xl hover:opacity-90 transition-colors disabled:opacity-50"
+              >
+                {isPending ? "Voiding…" : "Confirm Void"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -47,8 +119,8 @@ export default function RefundDetailClient({ refund, items }: Props) {
           {refund.customer_name && <p className="text-stone-500 text-sm mt-0.5">{refund.customer_name}</p>}
         </div>
         <div className="flex items-center gap-3">
-          <span className="inline-flex text-sm font-medium px-3 py-1 rounded-full bg-red-50 text-red-600 capitalize">
-            {refund.status}
+          <span className={`inline-flex text-sm font-medium px-3 py-1 rounded-full capitalize ${STATUS_BADGE[refund.status] || "bg-stone-100"}`}>
+            {statusLabel}
           </span>
           <a
             href={`/api/refund/${refund.id}/pdf`}
@@ -56,13 +128,29 @@ export default function RefundDetailClient({ refund, items }: Props) {
             rel="noopener noreferrer"
             className="flex items-center gap-2 bg-white border border-stone-200 text-stone-700 text-sm font-medium px-4 py-2 rounded-lg hover:border-stone-900 hover:text-stone-900 transition-all"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
             Download
           </a>
+          {!isTerminal && (
+            <button
+              onClick={() => setShowVoidConfirm(true)}
+              disabled={isPending}
+              className="flex items-center gap-2 border border-nexpura-oxblood/40 text-nexpura-oxblood text-sm font-medium px-4 py-2 rounded-lg hover:bg-nexpura-oxblood-bg transition-colors disabled:opacity-50"
+            >
+              Void Refund
+            </button>
+          )}
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">{error}</div>
+      )}
+
+      {isTerminal && (
+        <div className="bg-stone-100 border border-stone-200 text-stone-600 text-sm px-4 py-3 rounded-lg italic">
+          Refund is {statusLabel} — terminal state, no further actions.
+        </div>
+      )}
 
       {/* Link back to original sale */}
       {refund.original_sale_id && (
@@ -136,6 +224,32 @@ export default function RefundDetailClient({ refund, items }: Props) {
               <p className="text-sm text-stone-700 whitespace-pre-wrap">{refund.notes}</p>
             </div>
           )}
+
+          {/* Audit Trail */}
+          <div className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-stone-200">
+              <h2 className="text-base font-semibold text-stone-900">Audit Trail</h2>
+            </div>
+            {auditLogs.length === 0 ? (
+              <p className="px-5 py-8 text-center text-sm text-stone-400">No audit history yet.</p>
+            ) : (
+              <ul className="divide-y divide-stone-100">
+                {auditLogs.map((log) => (
+                  <li key={log.id} className="px-5 py-3 text-sm">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="font-medium text-stone-900 capitalize">
+                        {log.action.replace(/_/g, " ")}
+                        {log.new_data && (log.new_data as { voided?: boolean }).voided && " — voided"}
+                      </span>
+                      <span className="text-xs text-stone-400">
+                        {new Date(log.created_at).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         {/* Sidebar */}
