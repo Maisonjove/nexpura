@@ -40,7 +40,15 @@ export const metadata = { title: "Workshop — Nexpura" };
  *
  * All counts are tenant-scoped via getAuthContext + createAdminClient.
  */
-export default async function WorkshopPage() {
+export default function WorkshopPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+      <WorkshopBody />
+    </Suspense>
+  );
+}
+
+async function WorkshopBody() {
   const auth = await getAuthContext();
   if (!auth) redirect("/login");
   const tenantId = auth.tenantId;
