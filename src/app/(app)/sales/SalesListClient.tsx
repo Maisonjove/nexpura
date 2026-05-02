@@ -125,20 +125,14 @@ export default function SalesListClient({ initialSales, hideHeader = false, limi
         </div>
       )}
 
-      {/* Active range filter chip — visible when arriving from a hub KPI link */}
-      {range === "today" && !hideHeader && (
+      {/* Active range filter chip — visible whether the list is rendered
+          standalone or embedded in the hub's recent-sales panel, since the
+          filter applies to the rows the user is looking at either way. */}
+      {(range === "today" || range === "month") && (
         <div className="flex items-center gap-2 text-sm text-stone-600">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 border border-stone-200">
-            Showing: today
-            <Link href="/sales" className="text-xs text-stone-500 hover:text-stone-800">×</Link>
-          </span>
-        </div>
-      )}
-      {range === "month" && !hideHeader && (
-        <div className="flex items-center gap-2 text-sm text-stone-600">
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 border border-stone-200">
-            Showing: this month
-            <Link href="/sales" className="text-xs text-stone-500 hover:text-stone-800">×</Link>
+            Showing: {range === "today" ? "today" : "this month"}
+            <Link href="/sales" className="text-xs text-stone-500 hover:text-stone-800" aria-label="Clear filter">×</Link>
           </span>
         </div>
       )}
