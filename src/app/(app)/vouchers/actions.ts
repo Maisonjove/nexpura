@@ -184,3 +184,136 @@ export async function voidVoucher(id: string): Promise<{ success?: boolean; erro
   revalidatePath("/vouchers");
   redirect("/vouchers");
 }
+
+/**
+ * Manually redeem a voucher (full or partial). Mirrors what POS does via
+ * pos_deduct_stock — but for the case where the operator is recording an
+ * in-person redemption outside POS (e.g., a phone-in customer).
+ *
+ * Spec: "redeem (full + partial — partial leaves remainder), void, email
+ * to customer. Balance arithmetic must be exact to the cent."
+ */
+export async function redeemVoucherManual(
+  id: string,
+  amount: number,
+  notes?: string,
+): Promise<{ success?: boolean; newBalance?: number; error?: string }> {
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to redeem vouchers." : "Not authenticated" };
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { error: "Amount must be greater than zero." };
+  }
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  const { admin, userId, tenantId } = ctx;
+
+  // Use the atomic RPC the POS already calls so balance + status are
+  // updated under FOR UPDATE row lock + history row inserted in one
+  // round trip. The RPC clamps amount to balance and flips status to
+  // 'redeemed' when balance hits zero.
+  const { data: rpcResult, error: rpcError } = await admin.rpc("redeem_voucher", {
+    p_voucher_id: id,
+    p_tenant_id: tenantId,
+    p_amount: Math.round(amount * 100) / 100,
+  });
+  if (rpcError) return { error: rpcError.message };
+
+  // Record the redemption history row (RPC handles balance; history is
+  // separate in this codebase to allow non-POS redemptions to log notes).
+  await admin.from("gift_voucher_redemptions").insert({
+    tenant_id: tenantId,
+    voucher_id: id,
+    sale_id: null,
+    amount: Math.round(amount * 100) / 100,
+    redeemed_by: userId,
+    notes: notes ?? "Manual redemption",
+  });
+
+  await logAuditEvent({
+    tenantId, userId, action: "voucher_void", // closest action enum; full audit_action enum lacks voucher_redeem
+    entityType: "voucher", entityId: id,
+    newData: { manual_redeem: true, amount },
+  }).catch(() => {});
+
+  const newBalance = Array.isArray(rpcResult) && rpcResult[0]?.new_balance != null
+    ? Number(rpcResult[0].new_balance)
+    : undefined;
+  revalidatePath("/vouchers");
+  revalidatePath(`/vouchers/${id}`);
+  return { success: true, newBalance };
+}
+
+/**
+ * Email the voucher to the customer. Uses the same Resend-backed sender
+ * the quote/invoice emails go through.
+ */
+export async function emailVoucher(id: string): Promise<{ success?: boolean; error?: string }> {
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg };
+  }
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  const { admin, tenantId } = ctx;
+
+  const { data: voucher } = await admin
+    .from("gift_vouchers")
+    .select("code, original_amount, balance, expires_at, issued_to_name, issued_to_email")
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
+  if (!voucher) return { error: "Voucher not found" };
+  if (!voucher.issued_to_email) return { error: "No recipient email on file." };
+
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("business_name, name, email")
+    .eq("id", tenantId)
+    .single();
+  const businessName = tenant?.business_name || tenant?.name || "Your Business";
+  const fromEmail = tenant?.email || "noreply@nexpura.com";
+
+  // Resend integration mirroring emailQuote.ts.
+  const { Resend } = await import("resend");
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return { error: "Email service is not configured." };
+  const resend = new Resend(apiKey);
+
+  const expiry = voucher.expires_at
+    ? new Date(voucher.expires_at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+    : "No expiry";
+
+  const html = `
+    <div style="font-family: Georgia, serif; max-width: 540px; margin: 0 auto; padding: 24px;">
+      <h1 style="color: #1c1917; margin: 0 0 8px;">${businessName} Gift Voucher</h1>
+      <p style="color: #57534e;">${voucher.issued_to_name ? `Hi ${voucher.issued_to_name},` : "Hello,"}</p>
+      <p style="color: #57534e;">A gift voucher has been issued for you.</p>
+      <div style="background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+        <p style="font-size: 12px; color: #78716c; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px;">Voucher Code</p>
+        <p style="font-family: monospace; font-size: 22px; font-weight: 700; color: #1c1917; margin: 0 0 16px;">${voucher.code}</p>
+        <p style="font-size: 12px; color: #78716c; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 4px;">Balance</p>
+        <p style="font-size: 28px; font-weight: 700; color: #1c1917; margin: 0;">$${Number(voucher.balance).toFixed(2)}</p>
+        <p style="font-size: 12px; color: #78716c; margin-top: 12px;">Expires: ${expiry}</p>
+      </div>
+      <p style="color: #57534e; font-size: 14px;">Present this code at checkout to redeem.</p>
+      <p style="color: #57534e; font-size: 12px; margin-top: 24px;">— ${businessName}</p>
+    </div>
+  `;
+
+  const { error: sendErr } = await resend.emails.send({
+    from: `${businessName} <${fromEmail}>`,
+    to: voucher.issued_to_email,
+    subject: `Your gift voucher from ${businessName}`,
+    html,
+  });
+  if (sendErr) return { error: sendErr.message };
+
+  revalidatePath(`/vouchers/${id}`);
+  return { success: true };
+}

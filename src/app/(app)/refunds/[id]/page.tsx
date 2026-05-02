@@ -34,5 +34,15 @@ export default async function RefundDetailPage({ params }: { params: Promise<{ i
     .select("*")
     .eq("refund_id", id);
 
-  return <RefundDetailClient refund={refund} items={items ?? []} />;
+  // Audit trail — pull recent log entries for this refund + the original sale
+  // (so a void shows alongside the create event).
+  const { data: auditLogs } = await admin
+    .from("audit_logs")
+    .select("id, action, entity_type, entity_id, new_data, created_at, user_id")
+    .eq("tenant_id", userData.tenant_id)
+    .or(`entity_id.eq.${id},and(entity_type.eq.refund,entity_id.eq.${id})`)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  return <RefundDetailClient refund={refund} items={items ?? []} auditLogs={auditLogs ?? []} />;
 }

@@ -1,8 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useSearchParams, usePathname } from "next/navigation";
 import { createVoucher } from "./actions";
+
+const STATUS_TABS = [
+  { value: "all", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "redeemed", label: "Redeemed" },
+  { value: "expired", label: "Expired" },
+  { value: "voided", label: "Voided" },
+] as const;
 
 interface Voucher {
   id: string;
@@ -32,9 +41,39 @@ function fmtCurrency(n: number) {
 }
 
 export default function VouchersClient({ vouchers }: Props) {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [showNew, setShowNew] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [activeStatus, setActiveStatus] = useState<string>(searchParams.get("status") || "all");
+
+  const setStatus = useCallback((status: string) => {
+    setActiveStatus(status || "all");
+    const sp = new URLSearchParams();
+    if (status && status !== "all") sp.set("status", status);
+    const next = sp.toString() ? `${pathname}?${sp.toString()}` : pathname;
+    if (typeof window !== "undefined") window.history.replaceState(null, "", next);
+  }, [pathname]);
+
+  // "expired" is computed (status='active' but expires_at < today) since the
+  // DB never auto-transitions to expired. Voucher list mirrors this so the
+  // chip-filtered counts match the user's expectation.
+  const todayStr = new Date().toISOString().split("T")[0];
+  const visibleVouchers = useMemo(() => {
+    if (activeStatus === "all") return vouchers;
+    if (activeStatus === "expired") {
+      return vouchers.filter(
+        (v) => v.status === "active" && !!v.expires_at && v.expires_at < todayStr
+      );
+    }
+    if (activeStatus === "active") {
+      return vouchers.filter(
+        (v) => v.status === "active" && (!v.expires_at || v.expires_at >= todayStr)
+      );
+    }
+    return vouchers.filter((v) => v.status === activeStatus);
+  }, [vouchers, activeStatus, todayStr]);
 
   function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -152,8 +191,27 @@ export default function VouchersClient({ vouchers }: Props) {
         </div>
       )}
 
+      {/* Status filter chips */}
+      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-1 p-2 overflow-x-auto">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setStatus(tab.value)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
+                activeStatus === tab.value
+                  ? "bg-nexpura-charcoal text-white"
+                  : "text-stone-600 hover:bg-stone-100"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Voucher List */}
-      {vouchers.length === 0 ? (
+      {visibleVouchers.length === 0 ? (
         <div className="bg-white border border-stone-200 rounded-xl p-12 text-center shadow-sm">
           <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-6 h-6 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,7 +236,10 @@ export default function VouchersClient({ vouchers }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {vouchers.map((v) => (
+              {visibleVouchers.map((v) => {
+                const isExpired = v.status === "active" && !!v.expires_at && v.expires_at < todayStr;
+                const displayStatus = isExpired ? "expired" : v.status;
+                return (
                 <tr key={v.id} className="hover:bg-stone-50/50 transition-colors">
                   <td className="px-5 py-3 text-sm font-mono font-semibold text-stone-900">{v.code}</td>
                   <td className="px-4 py-3 text-sm text-stone-700">{v.issued_to_name || <span className="text-stone-400">—</span>}</td>
@@ -190,8 +251,8 @@ export default function VouchersClient({ vouchers }: Props) {
                       : <span className="text-stone-400">No expiry</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex text-xs font-medium px-2.5 py-1 rounded-full capitalize ${STATUS_COLOURS[v.status] || "bg-stone-100 text-stone-500"}`}>
-                      {v.status}
+                    <span className={`inline-flex text-xs font-medium px-2.5 py-1 rounded-full capitalize ${STATUS_COLOURS[displayStatus] || "bg-stone-100 text-stone-500"}`}>
+                      {displayStatus}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -203,7 +264,8 @@ export default function VouchersClient({ vouchers }: Props) {
                     </Link>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

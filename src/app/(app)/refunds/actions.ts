@@ -336,6 +336,128 @@ export async function processRefund(params: {
   redirect(`/refunds/${refundResult.id}`);
 }
 
+/**
+ * Void a previously-processed refund. Reverses the side effects:
+ *  - sale.status flips back from 'refunded' to its prior state (best-effort:
+ *    if other refunds still exist on the sale, we keep 'refunded'; otherwise
+ *    we restore based on the sale's amount_paid > 0 → 'paid', else 'completed')
+ *  - any inventory restock entries are reversed via compensating
+ *    stock_movements (movement_type='adjustment', negative quantity_change)
+ *  - customer.store_credit is decremented by the refund total if it had been
+ *    issued as store-credit. (We don't track which method paid the customer
+ *    refund per-line; callers should review before voiding.)
+ *  - refund.status flips to 'voided' (audit logged).
+ *
+ * Spec: Approve / cancel state machine. Void is the cancel transition.
+ */
+export async function voidRefund(refundId: string): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try {
+    ctx = await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to void refunds." : "Not authenticated" };
+  }
+  const { tenantId, userId } = ctx;
+  const admin = createAdminClient();
+
+  const { data: refund } = await admin
+    .from("refunds")
+    .select("*")
+    .eq("id", refundId)
+    .eq("tenant_id", tenantId)
+    .single();
+  if (!refund) return { error: "Refund not found" };
+  if (refund.status === "voided") return { error: "Refund is already voided." };
+
+  const { data: items } = await admin
+    .from("refund_items")
+    .select("inventory_id, quantity, restock")
+    .eq("refund_id", refundId)
+    .eq("tenant_id", tenantId);
+
+  // Reverse stock_movements for any restocked items
+  for (const it of items ?? []) {
+    if (it.inventory_id && it.restock && it.quantity) {
+      await admin.from("stock_movements").insert({
+        tenant_id: tenantId,
+        inventory_id: it.inventory_id,
+        movement_type: "adjustment",
+        quantity_change: -it.quantity,
+        notes: `Refund ${refund.refund_number} voided`,
+        created_by: userId,
+      });
+    }
+  }
+
+  // Reverse store credit if this refund issued any
+  if (refund.refund_method === "store_credit" && refund.customer_id && refund.total > 0) {
+    const { data: cust } = await admin
+      .from("customers")
+      .select("store_credit")
+      .eq("id", refund.customer_id)
+      .eq("tenant_id", tenantId)
+      .single();
+    if (cust) {
+      const newCredit = Math.max(0, Number(cust.store_credit ?? 0) - Number(refund.total));
+      await admin
+        .from("customers")
+        .update({ store_credit: newCredit })
+        .eq("id", refund.customer_id)
+        .eq("tenant_id", tenantId);
+    }
+  }
+
+  // Decide whether to flip the parent sale's status back. If there are no other
+  // active refunds against this sale, the 'refunded' badge no longer applies.
+  if (refund.original_sale_id) {
+    const { data: otherActiveRefunds } = await admin
+      .from("refunds")
+      .select("id")
+      .eq("original_sale_id", refund.original_sale_id)
+      .eq("tenant_id", tenantId)
+      .neq("id", refundId)
+      .neq("status", "voided");
+    if (!otherActiveRefunds || otherActiveRefunds.length === 0) {
+      const { data: parentSale } = await admin
+        .from("sales")
+        .select("amount_paid, total")
+        .eq("id", refund.original_sale_id)
+        .single();
+      const restoreStatus = parentSale && Number(parentSale.amount_paid ?? 0) >= Number(parentSale.total ?? 0) - 0.01
+        ? "paid"
+        : "completed";
+      await admin
+        .from("sales")
+        .update({ status: restoreStatus })
+        .eq("id", refund.original_sale_id)
+        .eq("tenant_id", tenantId);
+    }
+  }
+
+  // Flip refund status
+  const { error: upErr } = await admin
+    .from("refunds")
+    .update({ status: "voided" })
+    .eq("id", refundId)
+    .eq("tenant_id", tenantId);
+  if (upErr) return { error: upErr.message };
+
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "refund_create",
+    entityType: "refund",
+    entityId: refundId,
+    newData: { voided: true, refundNumber: refund.refund_number, total: refund.total },
+  }).catch(() => {});
+
+  revalidatePath("/refunds");
+  revalidatePath(`/refunds/${refundId}`);
+  if (refund.original_sale_id) revalidatePath(`/sales/${refund.original_sale_id}`);
+  return { success: true };
+}
+
 export async function getRefunds() {
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { data: null, error: "Not authenticated" }; }

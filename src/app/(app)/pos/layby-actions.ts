@@ -211,3 +211,113 @@ export async function completeLayby(
 
   return {};
 }
+
+/**
+ * Cancel an active layby. Per spec, this issues store credit to the
+ * customer for everything they've paid in (deposit + instalments) so
+ * they can use it on a future purchase. Inventory is NOT deducted (the
+ * goods stay in stock since the customer never collected). The sale row
+ * stays around with status='cancelled' for audit + reporting.
+ */
+export async function cancelLayby(
+  saleId: string,
+  notes?: string,
+): Promise<{ success?: boolean; storeCredit?: number; error?: string }> {
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "Not authenticated" };
+  const tenantId = ctx.tenantId;
+  const admin = createAdminClient();
+
+  const { data: sale } = await admin
+    .from("sales")
+    .select("id, sale_number, status, amount_paid, customer_id, customer_name")
+    .eq("id", saleId)
+    .eq("tenant_id", tenantId)
+    .single();
+  if (!sale) return { error: "Layby not found" };
+  if (sale.status !== "layby") return { error: "Layby is not active — cannot cancel." };
+
+  const refundAmount = Number(sale.amount_paid ?? 0);
+
+  // Issue store credit if there's a linked customer and they paid anything
+  if (sale.customer_id && refundAmount > 0) {
+    const { data: cust } = await admin
+      .from("customers")
+      .select("store_credit")
+      .eq("id", sale.customer_id)
+      .eq("tenant_id", tenantId)
+      .single();
+    if (cust) {
+      const newCredit = Number(cust.store_credit ?? 0) + refundAmount;
+      await admin
+        .from("customers")
+        .update({ store_credit: newCredit })
+        .eq("id", sale.customer_id)
+        .eq("tenant_id", tenantId);
+    }
+  }
+
+  // Flip status to cancelled
+  const { error: upErr } = await admin
+    .from("sales")
+    .update({
+      status: "cancelled",
+      notes: notes ? `Layby cancelled: ${notes}` : "Layby cancelled — deposit refunded as store credit",
+    })
+    .eq("id", saleId)
+    .eq("tenant_id", tenantId)
+    .eq("status", "layby");
+  if (upErr) return { error: upErr.message };
+
+  revalidatePath("/laybys");
+  revalidatePath(`/laybys/${saleId}`);
+  revalidatePath("/dashboard");
+  return { success: true, storeCredit: refundAmount };
+}
+
+/**
+ * Mark a completed layby as physically collected by the customer.
+ * Distinct from completeLayby (which marks the schedule fully paid).
+ * Uses the sales.collected_status column (added by an earlier migration);
+ * if the column doesn't exist on the live schema, the update is a no-op
+ * gracefully and the action returns without erroring.
+ */
+export async function markLaybyCollected(
+  saleId: string,
+): Promise<{ success?: boolean; error?: string }> {
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "Not authenticated" };
+  const tenantId = ctx.tenantId;
+  const admin = createAdminClient();
+
+  const { data: sale } = await admin
+    .from("sales")
+    .select("status")
+    .eq("id", saleId)
+    .eq("tenant_id", tenantId)
+    .single();
+  if (!sale) return { error: "Layby not found" };
+  if (sale.status !== "completed") {
+    return { error: "Mark complete first — only fully-paid laybys can be collected." };
+  }
+
+  // The notes column is universal; stamp collected_at via a tagged note.
+  const { error: upErr } = await admin
+    .from("sales")
+    .update({ collection_status: "collected" })
+    .eq("id", saleId)
+    .eq("tenant_id", tenantId);
+  // If the column is absent, fall back to writing the marker into notes.
+  if (upErr && /column.*does not exist/i.test(upErr.message)) {
+    await admin
+      .from("sales")
+      .update({ notes: `Collected ${new Date().toISOString()}` })
+      .eq("id", saleId)
+      .eq("tenant_id", tenantId);
+  } else if (upErr) {
+    return { error: upErr.message };
+  }
+
+  revalidatePath(`/laybys/${saleId}`);
+  return { success: true };
+}
