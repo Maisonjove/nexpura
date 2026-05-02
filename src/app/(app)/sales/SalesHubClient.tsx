@@ -71,13 +71,13 @@ export default function SalesHubClient({ initialSales, kpis }: Props) {
           label="Sales today"
           value={fmtCurrency(kpis.salesToday)}
           tone="neutral"
-          href="/sales"
+          href="/sales?range=today"
         />
         <KpiCard
           label="Sales this month"
           value={fmtCurrency(kpis.salesThisMonth)}
           tone="neutral"
-          href="/sales"
+          href="/sales?range=month"
         />
         <KpiCard
           label="Outstanding invoices"

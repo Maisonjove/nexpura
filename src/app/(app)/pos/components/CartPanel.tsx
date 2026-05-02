@@ -104,14 +104,14 @@ export default function CartPanel({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => onUpdateQty(item.inventoryId, -1)}
-                      className="w-8 h-8 md:w-7 md:h-7 rounded-full bg-stone-100 flex items-center justify-center text-sm hover:bg-stone-200 touch-manipulation active:bg-stone-300"
+                      className="w-11 h-11 md:w-9 md:h-9 rounded-full bg-stone-100 flex items-center justify-center text-base hover:bg-stone-200 touch-manipulation active:bg-stone-300"
                     >
                       −
                     </button>
                     <span className="text-sm font-medium text-stone-900 w-6 text-center">{item.quantity}</span>
                     <button
                       onClick={() => onUpdateQty(item.inventoryId, 1)}
-                      className="w-8 h-8 md:w-7 md:h-7 rounded-full bg-stone-100 flex items-center justify-center text-sm hover:bg-stone-200 touch-manipulation active:bg-stone-300"
+                      className="w-11 h-11 md:w-9 md:h-9 rounded-full bg-stone-100 flex items-center justify-center text-base hover:bg-stone-200 touch-manipulation active:bg-stone-300"
                     >
                       +
                     </button>
