@@ -11,6 +11,7 @@ import {
   LayoutGrid,
   Gem,
   ShieldCheck,
+  ChevronDown,
 } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthContext } from "@/lib/auth-context";
@@ -20,7 +21,7 @@ import {
   HubHeader,
   KpiCard,
   KpiStrip,
-  QuickActionGroup,
+  QuickActionTile,
   SectionPanel,
   HubEmptyState,
 } from "@/components/hub/HubPrimitives";
@@ -57,10 +58,9 @@ async function WorkshopBody() {
     <div className="space-y-7 max-w-[1400px]">
       <HubHeader
         title="Workshop"
-        subtitle="Manage repairs, bespoke commissions, appraisals and item passports."
+        subtitle="Track repairs, bespoke and appraisals."
         ctas={[
           { label: "New repair", href: "/repairs/new", variant: "primary", icon: Wrench },
-          { label: "Bespoke job", href: "/bespoke/new", variant: "bronze", icon: Sparkles },
         ]}
       />
 
@@ -72,72 +72,55 @@ async function WorkshopBody() {
         <WorkshopKpis tenantId={tenantId} />
       </Suspense>
 
-      <div className="space-y-6">
-        <QuickActionGroup
-          label="Create"
-          actions={[
-            {
-              label: "New repair",
-              description: "Log a repair with intake details, customer and due date.",
-              href: "/repairs/new",
-              icon: Wrench,
-            },
-            {
-              label: "Bespoke job",
-              description: "Start a custom commission with deposit, design notes and stages.",
-              href: "/bespoke/new",
-              icon: Sparkles,
-            },
-            {
-              label: "New appraisal",
-              description: "Open an appraisal record for valuation or insurance.",
-              href: "/appraisals/new",
-              icon: ClipboardCheck,
-            },
-          ]}
+      {/* Quick actions — flat 4-tile row, no group labels (Brief 2 §4.1) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <QuickActionTile
+          label="New repair"
+          description="Log intake and due date."
+          href="/repairs/new"
+          icon={Wrench}
         />
+        <QuickActionTile
+          label="Bespoke job"
+          description="Start a custom commission."
+          href="/bespoke/new"
+          icon={Sparkles}
+        />
+        <QuickActionTile
+          label="Workshop board"
+          description="All repairs, bespoke and appraisals."
+          href="/workshop/jobs"
+          icon={LayoutGrid}
+        />
+        <QuickActionTile
+          label="Passports"
+          description="Manage digital passports."
+          href="/passports"
+          icon={Gem}
+        />
+      </div>
 
-        <QuickActionGroup
-          label="Manage"
-          actions={[
-            {
-              label: "All repairs",
-              description: "Every repair with stage, customer and due date.",
-              href: "/repairs",
-              icon: Wrench,
-            },
-            {
-              label: "All bespoke jobs",
-              description: "Custom commissions in production or completed.",
-              href: "/bespoke",
-              icon: Sparkles,
-            },
-            {
-              label: "Workshop jobs",
-              description: "Unified view across repairs, bespoke and appraisals with filters.",
-              href: "/workshop/jobs",
-              icon: LayoutGrid,
-            },
-          ]}
-        />
-
-        <QuickActionGroup
-          label="Documentation"
-          actions={[
-            {
-              label: "Passports",
-              description: "Issue and manage digital passports for finished pieces.",
-              href: "/passports",
-              icon: Gem,
-            },
-            {
-              label: "Appraisals",
-              description: "Valuations and insurance documents for clients.",
-              href: "/appraisals",
-              icon: ShieldCheck,
-            },
-          ]}
-        />
+      {/* More overflow */}
+      <div className="flex justify-end -mt-2">
+        <details className="relative">
+          <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-[13px] font-medium text-nexpura-charcoal-700 hover:text-nexpura-bronze transition-colors">
+            More <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </summary>
+          <div className="absolute right-0 mt-2 w-56 rounded-xl border border-nexpura-taupe-100 bg-white shadow-md py-1 z-10">
+            <Link href="/repairs" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Wrench className="w-4 h-4" strokeWidth={1.5} /> All repairs
+            </Link>
+            <Link href="/bespoke" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Sparkles className="w-4 h-4" strokeWidth={1.5} /> All bespoke jobs
+            </Link>
+            <Link href="/appraisals/new" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <ClipboardCheck className="w-4 h-4" strokeWidth={1.5} /> New appraisal
+            </Link>
+            <Link href="/appraisals" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <ShieldCheck className="w-4 h-4" strokeWidth={1.5} /> Appraisals
+            </Link>
+          </div>
+        </details>
       </div>
 
       <Suspense key={`activity:${tenantId}`} fallback={<ActivitySkeleton />}>

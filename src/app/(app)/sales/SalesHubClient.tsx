@@ -14,12 +14,13 @@
  * result through and a separate KPI bundle is computed on the server.
  */
 
-import { ShoppingBag, Zap, FilePlus, FileText, Search, FileCheck, Calendar, Undo2, Gift, PiggyBank, Receipt } from "lucide-react";
+import Link from "next/link";
+import { ShoppingBag, Zap, FilePlus, FileText, Search, FileCheck, Calendar, Undo2, Gift, PiggyBank, Receipt, ChevronDown } from "lucide-react";
 import {
   HubHeader,
   KpiCard,
   KpiStrip,
-  QuickActionGroup,
+  QuickActionTile,
   SectionPanel,
   HubEmptyState,
 } from "@/components/hub/HubPrimitives";
@@ -32,7 +33,6 @@ interface SalesKpis {
   outstandingInvoices: number;
   openQuotes: number;
   activeLaybys: number;
-  avgOrderValue: number;
 }
 
 interface Props {
@@ -59,14 +59,13 @@ export default function SalesHubClient({ initialSales, kpis }: Props) {
     <div className="space-y-7 max-w-[1400px]">
       <HubHeader
         title="Sales"
-        subtitle="Sales, invoices, quotes and laybys across every channel."
+        subtitle="Track POS, invoices, quotes and laybys."
         ctas={[
           { label: "New Sale", href: "/sales/new", variant: "primary", icon: FilePlus },
-          { label: "POS / Quick Sale", href: "/pos", variant: "bronze", icon: Zap },
         ]}
       />
 
-      {/* KPI strip — 6 cards */}
+      {/* KPI strip — 5 cards (AOV dropped per Brief 2 §4.1) */}
       <KpiStrip>
         <KpiCard
           label="Sales today"
@@ -98,101 +97,66 @@ export default function SalesHubClient({ initialSales, kpis }: Props) {
           tone="neutral"
           href="/laybys"
         />
-        <KpiCard
-          label="Avg order value"
-          value={fmtCurrency(kpis.avgOrderValue)}
-          tone="neutral"
-          hint="This month"
-        />
       </KpiStrip>
 
-      {/* Quick actions */}
-      <div className="space-y-6">
-        <QuickActionGroup
-          label="Transact"
-          actions={[
-            {
-              label: "New Sale",
-              description: "Record a counter or appointment sale with line items, taxes and payment.",
-              href: "/sales/new",
-              icon: FilePlus,
-            },
-            {
-              label: "POS / Quick Sale",
-              description: "Touch-friendly point of sale for in-store transactions.",
-              href: "/pos",
-              icon: Zap,
-            },
-            {
-              label: "New Invoice",
-              description: "Bill a client for goods or services and track the balance until paid.",
-              href: "/invoices/new",
-              icon: FileText,
-            },
-            {
-              label: "New Quote",
-              description: "Send a formal quote a client can accept and convert into a sale.",
-              href: "/quotes/new",
-              icon: FileCheck,
-            },
-          ]}
+      {/* Quick actions — flat 4-tile row, no group labels (Brief 2 §4.1) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <QuickActionTile
+          label="New sale"
+          description="Record a counter sale."
+          href="/sales/new"
+          icon={FilePlus}
         />
+        <QuickActionTile
+          label="POS"
+          description="Touch-friendly quick sale."
+          href="/pos"
+          icon={Zap}
+        />
+        <QuickActionTile
+          label="New invoice"
+          description="Bill a client and track balance."
+          href="/invoices/new"
+          icon={FileText}
+        />
+        <QuickActionTile
+          label="New quote"
+          description="Send a quote a client can accept."
+          href="/quotes/new"
+          icon={FileCheck}
+        />
+      </div>
 
-        <QuickActionGroup
-          label="Manage"
-          actions={[
-            {
-              label: "Find sale",
-              description: "Search and filter every sale across all locations.",
-              href: "/sales",
-              icon: Search,
-            },
-            {
-              label: "Invoices",
-              description: "Outstanding, overdue and paid invoices.",
-              href: "/invoices",
-              icon: FileText,
-            },
-            {
-              label: "Quotes",
-              description: "Open quotes and conversion history.",
-              href: "/quotes",
-              icon: FileCheck,
-            },
-            {
-              label: "Laybys",
-              description: "Active laybys, balances and scheduled payments.",
-              href: "/laybys",
-              icon: Calendar,
-            },
-          ]}
-        />
-
-        <QuickActionGroup
-          label="Additional"
-          actions={[
-            {
-              label: "Refunds",
-              description: "Process returns and refund payments.",
-              href: "/refunds",
-              icon: Undo2,
-            },
-            {
-              label: "Gift vouchers",
-              description: "Issue and redeem gift vouchers and store credit.",
-              href: "/vouchers",
-              icon: Gift,
-            },
-            {
-              label: "Customer deposits",
-              // /finance/deposits doesn't exist — falling back to /financials
-              // (closest module per brief's note).
-              description: "Track deposits taken against future orders or repairs.",
-              href: "/financials",
-              icon: PiggyBank,
-            },
-          ]}
-        />
+      {/* More overflow */}
+      <div className="flex justify-end -mt-2">
+        <details className="relative">
+          <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-[13px] font-medium text-nexpura-charcoal-700 hover:text-nexpura-bronze transition-colors">
+            More <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </summary>
+          <div className="absolute right-0 mt-2 w-56 rounded-xl border border-nexpura-taupe-100 bg-white shadow-md py-1 z-10">
+            <Link href="/sales" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Search className="w-4 h-4" strokeWidth={1.5} /> Find sale
+            </Link>
+            <Link href="/invoices" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <FileText className="w-4 h-4" strokeWidth={1.5} /> Invoices
+            </Link>
+            <Link href="/quotes" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <FileCheck className="w-4 h-4" strokeWidth={1.5} /> Quotes
+            </Link>
+            <Link href="/laybys" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Calendar className="w-4 h-4" strokeWidth={1.5} /> Laybys
+            </Link>
+            <Link href="/refunds" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Undo2 className="w-4 h-4" strokeWidth={1.5} /> Refunds
+            </Link>
+            <Link href="/vouchers" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Gift className="w-4 h-4" strokeWidth={1.5} /> Vouchers
+            </Link>
+            <Link href="/financials" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <PiggyBank className="w-4 h-4" strokeWidth={1.5} /> Customer deposits
+            </Link>
+          </div>
+        </details>
       </div>
 
       {/* Recent sales panel */}

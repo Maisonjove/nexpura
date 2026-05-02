@@ -10,6 +10,7 @@ import {
   Gem,
   Boxes,
   ChevronRight,
+  ChevronDown,
   PlugZap,
   ArrowDownToLine,
   Settings,
@@ -22,7 +23,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthContext } from "@/lib/auth-context";
 import {
   HubHeader,
-  QuickActionGroup,
+  QuickActionTile,
   SectionPanel,
 } from "@/components/hub/HubPrimitives";
 
@@ -91,7 +92,7 @@ async function DigitalHubBody() {
     <div className="space-y-7 max-w-[1400px]">
       <HubHeader
         title="Digital"
-        subtitle="Manage website, integrations, digital passports and migration."
+        subtitle="Website, integrations and passports."
         ctas={[
           { label: "Website Builder", href: "/website", variant: "primary", icon: Globe },
         ]}
@@ -175,80 +176,58 @@ async function DigitalHubBody() {
         </ul>
       </SectionPanel>
 
-      <div className="space-y-6">
-        <QuickActionGroup
-          label="Website"
-          actions={[
-            {
-              label: "Website Builder",
-              description: "Edit pages, templates and layouts for your storefront.",
-              href: "/website",
-              icon: Globe,
-            },
-            {
-              label: "Connect Website",
-              description: "Connect an existing Shopify, Squarespace or custom site.",
-              href: "/website/connect",
-              icon: PlugZap,
-            },
-            {
-              label: "Domain settings",
-              description: "Configure custom domain, DNS and SSL.",
-              // /settings/domain doesn't exist yet — fall back to
-              // /website which surfaces the domain panel inline.
-              href: "/website",
-              icon: Settings,
-            },
-            {
-              label: "Website sync",
-              description: "Trigger a manual sync of inventory and content to your site.",
-              href: "/website",
-              icon: RefreshCw,
-            },
-          ]}
+      {/* Quick actions — flat 4-tile row, no group labels (Brief 2 §4.1) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <QuickActionTile
+          label="Website Builder"
+          description="Edit pages and layouts."
+          href="/website"
+          icon={Globe}
         />
-
-        <QuickActionGroup
+        <QuickActionTile
           label="Passports"
-          actions={[
-            {
-              label: "Passports",
-              description: "Browse and manage every digital passport.",
-              href: "/passports",
-              icon: Gem,
-            },
-            {
-              label: "Verify Passport",
-              description: "Look up a passport by ID or QR code.",
-              href: "/passports/verify",
-              icon: ShieldCheck,
-            },
-            {
-              label: "Issue passport",
-              description: "Create a new digital passport for a finished piece.",
-              href: "/passports/new",
-              icon: Package,
-            },
-          ]}
+          description="Manage digital passports."
+          href="/passports"
+          icon={Gem}
         />
-
-        <QuickActionGroup
+        <QuickActionTile
+          label="Verify Passport"
+          description="Look up by ID or QR."
+          href="/passports/verify"
+          icon={ShieldCheck}
+        />
+        <QuickActionTile
           label="Integrations"
-          actions={[
-            {
-              label: "Integrations",
-              description: "Connected services for payments, marketing, sync and more.",
-              href: "/integrations",
-              icon: PlugZap,
-            },
-            {
-              label: "Migration Hub",
-              description: "Import data from Shopify, Square, CSV and other systems.",
-              href: "/migration",
-              icon: ArrowDownToLine,
-            },
-          ]}
+          description="Connected services."
+          href="/integrations"
+          icon={PlugZap}
         />
+      </div>
+
+      {/* More overflow */}
+      <div className="flex justify-end -mt-2">
+        <details className="relative">
+          <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-[13px] font-medium text-nexpura-charcoal-700 hover:text-nexpura-bronze transition-colors">
+            More <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </summary>
+          <div className="absolute right-0 mt-2 w-56 rounded-xl border border-nexpura-taupe-100 bg-white shadow-md py-1 z-10">
+            <Link href="/website/connect" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <PlugZap className="w-4 h-4" strokeWidth={1.5} /> Connect Website
+            </Link>
+            <Link href="/website" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Settings className="w-4 h-4" strokeWidth={1.5} /> Domain settings
+            </Link>
+            <Link href="/website" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <RefreshCw className="w-4 h-4" strokeWidth={1.5} /> Website sync
+            </Link>
+            <Link href="/passports/new" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Package className="w-4 h-4" strokeWidth={1.5} /> Issue passport
+            </Link>
+            <Link href="/migration" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <ArrowDownToLine className="w-4 h-4" strokeWidth={1.5} /> Migration Hub
+            </Link>
+          </div>
+        </details>
       </div>
     </div>
   );

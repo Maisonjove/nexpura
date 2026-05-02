@@ -28,12 +28,13 @@ import {
   CalendarClock,
   CheckCircle2,
   Wallet,
+  ChevronDown,
 } from "lucide-react";
 import {
   HubHeader,
   KpiCard,
   KpiStrip,
-  QuickActionGroup,
+  QuickActionTile,
   SectionPanel,
   HubEmptyState,
 } from "@/components/hub/HubPrimitives";
@@ -85,7 +86,7 @@ export default function FinanceHubClient({
     <div className="space-y-7 max-w-[1400px]">
       <HubHeader
         title="Finance"
-        subtitle="Track invoices, payments, expenses, refunds and reconciliation."
+        subtitle="Track invoices, payments and reports."
         ctas={[
           { label: "New invoice", href: "/invoices/new", variant: "primary", icon: FilePlus },
         ]}
@@ -323,89 +324,61 @@ export default function FinanceHubClient({
         </div>
       </div>
 
-      {/* Quick actions */}
-      <div className="space-y-6">
-        <QuickActionGroup
-          label="Invoices & Payments"
-          actions={[
-            {
-              label: "Invoices",
-              description: "Outstanding, overdue and paid invoices across every channel.",
-              href: "/invoices",
-              icon: FileText,
-            },
-            {
-              label: "New invoice",
-              description: "Bill a client for goods or services and track the balance.",
-              href: "/invoices/new",
-              icon: FilePlus,
-            },
-            {
-              label: "Record payment",
-              description: "Apply a payment to an existing invoice or sale.",
-              // /invoices is the closest entry point — payment recording
-              // happens inside the invoice detail today.
-              href: "/invoices",
-              icon: Receipt,
-            },
-          ]}
+      {/* Quick actions — flat 4-tile row, no group labels (Brief 2 §4.1) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <QuickActionTile
+          label="Invoices"
+          description="Outstanding, overdue and paid."
+          href="/invoices"
+          icon={FileText}
         />
+        <QuickActionTile
+          label="New invoice"
+          description="Bill a client and track balance."
+          href="/invoices/new"
+          icon={FilePlus}
+        />
+        <QuickActionTile
+          label="Record payment"
+          description="Apply payment to an invoice."
+          href="/invoices"
+          icon={Receipt}
+        />
+        <QuickActionTile
+          label="End of Day"
+          description="Reconcile cash and cards."
+          href="/eod"
+          icon={CheckSquare}
+        />
+      </div>
 
-        <QuickActionGroup
-          label="Expenses & Refunds"
-          actions={[
-            {
-              label: "Expenses",
-              description: "Track and categorise business expenses.",
-              href: "/expenses",
-              icon: Receipt,
-            },
-            {
-              label: "Refunds",
-              description: "Process returns and refund payments.",
-              href: "/refunds",
-              icon: Undo2,
-            },
-            {
-              label: "Vouchers",
-              description: "Issue and redeem gift vouchers and store credit.",
-              href: "/vouchers",
-              icon: Gift,
-            },
-          ]}
-        />
-
-        <QuickActionGroup
-          label="Operations"
-          actions={[
-            {
-              label: "End of day",
-              description: "Close the till and reconcile cash and card payments.",
-              href: "/eod",
-              icon: CheckSquare,
-            },
-            {
-              label: "Reconciliation",
-              description: "Match payments to bank deposits and resolve variances.",
-              href: "/eod",
-              icon: TrendingUp,
-            },
-            {
-              label: "Reports",
-              description: "Sales, customer, expense and inventory reports.",
-              href: "/reports",
-              icon: BarChart3,
-            },
-            {
-              label: "Tax / export",
-              description: "Quarterly GST summary and exportable expense reports.",
-              // /reports/expenses exists in the codebase; falls back to
-              // /reports if a specific export panel isn't wired yet.
-              href: "/reports/expenses",
-              icon: FileDown,
-            },
-          ]}
-        />
+      {/* More overflow */}
+      <div className="flex justify-end -mt-2">
+        <details className="relative">
+          <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-[13px] font-medium text-nexpura-charcoal-700 hover:text-nexpura-bronze transition-colors">
+            More <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </summary>
+          <div className="absolute right-0 mt-2 w-56 rounded-xl border border-nexpura-taupe-100 bg-white shadow-md py-1 z-10">
+            <Link href="/expenses" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Receipt className="w-4 h-4" strokeWidth={1.5} /> Expenses
+            </Link>
+            <Link href="/refunds" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Undo2 className="w-4 h-4" strokeWidth={1.5} /> Refunds
+            </Link>
+            <Link href="/vouchers" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Gift className="w-4 h-4" strokeWidth={1.5} /> Vouchers
+            </Link>
+            <Link href="/eod" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <TrendingUp className="w-4 h-4" strokeWidth={1.5} /> Reconciliation
+            </Link>
+            <Link href="/reports" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <BarChart3 className="w-4 h-4" strokeWidth={1.5} /> Reports
+            </Link>
+            <Link href="/reports/expenses" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <FileDown className="w-4 h-4" strokeWidth={1.5} /> Tax / export
+            </Link>
+          </div>
+        </details>
       </div>
 
       {/* Existing detailed dashboard — wraps FinancialsClient so AI insights,

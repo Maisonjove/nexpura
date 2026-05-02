@@ -83,8 +83,6 @@ async function SalesHubBody() {
 
   const salesToday = (todayResult.data ?? []).reduce((sum, r) => sum + (Number(r.total) || 0), 0);
   const salesThisMonth = (monthResult.data ?? []).reduce((sum, r) => sum + (Number(r.total) || 0), 0);
-  const monthSaleCount = (monthResult.data ?? []).length;
-  const avgOrderValue = monthSaleCount > 0 ? salesThisMonth / monthSaleCount : 0;
 
   // Outstanding = sum(amount_due) on unpaid invoices.
   const outstandingInvoices = (invoicesResult.data ?? []).reduce(
@@ -104,7 +102,6 @@ async function SalesHubBody() {
         outstandingInvoices,
         openQuotes,
         activeLaybys,
-        avgOrderValue,
       }}
     />
   );
