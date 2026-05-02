@@ -18,12 +18,17 @@ const ITEMS_PER_PAGE = 100; // Initial load limit for performance
 export default async function InventoryPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ rt?: string; page?: string }>;
+  searchParams?: Promise<{ rt?: string; page?: string; status?: string }>;
 }) {
   const sp = searchParams ? await searchParams : {};
   const admin = createAdminClient();
   const page = parseInt(sp.page || "1", 10);
   const offset = (page - 1) * ITEMS_PER_PAGE;
+  // Section 6.2 (Kaitlyn 2026-05-02 brief): the dashboard "Low Stock" KPI
+  // chip routes here with ?status=low-stock. When that filter is active
+  // we render the focused page header + KPI strip and only fetch items
+  // where quantity <= low_stock_threshold (the schema's actual field).
+  const lowStockOnly = sp.status === "low-stock";
 
   // W7-HIGH-04: env-backed constant-time check.
   const isReviewMode = matchesReviewOrStaffToken(sp.rt);
@@ -100,16 +105,28 @@ export default async function InventoryPage({
         itemsQuery = itemsQuery.or(locationFilter);
         countQuery = countQuery.or(locationFilter);
       }
+      // Low-stock filter — Postgres can't compare two columns inside a
+      // PostgREST `.lte("quantity", "low_stock_threshold")` expression
+      // (the second arg is treated as a literal), so we filter the items
+      // in-memory after the query returns. With ITEMS_PER_PAGE=100 this
+      // is trivially cheap and avoids needing an RPC.
       const [itemsResult, countResult] = await Promise.all([
         itemsQuery.order("created_at", { ascending: false }).range(offset, offset + ITEMS_PER_PAGE - 1),
         countQuery,
       ]);
+      const allItems = itemsResult.data ?? [];
+      const filteredItems = lowStockOnly
+        ? allItems.filter(
+            (i: { quantity: number; low_stock_threshold: number | null }) =>
+              i.quantity <= (i.low_stock_threshold ?? 1)
+          )
+        : allItems;
       return {
-        items: itemsResult.data ?? [],
-        count: countResult.count ?? 0,
+        items: filteredItems,
+        count: lowStockOnly ? filteredItems.length : (countResult.count ?? 0),
       };
     },
-    ["inventory-list", tenantId, String(page), locationCacheKey],
+    ["inventory-list", tenantId, String(page), locationCacheKey, lowStockOnly ? "low" : "all"],
     { tags: [CACHE_TAGS.inventory(tenantId)], revalidate: 3600 }
   );
 
@@ -210,6 +227,25 @@ export default async function InventoryPage({
   const hasWebsite = !!websiteConfig?.website_type;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
+  // When the low-stock filter is active, count "critical stock" as items
+  // already at zero (or below threshold by ≥50%) so the KPI strip has a
+  // distinct oxblood metric vs. the warning-amber low-stock total.
+  const criticalCount = lowStockOnly
+    ? safeItems.filter((i) => i.quantity === 0).length
+    : 0;
+  const materialsCount = lowStockOnly
+    ? safeItems.filter((i) => i.item_type === "material").length
+    : 0;
+  // Estimated reorder value — sum of (threshold - quantity) * cost_price
+  // for items below threshold. Falls back to retail_price when cost is null.
+  const estimatedReorderValue = lowStockOnly
+    ? safeItems.reduce((sum, i) => {
+        const gap = Math.max((i.low_stock_threshold ?? 1) - i.quantity, 0);
+        const unitCost = i.cost_price ?? i.retail_price;
+        return sum + gap * unitCost;
+      }, 0)
+    : 0;
+
   return (
     <InventoryClient
       items={safeItems}
@@ -224,6 +260,10 @@ export default async function InventoryPage({
       currentPage={page}
       totalPages={totalPages}
       itemsPerPage={ITEMS_PER_PAGE}
+      lowStockOnly={lowStockOnly}
+      criticalCount={criticalCount}
+      materialsCount={materialsCount}
+      estimatedReorderValue={estimatedReorderValue}
     />
   );
 }

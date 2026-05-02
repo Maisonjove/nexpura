@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Search, Edit, Diamond, Printer, Camera, Eye, Globe,
   Package, Grid3X3, List, AlertTriangle, DollarSign,
-  Filter, X, FileText
+  Filter, X, FileText, CheckCircle, AlertCircle, Layers, TrendingDown
 } from "lucide-react";
 import { ExportDropdown } from "@/components/ExportButtons";
 import { formatCurrencyForExport, formatDateForExport } from "@/lib/export";
@@ -79,6 +79,13 @@ interface InventoryClientProps {
   currentPage?: number;
   totalPages?: number;
   itemsPerPage?: number;
+  /** Section 6.2 (Kaitlyn 2026-05-02 brief): when true the page is
+   *  rendered as the dashboard's "Low Stock" deeplink — focused header,
+   *  oxblood/emerald KPI strip, alt empty state. */
+  lowStockOnly?: boolean;
+  criticalCount?: number;
+  materialsCount?: number;
+  estimatedReorderValue?: number;
 }
 
 // ─── Status Config ────────────────────────────────────────────────────────────
@@ -109,6 +116,10 @@ export default function InventoryClient({
   currentPage = 1,
   totalPages = 1,
   itemsPerPage = 100,
+  lowStockOnly = false,
+  criticalCount = 0,
+  materialsCount = 0,
+  estimatedReorderValue = 0,
 }: InventoryClientProps) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -278,11 +289,32 @@ export default function InventoryClient({
         />
       )}
 
-      {/* Header */}
+      {/* Header — Section 6.2 of Kaitlyn's redesign brief swaps the title
+          and breadcrumb when the page is loaded as the low-stock deeplink
+          from the dashboard KPI chip (?status=low-stock). */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900">Inventory</h1>
-          <p className="text-sm text-stone-500 mt-0.5">Manage your stock and items</p>
+          {lowStockOnly && (
+            <nav className="flex items-center gap-1.5 mb-2">
+              <Link href="/dashboard" className="text-xs text-nexpura-charcoal-500 hover:text-nexpura-charcoal-700 transition-colors">
+                Dashboard
+              </Link>
+              <span className="text-nexpura-taupe-200 text-xs">/</span>
+              <Link href="/inventory" className="text-xs text-nexpura-charcoal-500 hover:text-nexpura-charcoal-700 transition-colors">
+                Inventory
+              </Link>
+              <span className="text-nexpura-taupe-200 text-xs">/</span>
+              <span className="text-xs text-nexpura-charcoal-700 font-medium">Low Stock</span>
+            </nav>
+          )}
+          <h1 className="text-2xl font-bold text-nexpura-charcoal-700">
+            {lowStockOnly ? "Low Stock" : "Inventory"}
+          </h1>
+          <p className="text-sm text-nexpura-charcoal-500 mt-0.5">
+            {lowStockOnly
+              ? "Items below reorder thresholds and materials requiring attention."
+              : "Manage your stock and items"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -345,63 +377,117 @@ export default function InventoryClient({
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4 border-stone-200 bg-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center">
-              <Package className="w-5 h-5 text-stone-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-stone-900">{totalItems}</p>
-              <p className="text-xs text-stone-500">Total Items</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 border-stone-200 bg-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-amber-600">{lowStockCount}</p>
-              <div className="flex items-center gap-1">
-                <p className="text-xs text-stone-500">Low Stock</p>
-                <HelpTooltip content="Items below their low stock threshold. Set this per item to get alerts when inventory is running low." size={12} />
+      {/* Stats Cards — KPI strip swaps to the low-stock view (Section
+          6.2). Critical (oxblood) lifts items already at zero qty,
+          Materials counts raw-material items, Estimated reorder value
+          sums (threshold − qty) × cost across items below threshold. */}
+      {lowStockOnly ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-4 border-nexpura-taupe-100 bg-nexpura-ivory-elevated">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-nexpura-amber-bg flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-nexpura-amber-muted" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-nexpura-charcoal-700">{items.length}</p>
+                <p className="text-xs text-nexpura-charcoal-500">Low stock items</p>
               </div>
             </div>
-          </div>
-        </Card>
-        <Card className="p-4 border-stone-200 bg-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-stone-900">
-                ${totalValue.toLocaleString()}
-              </p>
-              <p className="text-xs text-stone-500">Total Value</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 border-stone-200 bg-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-              <Globe className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-stone-900">
-                {items.filter((i) => i.listed_on_website).length}
-              </p>
-              <div className="flex items-center gap-1">
-                <p className="text-xs text-stone-500">On Website</p>
-                <HelpTooltip content="Items currently listed on your public website store. Toggle visibility in each item's settings." size={12} />
+          </Card>
+          <Card className="p-4 border-nexpura-taupe-100 bg-nexpura-ivory-elevated">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-nexpura-oxblood-bg flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-nexpura-oxblood" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-nexpura-oxblood">{criticalCount}</p>
+                <p className="text-xs text-nexpura-charcoal-500">Critical stock</p>
               </div>
             </div>
-          </div>
-        </Card>
-      </div>
+          </Card>
+          <Card className="p-4 border-nexpura-taupe-100 bg-nexpura-ivory-elevated">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-nexpura-warm flex items-center justify-center">
+                <Layers className="w-5 h-5 text-nexpura-charcoal-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-nexpura-charcoal-700">{materialsCount}</p>
+                <p className="text-xs text-nexpura-charcoal-500">Materials</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4 border-nexpura-taupe-100 bg-nexpura-ivory-elevated">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-nexpura-emerald-bg flex items-center justify-center">
+                <TrendingDown className="w-5 h-5 text-nexpura-emerald-deep" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-nexpura-charcoal-700">
+                  ${Math.round(estimatedReorderValue).toLocaleString()}
+                </p>
+                <p className="text-xs text-nexpura-charcoal-500">Est. reorder value</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-4 border-stone-200 bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center">
+                <Package className="w-5 h-5 text-stone-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-stone-900">{totalItems}</p>
+                <p className="text-xs text-stone-500">Total Items</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4 border-stone-200 bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-amber-600">{lowStockCount}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-stone-500">Low Stock</p>
+                  <HelpTooltip content="Items below their low stock threshold. Set this per item to get alerts when inventory is running low." size={12} />
+                </div>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4 border-stone-200 bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-stone-900">
+                  ${totalValue.toLocaleString()}
+                </p>
+                <p className="text-xs text-stone-500">Total Value</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4 border-stone-200 bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                <Globe className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-stone-900">
+                  {items.filter((i) => i.listed_on_website).length}
+                </p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-stone-500">On Website</p>
+                  <HelpTooltip content="Items currently listed on your public website store. Toggle visibility in each item's settings." size={12} />
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Bulk Actions Bar */}
       {selectedIds.size > 0 && (
@@ -529,32 +615,55 @@ export default function InventoryClient({
 
       {/* Items Grid/List */}
       {filtered.length === 0 ? (
-        <Card className="border-stone-200 rounded-xl overflow-hidden">
+        <Card className="border-nexpura-taupe-100 rounded-xl overflow-hidden bg-nexpura-ivory-elevated">
           <div className="p-16 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-stone-100 to-stone-200 flex items-center justify-center">
-              <Diamond className="w-8 h-8 text-amber-600" />
-            </div>
-            <h3 className="font-semibold text-lg text-stone-900">
-              {/* Gate on the authoritative tenant-wide count, not on the current
-                  page's items array. items.length can be 0 while totalItems > 0
-                  (empty page past the last, filtered-out subset, cache skew),
-                  which previously produced a contradiction: top counter said
-                  "1 Total Items" while the empty-state said "No inventory yet". */}
-              {totalItems === 0 ? "No inventory yet" : "No items match your filters"}
-            </h3>
-            <p className="text-stone-500 mt-1 text-sm">
-              {totalItems === 0
-                ? "Add your first item to start tracking stock."
-                : "Try adjusting your search or filters."}
-            </p>
-            {totalItems === 0 && (
-              <Link
-                href="/inventory/new"
-                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-xl hover:bg-amber-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add your first item
-              </Link>
+            {lowStockOnly ? (
+              <>
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-nexpura-emerald-bg flex items-center justify-center">
+                  <CheckCircle className="w-8 h-8 text-nexpura-emerald-deep" />
+                </div>
+                <h3 className="font-semibold text-lg text-nexpura-charcoal-700">
+                  All inventory is at healthy levels
+                </h3>
+                <p className="text-nexpura-charcoal-500 mt-1 text-sm">
+                  Items below their reorder threshold will appear here.
+                </p>
+                <Link
+                  href="/inventory"
+                  className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-xl hover:bg-nexpura-charcoal-700 transition-colors"
+                >
+                  <Package className="w-4 h-4" />
+                  View all inventory
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-stone-100 to-stone-200 flex items-center justify-center">
+                  <Diamond className="w-8 h-8 text-amber-600" />
+                </div>
+                <h3 className="font-semibold text-lg text-stone-900">
+                  {/* Gate on the authoritative tenant-wide count, not on the current
+                      page's items array. items.length can be 0 while totalItems > 0
+                      (empty page past the last, filtered-out subset, cache skew),
+                      which previously produced a contradiction: top counter said
+                      "1 Total Items" while the empty-state said "No inventory yet". */}
+                  {totalItems === 0 ? "No inventory yet" : "No items match your filters"}
+                </h3>
+                <p className="text-stone-500 mt-1 text-sm">
+                  {totalItems === 0
+                    ? "Add your first item to start tracking stock."
+                    : "Try adjusting your search or filters."}
+                </p>
+                {totalItems === 0 && (
+                  <Link
+                    href="/inventory/new"
+                    className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-xl hover:bg-amber-700 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add your first item
+                  </Link>
+                )}
+              </>
             )}
           </div>
         </Card>
