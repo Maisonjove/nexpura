@@ -80,13 +80,21 @@ const NAV_ITEMS = [
     ],
   },
   {
+    label: 'Digital',
+    children: [
+      { label: 'Digital Overview', href: '/digital', description: 'Website, integrations & passports' },
+      { label: 'Website Builder', href: '/website', description: 'Build your website' },
+      { label: 'Passports', href: '/passports', description: 'Item passports' },
+      { label: 'Verify Passport', href: '/passports/verify', description: 'Look up by passport ID' },
+      { label: 'Integrations', href: '/integrations', description: 'Connected services' },
+    ],
+  },
+  {
     label: 'More',
     children: [
       { label: 'Tasks', href: '/tasks', description: 'Your task list' },
       { label: 'AI Copilot', href: '/copilot', description: 'AI assistant' },
-      { label: 'Website Builder', href: '/website', description: 'Build your website' },
       { label: 'Documents', href: '/documents', description: 'Document management' },
-      { label: 'Integrations', href: '/integrations', description: 'Connected services' },
       { label: 'Reminders', href: '/settings/reminders', description: 'Manage reminders' },
       { label: 'Support', href: '/support', description: 'Get help' },
     ],

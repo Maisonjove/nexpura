@@ -1,13 +1,15 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getEntitlementContext } from "@/lib/auth/entitlements";
 import { canUseFeature, planDisplayName } from "@/lib/features";
 import Link from "next/link";
-import FinancialsClient from "./FinancialsClient";
+import { BarChart3 } from "lucide-react";
+import FinanceHubClient from "./FinanceHubClient";
 import type { MetricsData } from "./components/types";
+import type { FinanceHubData } from "./types";
 
-export const metadata = { title: "Financials — Nexpura" };
+export const metadata = { title: "Finance — Nexpura" };
 
 async function fetchMetrics(tenantId: string, gstRate: number): Promise<MetricsData | null> {
   try {
@@ -93,6 +95,177 @@ async function fetchMetrics(tenantId: string, gstRate: number): Promise<MetricsD
   }
 }
 
+/**
+ * Fetch the hub-specific data: top 5 overdue invoices, upcoming due
+ * (next 7 days), recent payments, expense + refund + net-revenue totals
+ * for the current month.
+ */
+async function fetchFinanceHubData(tenantId: string): Promise<FinanceHubData> {
+  const admin = createAdminClient();
+  const now = new Date();
+  const todayIso = now.toISOString().split("T")[0]!;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const monthStartDate = monthStart.split("T")[0]!;
+  const sevenDays = new Date(now);
+  sevenDays.setDate(sevenDays.getDate() + 7);
+  const sevenDaysIso = sevenDays.toISOString().split("T")[0]!;
+
+  const [
+    overdueInvoicesRes,
+    outstandingTotalRes,
+    upcomingPaymentsRes,
+    recentPaymentsRes,
+    overdueAmountRes,
+    paidThisMonthRes,
+    expensesThisMonthRes,
+    refundsThisMonthRes,
+  ] = await Promise.all([
+    // Top 5 overdue invoices by oldest due date
+    admin
+      .from("invoices")
+      .select("id, invoice_number, total, amount_due, due_date, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .not("status", "in", '("paid","voided","draft","cancelled")')
+      .lt("due_date", todayIso)
+      .is("deleted_at", null)
+      .order("due_date", { ascending: true })
+      .limit(5),
+    // Outstanding total — sum amount_due across unpaid statuses
+    admin
+      .from("invoices")
+      .select("amount_due")
+      .eq("tenant_id", tenantId)
+      .in("status", ["unpaid", "sent", "partial", "partially_paid", "overdue"])
+      .is("deleted_at", null),
+    // Upcoming payments — invoices due within next 7 days, not yet paid
+    admin
+      .from("invoices")
+      .select("id, invoice_number, total, amount_due, due_date, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .not("status", "in", '("paid","voided","draft","cancelled")')
+      .gte("due_date", todayIso)
+      .lte("due_date", sevenDaysIso)
+      .is("deleted_at", null)
+      .order("due_date", { ascending: true })
+      .limit(5),
+    // Recent payments — last 5 paid invoices by paid_at
+    admin
+      .from("invoices")
+      .select("id, invoice_number, total, paid_at, customers(full_name)")
+      .eq("tenant_id", tenantId)
+      .eq("status", "paid")
+      .not("paid_at", "is", null)
+      .is("deleted_at", null)
+      .order("paid_at", { ascending: false })
+      .limit(5),
+    // Overdue amount (sum)
+    admin
+      .from("invoices")
+      .select("amount_due")
+      .eq("tenant_id", tenantId)
+      .not("status", "in", '("paid","voided","draft","cancelled")')
+      .lt("due_date", todayIso)
+      .is("deleted_at", null),
+    // Paid this month (sales + invoices count toward "paid this month")
+    admin
+      .from("sales")
+      .select("total")
+      .eq("tenant_id", tenantId)
+      .in("status", ["paid", "completed"])
+      .gte("sale_date", monthStart),
+    // Expenses this month
+    admin
+      .from("expenses")
+      .select("amount")
+      .eq("tenant_id", tenantId)
+      .gte("expense_date", monthStartDate),
+    // Refunds this month
+    admin
+      .from("refunds")
+      .select("total")
+      .eq("tenant_id", tenantId)
+      .gte("created_at", monthStart),
+  ]);
+
+  type CustField =
+    | { full_name: string | null }
+    | { full_name: string | null }[]
+    | null;
+  const flatCust = (c: CustField): string => {
+    if (!c) return "—";
+    if (Array.isArray(c)) return c[0]?.full_name ?? "—";
+    return c.full_name ?? "—";
+  };
+
+  const overdueInvoices = (overdueInvoicesRes.data ?? []).map((i) => ({
+    id: i.id as string,
+    invoiceNumber: (i.invoice_number as string | null) ?? (i.id as string).slice(0, 8),
+    total: Number(i.total) || 0,
+    amountDue: Number(i.amount_due) || 0,
+    dueDate: (i.due_date as string | null) ?? null,
+    customer: flatCust(i.customers as CustField),
+  }));
+
+  const upcomingPayments = (upcomingPaymentsRes.data ?? []).map((i) => ({
+    id: i.id as string,
+    invoiceNumber: (i.invoice_number as string | null) ?? (i.id as string).slice(0, 8),
+    total: Number(i.total) || 0,
+    amountDue: Number(i.amount_due) || 0,
+    dueDate: (i.due_date as string | null) ?? null,
+    customer: flatCust(i.customers as CustField),
+  }));
+
+  const recentPayments = (recentPaymentsRes.data ?? []).map((i) => ({
+    id: i.id as string,
+    invoiceNumber: (i.invoice_number as string | null) ?? (i.id as string).slice(0, 8),
+    total: Number(i.total) || 0,
+    paidAt: (i.paid_at as string | null) ?? null,
+    customer: flatCust(i.customers as CustField),
+  }));
+
+  const outstandingTotal = (outstandingTotalRes.data ?? []).reduce(
+    (sum, r) => sum + (Number(r.amount_due) || 0),
+    0
+  );
+  const overdueAmount = (overdueAmountRes.data ?? []).reduce(
+    (sum, r) => sum + (Number(r.amount_due) || 0),
+    0
+  );
+  const paidThisMonth = (paidThisMonthRes.data ?? []).reduce(
+    (sum, r) => sum + (Number(r.total) || 0),
+    0
+  );
+  const expensesThisMonth = (expensesThisMonthRes.data ?? []).reduce(
+    (sum, r) => sum + (Number(r.amount) || 0),
+    0
+  );
+  const refundsThisMonth = (refundsThisMonthRes.data ?? []).reduce(
+    (sum, r) => sum + (Number(r.total) || 0),
+    0
+  );
+
+  const netRevenue = paidThisMonth - refundsThisMonth - expensesThisMonth;
+
+  // TODO: end-of-day reconciliation — wire to /eod state once a
+  // `reconciliation_sessions` (or similar) table is queryable to know
+  // whether today's session has started/finalised. For now the panel
+  // shows a static "Today's reconciliation not started" CTA.
+  const reconciliationStarted = false;
+
+  return {
+    overdueInvoices,
+    upcomingPayments,
+    recentPayments,
+    outstandingTotal,
+    overdueAmount,
+    paidThisMonth,
+    expensesThisMonth,
+    refundsThisMonth,
+    netRevenue,
+    reconciliationStarted,
+  };
+}
+
 export default async function FinancialsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -103,8 +276,8 @@ export default async function FinancialsPage() {
   if (!canUseFeature(ctx.plan, "analytics")) {
     return (
       <div className="max-w-xl mx-auto py-20 px-4 text-center space-y-6">
-        <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto">
-          <span className="text-2xl">📊</span>
+        <div className="w-14 h-14 rounded-2xl bg-nexpura-warm border border-nexpura-taupe-100 flex items-center justify-center mx-auto text-nexpura-bronze">
+          <BarChart3 className="w-6 h-6" strokeWidth={1.5} aria-hidden />
         </div>
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">Advanced Financials</h1>
@@ -129,16 +302,19 @@ export default async function FinancialsPage() {
   const tenant = userData?.tenants as { name?: string; gst_rate?: number; currency?: string } | null;
   const gstRate = tenant?.gst_rate ?? 0.1;
 
-  // Fetch metrics server-side — bypasses client-side cookie/auth issues entirely.
-  const initialMetrics = await fetchMetrics(ctx.tenantId, gstRate);
+  const [initialMetrics, hubData] = await Promise.all([
+    fetchMetrics(ctx.tenantId, gstRate),
+    fetchFinanceHubData(ctx.tenantId),
+  ]);
 
   return (
-    <FinancialsClient
+    <FinanceHubClient
       tenantId={ctx.tenantId}
       businessName={tenant?.name ?? "Your Business"}
       gstRate={gstRate}
       currency={tenant?.currency ?? "AUD"}
       initialMetrics={initialMetrics}
+      hubData={hubData}
     />
   );
 }
