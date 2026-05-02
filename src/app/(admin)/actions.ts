@@ -229,14 +229,32 @@ export async function extendTrial(tenantId: string, days: number) {
   const { adminClient, adminUserId } = await assertSuperAdmin();
   const newDate = new Date();
   newDate.setDate(newDate.getDate() + days);
-  const { error } = await adminClient
+
+  // Update subscriptions row — extend trial + clear stale grace fields
+  // left behind from a prior trial-end → grace transition.
+  const { error: subErr } = await adminClient
     .from("subscriptions")
     .update({
       trial_ends_at: newDate.toISOString(),
       status: "trialing",
+      grace_period_ends_at: null,
+      grace_24h_sent: false,
     })
     .eq("tenant_id", tenantId);
-  if (error) throw new Error(error.message);
+  if (subErr) throw new Error(subErr.message);
+
+  // Mirror to tenants — assertTenantActive (the paywall) reads
+  // tenants.subscription_status, so without this the tenant stays
+  // blocked even after the subscriptions row is back to "trialing".
+  const { error: tenantErr } = await adminClient
+    .from("tenants")
+    .update({
+      subscription_status: "trialing",
+      grace_period_ends_at: null,
+      payment_required_notified_at: null,
+    })
+    .eq("id", tenantId);
+  if (tenantErr) throw new Error(tenantErr.message);
 
   await logActivity(adminClient, adminUserId, "extend_trial", { tenantId, days });
 
