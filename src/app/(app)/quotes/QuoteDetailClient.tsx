@@ -3,9 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, CheckCircle, Download, Gem, Hammer } from "lucide-react";
+import { ArrowLeft, Send, CheckCircle, Download, Gem, Hammer, ShoppingBag, X, Ban } from "lucide-react";
 import { format } from "date-fns";
-import { convertQuoteToInvoice, convertQuoteToBespoke, convertQuoteToRepair } from "./actions-server";
+import {
+  convertQuoteToInvoice,
+  convertQuoteToBespoke,
+  convertQuoteToRepair,
+  convertQuoteToSale,
+  rejectQuote,
+  voidQuote,
+} from "./actions-server";
 
 interface Quote {
   id: string;
@@ -32,7 +39,9 @@ interface Props {
   quote: Quote;
 }
 
-type ConfirmAction = "invoice" | "bespoke" | "repair" | "email" | null;
+type ConfirmAction = "invoice" | "bespoke" | "repair" | "sale" | "email" | "reject" | "void" | null;
+
+const TERMINAL_STATUSES = ["converted", "rejected", "cancelled", "voided"];
 
 function ConfirmModal({
   open,
@@ -160,6 +169,57 @@ export default function QuoteDetailClient({ quote }: Props) {
     }
   }
 
+  async function handleConvertToSale() {
+    setLoading(true);
+    setConfirmAction(null);
+    try {
+      const result = await convertQuoteToSale(quote.id);
+      if (result.error || !result.id) {
+        toast.error(result.error || "Failed to convert quote to sale");
+        return;
+      }
+      toast.success("Converted to Sale successfully!");
+      router.push(`/sales/${result.id}`);
+    } catch (err) {
+      logger.error(err);
+      toast.error("Failed to convert quote to sale");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleReject() {
+    setLoading(true);
+    setConfirmAction(null);
+    try {
+      const result = await rejectQuote(quote.id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Quote marked rejected");
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVoid() {
+    setLoading(true);
+    setConfirmAction(null);
+    try {
+      const result = await voidQuote(quote.id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Quote voided");
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const confirmConfig: Record<NonNullable<ConfirmAction>, { title: string; message: string; onConfirm: () => void }> = {
     invoice: {
       title: "Convert to Invoice?",
@@ -176,12 +236,29 @@ export default function QuoteDetailClient({ quote }: Props) {
       message: "This will create a new Repair Job from this quote. The quote will be marked as converted.",
       onConfirm: handleConvertToRepair,
     },
+    sale: {
+      title: "Convert to Sale?",
+      message: "This will create a draft sale from this quote. The quote will be marked as converted.",
+      onConfirm: handleConvertToSale,
+    },
     email: {
       title: "Email Quote?",
       message: `Send this quote to ${quote.customers?.email ?? "the customer"}?`,
       onConfirm: handleEmailQuote,
     },
+    reject: {
+      title: "Reject Quote?",
+      message: "Mark this quote as rejected by the customer. This is a terminal state — convert/accept can't be applied afterwards.",
+      onConfirm: handleReject,
+    },
+    void: {
+      title: "Void Quote?",
+      message: "Void this quote permanently. This is terminal — no further state changes allowed.",
+      onConfirm: handleVoid,
+    },
   };
+
+  const isTerminal = TERMINAL_STATUSES.includes(quote.status);
 
   return (
     <>
@@ -225,8 +302,8 @@ export default function QuoteDetailClient({ quote }: Props) {
             <Download size={18} />
             Download PDF
           </a>
-          {quote.status !== "converted" && (
-            <div className="flex gap-2">
+          {!isTerminal && (
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setConfirmAction("repair")}
                 disabled={loading}
@@ -244,6 +321,14 @@ export default function QuoteDetailClient({ quote }: Props) {
                 {loading ? "..." : "Convert to Bespoke"}
               </button>
               <button
+                onClick={() => setConfirmAction("sale")}
+                disabled={loading}
+                className="flex items-center gap-2 border border-stone-300 text-stone-700 px-4 py-2 rounded-lg hover:bg-stone-50 transition-all font-medium disabled:opacity-50"
+              >
+                <ShoppingBag size={18} />
+                {loading ? "..." : "Convert to Sale"}
+              </button>
+              <button
                 onClick={() => setConfirmAction("invoice")}
                 disabled={loading}
                 className="flex items-center gap-2 bg-nexpura-charcoal text-white px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors font-medium shadow-sm disabled:opacity-50"
@@ -251,7 +336,28 @@ export default function QuoteDetailClient({ quote }: Props) {
                 <CheckCircle size={18} />
                 {loading ? "..." : "Convert to Invoice"}
               </button>
+              <button
+                onClick={() => setConfirmAction("reject")}
+                disabled={loading}
+                className="flex items-center gap-2 border border-nexpura-oxblood/40 text-nexpura-oxblood px-4 py-2 rounded-lg hover:bg-nexpura-oxblood-bg transition-colors font-medium disabled:opacity-50"
+              >
+                <X size={18} />
+                Reject
+              </button>
+              <button
+                onClick={() => setConfirmAction("void")}
+                disabled={loading}
+                className="flex items-center gap-2 border border-stone-300 text-stone-500 px-4 py-2 rounded-lg hover:bg-stone-50 transition-colors font-medium disabled:opacity-50"
+              >
+                <Ban size={18} />
+                Void
+              </button>
             </div>
+          )}
+          {isTerminal && (
+            <p className="text-sm italic text-stone-500 self-center">
+              Quote is {quote.status} — terminal state, no further actions.
+            </p>
           )}
         </div>
       </div>

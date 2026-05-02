@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Search, Filter, MoreVertical, FileText, Send, CheckCircle } from "lucide-react";
+import { useSearchParams, usePathname } from "next/navigation";
+import { Plus, Search, MoreVertical, FileText, Send, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { getQuotesList, convertQuoteToInvoice } from "./actions-server";
 import { toast } from "sonner";
@@ -14,6 +15,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import logger from "@/lib/logger";
+
+const STATUS_TABS = [
+  { value: "all", label: "All" },
+  { value: "draft", label: "Draft" },
+  { value: "sent", label: "Sent" },
+  { value: "accepted", label: "Accepted" },
+  { value: "rejected", label: "Rejected" },
+  { value: "expired", label: "Expired" },
+  { value: "converted", label: "Converted" },
+  { value: "cancelled", label: "Voided" },
+] as const;
 
 interface QuoteItem {
   description: string;
@@ -39,10 +51,13 @@ interface Quote {
 }
 
 export default function QuoteListClient() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [confirmConvertId, setConfirmConvertId] = useState<string | null>(null);
+  const [activeStatus, setActiveStatus] = useState<string>(searchParams.get("status") || "all");
 
   useEffect(() => {
     loadQuotes();
@@ -71,11 +86,38 @@ export default function QuoteListClient() {
     }
   }
 
-  const filteredQuotes = quotes.filter(q => 
-    q.customers?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.quote_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Status chip click — instant local-state filter + shallow URL sync so
+  // refresh + share-links land on the same tab. Mirrors InvoiceListClient.
+  const setStatus = useCallback((status: string) => {
+    setActiveStatus(status || "all");
+    const sp = new URLSearchParams();
+    if (status && status !== "all") sp.set("status", status);
+    const next = sp.toString() ? `${pathname}?${sp.toString()}` : pathname;
+    if (typeof window !== "undefined") window.history.replaceState(null, "", next);
+  }, [pathname]);
+
+  // "expired" is computed (expires_at < today AND not converted/rejected/voided),
+  // not a stored status. Mirror that predicate client-side.
+  const todayStr = new Date().toISOString().split("T")[0];
+  const filteredQuotes = useMemo(() => {
+    return quotes
+      .filter((q) => {
+        if (activeStatus === "all") return true;
+        if (activeStatus === "expired") {
+          return (
+            !!q.expires_at &&
+            q.expires_at < todayStr &&
+            !["converted", "rejected", "cancelled"].includes(q.status)
+          );
+        }
+        return q.status === activeStatus;
+      })
+      .filter((q) =>
+        q.customers?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        q.quote_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        q.id.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  }, [quotes, activeStatus, searchTerm, todayStr]);
 
   return (
     <>
@@ -116,22 +158,33 @@ export default function QuoteListClient() {
         </Link>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-        <div className="relative w-full sm:w-96">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
-          <input
-            type="text"
-            placeholder="Search by customer or quote #..."
-            className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-stone-200">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search by customer or quote #..."
+              className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button className="flex items-center gap-2 px-4 py-2 border border-stone-200 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors w-full sm:w-auto">
-            <Filter size={16} />
-            Filter
-          </button>
+        <div className="flex items-center gap-1 p-2 overflow-x-auto">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setStatus(tab.value)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
+                activeStatus === tab.value
+                  ? "bg-nexpura-charcoal text-white"
+                  : "text-stone-600 hover:bg-stone-100"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 

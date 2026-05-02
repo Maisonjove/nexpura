@@ -23,7 +23,15 @@ export default function QuoteForm({ tenantId, customers }: Props) {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<QuoteItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
   const [customerId, setCustomerId] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
+  // Default expiry to today + 30 days so the operator doesn't have to
+  // remember; they can clear or override before saving. The email
+  // template falls back to "30 days" when the field is null, so this
+  // also keeps the persisted value aligned with what the customer sees.
+  const [expiresAt, setExpiresAt] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().split("T")[0];
+  });
   const [notes, setNotes] = useState("");
 
   const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);

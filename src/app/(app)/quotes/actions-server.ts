@@ -220,7 +220,7 @@ export async function deleteQuote(id: string): Promise<{ error?: string }> {
 }
 
 // ── Tenant-scoped list fetch ─────────────────────────────────────────────────
-export async function getQuotesList(): Promise<{ data?: unknown[]; error?: string }> {
+export async function getQuotesList(status?: string): Promise<{ data?: unknown[]; error?: string }> {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -237,11 +237,20 @@ export async function getQuotesList(): Promise<{ data?: unknown[]; error?: strin
     // `quotes` has no `deleted_at` column (verified against live schema).
     // Filtering on it returned a PG error and the list page rendered
     // "Failed to load quotes" for every tenant.
-    const { data, error } = await supabase
+    let query = supabase
       .from("quotes")
       .select("*, customers(full_name, email)")
-      .eq("tenant_id", userData.tenant_id)
-      .order("created_at", { ascending: false });
+      .eq("tenant_id", userData.tenant_id);
+
+    // Optional status filter — drives the chip-based UI on /quotes.
+    // "expired" is computed (not a stored status), so callers pass it
+    // through and the client filters by expires_at < today.
+    if (status && status !== "all" && status !== "expired") {
+      query = query.eq("status", status);
+    }
+    query = query.order("created_at", { ascending: false });
+
+    const { data, error } = await query;
 
     if (error) {
       logger.error("[getQuotesList] Error:", error);
@@ -252,6 +261,218 @@ export async function getQuotesList(): Promise<{ data?: unknown[]; error?: strin
     logger.error("[getQuotesList] Unexpected error:", err);
     return { error: err instanceof Error ? err.message : "Failed to load quotes" };
   }
+}
+
+/**
+ * Once a quote is in a terminal state (converted / rejected / cancelled)
+ * no further state transitions are allowed — accept/reject/void/convert
+ * server actions all bail with this guard before doing any work.
+ */
+const TERMINAL_QUOTE_STATUSES = new Set(["converted", "rejected", "cancelled"]);
+
+async function loadQuoteForTransition(quoteId: string): Promise<
+  | { quote: { id: string; status: string; tenant_id: string }; tenantId: string; userId: string; error?: undefined }
+  | { error: string }
+> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: userData } = await createAdminClient()
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  if (!userData?.tenant_id) return { error: "No tenant found" };
+  const tenantId = userData.tenant_id;
+
+  const { data: quote } = await supabase
+    .from("quotes")
+    .select("id, status, tenant_id")
+    .eq("id", quoteId)
+    .eq("tenant_id", tenantId)
+    .single();
+  if (!quote) return { error: "Quote not found" };
+  return { quote, tenantId, userId: user.id };
+}
+
+/**
+ * Reject a quote — terminal transition. Once rejected, no convert/accept
+ * can be applied unless the operator un-rejects via DB (intentional).
+ */
+export async function rejectQuote(quoteId: string): Promise<{ success?: boolean; error?: string }> {
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to reject quotes." : "Not authenticated" };
+  }
+  const ctx = await loadQuoteForTransition(quoteId);
+  if ("error" in ctx) return { error: ctx.error };
+  if (TERMINAL_QUOTE_STATUSES.has(ctx.quote.status)) {
+    return { error: `Quote is already ${ctx.quote.status} — state is terminal.` };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("quotes")
+    .update({ status: "rejected" })
+    .eq("id", quoteId)
+    .eq("tenant_id", ctx.tenantId);
+  if (error) return { error: error.message };
+  await logAuditEvent({
+    tenantId: ctx.tenantId, userId: ctx.userId, action: "quote_update",
+    entityType: "quote", entityId: quoteId,
+    newData: { status: "rejected" },
+  }).catch(() => {});
+  revalidatePath("/quotes");
+  revalidatePath(`/quotes/${quoteId}`);
+  return { success: true };
+}
+
+/**
+ * Void / cancel a quote. Same terminal semantics as rejected.
+ */
+export async function voidQuote(quoteId: string): Promise<{ success?: boolean; error?: string }> {
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to void quotes." : "Not authenticated" };
+  }
+  const ctx = await loadQuoteForTransition(quoteId);
+  if ("error" in ctx) return { error: ctx.error };
+  if (TERMINAL_QUOTE_STATUSES.has(ctx.quote.status)) {
+    return { error: `Quote is already ${ctx.quote.status} — state is terminal.` };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("quotes")
+    .update({ status: "cancelled" })
+    .eq("id", quoteId)
+    .eq("tenant_id", ctx.tenantId);
+  if (error) return { error: error.message };
+  await logAuditEvent({
+    tenantId: ctx.tenantId, userId: ctx.userId, action: "quote_update",
+    entityType: "quote", entityId: quoteId,
+    newData: { status: "cancelled" },
+  }).catch(() => {});
+  revalidatePath("/quotes");
+  revalidatePath(`/quotes/${quoteId}`);
+  return { success: true };
+}
+
+/**
+ * Convert a quote into a draft sale on /sales. Mirrors the
+ * convertQuoteToInvoice / convertQuoteToBespoke pattern but writes to
+ * the `sales` table. The new sale is created with status="quote" so the
+ * operator can finalize payment via /sales/[id]/edit.
+ */
+export async function convertQuoteToSale(quoteId: string): Promise<{ id?: string; error?: string }> {
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to convert quotes." : "Not authenticated" };
+  }
+  const ctx = await loadQuoteForTransition(quoteId);
+  if ("error" in ctx) return { error: ctx.error };
+  if (TERMINAL_QUOTE_STATUSES.has(ctx.quote.status)) {
+    return { error: `Quote is already ${ctx.quote.status} — cannot convert.` };
+  }
+  const supabase = await createClient();
+
+  const { data: fullQuote } = await supabase
+    .from("quotes")
+    .select("*, customers(full_name, email)")
+    .eq("id", quoteId)
+    .eq("tenant_id", ctx.tenantId)
+    .single();
+  if (!fullQuote) return { error: "Quote not found" };
+
+  // Generate a sale number via the same RPC /sales/new uses.
+  const { data: saleNumberData } = await supabase.rpc("next_sale_number", { p_tenant_id: ctx.tenantId });
+  const saleNumber = (saleNumberData as string) || `SALE-${Date.now()}`;
+
+  // Apply the tenant's tax to the quote's items so the sale row's
+  // subtotal/tax/total match the quote totals.
+  const items = (fullQuote.items as QuoteItem[]) ?? [];
+  const taxConfig = await getTenantTaxConfig(ctx.tenantId);
+  const totals = computeMoneyTotals(
+    items.map((it) => ({ quantity: it.quantity, unit_price: it.unit_price })),
+    taxConfig.tax_rate,
+    taxConfig.tax_inclusive,
+    0,
+  );
+
+  // resolveLocationForCreate gates multi-location tenants the same way
+  // /sales/new does. For a quote-to-sale conversion the operator is
+  // explicitly committing the quote, so if no specific location is
+  // selected we pick the first active location instead of erroring —
+  // the user re-confirms in /sales/[id]/edit which has its own location
+  // gate. This matches "convert quote to invoice" semantics, which
+  // doesn't enforce single-location either.
+  let locationId: string | null = null;
+  const locResult = await resolveLocationForCreate(ctx.tenantId, ctx.userId);
+  if (!locResult.needsSelection) {
+    locationId = locResult.locationId;
+  } else {
+    const { data: firstLoc } = await supabase
+      .from("locations")
+      .select("id")
+      .eq("tenant_id", ctx.tenantId)
+      .eq("is_active", true)
+      .order("name")
+      .limit(1)
+      .maybeSingle();
+    locationId = firstLoc?.id ?? null;
+  }
+
+  const { data: sale, error: saleError } = await supabase
+    .from("sales")
+    .insert({
+      tenant_id: ctx.tenantId,
+      sale_number: saleNumber,
+      customer_name: (fullQuote.customers as { full_name?: string } | null)?.full_name ?? null,
+      customer_email: (fullQuote.customers as { email?: string } | null)?.email ?? null,
+      status: "quote",
+      payment_method: null,
+      subtotal: totals.subtotal,
+      discount_amount: 0,
+      tax_amount: totals.taxAmount,
+      total: totals.total,
+      notes: fullQuote.notes ?? null,
+      sold_by: ctx.userId,
+      location_id: locationId,
+    })
+    .select("id")
+    .single();
+  if (saleError || !sale) return { error: saleError?.message ?? "Failed to create sale" };
+
+  if (items.length > 0) {
+    const itemsRows = items.map((it, idx) => ({
+      tenant_id: ctx.tenantId,
+      sale_id: sale.id,
+      description: it.description,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      line_total: totals.lineTotals[idx],
+      discount_percent: 0,
+      inventory_id: null,
+      sku: null,
+    }));
+    await supabase.from("sale_items").insert(itemsRows);
+  }
+
+  await supabase
+    .from("quotes")
+    .update({ status: "converted" })
+    .eq("id", quoteId)
+    .eq("tenant_id", ctx.tenantId);
+
+  revalidatePath("/quotes");
+  revalidatePath(`/quotes/${quoteId}`);
+  revalidatePath("/sales");
+  return { id: sale.id };
 }
 
 export async function convertQuoteToInvoice(quoteId: string): Promise<{ id?: string; error?: string }> {
@@ -289,6 +510,9 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<{ id?: str
     if (quoteError || !quote) {
       logger.error("[convertQuoteToInvoice] Quote not found:", quoteError);
       return { error: "Quote not found" };
+    }
+    if (TERMINAL_QUOTE_STATUSES.has(quote.status)) {
+      return { error: `Quote is ${quote.status} — cannot convert.` };
     }
 
     // Generate invoice number
@@ -438,6 +662,9 @@ export async function convertQuoteToBespoke(quoteId: string): Promise<{ id?: str
       logger.error("[convertQuoteToBespoke] Quote not found:", quoteError);
       return { error: "Quote not found" };
     }
+    if (TERMINAL_QUOTE_STATUSES.has(quote.status)) {
+      return { error: `Quote is ${quote.status} — cannot convert.` };
+    }
 
     // Resolve which location this bespoke job belongs to. Without
     // setting location_id explicitly the job inserts NULL, which makes
@@ -549,6 +776,9 @@ export async function convertQuoteToRepair(quoteId: string): Promise<{ id?: stri
     if (quoteError || !quote) {
       logger.error("[convertQuoteToRepair] Quote not found:", quoteError);
       return { error: "Quote not found" };
+    }
+    if (TERMINAL_QUOTE_STATUSES.has(quote.status)) {
+      return { error: `Quote is ${quote.status} — cannot convert.` };
     }
 
     // Resolve location_id same as the bespoke conversion path.
