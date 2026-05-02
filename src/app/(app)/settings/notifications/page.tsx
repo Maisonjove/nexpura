@@ -39,12 +39,12 @@ export default async function NotificationsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <a href="/settings" className="text-sm text-amber-600 hover:underline mb-2 inline-block">
+        <a href="/settings" className="text-sm text-nexpura-charcoal-500 hover:text-nexpura-charcoal mb-2 inline-block transition-colors">
           ← Back to Settings
         </a>
-        <h1 className="text-2xl font-semibold text-stone-900">Notification Settings</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          Configure WhatsApp notifications for customers and staff
+        <h1 className="font-serif text-[28px] leading-tight text-nexpura-charcoal">Notification Settings</h1>
+        <p className="text-sm text-nexpura-charcoal-500 mt-1">
+          WhatsApp notifications for customers and staff.
         </p>
       </div>
       

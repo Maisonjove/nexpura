@@ -18,7 +18,7 @@ import {
 import LogoUpload from "./LogoUpload";
 import SecurityTab from "./SecurityTab";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+import { Check, CircleAlert, HelpCircle } from "lucide-react";
 
 type Tenant = {
   id: string;
@@ -193,12 +193,12 @@ export default function SettingsPage() {
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Static header — renders on SSR so the page never looks blank */}
         <div>
-          <h1 className="font-semibold text-2xl text-stone-900">Settings</h1>
-          <p className="text-stone-500 mt-1 text-sm">Manage your business profile and preferences</p>
+          <h1 className="font-serif text-[28px] leading-tight text-nexpura-charcoal">Settings</h1>
+          <p className="text-nexpura-charcoal-500 mt-1 text-sm">Manage workspace preferences.</p>
         </div>
         <div className="animate-pulse space-y-4">
-          <div className="h-12 bg-stone-200 rounded" />
-          <div className="h-64 bg-stone-200 rounded" />
+          <div className="h-12 bg-nexpura-taupe-100 rounded" />
+          <div className="h-64 bg-nexpura-taupe-100 rounded" />
         </div>
       </div>
     );
@@ -208,30 +208,26 @@ export default function SettingsPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="font-semibold text-2xl text-stone-900">Settings</h1>
-        <p className="text-stone-500 mt-1 text-sm">Manage your business profile and preferences</p>
+        <h1 className="font-serif text-[28px] leading-tight text-nexpura-charcoal">Settings</h1>
+        <p className="text-nexpura-charcoal-500 mt-1 text-sm">Manage workspace preferences.</p>
       </div>
 
       {/* Toast */}
       {successMsg && (
-        <div className="flex items-center gap-3 bg-stone-100 border border-amber-600/30 text-amber-700 rounded-xl px-4 py-3 text-sm">
-          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
+        <div className="flex items-center gap-3 bg-nexpura-ivory-elevated border border-nexpura-taupe-100 text-nexpura-charcoal-700 rounded-xl px-4 py-3 text-sm">
+          <Check className="w-4 h-4 flex-shrink-0 text-nexpura-bronze" strokeWidth={1.5} />
           {successMsg}
         </div>
       )}
       {errorMsg && (
         <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
-          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-          </svg>
+          <CircleAlert className="w-4 h-4 flex-shrink-0" strokeWidth={1.5} />
           {errorMsg}
         </div>
       )}
 
       {/* Tabs */}
-      <div className="border-b border-stone-200">
+      <div className="border-b border-nexpura-taupe-100">
         <nav className="flex gap-1 -mb-px">
           {TABS.map((tab) => (
             <button
@@ -239,8 +235,8 @@ export default function SettingsPage() {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab
-                  ? "border-amber-600 text-amber-700"
-                  : "border-transparent text-stone-500 hover:text-stone-900 hover:border-stone-200"
+                  ? "border-nexpura-bronze text-nexpura-charcoal"
+                  : "border-transparent text-nexpura-taupe-400 hover:text-nexpura-charcoal hover:border-nexpura-taupe-100"
               }`}
             >
               {tab}
@@ -253,44 +249,39 @@ export default function SettingsPage() {
       {activeTab === "Business Profile" && (
         <form onSubmit={handleBusinessSubmit} className="space-y-6">
           {/* Logo */}
-          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
-            <h2 className="text-base font-semibold text-stone-900">Business Logo</h2>
-            <div className="flex items-center gap-5">
-              {tenant?.id && (
-                <LogoUpload
-                  tenantId={tenant.id}
-                  currentLogoUrl={logoPreview}
-                  onLogoChange={(url) => {
-                    setLogoPreview(url);
-                    setTenant((prev) => prev ? { ...prev, logo_url: url } : prev);
-                  }}
-                />
-              )}
-              <div>
-                <p className="text-xs text-stone-400">PNG, JPG, WebP up to 10MB. Recommended: 400×400px</p>
-              </div>
-            </div>
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-nexpura-charcoal">Business Logo</h2>
+            {tenant?.id && (
+              <LogoUpload
+                tenantId={tenant.id}
+                currentLogoUrl={logoPreview}
+                onLogoChange={(url) => {
+                  setLogoPreview(url);
+                  setTenant((prev) => prev ? { ...prev, logo_url: url } : prev);
+                }}
+              />
+            )}
           </div>
 
           {/* Business info */}
-          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
-            <h2 className="text-base font-semibold text-stone-900">Business Information</h2>
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-nexpura-charcoal">Business Information</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Business Name</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Business Name</label>
                 <input
                   name="business_name"
                   defaultValue={tenant?.business_name || tenant?.name || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   placeholder="My Jewellery Studio"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Business Type</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Business Type</label>
                 <select
                   name="business_type"
                   defaultValue={tenant?.business_type || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                 >
                   <option value="">Select type…</option>
                   <option value="jeweller">Jeweller</option>
@@ -303,55 +294,55 @@ export default function SettingsPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Workspace Mode</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Workspace Mode</label>
                 <select
                   name="business_mode"
                   defaultValue={tenant?.business_mode || "full"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white font-medium text-amber-700"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white font-medium text-nexpura-charcoal focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                 >
                   <option value="full">Full (All Features)</option>
                   <option value="retail">Retail Focus (POS + Inventory)</option>
                   <option value="workshop">Workshop Focus (Repairs + Calendar)</option>
                   <option value="bespoke">Bespoke Focus (Custom Jobs)</option>
                 </select>
-                <p className="text-[10px] text-stone-400">Tailors the dashboard and navigation to your workflow</p>
+                <p className="text-[12px] text-nexpura-taupe-400">Tailors the dashboard and navigation to your workflow.</p>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Phone</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Phone</label>
                 <input
                   name="phone"
                   type="tel"
                   defaultValue={tenant?.phone || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   placeholder="+61 2 9000 0000"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Email</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Email</label>
                 <input
                   name="email"
                   type="email"
                   defaultValue={tenant?.email || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   placeholder="hello@mybusiness.com"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Website</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Website</label>
                 <input
                   name="website"
                   type="url"
                   defaultValue={tenant?.website || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   placeholder="https://mybusiness.com"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">ABN</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">ABN</label>
                 <input
                   name="abn"
                   defaultValue={tenant?.abn || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   placeholder="12 345 678 901"
                 />
               </div>
@@ -359,34 +350,34 @@ export default function SettingsPage() {
           </div>
 
           {/* Address */}
-          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
-            <h2 className="text-base font-semibold text-stone-900">Business Address</h2>
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-nexpura-charcoal">Business Address</h2>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Street Address</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Street Address</label>
                 <input
                   name="address_line1"
                   defaultValue={tenant?.address_line1 || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   placeholder="123 Main Street"
                 />
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="col-span-2 sm:col-span-1 space-y-1.5">
-                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Suburb</label>
+                  <label className="text-[12px] font-medium text-nexpura-charcoal-700">Suburb</label>
                   <input
                     name="suburb"
                     defaultValue={tenant?.suburb || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                    className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                     placeholder="Sydney"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">State</label>
+                  <label className="text-[12px] font-medium text-nexpura-charcoal-700">State</label>
                   <select
                     name="state"
                     defaultValue={tenant?.state || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                    className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   >
                     <option value="">State</option>
                     <option value="NSW">NSW</option>
@@ -400,20 +391,20 @@ export default function SettingsPage() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Postcode</label>
+                  <label className="text-[12px] font-medium text-nexpura-charcoal-700">Postcode</label>
                   <input
                     name="postcode"
                     defaultValue={tenant?.postcode || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                    className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                     placeholder="2000"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Country</label>
+                  <label className="text-[12px] font-medium text-nexpura-charcoal-700">Country</label>
                   <select
                     name="country"
                     defaultValue={tenant?.country || "Australia"}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                    className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   >
                     <option value="Australia">Australia</option>
                     <option value="New Zealand">New Zealand</option>
@@ -427,10 +418,10 @@ export default function SettingsPage() {
           </div>
 
           {/* Invoice Customization */}
-          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
-            <h2 className="text-base font-semibold text-stone-900">Invoice Customization</h2>
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-nexpura-charcoal">Invoice Customization</h2>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">
+              <label className="text-[12px] font-medium text-nexpura-charcoal-700">
                 Accent Colour
               </label>
               <div className="flex items-center gap-3">
@@ -438,9 +429,9 @@ export default function SettingsPage() {
                   type="color"
                   name="invoice_accent_color"
                   defaultValue={tenant?.invoice_accent_color || '#1e3a5f'}
-                  className="w-10 h-10 rounded cursor-pointer border border-stone-200"
+                  className="w-10 h-10 rounded cursor-pointer border border-nexpura-taupe-100"
                 />
-                <span className="text-xs text-stone-500">Used on invoice titles and totals</span>
+                <span className="text-[12px] text-nexpura-taupe-400">Used on invoice titles and totals.</span>
               </div>
             </div>
           </div>
@@ -460,15 +451,15 @@ export default function SettingsPage() {
       {/* Tax & Currency Tab */}
       {activeTab === "Tax & Currency" && (
         <form onSubmit={handleTaxSubmit} className="space-y-6">
-          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
-            <h2 className="text-base font-semibold text-stone-900">Currency & Timezone</h2>
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-nexpura-charcoal">Currency & Timezone</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Currency</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Currency</label>
                 <select
                   name="currency"
                   defaultValue={tenant?.currency || "AUD"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                 >
                   <option value="AUD">AUD — Australian Dollar</option>
                   <option value="NZD">NZD — New Zealand Dollar</option>
@@ -478,11 +469,11 @@ export default function SettingsPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Timezone</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Timezone</label>
                 <select
                   name="timezone"
                   defaultValue={tenant?.timezone || "Australia/Sydney"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                 >
                   <option value="Australia/Sydney">Australia/Sydney (AEDT)</option>
                   <option value="Australia/Melbourne">Australia/Melbourne (AEDT)</option>
@@ -499,15 +490,15 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
-            <h2 className="text-base font-semibold text-stone-900">Tax Settings</h2>
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-nexpura-charcoal">Tax Settings</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Tax Name</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Tax Name</label>
                 <select
                   name="tax_name"
                   defaultValue={tenant?.tax_name || "GST"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                 >
                   <option value="GST">GST</option>
                   <option value="VAT">VAT</option>
@@ -517,11 +508,11 @@ export default function SettingsPage() {
               </div>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Tax Rate (%)</label>
+                  <label className="text-[12px] font-medium text-nexpura-charcoal-700">Tax Rate (%)</label>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger>
-                        <HelpCircle className="h-3.5 w-3.5 text-stone-400" />
+                        <HelpCircle className="h-3.5 w-3.5 text-nexpura-taupe-400" strokeWidth={1.5} />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p>The tax rate applied to all sales. In Australia this is GST at 10%. Adjust for your local tax jurisdiction.</p>
@@ -536,12 +527,12 @@ export default function SettingsPage() {
                   max="100"
                   step="0.01"
                   defaultValue={tenant?.tax_rate != null ? (tenant.tax_rate * 100).toFixed(0) : "10"}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   placeholder="10"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Tax Inclusive</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Tax Inclusive</label>
                 <div className="flex items-center h-[38px]">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -551,7 +542,7 @@ export default function SettingsPage() {
                       value="true"
                       className="w-4 h-4 accent-sage rounded"
                     />
-                    <span className="text-sm text-stone-900">Prices include tax</span>
+                    <span className="text-sm text-nexpura-charcoal">Prices include tax</span>
                   </label>
                 </div>
               </div>
@@ -573,60 +564,53 @@ export default function SettingsPage() {
       {/* Banking Tab */}
       {activeTab === "Banking" && (
         <form onSubmit={handleBankingSubmit} className="space-y-6">
-          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
-            <div className="flex items-start gap-3 mb-2">
-              <div className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-base font-semibold text-stone-900">Banking Details</h2>
-                <p className="text-xs text-stone-500 mt-0.5">These appear on your invoices for direct deposit payments</p>
-              </div>
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6 space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-nexpura-charcoal">Banking Details</h2>
+              <p className="text-[12px] text-nexpura-taupe-400 mt-0.5">These appear on your invoices for direct deposit payments.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Bank Name</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Bank Name</label>
                 <input
                   name="bank_name"
                   defaultValue={tenant?.bank_name || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   placeholder="Commonwealth Bank"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">BSB</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">BSB</label>
                 <input
                   name="bank_bsb"
                   defaultValue={tenant?.bank_bsb || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   placeholder="062-000"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Account Number</label>
+                <label className="text-[12px] font-medium text-nexpura-charcoal-700">Account Number</label>
                 <input
                   name="bank_account"
                   defaultValue={tenant?.bank_account || ""}
-                  className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                  className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   placeholder="1234 5678"
                 />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6 space-y-4">
             <div>
-              <h2 className="text-base font-semibold text-stone-900">Invoice Footer</h2>
-              <p className="text-xs text-stone-500 mt-0.5">This message appears at the bottom of every invoice PDF</p>
+              <h2 className="text-base font-semibold text-nexpura-charcoal">Invoice Footer</h2>
+              <p className="text-[12px] text-nexpura-taupe-400 mt-0.5">This message appears at the bottom of every invoice PDF.</p>
             </div>
             <div className="space-y-1.5">
               <textarea
                 name="invoice_footer"
                 defaultValue={tenant?.invoice_footer || ""}
                 rows={3}
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white resize-none"
+                className="w-full px-3 py-2 text-sm border border-nexpura-taupe-100 rounded-md bg-white resize-none focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                 placeholder="Thank you for your business. Payment due within 7 days."
               />
             </div>
@@ -648,21 +632,21 @@ export default function SettingsPage() {
       {activeTab === "Account" && (
         <div className="space-y-6">
           {/* Plan */}
-          <div className="bg-white rounded-xl border border-stone-200 p-6">
-            <h2 className="text-base font-semibold text-stone-900 mb-4">Current Plan</h2>
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6">
+            <h2 className="text-base font-semibold text-nexpura-charcoal mb-4">Current Plan</h2>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
                   subscription?.plan === "atelier" || subscription?.plan === "group" || subscription?.plan === "ultimate"
-                    ? "bg-amber-700/10 text-amber-700 border border-amber-600/30"
+                    ? "bg-nexpura-charcoal text-white border border-nexpura-charcoal"
                     : subscription?.plan === "studio" || subscription?.plan === "pro"
-                    ? "bg-amber-50 text-amber-700 border border-amber-600/30"
-                    : "bg-stone-100 text-stone-600 border border-stone-200"
+                    ? "bg-nexpura-champagne text-nexpura-charcoal-700 border border-nexpura-taupe-100"
+                    : "bg-nexpura-ivory text-nexpura-charcoal-500 border border-nexpura-taupe-100"
                 }`}>
                   {subscription?.plan === "atelier" || subscription?.plan === "group" || subscription?.plan === "ultimate" ? "Atelier" :
                    subscription?.plan === "studio" || subscription?.plan === "pro" ? "Studio" : "Boutique"}
                 </div>
-                <span className="text-sm text-stone-500">
+                <span className="text-sm text-nexpura-charcoal-500">
                   {subscription?.status === "trialing"
                     ? `Trial ends ${new Date(subscription.trial_ends_at!).toLocaleDateString("en-AU")}`
                     : subscription?.status === "active"
@@ -680,25 +664,25 @@ export default function SettingsPage() {
 
           {/* Account details */}
           <form onSubmit={handleAccountSubmit} className="space-y-6">
-            <div className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
-              <h2 className="text-base font-semibold text-stone-900">Account Details</h2>
+            <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6 space-y-4">
+              <h2 className="text-base font-semibold text-nexpura-charcoal">Account Details</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2 space-y-1.5">
-                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Full Name</label>
+                  <label className="text-[12px] font-medium text-nexpura-charcoal-700">Full Name</label>
                   <input
                     name="full_name"
                     defaultValue={user?.full_name || ""}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
+                    className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze focus:ring-offset-2 focus:border-nexpura-bronze"
                   />
                 </div>
                 <div className="sm:col-span-2 space-y-1.5">
-                  <label className="text-xs font-medium text-stone-500 uppercase tracking-wide">Email</label>
+                  <label className="text-[12px] font-medium text-nexpura-charcoal-700">Email</label>
                   <input
                     value={user?.email || ""}
                     readOnly
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg bg-stone-50 text-stone-500 cursor-not-allowed"
+                    className="w-full h-10 px-3 text-sm border border-nexpura-taupe-100 rounded-md bg-nexpura-ivory text-nexpura-charcoal-500 cursor-not-allowed"
                   />
-                  <p className="text-xs text-stone-400">Email cannot be changed here</p>
+                  <p className="text-[12px] text-nexpura-taupe-400">Email cannot be changed here.</p>
                 </div>
               </div>
             </div>
@@ -706,7 +690,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <button
                 type="button"
-                className="text-sm text-stone-500 hover:text-stone-900 underline transition-colors"
+                className="text-sm text-nexpura-charcoal-500 hover:text-nexpura-charcoal underline transition-colors"
                 onClick={() => {
                   const supabase = createClient();
                   supabase.auth.resetPasswordForEmail(user?.email || "", {
@@ -727,9 +711,9 @@ export default function SettingsPage() {
           </form>
 
           {/* Data Export (GDPR) */}
-          <div className="bg-white rounded-xl border border-stone-200 p-6">
-            <h2 className="text-base font-semibold text-stone-900 mb-2">Your Data</h2>
-            <p className="text-sm text-stone-500 mb-4">
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-6">
+            <h2 className="text-base font-semibold text-nexpura-charcoal mb-2">Your Data</h2>
+            <p className="text-sm text-nexpura-charcoal-500 mb-4">
               Download a copy of all your business data including customers, inventory, sales, repairs, and more.
             </p>
             <div className="flex items-center gap-3">
@@ -754,18 +738,18 @@ export default function SettingsPage() {
                     setErrorMsg("Failed to export data. Please try again.");
                   }
                 }}
-                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium border border-nexpura-taupe-100 rounded-md text-nexpura-charcoal hover:bg-nexpura-ivory transition-colors"
               >
                 Export all data
               </button>
-              <span className="text-xs text-stone-400">JSON format • May take a minute for large accounts</span>
+              <span className="text-[12px] text-nexpura-taupe-400">JSON format · May take a minute for large accounts.</span>
             </div>
           </div>
 
           {/* Account Deletion (GDPR) */}
-          <div className="bg-white rounded-xl border border-red-200 p-6">
+          <div className="bg-nexpura-ivory-elevated rounded-xl border border-red-200 p-6">
             <h2 className="text-base font-semibold text-red-900 mb-2">Delete Account</h2>
-            <p className="text-sm text-stone-500 mb-4">
+            <p className="text-sm text-nexpura-charcoal-500 mb-4">
               Permanently delete your account and all associated data. This action is irreversible after 30 days.
             </p>
             <button

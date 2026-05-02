@@ -147,8 +147,8 @@ function XeroCard({ data }: { data: IntegrationStatus["xero"] }) {
     <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm flex flex-col">
       <div className="p-6 flex-1">
         <div className="flex items-start justify-between mb-4">
-          <div className="p-2.5 rounded-lg bg-amber-500 text-white">
-            <Landmark size={24} />
+          <div className="p-2.5 rounded-lg bg-nexpura-charcoal text-white">
+            <Landmark size={24} strokeWidth={1.5} />
           </div>
           <StatusBadge status={data.status} />
         </div>
@@ -167,8 +167,8 @@ function XeroCard({ data }: { data: IntegrationStatus["xero"] }) {
           </p>
         )}
         {!data.configured && (
-          <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3 space-y-1">
-            <p className="font-semibold">⚙️ Setup Required</p>
+          <div className="text-xs text-nexpura-charcoal-700 bg-nexpura-champagne/40 border border-nexpura-taupe-100 rounded-lg px-3 py-2 mt-3 space-y-1">
+            <p className="font-semibold">Setup required</p>
             <p>
               Xero integration requires configuration by your account administrator.
               Please contact support if you need assistance setting up this integration.
@@ -185,10 +185,10 @@ function XeroCard({ data }: { data: IntegrationStatus["xero"] }) {
         {data.status !== "connected" ? (
           <a
             href="/api/integrations/xero/connect"
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
               data.configured
-                ? "bg-amber-500 text-white hover:bg-amber-700"
-                : "bg-stone-100 text-stone-400 cursor-not-allowed pointer-events-none"
+                ? "bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700"
+                : "bg-nexpura-ivory text-nexpura-taupe-400 cursor-not-allowed pointer-events-none"
             }`}
           >
             Connect Xero
@@ -197,9 +197,9 @@ function XeroCard({ data }: { data: IntegrationStatus["xero"] }) {
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="px-3 py-1.5 text-xs font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs font-medium bg-nexpura-charcoal text-white rounded-md hover:bg-nexpura-charcoal-700 disabled:opacity-50 flex items-center gap-1.5"
           >
-            {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} strokeWidth={1.5} />}
             Sync Now
           </button>
         )}
@@ -712,9 +712,9 @@ export default function IntegrationsPage() {
   return (
     <div className="max-w-4xl mx-auto py-10 px-4 space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold text-stone-900">Integrations</h1>
-        <p className="text-sm text-stone-500 mt-0.5">
-          Connect Nexpura to your accounting, messaging, and ecommerce tools
+        <h1 className="font-serif text-[28px] leading-tight text-nexpura-charcoal">Integrations</h1>
+        <p className="text-sm text-nexpura-charcoal-500 mt-0.5">
+          Connect to your accounting, messaging, and ecommerce tools.
         </p>
       </div>
 
