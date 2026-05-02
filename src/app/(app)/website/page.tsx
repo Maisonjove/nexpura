@@ -4,20 +4,36 @@ import { redirect } from "next/navigation";
 import { getEntitlementContext } from "@/lib/auth/entitlements";
 import { planIncludes, PLAN_NAMES, PlanId } from "@/lib/plans";
 import Link from "next/link";
+import WebsiteHomeClient from "./WebsiteHomeClient";
 import WebsiteBuilderClient from "./WebsiteBuilderClient";
 
 export const metadata = { title: "Website Builder — Nexpura" };
 
+/**
+ * Phase 2 entry point.
+ *
+ * - website_type !== "hosted" → legacy WebsiteBuilderClient handles
+ *   ConnectMode and DomainGuideMode.
+ * - website_type === "hosted" → render WebsiteHomeClient regardless of
+ *   whether pages exist. WebsiteHomeClient swaps its main panel between the
+ *   template gallery (no pages) and the page list (has pages) and keeps the
+ *   tab chrome + AI assistant reachable in both states.
+ *
+ * The legacy /website?tab=branding|content|ai routes simply fall back to
+ * Setup since those tabs no longer exist; the AI panel takes over their job.
+ */
 export default async function WebsitePage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const ctx = await getEntitlementContext();
   if (!ctx.tenantId) redirect("/login");
 
   // Entitlement gate: Website Builder requires Studio or Atelier
-  if (!planIncludes(ctx.plan as PlanId, 'websiteBuilder')) {
+  if (!planIncludes(ctx.plan as PlanId, "websiteBuilder")) {
     return (
       <div className="max-w-xl mx-auto py-20 px-4 text-center space-y-6">
         <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto">
@@ -26,8 +42,11 @@ export default async function WebsitePage() {
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">Website Builder</h1>
           <p className="text-stone-500 mt-2 text-sm leading-relaxed">
-            Your current plan <strong className="text-stone-900">{PLAN_NAMES[ctx.plan as PlanId]}</strong> does not include the Website Builder.
-            Upgrade to <strong className="text-stone-900">Studio</strong> or <strong className="text-stone-900">Atelier</strong> to build and publish your jewellery website directly from Nexpura.
+            Your current plan{" "}
+            <strong className="text-stone-900">{PLAN_NAMES[ctx.plan as PlanId]}</strong>{" "}
+            does not include the Website Builder. Upgrade to{" "}
+            <strong className="text-stone-900">Studio</strong> or{" "}
+            <strong className="text-stone-900">Atelier</strong> to build and publish your jewellery website directly from Nexpura.
           </p>
         </div>
         <Link
@@ -44,16 +63,52 @@ export default async function WebsitePage() {
   }
 
   const admin = createAdminClient();
-  const { data: config } = await admin
-    .from("website_config")
-    .select("*")
-    .eq("tenant_id", ctx.tenantId)
-    .maybeSingle();
+  const [{ data: config }, { data: pages }] = await Promise.all([
+    admin
+      .from("website_config")
+      .select("*")
+      .eq("tenant_id", ctx.tenantId)
+      .maybeSingle(),
+    admin
+      .from("site_pages")
+      .select("id, slug, title, page_type, published, meta_title, meta_description, updated_at")
+      .eq("tenant_id", ctx.tenantId)
+      .order("created_at", { ascending: true }),
+  ]);
 
+  const websiteType = (config?.website_type as string | undefined) ?? "hosted";
+
+  // Connect / domain-guide modes use the legacy client, untouched. The Phase 2
+  // gallery + AI flow only applies to "hosted" tenants — connecting to an
+  // existing Shopify/Squarespace site is unrelated.
+  if (websiteType !== "hosted") {
+    return (
+      <WebsiteBuilderClient
+        initial={config}
+        tenantId={ctx.tenantId}
+      />
+    );
+  }
+
+  // Hosted tenant — always render WebsiteHomeClient so the tab chrome
+  // (Setup / Domain / Advanced / Preview) and the AI assistant panel stay
+  // reachable. When `pages` is empty the "Your Site" tab renders the
+  // template gallery as its main content; once a template is applied the
+  // same view shows the page list.
   return (
-    <WebsiteBuilderClient
-      initial={config}
+    <WebsiteHomeClient
+      initialConfig={config}
       tenantId={ctx.tenantId}
+      pages={(pages || []).map((p) => ({
+        id: p.id as string,
+        slug: p.slug as string,
+        title: p.title as string,
+        page_type: p.page_type as string,
+        published: Boolean(p.published),
+        meta_title: (p.meta_title as string | null) ?? null,
+        meta_description: (p.meta_description as string | null) ?? null,
+        updated_at: (p.updated_at as string | null) ?? null,
+      }))}
     />
   );
 }

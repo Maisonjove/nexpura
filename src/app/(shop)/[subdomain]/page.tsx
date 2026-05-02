@@ -4,6 +4,25 @@ import Link from "next/link";
 import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Metadata } from "next";
+import { SectionRenderer } from "@/components/website/SectionRenderer";
+import {
+  TemplateFontLink,
+  TemplateNav,
+  TemplateFooter,
+} from "@/components/website/TemplateChrome";
+import type { Font, Theme } from "@/lib/templates/types";
+
+/** Coerce an arbitrary string into one of the three allowed Phase 1 fonts. */
+function asFont(v: string | null | undefined, fallback: Font): Font {
+  if (
+    v === "Inter" ||
+    v === "Playfair Display" ||
+    v === "Cormorant Garamond"
+  ) {
+    return v;
+  }
+  return fallback;
+}
 
 interface Props {
   params: Promise<{ subdomain: string }>;
@@ -97,6 +116,102 @@ async function ShopHomePage({ params, searchParams }: Props) {
   const secondaryColor = config.secondary_color || "#1A1A1A";
   const font = config.font || "Inter";
   const base = `/${subdomain}`;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Phase 1 template renderer
+  //
+  // If this tenant has a published "home" page in `site_pages` (i.e. they
+  // applied a website template), render that via the section registry
+  // inside template chrome. Otherwise fall through to the legacy hardcoded
+  // layout below — full backward compatibility.
+  // ─────────────────────────────────────────────────────────────────────
+  const homePageQuery = supabase
+    .from("site_pages")
+    .select("id, title, meta_title, meta_description, page_type, published")
+    .eq("tenant_id", config.tenant_id)
+    .eq("page_type", "home");
+
+  const { data: homePage } = preview
+    ? await homePageQuery.maybeSingle()
+    : await homePageQuery.eq("published", true).maybeSingle();
+
+  if (homePage?.id) {
+    const { data: sections } = await supabase
+      .from("site_sections")
+      .select("section_type, display_order, content, styles")
+      .eq("page_id", homePage.id)
+      .eq("tenant_id", config.tenant_id)
+      .order("display_order", { ascending: true });
+
+    if (sections && sections.length > 0) {
+      // Pull the rest of this tenant's published pages for nav links
+      const { data: navPages } = await supabase
+        .from("site_pages")
+        .select("slug, title, page_type")
+        .eq("tenant_id", config.tenant_id)
+        .eq("published", true)
+        .neq("page_type", "home")
+        .order("created_at", { ascending: true });
+
+      const headingFont = asFont(font, "Playfair Display");
+      const bodyFont = asFont(font, "Inter");
+      const theme: Theme = {
+        primaryColor: typeof primaryColor === "string" && primaryColor.startsWith("#") ? primaryColor : "#c9a96e",
+        secondaryColor: typeof secondaryColor === "string" && secondaryColor.startsWith("#") ? secondaryColor : "#1a1a1a",
+        headingFont,
+        bodyFont,
+      };
+
+      const navItems = (navPages || []).map((p) => ({
+        label: (p.title as string) || (p.slug as string),
+        slug: `${subdomain}/${p.slug}`,
+      }));
+
+      return (
+        <>
+          <TemplateFontLink theme={theme} />
+          {preview && (
+            <div className="bg-amber-50 border-b border-amber-200 text-amber-700 text-xs text-center py-2 px-4">
+              Preview mode — this page is not yet published publicly
+            </div>
+          )}
+          <div
+            style={{
+              fontFamily: theme.bodyFont,
+              backgroundColor: "#ffffff",
+              color: theme.secondaryColor,
+            }}
+          >
+            <TemplateNav
+              brandName={config.business_name || subdomain}
+              items={navItems}
+              theme={theme}
+              basePath={`/${subdomain}`}
+              ctaLabel={config.allow_enquiry !== false ? "Enquire" : undefined}
+              ctaHref={
+                config.allow_enquiry !== false ? `${base}/enquiry` : undefined
+              }
+            />
+            <main>
+              <SectionRenderer sections={sections} theme={theme} />
+            </main>
+            <TemplateFooter
+              brandName={config.business_name || subdomain}
+              copy={
+                config.tagline ||
+                `© ${new Date().getFullYear()} ${
+                  config.business_name || subdomain
+                }`
+              }
+              theme={theme}
+            />
+          </div>
+        </>
+      );
+    }
+  }
+
+  // ── Legacy hardcoded layout (fallback when no template applied) ──
 
   const fontImport = font !== "Inter"
     ? `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@300;400;500;600;700&display=swap`

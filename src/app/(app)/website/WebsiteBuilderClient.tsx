@@ -2,7 +2,6 @@
 
 import { useState, useTransition , Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import {
   saveWebsiteConfig,
@@ -15,11 +14,9 @@ import {
   validatePhone,
   validateUrl,
 } from "./validation";
-import type { WebsiteType, Tab, AISuggestions, WebsiteConfig, WebsiteBuilderProps as Props, BusinessHours, SocialLinks } from "./types";
+import type { WebsiteType, Tab, WebsiteConfig, WebsiteBuilderProps as Props, BusinessHours, SocialLinks } from "./types";
 import {
   SetupTab,
-  BrandingTab,
-  ContentTab,
   DomainTab,
   AdvancedTab,
   PreviewTab,
@@ -29,21 +26,11 @@ import {
 } from "./components";
 import logger from "@/lib/logger";
 
-// Lazy-load AI tab since it's not needed on initial render
-const AITab = dynamic(() => import("./components/AITab"), { 
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center py-12">
-      <div className="animate-pulse text-stone-400 text-sm">Loading AI features...</div>
-    </div>
-  ),
-});
-
+// Phase 2: Branding / Content / AI tabs removed. Branding+content are
+// now driven from templates + the new chat assistant; the old 5-action
+// AI tab has been retired.
 const TABS: { id: Tab; label: string }[] = [
   { id: "setup", label: "Setup" },
-  { id: "branding", label: "Branding" },
-  { id: "content", label: "Content" },
-  { id: "ai", label: "✦ AI" },
   { id: "advanced", label: "Advanced" },
   { id: "domain", label: "Domain" },
   { id: "preview", label: "Preview" },
@@ -79,10 +66,6 @@ function WebsiteBuilderClientInner({ initial, tenantId }: Props) {
   const [customDomainInput, setCustomDomainInput] = useState(initial?.custom_domain || "");
   const [externalUrlInput, setExternalUrlInput] = useState(initial?.external_url || "");
   const [selectedPlatform, setSelectedPlatform] = useState(initial?.external_platform || "");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiAction, setAiAction] = useState<string | null>(null);
-  const [aiResult, setAiResult] = useState<AISuggestions | null>(null);
-  const [aiApplied, setAiApplied] = useState<string | null>(null);
 
   // Advanced settings state
   const [announcementEnabled, setAnnouncementEnabled] = useState(initial?.announcement_bar_enabled ?? false);
@@ -242,68 +225,6 @@ function WebsiteBuilderClientInner({ initial, tenantId }: Props) {
     });
   }
 
-  async function handleAIAction(action: string) {
-    setAiLoading(true);
-    setAiAction(action);
-    setAiResult(null);
-    setAiApplied(null);
-    
-    // Create timeout for AI request
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
-    
-    try {
-      const res = await fetch("/api/ai/website/site-action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, currentConfig: config }),
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      const data = await res.json() as { suggestedConfig?: Partial<WebsiteConfig>; suggestions?: string[]; rationale?: string; action?: string; error?: string };
-      
-      if (!res.ok) {
-        toast.error(data.error || "AI request failed. Please try again.");
-        return;
-      }
-      
-      if (data.error) {
-        toast.error(data.error);
-        return;
-      }
-      
-      if (data.suggestions) {
-        setAiResult({ suggestions: data.suggestions });
-        toast.success("AI generated suggestions");
-      } else if (data.suggestedConfig) {
-        setConfig((prev) => ({ ...prev, ...data.suggestedConfig }));
-        setSaved(false);
-        setAiApplied(action);
-        if (data.rationale) setAiResult({ rationale: data.rationale });
-        toast.success("AI suggestions applied — review and save when ready");
-      }
-    } catch (err) {
-      clearTimeout(timeoutId);
-      
-      if (err instanceof Error && err.name === "AbortError") {
-        toast.error("AI request timed out. Please try again.");
-      } else {
-        logger.error(err);
-        toast.error("AI request failed. Please try again.");
-      }
-    } finally {
-      setAiLoading(false);
-    }
-  }
-
-  function applyTaglineSuggestion(tagline: string) {
-    update("tagline", tagline);
-    setAiResult(null);
-    setAiApplied("suggest_tagline");
-  }
-
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -311,7 +232,13 @@ function WebsiteBuilderClientInner({ initial, tenantId }: Props) {
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">Website Builder</h1>
           <p className="text-stone-500 mt-1">
-            Build and publish your public jewellery storefront.
+            Build and publish your public jewellery storefront.{" "}
+            <a
+              href="/website/templates"
+              className="text-amber-700 hover:text-amber-800 underline underline-offset-2 font-medium"
+            >
+              Browse templates
+            </a>
           </p>
         </div>
         {websiteType === "hosted" && (
@@ -440,27 +367,6 @@ function WebsiteBuilderClientInner({ initial, tenantId }: Props) {
               subdomainStatus={subdomainStatus}
               setSubdomainStatus={setSubdomainStatus}
               onCheckSubdomain={handleCheckSubdomain}
-            />
-          )}
-
-          {activeTab === "branding" && (
-            <BrandingTab config={config} update={update} tenantId={tenantId} />
-          )}
-
-          {activeTab === "content" && (
-            <ContentTab config={config} update={update} />
-          )}
-
-          {activeTab === "ai" && (
-            <AITab
-              config={config}
-              aiLoading={aiLoading}
-              aiAction={aiAction}
-              aiResult={aiResult}
-              aiApplied={aiApplied}
-              onAIAction={handleAIAction}
-              onApplyTagline={applyTaglineSuggestion}
-              onDismiss={() => setAiResult(null)}
             />
           )}
 

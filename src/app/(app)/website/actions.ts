@@ -164,6 +164,52 @@ export async function publishWebsite(publish: boolean): Promise<{ success?: bool
   }
 }
 
+/**
+ * Flip the tenant's website_type. Used by the Phase 2 entry view to let a
+ * user opt out of the hosted/template flow and reach the legacy
+ * ConnectMode (website_type === "connect") in WebsiteBuilderClient.
+ *
+ * Schema/RLS untouched — this only updates the existing column.
+ */
+export async function switchWebsiteType(
+  websiteType: "hosted" | "connect",
+): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const { supabase, tenantId } = await getAuthContext();
+
+    const { data: existing } = await supabase
+      .from("website_config")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase
+        .from("website_config")
+        .update({ website_type: websiteType })
+        .eq("tenant_id", tenantId);
+      if (error) {
+        logger.error("[switchWebsiteType] Update error:", error);
+        return { error: error.message };
+      }
+    } else {
+      const { error } = await supabase
+        .from("website_config")
+        .insert({ tenant_id: tenantId, website_type: websiteType });
+      if (error) {
+        logger.error("[switchWebsiteType] Insert error:", error);
+        return { error: error.message };
+      }
+    }
+
+    revalidatePath("/website");
+    return { success: true };
+  } catch (err) {
+    logger.error("[switchWebsiteType] Unexpected error:", err);
+    return { error: err instanceof Error ? err.message : "Failed to switch website type" };
+  }
+}
+
 export async function checkSubdomainAvailable(subdomain: string, currentTenantId?: string): Promise<{ available: boolean; reason?: string }> {
   try {
     const { supabase, tenantId } = await getAuthContext();
@@ -193,7 +239,17 @@ export async function checkSubdomainAvailable(subdomain: string, currentTenantId
       return { available: false, reason: "This subdomain is reserved" };
     }
 
-    const { data, error } = await supabase
+    // Subdomain uniqueness is a GLOBAL property — we have to be able to see
+    // every tenant's website_config row to detect collisions. Pre-fix this
+    // query used the RLS-scoped `supabase` client from getAuthContext, which
+    // returns NULL for any other tenant's row (RLS blocks the read). The
+    // code then read the NULL as "no collision" and returned available:true
+    // for subdomains that were actually taken — Joey hit this with
+    // "maisonjove" in the QA pass. Switched to the admin client so the
+    // existence check sees every row; we still exclude the caller's own
+    // tenant_id so users can re-confirm their existing subdomain.
+    const admin = createAdminClient();
+    const { data, error } = await admin
       .from("website_config")
       .select("tenant_id")
       .eq("subdomain", trimmed)
