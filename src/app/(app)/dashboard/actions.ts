@@ -41,6 +41,12 @@ export interface DashboardCriticalData {
   userId: string;
   tenantId: string;
   timezone: string;
+  /**
+   * The signed-in user's email. Used by DashboardClient to gate the
+   * platform-Admin module card behind the same allowlist as /admin
+   * (single source of truth: src/lib/admin-allowlist.ts).
+   */
+  userEmail: string | null;
 }
 
 // Stats data - fetched client-side after initial render
@@ -138,6 +144,7 @@ export async function getDashboardCriticalData(): Promise<DashboardCriticalData>
         userId,
         tenantId,
         timezone: fromCookie.timezone ?? "Australia/Sydney",
+        userEmail: auth.email,
       };
     }
   } catch {
@@ -160,6 +167,7 @@ export async function getDashboardCriticalData(): Promise<DashboardCriticalData>
         userId,
         tenantId,
         timezone: meta.timezone,
+        userEmail: auth.email,
       };
     },
     900 // 15 min — tenant info rarely changes (aligned with getTenantMeta)

@@ -463,7 +463,7 @@ export default function DashboardSidebar({
       <Section
         title="Ready for pickup"
         count={readyForPickup.length}
-        href={`${bp}/workshop?status=ready-for-pickup`}
+        href={`${bp}/workshop/jobs?status=ready-for-pickup`}
       >
         <ReadyForPickupSection items={readyForPickup} bp={bp} isLoading={isStatsLoading} />
       </Section>
