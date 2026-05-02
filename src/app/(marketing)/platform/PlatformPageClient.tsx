@@ -36,6 +36,7 @@ import {
   BUTTON,
   CONTAINER,
 } from '@/components/landing/_tokens'
+import ModulePlaceholder from '@/components/landing/ModulePlaceholder'
 
 // ============================================
 // Section 3 — Module tab data
@@ -400,11 +401,12 @@ export default function PlatformPageClient() {
                       ))}
                     </ul>
                   </div>
-                  {/* Visual placeholder column — flagged as a placeholder
-                      since real screenshots/mockups for each module aren't
-                      shipped yet. Stays in the DOM so the panel always
-                      reads as a complete unit, never an empty shell. */}
-                  <ModulePreviewPlaceholder label={tab.label} />
+                  {/* Visual placeholder column — Batch 5: switched to
+                      the shared ModulePlaceholder so /platform and
+                      /features render the same on-brand "mockup coming
+                      soon" tile. Single-component swap when real assets
+                      land. */}
+                  <ModulePlaceholder name={tab.label} />
                 </div>
               )
             })}
@@ -722,20 +724,27 @@ export default function PlatformPageClient() {
 }
 
 // ============================================
-// Section 2 — WorkflowMap (Batch 4 luxury redesign)
+// Section 2 — WorkflowMap (Batch 5 minimal/Cartier re-redesign)
 //
-// Replaces the original sans-pills + chevron flow with a softer
-// timeline aesthetic per Kaitlyn's Batch 4 brief:
+// Kaitlyn's Batch 4 version still read as a row of pill cards (boxed
+// containers, soft shadows, hover lifts). Her Batch 5 note:
 //
-//  - Step labels in serif (matches the NEXPURA wordmark + section
-//    headings) instead of sans
-//  - Thin line-icon above each step in champagne accent (Lucide,
-//    stroke-1)
-//  - Connectors are dotted lines with a small champagne dot at each
-//    join — replacing the chevron ">"
-//  - Hover: pill lifts -2px, card border deepens, dotted line on
-//    either side fades up
-//  - Mobile: vertical stack, dots become a vertical dotted column
+//   "No boxes, no chunky containers, no SaaS-funnel aesthetics.
+//    Editorial. Luxury fashion brand timeline. Cartier or Tiffany
+//    product journey diagrams. Minimal, airy, refined."
+//
+// The new structure:
+//
+//   - Single thin continuous horizontal hairline in soft gold, sitting
+//     at the centre of the dot row.
+//   - One small filled gold dot per step on the line.
+//   - Stroke-1 lucide icon ABOVE each dot, sitting directly on the
+//     cream background (no boxes, no rings).
+//   - Serif charcoal label BELOW each dot.
+//   - Generous horizontal spacing so the section breathes.
+//
+// Mobile: same hairline, vertical. Same dot, icon-then-label stacked
+// for each step with comfortable gap between steps.
 // ============================================
 type WorkflowStep = {
   label: string
@@ -753,133 +762,123 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
   { label: 'Reorder', icon: RotateCw },
 ]
 
+// Soft gold hairline tone — slightly muted vs the brand champagne dot
+// so the line reads as "atmosphere", not "graphic element".
+const HAIRLINE_GOLD = 'rgba(168, 133, 44, 0.32)'
+const DOT_GOLD = '#A8852C'
+const ICON_GOLD = '#A8852C'
+
 function WorkflowMap() {
   return (
     <div className="relative">
       {/* ============================================
-          Desktop: horizontal timeline (≥lg).
-          Each step is an icon + serif label stacked, connected by a
-          dotted line with a champagne dot at each join. Layout uses
-          flex with the connector consuming the gap so the dot caps
-          align horizontally with each pill.
+          Desktop: horizontal editorial timeline (≥md).
+          A single absolutely-positioned hairline runs through the
+          centre of the dot row. Each step is a flex column: icon →
+          dot-on-line → serif label, equally-spaced via a flex row.
           ============================================ */}
-      <ol
-        role="list"
-        className="hidden lg:flex items-stretch justify-center"
-      >
-        {WORKFLOW_STEPS.map((step, i) => (
-          <li
-            key={step.label}
-            className="flex items-stretch"
+      <div className="hidden md:block">
+        <div className="relative mx-auto max-w-[1080px] px-4">
+          {/* The hairline. Positioned at the vertical centre of the
+              dot row — 32px (icon block height + gap) from the top of
+              the inner column. */}
+          <div
+            aria-hidden="true"
+            className="absolute left-[3rem] right-[3rem] h-px"
+            style={{
+              background: HAIRLINE_GOLD,
+              top: 'calc(2rem + 1.25rem - 0.5px)',
+            }}
+          />
+          <ol
+            role="list"
+            className="relative flex items-start justify-between"
           >
-            <WorkflowStepCard step={step} />
-            {i < WORKFLOW_STEPS.length - 1 && <WorkflowConnector />}
-          </li>
-        ))}
-      </ol>
+            {WORKFLOW_STEPS.map((step) => (
+              <li
+                key={step.label}
+                className="flex flex-col items-center text-center flex-1 min-w-0 px-1"
+              >
+                <WorkflowStepEditorial step={step} />
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
 
       {/* ============================================
-          Mobile / tablet: vertical stack.
-          Connector becomes a vertical dotted line between steps.
+          Mobile: vertical hairline through the dot column. Icon sits
+          above its dot, label sits to the right (kept compact).
+          Generous vertical spacing between steps.
           ============================================ */}
-      <ol role="list" className="lg:hidden flex flex-col items-center">
-        {WORKFLOW_STEPS.map((step, i) => (
-          <li key={step.label} className="flex flex-col items-center">
-            <WorkflowStepCard step={step} />
-            {i < WORKFLOW_STEPS.length - 1 && (
-              <span
-                aria-hidden="true"
-                className="my-2 flex flex-col items-center gap-1"
-              >
-                <span className="block w-1.5 h-1.5 rounded-full bg-[#C9A24A]" />
-                <span className="block w-px h-8 border-l border-dotted border-[#C9BFA9]" />
-                <span className="block w-1.5 h-1.5 rounded-full bg-[#C9A24A]" />
-              </span>
-            )}
-          </li>
-        ))}
-      </ol>
+      <div className="md:hidden">
+        <div className="relative mx-auto max-w-[320px]">
+          {/* Vertical hairline — runs from first dot to last dot. */}
+          <div
+            aria-hidden="true"
+            className="absolute left-[calc(2rem+0.5rem-0.5px)] top-[2rem] bottom-[2rem] w-px"
+            style={{ background: HAIRLINE_GOLD }}
+          />
+          <ol role="list" className="relative flex flex-col gap-10">
+            {WORKFLOW_STEPS.map((step) => {
+              const Icon = step.icon
+              return (
+                <li
+                  key={step.label}
+                  className="grid grid-cols-[4rem_1fr] items-center"
+                >
+                  <div className="flex flex-col items-center">
+                    <Icon
+                      size={18}
+                      strokeWidth={1}
+                      aria-hidden="true"
+                      style={{ color: ICON_GOLD }}
+                      className="mb-2"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="block w-2 h-2 rounded-full"
+                      style={{ background: DOT_GOLD }}
+                    />
+                  </div>
+                  <span className="font-serif text-m-charcoal text-[0.98rem] leading-[1.25] pl-2">
+                    {step.label}
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      </div>
     </div>
   )
 }
 
-function WorkflowStepCard({ step }: { step: WorkflowStep }) {
+function WorkflowStepEditorial({ step }: { step: WorkflowStep }) {
   const Icon = step.icon
   return (
-    <div
-      className={[
-        // Step pill — cream card, soft shadow, hover lift
-        'group flex flex-col items-center justify-start gap-3 min-w-[112px] lg:min-w-[120px]',
-        'rounded-2xl border border-[#E4DBC9] bg-white/70 px-4 py-5',
-        'shadow-[0_2px_10px_rgba(0,0,0,0.04)]',
-        'transition-all duration-200 ease-out',
-        'hover:-translate-y-[2px] hover:border-[#C9BFA9] hover:bg-white/90 hover:shadow-[0_8px_22px_rgba(0,0,0,0.06)]',
-      ].join(' ')}
-    >
-      {/* Line icon — stroke-1, champagne accent */}
+    <>
+      {/* Icon — stroke-1, sitting directly on the cream background.
+          Height = 2rem so the dot below sits at top: 2rem + 1.25rem
+          (mt-5 ÷ 2 logic — see hairline top calc above). */}
       <span
         aria-hidden="true"
-        className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#FAF6EC] border border-[#EFE6D2] text-[#A8852C] transition-colors duration-200 group-hover:border-[#C9A24A]"
+        className="inline-flex h-8 items-center justify-center mb-5"
+        style={{ color: ICON_GOLD }}
       >
-        <Icon size={18} strokeWidth={1} />
+        <Icon size={20} strokeWidth={1} />
       </span>
-      {/* Serif label */}
-      <span className="font-serif text-m-charcoal text-[0.95rem] leading-[1.2] text-center whitespace-nowrap">
+      {/* Dot — sits exactly on the hairline, brand gold. */}
+      <span
+        aria-hidden="true"
+        className="block w-2 h-2 rounded-full"
+        style={{ background: DOT_GOLD }}
+      />
+      {/* Label — serif charcoal, generous breathing room above. */}
+      <span className="mt-5 font-serif text-m-charcoal text-[0.95rem] leading-[1.25] tracking-[0.005em]">
         {step.label}
       </span>
-    </div>
-  )
-}
-
-/**
- * Horizontal connector: champagne dot — dotted line — champagne dot.
- * Sits inside the flex row so the line widens/narrows with viewport
- * width but never falls below ~40px. Vertically centred against the
- * step icon row (icon top-padding is py-5 + 36px icon, so the line
- * naturally aligns with the icon centre via `items-stretch` + a
- * margin-top below).
- */
-function WorkflowConnector() {
-  return (
-    <span
-      aria-hidden="true"
-      className="flex items-center gap-1.5 px-2 group-hover/workflow:opacity-100 transition-opacity duration-300"
-      // Vertical centre alignment with the step icon (pill top padding
-      // py-5 = 20px + icon 36px ÷ 2 = 38px from top)
-      style={{ marginTop: '38px', alignSelf: 'flex-start' }}
-    >
-      <span className="block w-1.5 h-1.5 rounded-full bg-[#C9A24A]" />
-      <span
-        className="block min-w-[28px] flex-1 border-t border-dotted border-[#C9BFA9]"
-        style={{ width: '40px' }}
-      />
-      <span className="block w-1.5 h-1.5 rounded-full bg-[#C9A24A]" />
-    </span>
-  )
-}
-
-// ============================================
-// Section 3 — Module preview placeholder
-// (Real product mockups not yet supplied — flagged as placeholder so
-// Kaitlyn can swap in real screenshots in Batch 2/3.)
-// ============================================
-function ModulePreviewPlaceholder({ label }: { label: string }) {
-  return (
-    <div
-      className="relative rounded-2xl border border-dashed border-m-border-hover bg-m-ivory/60 min-h-[220px] flex flex-col items-center justify-center px-6 py-8 text-center"
-      aria-label={`${label} module preview — placeholder`}
-    >
-      <span className="font-sans text-[0.7rem] uppercase tracking-[0.22em] text-m-text-faint mb-2">
-        Mockup placeholder
-      </span>
-      <span className="font-serif text-m-charcoal text-[1.1rem] leading-[1.3] mb-1">
-        {label} preview coming
-      </span>
-      <span className="font-sans text-[0.85rem] text-m-text-secondary leading-[1.5] max-w-[280px]">
-        A real {label.toLowerCase()} screenshot will replace this placeholder
-        once the design assets are finalised.
-      </span>
-    </div>
+    </>
   )
 }
 

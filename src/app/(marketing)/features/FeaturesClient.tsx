@@ -36,13 +36,8 @@ import {
   BarChart3,
   type LucideIcon,
 } from 'lucide-react'
-import {
-  SECTION_PADDING,
-  HEADING,
-  CARD,
-  BUTTON,
-  CONTAINER,
-} from '@/components/landing/_tokens'
+import { CONTAINER } from '@/components/landing/_tokens'
+import ModulePlaceholder from '@/components/landing/ModulePlaceholder'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -284,34 +279,38 @@ export default function FeaturesClient() {
       {/* ============================================
           In-page module index — anchor nav
           ============================================ */}
-      {/* Module index — Batch 4 update.
-          Previously: `overflow-x-auto` + `whitespace-nowrap` so the
-          strip scrolled horizontally on every viewport.
-          Now: flex-wrap + justify-center so all 9 modules fit on a
-          single line at ≥1280px and wrap centred onto subsequent
-          lines on tablet/mobile. Tightened item gap (gap-x-4 md:gap-x-5,
-          previously gap-5 md:gap-7) so the canonical 9 fit cleanly
-          inside the 1200px container without overflow. */}
+      {/* Module index — Batch 5 update.
+          Batch 4 wrapped 8 + 1 orphan at ≥1280px (the long item titles
+          "Bespoke Commissions" and "Analytics & Reporting" pushed past
+          the 1200px container). Batch 5 falls back to a clean 3×3 grid
+          on lg+ — symmetric, intentional, no orphan possible at any
+          desktop width. Mobile/tablet still wraps naturally with
+          centre alignment. Numbered styling preserved. */}
       <nav
         aria-label="Module index"
         className="sticky top-[72px] z-30 bg-[rgba(250,247,242,0.95)] backdrop-blur-xl border-y border-m-border-soft overflow-x-hidden"
       >
         <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-12">
+          {/* Mobile / tablet: natural wrap, centred. Desktop (≥lg): 3×3
+              grid, centred, with comfortable column gap so the strip
+              still feels airy. */}
           <ul
             role="list"
-            className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 md:gap-x-5 py-3"
+            className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 py-3 lg:hidden"
           >
             {MODULES.map((m, i) => (
               <li key={m.id}>
-                <a
-                  href={`#${m.id}`}
-                  className="inline-flex items-baseline whitespace-nowrap font-sans text-[0.84rem] text-m-text-secondary hover:text-m-charcoal transition-colors duration-200"
-                >
-                  <span className="font-mono tabular-nums text-m-text-faint mr-1.5">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  {m.title}
-                </a>
+                <ModuleIndexItem index={i + 1} title={m.title} id={m.id} />
+              </li>
+            ))}
+          </ul>
+          <ul
+            role="list"
+            className="hidden lg:grid grid-cols-3 gap-x-6 gap-y-1.5 max-w-3xl mx-auto py-3 justify-items-center"
+          >
+            {MODULES.map((m, i) => (
+              <li key={m.id} className="w-full text-center">
+                <ModuleIndexItem index={i + 1} title={m.title} id={m.id} />
               </li>
             ))}
           </ul>
@@ -319,15 +318,17 @@ export default function FeaturesClient() {
       </nav>
 
       {/* ============================================
-          Module sections — every module's content in the DOM
+          Module sections — every module's content in the DOM.
+          Batch 5: removed outer SECTION_PADDING + inner space-y-*; each
+          ModuleSection now owns its vertical breathing room (py-16
+          md:py-24) so the layout reads as a series of self-contained
+          editorial spreads rather than tightly-packed cards.
           ============================================ */}
-      <div className={`${SECTION_PADDING.standard} px-6 sm:px-10 lg:px-20`}>
+      <div className="px-6 sm:px-10 lg:px-20">
         <div className={CONTAINER.wide}>
-          <div className="space-y-16 md:space-y-20">
-            {MODULES.map((m, i) => (
-              <ModuleSection key={m.id} module={m} index={i + 1} />
-            ))}
-          </div>
+          {MODULES.map((m, i) => (
+            <ModuleSection key={m.id} module={m} index={i + 1} />
+          ))}
         </div>
       </div>
 
@@ -390,9 +391,13 @@ function ModuleSection({ module, index }: { module: Module; index: number }) {
     <section
       id={module.id}
       aria-labelledby={`${module.id}-heading`}
-      className="scroll-mt-[140px]"
+      className="scroll-mt-[140px] py-16 md:py-24"
     >
-      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-14 items-start">
+      {/* Batch 5: items-center on lg+ so text + placeholder vertically
+          centre against each other; columns no longer top-aligned. The
+          text block stays a coherent unit (heading → body → bullets →
+          callout) and the placeholder is the secondary visual. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-14 lg:items-center">
         {/* Text column */}
         <div>
           <div className="flex items-center gap-3 mb-4">
@@ -437,44 +442,45 @@ function ModuleSection({ module, index }: { module: Module; index: number }) {
           </div>
         </div>
 
-        {/* Visual column — real screenshot when supplied, otherwise
-            stylised SVG mockup. Batch 4: removed `lg:sticky lg:top-[160px]`
-            so the image stays planted in document flow next to its
-            text — Kaitlyn flagged the prior sticky behaviour as parallax-y
-            on long scrolls. */}
+        {/* Visual column — Batch 5: ALL 9 modules now render the same
+            elegant ModulePlaceholder. Kaitlyn's note: the prior SVG
+            mockups + PNG screenshots both "look too realistic and don't
+            represent the real product." Once real design assets land,
+            this is a one-component swap to flip the whole page over to
+            live captures. SVG/PNG files are intentionally left on disk
+            for that swap. */}
         <div>
-          {module.image ? (
-            <div className="relative rounded-2xl overflow-hidden bg-m-white-soft border border-m-border-soft shadow-[0_18px_45px_rgba(0,0,0,0.06)]">
-              <img
-                src={module.image}
-                alt={module.imageAlt ?? `${module.title} — product screenshot`}
-                className="w-full h-full object-cover object-top"
-                style={{ aspectRatio: '16/10' }}
-              />
-            </div>
-          ) : (
-            <div
-              className={`relative ${CARD.base} ${CARD.paddingStandard} min-h-[260px] flex flex-col items-center justify-center text-center`}
-              aria-label={`${module.title} preview — placeholder`}
-            >
-              <span className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#F1E9D8] text-m-charcoal mb-4">
-                <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
-              </span>
-              <span className="font-sans text-[0.7rem] uppercase tracking-[0.22em] text-m-text-faint mb-2">
-                Mockup placeholder
-              </span>
-              <span className="font-serif text-m-charcoal text-[1.05rem] leading-[1.3] mb-1">
-                {module.title} preview coming
-              </span>
-              <span className="font-sans text-[0.85rem] text-m-text-secondary leading-[1.55] max-w-[280px]">
-                A real screenshot will replace this placeholder once the
-                design assets are finalised.
-              </span>
-            </div>
-          )}
+          <ModulePlaceholder name={module.title} />
         </div>
       </div>
     </section>
+  )
+}
+
+function ModuleIndexItem({
+  index,
+  title,
+  id,
+}: {
+  index: number
+  title: string
+  id: string
+}) {
+  return (
+    <a
+      href={`#${id}`}
+      className="group inline-flex items-baseline whitespace-nowrap text-[0.85rem] transition-colors duration-200"
+    >
+      <span
+        className="font-mono tabular-nums mr-1.5 transition-colors duration-200 group-hover:opacity-80"
+        style={{ color: '#A8852C' }}
+      >
+        {String(index).padStart(2, '0')}
+      </span>
+      <span className="font-serif text-m-charcoal group-hover:opacity-70 transition-opacity duration-200">
+        {title}
+      </span>
+    </a>
   )
 }
 

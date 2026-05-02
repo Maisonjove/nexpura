@@ -8,6 +8,7 @@
 // ============================================
 
 import React from "react"
+import Link from "next/link"
 import { SECTION_PADDING, HEADING, INTRO_SPACING, CARD, CONTAINER } from "./_tokens"
 
 type Module = {
@@ -151,8 +152,23 @@ export default function LandingPlatformModules() {
           ))}
         </ul>
 
-        {/* Batch 4: removed dark "Explore all features →" CTA pill below
-            the modules grid. Kaitlyn dropped the per-section onward links. */}
+        {/* Batch 5: re-add the "Explore all features →" CTA below the
+            grid. Subtle outlined style (charcoal border, charcoal text,
+            transparent background) — reads lighter than the primary
+            dark pill that lives in the hero, and still reads as a clear
+            call to the /features page. Generous mt-12/16 so it doesn't
+            crowd the cards. Uses next/link for client-side nav so the
+            Features active-state in LandingHeader (wired in Batch 4 via
+            usePathname) updates without a full reload. */}
+        <div className="mt-12 md:mt-16 flex justify-center">
+          <Link
+            href="/features"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-m-charcoal bg-transparent text-m-charcoal px-6 py-3 font-sans text-[0.9rem] font-medium transition-all duration-200 hover:bg-m-charcoal hover:text-white hover:-translate-y-0.5"
+          >
+            Explore all features
+            <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       </div>
     </section>
   )
