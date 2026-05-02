@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import type { CartItem, Customer } from "./types";
 
 interface CartPanelProps {
@@ -93,9 +94,10 @@ export default function CartPanel({
                   <span className="text-sm font-medium text-stone-900 truncate flex-1 mr-2">{item.name}</span>
                   <button
                     onClick={() => onRemoveFromCart(item.inventoryId)}
-                    className="text-stone-300 hover:text-red-400 text-xs ml-1"
+                    aria-label="Remove from cart"
+                    className="text-stone-300 hover:text-nexpura-oxblood ml-1"
                   >
-                    ✕
+                    <X className="w-3.5 h-3.5" strokeWidth={1.5} />
                   </button>
                 </div>
                 <div className="flex items-center justify-between">

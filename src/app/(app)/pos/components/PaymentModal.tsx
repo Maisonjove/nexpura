@@ -1,5 +1,6 @@
 "use client";
 
+import { X, AlertTriangle } from "lucide-react";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import type { Customer, PaymentTab, VoucherData } from "./types";
 
@@ -100,7 +101,9 @@ export default function PaymentModal({
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md my-auto max-h-[95vh] overflow-y-auto">
         <div className="px-6 py-5 border-b border-stone-200 flex items-center justify-between">
           <h3 className="font-semibold text-stone-900 text-lg">Payment</h3>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-900">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-stone-400 hover:text-stone-900">
+            <X className="w-5 h-5" strokeWidth={1.5} />
+          </button>
         </div>
 
         {/* Tabs */}
@@ -560,7 +563,10 @@ function VoucherTab({
           {voucherData.balance >= total ? (
             <p className="text-xs text-green-600">✓ Sufficient balance to cover ${total.toFixed(2)}</p>
           ) : (
-            <p className="text-xs text-amber-600">⚠ Voucher balance is less than total. Use split payment to cover the difference.</p>
+            <p className="text-xs text-nexpura-amber-muted flex items-start gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+              <span>Voucher balance is less than total. Use split payment to cover the difference.</span>
+            </p>
           )}
         </div>
       )}
