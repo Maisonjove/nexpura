@@ -405,9 +405,27 @@ export async function convertQuoteToSale(quoteId: string): Promise<{ id?: string
   );
 
   // resolveLocationForCreate gates multi-location tenants the same way
-  // /sales/new does, so the sale has a stamped location_id.
+  // /sales/new does. For a quote-to-sale conversion the operator is
+  // explicitly committing the quote, so if no specific location is
+  // selected we pick the first active location instead of erroring —
+  // the user re-confirms in /sales/[id]/edit which has its own location
+  // gate. This matches "convert quote to invoice" semantics, which
+  // doesn't enforce single-location either.
+  let locationId: string | null = null;
   const locResult = await resolveLocationForCreate(ctx.tenantId, ctx.userId);
-  if (locResult.needsSelection) return { error: LOCATION_REQUIRED_MESSAGE };
+  if (!locResult.needsSelection) {
+    locationId = locResult.locationId;
+  } else {
+    const { data: firstLoc } = await supabase
+      .from("locations")
+      .select("id")
+      .eq("tenant_id", ctx.tenantId)
+      .eq("is_active", true)
+      .order("name")
+      .limit(1)
+      .maybeSingle();
+    locationId = firstLoc?.id ?? null;
+  }
 
   const { data: sale, error: saleError } = await supabase
     .from("sales")
@@ -424,7 +442,7 @@ export async function convertQuoteToSale(quoteId: string): Promise<{ id?: string
       total: totals.total,
       notes: fullQuote.notes ?? null,
       sold_by: ctx.userId,
-      location_id: locResult.locationId,
+      location_id: locationId,
     })
     .select("id")
     .single();
