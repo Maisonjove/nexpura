@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 import AdminSidebar from "./AdminSidebar";
 
 /**
@@ -85,6 +86,12 @@ async function AdminAuthenticatedShell({
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Hard email allowlist — even if super_admins gains additional rows,
+  // only this exact account may access /admin. See admin-allowlist.ts.
+  if (!isAllowlistedAdmin(user.email)) {
+    redirect("/dashboard");
   }
 
   // Check super_admins table via service role (bypasses RLS).
