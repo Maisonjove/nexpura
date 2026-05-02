@@ -17,6 +17,21 @@ import {
 type EntityType = "inventory" | "customers" | "repairs" | "bespoke" | "sales" | "suppliers";
 type TopTab = "import" | "export";
 
+// Brief 2 audit security #4 — allowlist URL-driven tab values rather
+// than blindly casting `searchParams.get(...) as EntityType`. A
+// malformed `?tab=` value previously slipped through the cast and
+// indexed into TEMPLATES, throwing at render time. Validate here.
+const ENTITY_TYPES: ReadonlySet<EntityType> = new Set([
+  "inventory", "customers", "repairs", "bespoke", "sales", "suppliers",
+]);
+const TOP_TABS: ReadonlySet<TopTab> = new Set(["import", "export"]);
+function safeEntityType(v: string | null): EntityType {
+  return v && ENTITY_TYPES.has(v as EntityType) ? (v as EntityType) : "inventory";
+}
+function safeTopTab(v: string | null): TopTab {
+  return v && TOP_TABS.has(v as TopTab) ? (v as TopTab) : "import";
+}
+
 const TABS: { id: EntityType; label: string }[] = [
   { id: "inventory", label: "Inventory" },
   { id: "customers", label: "Customers" },
@@ -221,8 +236,8 @@ function ImportHubClientInner({ counts = {} }: ImportHubClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const topTab = (searchParams.get('mode') || 'import') as TopTab;
-  const activeTab = (searchParams.get('tab') || 'inventory') as EntityType;
+  const topTab = safeTopTab(searchParams.get('mode'));
+  const activeTab = safeEntityType(searchParams.get('tab'));
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
