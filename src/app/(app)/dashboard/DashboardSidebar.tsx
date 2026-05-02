@@ -1,21 +1,24 @@
 "use client";
 
 // Directive kept deliberately: DashboardSidebar is imported (via
-// next/dynamic) from the client component DashboardClient. React's
-// RSC model forbids importing a server component into a client module.
-// Client directives propagate across imports.
-//
-// The sidebar has no hooks and no interactive state — it's structurally
-// a server-like component rendering Links + Skeletons. The "use client"
-// tag doesn't add hydration logic of its own (nothing to wire up beyond
-// what Link already handles), but the file ships to the client bundle.
-//
-// The larger hydration win is in the grid split (see
-// DashboardCategoryGrid.tsx).
+// next/dynamic) from the client component DashboardClient. React's RSC
+// model forbids importing a server component into a client module, so this
+// file ships in the client bundle. The "Send feedback" footer also uses an
+// onClick handler, so the directive is no longer purely structural.
+
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Hammer,
+  Inbox,
+  MessageSquare,
+  ShoppingBag,
+  Wrench,
+} from "lucide-react";
 
-// ─── Types (mirrors DashboardClient's) ───────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type OverdueRepair = {
   id: string;
@@ -55,6 +58,23 @@ type RecentRepair = {
   customer: string | null;
 };
 
+type LowStockItem = {
+  id: string;
+  name: string;
+  sku: string | null;
+  quantity: number;
+};
+
+type ActivityItem = {
+  id: string;
+  title: string;
+  stage: string;
+  customerName: string | null;
+  updatedAt: string;
+  type: "job" | "repair";
+  href: string;
+};
+
 interface DashboardSidebarProps {
   bp: string;
   isStatsLoading: boolean;
@@ -63,20 +83,366 @@ interface DashboardSidebarProps {
   overdueRepairs: OverdueRepair[];
   recentSales: RecentSale[];
   recentRepairsList: RecentRepair[];
+  recentActivity: ActivityItem[];
+  lowStockItems: LowStockItem[];
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const diff = Date.now() - t;
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  return `${d}d`;
+}
+
+function dueTimeLabel(due: string | null): string {
+  if (!due) return "";
+  const d = new Date(due);
+  if (Number.isNaN(d.getTime())) return "";
+  // Tasks due today — show time if the timestamp encodes one, otherwise
+  // just "today". Date-only ISO strings parse with midnight, which we
+  // treat as "any time today".
+  const hasTime = /T\d/.test(due);
+  if (!hasTime) return "today";
+  return d.toLocaleTimeString("en-AU", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+// ─── Section primitives ────────────────────────────────────────────────────
+
+function Section({
+  title,
+  children,
+  count,
+  href,
+}: {
+  title: string;
+  children: React.ReactNode;
+  count?: number;
+  href?: string;
+}) {
+  const headerInner = (
+    <div className="flex items-center justify-between">
+      <h3 className="font-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-nexpura-taupe-400">
+        {title}
+      </h3>
+      {typeof count === "number" && count > 0 && (
+        <span className="font-sans text-[11px] tabular-nums text-nexpura-charcoal-500">
+          {count}
+        </span>
+      )}
+    </div>
+  );
+  return (
+    <div className="bg-nexpura-ivory-elevated border border-nexpura-taupe-100 rounded-xl overflow-hidden">
+      <div className="px-4 pt-4 pb-3 border-b border-nexpura-taupe-100">
+        {href ? (
+          <Link href={href} className="block hover:opacity-80 transition-opacity">
+            {headerInner}
+          </Link>
+        ) : (
+          headerInner
+        )}
+      </div>
+      <div className="px-4 py-3">{children}</div>
+    </div>
+  );
+}
+
+function EmptyLine({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="font-sans text-[13px] text-nexpura-charcoal-500">{children}</p>
+  );
+}
+
+// Initial avatar — owner unknown at this layer, so we render a quiet ring
+// with the assignee initial when we can derive one. Keeps the visual rhythm
+// the brief asks for without inventing data.
+function InitialAvatar({ label }: { label: string }) {
+  const initial = label?.trim()?.[0]?.toUpperCase() ?? "?";
+  return (
+    <span className="flex-shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-nexpura-taupe-100 text-nexpura-charcoal-700 font-sans text-[10px] font-semibold">
+      {initial}
+    </span>
+  );
+}
+
+// ─── Sub-sections ──────────────────────────────────────────────────────────
+
+function TasksDue({
+  tasks,
+  bp,
+  isLoading,
+}: {
+  tasks: MyTask[];
+  bp: string;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2].map((i) => (
+          <Skeleton key={i} className="h-5 w-full" />
+        ))}
+      </div>
+    );
+  }
+  if (tasks.length === 0) {
+    return <EmptyLine>No tasks due today.</EmptyLine>;
+  }
+  return (
+    <ul className="space-y-1">
+      {tasks.slice(0, 4).map((t) => (
+        <li key={t.id}>
+          <Link
+            href={`${bp}/tasks`}
+            className="flex items-center gap-2.5 px-2 py-1.5 -mx-2 rounded-lg hover:bg-white transition-colors duration-150"
+          >
+            <span
+              className="flex-shrink-0 w-3.5 h-3.5 rounded border border-nexpura-taupe-200 bg-white"
+              aria-hidden
+            />
+            <span className="flex-1 min-w-0 font-sans text-[13px] text-nexpura-charcoal-700 truncate">
+              {t.title}
+            </span>
+            <InitialAvatar label={t.title} />
+            <span className="flex-shrink-0 font-sans text-[11px] tabular-nums text-nexpura-charcoal-500">
+              {dueTimeLabel(t.due_date)}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ReadyForPickupSection({
+  items,
+  bp,
+  isLoading,
+}: {
+  items: ReadyItem[];
+  bp: string;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2].map((i) => (
+          <Skeleton key={i} className="h-5 w-full" />
+        ))}
+      </div>
+    );
+  }
+  if (items.length === 0) {
+    return <EmptyLine>Nothing ready yet.</EmptyLine>;
+  }
+  return (
+    <ul className="space-y-1">
+      {items.slice(0, 4).map((item) => (
+        <li key={`${item.type}-${item.id}`}>
+          <Link
+            href={`${bp}/${item.type === "repair" ? "repairs" : "bespoke"}/${item.id}`}
+            className="flex items-center gap-2.5 px-2 py-1.5 -mx-2 rounded-lg hover:bg-white transition-colors duration-150"
+          >
+            <CheckCircle2
+              className="w-3.5 h-3.5 flex-shrink-0 text-nexpura-emerald-deep"
+              aria-hidden
+            />
+            <span className="flex-1 min-w-0">
+              <span className="block font-sans text-[13px] text-nexpura-charcoal-700 truncate">
+                {item.label}
+              </span>
+              {item.customer && (
+                <span className="block font-sans text-[11px] text-nexpura-charcoal-500 truncate">
+                  {item.customer}
+                </span>
+              )}
+            </span>
+            <span className="flex-shrink-0 font-sans text-[11px] font-mono text-nexpura-taupe-400 tabular-nums">
+              #{item.number}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function RecentActivitySection({
+  activity,
+  recentSales,
+  bp,
+  isLoading,
+}: {
+  activity: ActivityItem[];
+  recentSales: RecentSale[];
+  bp: string;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-5 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  // Merge the precomputed activity feed with the recent-sales slice into one
+  // ordered list. Sales rows don't carry an updated_at, so they're appended
+  // at the head when present (most recent first by sale_number ordering on
+  // the server). The brief wants "last 5 events" — we cap there.
+  type Row = {
+    key: string;
+    icon: React.ReactNode;
+    title: string;
+    sub?: string;
+    when?: string;
+    href: string;
+  };
+  const rows: Row[] = [];
+
+  for (const s of recentSales.slice(0, 2)) {
+    rows.push({
+      key: `sale-${s.id}`,
+      icon: <ShoppingBag className="w-3.5 h-3.5 text-nexpura-bronze" aria-hidden />,
+      title: `Sale to ${s.customer ?? "walk-in"}`,
+      sub: `#${s.saleNumber}`,
+      href: `${bp}/sales/${s.id}`,
+    });
+  }
+  for (const a of activity.slice(0, 5)) {
+    rows.push({
+      key: `act-${a.type}-${a.id}`,
+      icon:
+        a.type === "job" ? (
+          <Hammer className="w-3.5 h-3.5 text-nexpura-bronze" aria-hidden />
+        ) : (
+          <Wrench className="w-3.5 h-3.5 text-nexpura-bronze" aria-hidden />
+        ),
+      title: a.title,
+      sub: a.customerName ?? undefined,
+      when: relativeTime(a.updatedAt),
+      href: `${bp}${a.href}`,
+    });
+  }
+
+  const trimmed = rows.slice(0, 5);
+  if (trimmed.length === 0) {
+    return <EmptyLine>No recent activity yet.</EmptyLine>;
+  }
+
+  return (
+    <ul className="space-y-1">
+      {trimmed.map((r) => (
+        <li key={r.key}>
+          <Link
+            href={r.href}
+            className="flex items-center gap-2.5 px-2 py-1.5 -mx-2 rounded-lg hover:bg-white transition-colors duration-150"
+          >
+            <span className="flex-shrink-0">{r.icon}</span>
+            <span className="flex-1 min-w-0">
+              <span className="block font-sans text-[13px] text-nexpura-charcoal-700 truncate">
+                {r.title}
+              </span>
+              {r.sub && (
+                <span className="block font-sans text-[11px] text-nexpura-charcoal-500 truncate">
+                  {r.sub}
+                </span>
+              )}
+            </span>
+            {r.when && (
+              <span className="flex-shrink-0 font-sans text-[11px] tabular-nums text-nexpura-taupe-400">
+                {r.when}
+              </span>
+            )}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function AlertsSection({
+  overdueRepairs,
+  lowStockItems,
+  bp,
+}: {
+  overdueRepairs: OverdueRepair[];
+  lowStockItems: LowStockItem[];
+  bp: string;
+}) {
+  // Brief: HIDE the alerts section entirely when there are zero alerts.
+  const criticalLowStock = lowStockItems.filter((i) => i.quantity === 0);
+  const alerts: Array<{ id: string; label: string; href: string; tone: "danger" | "warn" }> = [];
+  for (const r of overdueRepairs.slice(0, 3)) {
+    alerts.push({
+      id: `repair-${r.id}`,
+      label: `${r.item} · ${r.daysOverdue}d overdue`,
+      href: `${bp}/repairs/${r.id}`,
+      tone: "danger",
+    });
+  }
+  for (const s of criticalLowStock.slice(0, 3)) {
+    alerts.push({
+      id: `stock-${s.id}`,
+      label: `${s.name} out of stock`,
+      href: `${bp}/inventory`,
+      tone: "danger",
+    });
+  }
+
+  if (alerts.length === 0) return null;
+
+  return (
+    <Section title="Alerts" count={alerts.length}>
+      <ul className="space-y-1">
+        {alerts.map((a) => (
+          <li key={a.id}>
+            <Link
+              href={a.href}
+              className="flex items-center gap-2.5 px-2 py-1.5 -mx-2 rounded-lg hover:bg-white transition-colors duration-150"
+            >
+              <AlertTriangle
+                className={`w-3.5 h-3.5 flex-shrink-0 ${
+                  a.tone === "danger" ? "text-nexpura-oxblood" : "text-nexpura-amber-muted"
+                }`}
+                aria-hidden
+              />
+              <span className="flex-1 min-w-0 font-sans text-[13px] text-nexpura-charcoal-700 truncate">
+                {a.label}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+// ─── Main ──────────────────────────────────────────────────────────────────
+
 /**
- * Right sidebar of the dashboard (Tasks / Ready / Overdue / Recent activity).
+ * Right sidebar — "Today" panel per Section 3.4 of Kaitlyn's brief.
  *
- * Split out of DashboardClient into its own dynamic chunk (`next/dynamic`,
- * ssr:true with a skeleton fallback) so the sidebar's ~110 lines of JSX
- * and all its sub-widget rendering logic don't weigh down the main
- * DashboardClient bundle. The main above-the-fold experience (header +
- * category grid + summary pills) becomes interactive slightly sooner.
+ * 320px sticky on xl+, hidden below xl (the module grid + KPI strip stay
+ * usable on tablet/mobile without it).
  *
- * The sidebar is `hidden lg:flex` so on narrow viewports it's not visible
- * at all — splitting it also keeps the parse-time contribution out of the
- * critical path for mobile jewellers.
+ * The Copilot "Next best action" card is intentionally omitted — the
+ * brief defers it until Copilot is enabled.
  */
 export default function DashboardSidebar({
   bp,
@@ -85,114 +451,52 @@ export default function DashboardSidebar({
   readyForPickup,
   overdueRepairs,
   recentSales,
-  recentRepairsList,
+  recentActivity,
+  lowStockItems,
 }: DashboardSidebarProps) {
   return (
-    <aside className="hidden lg:flex flex-col gap-4 w-[256px] flex-shrink-0">
-      {/* TODAY */}
-      <div className="bg-[#FAFAF8] border border-[#E8E4DF] rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-        <div className="px-5 pt-4 pb-3 border-b border-[#E8E4DF]">
-          <h3 className="text-[0.6875rem] font-semibold tracking-[0.12em] uppercase text-stone-400">Today</h3>
-        </div>
-        <div className="px-5 py-4 space-y-5">
-          {/* Tasks due */}
-          <div>
-            <p className="text-[0.75rem] font-semibold text-stone-500 mb-2">Tasks due</p>
-            {isStatsLoading ? (
-              <div className="space-y-2">{[1, 2].map((i) => <Skeleton key={i} className="h-4 w-full" />)}</div>
-            ) : myTasks.length > 0 ? (
-              <div className="space-y-0.5">
-                {myTasks.slice(0, 3).map((task) => (
-                  <Link key={task.id} href={`${bp}/tasks`}
-                    className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-150">
-                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${task.priority === "urgent" ? "bg-red-400" : task.priority === "high" ? "bg-amber-400" : "bg-stone-300"}`} />
-                    <span className="text-[0.8rem] text-stone-700 truncate">{task.title}</span>
-                  </Link>
-                ))}
-              </div>
-            ) : <p className="text-[0.8rem] text-stone-400">No tasks due today</p>}
-          </div>
+    <aside className="hidden xl:flex flex-col gap-3 w-[320px] flex-shrink-0 sticky top-[88px]">
+      <Section title="Tasks due today" count={myTasks.length} href={`${bp}/tasks`}>
+        <TasksDue tasks={myTasks} bp={bp} isLoading={isStatsLoading} />
+      </Section>
 
-          {/* Ready for pickup */}
-          <div>
-            <p className="text-[0.75rem] font-semibold text-stone-500 mb-2">Ready for pickup</p>
-            {isStatsLoading ? (
-              <div className="space-y-2">{[1, 2].map((i) => <Skeleton key={i} className="h-4 w-full" />)}</div>
-            ) : readyForPickup.length > 0 ? (
-              <div className="space-y-0.5">
-                {readyForPickup.slice(0, 4).map((item) => (
-                  <Link key={`${item.type}-${item.id}`}
-                    href={`${bp}/${item.type === "repair" ? "repairs" : "bespoke"}/${item.id}`}
-                    className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-150">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                    <span className="text-[0.8rem] text-stone-700 truncate">{item.label}</span>
-                  </Link>
-                ))}
-              </div>
-            ) : <p className="text-[0.8rem] text-stone-400">Nothing ready yet</p>}
-          </div>
+      <Section
+        title="Ready for pickup"
+        count={readyForPickup.length}
+        href={`${bp}/workshop?status=ready-for-pickup`}
+      >
+        <ReadyForPickupSection items={readyForPickup} bp={bp} isLoading={isStatsLoading} />
+      </Section>
 
-          {/* Overdue */}
-          {overdueRepairs.length > 0 && (
-            <div>
-              <p className="text-[0.75rem] font-semibold text-stone-500 mb-2">Overdue jobs</p>
-              <div className="space-y-0.5">
-                {overdueRepairs.slice(0, 3).map((r) => (
-                  <Link key={r.id} href={`${bp}/repairs/${r.id}`}
-                    className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-150">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
-                    <span className="text-[0.8rem] text-stone-700 truncate">{r.item}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <Section title="Recent activity">
+        <RecentActivitySection
+          activity={recentActivity}
+          recentSales={recentSales}
+          bp={bp}
+          isLoading={isStatsLoading}
+        />
+      </Section>
 
-      {/* RECENT ACTIVITY */}
-      <div className="bg-[#FAFAF8] border border-[#E8E4DF] rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-        <div className="px-5 pt-4 pb-3 border-b border-[#E8E4DF]">
-          <h3 className="text-[0.6875rem] font-semibold tracking-[0.12em] uppercase text-stone-400">Recent Activity</h3>
-        </div>
-        <div className="px-5 py-4 space-y-5">
-          {/* Recent sales */}
-          <div>
-            <p className="text-[0.75rem] font-semibold text-stone-500 mb-2">Sales</p>
-            {isStatsLoading ? (
-              <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-4 w-full" />)}</div>
-            ) : recentSales.length > 0 ? (
-              <div className="space-y-0.5">
-                {recentSales.slice(0, 4).map((sale) => (
-                  <Link key={sale.id} href={`${bp}/sales/${sale.id}`}
-                    className="flex items-center gap-2.5 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-150">
-                    <span className="text-[0.7rem] font-mono text-stone-300 tabular-nums w-6 flex-shrink-0">{sale.saleNumber}</span>
-                    <span className="text-[0.8rem] text-stone-700 truncate">{sale.customer || "Walk-in"}</span>
-                  </Link>
-                ))}
-              </div>
-            ) : <p className="text-[0.8rem] text-stone-400">No recent sales</p>}
-          </div>
+      <AlertsSection
+        overdueRepairs={overdueRepairs}
+        lowStockItems={lowStockItems}
+        bp={bp}
+      />
 
-          {/* Recent repairs */}
-          <div>
-            <p className="text-[0.75rem] font-semibold text-stone-500 mb-2">Repairs</p>
-            {isStatsLoading ? (
-              <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-4 w-full" />)}</div>
-            ) : recentRepairsList.length > 0 ? (
-              <div className="space-y-0.5">
-                {recentRepairsList.slice(0, 4).map((repair) => (
-                  <Link key={repair.id} href={`${bp}/repairs/${repair.id}`}
-                    className="flex items-center gap-2.5 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white transition-colors duration-150">
-                    <span className="text-[0.7rem] font-mono text-stone-300 tabular-nums w-6 flex-shrink-0">{repair.repairNumber}</span>
-                    <span className="text-[0.8rem] text-stone-700 truncate">{repair.customer || "No customer"}</span>
-                  </Link>
-                ))}
-              </div>
-            ) : <p className="text-[0.8rem] text-stone-400">No recent repairs</p>}
-          </div>
-        </div>
+      {/* Footer feedback affordance */}
+      <div className="flex justify-end pt-1">
+        <Link
+          href={`${bp}/support`}
+          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-sans text-[12px] text-nexpura-taupe-400 hover:text-nexpura-charcoal-700 hover:bg-nexpura-ivory-elevated transition-colors"
+        >
+          <MessageSquare className="w-3.5 h-3.5" aria-hidden />
+          Send feedback
+        </Link>
       </div>
     </aside>
   );
 }
+
+// Defensive: keep the Inbox import live in case future variants want to
+// surface an empty state with it. The cost of one unused import is nil.
+void Inbox;

@@ -3,16 +3,17 @@
 import { useEffect, useState } from "react";
 
 /**
- * Running date + time display in the dashboard header.
+ * Date + live clock displayed in the dashboard page header.
  *
- * Extracted out of DashboardClient so the ~800-line main dashboard
- * component doesn't need to keep a `useState<Date>` + a 30-second
- * `setInterval` registered as part of its hydration. This is the only
- * piece of the dashboard header that genuinely needs to be reactive;
- * everything else is static text.
+ * Brief (Section 3.1) wants:
+ *  - Today's date in the serif type stack (e.g. "Saturday, 2 May 2026").
+ *  - A small live clock below it in the sans stack.
  *
- * Server-renders to a placeholder (empty) to avoid hydration mismatch
- * on the initial paint, then fills in on client mount.
+ * Server-renders to a layout-reserving placeholder so the header doesn't
+ * shift when the client hydrates and the actual date/time stream in.
+ *
+ * Tick interval: 30s. The clock displays minutes only — anything finer
+ * would just spin the CPU.
  */
 export function DashboardClock() {
   const [now, setNow] = useState<Date | null>(null);
@@ -24,18 +25,16 @@ export function DashboardClock() {
   }, []);
 
   if (!now) {
-    // Reserve layout space via non-breaking-space characters sized to the
-    // widest realistic value, but don't render any nonsense text (was
-    // "Monday 00 January 00:00 AM" previously — CSS-invisible but still
-    // present in the DOM, which surfaced in text scrapers, screen-reader
-    // buffers on some UAs, and copy-paste of the dashboard header).
+    // Reserve the same layout footprint the hydrated state will occupy.
+    // Using non-breaking spaces (sized via .invisible) keeps the bounding
+    // box identical without exposing placeholder text to assistive tech.
     return (
       <div className="text-right flex-shrink-0 pl-4" aria-hidden>
-        <p className="text-[0.8125rem] font-medium text-stone-700 tabular-nums invisible">
-          {"\u00A0".repeat(17)}
+        <p className="font-serif text-[18px] font-normal text-nexpura-charcoal-700 invisible">
+          {" ".repeat(20)}
         </p>
-        <p className="text-[0.8125rem] text-stone-400 tabular-nums mt-0.5 invisible">
-          {"\u00A0".repeat(8)}
+        <p className="font-sans text-[12px] text-nexpura-charcoal-500 mt-1 invisible">
+          {" ".repeat(8)}
         </p>
       </div>
     );
@@ -43,14 +42,15 @@ export function DashboardClock() {
 
   return (
     <div className="text-right flex-shrink-0 pl-4">
-      <p className="text-[0.8125rem] font-medium text-stone-700 tabular-nums">
+      <p className="font-serif text-[18px] font-normal text-nexpura-charcoal-700 tabular-nums">
         {now.toLocaleDateString("en-AU", {
           weekday: "long",
           day: "numeric",
           month: "long",
+          year: "numeric",
         })}
       </p>
-      <p className="text-[0.8125rem] text-stone-400 tabular-nums mt-0.5">
+      <p className="font-sans text-[12px] text-nexpura-charcoal-500 mt-1 tabular-nums">
         {now.toLocaleTimeString("en-AU", {
           hour: "2-digit",
           minute: "2-digit",
