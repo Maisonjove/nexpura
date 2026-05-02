@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { createSupportAccessRequest } from "@/lib/support-access";
 import { sendSupportAccessRequestEmail } from "@/lib/email/send";
+import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 import logger from "@/lib/logger";
 
 type Plan = "boutique" | "studio" | "atelier" | "group";
@@ -16,6 +17,9 @@ async function assertSuperAdmin() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthenticated");
+  // Hard email allowlist check before the super_admins lookup so an
+  // accidental super_admins row never grants platform-admin powers.
+  if (!isAllowlistedAdmin(user.email)) throw new Error("Unauthorized");
   const adminClient = createAdminClient();
   const { data } = await adminClient
     .from("super_admins")
@@ -71,6 +75,10 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
       });
       throw new Error(error.message);
     }
+    // Plan change on existing sub: only mirror plan to tenants below
+    // (no subscription_status change — admin uses changeTenantStatus
+    // for that).
+    await adminClient.from("tenants").update({ plan: normalisedPlan }).eq("id", tenantId);
   } else {
     // Create subscription if it doesn't exist
     const trialEnds = new Date();
@@ -85,10 +93,16 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
       logger.error("[changeTenantPlan] Failed to create subscription:", error.message);
       throw new Error(error.message);
     }
+    // Mirror to tenants — paywall reads tenants.subscription_status,
+    // and a tenant with no prior subscription row may have stale
+    // suspended/grace state on the tenants row from a wipe-and-restart.
+    await adminClient.from("tenants").update({
+      plan: normalisedPlan,
+      subscription_status: "trialing",
+      grace_period_ends_at: null,
+      payment_required_notified_at: null,
+    }).eq("id", tenantId);
   }
-
-  // Also update tenants table if it has a plan column
-  await adminClient.from("tenants").update({ plan: normalisedPlan }).eq("id", tenantId);
 
   await logActivity(adminClient, adminUserId, "change_tenant_plan", {
     tenantId,
@@ -109,11 +123,29 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
 
 export async function changeTenantStatus(tenantId: string, newStatus: SubStatus) {
   const { adminClient, adminUserId } = await assertSuperAdmin();
-  const { error } = await adminClient
+
+  // Subscriptions row
+  const { error: subErr } = await adminClient
     .from("subscriptions")
     .update({ status: newStatus })
     .eq("tenant_id", tenantId);
-  if (error) throw new Error(error.message);
+  if (subErr) throw new Error(subErr.message);
+
+  // Mirror to tenants — paywall reads tenants.subscription_status. When
+  // restoring access (active/trialing/free) clear stale grace fields
+  // left from a previous trial-end → grace cron transition.
+  const tenantUpdate: Record<string, unknown> = {
+    subscription_status: newStatus,
+  };
+  if (newStatus === "active" || newStatus === "trialing" || newStatus === "free") {
+    tenantUpdate.grace_period_ends_at = null;
+    tenantUpdate.payment_required_notified_at = null;
+  }
+  const { error: tenantErr } = await adminClient
+    .from("tenants")
+    .update(tenantUpdate)
+    .eq("id", tenantId);
+  if (tenantErr) throw new Error(tenantErr.message);
 
   await logActivity(adminClient, adminUserId, "change_tenant_status", {
     tenantId,
@@ -132,19 +164,37 @@ export async function changeTenantStatus(tenantId: string, newStatus: SubStatus)
 
 export async function assignFreeForever(tenantId: string) {
   const { adminClient, adminUserId } = await assertSuperAdmin();
+  // Tenants row: mark free-forever + flip status. Clear stale grace
+  // fields so a tenant previously in grace becomes immediately usable.
   await adminClient
     .from("tenants")
-    .update({ is_free_forever: true, subscription_status: "free" })
+    .update({
+      is_free_forever: true,
+      subscription_status: "free",
+      grace_period_ends_at: null,
+      payment_required_notified_at: null,
+    })
     .eq("id", tenantId);
+  // Subscriptions row: mirror to active so the subs cron stops trying
+  // to flip them to grace/suspended. Clear any leftover grace state.
   await adminClient
     .from("subscriptions")
-    .update({ status: "active" })
+    .update({
+      status: "active",
+      grace_period_ends_at: null,
+      grace_24h_sent: false,
+    })
     .eq("tenant_id", tenantId);
 
   await logActivity(adminClient, adminUserId, "assign_free_forever", { tenantId });
 
   revalidatePath(`/admin/tenants/${tenantId}`);
   revalidatePath("/admin/tenants");
+  revalidatePath("/admin");
+  // Revalidate user-facing paths so the tenant unblocks immediately
+  revalidatePath("/dashboard");
+  revalidatePath("/billing");
+  revalidatePath("/settings");
 }
 
 export async function saveTenantAdminNotes(tenantId: string, notes: string) {
@@ -271,6 +321,9 @@ export async function requestSupportAccess(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Unauthenticated" };
+
+  // Hard email allowlist — same gate as assertSuperAdmin
+  if (!isAllowlistedAdmin(user.email)) return { success: false, error: "Unauthorized" };
 
   // Verify super admin
   const adminClient = createAdminClient();

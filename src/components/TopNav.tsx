@@ -8,6 +8,7 @@ import LocationPicker from './LocationPicker';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { tenantSlugFromPathname } from '@/lib/app-routes';
 import { createClient } from '@/lib/supabase/client';
+import { isAllowlistedAdmin } from '@/lib/admin-allowlist';
 
 // ─── Nav structure ─────────────────────────────────────────────────────────
 
@@ -285,6 +286,19 @@ export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
 
           <NotificationBell />
 
+          {/* Platform Admin — visible only to the SaaS owner. The route
+              is also gated server-side at (admin)/layout.tsx by the
+              same allowlist; this is just the entry point. */}
+          {isAllowlistedAdmin(effectiveEmail) && (
+            <Link
+              href="/admin"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium tracking-wide bg-stone-900 text-white hover:bg-stone-800 transition-colors"
+              title="Platform admin"
+            >
+              Admin
+            </Link>
+          )}
+
           {/* Admin gear dropdown */}
           <div className="relative group/admin">
             <button
@@ -380,6 +394,16 @@ export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
               })}
             </div>
           ))}
+
+          {/* Platform Admin (mobile) — visible only to the SaaS owner */}
+          {isAllowlistedAdmin(effectiveEmail) && (
+            <Link
+              href="/admin"
+              className="block text-[0.9375rem] font-medium py-3 px-4 mb-3 rounded-xl bg-stone-900 text-white hover:bg-stone-800 transition-colors"
+            >
+              Platform Admin
+            </Link>
+          )}
 
           {/* Admin section in mobile */}
           <div className="mb-3 pt-2 border-t border-stone-200">

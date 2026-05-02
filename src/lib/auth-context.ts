@@ -42,6 +42,7 @@ export const MUTATING_SUBSCRIPTION_STATES = new Set([
   "trialing",
   "past_due", // still in grace window; cron flips to suspended after expiry
   "payment_required", // same
+  "free", // platform-admin assigned free-forever tenants (see assignFreeForever)
 ]);
 
 // Request-scoped memoization — only hits Redis/DB once per request
