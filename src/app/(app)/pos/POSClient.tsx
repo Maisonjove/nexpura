@@ -89,6 +89,10 @@ export default function POSClient({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't capture scanner keystrokes while payment / refund / camera
+      // modals are open — the operator's focus is inside the modal and
+      // accidentally adding to a hidden cart while charging is confusing.
+      if (showPaymentModal || showRefundModal || showCameraScanner) return;
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" && target.id !== "barcode-input") return;
       if (target.tagName === "TEXTAREA") return;
@@ -113,7 +117,7 @@ export default function POSClient({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleBarcodeInput]);
+  }, [handleBarcodeInput, showPaymentModal, showRefundModal, showCameraScanner]);
 
   function addToCart(item: InventoryItem) {
     setCart((prev) => {

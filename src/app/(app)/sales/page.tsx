@@ -53,11 +53,13 @@ async function SalesHubBody() {
       .from("sales")
       .select("total")
       .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
       .gte("sale_date", startOfToday),
     admin
       .from("sales")
       .select("total")
       .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
       .gte("sale_date", startOfMonth),
     // Outstanding invoices — sum of `amount_due` for unpaid statuses.
     // Mirrors src/app/(app)/invoices/page.tsx aggregation. `deleted_at is
@@ -78,6 +80,7 @@ async function SalesHubBody() {
       .from("sales")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
       .eq("status", "layby"),
   ]);
 
