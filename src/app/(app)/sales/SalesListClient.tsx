@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLocation } from "@/contexts/LocationContext";
 import { getSales, SaleWithLocation } from "./sales-actions";
 import { MapPin } from "lucide-react";
@@ -48,6 +49,8 @@ function fmtCurrency(amount: number) {
 
 export default function SalesListClient({ initialSales, hideHeader = false, limit }: Props) {
   const { getFilterLocationIds, viewMode, currentLocationId, hasMultipleLocations } = useLocation();
+  const searchParams = useSearchParams();
+  const range = searchParams.get("range"); // "today" | "month" | null
   const [sales, setSales] = useState<SaleWithLocation[]>(initialSales);
   const [isPending, startTransition] = useTransition();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -55,8 +58,28 @@ export default function SalesListClient({ initialSales, hideHeader = false, limi
   // Determine if we should show the location column
   const showLocationColumn = hasMultipleLocations && (viewMode === "all" || !currentLocationId);
 
+  // Apply the range filter from ?range=today|month linked off the hub KPIs.
+  // The list always re-fetches the full set when location changes; the
+  // window filter is applied client-side so changing range is instant.
+  const filteredSales = useMemo(() => {
+    if (!range) return sales;
+    const now = new Date();
+    let cutoff: Date;
+    if (range === "today") {
+      cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (range === "month") {
+      cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else {
+      return sales;
+    }
+    return sales.filter((s) => {
+      const d = new Date(s.sale_date || s.created_at);
+      return d >= cutoff;
+    });
+  }, [sales, range]);
+
   // Hub embed: cap visible rows for the "recent sales" panel.
-  const visibleSales = typeof limit === "number" ? sales.slice(0, limit) : sales;
+  const visibleSales = typeof limit === "number" ? filteredSales.slice(0, limit) : filteredSales;
 
   // Refetch when location changes
   useEffect(() => {
@@ -99,6 +122,18 @@ export default function SalesListClient({ initialSales, hideHeader = false, limi
       {isPending && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm text-amber-700">
           Updating...
+        </div>
+      )}
+
+      {/* Active range filter chip — visible whether the list is rendered
+          standalone or embedded in the hub's recent-sales panel, since the
+          filter applies to the rows the user is looking at either way. */}
+      {(range === "today" || range === "month") && (
+        <div className="flex items-center gap-2 text-sm text-stone-600">
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 border border-stone-200">
+            Showing: {range === "today" ? "today" : "this month"}
+            <Link href="/sales" className="text-xs text-stone-500 hover:text-stone-800" aria-label="Clear filter">×</Link>
+          </span>
         </div>
       )}
 

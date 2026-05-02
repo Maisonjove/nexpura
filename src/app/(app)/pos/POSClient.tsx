@@ -74,7 +74,15 @@ export default function POSClient({
       const item = inventoryItems.find(
         (i) => i.sku === barcode || i.sku?.toLowerCase() === barcode.toLowerCase()
       );
-      if (item) addToCart(item);
+      if (item) {
+        addToCart(item);
+        setError(null);
+      } else {
+        // Surface unknown SKUs so the operator knows the scan registered but
+        // didn't match — previously this silently no-op'd, leaving staff to
+        // wonder why nothing was added.
+        setError(`No item found for "${barcode}"`);
+      }
     },
     [inventoryItems]
   );
