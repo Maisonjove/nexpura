@@ -48,7 +48,19 @@ const DEFAULT_PAGE_SIZE = 200;
  *   - Customer list panel (existing CustomerListClient with hideTitleBlock)
  *   - Empty state when no customers exist
  */
-export default async function CustomersPage({
+export default function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; tag?: string; sort?: string; page?: string; rt?: string }>;
+}) {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+      <CustomersBody searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function CustomersBody({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string; tag?: string; sort?: string; page?: string; rt?: string }>;

@@ -1,5 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import AdminHubClient from "./AdminHubClient";
@@ -8,19 +10,17 @@ export const metadata = { title: "Admin — Nexpura" };
 
 /**
  * Tenant Admin Hub — Section 11 of Kaitlyn's 2026-05-02 redesign brief.
- *
- * NOT to be confused with the *platform* admin under (admin)/admin/* —
- * that's a separate route group for Nexpura staff. This is the per-tenant
- * workspace settings + ops surface.
- *
- * Server component: aggregates a small "Tasks & Admin" panel:
- *   - tasks due today (count + top 3)
- *   - pending setup items (heuristic — counts unconfigured settings)
- *   - team invites pending
- *   - billing status
- *   - support requests
+ * cacheComponents requires sync top-level + dynamic body inside Suspense.
  */
-export default async function AdminPage() {
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+      <AdminHubBody />
+    </Suspense>
+  );
+}
+
+async function AdminHubBody() {
   const headersList = await headers();
   const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
   if (!tenantId) redirect("/login");

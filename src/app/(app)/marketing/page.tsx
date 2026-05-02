@@ -1,5 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import MarketingHubClient from "./MarketingHubClient";
@@ -9,11 +11,17 @@ export const metadata = { title: "Marketing — Nexpura" };
 /**
  * Marketing Hub — Section 9 of Kaitlyn's 2026-05-02 redesign brief.
  *
- * Replaces the legacy dark-themed MarketingOverviewClient with the ivory
- * hub shell. The KPI strip is server-computed (campaigns / drafts /
- * segments / scheduled msgs / automations).
+ * cacheComponents requires sync top-level + dynamic body inside Suspense.
  */
-export default async function MarketingPage() {
+export default function MarketingPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+      <MarketingHubBody />
+    </Suspense>
+  );
+}
+
+async function MarketingHubBody() {
   const headersList = await headers();
   const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
   if (!tenantId) redirect("/login");

@@ -1,5 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { getSales } from "./sales-actions";
@@ -10,13 +12,19 @@ export const metadata = { title: "Sales — Nexpura" };
 /**
  * Sales Hub — Section 5 of Kaitlyn's 2026-05-02 redesign brief.
  *
- * Server component: fetches the existing recent-sales list (preserved
- * data flow) plus a small KPI bundle (invoice/quote/layby counts +
- * sales-today / sales-this-month aggregates from `sales`). The hub
- * shell, KPI strip, quick actions and recent-sales panel all render
- * inside <SalesHubClient />.
+ * cacheComponents requires the page top-level to be synchronous and to
+ * defer dynamic data (cookies/headers/auth/DB) into a Suspense boundary.
+ * Server data fetching lives inside <SalesHubBody />.
  */
-export default async function SalesPage() {
+export default function SalesPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+      <SalesHubBody />
+    </Suspense>
+  );
+}
+
+async function SalesHubBody() {
   const headersList = await headers();
   const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
   if (!tenantId) redirect("/login");

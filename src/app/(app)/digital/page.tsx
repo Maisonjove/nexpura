@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   Globe,
   CreditCard,
@@ -16,6 +17,7 @@ import {
   Package,
   type LucideIcon,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthContext } from "@/lib/auth-context";
 import {
@@ -28,16 +30,17 @@ export const metadata = { title: "Digital — Nexpura" };
 
 /**
  * Digital Hub — Section 10.1 of Kaitlyn's 2026-05-02 redesign brief.
- *
- *   1. HubHeader (H1 + subtitle + "Website Builder" CTA)
- *   2. Status overview panel — website / Stripe / email domain / SMS /
- *      inventory sync / passport verification, each row clickable
- *   3. Quick actions (WEBSITE / PASSPORTS / INTEGRATIONS)
- *
- * Most rows fall back to a sensible stub when the underlying data
- * source isn't readily wired (see inline TODOs).
+ * cacheComponents requires sync top-level + dynamic body inside Suspense.
  */
-export default async function DigitalPage() {
+export default function DigitalPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+      <DigitalHubBody />
+    </Suspense>
+  );
+}
+
+async function DigitalHubBody() {
   const auth = await getAuthContext();
   if (!auth) redirect("/login");
   const tenantId = auth.tenantId;

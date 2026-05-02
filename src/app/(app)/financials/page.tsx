@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getEntitlementContext } from "@/lib/auth/entitlements";
 import { canUseFeature, planDisplayName } from "@/lib/features";
 import Link from "next/link";
@@ -266,7 +268,15 @@ async function fetchFinanceHubData(tenantId: string): Promise<FinanceHubData> {
   };
 }
 
-export default async function FinancialsPage() {
+export default function FinancialsPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+      <FinancialsBody />
+    </Suspense>
+  );
+}
+
+async function FinancialsBody() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
