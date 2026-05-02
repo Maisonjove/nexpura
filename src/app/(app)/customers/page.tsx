@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { Suspense } from "react";
@@ -6,14 +7,12 @@ import { unstable_cache } from "next/cache";
 import {
   UserPlus,
   Users,
-  Search,
   MessageCircle,
-  CalendarClock,
-  Sparkles,
   Tag,
   History,
   Crown,
   Inbox,
+  ChevronDown,
 } from "lucide-react";
 import { getAuthContext } from "@/lib/auth-context";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
@@ -25,7 +24,6 @@ import {
   HubHeader,
   KpiCard,
   KpiStrip,
-  QuickActionGroup,
   SectionPanel,
   HubEmptyState,
 } from "@/components/hub/HubPrimitives";
@@ -87,7 +85,7 @@ async function CustomersBody({
     <div className="space-y-7 max-w-[1400px]">
       <HubHeader
         title="Customers"
-        subtitle="Profiles, follow-ups, VIPs, segments and clienteling notes."
+        subtitle="Manage clients and follow-ups."
         ctas={[
           { label: "New customer", href: "/customers/new", variant: "primary", icon: UserPlus },
         ]}
@@ -97,72 +95,37 @@ async function CustomersBody({
         <CustomerKpis tenantId={tenantId} />
       </Suspense>
 
-      <div className="space-y-6">
-        <QuickActionGroup
-          label="Create"
-          actions={[
-            {
-              label: "New customer",
-              description: "Add a customer profile with contact, preferences and notes.",
-              href: "/customers/new",
-              icon: UserPlus,
-            },
-            {
-              label: "Find customer",
-              description: "Search the entire client database by name, email or phone.",
-              href: "/customers",
-              icon: Search,
-            },
-          ]}
-        />
-        <QuickActionGroup
-          label="Engage"
-          actions={[
-            {
-              label: "Communications",
-              description: "Email and message history across every customer.",
-              href: "/communications",
-              icon: MessageCircle,
-            },
-            {
-              label: "Follow-ups",
-              description: "Reminders due today and upcoming for the team.",
-              href: "/reminders",
-              icon: CalendarClock,
-            },
-            {
-              label: "Clienteling notes",
-              description: "Personal notes, preferences and milestones for each client.",
-              // /customers/communications doesn't exist — fallback to the
-              // global communications list (closest existing surface).
-              href: "/communications",
-              icon: Sparkles,
-            },
-          ]}
-        />
-        <QuickActionGroup
-          label="Segment"
-          actions={[
-            {
-              label: "VIP clients",
-              description: "Top-spend and high-touch customers in one view.",
-              href: "/customers?segment=vip",
-              icon: Crown,
-            },
-            {
-              label: "Segments",
-              description: "Saved customer segments for marketing campaigns.",
-              href: "/marketing/segments",
-              icon: Tag,
-            },
-            {
-              label: "Purchase history",
-              description: "Recent purchases across the client base.",
-              href: "/sales",
-              icon: History,
-            },
-          ]}
-        />
+      {/* Brief 2 §9 — quick-action card grids removed. The most common
+          actions (New customer in the header, Find customer via the list
+          search, Follow-ups via the KPI chip) are reachable from the
+          surrounding chrome. The rest live behind the "More" link below. */}
+      <div className="flex items-center justify-end gap-3 -mt-2">
+        <Link
+          href="/reminders"
+          className="text-[13px] font-medium text-nexpura-charcoal-700 hover:text-nexpura-bronze transition-colors"
+        >
+          Follow-ups
+        </Link>
+        <span className="text-nexpura-taupe-200" aria-hidden>·</span>
+        <details className="relative">
+          <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-[13px] font-medium text-nexpura-charcoal-700 hover:text-nexpura-bronze transition-colors">
+            More <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </summary>
+          <div className="absolute right-0 mt-2 w-56 rounded-xl border border-nexpura-taupe-100 bg-white shadow-md py-1 z-10">
+            <Link href="/communications" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <MessageCircle className="w-4 h-4" strokeWidth={1.5} /> Communications
+            </Link>
+            <Link href="/customers?segment=vip" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Crown className="w-4 h-4" strokeWidth={1.5} /> VIP clients
+            </Link>
+            <Link href="/marketing/segments" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <Tag className="w-4 h-4" strokeWidth={1.5} /> Segments
+            </Link>
+            <Link href="/sales" className="flex items-center gap-2 px-3 py-2 text-[13px] text-nexpura-charcoal-700 hover:bg-nexpura-champagne">
+              <History className="w-4 h-4" strokeWidth={1.5} /> Purchase history
+            </Link>
+          </div>
+        </details>
       </div>
 
       {/* Customer list panel — existing client component, unchanged data flow */}
