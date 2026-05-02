@@ -779,15 +779,16 @@ function WorkflowMap() {
           ============================================ */}
       <div className="hidden md:block">
         <div className="relative mx-auto max-w-[1080px] px-4">
-          {/* The hairline. Positioned at the vertical centre of the
-              dot row — 32px (icon block height + gap) from the top of
-              the inner column. */}
+          {/* The hairline. Sits exactly through the vertical centre of
+              the dot row: icon block (h-8 = 2rem) + mb-5 (1.25rem) +
+              half the dot height (4px ÷ 2 because the dot is 8px tall
+              centred on its own line). 32 + 20 + 4 = 56px. */}
           <div
             aria-hidden="true"
             className="absolute left-[3rem] right-[3rem] h-px"
             style={{
               background: HAIRLINE_GOLD,
-              top: 'calc(2rem + 1.25rem - 0.5px)',
+              top: 'calc(2rem + 1.25rem + 4px - 0.5px)',
             }}
           />
           <ol
@@ -807,48 +808,46 @@ function WorkflowMap() {
       </div>
 
       {/* ============================================
-          Mobile: vertical hairline through the dot column. Icon sits
-          above its dot, label sits to the right (kept compact).
-          Generous vertical spacing between steps.
+          Mobile: vertical hairline running through the column of dots,
+          with the icon to the LEFT of each dot and the serif label to
+          the RIGHT. Layout is a 3-col grid (icon | dot | label) so the
+          hairline can sit in the middle column at a fixed x.
           ============================================ */}
       <div className="md:hidden">
-        <div className="relative mx-auto max-w-[320px]">
-          {/* Vertical hairline — runs from first dot to last dot. */}
-          <div
+        <ol role="list" className="relative mx-auto max-w-[300px] flex flex-col gap-9">
+          {/* Vertical hairline — sits behind the dot column. Inset
+              top/bottom by half a row so it terminates at the first/
+              last dot, not past them. */}
+          <span
             aria-hidden="true"
-            className="absolute left-[calc(2rem+0.5rem-0.5px)] top-[2rem] bottom-[2rem] w-px"
+            className="absolute left-1/2 top-3 bottom-3 w-px -translate-x-[0.5px]"
             style={{ background: HAIRLINE_GOLD }}
           />
-          <ol role="list" className="relative flex flex-col gap-10">
-            {WORKFLOW_STEPS.map((step) => {
-              const Icon = step.icon
-              return (
-                <li
-                  key={step.label}
-                  className="grid grid-cols-[4rem_1fr] items-center"
+          {WORKFLOW_STEPS.map((step) => {
+            const Icon = step.icon
+            return (
+              <li
+                key={step.label}
+                className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-3"
+              >
+                <span
+                  className="justify-self-end inline-flex items-center"
+                  style={{ color: ICON_GOLD }}
                 >
-                  <div className="flex flex-col items-center">
-                    <Icon
-                      size={18}
-                      strokeWidth={1}
-                      aria-hidden="true"
-                      style={{ color: ICON_GOLD }}
-                      className="mb-2"
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="block w-2 h-2 rounded-full"
-                      style={{ background: DOT_GOLD }}
-                    />
-                  </div>
-                  <span className="font-serif text-m-charcoal text-[0.98rem] leading-[1.25] pl-2">
-                    {step.label}
-                  </span>
-                </li>
-              )
-            })}
-          </ol>
-        </div>
+                  <Icon size={18} strokeWidth={1} aria-hidden="true" />
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="block w-2 h-2 rounded-full justify-self-center"
+                  style={{ background: DOT_GOLD }}
+                />
+                <span className="font-serif text-m-charcoal text-[0.98rem] leading-[1.25] justify-self-start">
+                  {step.label}
+                </span>
+              </li>
+            )
+          })}
+        </ol>
       </div>
     </div>
   )
