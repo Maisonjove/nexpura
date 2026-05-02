@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserLocationIds } from "@/lib/locations";
+import { requirePermission } from "@/lib/auth-context";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -13,9 +14,22 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // RBAC: stock transfers move money-equivalent inventory between
+    // locations; gate on edit_inventory so Staff (read-only) can't ship
+    // a tenant's stock around.
+    try {
+      await requirePermission("edit_inventory");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return NextResponse.json(
+        { error: msg.startsWith("permission_denied") ? "You don't have permission to create transfers." : "Not authenticated" },
+        { status: 403 },
+      );
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

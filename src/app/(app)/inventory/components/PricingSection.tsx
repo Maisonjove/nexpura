@@ -16,10 +16,13 @@ export default function PricingSection({
   retailPrice,
   setRetailPrice,
 }: PricingSectionProps) {
-  const margin =
-    costPrice && retailPrice && parseFloat(retailPrice) > 0
-      ? (((parseFloat(retailPrice) - parseFloat(costPrice)) / parseFloat(retailPrice)) * 100).toFixed(1)
-      : null;
+  const cost = parseFloat(costPrice);
+  const retail = parseFloat(retailPrice);
+  const hasBoth = !isNaN(cost) && !isNaN(retail) && cost > 0 && retail > 0;
+  const isUnderwater = hasBoth && retail < cost;
+  const margin = hasBoth
+    ? (((retail - cost) / retail) * 100).toFixed(1)
+    : null;
 
   return (
     <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
@@ -61,12 +64,20 @@ export default function PricingSection({
           <div className={`w-full px-3 py-2.5 text-sm border rounded-lg font-medium ${
             margin !== null && parseFloat(margin) > 0
               ? "border-green-200 bg-green-50 text-green-700"
-              : "border-stone-200 bg-stone-50 text-stone-400"
+              : isUnderwater
+                ? "border-nexpura-oxblood/30 bg-nexpura-oxblood-bg text-nexpura-oxblood"
+                : "border-stone-200 bg-stone-50 text-stone-400"
           }`}>
             {margin !== null ? `${margin}%` : "—"}
           </div>
         </div>
       </div>
+      {isUnderwater && (
+        <div className="mt-4 px-4 py-3 rounded-lg bg-nexpura-oxblood-bg border border-nexpura-oxblood/20 text-nexpura-oxblood text-sm">
+          <strong>Retail price is below cost.</strong> Selling at this price means a loss
+          per unit. Adjust the retail price up, or update cost if it was overstated.
+        </div>
+      )}
     </div>
   );
 }

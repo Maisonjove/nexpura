@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { requirePermission } from "@/lib/auth-context";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -12,6 +13,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    try {
+      await requirePermission("edit_inventory");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return NextResponse.json(
+        { error: msg.startsWith("permission_denied") ? "You don't have permission to manage transfers." : "Not authenticated" },
+        { status: 403 },
+      );
+    }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     

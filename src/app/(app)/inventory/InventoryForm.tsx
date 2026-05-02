@@ -99,6 +99,21 @@ export default function InventoryForm({ categories: initialCategories, item, mod
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+
+    // Cost vs retail validation: warn if retail < cost (loss-per-unit).
+    // Block submit unless the user explicitly confirmed by clicking
+    // through. The PricingSection paints the warning panel; here we gate
+    // submission so a misclick can't ship a money-losing price.
+    const cost = parseFloat(costPrice);
+    const retail = parseFloat(retailPrice);
+    if (!isNaN(cost) && !isNaN(retail) && cost > 0 && retail > 0 && retail < cost) {
+      const confirmed = window.confirm(
+        `Retail price ($${retail.toFixed(2)}) is below cost ($${cost.toFixed(2)}). ` +
+        `You'll lose $${(cost - retail).toFixed(2)} per unit sold. Continue anyway?`
+      );
+      if (!confirmed) return;
+    }
+
     const formData = new FormData(e.currentTarget);
     formData.set("track_quantity", String(trackQuantity));
     formData.set("is_featured", String(isFeatured));
@@ -229,7 +244,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
         setConsignmentCommPct={setConsignmentCommPct}
       />
 
-      <ImageUploadSection />
+      <ImageUploadSection initialUrl={item?.primary_image ?? null} />
 
       {/* Actions */}
       <div className="flex items-center justify-between pb-12 pt-4">

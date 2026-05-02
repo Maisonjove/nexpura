@@ -156,6 +156,7 @@ export async function createInventoryItem(formData: FormData) {
   const commRaw = formData.get("consignment_commission_pct") as string | null;
   if (commRaw && commRaw.trim() !== "") extended["consignment_commission_pct"] = parseFloat(commRaw);
   addIfSet("supplier_invoice_ref", optionalString("supplier_invoice_ref"));
+  addIfSet("primary_image", optionalString("primary_image"));
 
   // Retry-on-PGRST204: if PostgREST's schema cache doesn't know about a column
   // we're inserting (e.g. a migration was run but the cache is stale, or the
@@ -332,6 +333,7 @@ export async function updateInventoryItem(id: string, formData: FormData) {
       // 12+ extra round-trips per save. Upfront-only-include `certificate_number`
       // until those columns are migrated.
       certificate_number: (formData.get("certificate_number") as string) || null,
+      primary_image: ((formData.get("primary_image") as string) || null) || null,
       // (Retained for forward-compat) consume secondaryStones to keep TS happy.
   };
   void secondaryStones;
@@ -475,7 +477,12 @@ export async function adjustStock(
   revalidatePath(`/inventory/${inventoryId}`);
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
+  // Tag invalidation reaches the POS product grid + reports/stock; both
+  // pages tag their queries with CACHE_TAGS.inventory so a stock change
+  // propagates without per-page revalidatePath calls.
   revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
+  revalidatePath("/pos");
+  revalidatePath("/reports/stock");
 }
 
 export async function archiveInventoryItem(id: string) {
