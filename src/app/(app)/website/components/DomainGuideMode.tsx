@@ -29,7 +29,7 @@ export default function DomainGuideMode({ onTypeChange }: DomainGuideModeProps) 
       {/* Step 1 */}
       <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
-          <span className="w-6 h-6 rounded-full bg-amber-700 text-white text-xs font-semibold flex items-center justify-center flex-shrink-0">
+          <span className="w-6 h-6 rounded-full bg-nexpura-charcoal text-white text-xs font-semibold flex items-center justify-center flex-shrink-0">
             1
           </span>
           <h2 className="text-base font-semibold text-stone-900">
@@ -120,7 +120,7 @@ export default function DomainGuideMode({ onTypeChange }: DomainGuideModeProps) 
         </button>
         <button
           onClick={() => onTypeChange("hosted")}
-          className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors"
+          className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
         >
           Switch to Nexpura Hosted →
         </button>

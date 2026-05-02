@@ -24,7 +24,7 @@ export default function SupplierListClient({ suppliers }: Props) {
         <h1 className="text-2xl font-semibold text-stone-900">Suppliers</h1>
         <Link
           href="/suppliers/new"
-          className="inline-flex items-center gap-2 bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-800 transition-colors"
+          className="inline-flex items-center gap-2 bg-nexpura-charcoal text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -44,7 +44,7 @@ export default function SupplierListClient({ suppliers }: Props) {
           <p className="text-stone-500 mt-1 text-sm">Add your first supplier to manage your vendor relationships.</p>
           <Link
             href="/suppliers/new"
-            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
+            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
           >
             Add first supplier
           </Link>

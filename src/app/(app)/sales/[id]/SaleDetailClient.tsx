@@ -610,7 +610,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                   value={laybyAmount}
                   onChange={(e) => setLaybyAmount(e.target.value)}
                   placeholder="0.00"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 />
                 <button
                   type="button"
@@ -627,7 +627,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                 <select
                   value={laybyMethod}
                   onChange={(e) => setLaybyMethod(e.target.value)}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 >
                   <option value="cash">Cash</option>
                   <option value="card">Card / EFTPOS</option>
@@ -643,7 +643,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                   type="date"
                   value={laybyDate}
                   onChange={(e) => setLaybyDate(e.target.value)}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 />
               </div>
 
@@ -655,7 +655,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                   value={laybyNotes}
                   onChange={(e) => setLaybyNotes(e.target.value)}
                   placeholder="e.g. Cash payment received"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 />
               </div>
 
@@ -702,7 +702,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                         type="checkbox"
                         checked={!!refundItems[item.id]}
                         onChange={(e) => setRefundItems((prev) => ({ ...prev, [item.id]: e.target.checked }))}
-                        className="rounded border-stone-300 text-amber-700 focus:ring-amber-600"
+                        className="rounded border-stone-300 text-amber-700 focus:ring-nexpura-bronze"
                       />
                       <span className="flex-1 text-sm text-stone-900">{item.description}</span>
                       <span className="text-sm font-medium text-stone-700">{fmtCurrency(item.line_total)}</span>
@@ -719,7 +719,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                   value={refundReason}
                   onChange={(e) => setRefundReason(e.target.value)}
                   placeholder="e.g. Faulty item, Customer changed mind"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 />
               </div>
 
@@ -729,7 +729,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                 <select
                   value={refundMethod}
                   onChange={(e) => setRefundMethod(e.target.value)}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 >
                   <option value="card">Card / EFTPOS</option>
                   <option value="cash">Cash</option>
@@ -745,7 +745,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
                   value={refundNotes}
                   onChange={(e) => setRefundNotes(e.target.value)}
                   rows={2}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 resize-none"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze resize-none"
                 />
               </div>
 

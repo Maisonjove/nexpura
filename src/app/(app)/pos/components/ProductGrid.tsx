@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Camera } from "lucide-react";
 import type { InventoryItem } from "./types";
 import { CATEGORIES, CATEGORY_LABELS } from "./constants";
 
@@ -45,7 +46,7 @@ export default function ProductGrid({
             placeholder="Search inventory by name or SKU…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+            className="flex-1 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
           />
           {onOpenRefund && (
             <button
@@ -58,10 +59,11 @@ export default function ProductGrid({
           )}
           <button
             onClick={onOpenCameraScanner}
-            className="px-3 py-2 border border-stone-200 rounded-xl text-stone-500 hover:border-amber-600 hover:text-amber-700 transition-colors text-lg"
+            className="px-3 py-2 border border-stone-200 rounded-xl text-stone-500 hover:border-nexpura-bronze hover:text-nexpura-bronze transition-colors"
             title="Scan barcode with camera"
+            aria-label="Scan barcode with camera"
           >
-            📷
+            <Camera className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
         {/* Category pills */}
@@ -72,7 +74,7 @@ export default function ProductGrid({
               onClick={() => setCategoryFilter(cat)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 categoryFilter === cat
-                  ? "bg-amber-700 text-white"
+                  ? "bg-nexpura-charcoal text-white"
                   : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >

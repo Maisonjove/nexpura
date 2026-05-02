@@ -1,8 +1,50 @@
 "use client";
 
-import { useState, Suspense } from "react";
+/**
+ * Document Center — full redesign per Kaitlyn's Brief 2 §6 (2026-05-02).
+ *
+ * Replaces the previous emoji-heavy, orange-accented layout with the
+ * workspace-redesign visual language: serif heading, ivory-elevated card
+ * surface, taupe-100 borders, charcoal text + bronze underline for the
+ * selected segmented tab.
+ *
+ * Tabs drive URL state via `?type=invoices|quotes|repair-tickets|bespoke-sheets|passports|refunds`.
+ * Default = invoices. Reload + back-button work because state lives in
+ * the URL, not local component state. Chip clicks are wrapped in a
+ * `useTransition` so the surrounding UI shows a subtle pending fade.
+ *
+ * Server data shape is unchanged — see `./page.tsx`. `customers` is
+ * normalised to a singleton on the server side, so the row renderer
+ * just reads `doc.customers?.full_name`.
+ */
+
+import { Suspense, useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
+import {
+  Receipt,
+  FileText,
+  Wrench,
+  Gem,
+  ShieldCheck,
+  RotateCcw,
+  Search,
+  Info,
+  ExternalLink,
+  Printer,
+  type LucideIcon,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/EmptyState";
+import StatusBadge from "@/components/StatusBadge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { DocumentItem, PassportDoc } from "./page";
 
 interface Props {
@@ -14,7 +56,102 @@ interface Props {
   refunds: DocumentItem[];
 }
 
-type DocTab = "invoices" | "quotes" | "repairs" | "bespoke" | "passports" | "refunds";
+// URL-facing slugs (kebab-case as per brief). The internal data keys are
+// shorter — `repairs`, `bespoke`. Mapping kept central so the slug is the
+// only thing the URL ever sees.
+type DocType =
+  | "invoices"
+  | "quotes"
+  | "repair-tickets"
+  | "bespoke-sheets"
+  | "passports"
+  | "refunds";
+
+interface DocTypeMeta {
+  id: DocType;
+  label: string;
+  singular: string; // for empty-state copy: "No invoices yet."
+  ctaLabel: string | null; // null = no CTA (refunds — no /new route)
+  newHref: string | null;
+  detailBase: string; // detail-route base, e.g. "/invoices"
+  pdfBase: string; // PDF endpoint base
+  icon: LucideIcon;
+  /** Key into the `docMap` (server payload). */
+  bucket: keyof Props;
+}
+
+const DOC_TYPES: DocTypeMeta[] = [
+  {
+    id: "invoices",
+    label: "Invoices",
+    singular: "invoices",
+    ctaLabel: "Create invoice",
+    newHref: "/invoices/new",
+    detailBase: "/invoices",
+    pdfBase: "/api/invoice",
+    icon: Receipt,
+    bucket: "invoices",
+  },
+  {
+    id: "quotes",
+    label: "Quotes",
+    singular: "quotes",
+    ctaLabel: "Create quote",
+    newHref: "/quotes/new",
+    detailBase: "/quotes",
+    pdfBase: "/api/quote",
+    icon: FileText,
+    bucket: "quotes",
+  },
+  {
+    id: "repair-tickets",
+    label: "Repair tickets",
+    singular: "repair tickets",
+    ctaLabel: "Create repair ticket",
+    newHref: "/repairs/new",
+    detailBase: "/repairs",
+    pdfBase: "/api/repair",
+    icon: Wrench,
+    bucket: "repairs",
+  },
+  {
+    id: "bespoke-sheets",
+    label: "Bespoke sheets",
+    singular: "bespoke sheets",
+    ctaLabel: "Create bespoke job",
+    newHref: "/bespoke/new",
+    detailBase: "/bespoke",
+    pdfBase: "/api/bespoke",
+    icon: Gem,
+    bucket: "bespoke",
+  },
+  {
+    id: "passports",
+    label: "Passports",
+    singular: "passports",
+    ctaLabel: "Create passport",
+    newHref: "/passports/new",
+    detailBase: "/passports",
+    pdfBase: "/api/passport",
+    icon: ShieldCheck,
+    bucket: "passports",
+  },
+  {
+    id: "refunds",
+    label: "Refunds",
+    singular: "refunds",
+    // Refunds don't have a /new route — they're created from an invoice.
+    // Drop the CTA rather than fake a destination.
+    ctaLabel: null,
+    newHref: null,
+    detailBase: "/refunds",
+    pdfBase: "/api/refund",
+    icon: RotateCcw,
+    bucket: "refunds",
+  },
+];
+
+const VALID_TYPES = new Set<DocType>(DOC_TYPES.map((t) => t.id));
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString("en-AU", {
@@ -26,234 +163,390 @@ function fmtDate(d: string) {
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "—";
-  return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(n);
+  return new Intl.NumberFormat("en-AU", {
+    style: "currency",
+    currency: "AUD",
+  }).format(n);
 }
 
-function StatusPill({ status }: { status: string }) {
-  const s = status.toLowerCase();
-  const cls =
-    s === "active" || s === "paid" || s === "complete" || s === "completed"
-      ? "bg-green-50 text-green-700"
-      : s === "draft" || s === "pending"
-      ? "bg-stone-100 text-stone-500"
-      : s === "cancelled" || s === "voided"
-      ? "bg-red-50 text-red-500"
-      : "bg-amber-700/10 text-amber-700";
+function isPassport(doc: DocumentItem | PassportDoc): doc is PassportDoc {
+  return "passport_uid" in doc;
+}
+
+function docRef(doc: DocumentItem | PassportDoc): string {
+  if (isPassport(doc)) return doc.passport_uid;
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
-      {s.replace(/_/g, " ")}
-    </span>
+    doc.invoice_number ||
+    doc.quote_number ||
+    doc.repair_number ||
+    doc.job_number ||
+    doc.refund_number ||
+    doc.id.slice(0, 8)
   );
 }
 
-const DOC_TYPES: { id: DocTab; label: string; emoji: string; pdfPath: string }[] = [
-  { id: "invoices", label: "Invoices", emoji: "🧾", pdfPath: "/api/invoice" },
-  { id: "quotes", label: "Quotes", emoji: "📋", pdfPath: "/api/quote" },
-  { id: "repairs", label: "Repair Tickets", emoji: "🔧", pdfPath: "/api/repair" },
-  { id: "bespoke", label: "Bespoke Sheets", emoji: "💎", pdfPath: "/api/bespoke" },
-  { id: "passports", label: "Passports", emoji: "🛡️", pdfPath: "/api/passport" },
-  { id: "refunds", label: "Refunds", emoji: "↩️", pdfPath: "/api/refund" },
-];
-
-function docRef(doc: DocumentItem | PassportDoc): string {
-  if ("passport_uid" in doc) return doc.passport_uid;
-  const d = doc as DocumentItem;
-  return d.invoice_number || d.quote_number || d.repair_number || d.job_number || d.refund_number || doc.id.slice(0, 8);
+function docCustomer(doc: DocumentItem | PassportDoc): string {
+  if (isPassport(doc)) return doc.title;
+  return doc.customers?.full_name ?? doc.title ?? "—";
 }
 
-function docTitle(doc: DocumentItem | PassportDoc): string {
-  if ("passport_uid" in doc) return doc.title;
-  const d = doc as DocumentItem;
-  return d.title || (d.customers?.full_name ?? "—");
+function docAmount(doc: DocumentItem | PassportDoc): number | null | undefined {
+  if (isPassport(doc)) return null;
+  return doc.total ?? doc.amount;
 }
 
-function DocumentCenterClientInner({ invoices, quotes, repairs, bespoke, passports, refunds }: Props) {
+function DocumentCenterClientInner({
+  invoices,
+  quotes,
+  repairs,
+  bespoke,
+  passports,
+  refunds,
+}: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const VALID_TABS: DocTab[] = ["invoices", "quotes", "repairs", "bespoke", "passports", "refunds"];
-  const activeTab: DocTab = (VALID_TABS.includes(searchParams.get('tab') as DocTab) ? searchParams.get('tab') : 'invoices') as DocTab;
+  const [isPending, startTransition] = useTransition();
 
-  const docMap: Record<DocTab, (DocumentItem | PassportDoc)[]> = {
-    invoices,
-    quotes,
-    repairs,
-    bespoke,
-    passports,
-    refunds,
+  const rawType = searchParams.get("type");
+  const activeType: DocType =
+    rawType && VALID_TYPES.has(rawType as DocType) ? (rawType as DocType) : "invoices";
+
+  const meta = useMemo(
+    () => DOC_TYPES.find((t) => t.id === activeType)!,
+    [activeType],
+  );
+
+  // Server payload — keyed by the internal bucket name, not the URL slug.
+  const docMap = useMemo(
+    () =>
+      ({
+        invoices,
+        quotes,
+        repairs,
+        bespoke,
+        passports,
+        refunds,
+      }) as Record<keyof Props, (DocumentItem | PassportDoc)[]>,
+    [invoices, quotes, repairs, bespoke, passports, refunds],
+  );
+
+  const totalCount = Object.values(docMap).reduce(
+    (sum, arr) => sum + arr.length,
+    0,
+  );
+  const currentDocs = docMap[meta.bucket];
+
+  // ── Toolbar state — search + status filter live in component state.
+  // Date sort is the default (newest first); a manual ascending toggle
+  // covers the "sort" requirement without shipping a full sort menu.
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const availableStatuses = useMemo(() => {
+    const set = new Set<string>();
+    currentDocs.forEach((d) => set.add(d.status));
+    return Array.from(set).sort();
+  }, [currentDocs]);
+
+  const filteredDocs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = currentDocs.filter((doc) => {
+      if (statusFilter !== "all" && doc.status !== statusFilter) return false;
+      if (!q) return true;
+      const ref = docRef(doc).toLowerCase();
+      const customer = docCustomer(doc).toLowerCase();
+      return ref.includes(q) || customer.includes(q);
+    });
+    list = [...list].sort((a, b) => {
+      const ta = new Date(a.created_at).getTime();
+      const tb = new Date(b.created_at).getTime();
+      return sortAsc ? ta - tb : tb - ta;
+    });
+    return list;
+  }, [currentDocs, search, statusFilter, sortAsc]);
+
+  // ── URL helper — preserve other query params so deep-links from
+  // dashboards survive a tab switch.
+  const buildHref = (type: DocType) => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    if (type === "invoices") {
+      params.delete("type");
+    } else {
+      params.set("type", type);
+    }
+    const qs = params.toString();
+    return qs ? `${pathname}?${qs}` : pathname ?? "/documents";
   };
 
-  const currentDocs = docMap[activeTab];
-  const currentType = DOC_TYPES.find((t) => t.id === activeTab)!;
-
-  const totalCount = Object.values(docMap).reduce((sum, arr) => sum + arr.length, 0);
+  const goToType = (type: DocType) => {
+    startTransition(() => router.replace(buildHref(type), { scroll: false }));
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-stone-900">Document Center</h1>
-          <p className="text-stone-500 text-sm mt-1">Print and download all your business documents in one place</p>
+    <div className={`max-w-7xl mx-auto px-4 md:px-6 py-8 ${isPending ? "opacity-90" : ""}`}>
+      {/* ── Page header ─────────────────────────────────────────────── */}
+      <header className="flex items-start justify-between gap-6 mb-6">
+        <div className="min-w-0">
+          <h1 className="font-serif text-[32px] font-medium tracking-[-0.01em] text-nexpura-charcoal leading-tight">
+            Document Center
+          </h1>
+          <p className="font-sans text-[13px] text-nexpura-charcoal-500 mt-1.5">
+            View, print and manage documents.
+          </p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-stone-100 rounded-xl text-sm text-stone-600 font-medium">
-          <span className="text-lg">📄</span>
-          {totalCount} documents
-        </div>
-      </div>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-nexpura-ivory-elevated border border-nexpura-taupe-100 text-[12px] font-medium text-nexpura-charcoal-500 whitespace-nowrap">
+          {totalCount} {totalCount === 1 ? "document" : "documents"}
+        </span>
+      </header>
 
-      {/* Quick stat cards */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        {DOC_TYPES.map((type) => {
-          const count = docMap[type.id].length;
-          return (
-            <button
-              key={type.id}
-              onClick={() => router.replace(pathname + (type.id !== 'invoices' ? '?tab=' + type.id : ''))}
-              className={`p-3 rounded-xl border-2 text-center transition-all ${
-                activeTab === type.id
-                  ? "border-amber-600 bg-amber-700/5"
-                  : "border-stone-200 bg-white hover:border-stone-300"
-              }`}
-            >
-              <div className="text-xl mb-1">{type.emoji}</div>
-              <div className="text-xs font-medium text-stone-600">{type.label}</div>
-              <div className="text-lg font-bold text-stone-900 mt-0.5">{count}</div>
-            </button>
-          );
-        })}
-      </div>
+      {/* ── Document type strip — segmented tabs (charcoal text + bronze underline) ─ */}
+      <nav
+        aria-label="Document type"
+        className="mb-6 border-b border-nexpura-taupe-100 overflow-x-auto"
+      >
+        <ul className="flex items-end gap-1 min-w-max">
+          {DOC_TYPES.map((t) => {
+            const active = t.id === activeType;
+            const count = docMap[t.bucket].length;
+            const Icon = t.icon;
+            return (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => goToType(t.id)}
+                  aria-current={active ? "page" : undefined}
+                  className={`group inline-flex items-center gap-2 px-3 py-2.5 text-[13px] font-medium whitespace-nowrap border-b-2 transition-colors -mb-px ${
+                    active
+                      ? "text-nexpura-charcoal border-nexpura-bronze"
+                      : "text-nexpura-charcoal-500 border-transparent hover:text-nexpura-charcoal"
+                  }`}
+                >
+                  <Icon
+                    strokeWidth={1.5}
+                    className={`h-4 w-4 ${active ? "text-nexpura-charcoal" : "text-nexpura-taupe-400 group-hover:text-nexpura-charcoal"}`}
+                  />
+                  <span>{t.label}</span>
+                  <span
+                    className={`inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[11px] font-medium ${
+                      active
+                        ? "bg-nexpura-warm text-nexpura-charcoal-700"
+                        : "bg-nexpura-cream text-nexpura-taupe-400"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
 
-      {/* Tab bar */}
-      <div className="bg-white border border-stone-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="flex border-b border-stone-200 overflow-x-auto">
-          {DOC_TYPES.map((type) => (
-            <button
-              key={type.id}
-              onClick={() => router.replace(pathname + (type.id !== 'invoices' ? '?tab=' + type.id : ''))}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
-                activeTab === type.id
-                  ? "border-b-2 border-amber-600 text-amber-700"
-                  : "text-stone-500 hover:text-stone-900"
-              }`}
+      {/* ── Main content card ──────────────────────────────────────── */}
+      <section className="bg-nexpura-ivory-elevated border border-nexpura-taupe-100 rounded-xl shadow-sm">
+        {/* Toolbar */}
+        <div className="flex flex-col md:flex-row md:items-center gap-3 p-4 border-b border-nexpura-taupe-100">
+          <div className="relative flex-1 min-w-0">
+            <Search
+              strokeWidth={1.5}
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-nexpura-taupe-400 pointer-events-none"
+            />
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`Search ${meta.singular}…`}
+              className="h-9 pl-9 bg-white border-nexpura-taupe-100 text-[13px] text-nexpura-charcoal placeholder:text-nexpura-taupe-400 focus-visible:ring-nexpura-bronze/30 focus-visible:border-nexpura-bronze"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="sr-only" htmlFor="doc-status-filter">
+              Filter by status
+            </label>
+            <select
+              id="doc-status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-9 rounded-md border border-nexpura-taupe-100 bg-white px-3 text-[13px] text-nexpura-charcoal-700 focus:outline-none focus:ring-1 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
             >
-              <span>{type.emoji}</span>
-              {type.label}
-              <span className="bg-stone-100 text-stone-500 text-xs rounded-full px-1.5 py-0.5 font-medium">
-                {docMap[type.id].length}
+              <option value="all">All statuses</option>
+              {availableStatuses.map((s) => (
+                <option key={s} value={s}>
+                  {s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => setSortAsc((v) => !v)}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-nexpura-taupe-100 bg-white text-[13px] text-nexpura-charcoal-700 hover:border-nexpura-taupe-200 transition-colors"
+              aria-label={sortAsc ? "Sort newest first" : "Sort oldest first"}
+            >
+              Date
+              <span className="text-[11px] text-nexpura-taupe-400">
+                {sortAsc ? "↑" : "↓"}
               </span>
             </button>
-          ))}
+          </div>
         </div>
 
-        {/* Document list */}
-        {currentDocs.length === 0 ? (
-          <div className="py-16 text-center text-stone-400">
-            <div className="text-4xl mb-3">{currentType.emoji}</div>
-            <p className="text-sm">No {currentType.label.toLowerCase()} yet</p>
+        {/* Table or empty state */}
+        {filteredDocs.length === 0 ? (
+          <div className="px-4">
+            {currentDocs.length === 0 ? (
+              <EmptyState
+                title={`No ${meta.singular} yet.`}
+                description={`Created ${meta.singular} will appear here.`}
+                action={
+                  meta.ctaLabel && meta.newHref
+                    ? { label: meta.ctaLabel, href: meta.newHref }
+                    : undefined
+                }
+              />
+            ) : (
+              <EmptyState
+                title="No matching documents."
+                description="Adjust the search or status filter to see more results."
+              />
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-stone-200 bg-stone-50">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Reference</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">
-                    {activeTab === "passports" ? "Item" : "Customer / Item"}
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Status</th>
-                  {(activeTab === "invoices" || activeTab === "quotes" || activeTab === "refunds") && (
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Amount</th>
-                  )}
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Date</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {currentDocs.map((doc) => {
-                  const isPassport = "passport_uid" in doc;
-                  const amount = !isPassport
-                    ? ((doc as DocumentItem).total ?? (doc as DocumentItem).amount)
-                    : null;
-
+            <Table className="text-[13px]">
+              <TableHeader>
+                <TableRow className="border-b border-nexpura-taupe-100 hover:bg-transparent">
+                  <TableHead className="px-5 py-3 font-medium text-[11px] tracking-[0.08em] uppercase text-nexpura-taupe-400">
+                    Document #
+                  </TableHead>
+                  <TableHead className="px-5 py-3 font-medium text-[11px] tracking-[0.08em] uppercase text-nexpura-taupe-400">
+                    Customer
+                  </TableHead>
+                  <TableHead className="px-5 py-3 font-medium text-[11px] tracking-[0.08em] uppercase text-nexpura-taupe-400">
+                    Type
+                  </TableHead>
+                  <TableHead className="px-5 py-3 font-medium text-[11px] tracking-[0.08em] uppercase text-nexpura-taupe-400 whitespace-nowrap">
+                    Date
+                  </TableHead>
+                  <TableHead className="px-5 py-3 font-medium text-[11px] tracking-[0.08em] uppercase text-nexpura-taupe-400">
+                    Status
+                  </TableHead>
+                  <TableHead className="px-5 py-3 font-medium text-[11px] tracking-[0.08em] uppercase text-nexpura-taupe-400 text-right">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredDocs.map((doc) => {
+                  const detailHref = `${meta.detailBase}/${doc.id}`;
+                  const pdfHref = `${meta.pdfBase}/${doc.id}/pdf`;
+                  const amount = docAmount(doc);
+                  const showAmount =
+                    activeType === "invoices" ||
+                    activeType === "quotes" ||
+                    activeType === "refunds";
                   return (
-                    <tr key={doc.id} className="hover:bg-stone-50/50 transition-colors">
-                      <td className="px-5 py-3.5 font-mono text-xs text-stone-600 font-medium">
-                        {docRef(doc)}
-                      </td>
-                      <td className="px-5 py-3.5 text-stone-900 font-medium max-w-48 truncate">
-                        {docTitle(doc)}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <StatusPill status={doc.status} />
-                      </td>
-                      {(activeTab === "invoices" || activeTab === "quotes" || activeTab === "refunds") && (
-                        <td className="px-4 py-3.5 text-stone-900 font-medium">
-                          {fmtCurrency(amount)}
-                        </td>
-                      )}
-                      <td className="px-4 py-3.5 text-stone-400 text-xs whitespace-nowrap">
+                    <TableRow
+                      key={doc.id}
+                      className="border-b border-nexpura-taupe-100/60 last:border-b-0 hover:bg-nexpura-cream/40 transition-colors"
+                    >
+                      <TableCell className="px-5 py-3.5 align-middle">
+                        <Link
+                          href={detailHref}
+                          className="font-mono text-[12px] font-medium text-nexpura-charcoal-700 hover:text-nexpura-charcoal hover:underline underline-offset-2"
+                        >
+                          {docRef(doc)}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="px-5 py-3.5 align-middle">
+                        <Link
+                          href={detailHref}
+                          className="text-nexpura-charcoal hover:text-nexpura-bronze max-w-[18rem] truncate block"
+                        >
+                          {docCustomer(doc)}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="px-5 py-3.5 align-middle">
+                        <span className="inline-flex items-center gap-1.5 text-nexpura-charcoal-500">
+                          <meta.icon strokeWidth={1.5} className="h-3.5 w-3.5 text-nexpura-taupe-400" />
+                          <span className="text-[12px]">{meta.label}</span>
+                          {showAmount && amount != null && (
+                            <span className="ml-2 text-[12px] text-nexpura-charcoal-700 font-medium">
+                              {fmtCurrency(amount)}
+                            </span>
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-5 py-3.5 align-middle text-nexpura-charcoal-500 text-[12px] whitespace-nowrap">
                         {fmtDate(doc.created_at)}
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-3">
-                          {/* View link */}
-                          <Link
-                            href={`/${activeTab === "bespoke" ? "bespoke" : activeTab === "passports" ? "passports" : activeTab === "repairs" ? "repairs" : activeTab === "refunds" ? "refunds" : activeTab}/${doc.id}`}
-                            className="text-xs text-stone-500 hover:text-stone-900"
-                          >
-                            View
-                          </Link>
-                          {/* PDF download */}
+                      </TableCell>
+                      <TableCell className="px-5 py-3.5 align-middle">
+                        <StatusBadge status={doc.status} />
+                      </TableCell>
+                      <TableCell className="px-5 py-3.5 align-middle">
+                        <div className="flex items-center justify-end gap-2">
                           <a
-                            href={`${currentType.pdfPath}/${doc.id}/pdf`}
+                            href={pdfHref}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#071A0D] text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-colors"
+                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-nexpura-taupe-100 bg-white text-[12px] font-medium text-nexpura-charcoal-700 hover:border-nexpura-taupe-200 transition-colors"
+                            title="Open PDF in new tab"
                           >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                            <ExternalLink strokeWidth={1.5} className="h-3.5 w-3.5" />
                             PDF
                           </a>
-                          {/* Print button */}
                           <button
-                            onClick={() => {
-                              const pdfUrl = `${currentType.pdfPath}/${doc.id}/pdf`;
-                              window.open(pdfUrl, "_blank");
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-stone-200 text-stone-600 text-xs font-medium rounded-lg hover:bg-stone-50 transition-colors"
+                            type="button"
+                            onClick={() => window.open(pdfHref, "_blank", "noopener,noreferrer")}
+                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-nexpura-taupe-100 bg-white text-[12px] font-medium text-nexpura-charcoal-700 hover:border-nexpura-taupe-200 transition-colors"
+                            title="Print"
                           >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
+                            <Printer strokeWidth={1.5} className="h-3.5 w-3.5" />
                             Print
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Info */}
-      <div className="bg-stone-50 border border-stone-200 rounded-xl p-4">
-        <p className="text-sm text-stone-500">
-          💡 <strong>Tip:</strong> PDFs open in a new tab — use your browser&apos;s print dialog to print or save to your device.
-          For thermal receipts, configure your printer in{" "}
-          <Link href="/settings/printing" className="text-amber-700 hover:underline">Printing Settings</Link>.
-        </p>
-      </div>
+      {/* ── Footer hint — replaces the oversized "tip" box. ────────── */}
+      <p className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-nexpura-taupe-400">
+        <Info strokeWidth={1.5} className="h-3.5 w-3.5" />
+        PDFs open in a new tab. Manage printer setup in{" "}
+        <Link
+          href="/settings/printing"
+          className="text-nexpura-charcoal-500 hover:text-nexpura-charcoal underline-offset-2 hover:underline"
+        >
+          Settings
+        </Link>
+        .
+      </p>
+
     </div>
   );
 }
-export default function DocumentCenterClient(props: Parameters<typeof DocumentCenterClientInner>[0]) {
+
+export default function DocumentCenterClient(
+  props: Parameters<typeof DocumentCenterClientInner>[0],
+) {
   return (
-    <Suspense fallback={<div className="max-w-5xl mx-auto py-10 px-4 animate-pulse"><div className="h-8 bg-stone-200 rounded w-48" /></div>}>
+    <Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto py-10 px-4 animate-pulse">
+          <div className="h-8 bg-nexpura-cream rounded w-48 mb-3" />
+          <div className="h-4 bg-nexpura-cream rounded w-72" />
+        </div>
+      }
+    >
       <DocumentCenterClientInner {...props} />
     </Suspense>
   );

@@ -165,7 +165,7 @@ export default function NotificationsClient({
                       type="checkbox"
                       checked={settings.notify_on_status_change}
                       onChange={() => handleToggle("notify_on_status_change")}
-                      className="w-4 h-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                      className="w-4 h-4 rounded border-stone-300 text-amber-600 focus:ring-nexpura-bronze"
                     />
                     <div>
                       <span className="text-sm font-medium text-stone-700">Status Changes</span>
@@ -178,7 +178,7 @@ export default function NotificationsClient({
                       type="checkbox"
                       checked={settings.notify_on_urgent_flagged}
                       onChange={() => handleToggle("notify_on_urgent_flagged")}
-                      className="w-4 h-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                      className="w-4 h-4 rounded border-stone-300 text-amber-600 focus:ring-nexpura-bronze"
                     />
                     <div>
                       <span className="text-sm font-medium text-stone-700">Urgent Items</span>

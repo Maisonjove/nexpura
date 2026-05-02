@@ -308,7 +308,7 @@ function WebsiteHomeInner({
             <button
               onClick={handlePublishAll}
               disabled={isPending || draftCount === 0}
-              className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title={draftCount === 0 ? "No draft changes to publish" : "Publish all draft pages"}
             >
               {isPending ? "Publishing…" : draftCount === 0 ? "Published" : "Publish"}

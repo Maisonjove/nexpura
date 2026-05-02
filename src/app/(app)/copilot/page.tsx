@@ -30,7 +30,7 @@ export default async function CopilotPage() {
         </div>
         <Link
           href="/billing"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-amber-700 text-white rounded-xl font-medium text-sm hover:bg-amber-800 transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-nexpura-charcoal text-white rounded-xl font-medium text-sm hover:bg-nexpura-charcoal-700 transition-colors"
         >
           Upgrade Plan →
         </Link>

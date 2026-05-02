@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect , Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Paperclip, User, List, Wrench, Gem, Link as LinkIcon } from "lucide-react";
 import { createTask, updateTask, deleteTask, getTaskComments, addTaskComment, getTaskAttachments, deleteTaskAttachment } from "./actions";
 import type { StaffTask, TaskComment, TaskAttachment } from "./actions";
 import TaskKanbanView from "./TaskKanbanView";
@@ -205,7 +206,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     setSelectedTask((prev) => prev ? { ...prev, status: newStatus } : null);
                     startTransition(async () => { await updateTask(selectedTask.id, { status: newStatus }); router.refresh(); });
                   }}
-                  className="text-xs border border-stone-200 rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                  className="text-xs border border-stone-200 rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                 >
                   <option value="todo">To Do</option>
                   <option value="in_progress">In Progress</option>
@@ -266,7 +267,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                             <Image src={a.file_url} alt={a.file_name} width={200} height={80} className="w-full h-20 object-cover" unoptimized />
                           ) : (
                             <div className="w-full h-20 bg-stone-50 flex items-center justify-center">
-                              <span className="text-2xl">📎</span>
+                              <Paperclip className="w-6 h-6 text-nexpura-taupe-400" strokeWidth={1.5} />
                             </div>
                           )}
                           <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
@@ -329,12 +330,12 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Add a comment…"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 resize-none mb-2"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 resize-none mb-2"
                 />
                 <button
                   onClick={handleAddComment}
                   disabled={addingComment || !commentText.trim()}
-                  className="w-full py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors"
+                  className="w-full py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50 transition-colors"
                 >
                   {addingComment ? "Adding…" : "Add Comment"}
                 </button>
@@ -367,9 +368,10 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
               <button
                 onClick={() => setViewMode("list")}
                 title="List view"
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === "list" ? "bg-white shadow-sm text-stone-900" : "text-stone-500"}`}
+                aria-label="List view"
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors inline-flex items-center gap-1 ${viewMode === "list" ? "bg-white shadow-sm text-stone-900" : "text-stone-500"}`}
               >
-                ☰ List
+                <List className="w-3 h-3" strokeWidth={1.5} /> List
               </button>
               <button
                 onClick={() => setViewMode("kanban")}
@@ -411,7 +413,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   type="text"
                   value={form.title}
                   onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 />
               </div>
               <div>
@@ -420,7 +422,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   rows={3}
                   value={form.description}
                   onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -429,7 +431,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   <select
                     value={form.assigned_to}
                     onChange={(e) => setForm((p) => ({ ...p, assigned_to: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   >
                     <option value="">Unassigned</option>
                     {teamMembers.map((m) => (
@@ -443,7 +445,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     type="date"
                     value={form.due_date}
                     onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   />
                 </div>
                 <div>
@@ -451,7 +453,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   <select
                     value={form.priority}
                     onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   >
                     <option value="low">Low</option>
                     <option value="normal">Normal</option>
@@ -464,7 +466,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   <select
                     value={form.status}
                     onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   >
                     <option value="todo">To Do</option>
                     <option value="in_progress">In Progress</option>
@@ -480,7 +482,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                 <select
                   value={form.linked_type}
                   onChange={(e) => setForm((p) => ({ ...p, linked_type: e.target.value, linked_id: "" }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                 >
                   <option value="">None</option>
                   <option value="repair">Repair</option>
@@ -497,7 +499,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     value={form.linked_id}
                     onChange={(e) => setForm((p) => ({ ...p, linked_id: e.target.value }))}
                     placeholder="Paste ID here"
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   />
                 </div>
               )}
@@ -506,7 +508,7 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                   isPending={isPending}
                   idleLabel="Create Task"
                   pendingLabel="Creating…"
-                  className="flex-1 py-2.5 bg-amber-700 text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-nexpura-charcoal text-white rounded-xl font-medium text-sm hover:bg-[#7a6447] transition-colors disabled:opacity-50"
                 />
                 <button
                   type="button"
@@ -658,8 +660,9 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                     )}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       {assignee ? (
-                        <span className="text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
-                          👤 {assignee.full_name}
+                        <span className="inline-flex items-center gap-1 text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                          <User className="w-3 h-3" strokeWidth={1.5} />
+                          {assignee.full_name}
                         </span>
                       ) : (
                         <span className="text-xs text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
@@ -671,14 +674,18 @@ function TasksClientInner({ userId, userRole, myTasks, allTasks, teamMembers, te
                           href={`${LINKED_TYPE_HREFS[task.linked_type] || "/"}${task.linked_id}`}
                           onClick={(e) => e.stopPropagation()}
                           className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border transition-colors hover:underline ${
-                            task.linked_type === "repair"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : task.linked_type === "bespoke"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                            task.linked_type === "repair" || task.linked_type === "bespoke"
+                              ? "bg-nexpura-champagne text-nexpura-bronze border-nexpura-taupe-100"
                               : "bg-stone-50 text-stone-600 border-stone-200"
                           }`}
                         >
-                          {task.linked_type === "repair" ? "🔧" : task.linked_type === "bespoke" ? "💎" : "🔗"}
+                          {task.linked_type === "repair" ? (
+                            <Wrench className="w-3 h-3" strokeWidth={1.5} />
+                          ) : task.linked_type === "bespoke" ? (
+                            <Gem className="w-3 h-3" strokeWidth={1.5} />
+                          ) : (
+                            <LinkIcon className="w-3 h-3" strokeWidth={1.5} />
+                          )}
                           {" "}{LINKED_TYPE_LABELS[task.linked_type] || task.linked_type}
                         </Link>
                       )}

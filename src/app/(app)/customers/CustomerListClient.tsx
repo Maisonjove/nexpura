@@ -220,7 +220,7 @@ export default function CustomerListClient({
               sheetName="Customers"
               size="sm"
             />
-            <Link href="/customers/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
+            <Link href="/customers/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-nexpura-charcoal hover:bg-nexpura-charcoal-700 text-white h-10 px-4 py-2">
               <Plus className="w-4 h-4 mr-2" /> Add Customer
             </Link>
           </div>
@@ -240,7 +240,7 @@ export default function CustomerListClient({
             />
           </div>
           <Select value={activeTag} onValueChange={(val) => setActiveTag(val || "all")}>
-            <SelectTrigger className="w-[180px] h-10 text-sm border-stone-200 focus:ring-amber-600">
+            <SelectTrigger className="w-[180px] h-10 text-sm border-stone-200 focus:ring-nexpura-bronze">
               <SelectValue placeholder="All Tags" />
             </SelectTrigger>
             <SelectContent>
@@ -251,7 +251,7 @@ export default function CustomerListClient({
             </SelectContent>
           </Select>
           <Select value={sort} onValueChange={(val) => setSort(val || "created_at_desc")}>
-            <SelectTrigger className="w-[170px] h-10 text-sm border-stone-200 focus:ring-amber-600">
+            <SelectTrigger className="w-[170px] h-10 text-sm border-stone-200 focus:ring-nexpura-bronze">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -322,7 +322,7 @@ export default function CustomerListClient({
             {customers.length === 0 && (
               <Link
                 href="/customers/new"
-                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
+                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Add your first customer →

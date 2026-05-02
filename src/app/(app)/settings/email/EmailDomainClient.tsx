@@ -181,7 +181,7 @@ export default function EmailDomainClient({ emailDomain, fromName, businessName,
                 onChange={(e) => setSenderName(e.target.value)}
                 placeholder="Your Business Name"
                 disabled={!isOwner || isPending}
-                className="flex-1 px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-stone-50 disabled:text-stone-400"
+                className="flex-1 px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze disabled:bg-stone-50 disabled:text-stone-400"
               />
               <button
                 onClick={handleUpdateFromName}
@@ -218,7 +218,7 @@ export default function EmailDomainClient({ emailDomain, fromName, businessName,
                   onChange={(e) => setReplyTo(e.target.value)}
                   placeholder="youremail@gmail.com"
                   disabled={!isOwner || isPending}
-                  className="flex-1 px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-stone-50 disabled:text-stone-400"
+                  className="flex-1 px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze disabled:bg-stone-50 disabled:text-stone-400"
                 />
                 <button
                   onClick={handleUpdateReplyTo}
@@ -283,7 +283,7 @@ export default function EmailDomainClient({ emailDomain, fromName, businessName,
                       <button
                         onClick={handleVerify}
                         disabled={isPending}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-nexpura-charcoal text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                       >
                         {isPending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                         Check Verification
@@ -429,7 +429,7 @@ export default function EmailDomainClient({ emailDomain, fromName, businessName,
                       onChange={(e) => setNewDomain(e.target.value.toLowerCase())}
                       placeholder="yourbusiness.com"
                       disabled={!isOwner || isPending}
-                      className="w-full pl-16 pr-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-stone-50 disabled:text-stone-400"
+                      className="w-full pl-16 pr-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze disabled:bg-stone-50 disabled:text-stone-400"
                     />
                   </div>
                   <button

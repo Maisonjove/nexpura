@@ -182,7 +182,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
         </div>
         <button
           onClick={() => setShowNewForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
         >
           <Plus size={14} />
           Create Reminder
@@ -219,7 +219,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
               <input
                 value={newForm.name || ""}
                 onChange={(e) => setNewForm((p) => ({ ...p, name: e.target.value }))}
-                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
                 placeholder="Reminder name"
               />
             </div>
@@ -228,7 +228,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
               <select
                 value={newForm.trigger_type || "birthday"}
                 onChange={(e) => setNewForm((p) => ({ ...p, trigger_type: e.target.value }))}
-                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
               >
                 <option value="birthday">Birthday</option>
                 <option value="anniversary">Anniversary</option>
@@ -242,7 +242,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
               <select
                 value={newForm.channel || "email"}
                 onChange={(e) => setNewForm((p) => ({ ...p, channel: e.target.value }))}
-                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
               >
                 <option value="email">Email</option>
                 <option value="sms">SMS</option>
@@ -254,7 +254,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
               <input
                 value={newForm.subject || ""}
                 onChange={(e) => setNewForm((p) => ({ ...p, subject: e.target.value }))}
-                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
                 placeholder="Email subject line"
               />
             </div>
@@ -265,7 +265,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
               value={newForm.body || ""}
               onChange={(e) => setNewForm((p) => ({ ...p, body: e.target.value }))}
               rows={3}
-              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
               placeholder="Use {first_name}, {business_name}, {amount} as variables"
             />
           </div>
@@ -279,7 +279,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
             <button
               onClick={createReminder}
               disabled={saving || !newForm.name}
-              className="px-4 py-2 text-sm bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm bg-nexpura-charcoal text-white rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
             >
               {saving ? "Creating..." : "Create Reminder"}
             </button>
@@ -303,7 +303,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
                   <input
                     value={editForm.name ?? rem.name}
                     onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
                   />
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -311,7 +311,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
                       <select
                         value={editForm.channel ?? rem.channel}
                         onChange={(e) => setEditForm((p) => ({ ...p, channel: e.target.value }))}
-                        className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20"
                       >
                         <option value="email">Email</option>
                         <option value="sms">SMS</option>
@@ -323,7 +323,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
                       <input
                         value={editForm.subject ?? rem.subject ?? ""}
                         onChange={(e) => setEditForm((p) => ({ ...p, subject: e.target.value }))}
-                        className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20"
                         placeholder="Email subject"
                       />
                     </div>
@@ -332,7 +332,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
                     value={editForm.body ?? rem.body ?? ""}
                     onChange={(e) => setEditForm((p) => ({ ...p, body: e.target.value }))}
                     rows={2}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20"
                     placeholder="Message body"
                   />
                   <div className="flex gap-2 justify-end">
@@ -345,7 +345,7 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
                     <button
                       onClick={saveEdit}
                       disabled={saving}
-                      className="px-3 py-1.5 text-xs bg-amber-700 text-white rounded-lg hover:bg-amber-800 disabled:opacity-50"
+                      className="px-3 py-1.5 text-xs bg-nexpura-charcoal text-white rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50"
                     >
                       {saving ? "Saving..." : "Save"}
                     </button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import type { CartItem, Customer } from "./types";
 
 interface CartPanelProps {
@@ -64,7 +65,7 @@ export default function CartPanel({
         <h2 className="font-semibold text-stone-900">
           Cart
           {cart.length > 0 && (
-            <span className="ml-2 bg-amber-700 text-white text-xs rounded-full px-2 py-0.5">
+            <span className="ml-2 bg-nexpura-charcoal text-white text-xs rounded-full px-2 py-0.5">
               {cart.reduce((s, c) => s + c.quantity, 0)}
             </span>
           )}
@@ -93,9 +94,10 @@ export default function CartPanel({
                   <span className="text-sm font-medium text-stone-900 truncate flex-1 mr-2">{item.name}</span>
                   <button
                     onClick={() => onRemoveFromCart(item.inventoryId)}
-                    className="text-stone-300 hover:text-red-400 text-xs ml-1"
+                    aria-label="Remove from cart"
+                    className="text-stone-300 hover:text-nexpura-oxblood ml-1"
                   >
-                    ✕
+                    <X className="w-3.5 h-3.5" strokeWidth={1.5} />
                   </button>
                 </div>
                 <div className="flex items-center justify-between">
@@ -139,7 +141,7 @@ export default function CartPanel({
             }}
             onFocus={() => setShowCustomerDropdown(true)}
             onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
-            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
+            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-nexpura-bronze"
           />
           {showCustomerDropdown && filteredCustomers.length > 0 && !selectedCustomer && (
             <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-32 overflow-y-auto z-10">
@@ -177,7 +179,7 @@ export default function CartPanel({
             placeholder="Discount"
             value={discountValue}
             onChange={(e) => setDiscountValue(e.target.value)}
-            className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
+            className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-nexpura-bronze"
           />
         </div>
 
@@ -210,7 +212,7 @@ export default function CartPanel({
         <button
           onClick={onCharge}
           disabled={cart.length === 0}
-          className="w-full py-3 md:py-4 bg-amber-700 text-white rounded-xl font-semibold text-sm md:text-base hover:bg-[#7a6447] transition-colors disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation active:scale-[0.98]"
+          className="w-full py-3 md:py-4 bg-nexpura-charcoal text-white rounded-xl font-semibold text-sm md:text-base hover:bg-[#7a6447] transition-colors disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation active:scale-[0.98]"
           title={cart.length === 0 ? "Add items to cart first" : undefined}
         >
           {cart.length === 0 ? "Add items to charge" : `Charge $${total.toFixed(2)}`}

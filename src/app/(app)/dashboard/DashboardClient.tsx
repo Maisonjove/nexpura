@@ -2,59 +2,48 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import {
+  AlertTriangle,
+  CheckCircle,
+  ChevronRight,
+  Globe,
+  Layers,
+  MapPin,
+  Megaphone,
+  PackageOpen,
+  Settings,
+  ShoppingBag,
+  Users,
+  Wallet,
+  Wrench,
+} from "lucide-react";
 import { DashboardClock } from "./DashboardClock";
 import { useLocation } from "@/contexts/LocationContext";
-import { MapPin, Layers } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 /**
- * Thin orchestrator for the dashboard shell.
+ * Dashboard — "Workspace Command Centre".
  *
- * Client surface intentionally kept small — this file used to be 800+
- * lines of JSX, icon SVGs, SECTIONS data, and drill-down logic. The
- * same user-visible behaviour is now split across:
+ * Layered on top of the existing data hooks (DashboardWrapper + actions.ts +
+ * _stats-hydrate). The data flow from the server actions is unchanged; only
+ * this presentation layer was rebuilt to Kaitlyn's 2026-05-02 brief
+ * (Section 3). The right sidebar is its own dynamic chunk; the KPI chips,
+ * page header, clock and module command grid are rendered inline.
  *
- *  - DashboardClock              (tiny client island, clock state only)
- *  - DashboardCategoryGrid       (dynamic-loaded chunk; 8-card grid +
- *                                 drill-down + ModuleDataPanel lazy)
- *  - DashboardSidebar            (dynamic-loaded chunk; no hooks)
- *  - This file                   (header text, summary strip, attention
- *                                 items — statically rendered JSX, no
- *                                 state, no effects)
- *
- * Why: hydration cost is dominated by the main-bundle JS download +
- * parse + React tree matching. Splitting the grid into a separate chunk
- * lets the main dashboard bundle parse and hydrate faster; the grid
- * chunk loads in parallel and attaches its own state handlers without
- * gating the rest of the shell.
+ * Token vocabulary lives under the `nexpura.*` Tailwind namespace
+ * (`tailwind.config.ts`). No raw hex outside the config. No amber CTAs —
+ * primary action colour is charcoal.
  */
 
-// Category grid is split into its own chunk. SSR'd (so there is no
-// layout shift) but its client JS is in a separate bundle. Main
-// dashboard bundle parses faster; grid hydrates independently.
-const DashboardCategoryGrid = dynamic(() => import("./DashboardCategoryGrid"), {
-  ssr: true,
-  loading: () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="bg-[#FAFAF8] border border-[#E8E4DF] rounded-xl p-5 animate-pulse h-[128px]">
-          <div className="w-9 h-9 rounded-lg bg-stone-100 mb-3" />
-          <div className="h-3 w-20 bg-stone-100 rounded mb-1.5" />
-          <div className="h-3 w-32 bg-stone-100 rounded" />
-        </div>
-      ))}
-    </div>
-  ),
-});
-
-// Sidebar kept in its own chunk per the prior pass. Its file retains
-// "use client" (React RSC forbids importing a server component into a
-// client module — this file is still a client component).
 const DashboardSidebar = dynamic(() => import("./DashboardSidebar"), {
   ssr: true,
   loading: () => (
-    <aside className="hidden lg:flex flex-col gap-4 w-[256px] flex-shrink-0">
-      {Array.from({ length: 2 }).map((_, i) => (
-        <div key={i} className="bg-[#FAFAF8] border border-[#E8E4DF] rounded-xl p-5 animate-pulse">
+    <aside className="hidden xl:flex flex-col gap-4 w-[320px] flex-shrink-0">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div
+          key={i}
+          className="bg-nexpura-ivory-elevated border border-nexpura-taupe-100 rounded-xl p-5 animate-pulse"
+        >
           <div className="h-3 w-24 bg-stone-100 rounded mb-4" />
           <div className="space-y-2">
             <div className="h-3 w-full bg-stone-100 rounded" />
@@ -67,7 +56,7 @@ const DashboardSidebar = dynamic(() => import("./DashboardSidebar"), {
   ),
 });
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types (mirrors the data flowing through DashboardWrapper) ──────────────
 
 type ActivityItem = {
   id: string;
@@ -164,78 +153,266 @@ interface DashboardClientProps {
   isStatsLoading?: boolean;
 }
 
-// Small chevron used by attention-list rows. Kept here because it's the
-// only SVG in the trimmed bundle.
-const chevronRight = (
-  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-  </svg>
-);
+// ─── Header ─────────────────────────────────────────────────────────────────
 
-// Dashboard heading that swaps between "All Locations" identity and the
-// specific selected location. When a single location is chosen, that
-// location's name becomes the primary heading and the tenant name
-// drops to a small subtitle — the jeweller should feel the context has
-// genuinely switched, not just that a tiny chip turned orange. Reads
-// the same LocationContext that DashboardWrapper uses for its SWR key,
-// so the heading and the numbers below can never disagree about which
-// slice is being shown.
-function DashboardHeading({ tenantName }: { tenantName: string | null }) {
+function PageHeader({ tenantName }: { tenantName: string | null }) {
   const { currentLocation, hasMultipleLocations, isLoading } = useLocation();
-  const tenantLabel = tenantName?.trim() || "Dashboard";
+  const tenantLabel = tenantName?.trim() || "Workspace";
 
-  if (isLoading || !hasMultipleLocations) {
-    return (
-      <>
-        <h1 className="font-serif text-[1.625rem] font-normal tracking-[-0.015em] text-stone-900 leading-tight">
-          {tenantLabel}
-        </h1>
-        <p className="text-[0.8rem] text-stone-400 mt-1 leading-relaxed">
-          Overview of sales, workshop activity, inventory, customers, and daily operations
-        </p>
-      </>
-    );
-  }
+  // Identity for the H1: when a single location is selected, that location
+  // becomes the heading; otherwise the workspace identity rules.
+  const showLocationView =
+    !isLoading && hasMultipleLocations && currentLocation;
 
-  if (currentLocation) {
-    return (
-      <>
-        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-amber-100 border border-amber-200 text-[0.7rem] font-semibold tracking-wider uppercase text-amber-900 mb-2">
-          <MapPin size={12} className="text-amber-800" />
-          Location view
-        </div>
-        <h1 className="font-serif text-[1.625rem] font-normal tracking-[-0.015em] text-stone-900 leading-tight">
-          {currentLocation.name}
-        </h1>
-        <p className="text-[0.8rem] text-stone-500 mt-1 leading-relaxed">
-          <span className="font-medium text-stone-700">{tenantLabel}</span>
-          <span className="mx-1.5 text-stone-300">·</span>
-          Only activity scoped to this location
-        </p>
-      </>
-    );
-  }
+  const heading = showLocationView ? currentLocation!.name : "Nexpura Workspace";
 
   return (
-    <>
-      <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-stone-100 border border-stone-200 text-[0.7rem] font-semibold tracking-wider uppercase text-stone-700 mb-2">
-        <Layers size={12} className="text-stone-600" />
-        All locations
+    <div className="flex items-start justify-between gap-6">
+      <div className="min-w-0">
+        {showLocationView && (
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-nexpura-amber-bg border border-nexpura-taupe-100 text-[11px] font-semibold tracking-[0.12em] uppercase text-nexpura-amber-muted mb-2">
+            <MapPin size={12} />
+            Location view
+          </div>
+        )}
+        {!showLocationView && hasMultipleLocations && !isLoading && (
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-nexpura-ivory-elevated border border-nexpura-taupe-100 text-[11px] font-semibold tracking-[0.12em] uppercase text-nexpura-charcoal-500 mb-2">
+            <Layers size={12} />
+            All locations
+          </div>
+        )}
+        <h1 className="font-serif text-[32px] md:text-[26px] font-medium tracking-[-0.01em] text-nexpura-charcoal leading-tight">
+          {heading}
+        </h1>
+        <p className="font-sans text-[13px] text-nexpura-charcoal-500 mt-1.5 leading-relaxed">
+          {showLocationView ? (
+            <>
+              <span className="font-medium text-nexpura-charcoal-700">{tenantLabel}</span>
+              <span className="mx-1.5 text-nexpura-taupe-200">·</span>
+              Activity scoped to this location
+            </>
+          ) : (
+            <>Today&rsquo;s overview across sales, inventory, workshop, clients and finance.</>
+          )}
+        </p>
       </div>
-      <h1 className="font-serif text-[1.625rem] font-normal tracking-[-0.015em] text-stone-900 leading-tight">
-        {tenantLabel}
-      </h1>
-      <p className="text-[0.8rem] text-stone-400 mt-1 leading-relaxed">
-        Overview of sales, workshop activity, inventory, customers, and daily operations
-      </p>
-    </>
+      <DashboardClock />
+    </div>
   );
 }
 
-// Decides whether to render the location-scoped empty state. Only shows
-// when (a) a specific location is selected, (b) the tenant actually has
-// multiple locations, (c) stats have finished loading (no flash during
-// skeleton), and (d) every headline metric on the dashboard is zero.
+// ─── KPI strip ──────────────────────────────────────────────────────────────
+
+type KpiStyle = "neutral" | "warn" | "danger" | "success";
+
+function KpiChip({
+  label,
+  count,
+  href,
+  style,
+}: {
+  label: string;
+  count: number;
+  href: string;
+  style: KpiStyle;
+}) {
+  const isZero = count === 0;
+  const showStatusIcon = !isZero;
+
+  // Number colour: when zero, taupe-400 (muted) per brief. When non-zero,
+  // the chip's intent colour.
+  const numberColor = isZero
+    ? "text-nexpura-taupe-400"
+    : style === "danger"
+      ? "text-nexpura-oxblood"
+      : style === "warn"
+        ? "text-nexpura-amber-muted"
+        : style === "success"
+          ? "text-nexpura-emerald-deep"
+          : "text-nexpura-charcoal-700";
+
+  // Border tint hints at urgency without shouting. Hover state is shared
+  // (taupe-200) so the strip feels uniformly interactive.
+  const borderColor = isZero
+    ? "border-nexpura-taupe-100"
+    : style === "danger"
+      ? "border-nexpura-oxblood-bg"
+      : style === "warn"
+        ? "border-nexpura-amber-bg"
+        : style === "success"
+          ? "border-nexpura-emerald-bg"
+          : "border-nexpura-taupe-100";
+
+  return (
+    <Link
+      href={href}
+      title={isZero ? "All clear." : undefined}
+      className={`group flex items-center justify-between gap-3 bg-nexpura-ivory-elevated rounded-xl px-4 py-3.5 border ${borderColor} hover:border-nexpura-taupe-200 hover:shadow-md transition-all duration-200`}
+    >
+      <div className="min-w-0">
+        <p className="font-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-nexpura-taupe-400 leading-tight">
+          {label}
+        </p>
+        <p
+          className={`font-sans text-[24px] font-medium tracking-[-0.01em] tabular-nums leading-none mt-1.5 ${numberColor}`}
+        >
+          {count}
+        </p>
+      </div>
+      <div className="flex-shrink-0">
+        {isZero ? (
+          <CheckCircle className="w-5 h-5 text-nexpura-emerald-deep" aria-hidden />
+        ) : showStatusIcon && style === "danger" ? (
+          <AlertTriangle className="w-5 h-5 text-nexpura-oxblood" aria-hidden />
+        ) : showStatusIcon && style === "warn" ? (
+          <AlertTriangle className="w-5 h-5 text-nexpura-amber-muted" aria-hidden />
+        ) : showStatusIcon && style === "success" ? (
+          <CheckCircle className="w-5 h-5 text-nexpura-emerald-deep" aria-hidden />
+        ) : (
+          <ChevronRight
+            className="w-5 h-5 text-nexpura-taupe-400 group-hover:translate-x-0.5 transition-transform duration-200"
+            aria-hidden
+          />
+        )}
+      </div>
+    </Link>
+  );
+}
+
+// ─── Module Command Card ───────────────────────────────────────────────────
+
+type ModuleCardProps = {
+  label: string;
+  primary: { value: string; subtitle?: string };
+  signals: Array<{ value: string; tone: "neutral" | "danger" | "warn" | "success" }>;
+  primaryCta: { label: string; href: string };
+  secondaryCtas?: Array<{ label: string; href: string }>;
+  emptyMessage?: string;
+  isEmpty?: boolean;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+function ModuleCard({
+  label,
+  primary,
+  signals,
+  primaryCta,
+  secondaryCtas,
+  emptyMessage,
+  isEmpty,
+  icon: Icon,
+}: ModuleCardProps) {
+  return (
+    <Card className="group relative bg-nexpura-ivory-elevated border-nexpura-taupe-100 hover:border-nexpura-taupe-200 hover:shadow-md transition-all duration-200 flex flex-col">
+      <div className="p-5 flex-1 flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-nexpura-taupe-400">
+            {label}
+          </p>
+          <Icon className="w-4 h-4 text-nexpura-taupe-400" aria-hidden />
+        </div>
+
+        {isEmpty && emptyMessage ? (
+          <div className="flex-1 flex flex-col justify-center min-h-[72px]">
+            <p className="font-sans text-[13px] text-nexpura-charcoal-500 leading-relaxed">
+              {emptyMessage}
+            </p>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col gap-3 min-h-[72px]">
+            <div>
+              <p className="font-sans text-[24px] font-medium tracking-[-0.01em] text-nexpura-charcoal leading-none tabular-nums">
+                {primary.value}
+              </p>
+              {primary.subtitle && (
+                <p className="font-sans text-[12px] text-nexpura-charcoal-500 mt-1.5">
+                  {primary.subtitle}
+                </p>
+              )}
+            </div>
+            {signals.length > 0 && (
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                {signals.map((s, i) => (
+                  <span
+                    key={i}
+                    className={`font-sans text-[12px] tabular-nums ${
+                      s.tone === "danger"
+                        ? "text-nexpura-oxblood"
+                        : s.tone === "warn"
+                          ? "text-nexpura-amber-muted"
+                          : s.tone === "success"
+                            ? "text-nexpura-emerald-deep"
+                            : "text-nexpura-charcoal-500"
+                    }`}
+                  >
+                    {s.value}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="pt-3 border-t border-nexpura-taupe-100">
+          <Link
+            href={primaryCta.href}
+            className="inline-flex items-center gap-1 font-sans text-[13px] font-medium text-nexpura-charcoal-700 hover:text-nexpura-charcoal transition-colors"
+          >
+            {primaryCta.label}
+            <ChevronRight
+              className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-200"
+              aria-hidden
+            />
+          </Link>
+          {secondaryCtas && secondaryCtas.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
+              {secondaryCtas.map((cta) => (
+                <Link
+                  key={cta.href}
+                  href={cta.href}
+                  className="inline-flex items-center px-2 py-0.5 rounded-md bg-nexpura-ivory border border-nexpura-taupe-100 font-sans text-[11px] font-medium text-nexpura-charcoal-500 hover:bg-white hover:border-nexpura-taupe-200 hover:text-nexpura-charcoal-700 transition-colors"
+                >
+                  {cta.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function formatCurrency(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat("en-AU", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${currency} ${Math.round(amount).toLocaleString()}`;
+  }
+}
+
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const diffMs = Date.now() - then;
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+// ─── Location empty gate (preserved from prior version) ────────────────────
+
 function DashboardLocationEmptyGate({
   hasAnyActivity,
   isStatsLoading,
@@ -248,44 +425,24 @@ function DashboardLocationEmptyGate({
   if (!currentLocation) return null;
   if (isStatsLoading) return null;
   if (hasAnyActivity) return null;
-  return <DashboardLocationEmpty locationName={currentLocation.name} />;
-}
-
-// Shown when a specific location is selected AND every headline metric is
-// zero. Distinguishes "this jeweller genuinely has no activity at this
-// location yet" from "something is broken". Without it the dashboard
-// cards full of zeros look like a bug, not an empty state.
-function DashboardLocationEmpty({ locationName }: { locationName: string }) {
   return (
-    <section className="bg-amber-50/50 border border-amber-100 rounded-xl px-6 py-5">
+    <section className="bg-nexpura-amber-bg/60 border border-nexpura-taupe-100 rounded-xl px-6 py-5">
       <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center">
-          <MapPin size={16} className="text-amber-800" />
+        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-nexpura-amber-bg border border-nexpura-taupe-100 flex items-center justify-center">
+          <MapPin size={16} className="text-nexpura-amber-muted" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-serif text-[1rem] text-stone-900 leading-tight">
-            No activity yet at <span className="font-semibold">{locationName}</span>
+          <h3 className="font-serif text-[16px] text-nexpura-charcoal leading-tight">
+            No activity yet at{" "}
+            <span className="font-semibold">{currentLocation.name}</span>
           </h3>
-          <p className="text-[0.8rem] text-stone-500 mt-1 leading-relaxed">
-            Sales, repairs, bespoke jobs and invoices attached to this location will appear here. Switch to <span className="font-medium text-stone-700">All Locations</span> in the header to see the whole business, or start a sale/repair intake with this location selected.
+          <p className="font-sans text-[13px] text-nexpura-charcoal-500 mt-1 leading-relaxed">
+            Sales, repairs, bespoke jobs and invoices attached to this location will appear here. Switch to{" "}
+            <span className="font-medium text-nexpura-charcoal-700">All Locations</span> in the header to see the whole business.
           </p>
         </div>
       </div>
     </section>
-  );
-}
-
-function AttentionRow({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 px-5 py-3 hover:bg-white/80 transition-colors duration-150 group"
-    >
-      {children}
-      <span className="text-stone-300 group-hover:text-stone-500 transition-colors flex-shrink-0 ml-auto">
-        {chevronRight}
-      </span>
-    </Link>
   );
 }
 
@@ -303,6 +460,7 @@ export default function DashboardClient({
   lowStockItems,
   overdueRepairs,
   readyForPickup,
+  recentActivity,
   myTasks,
   activeRepairs,
   activeBespokeJobs,
@@ -312,73 +470,49 @@ export default function DashboardClient({
   isStatsLoading = false,
 }: DashboardClientProps) {
   const bp = basePath || "";
+  const activeJobsTotal = activeRepairsCount + activeJobsCount;
 
-  // Attention items are pure server-rendered JSX — no state, no effects.
-  // Built once per render from the stats props.
-  const attentionItems = [
-    ...overdueRepairs.map((r) => ({
-      key: `repair-${r.id}`,
-      dot: "red" as const,
-      id: r.repairNumber,
-      label: r.item,
-      sub: r.customer,
-      type: "Repair",
-      status: `${r.daysOverdue}d overdue`,
-      statusColor: "text-red-500",
-      href: `${bp}/repairs/${r.id}`,
-    })),
-    ...readyForPickup.map((r) => ({
-      key: `ready-${r.id}`,
-      dot: "green" as const,
-      id: r.number,
-      label: r.label,
-      sub: r.customer,
-      type: r.type === "repair" ? "Repair" : "Bespoke",
-      status: "Ready for pickup",
-      statusColor: "text-emerald-600",
-      href: `${bp}/${r.type === "repair" ? "repairs" : "bespoke"}/${r.id}`,
-    })),
-    ...myTasks
-      .filter((t) => t.status !== "completed" && t.status !== "done")
-      .map((t) => ({
-        key: `task-${t.id}`,
-        dot: (t.priority === "urgent" ? "red" : "amber") as "red" | "amber",
-        id: t.id.slice(0, 8),
-        label: t.title,
-        sub: null,
-        type: "Task",
-        status: t.due_date
-          ? `Due ${new Date(t.due_date).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}`
-          : t.priority,
-        statusColor: t.priority === "urgent" ? "text-red-500" : "text-amber-600",
-        href: `${bp}/tasks`,
-      })),
-    ...lowStockItems.map((s) => ({
-      key: `stock-${s.id}`,
-      dot: (s.quantity === 0 ? "red" : "amber") as "red" | "amber",
-      id: s.sku || s.id.slice(0, 8),
-      label: s.name,
-      sub: null,
-      type: "Inventory",
-      status: s.quantity === 0 ? "Out of stock" : `Qty: ${s.quantity}`,
-      statusColor: s.quantity === 0 ? "text-red-500" : "text-amber-600",
-      href: `${bp}/inventory`,
-    })),
+  // KPI chip set — Section 3.2.
+  // Routes: workshop/jobs, invoices and inventory query-string filters are
+  // being built in parallel in the workspace redesign track. We emit the
+  // intended hrefs now so the wiring is correct the moment those filters
+  // land. Until then they degrade to the existing list pages (which ignore
+  // the unknown query params).
+  const kpis: Array<{ label: string; count: number; href: string; style: KpiStyle }> = [
+    {
+      label: "Active jobs",
+      count: activeJobsTotal,
+      href: `${bp}/workshop?status=active`,
+      style: "neutral",
+    },
+    {
+      label: "Overdue jobs",
+      count: overdueRepairs.length,
+      href: `${bp}/workshop?status=overdue`,
+      style: overdueRepairs.length > 0 ? "danger" : "neutral",
+    },
+    {
+      label: "Ready for pickup",
+      count: readyForPickup.length,
+      href: `${bp}/workshop?status=ready-for-pickup`,
+      style: readyForPickup.length > 0 ? "success" : "neutral",
+    },
+    {
+      label: "Overdue invoices",
+      count: overdueInvoiceCount,
+      href: `${bp}/invoices?status=overdue`,
+      style: overdueInvoiceCount > 0 ? "danger" : "neutral",
+    },
+    {
+      label: "Low stock",
+      count: lowStockItems.length,
+      href: `${bp}/inventory?status=low-stock`,
+      style: lowStockItems.length > 0 ? "warn" : "neutral",
+    },
   ];
 
-  const dotColor: Record<string, string> = {
-    red: "bg-red-400",
-    green: "bg-emerald-400",
-    amber: "bg-amber-400",
-  };
-
-  // "Empty" means every headline number is zero. Only treated as empty
-  // when a specific location is selected AND genuinely has no activity —
-  // that's the state worth explaining to the jeweller. In the All
-  // Locations view a zero-state at this layer would just be noise.
   const hasAnyActivity =
-    activeRepairsCount +
-      activeJobsCount +
+    activeJobsTotal +
       overdueInvoiceCount +
       Math.round(totalOutstanding * 100) +
       Math.round(salesThisMonthRevenue * 100) +
@@ -392,94 +526,262 @@ export default function DashboardClient({
       activeBespokeJobs.length >
     0;
 
+  // Module Command Grid (Section 3.3). Eight cards in a 4-col desktop /
+  // 2-col tablet / 1-col mobile grid. Each card derives its primary metric,
+  // signals and CTAs from the data already in scope. Anything we don't yet
+  // compute on the server (customer totals, marketing campaigns, website
+  // health) renders the brief's empty-state copy rather than a fabricated
+  // number.
+
+  // Most-recent sale snippet: the precomputed slice carries id +
+  // sale_number + customer (no amount). The brief's "amount + relative
+  // time" accent is omitted until that slice grows; we surface customer
+  // name + sale number.
+  const recentSale = recentSales[0];
+  const recentRepair = recentRepairsList[0];
+  const recentJobActivity = recentActivity.find((a) => a.type === "job") ?? recentActivity[0];
+
+  const overdueJobsCount = overdueRepairs.length;
+  const readyForPickupCount = readyForPickup.length;
+  const lowStockCount = lowStockItems.length;
+  const outOfStockCount = lowStockItems.filter((i) => i.quantity === 0).length;
+
   return (
     <div className="flex gap-7 items-start min-h-0">
-      {/* ── Main Column ───────────────────────────────────────────────────── */}
+      {/* ── Main column ────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0 space-y-7">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <DashboardHeading tenantName={tenantName} />
-          </div>
-          <DashboardClock />
-        </div>
+        <PageHeader tenantName={tenantName} />
 
-        <DashboardLocationEmptyGate hasAnyActivity={hasAnyActivity} isStatsLoading={isStatsLoading} />
-
-        {/* Summary strip */}
-        <div className="flex flex-wrap gap-1.5 -mt-2">
-          {[
-            { label: "Active jobs", count: activeRepairsCount + activeJobsCount, href: `${bp}/workshop`, style: "neutral" },
-            { label: "Overdue jobs", count: overdueRepairs.length, href: `${bp}/repairs?filter=overdue`, style: overdueRepairs.length > 0 ? "danger" : "neutral" },
-            { label: "Ready for pickup", count: readyForPickup.length, href: `${bp}/repairs?filter=ready`, style: readyForPickup.length > 0 ? "success" : "neutral" },
-            { label: "Overdue invoices", count: overdueInvoiceCount, href: `${bp}/invoices?filter=overdue`, style: overdueInvoiceCount > 0 ? "danger" : "neutral" },
-            { label: "Low stock", count: lowStockItems.length, href: `${bp}/inventory`, style: lowStockItems.length > 0 ? "warn" : "neutral" },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[0.75rem] border font-medium transition-all duration-200
-                ${item.style === "danger" ? "bg-red-50 border-red-100 text-red-600 hover:bg-red-100" :
-                  item.style === "success" ? "bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100" :
-                  item.style === "warn" ? "bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100" :
-                  "bg-stone-50 border-stone-200 text-stone-500 hover:bg-white hover:border-stone-300"}`}
-            >
-              <span className={`text-[0.875rem] font-semibold tabular-nums
-                ${item.style === "danger" ? "text-red-700" :
-                  item.style === "success" ? "text-emerald-800" :
-                  item.style === "warn" ? "text-amber-800" :
-                  "text-stone-700"}`}>
-                {item.count}
-              </span>
-              {item.label}
-            </Link>
-          ))}
-        </div>
-
-        {/* Needs attention */}
-        {attentionItems.length > 0 && (
-          <section key="attention" className="animate-in fade-in slide-in-from-bottom-1 duration-200">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-[0.6875rem] font-semibold tracking-[0.12em] uppercase text-stone-400">Needs Attention</h2>
-              <span className="text-[0.75rem] text-stone-400">{attentionItems.length} item{attentionItems.length !== 1 ? "s" : ""}</span>
-            </div>
-            <div className="bg-[#FAFAF8] border border-[#E8E4DF] rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)] divide-y divide-[#F0EDE9]">
-              {attentionItems.map((item) => (
-                <AttentionRow key={item.key} href={item.href}>
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor[item.dot]}`} />
-                  <span className="text-[0.7rem] font-mono text-stone-300 w-[5rem] truncate flex-shrink-0">{item.id}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[0.8125rem] text-stone-800 font-medium truncate">{item.label}</p>
-                    {item.sub && <p className="text-[0.75rem] text-stone-400 truncate">{item.sub}</p>}
-                  </div>
-                  <span className="text-[0.75rem] text-stone-400 flex-shrink-0 hidden sm:block">{item.type}</span>
-                  <span className={`text-[0.75rem] font-medium flex-shrink-0 ${item.statusColor}`}>{item.status}</span>
-                </AttentionRow>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Category grid + drill-down — dynamic chunk */}
-        <DashboardCategoryGrid
-          bp={bp}
-          salesThisMonthCount={salesThisMonthCount}
-          activeRepairsCount={activeRepairsCount}
-          activeJobsCount={activeJobsCount}
-          overdueInvoiceCount={overdueInvoiceCount}
-          totalOutstanding={totalOutstanding}
-          currency={currency}
-          lowStockItems={lowStockItems}
-          overdueRepairs={overdueRepairs}
-          readyForPickup={readyForPickup}
-          activeRepairs={activeRepairs}
-          activeBespokeJobs={activeBespokeJobs}
-          recentSales={recentSales}
-          myTasks={myTasks}
+        <DashboardLocationEmptyGate
+          hasAnyActivity={hasAnyActivity}
+          isStatsLoading={isStatsLoading}
         />
+
+        {/* KPI status strip */}
+        <section aria-label="Key performance indicators">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {kpis.map((kpi) => (
+              <KpiChip
+                key={kpi.label}
+                label={kpi.label}
+                count={kpi.count}
+                href={kpi.href}
+                style={kpi.style}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Module Command Grid */}
+        <section aria-label="Modules">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            {/* 1. Sales */}
+            <ModuleCard
+              icon={ShoppingBag}
+              label="Sales"
+              isEmpty={salesThisMonthCount === 0 && recentSales.length === 0}
+              emptyMessage="No sales recorded yet. Create a POS sale, invoice, quote or layby to begin tracking client revenue."
+              primary={{
+                value: formatCurrency(salesThisMonthRevenue, currency),
+                subtitle: `${salesThisMonthCount} sale${salesThisMonthCount === 1 ? "" : "s"} this month`,
+              }}
+              signals={[
+                ...(overdueInvoiceCount > 0
+                  ? [
+                      {
+                        value: `${overdueInvoiceCount} open invoice${overdueInvoiceCount === 1 ? "" : "s"}`,
+                        tone: "warn" as const,
+                      },
+                    ]
+                  : []),
+                ...(recentSale
+                  ? [
+                      {
+                        value: `Recent: ${recentSale.customer ?? "Walk-in"} · #${recentSale.saleNumber}`,
+                        tone: "neutral" as const,
+                      },
+                    ]
+                  : []),
+              ]}
+              primaryCta={{ label: "View sales", href: `${bp}/sales` }}
+              secondaryCtas={[
+                { label: "New sale", href: `${bp}/sales/new` },
+                { label: "POS", href: `${bp}/pos` },
+              ]}
+            />
+
+            {/* 2. Workshop */}
+            <ModuleCard
+              icon={Wrench}
+              label="Workshop"
+              isEmpty={activeJobsTotal === 0 && overdueJobsCount === 0 && readyForPickupCount === 0}
+              emptyMessage="No active jobs today. Create a repair, bespoke job or appraisal from the workshop."
+              primary={{
+                value: String(activeJobsTotal),
+                subtitle: `Active repair${activeJobsTotal === 1 ? "" : "s"} & jobs`,
+              }}
+              signals={[
+                {
+                  value: `${overdueJobsCount} overdue`,
+                  tone: overdueJobsCount > 0 ? "danger" : "neutral",
+                },
+                {
+                  value: `${readyForPickupCount} ready`,
+                  tone: readyForPickupCount > 0 ? "success" : "neutral",
+                },
+                ...(recentRepair
+                  ? [
+                      {
+                        value: `Recent: ${recentRepair.customer ?? "—"} · #${recentRepair.repairNumber}`,
+                        tone: "neutral" as const,
+                      },
+                    ]
+                  : []),
+              ]}
+              primaryCta={{ label: "Open workshop", href: `${bp}/workshop` }}
+              secondaryCtas={[{ label: "New repair", href: `${bp}/repairs/new` }]}
+            />
+
+            {/* 3. Inventory */}
+            <ModuleCard
+              icon={PackageOpen}
+              label="Inventory"
+              isEmpty={lowStockCount === 0 && activeJobsTotal === 0 && recentSales.length === 0}
+              emptyMessage="Build your inventory library. Add finished pieces, materials, memo items and website stock."
+              primary={{
+                value: lowStockCount > 0 ? `${lowStockCount} low` : "Healthy",
+                subtitle: lowStockCount > 0 ? "Items at or below threshold" : "All stock levels healthy",
+              }}
+              signals={[
+                ...(outOfStockCount > 0
+                  ? [
+                      {
+                        value: `${outOfStockCount} out of stock`,
+                        tone: "danger" as const,
+                      },
+                    ]
+                  : []),
+                ...(lowStockCount > 0 && outOfStockCount < lowStockCount
+                  ? [
+                      {
+                        value: `${lowStockCount - outOfStockCount} low stock`,
+                        tone: "warn" as const,
+                      },
+                    ]
+                  : []),
+              ]}
+              primaryCta={{ label: "View inventory", href: `${bp}/inventory` }}
+              secondaryCtas={[
+                { label: "Add item", href: `${bp}/inventory/new` },
+                { label: "Receive stock", href: `${bp}/inventory/receive` },
+              ]}
+            />
+
+            {/* 4. Customers */}
+            <ModuleCard
+              icon={Users}
+              label="Customers"
+              isEmpty={recentActivity.length === 0 && recentSales.length === 0}
+              emptyMessage="No customer activity yet. Create a profile to start tracking purchases, repairs and follow-ups."
+              primary={{
+                value: recentSale?.customer ?? recentJobActivity?.customerName ?? "—",
+                subtitle: recentJobActivity
+                  ? `Latest activity ${relativeTime(recentJobActivity.updatedAt)}`
+                  : "Browse the directory",
+              }}
+              signals={[
+                ...(myTasks.length > 0
+                  ? [
+                      {
+                        value: `${myTasks.length} follow-up${myTasks.length === 1 ? "" : "s"} due`,
+                        tone: "warn" as const,
+                      },
+                    ]
+                  : []),
+              ]}
+              primaryCta={{ label: "View customers", href: `${bp}/customers` }}
+              secondaryCtas={[{ label: "New customer", href: `${bp}/customers/new` }]}
+            />
+
+            {/* 5. Finance */}
+            <ModuleCard
+              icon={Wallet}
+              label="Finance"
+              isEmpty={totalOutstanding === 0 && overdueInvoiceCount === 0 && salesThisMonthRevenue === 0}
+              emptyMessage="No invoices or revenue yet. Issue an invoice or close a sale to populate finance."
+              primary={{
+                value: formatCurrency(totalOutstanding, currency),
+                subtitle: "Outstanding across open invoices",
+              }}
+              signals={[
+                {
+                  value: `${overdueInvoiceCount} overdue`,
+                  tone: overdueInvoiceCount > 0 ? "danger" : "neutral",
+                },
+                {
+                  value: `${formatCurrency(salesThisMonthRevenue, currency)} paid this month`,
+                  tone: salesThisMonthRevenue > 0 ? "success" : "neutral",
+                },
+              ]}
+              primaryCta={{ label: "View finance", href: `${bp}/financials` }}
+              secondaryCtas={[{ label: "Invoices", href: `${bp}/invoices` }]}
+            />
+
+            {/* 6. Marketing — campaign counts not in stats payload yet. */}
+            <ModuleCard
+              icon={Megaphone}
+              label="Marketing"
+              isEmpty
+              emptyMessage="No active campaigns yet. Build your first email or SMS broadcast from the marketing module."
+              primary={{ value: "—" }}
+              signals={[]}
+              primaryCta={{ label: "View marketing", href: `${bp}/marketing` }}
+              secondaryCtas={[
+                { label: "Campaigns", href: `${bp}/marketing/campaigns` },
+                { label: "Segments", href: `${bp}/marketing/segments` },
+              ]}
+            />
+
+            {/* 7. Digital — routed to /website until /digital is built. */}
+            <ModuleCard
+              icon={Globe}
+              label="Digital"
+              isEmpty
+              emptyMessage="Connect your website or build one in Nexpura to start tracking digital reach."
+              primary={{ value: "Not connected" }}
+              signals={[
+                { value: "Passport: standby", tone: "neutral" },
+                { value: "Integrations: 0", tone: "neutral" },
+              ]}
+              primaryCta={{ label: "View digital", href: `${bp}/website` }}
+              secondaryCtas={[{ label: "Connect site", href: `${bp}/website/connect` }]}
+            />
+
+            {/* 8. Admin — tenant admin lives at /settings; /admin is platform-only. */}
+            <ModuleCard
+              icon={Settings}
+              label="Admin"
+              isEmpty={myTasks.length === 0}
+              emptyMessage="Settings, billing and team controls live here. Nothing demanding attention right now."
+              primary={{
+                value:
+                  myTasks.length > 0
+                    ? `${myTasks.length} task${myTasks.length === 1 ? "" : "s"}`
+                    : "All clear",
+                subtitle: myTasks.length > 0 ? "Due today" : "No tasks due today",
+              }}
+              signals={[]}
+              primaryCta={{ label: "Open admin", href: `${bp}/settings` }}
+              secondaryCtas={[
+                { label: "Billing", href: `${bp}/billing` },
+                { label: "Team", href: `${bp}/settings/roles` },
+              ]}
+            />
+          </div>
+        </section>
       </div>
 
-      {/* ── Right Sidebar (lazy-loaded chunk) ─────────────────────────── */}
+      {/* ── Right sidebar (320px sticky on xl+) ───────────────────────── */}
       <DashboardSidebar
         bp={bp}
         isStatsLoading={isStatsLoading}
@@ -488,6 +790,8 @@ export default function DashboardClient({
         overdueRepairs={overdueRepairs}
         recentSales={recentSales}
         recentRepairsList={recentRepairsList}
+        recentActivity={recentActivity}
+        lowStockItems={lowStockItems}
       />
     </div>
   );

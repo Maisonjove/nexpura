@@ -50,9 +50,27 @@ export default {
           "bronze-hover": "#7A6347",
           "bronze-light": "#C4A882",
           ivory: "#FAFAF9",
+          "ivory-elevated": "#FCFAF6",
           cream: "#F5F2EE",
           warm: "#EDE9E3",
           champagne: "#E8DCC8",
+          // Workspace redesign — Kaitlyn's 2026-05-02 brief. Extends the
+          // existing nexpura.* palette with the missing taupe scale,
+          // charcoal text levels, secondary accent (cognac), and status
+          // colours used across the logged-in workspace. The marketing
+          // (`m-*`) palette stays separate.
+          "taupe-100": "#E5DED1",
+          "taupe-200": "#D4CABA",
+          "taupe-400": "#A8997F",
+          "charcoal-700": "#332F2A",
+          "charcoal-500": "#5A5249",
+          cognac: "#A47551",
+          "emerald-deep": "#2F5D4F",
+          "emerald-bg": "#E8EFEA",
+          oxblood: "#7A2E2E",
+          "oxblood-bg": "#F2E4E2",
+          "amber-muted": "#A8803A",
+          "amber-bg": "#F4ECD9",
         },
         // Marketing-site palette (Kaitlyn's homepage brief). The `m-`
         // prefix keeps these scoped — only the (marketing) tree +

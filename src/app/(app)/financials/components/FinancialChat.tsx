@@ -89,7 +89,7 @@ export default function FinancialChat() {
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                 m.role === 'user'
-                  ? 'bg-amber-700 text-white rounded-br-sm'
+                  ? 'bg-nexpura-charcoal text-white rounded-br-sm'
                   : 'bg-stone-100 text-stone-800 rounded-bl-sm'
               }`}>
                 {m.content || (streaming && i === messages.length - 1 ? <span className="animate-pulse">…</span> : '')}
@@ -109,12 +109,12 @@ export default function FinancialChat() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask anything about your finances…"
             disabled={streaming}
-            className="flex-1 text-sm border border-stone-200 rounded-lg px-3 py-2 outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600/20 disabled:opacity-50 placeholder:text-stone-400"
+            className="flex-1 text-sm border border-stone-200 rounded-lg px-3 py-2 outline-none focus:border-nexpura-bronze focus:ring-1 focus:ring-nexpura-bronze/20 disabled:opacity-50 placeholder:text-stone-400"
           />
           <button
             type="submit"
             disabled={streaming || !input.trim()}
-            className="px-3 py-2 bg-amber-700 text-white rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+            className="px-3 py-2 bg-nexpura-charcoal text-white rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
           >
             <Send size={14} />
           </button>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ScanLine } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import LocationPicker from './LocationPicker';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
@@ -50,7 +51,7 @@ export default function Header({ user }: HeaderProps) {
               : 'text-stone-400 hover:text-stone-600'
           }`}
         >
-          <span aria-hidden="true">🔍</span>
+          <ScanLine aria-hidden="true" className="w-3.5 h-3.5" strokeWidth={1.5} />
           {scanFlash && <span>Scan detected</span>}
         </div>
         <NotificationBell />

@@ -129,7 +129,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
           className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
             isAtLimit && !showNew
               ? "bg-stone-100 text-stone-400 cursor-not-allowed" 
-              : "bg-amber-700 text-white hover:bg-amber-800"
+              : "bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700"
           }`}
         >
           {showNew ? "Cancel" : "+ Add Location"}
@@ -147,7 +147,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
           </div>
           <Link 
             href="/billing"
-            className="px-4 py-2 bg-amber-700 text-white text-xs font-bold rounded-lg hover:bg-amber-800 transition-all shadow-sm shadow-amber-900/10 whitespace-nowrap"
+            className="px-4 py-2 bg-nexpura-charcoal text-white text-xs font-bold rounded-lg hover:bg-nexpura-charcoal-700 transition-all shadow-sm shadow-amber-900/10 whitespace-nowrap"
           >
             View Plans →
           </Link>
@@ -171,7 +171,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                   required
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-nexpura-bronze outline-none"
                   placeholder="Main Showroom"
                 />
               </div>
@@ -180,7 +180,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                 <select
                   value={form.type}
                   onChange={e => setForm({ ...form, type: e.target.value })}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none bg-white"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-nexpura-bronze outline-none bg-white"
                 >
                   <option value="showroom">Showroom</option>
                   <option value="workshop">Workshop</option>
@@ -197,7 +197,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
               <input
                 value={form.address_line1}
                 onChange={e => setForm({ ...form, address_line1: e.target.value })}
-                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-nexpura-bronze outline-none"
                 placeholder="123 Jewellery Street"
               />
             </div>
@@ -209,7 +209,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                   placeholder="Sydney"
                   value={form.suburb}
                   onChange={e => setForm({ ...form, suburb: e.target.value })}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-nexpura-bronze outline-none"
                 />
               </div>
               <div>
@@ -218,7 +218,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                   placeholder="NSW"
                   value={form.state}
                   onChange={e => setForm({ ...form, state: e.target.value })}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-nexpura-bronze outline-none"
                 />
               </div>
             </div>
@@ -230,7 +230,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                   placeholder="2000"
                   value={form.postcode}
                   onChange={e => setForm({ ...form, postcode: e.target.value })}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-nexpura-bronze outline-none"
                 />
               </div>
               <div>
@@ -239,7 +239,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                   placeholder="Australia"
                   value={form.country}
                   onChange={e => setForm({ ...form, country: e.target.value })}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-nexpura-bronze outline-none"
                 />
               </div>
             </div>
@@ -252,7 +252,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                   placeholder="+61 2 9000 0000"
                   value={form.phone}
                   onChange={e => setForm({ ...form, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-nexpura-bronze outline-none"
                 />
               </div>
               <div>
@@ -262,7 +262,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
                   placeholder="store@example.com"
                   value={form.email}
                   onChange={e => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-amber-600 outline-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-nexpura-bronze outline-none"
                 />
               </div>
             </div>
@@ -278,7 +278,7 @@ export default function LocationsClient({ tenantId, initialLocations, planName, 
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 hover:bg-amber-800 transition-colors"
+                className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg disabled:opacity-50 hover:bg-nexpura-charcoal-700 transition-colors"
               >
                 {isPending ? "Saving..." : "Save Location"}
               </button>

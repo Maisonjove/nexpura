@@ -93,9 +93,12 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Accessibility - Focus visible styles */
+  /* Accessibility - Focus visible styles
+     Per Kaitlyn 2026-05-02 brief Section 1.3: focus ring is bronze at
+     subtle opacity, not amber. Keeping outline-2 + 2px ring for the
+     a11y requirement (visible against ivory bg). */
   *:focus-visible {
-    @apply outline-2 outline-offset-2 outline-amber-500;
+    @apply outline-2 outline-offset-2 outline-nexpura-bronze;
   }
 
   /* Remove focus ring on mouse click, show on keyboard navigation */
@@ -111,7 +114,7 @@
   textarea:focus-visible,
   [role="button"]:focus-visible,
   [tabindex]:focus-visible {
-    @apply ring-2 ring-amber-500 ring-offset-2;
+    @apply ring-2 ring-nexpura-bronze ring-offset-2;
   }
 
   /* Screen reader only content */

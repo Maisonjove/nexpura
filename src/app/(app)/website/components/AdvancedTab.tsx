@@ -273,7 +273,7 @@ export default function AdvancedTab({
         <button
           onClick={onSave}
           disabled={saving}
-          className="px-5 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50"
+          className="px-5 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50"
         >
           {saving ? "Saving…" : saved ? "✓ Saved" : "Save Advanced Settings"}
         </button>

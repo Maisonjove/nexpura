@@ -39,10 +39,10 @@ interface LineItem {
 // ────────────────────────────────────────────────────────────────
 
 const inputCls =
-  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-300 focus:outline-none focus:border-nexpura-bronze focus:ring-1 focus:ring-nexpura-bronze";
 
 const selectCls =
-  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600";
+  "w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-nexpura-bronze focus:ring-1 focus:ring-nexpura-bronze";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -297,7 +297,7 @@ export default function SaleForm({ taxRate = 0.1, taxName = "GST", currency = "A
               value={discountAmount}
               onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
               placeholder="0.00"
-              className="w-32 px-3 py-1.5 text-sm text-right bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600"
+              className="w-32 px-3 py-1.5 text-sm text-right bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:border-nexpura-bronze focus:ring-1 focus:ring-nexpura-bronze"
             />
           </div>
           <div className="flex items-center justify-between text-sm">
@@ -343,7 +343,7 @@ export default function SaleForm({ taxRate = 0.1, taxName = "GST", currency = "A
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 text-sm font-medium bg-nexpura-charcoal text-white rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
         >
           {isPending ? "Creating…" : "Create Sale"}
         </button>

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition, useRef, useCallback } from "react";
+import { useState, useTransition, useRef, useCallback, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { AlertCircle, X, WifiOff } from "lucide-react";
 import {
   createRepairFromIntake,
   createBespokeFromIntake,
@@ -18,11 +19,15 @@ import type {
   JobType,
   SuccessResult,
 } from "./types";
-// Static imports: the two components that render on every intake page paint
-// (customer picker + summary rail). Keep in the main chunk so there's no
-// flash on first load.
-import { CustomerSection, SummaryPanel } from "./components";
-// Type-only imports — stripped at build, no runtime cost.
+// Static imports: rendered on every paint of the intake screen.
+import {
+  CustomerSection,
+  SummaryPanel,
+  SegmentedTypeSelector,
+  ProgressIndicator,
+  getSteps,
+  type MissingField,
+} from "./components";
 import type { RepairData, BespokeData, StockData } from "./components";
 
 // Dynamic imports: tab-specific form components. Only the tab the user is
@@ -35,36 +40,33 @@ import type { RepairData, BespokeData, StockData } from "./components";
 // Each tab form renders a shell while its chunk loads so tab switching
 // doesn't show a jarring empty space.
 const TabFormFallback = () => (
-  <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-5 animate-pulse">
-    <div className="h-5 w-32 bg-stone-100 rounded" />
+  <div className="bg-nexpura-ivory-elevated border border-nexpura-taupe-100 rounded-2xl p-6 space-y-5 animate-pulse">
+    <div className="h-5 w-32 bg-nexpura-taupe-100 rounded" />
     <div className="grid grid-cols-2 gap-4">
-      <div className="h-11 bg-stone-100 rounded-lg" />
-      <div className="h-11 bg-stone-100 rounded-lg" />
+      <div className="h-11 bg-nexpura-taupe-100 rounded-lg" />
+      <div className="h-11 bg-nexpura-taupe-100 rounded-lg" />
     </div>
-    <div className="h-24 bg-stone-100 rounded-lg" />
+    <div className="h-24 bg-nexpura-taupe-100 rounded-lg" />
     <div className="grid grid-cols-2 gap-4">
-      <div className="h-11 bg-stone-100 rounded-lg" />
-      <div className="h-11 bg-stone-100 rounded-lg" />
+      <div className="h-11 bg-nexpura-taupe-100 rounded-lg" />
+      <div className="h-11 bg-nexpura-taupe-100 rounded-lg" />
     </div>
   </div>
 );
 
-const RepairForm = dynamic(
-  () => import("./components/RepairForm"),
-  { loading: TabFormFallback, ssr: true }
-);
-const BespokeForm = dynamic(
-  () => import("./components/BespokeForm"),
-  { loading: TabFormFallback, ssr: false }
-);
-const StockSaleForm = dynamic(
-  () => import("./components/StockSaleForm"),
-  { loading: TabFormFallback, ssr: false }
-);
-const SuccessScreen = dynamic(
-  () => import("./components/SuccessScreen"),
-  { ssr: false }
-);
+const RepairForm = dynamic(() => import("./components/RepairForm"), {
+  loading: TabFormFallback,
+  ssr: true,
+});
+const BespokeForm = dynamic(() => import("./components/BespokeForm"), {
+  loading: TabFormFallback,
+  ssr: false,
+});
+const StockSaleForm = dynamic(() => import("./components/StockSaleForm"), {
+  loading: TabFormFallback,
+  ssr: false,
+});
+const SuccessScreen = dynamic(() => import("./components/SuccessScreen"), { ssr: false });
 
 // ────────────────────────────────────────────────────────────────
 // Initial State
@@ -171,86 +173,46 @@ const initialStockData: StockData = {
 };
 
 // ────────────────────────────────────────────────────────────────
-// Job Type Icons (inline SVG)
+// URL <-> jobType bridging
 // ────────────────────────────────────────────────────────────────
 
-const WrenchIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
-
-const SparkleIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-  </svg>
-);
-
-const TagIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-  </svg>
-);
+function isJobType(s: string | null): s is JobType {
+  return s === "repair" || s === "bespoke" || s === "stock";
+}
 
 // ────────────────────────────────────────────────────────────────
-// Error Display Component
+// Error Banner
 // ────────────────────────────────────────────────────────────────
 
-function ErrorBanner({ 
-  error, 
-  errorType, 
-  onDismiss 
-}: { 
-  error: string; 
-  errorType: 'validation' | 'server' | 'network';
+function ErrorBanner({
+  error,
+  errorType,
+  onDismiss,
+}: {
+  error: string;
+  errorType: "validation" | "server" | "network";
   onDismiss: () => void;
 }) {
   const titles = {
-    validation: 'Please fix the following',
-    server: 'Something went wrong',
-    network: 'Connection issue',
-  };
-  
-  const icons = {
-    validation: (
-      <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-      </svg>
-    ),
-    server: (
-      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    network: (
-      <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
-      </svg>
-    ),
-  };
-  
-  const bgColors = {
-    validation: 'bg-amber-50 border-amber-200',
-    server: 'bg-red-50 border-red-200',
-    network: 'bg-orange-50 border-orange-200',
-  };
-  
-  const textColors = {
-    validation: 'text-amber-800',
-    server: 'text-red-800',
-    network: 'text-orange-800',
+    validation: "Please fix the following",
+    server: "Something went wrong",
+    network: "Connection issue",
   };
 
+  // All errors render in the oxblood family — Section 12 has no amber
+  // surfaces. Validation/server use the standard oxblood; network uses
+  // the same palette + a wifi icon so the visual distinction stays.
+  const Icon = errorType === "network" ? WifiOff : AlertCircle;
+
   return (
-    <div className={`${bgColors[errorType]} border rounded-2xl p-4 mb-6`}>
+    <div className="bg-nexpura-oxblood-bg border border-nexpura-oxblood/20 rounded-2xl p-4 mb-6">
       <div className="flex items-start gap-3">
-        {icons[errorType]}
+        <Icon className="w-5 h-5 text-nexpura-oxblood shrink-0 mt-0.5" strokeWidth={1.75} aria-hidden />
         <div className="flex-1">
-          <h4 className={`font-medium ${textColors[errorType]} mb-1`}>{titles[errorType]}</h4>
-          <p className={`text-sm ${textColors[errorType]} opacity-90`}>{error}</p>
-          {errorType === 'server' && (
-            <p className="text-xs text-stone-500 mt-2">
+          <h4 className="font-medium text-nexpura-oxblood mb-1">{titles[errorType]}</h4>
+          <p className="text-sm text-nexpura-charcoal-700">{error}</p>
+          {errorType === "server" && (
+            <p className="text-xs text-nexpura-charcoal-500 mt-2">
               Your data has not been lost. Try again, or contact support if this persists.
             </p>
           )}
@@ -258,11 +220,10 @@ function ErrorBanner({
         <button
           type="button"
           onClick={onDismiss}
-          className={`${textColors[errorType]} hover:opacity-70`}
+          className="text-nexpura-oxblood hover:opacity-70"
+          aria-label="Dismiss error"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="w-5 h-5" />
         </button>
       </div>
     </div>
@@ -270,51 +231,26 @@ function ErrorBanner({
 }
 
 // ────────────────────────────────────────────────────────────────
-// Loading Overlay Component
+// Loading Overlay
 // ────────────────────────────────────────────────────────────────
 
 function LoadingOverlay({ jobType }: { jobType: JobType }) {
   const labels = {
-    repair: 'Creating repair',
-    bespoke: 'Creating bespoke job',
-    stock: 'Processing sale',
+    repair: "Creating repair",
+    bespoke: "Creating bespoke job",
+    stock: "Processing sale",
   };
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
       <div className="bg-white rounded-2xl p-8 shadow-xl max-w-sm w-full mx-4 text-center">
-        <div className="w-12 h-12 border-4 border-amber-700 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-stone-900 mb-1">{labels[jobType]}...</h3>
-        <p className="text-sm text-stone-500">Please wait, do not close this page</p>
+        <div className="w-12 h-12 border-4 border-nexpura-charcoal border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-nexpura-charcoal mb-1">{labels[jobType]}…</h3>
+        <p className="text-sm text-nexpura-charcoal-500">Please wait, do not close this page</p>
       </div>
     </div>
   );
 }
-
-// ────────────────────────────────────────────────────────────────
-// Job Type Tab Configuration
-// ────────────────────────────────────────────────────────────────
-
-const jobTypeTabs: { type: JobType; label: string; helper: string; icon: React.ReactNode }[] = [
-  {
-    type: "repair",
-    label: "Repair",
-    helper: "Restore or modify an existing piece",
-    icon: <WrenchIcon />,
-  },
-  {
-    type: "bespoke",
-    label: "Bespoke",
-    helper: "Create a custom piece from brief",
-    icon: <SparkleIcon />,
-  },
-  {
-    type: "stock",
-    label: "Stock Item",
-    helper: "Sell ready-made inventory",
-    icon: <TagIcon />,
-  },
-];
 
 // ────────────────────────────────────────────────────────────────
 // Main Component
@@ -322,16 +258,24 @@ const jobTypeTabs: { type: JobType; label: string; helper: string; icon: React.R
 
 export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [errorType, setErrorType] = useState<'validation' | 'server' | 'network'>('server');
+  const [errorType, setErrorType] = useState<"validation" | "server" | "network">("server");
 
   // Double-submit prevention
   const isSubmittingRef = useRef(false);
   const lastSubmitTimeRef = useRef(0);
 
-  // Job type state
-  const [jobType, setJobType] = useState<JobType>("repair");
+  // Job type — initialised from URL (?type=repair|bespoke|stock) so
+  // deep-links and back/forward keep selection in sync. Falls back to
+  // "repair".
+  const initialType: JobType = (() => {
+    const t = searchParams.get("type");
+    return isJobType(t) ? t : "repair";
+  })();
+  const [jobType, setJobType] = useState<JobType>(initialType);
 
   // Success state
   const [successResult, setSuccessResult] = useState<SuccessResult | null>(null);
@@ -347,6 +291,25 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   const [repairData, setRepairData] = useState<RepairData>(initialRepairData);
   const [bespokeData, setBespokeData] = useState<BespokeData>(initialBespokeData);
   const [stockData, setStockData] = useState<StockData>(initialStockData);
+
+  // ─── URL sync (?type=…) ───────────────────────────────────────
+  useEffect(() => {
+    const current = searchParams.get("type");
+    if (current === jobType) return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("type", jobType);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobType]);
+
+  // Keep state in sync if the URL changes via back/forward.
+  useEffect(() => {
+    const t = searchParams.get("type");
+    if (isJobType(t) && t !== jobType) {
+      setJobType(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // ─── Walk-in Toggle Handler ───────────────────────────────────
   const handleWalkInToggle = useCallback((value: boolean) => {
@@ -367,7 +330,8 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   const getQuoteAmount = () => {
     if (jobType === "repair") return parseFloat(repairData.quoted_price) || 0;
     if (jobType === "bespoke") return parseFloat(bespokeData.quoted_price) || 0;
-    if (jobType === "stock") return parseFloat(stockData.price) || selectedInventory?.retail_price || 0;
+    if (jobType === "stock")
+      return parseFloat(stockData.price) || selectedInventory?.retail_price || 0;
     return 0;
   };
 
@@ -400,44 +364,161 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
     return "";
   };
 
-  const getDescriptionFilled = () => {
-    if (jobType === "repair") return !!repairData.item_description.trim();
-    if (jobType === "bespoke") return !!bespokeData.description.trim();
-    if (jobType === "stock") return !!selectedInventory;
-    return false;
+  const getJobTitle = () => {
+    if (jobType === "bespoke") return bespokeData.title;
+    return undefined;
   };
 
-  // ─── Validation ───────────────────────────────────────────────
-  const getMissingFields = () => {
-    const missing: string[] = [];
+  // ─── Validation / step tracking ───────────────────────────────
+  const steps = useMemo(() => getSteps(jobType), [jobType]);
 
-    // A customer must be explicitly selected OR marked as walk-in — otherwise
-    // the job would save with customer_id=null and be orphaned downstream
-    // (no email, no tracking link, no invoice recipient).
-    if (!selectedCustomer && !isWalkIn) {
-      missing.push("Customer (or tick Walk-in)");
-    }
+  // Step 0 is always Customer for all flows. The remaining steps map to
+  // form-section completeness; the existing forms render every section
+  // in one column so we use these as visual milestones rather than
+  // gating navigation. The "Review" step is considered complete only
+  // when all required fields are satisfied.
+  const customerComplete = !!selectedCustomer || isWalkIn;
 
+  const repairItemComplete = !!repairData.item_type && !!repairData.item_description;
+  const repairWorkComplete =
+    !!repairData.issue_type || !!repairData.work_description.trim();
+  const repairPricingComplete = !!repairData.quoted_price;
+
+  const bespokeBriefComplete = !!bespokeData.title;
+  const bespokeDesignComplete =
+    !!bespokeData.jewellery_type || !!bespokeData.description.trim();
+  const bespokeMaterialsComplete = !!bespokeData.metal_type || !!bespokeData.stone_type;
+  const bespokePricingComplete = !!bespokeData.quoted_price;
+
+  const stockItemComplete = !!selectedInventory;
+  const stockSaleComplete = !!selectedInventory && (parseFloat(stockData.price) > 0 || (selectedInventory?.retail_price ?? 0) > 0);
+  const stockPaymentComplete = !!stockData.payment_method;
+
+  // ─── Build per-step completion array ──────────────────────────
+  const stepCompletion: boolean[] = useMemo(() => {
     if (jobType === "repair") {
-      if (!repairData.item_type) missing.push("Item type");
-      if (!repairData.item_description) missing.push("Item description");
-    } else if (jobType === "bespoke") {
-      if (!bespokeData.title) missing.push("Title");
-    } else if (jobType === "stock") {
-      if (!selectedInventory) missing.push("Stock item");
+      return [
+        customerComplete,
+        repairItemComplete,
+        repairWorkComplete,
+        repairPricingComplete,
+        // "Review" — completed when everything else is.
+        customerComplete && repairItemComplete && repairWorkComplete && repairPricingComplete,
+      ];
     }
+    if (jobType === "bespoke") {
+      return [
+        customerComplete,
+        bespokeBriefComplete,
+        bespokeDesignComplete,
+        bespokeMaterialsComplete,
+        bespokePricingComplete,
+        customerComplete &&
+          bespokeBriefComplete &&
+          bespokeDesignComplete &&
+          bespokeMaterialsComplete &&
+          bespokePricingComplete,
+      ];
+    }
+    // stock
+    return [
+      customerComplete,
+      stockItemComplete,
+      stockSaleComplete,
+      stockPaymentComplete,
+      customerComplete && stockItemComplete && stockSaleComplete && stockPaymentComplete,
+    ];
+  }, [
+    jobType,
+    customerComplete,
+    repairItemComplete,
+    repairWorkComplete,
+    repairPricingComplete,
+    bespokeBriefComplete,
+    bespokeDesignComplete,
+    bespokeMaterialsComplete,
+    bespokePricingComplete,
+    stockItemComplete,
+    stockSaleComplete,
+    stockPaymentComplete,
+  ]);
 
-    return missing;
-  };
+  const completedSet = useMemo(() => {
+    const set = new Set<number>();
+    stepCompletion.forEach((ok, i) => ok && set.add(i));
+    return set;
+  }, [stepCompletion]);
+
+  // Current step = first incomplete step (Review when everything is done).
+  const currentStepIndex = useMemo(() => {
+    const firstIncomplete = stepCompletion.findIndex((ok) => !ok);
+    return firstIncomplete === -1 ? steps.length - 1 : firstIncomplete;
+  }, [stepCompletion, steps.length]);
+
+  // Anchor IDs match step ids (see ProgressIndicator). RepairForm /
+  // BespokeForm / StockSaleForm don't currently emit per-section anchors,
+  // so jumping to those steps falls back to the form container.
+  const handleJumpToStep = useCallback(
+    (index: number) => {
+      const stepId = steps[index]?.id;
+      if (!stepId) return;
+      const target =
+        document.getElementById(`step-${stepId}`) ?? document.getElementById("intake-form-area");
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [steps]
+  );
+
+  // ─── Missing required fields (with step links) ────────────────
+  const missingFields: MissingField[] = useMemo(() => {
+    const out: MissingField[] = [];
+    if (!customerComplete) {
+      out.push({ label: "Customer (or tick walk-in)", stepIndex: 0 });
+    }
+    if (jobType === "repair") {
+      if (!repairData.item_type) out.push({ label: "Item type", stepIndex: 1 });
+      if (!repairData.item_description) out.push({ label: "Item description", stepIndex: 1 });
+    } else if (jobType === "bespoke") {
+      if (!bespokeData.title) out.push({ label: "Title", stepIndex: 1 });
+    } else if (jobType === "stock") {
+      if (!selectedInventory) out.push({ label: "Stock item", stepIndex: 1 });
+    }
+    return out;
+  }, [
+    customerComplete,
+    jobType,
+    repairData.item_type,
+    repairData.item_description,
+    bespokeData.title,
+    selectedInventory,
+  ]);
+
+  // ─── Warnings (heuristic — high-value etc.) ────────────────────
+  const warnings: string[] = useMemo(() => {
+    const w: string[] = [];
+    const quote = getQuoteAmount();
+    if (quote >= 5000) {
+      w.push("High value — risk acknowledgement required.");
+    }
+    if (jobType === "repair" && repairData.is_high_value && !repairData.risk_notes.trim()) {
+      w.push("High-value repair flagged — add risk notes before completing.");
+    }
+    if (jobType === "repair" && repairData.customer_supplied && !repairData.risk_notes.trim()) {
+      w.push("Customer-supplied stones — record condition notes.");
+    }
+    return w;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobType, repairData.is_high_value, repairData.customer_supplied, repairData.risk_notes, repairData.quoted_price, bespokeData.quoted_price, stockData.price, selectedInventory]);
 
   const validatePriceInputs = (): string | null => {
     const quote = getQuoteAmount();
     const deposit = getDepositAmount();
-    const payment = jobType === "repair" 
-      ? parseFloat(repairData.payment_received) || 0
-      : jobType === "bespoke"
-      ? parseFloat(bespokeData.payment_received) || 0
-      : parseFloat(stockData.payment_received) || 0;
+    const payment =
+      jobType === "repair"
+        ? parseFloat(repairData.payment_received) || 0
+        : jobType === "bespoke"
+          ? parseFloat(bespokeData.payment_received) || 0
+          : parseFloat(stockData.payment_received) || 0;
 
     if (deposit > 0 && quote <= 0) {
       return "Cannot set deposit without a quoted price";
@@ -454,7 +535,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
     return null;
   };
 
-  const isFormValid = getMissingFields().length === 0;
+  const isFormValid = missingFields.length === 0;
 
   // ─── Submit Handler ───────────────────────────────────────────
   const handleSubmit = async () => {
@@ -465,18 +546,15 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
       return;
     }
 
-    // Validate required fields
-    const missing = getMissingFields();
-    if (missing.length > 0) {
-      setErrorType('validation');
-      setError(`Missing required fields: ${missing.join(", ")}`);
+    if (missingFields.length > 0) {
+      setErrorType("validation");
+      setError(`Missing required fields: ${missingFields.map((m) => m.label).join(", ")}`);
       return;
     }
 
-    // Validate price inputs
     const priceError = validatePriceInputs();
     if (priceError) {
-      setErrorType('validation');
+      setErrorType("validation");
       setError(priceError);
       return;
     }
@@ -484,7 +562,7 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
     setError(null);
     isSubmittingRef.current = true;
     lastSubmitTimeRef.current = now;
-    
+
     startTransition(async () => {
       try {
         if (jobType === "repair") {
@@ -504,13 +582,15 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
             due_date: repairData.due_date || null,
             quoted_price: repairData.quoted_price ? parseFloat(repairData.quoted_price) : null,
             deposit_amount: repairData.deposit_amount ? parseFloat(repairData.deposit_amount) : null,
-            payment_received: repairData.payment_received ? parseFloat(repairData.payment_received) : null,
+            payment_received: repairData.payment_received
+              ? parseFloat(repairData.payment_received)
+              : null,
             payment_method: repairData.payment_method || null,
           };
-          
+
           const result = await createRepairFromIntake(input);
           if (result.error) {
-            setErrorType('server');
+            setErrorType("server");
             setError(result.error);
             isSubmittingRef.current = false;
             return;
@@ -539,14 +619,18 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
             priority: bespokeData.priority,
             due_date: bespokeData.due_date || null,
             quoted_price: bespokeData.quoted_price ? parseFloat(bespokeData.quoted_price) : null,
-            deposit_amount: bespokeData.deposit_amount ? parseFloat(bespokeData.deposit_amount) : null,
-            payment_received: bespokeData.payment_received ? parseFloat(bespokeData.payment_received) : null,
+            deposit_amount: bespokeData.deposit_amount
+              ? parseFloat(bespokeData.deposit_amount)
+              : null,
+            payment_received: bespokeData.payment_received
+              ? parseFloat(bespokeData.payment_received)
+              : null,
             payment_method: bespokeData.payment_method || null,
           };
-          
+
           const result = await createBespokeFromIntake(input);
           if (result.error) {
-            setErrorType('server');
+            setErrorType("server");
             setError(result.error);
             isSubmittingRef.current = false;
             return;
@@ -559,29 +643,30 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
           });
         } else if (jobType === "stock") {
           if (!selectedInventory) {
-            setErrorType('validation');
+            setErrorType("validation");
             setError("Please select a stock item");
             isSubmittingRef.current = false;
             return;
           }
-          
+
           const input: CreateStockSaleInput = {
             customer_id: selectedCustomer?.id || null,
             inventory_id: selectedInventory.id,
             item_name: selectedInventory.name || "Unknown Item",
             price: parseFloat(stockData.price) || selectedInventory.retail_price || 0,
-            payment_received: stockData.payment_received ? parseFloat(stockData.payment_received) : null,
+            payment_received: stockData.payment_received
+              ? parseFloat(stockData.payment_received)
+              : null,
             payment_method: stockData.payment_method || null,
             create_invoice: stockData.create_invoice,
           };
-          
+
           const result = await createStockSaleFromIntake(input);
           if (result.error) {
-            // Distinguish out-of-stock from other errors
             if (result.error.includes("out of stock") || result.error.includes("sold out")) {
-              setErrorType('validation');
+              setErrorType("validation");
             } else {
-              setErrorType('server');
+              setErrorType("server");
             }
             setError(result.error);
             isSubmittingRef.current = false;
@@ -596,12 +681,11 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
         }
       } catch (e: unknown) {
         const err = e as Error;
-        // Distinguish network errors
-        if (err.message?.includes('fetch') || err.message?.includes('network') || err.name === 'TypeError') {
-          setErrorType('network');
+        if (err.message?.includes("fetch") || err.message?.includes("network") || err.name === "TypeError") {
+          setErrorType("network");
           setError("Unable to connect to the server. Please check your connection and try again.");
         } else {
-          setErrorType('server');
+          setErrorType("server");
           setError(err.message || "An unexpected error occurred. Please try again.");
         }
         isSubmittingRef.current = false;
@@ -638,115 +722,89 @@ export default function IntakeClient({ initialCustomers, taxConfig }: Props) {
   // ─────────────────────────────────────────────────────────────
   if (successResult) {
     return (
-      <SuccessScreen
-        result={successResult}
-        selectedCustomer={selectedCustomer}
-        onReset={resetForm}
-      />
+      <SuccessScreen result={successResult} selectedCustomer={selectedCustomer} onReset={resetForm} />
     );
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Main Render
+  // Main Render — Section 12 shell
   // ─────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Loading Overlay */}
       {isPending && <LoadingOverlay jobType={jobType} />}
 
-      <div className="flex gap-8">
-        {/* ─── Left Column: Intake Builder ────────────────────── */}
+      <div className="flex flex-col lg:flex-row lg:gap-8">
+        {/* ─── Left main (~70%) ─────────────────────────────── */}
         <div className="flex-1 min-w-0">
-          {/* Premium Job Type Segmented Controls */}
-          <div className="bg-white border border-stone-200 rounded-2xl p-2 mb-6 shadow-sm">
-            <div className="grid grid-cols-3 gap-2">
-              {jobTypeTabs.map((tab) => (
-                <button
-                  key={tab.type}
-                  type="button"
-                  onClick={() => handleJobTypeChange(tab.type)}
-                  disabled={isPending}
-                  className={`relative px-4 py-4 rounded-xl transition-all ${
-                    jobType === tab.type
-                      ? "bg-amber-700 text-white shadow-sm"
-                      : "text-stone-600 hover:text-stone-900 hover:bg-stone-50"
-                  } ${isPending ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  <div className="flex flex-col items-center gap-1.5">
-                    <span className={jobType === tab.type ? "text-white" : "text-stone-500"}>
-                      {tab.icon}
-                    </span>
-                    <span className="text-sm font-semibold">{tab.label}</span>
-                    <span className={`text-xs ${jobType === tab.type ? "text-amber-100" : "text-stone-400"}`}>
-                      {tab.helper}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* 12.1 — Segmented type selector */}
+          <SegmentedTypeSelector value={jobType} onChange={handleJobTypeChange} disabled={isPending} />
 
-          {/* Customer Section */}
-          <CustomerSection
-            initialCustomers={initialCustomers}
-            selectedCustomer={selectedCustomer}
-            onSelectCustomer={setSelectedCustomer}
-            onError={(msg) => {
-              setErrorType('server');
-              setError(msg);
-            }}
-            isWalkIn={isWalkIn}
-            onWalkInToggle={handleWalkInToggle}
+          {/* 12.2 — Slim progress indicator */}
+          <ProgressIndicator
+            jobType={jobType}
+            currentIndex={currentStepIndex}
+            completedSet={completedSet}
+            onStepClick={handleJumpToStep}
           />
 
-          {/* Form based on job type */}
-          {jobType === "repair" && (
-            <RepairForm data={repairData} onChange={setRepairData} />
-          )}
-          
-          {jobType === "bespoke" && (
-            <BespokeForm data={bespokeData} onChange={setBespokeData} />
-          )}
-          
-          {jobType === "stock" && (
-            <StockSaleForm
-              data={stockData}
-              onChange={setStockData}
-              selectedInventory={selectedInventory}
-              onSelectInventory={setSelectedInventory}
-              taxConfig={taxConfig}
+          <div id="intake-form-area">
+            {/* Customer Section — id="step-customer" lives inside */}
+            <CustomerSection
+              initialCustomers={initialCustomers}
+              selectedCustomer={selectedCustomer}
+              onSelectCustomer={setSelectedCustomer}
+              onError={(msg) => {
+                setErrorType("server");
+                setError(msg);
+              }}
+              isWalkIn={isWalkIn}
+              onWalkInToggle={handleWalkInToggle}
             />
-          )}
 
-          {/* Error Banner */}
-          {error && (
-            <ErrorBanner 
-              error={error} 
-              errorType={errorType} 
-              onDismiss={dismissError} 
-            />
-          )}
+            {/* Form based on job type */}
+            {jobType === "repair" && <RepairForm data={repairData} onChange={setRepairData} />}
+
+            {jobType === "bespoke" && (
+              <BespokeForm data={bespokeData} onChange={setBespokeData} />
+            )}
+
+            {jobType === "stock" && (
+              <StockSaleForm
+                data={stockData}
+                onChange={setStockData}
+                selectedInventory={selectedInventory}
+                onSelectInventory={setSelectedInventory}
+                taxConfig={taxConfig}
+              />
+            )}
+
+            {/* Error Banner */}
+            {error && <ErrorBanner error={error} errorType={errorType} onDismiss={dismissError} />}
+          </div>
         </div>
 
-        {/* ─── Right Column: Summary Rail ────────────────────── */}
+        {/* ─── Right sidebar (~30%) ─────────────────────────── */}
         <SummaryPanel
           jobType={jobType}
           selectedCustomer={selectedCustomer}
           itemType={getItemType()}
+          jobTitle={getJobTitle()}
           priority={getPriority()}
           dueDate={getDueDate()}
           quoteAmount={getQuoteAmount()}
           depositAmount={getDepositAmount()}
           balanceRemaining={getBalanceRemaining()}
-          missingFields={getMissingFields()}
+          missingFields={missingFields}
+          warnings={warnings}
+          steps={steps}
+          completedCount={completedSet.size}
           taxConfig={taxConfig}
           isWalkIn={isWalkIn}
           isFormValid={isFormValid}
           isPending={isPending}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
-          descriptionFilled={getDescriptionFilled()}
-          photosCount={0}
+          onJumpToStep={handleJumpToStep}
         />
       </div>
     </>

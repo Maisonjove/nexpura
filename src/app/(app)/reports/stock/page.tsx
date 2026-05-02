@@ -112,7 +112,7 @@ export default async function StockMovementPage({
           <h1 className="font-semibold text-2xl text-stone-900">Stock Movement Report</h1>
           <p className="text-stone-500 mt-1 text-sm">Track stock in, out, and adjustments over time</p>
         </div>
-        <Link href="/inventory/receive" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm bg-amber-700 text-white hover:bg-amber-800 transition-colors">
+        <Link href="/inventory/receive" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700 transition-colors">
           Receive Stock →
         </Link>
       </div>
@@ -122,24 +122,24 @@ export default async function StockMovementPage({
         <div>
           <label className="block text-xs text-stone-500 font-medium mb-1">From</label>
           <input name="from" type="date" defaultValue={from}
-            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-amber-600" />
+            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-nexpura-bronze" />
         </div>
         <div>
           <label className="block text-xs text-stone-500 font-medium mb-1">To</label>
           <input name="to" type="date" defaultValue={to}
-            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-amber-600" />
+            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-nexpura-bronze" />
         </div>
         <div>
           <label className="block text-xs text-stone-500 font-medium mb-1">Type</label>
           <select name="type" defaultValue={typeFilter}
-            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-amber-600">
+            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-nexpura-bronze">
             <option value="all">All Movements</option>
             <option value="in">Stock In</option>
             <option value="out">Stock Out</option>
             <option value="adjust">Adjustments</option>
           </select>
         </div>
-        <button type="submit" className="h-9 px-4 rounded-md bg-amber-700 text-white text-sm hover:bg-amber-800 transition-colors">
+        <button type="submit" className="h-9 px-4 rounded-md bg-nexpura-charcoal text-white text-sm hover:bg-nexpura-charcoal-700 transition-colors">
           Apply
         </button>
       </form>

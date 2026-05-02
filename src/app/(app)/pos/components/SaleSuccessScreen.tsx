@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { CheckCircle2, Printer, Mail, FileText, ShieldCheck } from "lucide-react";
 import type { SaleResult, CartItem, PaymentTab } from "./types";
 
 interface SaleSuccessScreenProps {
@@ -50,7 +51,10 @@ export default function SaleSuccessScreen({
           </div>
           {saleResult.paymentMethod === "layby" ? (
             <>
-              <h2 className="text-xl font-bold text-stone-800">Layby Created ✅</h2>
+              <h2 className="text-xl font-bold text-stone-800 flex items-center justify-center gap-2">
+                Layby Created
+                <CheckCircle2 className="w-5 h-5 text-nexpura-emerald-deep" strokeWidth={1.5} />
+              </h2>
               <p className="text-sm font-mono text-amber-700 mt-1 font-semibold">
                 {saleResult.saleNumber}
               </p>
@@ -71,7 +75,10 @@ export default function SaleSuccessScreen({
             </>
           ) : (
             <>
-              <h2 className="text-xl font-bold text-green-800">Sale Complete ✅</h2>
+              <h2 className="text-xl font-bold text-nexpura-emerald-deep flex items-center justify-center gap-2">
+                Sale Complete
+                <CheckCircle2 className="w-5 h-5" strokeWidth={1.5} />
+              </h2>
               <p className="text-sm font-mono text-green-700 mt-1 font-semibold">
                 {saleResult.saleNumber}
               </p>
@@ -110,9 +117,10 @@ export default function SaleSuccessScreen({
           {/* Print Receipt */}
           <button
             onClick={onPrintReceipt}
-            className="w-full py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-colors"
+            className="w-full py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-colors flex items-center justify-center gap-2"
           >
-            🖨️ Print Receipt
+            <Printer className="w-4 h-4" strokeWidth={1.5} />
+            Print Receipt
           </button>
 
           {/* Email Receipt */}
@@ -122,9 +130,14 @@ export default function SaleSuccessScreen({
               disabled={emailReceiptSending}
               className="w-full py-3 bg-stone-100 text-stone-900 rounded-xl font-medium hover:bg-stone-200 transition-colors disabled:opacity-50 text-sm"
             >
-              {emailReceiptSending
-                ? "Sending…"
-                : `📧 Email to ${saleResult.customerEmail}`}
+              {emailReceiptSending ? (
+                "Sending…"
+              ) : (
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Mail className="w-4 h-4" strokeWidth={1.5} />
+                  Email to {saleResult.customerEmail}
+                </span>
+              )}
             </button>
           )}
 
@@ -132,9 +145,10 @@ export default function SaleSuccessScreen({
           {saleResult.invoiceId && (
             <button
               onClick={() => router.push(`/invoices/${saleResult.invoiceId}`)}
-              className="w-full py-3 bg-stone-100 text-stone-900 rounded-xl font-medium hover:bg-stone-200 transition-colors text-sm"
+              className="w-full py-3 bg-stone-100 text-stone-900 rounded-xl font-medium hover:bg-stone-200 transition-colors text-sm flex items-center justify-center gap-2"
             >
-              📄 View Invoice
+              <FileText className="w-4 h-4" strokeWidth={1.5} />
+              View Invoice
             </button>
           )}
 
@@ -152,9 +166,10 @@ export default function SaleSuccessScreen({
                     `/passports/new?inventory_item_id=${finishedItem.inventoryId}`
                   );
               }}
-              className="w-full py-3 bg-amber-700/10 text-amber-700 rounded-xl font-medium hover:bg-amber-700/20 transition-colors text-sm"
+              className="w-full py-3 bg-nexpura-bronze/10 text-nexpura-bronze rounded-xl font-medium hover:bg-nexpura-bronze/20 transition-colors text-sm flex items-center justify-center gap-2"
             >
-              🛡️ Issue Passport
+              <ShieldCheck className="w-4 h-4" strokeWidth={1.5} />
+              Issue Passport
             </button>
           )}
 

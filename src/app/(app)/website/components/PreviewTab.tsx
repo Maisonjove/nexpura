@@ -50,7 +50,7 @@ export default function PreviewTab({
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 config.published
                   ? "bg-red-100 text-red-700 hover:bg-red-200"
-                  : "bg-amber-700 text-white hover:bg-[#7a6349]"
+                  : "bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700"
               } disabled:opacity-50`}
             >
               {config.published ? "Unpublish" : "Publish Now"}

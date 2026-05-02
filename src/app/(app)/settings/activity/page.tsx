@@ -28,9 +28,9 @@ export default async function ActivityLogPage({
   if (!["admin", "owner", "super_admin"].includes(userData.role || "")) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
-        <h1 className="text-2xl font-semibold text-stone-900 mb-3">Access Denied</h1>
-        <p className="text-stone-500">You don&apos;t have permission to view the activity log.</p>
-        <Link href="/settings" className="text-amber-700 hover:underline mt-4 inline-block">
+        <h1 className="font-serif text-[28px] leading-tight text-nexpura-charcoal mb-3">Access Denied</h1>
+        <p className="text-nexpura-charcoal-500">You don&apos;t have permission to view the activity log.</p>
+        <Link href="/settings" className="text-nexpura-charcoal-500 hover:text-nexpura-charcoal mt-4 inline-block transition-colors">
           ← Back to Settings
         </Link>
       </div>

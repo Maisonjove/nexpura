@@ -126,8 +126,8 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
     </label>
   );
 
-  const inputClass = "w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white";
-  const selectClass = "w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white";
+  const inputClass = "w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white";
+  const selectClass = "w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -312,7 +312,7 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
           name="notes"
           defaultValue={customer?.notes || ""}
           rows={4}
-          className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white resize-none"
+          className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white resize-none"
           placeholder="Any special notes about this customer…"
         />
       </div>
@@ -330,7 +330,7 @@ export default function CustomerForm({ mode, customer, returnTo }: Props) {
           isPending={isPending}
           idleLabel={mode === "create" ? "Create Customer" : "Save Changes"}
           pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
-          className="px-6 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
         />
       </div>
     </form>

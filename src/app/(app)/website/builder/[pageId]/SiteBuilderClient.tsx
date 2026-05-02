@@ -109,7 +109,7 @@ function SectionEditor({ section, onChange }: { section: SiteSection; onChange: 
     onChange({ ...section, styles: { ...stl, [field]: value } });
   }
 
-  const inputCls = "w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600";
+  const inputCls = "w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze";
   const labelCls = "block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5";
 
   return (
@@ -324,13 +324,13 @@ function AIEditPanel({ section, onApply }: { section: SiteSection; onApply: (con
           if (error) setError(null);
         }}
         placeholder="e.g. Make the heading more luxurious and elegant"
-        className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none mb-2"
+        className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze resize-none mb-2"
         disabled={loading}
       />
       <button 
         onClick={handleAI} 
         disabled={loading || !prompt.trim()} 
-        className="w-full px-3 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+        className="w-full px-3 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
       >
         {loading && (
           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -527,7 +527,7 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
           >
             {saving ? "Saving…" : saved ? "✓ Saved" : "Save Page"}
           </button>

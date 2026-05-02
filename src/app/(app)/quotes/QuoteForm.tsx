@@ -97,7 +97,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
             idleLabel={<><Save size={18} /> Save Quote</>}
             pendingLabel={<><Save size={18} /> Saving...</>}
             preparingLabel={<><Save size={18} /> Preparing…</>}
-            className="flex items-center gap-2 bg-amber-700 text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium disabled:opacity-50"
+            className="flex items-center gap-2 bg-nexpura-charcoal text-white px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors font-medium disabled:opacity-50"
           />
         </div>
       </div>
@@ -109,7 +109,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
             <label className="block text-sm font-medium text-stone-700 mb-1">Customer</label>
             <select
               required
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
             >
@@ -125,7 +125,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
             <label className="block text-sm font-medium text-stone-700 mb-1">Expiry Date</label>
             <input
               type="date"
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
             />
@@ -136,7 +136,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
           <h2 className="text-lg font-semibold text-stone-900">Notes</h2>
           <textarea
             rows={4}
-            className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 resize-none"
+            className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 resize-none"
             placeholder="Internal notes or message to customer..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -164,7 +164,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
                 <input
                   type="text"
                   placeholder="Item description..."
-                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                   value={item.description}
                   onChange={(e) => updateItem(index, "description", e.target.value)}
                   required
@@ -175,7 +175,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
                   type="number"
                   min="1"
                   placeholder="Qty"
-                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                   value={item.quantity}
                   onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 0)}
                   required
@@ -189,7 +189,7 @@ export default function QuoteForm({ tenantId, customers }: Props) {
                     min="0"
                     step="0.01"
                     placeholder="Price"
-                    className="w-full pl-7 pr-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                    className="w-full pl-7 pr-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                     value={item.unit_price}
                     onChange={(e) => updateItem(index, "unit_price", parseFloat(e.target.value) || 0)}
                     required

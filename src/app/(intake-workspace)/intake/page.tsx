@@ -140,10 +140,10 @@ async function IntakePage() {
         </span>
       </div>
 
-      {/* Page Header — Premium Style */}
+      {/* Page Header — Section 12 redesign: charcoal-only, no amber accents */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-amber-800 rounded-2xl flex items-center justify-center shadow-sm">
+          <div className="w-12 h-12 bg-nexpura-charcoal rounded-2xl flex items-center justify-center shadow-sm">
             <svg
               className="w-6 h-6 text-white"
               fill="none"
@@ -159,8 +159,8 @@ async function IntakePage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-stone-900">New Intake</h1>
-            <p className="text-sm text-stone-500">
+            <h1 className="text-2xl font-semibold text-nexpura-charcoal">New Intake</h1>
+            <p className="text-sm text-nexpura-charcoal-500">
               Create a repair, bespoke job, or stock item sale
             </p>
           </div>

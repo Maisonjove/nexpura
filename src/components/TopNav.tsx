@@ -80,13 +80,21 @@ const NAV_ITEMS = [
     ],
   },
   {
+    label: 'Digital',
+    children: [
+      { label: 'Digital Overview', href: '/digital', description: 'Website, integrations & passports' },
+      { label: 'Website Builder', href: '/website', description: 'Build your website' },
+      { label: 'Passports', href: '/passports', description: 'Item passports' },
+      { label: 'Verify Passport', href: '/passports/verify', description: 'Look up by passport ID' },
+      { label: 'Integrations', href: '/integrations', description: 'Connected services' },
+    ],
+  },
+  {
     label: 'More',
     children: [
       { label: 'Tasks', href: '/tasks', description: 'Your task list' },
       { label: 'AI Copilot', href: '/copilot', description: 'AI assistant' },
-      { label: 'Website Builder', href: '/website', description: 'Build your website' },
       { label: 'Documents', href: '/documents', description: 'Document management' },
-      { label: 'Integrations', href: '/integrations', description: 'Connected services' },
       { label: 'Reminders', href: '/settings/reminders', description: 'Manage reminders' },
       { label: 'Support', href: '/support', description: 'Get help' },
     ],
@@ -255,19 +263,16 @@ export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
         </Link>
 
         {/* Center nav links with dropdowns — desktop */}
-        <div className="hidden lg:flex items-center">
-          {/* Intake is the start of every workflow — promote it to a
-              dedicated top-level link so jewellers can find it without
-              hunting through the Sales dropdown. */}
+        <div className="hidden lg:flex items-center gap-1">
+          {/* Intake — primary global CTA. Per Kaitlyn's 2026-05-02 brief
+              (Section 2.1) this is no longer an amber nav link but a
+              charcoal-filled button so it reads as the dominant action. */}
           <Link
             href={prefix + '/intake'}
-            className={`relative px-5 py-6 text-[0.9375rem] font-medium transition-opacity duration-300 hover:opacity-70 cursor-pointer ${
-              pathname === prefix + '/intake' || pathname.startsWith(prefix + '/intake/')
-                ? 'text-amber-800'
-                : 'text-amber-700'
-            }`}
+            className="inline-flex items-center gap-1.5 mr-2 px-4 py-2 rounded-lg text-[0.9375rem] font-medium bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700 transition-colors"
           >
-            + Intake
+            <span className="text-base leading-none">+</span>
+            <span>Intake</span>
           </Link>
           {NAV_ITEMS.map((item) => (
             <NavDropdown key={item.label} item={item} pathname={pathname} prefix={prefix} />
@@ -366,7 +371,7 @@ export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
           {/* Primary CTA: New Intake (mobile) */}
           <Link
             href={prefix + '/intake'}
-            className="block text-[0.9375rem] font-medium py-3 px-4 mb-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 transition-colors"
+            className="block text-[0.9375rem] font-medium py-3 px-4 mb-3 rounded-xl bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700 transition-colors"
           >
             + New Intake
           </Link>

@@ -66,7 +66,7 @@ function ConfirmModal({
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium bg-nexpura-charcoal text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50"
           >
             {loading ? "Processing…" : "Confirm"}
           </button>
@@ -246,7 +246,7 @@ export default function QuoteDetailClient({ quote }: Props) {
               <button
                 onClick={() => setConfirmAction("invoice")}
                 disabled={loading}
-                className="flex items-center gap-2 bg-amber-700 text-white px-4 py-2 rounded-lg hover:bg-[#7a6349] transition-colors font-medium shadow-sm disabled:opacity-50"
+                className="flex items-center gap-2 bg-nexpura-charcoal text-white px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors font-medium shadow-sm disabled:opacity-50"
               >
                 <CheckCircle size={18} />
                 {loading ? "..." : "Convert to Invoice"}

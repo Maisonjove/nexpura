@@ -234,7 +234,7 @@ export default function ScheduledReportsPage() {
             resetForm();
             setShowModal(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-nexpura-charcoal hover:bg-nexpura-charcoal-700 text-white rounded-lg font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
           New Schedule
@@ -254,7 +254,7 @@ export default function ScheduledReportsPage() {
               resetForm();
               setShowModal(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg font-medium"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-nexpura-charcoal hover:bg-nexpura-charcoal-700 text-white rounded-lg font-medium"
           >
             <Plus className="w-4 h-4" />
             Create Schedule
@@ -357,7 +357,7 @@ export default function ScheduledReportsPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   placeholder="Weekly Sales Report"
                   required
                 />
@@ -371,7 +371,7 @@ export default function ScheduledReportsPage() {
                   <select
                     value={formData.report_type}
                     onChange={(e) => setFormData({ ...formData, report_type: e.target.value })}
-                    className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   >
                     {REPORT_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>
@@ -388,7 +388,7 @@ export default function ScheduledReportsPage() {
                   <select
                     value={formData.schedule_type}
                     onChange={(e) => setFormData({ ...formData, schedule_type: e.target.value })}
-                    className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   >
                     {SCHEDULE_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>
@@ -411,7 +411,7 @@ export default function ScheduledReportsPage() {
                         onChange={(e) =>
                           setFormData({ ...formData, schedule_day: parseInt(e.target.value) })
                         }
-                        className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                       >
                         {DAYS_OF_WEEK.map((d) => (
                           <option key={d.value} value={d.value}>
@@ -428,7 +428,7 @@ export default function ScheduledReportsPage() {
                         onChange={(e) =>
                           setFormData({ ...formData, schedule_day: parseInt(e.target.value) })
                         }
-                        className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                       />
                     )}
                   </div>
@@ -442,7 +442,7 @@ export default function ScheduledReportsPage() {
                     type="time"
                     value={formData.schedule_time}
                     onChange={(e) => setFormData({ ...formData, schedule_time: e.target.value })}
-                    className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   />
                 </div>
               </div>
@@ -455,7 +455,7 @@ export default function ScheduledReportsPage() {
                   type="text"
                   value={formData.recipients}
                   onChange={(e) => setFormData({ ...formData, recipients: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full mt-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
                   placeholder="owner@shop.com, manager@shop.com"
                   required
                 />
@@ -487,7 +487,7 @@ export default function ScheduledReportsPage() {
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg font-medium disabled:opacity-50"
+                  className="px-4 py-2 bg-nexpura-charcoal hover:bg-nexpura-charcoal-700 text-white rounded-lg font-medium disabled:opacity-50"
                 >
                   {isPending ? "Saving..." : editingReport ? "Update" : "Create"}
                 </button>

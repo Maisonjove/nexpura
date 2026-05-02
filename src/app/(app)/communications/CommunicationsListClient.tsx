@@ -4,7 +4,19 @@ import { useState, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { resendEmailLog } from "./actions";
-import { RefreshCw } from "lucide-react";
+import {
+  RefreshCw,
+  Package,
+  Wrench,
+  Gem,
+  CheckCircle2,
+  MessageCircle,
+  ShieldCheck,
+  Clock,
+  AlertTriangle,
+  Bell,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export interface Communication {
@@ -76,16 +88,16 @@ function formatDate(dt: string) {
 
 type TabId = "emails" | "manual" | "notifications";
 
-const NOTIF_TYPE_ICONS: Record<string, string> = {
-  low_stock: "📦",
-  repair_status: "🔧",
-  bespoke_status: "💎",
-  invoice_paid: "✅",
-  new_enquiry: "💬",
-  passport_viewed: "🛡️",
-  trial_ending: "⏰",
-  payment_failed: "❌",
-  system: "🔔",
+const NOTIF_TYPE_ICONS: Record<string, LucideIcon> = {
+  low_stock: Package,
+  repair_status: Wrench,
+  bespoke_status: Gem,
+  invoice_paid: CheckCircle2,
+  new_enquiry: MessageCircle,
+  passport_viewed: ShieldCheck,
+  trial_ending: Clock,
+  payment_failed: AlertTriangle,
+  system: Bell,
 };
 
 function CommunicationsListClientInner({ comms, emailLogs, notifications }: Props) {
@@ -262,7 +274,8 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
           <>
             {notifications.length === 0 ? (
               <div className="px-5 py-12 text-center text-sm text-stone-400">
-                <p>🔔 No notifications yet</p>
+                <Bell className="w-8 h-8 mx-auto mb-2 text-nexpura-taupe-400" strokeWidth={1.5} />
+                <p>No notifications yet</p>
                 <p className="mt-2 text-xs">Notifications appear here when triggered by platform events</p>
               </div>
             ) : (
@@ -280,10 +293,12 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {notifications.map((notif) => (
-                      <tr key={notif.id} className={`hover:bg-stone-50 ${!notif.is_read ? "bg-amber-700/5" : ""}`}>
+                    {notifications.map((notif) => {
+                      const NotifIcon = NOTIF_TYPE_ICONS[notif.type] ?? Bell;
+                      return (
+                      <tr key={notif.id} className={`hover:bg-stone-50 ${!notif.is_read ? "bg-nexpura-bronze/5" : ""}`}>
                         <td className="px-5 py-3">
-                          <span className="text-base">{NOTIF_TYPE_ICONS[notif.type] ?? "🔔"}</span>
+                          <NotifIcon className="w-4 h-4 text-nexpura-taupe-400" strokeWidth={1.5} />
                         </td>
                         <td className="px-4 py-3 font-medium text-stone-900 max-w-48">
                           <p className="truncate">{notif.title}</p>
@@ -303,13 +318,14 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
                         <td className="px-4 py-3 text-xs text-stone-400">{formatDate(notif.created_at)}</td>
                         <td className="px-4 py-3">
                           {notif.link && (
-                            <a href={notif.link} className="text-xs text-amber-700 hover:underline">
+                            <a href={notif.link} className="text-xs text-nexpura-bronze hover:underline">
                               View →
                             </a>
                           )}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

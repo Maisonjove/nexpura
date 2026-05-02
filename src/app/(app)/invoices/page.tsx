@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getAuthContext } from "@/lib/auth-context";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +24,10 @@ export default async function InvoicesPage({
   const q = params.q || "";
   const statusFilter = params.status || "all";
   const page = parseInt(params.page || "1");
+  // Section 8.2 (Kaitlyn 2026-05-02 brief): when ?status=overdue is in
+  // the URL the page is rendered as the dashboard's "Overdue" deeplink —
+  // focused header, oxblood KPI strip, narrowed dataset.
+  const overdueOnly = statusFilter === "overdue";
 
   // W7-HIGH-04: env-backed constant-time check.
   const isReviewMode = matchesReviewOrStaffToken(params.rt);
@@ -41,22 +46,42 @@ export default async function InvoicesPage({
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Shell — title + New Invoice button ship in the first packet, no DB dependency. */}
-      <div className="flex items-center justify-between">
-        <h1 className="font-semibold text-2xl text-stone-900">Invoices</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          {overdueOnly && (
+            <nav className="flex items-center gap-1.5 mb-1.5">
+              <Link href="/dashboard" className="text-xs text-nexpura-charcoal-500 hover:text-nexpura-charcoal-700 transition-colors">
+                Dashboard
+              </Link>
+              <span className="text-nexpura-taupe-200 text-xs">/</span>
+              <Link href="/invoices" className="text-xs text-nexpura-charcoal-500 hover:text-nexpura-charcoal-700 transition-colors">
+                Invoices
+              </Link>
+              <span className="text-nexpura-taupe-200 text-xs">/</span>
+              <span className="text-xs text-nexpura-charcoal-700 font-medium">Overdue</span>
+            </nav>
+          )}
+          <h1 className="font-semibold text-2xl text-nexpura-charcoal-700">
+            {overdueOnly ? "Overdue Invoices" : "Invoices"}
+          </h1>
+          {overdueOnly && (
+            <p className="text-sm text-nexpura-charcoal-500 mt-1">
+              Track unpaid invoices and follow up with clients.
+            </p>
+          )}
+        </div>
         <Link
           href="/invoices/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-nexpura-charcoal text-white rounded-lg text-sm font-medium hover:bg-nexpura-charcoal-700 transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          <Plus className="w-4 h-4" />
           New Invoice
         </Link>
       </div>
 
       {/* Stats + table stream in behind Suspense. */}
       <Suspense key={`${q}:${page}:${statusFilter}`} fallback={<InvoicesBodySkeleton />}>
-        <InvoicesBody tenantId={tenantId} userId={userId} q={q} statusFilter={statusFilter} page={page} />
+        <InvoicesBody tenantId={tenantId} userId={userId} q={q} statusFilter={statusFilter} page={page} overdueOnly={overdueOnly} />
       </Suspense>
     </div>
   );
@@ -68,12 +93,14 @@ async function InvoicesBody({
   q,
   statusFilter,
   page,
+  overdueOnly = false,
 }: {
   tenantId: string;
   userId: string | null;
   q: string;
   statusFilter: string;
   page: number;
+  overdueOnly?: boolean;
 }) {
   const pageSize = 200;
   const offset = (page - 1) * pageSize;
@@ -120,9 +147,19 @@ async function InvoicesBody({
             .eq("tenant_id", tenantId)
             .is("deleted_at", null);
           if (q) query = query.ilike("invoice_number", `%${q}%`);
+          // When the page is the /invoices?status=overdue deeplink, narrow
+          // the server query to "overdue" semantics (status='overdue' OR
+          // (status='unpaid' AND due_date < today)). Mirrors the predicate
+          // the totalOverdue stat already uses, and saves the client from
+          // filtering 200 unrelated rows down to a handful.
+          if (overdueOnly) {
+            query = query
+              .not("status", "in", '("paid","voided","draft","cancelled")')
+              .lt("due_date", today);
+          }
           if (locationFilter) query = query.or(locationFilter);
           return query
-            .order("created_at", { ascending: false })
+            .order("due_date", { ascending: true })
             .range(offset, offset + pageSize - 1);
         })(),
         (async () => {
@@ -132,6 +169,11 @@ async function InvoicesBody({
             .eq("tenant_id", tenantId)
             .is("deleted_at", null);
           if (q) cq = cq.ilike("invoice_number", `%${q}%`);
+          if (overdueOnly) {
+            cq = cq
+              .not("status", "in", '("paid","voided","draft","cancelled")')
+              .lt("due_date", today);
+          }
           if (locationFilter) cq = cq.or(locationFilter);
           const { count } = await cq;
           return count ?? 0;
@@ -145,7 +187,7 @@ async function InvoicesBody({
         count: countResult,
       };
     },
-    ["invoices", tenantId, String(page), q || "nq", locationCacheKey],
+    ["invoices", tenantId, String(page), q || "nq", locationCacheKey, overdueOnly ? "overdue" : "all"],
     { tags: [CACHE_TAGS.invoices(tenantId)], revalidate: 3600 }
   );
 
@@ -165,6 +207,28 @@ async function InvoicesBody({
     customers: Array.isArray(inv.customers) ? (inv.customers[0] ?? null) : inv.customers,
   }));
 
+  // Overdue-only KPI extras (Section 8.2). Computed from the already-
+  // narrowed page slice — for tenants with >200 overdue invoices the
+  // numbers are slice-scoped, which is acceptable for a quick read; the
+  // totalOverdue card uses the unfiltered overdue sum so the headline
+  // amount stays accurate.
+  const overdueRows = overdueOnly
+    ? normalizedInvoices.filter(
+        (i) =>
+          !["paid", "voided", "draft", "cancelled"].includes(i.status) &&
+          i.due_date !== null &&
+          i.due_date < today
+      )
+    : [];
+  const todayMs = new Date(today + "T00:00:00").getTime();
+  const overdueDays = overdueRows.map((r) =>
+    r.due_date ? Math.max(0, Math.floor((todayMs - new Date(r.due_date + "T00:00:00").getTime()) / 86400000)) : 0
+  );
+  const avgDaysOverdue = overdueDays.length > 0
+    ? Math.round(overdueDays.reduce((s, d) => s + d, 0) / overdueDays.length)
+    : 0;
+  const highestOverdue = overdueRows.reduce((max, r) => Math.max(max, r.amount_due), 0);
+
   return (
     <InvoiceListClient
       invoices={normalizedInvoices}
@@ -174,6 +238,14 @@ async function InvoicesBody({
       q={q}
       statusFilter={statusFilter}
       stats={{ totalOutstanding, totalOverdue, paidThisMonth }}
+      overdueStats={overdueOnly ? {
+        totalOverdue,
+        numberOverdue: overdueRows.length,
+        avgDaysOverdue,
+        highestOverdue,
+        paidThisMonth,
+      } : undefined}
+      overdueOnly={overdueOnly}
       hideTitleBlock
     />
   );

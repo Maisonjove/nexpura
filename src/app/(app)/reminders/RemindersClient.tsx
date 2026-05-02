@@ -395,7 +395,7 @@ export default function RemindersClient({
                       }`}
                     >
                       {event.daysUntil === 0
-                        ? "Today! 🎉"
+                        ? "Today"
                         : event.daysUntil === 1
                         ? "Tomorrow"
                         : `In ${event.daysUntil} days`}

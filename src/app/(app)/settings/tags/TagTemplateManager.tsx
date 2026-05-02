@@ -70,7 +70,7 @@ function TemplateForm({
             name="name"
             defaultValue={template?.name ?? "New Template"}
             required
-            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 text-stone-900"
+            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 text-stone-900"
           />
         </div>
         <div>
@@ -80,7 +80,7 @@ function TemplateForm({
             type="number"
             defaultValue={template?.width_mm ?? 50}
             min={20} max={100}
-            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 text-stone-900"
+            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 text-stone-900"
           />
         </div>
         <div>
@@ -90,7 +90,7 @@ function TemplateForm({
             type="number"
             defaultValue={template?.height_mm ?? 25}
             min={10} max={100}
-            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 text-stone-900"
+            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 text-stone-900"
           />
         </div>
         <div className="col-span-2">
@@ -98,7 +98,7 @@ function TemplateForm({
           <select
             name="orientation"
             defaultValue={template?.orientation ?? "landscape"}
-            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600/30 text-stone-900 bg-white"
+            className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 text-stone-900 bg-white"
           >
             <option value="landscape">Landscape</option>
             <option value="portrait">Portrait</option>

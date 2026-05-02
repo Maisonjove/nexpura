@@ -1,130 +1,88 @@
-import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createAdminClient } from "@/lib/supabase/admin";
-import MarketingOverviewClient from "./MarketingOverviewClient";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
+import MarketingHubClient from "./MarketingHubClient";
 
 export const metadata = { title: "Marketing — Nexpura" };
 
-export default async function MarketingPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+/**
+ * Marketing Hub — Section 9 of Kaitlyn's 2026-05-02 redesign brief.
+ *
+ * cacheComponents requires sync top-level + dynamic body inside Suspense.
+ */
+export default function MarketingPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+      <MarketingHubBody />
+    </Suspense>
+  );
+}
+
+async function MarketingHubBody() {
+  const headersList = await headers();
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) redirect("/login");
 
   const admin = createAdminClient();
 
-  const { data: userData } = await admin
-    .from("users")
-    .select("tenant_id, tenants(name, business_name)")
-    .eq("id", user?.id ?? "")
-    .single();
+  const nowIso = new Date().toISOString();
 
-  const tenantId = userData?.tenant_id ?? "";
-  const tenantData = userData?.tenants as { name?: string; business_name?: string } | null;
-  const businessName = tenantData?.business_name || tenantData?.name || "Your Business";
-
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-  // Fetch all stats in parallel
   const [
     campaignsResult,
-    emailsSentResult,
     segmentsResult,
-    templatesResult,
+    scheduledEmailsResult,
     automationsResult,
     recentCampaignsResult,
-    whatsappCampaignsResult,
   ] = await Promise.all([
-    // Total email campaigns
+    // All campaigns + status (for active / drafts breakdown)
     admin
       .from("email_campaigns")
-      .select("id, status", { count: "exact" })
+      .select("id, status")
       .eq("tenant_id", tenantId),
-    
-    // Emails sent this month
-    admin
-      .from("email_sends")
-      .select("id, status, opened_at, clicked_at", { count: "exact" })
-      .eq("tenant_id", tenantId)
-      .gte("sent_at", monthStart),
-
-    // Segments count
     admin
       .from("customer_segments")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenantId),
-
-    // Templates count
+    // Scheduled email sends in the future. Schema-tolerant — null/error → 0.
     admin
-      .from("email_templates")
+      .from("email_campaigns")
       .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId),
-
-    // Enabled automations
+      .eq("tenant_id", tenantId)
+      .eq("status", "scheduled")
+      .gte("scheduled_at", nowIso),
     admin
       .from("marketing_automations")
       .select("id, enabled")
       .eq("tenant_id", tenantId),
-
-    // Recent campaigns
     admin
       .from("email_campaigns")
-      .select("id, name, subject, status, stats, sent_at, scheduled_at, created_at")
+      .select("id, name, subject, status, sent_at, scheduled_at, created_at")
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false })
       .limit(5),
-
-    // WhatsApp campaigns sent
-    admin
-      .from("whatsapp_campaigns")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .eq("status", "sent"),
   ]);
 
-  // Calculate stats
-  const totalCampaigns = campaignsResult.count || 0;
-  const activeCampaigns = (campaignsResult.data || []).filter(c => c.status === 'scheduled' || c.status === 'sending').length;
-  
-  const emailsSentThisMonth = emailsSentResult.count || 0;
-  const emailsOpened = (emailsSentResult.data || []).filter(e => e.opened_at).length;
-  const emailsClicked = (emailsSentResult.data || []).filter(e => e.clicked_at).length;
-  
-  const openRate = emailsSentThisMonth > 0 ? Math.round((emailsOpened / emailsSentThisMonth) * 100) : 0;
-  const clickRate = emailsSentThisMonth > 0 ? Math.round((emailsClicked / emailsSentThisMonth) * 100) : 0;
-  
-  const totalSegments = segmentsResult.count || 0;
-  const totalTemplates = templatesResult.count || 0;
-  
-  const enabledAutomations = (automationsResult.data || []).filter(a => a.enabled).length;
-  const totalAutomations = (automationsResult.data || []).length;
-
-  const whatsappCampaigns = whatsappCampaignsResult.count || 0;
-
-  const stats = {
-    emailsSentThisMonth,
-    openRate,
-    clickRate,
-    smsSentThisMonth: 0,
-    totalCampaigns,
-    activeCampaigns,
-    totalSegments,
-    totalTemplates,
-    enabledAutomations,
-    totalAutomations,
-    whatsappCampaigns,
-  };
-
-  const recentCampaigns = (recentCampaignsResult.data || []).map(c => ({
-    ...c,
-    stats: (c.stats as { sent: number; opened: number; clicked: number; bounced: number }) || { sent: 0, opened: 0, clicked: 0, bounced: 0 },
-  }));
+  const campaigns = campaignsResult.data ?? [];
+  const activeCampaigns = campaigns.filter((c) => c.status === "scheduled" || c.status === "sending").length;
+  const drafts = campaigns.filter((c) => c.status === "draft").length;
+  const segments = segmentsResult.count ?? 0;
+  const scheduledMessages = scheduledEmailsResult.error ? 0 : (scheduledEmailsResult.count ?? 0);
+  const enabledAutomations = (automationsResult.data ?? []).filter((a) => a.enabled).length;
+  const recentCampaigns = recentCampaignsResult.data ?? [];
 
   return (
-    <MarketingOverviewClient
-      stats={stats}
+    <MarketingHubClient
+      kpis={{
+        activeCampaigns,
+        drafts,
+        segments,
+        scheduledMessages,
+        enabledAutomations,
+      }}
       recentCampaigns={recentCampaigns}
-      businessName={businessName}
     />
   );
 }

@@ -129,7 +129,7 @@ export default function ExpenseReportsPage() {
             </svg>
             Export CSV
           </button>
-          <Link href="/expenses/new" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm bg-amber-700 text-white hover:bg-amber-800 transition-colors">
+          <Link href="/expenses/new" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700 transition-colors">
             + Add Expense
           </Link>
         </div>
@@ -140,17 +140,17 @@ export default function ExpenseReportsPage() {
         <div>
           <label className="block text-xs text-stone-500 font-medium mb-1">From</label>
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-amber-600" />
+            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-nexpura-bronze" />
         </div>
         <div>
           <label className="block text-xs text-stone-500 font-medium mb-1">To</label>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-amber-600" />
+            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-nexpura-bronze" />
         </div>
         <div>
           <label className="block text-xs text-stone-500 font-medium mb-1">Category</label>
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-amber-600">
+            className="h-9 rounded-md border border-stone-200 px-3 text-sm text-stone-900 focus:outline-none focus:ring-1 focus:ring-nexpura-bronze">
             <option value="all">All Categories</option>
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>

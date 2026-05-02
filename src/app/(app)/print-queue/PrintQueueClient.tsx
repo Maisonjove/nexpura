@@ -2,26 +2,37 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import {
+  FileText,
+  Receipt,
+  Wrench,
+  Gem,
+  Tag,
+  Star,
+  StickyNote,
+  Printer,
+  type LucideIcon,
+} from "lucide-react";
 import { markPrintJobDone, cancelPrintJob } from "./actions";
 import type { PrintJob } from "./actions";
 
 const STATUS_STYLES: Record<string, { cls: string; label: string }> = {
-  queued: { cls: "bg-amber-50 text-amber-700", label: "Queued" },
-  printing: { cls: "bg-amber-50 text-amber-700", label: "Printing…" },
-  done: { cls: "bg-green-50 text-green-700", label: "Printed" },
-  failed: { cls: "bg-red-50 text-red-600", label: "Failed" },
+  queued: { cls: "bg-nexpura-amber-bg text-nexpura-amber-muted", label: "Queued" },
+  printing: { cls: "bg-nexpura-amber-bg text-nexpura-amber-muted", label: "Printing…" },
+  done: { cls: "bg-nexpura-emerald-bg text-nexpura-emerald-deep", label: "Printed" },
+  failed: { cls: "bg-nexpura-oxblood-bg text-nexpura-oxblood", label: "Failed" },
   cancelled: { cls: "bg-stone-100 text-stone-400", label: "Cancelled" },
 };
 
-const DOC_ICONS: Record<string, string> = {
-  invoice: "📄",
-  receipt: "🧾",
-  repair_ticket: "🔧",
-  bespoke_sheet: "💎",
-  stock_tag: "🏷️",
-  appraisal: "⭐",
-  memo: "📝",
-  label: "🏷️",
+const DOC_ICONS: Record<string, LucideIcon> = {
+  invoice: FileText,
+  receipt: Receipt,
+  repair_ticket: Wrench,
+  bespoke_sheet: Gem,
+  stock_tag: Tag,
+  appraisal: Star,
+  memo: StickyNote,
+  label: Tag,
 };
 
 interface Props {
@@ -91,20 +102,20 @@ export default function PrintQueueClient({ jobs: initialJobs, tenantId }: Props)
       {/* Job list */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-stone-400">
-          <div className="text-4xl mb-3">🖨️</div>
+          <Printer className="w-10 h-10 mx-auto mb-3 text-nexpura-taupe-400" strokeWidth={1.5} />
           <p className="text-stone-600 font-medium">No {statusFilter === "all" ? "" : statusFilter} print jobs</p>
           {statusFilter === "queued" && <p className="text-sm mt-1">Print jobs will appear here when documents are sent to print</p>}
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map((job) => {
-            const icon = DOC_ICONS[job.document_type] ?? "📄";
+            const Icon = DOC_ICONS[job.document_type] ?? FileText;
             const st = STATUS_STYLES[job.status] ?? { cls: "bg-stone-100 text-stone-600", label: job.status };
             const isPending2 = job.status === "queued" || job.status === "printing";
 
             return (
               <div key={job.id} className="bg-white rounded-xl border border-stone-200 p-4 flex items-center gap-4">
-                <div className="text-2xl">{icon}</div>
+                <Icon className="w-6 h-6 text-nexpura-taupe-400 flex-shrink-0" strokeWidth={1.5} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-stone-900 text-sm">
@@ -113,7 +124,7 @@ export default function PrintQueueClient({ jobs: initialJobs, tenantId }: Props)
                     <span className="text-xs text-stone-400 capitalize">{job.document_type.replace(/_/g, " ")}</span>
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 text-xs text-stone-400 flex-wrap">
-                    <span>🖨️ {job.printer_type}</span>
+                    <span className="inline-flex items-center gap-1"><Printer className="w-3 h-3" strokeWidth={1.5} /> {job.printer_type}</span>
                     <span>×{job.copies} cop{job.copies === 1 ? "y" : "ies"}</span>
                     <span>{new Date(job.created_at).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                     {job.printed_at && <span>Printed {new Date(job.printed_at).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}</span>}
@@ -132,17 +143,17 @@ export default function PrintQueueClient({ jobs: initialJobs, tenantId }: Props)
                           href={job.pdf_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-3 py-1.5 bg-amber-700 text-white rounded-lg text-xs font-medium hover:bg-amber-800"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-nexpura-charcoal text-white rounded-lg text-xs font-medium hover:bg-nexpura-charcoal-700"
                         >
-                          🖨️ Print
+                          <Printer className="w-3 h-3" strokeWidth={1.5} /> Print
                         </a>
                       )}
                       <button
                         onClick={() => handleDone(job.id)}
                         disabled={isPending}
-                        className="px-2.5 py-1.5 border border-green-200 text-green-700 rounded-lg text-xs hover:bg-green-50"
+                        className="px-2.5 py-1.5 border border-nexpura-emerald-deep/30 text-nexpura-emerald-deep rounded-lg text-xs hover:bg-nexpura-emerald-bg"
                       >
-                        ✓ Done
+                        Done
                       </button>
                       <button
                         onClick={() => handleCancel(job.id)}

@@ -222,7 +222,7 @@ export default function ActivityLogClient({
               <select
                 value={localUser}
                 onChange={(e) => setLocalUser(e.target.value)}
-                className="w-full h-10 px-3 border border-stone-200 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+                className="w-full h-10 px-3 border border-stone-200 rounded-lg text-sm focus:ring-nexpura-bronze focus:border-amber-500"
               >
                 <option value="">All users</option>
                 {teamMembers.map((tm) => (
@@ -237,7 +237,7 @@ export default function ActivityLogClient({
               <select
                 value={localType}
                 onChange={(e) => setLocalType(e.target.value)}
-                className="w-full h-10 px-3 border border-stone-200 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+                className="w-full h-10 px-3 border border-stone-200 rounded-lg text-sm focus:ring-nexpura-bronze focus:border-amber-500"
               >
                 <option value="">All types</option>
                 {Object.entries(ENTITY_LABELS).map(([key, label]) => (
@@ -251,7 +251,7 @@ export default function ActivityLogClient({
                 type="date"
                 value={localFrom}
                 onChange={(e) => setLocalFrom(e.target.value)}
-                className="w-full h-10 px-3 border border-stone-200 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+                className="w-full h-10 px-3 border border-stone-200 rounded-lg text-sm focus:ring-nexpura-bronze focus:border-amber-500"
               />
             </div>
             <div>
@@ -260,14 +260,14 @@ export default function ActivityLogClient({
                 type="date"
                 value={localTo}
                 onChange={(e) => setLocalTo(e.target.value)}
-                className="w-full h-10 px-3 border border-stone-200 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+                className="w-full h-10 px-3 border border-stone-200 rounded-lg text-sm focus:ring-nexpura-bronze focus:border-amber-500"
               />
             </div>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={applyFilters}
-              className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
+              className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
             >
               Apply Filters
             </button>

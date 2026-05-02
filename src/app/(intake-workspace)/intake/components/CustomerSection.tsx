@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Info, Mail, Phone, UserPlus, UserX } from "lucide-react";
 import { searchCustomers, createCustomerInline } from "../actions";
 import type { Customer } from "../types";
-import { inputCls, labelCls, cardCls, primaryBtnCls, ghostBtnCls } from "./styles";
+import { inputCls, labelCls, cardCls, ghostBtnCls } from "./styles";
 
 interface CustomerSectionProps {
   initialCustomers: Customer[];
@@ -78,24 +79,15 @@ export default function CustomerSection({
     }
   };
 
-  // Phone icon SVG
-  const PhoneIcon = () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-    </svg>
-  );
-
-  // Email icon SVG
-  const EmailIcon = () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-  );
-
   return (
-    <section className={`${cardCls} p-6 mb-6`}>
+    <section
+      id="step-customer"
+      className={`${cardCls} bg-nexpura-ivory-elevated border-nexpura-taupe-100 p-6 mb-6`}
+    >
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-stone-900">Customer</h2>
+        <h2 className="text-sm font-semibold text-nexpura-charcoal tracking-[0.04em] uppercase">
+          Customer
+        </h2>
         {selectedCustomer && (
           <button
             type="button"
@@ -103,36 +95,52 @@ export default function CustomerSection({
               onSelectCustomer(null);
               setCustomerSearch("");
             }}
-            className="text-sm text-amber-700 hover:text-amber-800 font-medium"
+            className="text-sm text-nexpura-charcoal-700 hover:text-nexpura-charcoal font-medium underline-offset-2 hover:underline"
           >
-            Change
+            Change customer
           </button>
         )}
       </div>
 
       {selectedCustomer ? (
-        // Selected Customer Card — Premium Display
-        <div className="bg-stone-50 border border-stone-200 rounded-xl p-5">
+        // Selected Customer preview card — Section 12.4
+        <div className="bg-white border border-nexpura-taupe-100 rounded-xl p-5">
           <div className="flex items-start gap-4">
             {/* Avatar Initial Circle */}
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-amber-800 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+            <div className="w-12 h-12 bg-nexpura-charcoal rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
               <span className="text-white font-semibold text-lg">
                 {selectedCustomer.full_name?.[0]?.toUpperCase() || "?"}
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-stone-900 text-lg">
-                {selectedCustomer.full_name || "Unknown"}
-              </p>
-              <div className="flex flex-col gap-1 mt-1.5">
-                {selectedCustomer.email && (
-                  <p className="text-sm text-stone-600">{selectedCustomer.email}</p>
-                )}
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-nexpura-charcoal text-base">
+                  {selectedCustomer.full_name || "Unknown"}
+                </p>
+                {/* VIP tag placeholder — flag not yet on Customer record. */}
+              </div>
+              <div className="flex flex-col gap-0.5 mt-1.5 text-sm text-nexpura-charcoal-700">
                 {(selectedCustomer.mobile || selectedCustomer.phone) && (
-                  <p className="text-sm text-stone-600">
-                    {selectedCustomer.mobile || selectedCustomer.phone}
-                  </p>
+                  <p>{selectedCustomer.mobile || selectedCustomer.phone}</p>
                 )}
+                {selectedCustomer.email && <p>{selectedCustomer.email}</p>}
+              </div>
+              {/* Last visit / open jobs / outstanding — not in current
+                  Customer query payload; left as placeholder row to match
+                  the visual brief without a data-layer change. */}
+              <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+                <div>
+                  <div className="text-nexpura-charcoal-500 uppercase tracking-[0.04em]">Last visit</div>
+                  <div className="text-nexpura-charcoal-700 mt-0.5">—</div>
+                </div>
+                <div>
+                  <div className="text-nexpura-charcoal-500 uppercase tracking-[0.04em]">Open jobs</div>
+                  <div className="text-nexpura-charcoal-700 mt-0.5">—</div>
+                </div>
+                <div>
+                  <div className="text-nexpura-charcoal-500 uppercase tracking-[0.04em]">Outstanding</div>
+                  <div className="text-nexpura-charcoal-700 mt-0.5">—</div>
+                </div>
               </div>
             </div>
             {/* Quick Action Icons */}
@@ -140,19 +148,19 @@ export default function CustomerSection({
               {(selectedCustomer.mobile || selectedCustomer.phone) && (
                 <a
                   href={`tel:${selectedCustomer.mobile || selectedCustomer.phone}`}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-stone-200 text-stone-600 hover:text-amber-700 hover:border-amber-300 transition-colors"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-nexpura-taupe-100 text-nexpura-charcoal-700 hover:text-nexpura-charcoal hover:border-nexpura-taupe-200 transition-colors"
                   title="Call customer"
                 >
-                  <PhoneIcon />
+                  <Phone className="w-4 h-4" strokeWidth={1.5} aria-hidden />
                 </a>
               )}
               {selectedCustomer.email && (
                 <a
                   href={`mailto:${selectedCustomer.email}`}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-stone-200 text-stone-600 hover:text-amber-700 hover:border-amber-300 transition-colors"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-nexpura-taupe-100 text-nexpura-charcoal-700 hover:text-nexpura-charcoal hover:border-nexpura-taupe-200 transition-colors"
                   title="Email customer"
                 >
-                  <EmailIcon />
+                  <Mail className="w-4 h-4" strokeWidth={1.5} aria-hidden />
                 </a>
               )}
             </div>
@@ -221,7 +229,7 @@ export default function CustomerSection({
                 isCreatingCustomer ||
                 (!newCustomer.first_name && !newCustomer.last_name)
               }
-              className={primaryBtnCls}
+              className="px-5 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isCreatingCustomer ? "Creating..." : "Create Customer"}
             </button>
@@ -243,7 +251,7 @@ export default function CustomerSection({
           </div>
         </div>
       ) : (
-        // Customer Search
+        // Customer Search — Section 12.4
         <div className="relative">
           <input
             type="text"
@@ -254,12 +262,12 @@ export default function CustomerSection({
               if (isWalkIn) onWalkInToggle(false);
             }}
             onFocus={() => setShowCustomerDropdown(true)}
-            placeholder="Search by name, phone, or email..."
+            placeholder="Search customers by name, phone, or email"
             className={inputCls}
             disabled={isWalkIn}
           />
           {showCustomerDropdown && !isWalkIn && customers.length > 0 && (
-            <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-stone-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+            <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-nexpura-taupe-100 rounded-xl shadow-lg max-h-64 overflow-y-auto">
               {customers.map((c) => (
                 <button
                   key={c.id}
@@ -269,52 +277,72 @@ export default function CustomerSection({
                     setShowCustomerDropdown(false);
                     setCustomerSearch("");
                   }}
-                  className="w-full text-left px-4 py-3 hover:bg-stone-50 transition-colors border-b border-stone-100 last:border-b-0"
+                  className="w-full text-left px-4 py-2.5 hover:bg-nexpura-champagne/40 transition-colors border-b border-nexpura-taupe-100 last:border-b-0 flex items-center gap-3"
                 >
-                  <p className="font-medium text-stone-900 text-sm">
-                    {c.full_name}
-                  </p>
-                  {(c.email || c.mobile || c.phone) && (
-                    <p className="text-xs text-stone-500">
-                      {c.email || c.mobile || c.phone}
-                    </p>
-                  )}
+                  <span className="w-8 h-8 rounded-full bg-nexpura-charcoal text-white text-xs font-semibold flex items-center justify-center shrink-0">
+                    {c.full_name?.[0]?.toUpperCase() || "?"}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium text-nexpura-charcoal text-sm truncate">
+                      {c.full_name}
+                    </span>
+                    {(c.email || c.mobile || c.phone) && (
+                      <span className="block text-xs text-nexpura-charcoal-500 truncate">
+                        {c.mobile || c.phone || c.email}
+                      </span>
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
           )}
 
-          {/* Walk-in Toggle */}
-          <div className="mt-4 flex items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isWalkIn}
-                onChange={(e) => onWalkInToggle(e.target.checked)}
-                className="w-4 h-4 rounded border-stone-300 text-amber-700 focus:ring-amber-500/20"
-              />
-              <span className="text-sm text-stone-700">Walk-in customer (no record)</span>
-            </label>
-          </div>
-
-          {/* Warning if no customer and not walk-in */}
+          {/* Champagne info alert — Section 12.4 */}
           {!isWalkIn && (
-            <div className="mt-4 flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
-              <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span className="text-sm text-amber-800">No customer linked to this job</span>
+            <div className="mt-4 flex items-start gap-2.5 px-3.5 py-2.5 bg-nexpura-champagne border border-nexpura-taupe-200 rounded-lg">
+              <Info className="w-4 h-4 text-nexpura-charcoal-700 flex-shrink-0 mt-0.5" strokeWidth={1.75} aria-hidden />
+              <span className="text-sm text-nexpura-charcoal-700">
+                No customer linked yet. Select an existing customer, mark as walk-in, or create a profile.
+              </span>
             </div>
           )}
 
-          <div className="mt-3 flex items-center gap-2 text-sm">
-            <span className="text-stone-400">Customer not found?</span>
+          {isWalkIn && (
+            <div className="mt-4 flex items-center justify-between gap-3 px-3.5 py-2.5 bg-nexpura-ivory-elevated border border-nexpura-taupe-200 rounded-lg">
+              <span className="text-sm text-nexpura-charcoal-700">
+                Walk-in customer — no contact record will be saved.
+              </span>
+              <button
+                type="button"
+                onClick={() => onWalkInToggle(false)}
+                className="text-xs font-medium text-nexpura-charcoal-700 hover:text-nexpura-charcoal underline-offset-2 hover:underline"
+              >
+                Undo
+              </button>
+            </div>
+          )}
+
+          {/* Secondary action buttons */}
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setShowNewCustomerForm(true)}
-              className="text-amber-700 hover:text-amber-800 font-medium"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium text-nexpura-charcoal-700 bg-white border border-nexpura-taupe-100 hover:bg-nexpura-champagne/40 transition-colors"
             >
-              Create new customer →
+              <UserPlus className="w-4 h-4" strokeWidth={1.5} aria-hidden />
+              Create customer
+            </button>
+            <button
+              type="button"
+              onClick={() => onWalkInToggle(!isWalkIn)}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isWalkIn
+                  ? "bg-nexpura-charcoal text-white border border-nexpura-charcoal hover:bg-nexpura-charcoal-700"
+                  : "text-nexpura-charcoal-700 bg-white border border-nexpura-taupe-100 hover:bg-nexpura-champagne/40"
+              }`}
+            >
+              <UserX className="w-4 h-4" strokeWidth={1.5} aria-hidden />
+              Use walk-in
             </button>
           </div>
         </div>

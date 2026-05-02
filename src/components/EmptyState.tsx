@@ -34,7 +34,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
               className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 action.variant === 'secondary'
                   ? 'bg-white border border-stone-300 text-stone-700 hover:bg-stone-50'
-                  : 'bg-amber-700 text-white hover:bg-amber-800'
+                  : 'bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700'
               }`}
             >
               {action.label}
@@ -45,7 +45,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
               className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 action.variant === 'secondary'
                   ? 'bg-white border border-stone-300 text-stone-700 hover:bg-stone-50'
-                  : 'bg-amber-700 text-white hover:bg-amber-800'
+                  : 'bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700'
               }`}
             >
               {action.label}

@@ -17,6 +17,21 @@ import {
 type EntityType = "inventory" | "customers" | "repairs" | "bespoke" | "sales" | "suppliers";
 type TopTab = "import" | "export";
 
+// Brief 2 audit security #4 — allowlist URL-driven tab values rather
+// than blindly casting `searchParams.get(...) as EntityType`. A
+// malformed `?tab=` value previously slipped through the cast and
+// indexed into TEMPLATES, throwing at render time. Validate here.
+const ENTITY_TYPES: ReadonlySet<EntityType> = new Set([
+  "inventory", "customers", "repairs", "bespoke", "sales", "suppliers",
+]);
+const TOP_TABS: ReadonlySet<TopTab> = new Set(["import", "export"]);
+function safeEntityType(v: string | null): EntityType {
+  return v && ENTITY_TYPES.has(v as EntityType) ? (v as EntityType) : "inventory";
+}
+function safeTopTab(v: string | null): TopTab {
+  return v && TOP_TABS.has(v as TopTab) ? (v as TopTab) : "import";
+}
+
 const TABS: { id: EntityType; label: string }[] = [
   { id: "inventory", label: "Inventory" },
   { id: "customers", label: "Customers" },
@@ -221,8 +236,8 @@ function ImportHubClientInner({ counts = {} }: ImportHubClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const topTab = (searchParams.get('mode') || 'import') as TopTab;
-  const activeTab = (searchParams.get('tab') || 'inventory') as EntityType;
+  const topTab = safeTopTab(searchParams.get('mode'));
+  const activeTab = safeEntityType(searchParams.get('tab'));
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -521,7 +536,7 @@ function ImportHubClientInner({ counts = {} }: ImportHubClientProps) {
                     <select
                       value={columnMap[sf] || ""}
                       onChange={(e) => setColumnMap((prev) => ({ ...prev, [sf]: e.target.value }))}
-                      className="w-full text-sm border border-amber-300 rounded-md px-2 py-1.5 bg-white text-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                      className="w-full text-sm border border-amber-300 rounded-md px-2 py-1.5 bg-white text-stone-700 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30"
                     >
                       <option value="">— skip —</option>
                       {csvHeaders.map((h) => (
@@ -549,7 +564,7 @@ function ImportHubClientInner({ counts = {} }: ImportHubClientProps) {
                 <button
                   onClick={handleImport}
                   disabled={importing || isPending}
-                  className="flex items-center gap-2 px-5 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-[#7a6349] transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
                 >
                   {importing || isPending ? (
                     <>

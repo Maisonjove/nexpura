@@ -101,7 +101,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
               value={form.title}
               onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
               placeholder="What needs to be done?"
-              className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
             />
           </div>
 
@@ -112,7 +112,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
               value={form.description}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
               placeholder="Additional details..."
-              className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze resize-none"
             />
           </div>
 
@@ -122,7 +122,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
               <select
                 value={form.assigned_to}
                 onChange={(e) => setForm((p) => ({ ...p, assigned_to: e.target.value }))}
-                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 bg-white"
+                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze bg-white"
               >
                 <option value="">Unassigned</option>
                 {teamMembers.map((m) => (
@@ -138,7 +138,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
                 type="date"
                 value={form.due_date}
                 onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
-                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
+                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
               />
             </div>
           </div>
@@ -149,7 +149,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
               <select
                 value={form.priority}
                 onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
-                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 bg-white"
+                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze bg-white"
               >
                 <option value="low">Low</option>
                 <option value="normal">Normal</option>
@@ -162,7 +162,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
               <select
                 value={form.status}
                 onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 bg-white"
+                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze bg-white"
               >
                 <option value="todo">To Do</option>
                 <option value="in_progress">In Progress</option>
@@ -179,7 +179,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
             <select
               value={form.linked_type}
               onChange={(e) => setForm((p) => ({ ...p, linked_type: e.target.value, linked_id: "" }))}
-              className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 bg-white"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze bg-white"
             >
               <option value="">None</option>
               <option value="repair">Repair</option>
@@ -199,7 +199,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
                 value={form.linked_id}
                 onChange={(e) => setForm((p) => ({ ...p, linked_id: e.target.value }))}
                 placeholder="Paste ID here"
-                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
+                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
               />
             </div>
           )}
@@ -211,7 +211,7 @@ export default function NewTaskClient({ teamMembers }: Props) {
               value={form.notes}
               onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
               placeholder="Internal notes..."
-              className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze resize-none"
             />
           </div>
 

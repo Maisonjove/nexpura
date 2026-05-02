@@ -138,24 +138,24 @@ export default function TaskTemplatesPage() {
     <div className="max-w-3xl mx-auto py-10 px-4 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-stone-900">Task Templates</h1>
-          <p className="text-sm text-stone-500 mt-0.5">Reusable task templates for fast assignment</p>
+          <h1 className="font-serif text-[28px] leading-tight text-nexpura-charcoal">Task Templates</h1>
+          <p className="text-sm text-nexpura-charcoal-500 mt-0.5">Reusable templates for fast assignment.</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowNew(true)}
-            className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800"
+            className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-md hover:bg-nexpura-charcoal-700"
           >
             + New Template
           </button>
         </div>
       </div>
 
-      {msg && <div className="bg-amber-700/10 border border-amber-600/20 text-amber-700 text-sm rounded-lg px-4 py-3">{msg}</div>}
+      {msg && <div className="bg-nexpura-ivory-elevated border border-nexpura-taupe-100 text-nexpura-charcoal-700 text-sm rounded-lg px-4 py-3">{msg}</div>}
 
       {/* New template form */}
       {showNew && (
-        <div className="bg-white rounded-xl border border-amber-600/30 p-5 space-y-4 shadow-sm">
+        <div className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-5 space-y-4 shadow-sm">
           <h3 className="font-semibold text-stone-900">New Template</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -165,7 +165,7 @@ export default function TaskTemplatesPage() {
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="e.g. Ring Polishing"
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze"
               />
             </div>
             <div>
@@ -173,7 +173,7 @@ export default function TaskTemplatesPage() {
               <select
                 value={newDepartment}
                 onChange={(e) => setNewDepartment(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
               >
                 <option value="">None</option>
                 <option value="Workshop">Workshop</option>
@@ -188,7 +188,7 @@ export default function TaskTemplatesPage() {
               <select
                 value={newPriority}
                 onChange={(e) => setNewPriority(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -204,11 +204,11 @@ export default function TaskTemplatesPage() {
               onChange={(e) => setNewDescription(e.target.value)}
               rows={3}
               placeholder={"Detailed instructions..."}
-              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 resize-none"
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze resize-none"
             />
           </div>
           <div className="flex gap-2">
-            <button onClick={handleCreateTemplate} className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800">
+            <button onClick={handleCreateTemplate} className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700">
               Create Template
             </button>
             <button onClick={() => setShowNew(false)} className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">
@@ -228,7 +228,7 @@ export default function TaskTemplatesPage() {
           </div>
         ) : (
           templates.map((t) => (
-            <div key={t.id} className="bg-white rounded-xl border border-stone-200 p-5 hover:border-amber-600/30 transition-colors">
+            <div key={t.id} className="bg-nexpura-ivory-elevated rounded-xl border border-nexpura-taupe-100 p-5 hover:border-nexpura-bronze/40 transition-colors">
               {editId === t.id ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -237,14 +237,14 @@ export default function TaskTemplatesPage() {
                         type="text"
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
-                        className="w-full px-3 py-2 text-sm font-semibold border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600"
+                        className="w-full px-3 py-2 text-sm font-semibold border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze"
                       />
                     </div>
                     <div>
                       <select
                         value={editDepartment}
                         onChange={(e) => setEditDepartment(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                       >
                         <option value="">No Department</option>
                         <option value="Workshop">Workshop</option>
@@ -258,7 +258,7 @@ export default function TaskTemplatesPage() {
                       <select
                         value={editPriority}
                         onChange={(e) => setEditPriority(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze bg-white"
                       >
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
@@ -271,10 +271,10 @@ export default function TaskTemplatesPage() {
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     rows={4}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-600 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze resize-none"
                   />
                   <div className="flex gap-2">
-                    <button onClick={saveEdit} className="px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800">Save Changes</button>
+                    <button onClick={saveEdit} className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700">Save Changes</button>
                     <button onClick={() => setEditId(null)} className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">Cancel</button>
                   </div>
                 </div>
@@ -288,8 +288,8 @@ export default function TaskTemplatesPage() {
                       )}
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium uppercase ${
                         t.priority === 'urgent' ? 'bg-red-50 text-red-600' :
-                        t.priority === 'high' ? 'bg-amber-50 text-amber-600' :
-                        'bg-stone-50 text-stone-500'
+                        t.priority === 'high' ? 'bg-nexpura-champagne text-nexpura-charcoal-700' :
+                        'bg-nexpura-ivory text-nexpura-charcoal-500'
                       }`}>
                         {t.priority}
                       </span>

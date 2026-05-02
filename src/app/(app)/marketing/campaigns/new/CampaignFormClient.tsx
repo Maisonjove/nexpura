@@ -180,7 +180,7 @@ export default function CampaignFormClient({
                 value={formData.name}
                 onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g., Spring Sale Announcement"
-                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
               />
               <p className="text-xs text-stone-500 mt-1">
                 Internal name for this campaign (not shown to customers)
@@ -196,7 +196,7 @@ export default function CampaignFormClient({
                 value={formData.subject}
                 onChange={(e) => setFormData((prev) => ({ ...prev, subject: e.target.value }))}
                 placeholder="e.g., 🎉 Don't miss our Spring Sale!"
-                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
               />
             </div>
 
@@ -207,7 +207,7 @@ export default function CampaignFormClient({
               </label>
               <select
                 onChange={(e) => handleTemplateSelect(e.target.value)}
-                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
               >
                 <option value="">Select a template...</option>
                 {templates.map((template) => (
@@ -258,7 +258,7 @@ export default function CampaignFormClient({
                   onChange={(e) => setFormData((prev) => ({ ...prev, body: e.target.value }))}
                   placeholder="Write your email content here... Use {{customer_name}} and {{business_name}} for personalization."
                   rows={12}
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40 font-mono text-sm"
+                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40 font-mono text-sm"
                 />
               )}
               <p className="text-xs text-stone-500 mt-1">
@@ -317,7 +317,7 @@ export default function CampaignFormClient({
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, segment_id: e.target.value }))
                   }
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                 >
                   <option value="">Select a segment...</option>
                   {segments.map((segment) => (
@@ -410,7 +410,7 @@ export default function CampaignFormClient({
                     setFormData((prev) => ({ ...prev, scheduled_at: e.target.value }))
                   }
                   min={new Date().toISOString().slice(0, 16)}
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
                 />
               </div>
             )}

@@ -122,7 +122,7 @@ export default function FinancialReportTab({ gstRate, currency = 'AUD' }: Financ
               value={from}
               max={to}
               onChange={(e) => { setFrom(e.target.value); setActivePreset('Custom'); }}
-              className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 outline-none focus:border-amber-600"
+              className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 outline-none focus:border-nexpura-bronze"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -133,7 +133,7 @@ export default function FinancialReportTab({ gstRate, currency = 'AUD' }: Financ
               min={from}
               max={todayStr()}
               onChange={(e) => { setTo(e.target.value); setActivePreset('Custom'); }}
-              className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 outline-none focus:border-amber-600"
+              className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 outline-none focus:border-nexpura-bronze"
             />
           </div>
           <button

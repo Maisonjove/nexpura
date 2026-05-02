@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { Wrench, Gem, Link as LinkIcon, Calendar, AlertTriangle } from "lucide-react";
 import { updateTask } from "./actions";
 import type { StaffTask } from "./actions";
 
@@ -13,16 +14,18 @@ const LINKED_TYPE_HREFS: Record<string, string> = {
 };
 
 const COLUMNS: { id: string; label: string; color: string; dot: string }[] = [
-  { id: "pending", label: "To Do", color: "bg-stone-50 border-stone-200", dot: "bg-stone-400" },
-  { id: "in_progress", label: "In Progress", color: "bg-amber-50 border-amber-200", dot: "bg-amber-500" },
-  { id: "completed", label: "Done", color: "bg-green-50 border-green-200", dot: "bg-green-500" },
+  { id: "pending", label: "To Do", color: "bg-nexpura-ivory-elevated border-nexpura-taupe-100", dot: "bg-nexpura-taupe-400" },
+  { id: "in_progress", label: "In Progress", color: "bg-nexpura-amber-bg border-nexpura-amber-muted/30", dot: "bg-nexpura-amber-muted" },
+  { id: "completed", label: "Done", color: "bg-nexpura-emerald-bg border-nexpura-emerald-deep/20", dot: "bg-nexpura-emerald-deep" },
 ];
 
-const PRIORITY_DOTS: Record<string, string> = {
-  low: "🔵",
-  medium: "🟡",
-  high: "🟠",
-  urgent: "🔴",
+// Priority indicator: small filled circle, color-coded. Replaces emoji
+// dots with semantic Tailwind classes per Kaitlyn 2026-05-02 Section 1.4.
+const PRIORITY_DOT_CLASS: Record<string, string> = {
+  low: "bg-blue-500",
+  medium: "bg-nexpura-amber-muted",
+  high: "bg-orange-500",
+  urgent: "bg-nexpura-oxblood",
 };
 
 interface TeamMember { id: string; full_name: string; }
@@ -116,8 +119,13 @@ export default function TaskKanbanView({ tasks, teamMembers, onTaskUpdate }: Pro
                       draggingId === task.id ? "opacity-50" : ""
                     }`}
                   >
-                    <div className="flex items-start gap-1.5 mb-2">
-                      <span className="text-xs mt-0.5">{PRIORITY_DOTS[task.priority] ?? "⚪"}</span>
+                    <div className="flex items-start gap-2 mb-2">
+                      <span
+                        aria-hidden="true"
+                        className={`mt-1.5 inline-block w-2 h-2 rounded-full flex-shrink-0 ${
+                          PRIORITY_DOT_CLASS[task.priority] ?? "bg-nexpura-taupe-200"
+                        }`}
+                      />
                       <p className="text-sm font-medium text-stone-900 leading-snug">{task.title}</p>
                     </div>
                     {task.description && (
@@ -125,15 +133,19 @@ export default function TaskKanbanView({ tasks, teamMembers, onTaskUpdate }: Pro
                     )}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       {task.due_date && (
-                        <span className={`text-xs font-medium ${isOverdue ? "text-red-600" : "text-stone-400"}`}>
-                          {isOverdue ? "⚠️ " : "📅 "}
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium ${isOverdue ? "text-nexpura-oxblood" : "text-stone-400"}`}>
+                          {isOverdue ? (
+                            <AlertTriangle className="w-3 h-3" strokeWidth={1.5} />
+                          ) : (
+                            <Calendar className="w-3 h-3" strokeWidth={1.5} />
+                          )}
                           {new Date(task.due_date).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
                         </span>
                       )}
                       {assigneeName && (
                         <div className="flex items-center gap-1 ml-auto">
-                          <div className="w-5 h-5 rounded-full bg-amber-700/20 flex items-center justify-center">
-                            <span className="text-[8px] font-bold text-amber-700">
+                          <div className="w-5 h-5 rounded-full bg-nexpura-bronze/20 flex items-center justify-center">
+                            <span className="text-[8px] font-bold text-nexpura-bronze">
                               {assigneeName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                             </span>
                           </div>
@@ -146,14 +158,18 @@ export default function TaskKanbanView({ tasks, teamMembers, onTaskUpdate }: Pro
                           href={`${LINKED_TYPE_HREFS[task.linked_type] || "/"}${task.linked_id}`}
                           onClick={(e) => e.stopPropagation()}
                           className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border hover:underline transition-colors ${
-                            task.linked_type === "repair"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : task.linked_type === "bespoke"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                            task.linked_type === "repair" || task.linked_type === "bespoke"
+                              ? "bg-nexpura-champagne text-nexpura-bronze border-nexpura-taupe-100"
                               : "bg-stone-50 text-stone-500 border-stone-200"
                           }`}
                         >
-                          {task.linked_type === "repair" ? "🔧" : task.linked_type === "bespoke" ? "💎" : "🔗"}
+                          {task.linked_type === "repair" ? (
+                            <Wrench className="w-2.5 h-2.5" strokeWidth={1.5} />
+                          ) : task.linked_type === "bespoke" ? (
+                            <Gem className="w-2.5 h-2.5" strokeWidth={1.5} />
+                          ) : (
+                            <LinkIcon className="w-2.5 h-2.5" strokeWidth={1.5} />
+                          )}
                           {" "}{task.linked_type === "repair" ? "Repair" : task.linked_type === "bespoke" ? "Bespoke" : task.linked_type}
                         </Link>
                       </div>

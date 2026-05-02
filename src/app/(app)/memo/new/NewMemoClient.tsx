@@ -80,7 +80,7 @@ export default function NewMemoClient({ memoType, customers, suppliers }: Props)
               name="item_name"
               required
               placeholder="e.g. 18K Gold Ring with Diamond"
-              className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
             />
           </div>
 
@@ -97,7 +97,7 @@ export default function NewMemoClient({ memoType, customers, suppliers }: Props)
                 min="0"
                 required
                 placeholder="0.00"
-                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
               />
             </div>
             <div>
@@ -111,7 +111,7 @@ export default function NewMemoClient({ memoType, customers, suppliers }: Props)
                 min="0"
                 max="100"
                 defaultValue="20"
-                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
               />
             </div>
           </div>
@@ -124,7 +124,7 @@ export default function NewMemoClient({ memoType, customers, suppliers }: Props)
             {isMemo ? (
               <select
                 name="customer_id"
-                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white"
+                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500 bg-white"
               >
                 <option value="">Select a customer...</option>
                 {customers.map((c) => (
@@ -137,7 +137,7 @@ export default function NewMemoClient({ memoType, customers, suppliers }: Props)
             ) : (
               <select
                 name="supplier_id"
-                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white"
+                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500 bg-white"
               >
                 <option value="">Select a supplier...</option>
                 {suppliers.map((s) => (
@@ -157,7 +157,7 @@ export default function NewMemoClient({ memoType, customers, suppliers }: Props)
             <input
               name="due_back_date"
               type="date"
-              className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
             />
           </div>
 
@@ -170,7 +170,7 @@ export default function NewMemoClient({ memoType, customers, suppliers }: Props)
               name="notes"
               rows={3}
               placeholder="Any additional details..."
-              className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 resize-none"
+              className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500 resize-none"
             />
           </div>
 
@@ -187,7 +187,7 @@ export default function NewMemoClient({ memoType, customers, suppliers }: Props)
               isPending={isPending}
               idleLabel={`Create ${isMemo ? "Memo" : "Consignment"}`}
               pendingLabel="Creating..."
-              className="flex-1 py-3 bg-amber-700 text-white rounded-xl text-sm font-semibold hover:bg-amber-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 bg-nexpura-charcoal text-white rounded-xl text-sm font-semibold hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <Link
               href="/memo"

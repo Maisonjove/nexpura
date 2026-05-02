@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 import { recordPayment, markAsSent, voidInvoice } from "../actions";
 
 import {
@@ -190,10 +191,11 @@ export default function InvoiceDetailClient({
           {invoice.customers?.id && (
             <Link
               href={`/passports/new?invoice_id=${invoice.id}&customer_id=${invoice.customers.id}`}
-              className="px-3 py-1.5 text-xs border border-amber-600 text-amber-700 rounded-lg hover:bg-amber-700/5 transition-colors inline-flex items-center gap-1"
+              className="px-3 py-1.5 text-xs border border-nexpura-bronze/40 text-nexpura-bronze rounded-lg hover:bg-nexpura-bronze/10 transition-colors inline-flex items-center gap-1.5"
               title="Issue a Digital Passport for an item on this invoice"
             >
-              🛡️ Issue Passport
+              <ShieldCheck className="w-3.5 h-3.5" strokeWidth={1.5} />
+              Issue Passport
             </Link>
           )}
           <a

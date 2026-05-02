@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Camera, FolderOpen, Lightbulb, X } from "lucide-react";
 
 export interface PhotoMatch {
   id: string;
@@ -137,14 +138,15 @@ export default function PhotoScannerModal({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-            <span className="text-xl">📸</span>
+            <Camera className="w-5 h-5" strokeWidth={1.5} />
             AI Photo Scan
           </h2>
           <button
             onClick={handleClose}
+            aria-label="Close"
             className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
           >
-            ✕
+            <X className="w-4 h-4" strokeWidth={1.5} />
           </button>
         </div>
 
@@ -168,10 +170,10 @@ export default function PhotoScannerModal({
                 {/* Viewfinder corners */}
                 {!cameraError && (
                   <>
-                    <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-amber-400 rounded-tl" />
-                    <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-amber-400 rounded-tr" />
-                    <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-amber-400 rounded-bl" />
-                    <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-amber-400 rounded-br" />
+                    <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-nexpura-bronze-light rounded-tl" />
+                    <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-nexpura-bronze-light rounded-tr" />
+                    <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-nexpura-bronze-light rounded-bl" />
+                    <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-nexpura-bronze-light rounded-br" />
                   </>
                 )}
               </div>
@@ -180,15 +182,17 @@ export default function PhotoScannerModal({
                 <button
                   onClick={capturePhoto}
                   disabled={!!cameraError}
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white rounded-xl py-3 text-sm font-semibold transition-colors"
+                  className="flex-1 bg-nexpura-charcoal hover:bg-nexpura-charcoal-700 disabled:opacity-40 text-white rounded-xl py-3 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                 >
-                  📸 Capture Photo
+                  <Camera className="w-4 h-4" strokeWidth={1.5} />
+                  Capture Photo
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl py-3 text-sm font-semibold transition-colors"
+                  className="px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl py-3 text-sm font-semibold transition-colors flex items-center gap-2"
                 >
-                  📂 Upload
+                  <FolderOpen className="w-4 h-4" strokeWidth={1.5} />
+                  Upload
                 </button>
                 <input
                   ref={fileInputRef}
@@ -277,7 +281,7 @@ export default function PhotoScannerModal({
                   <div className="flex gap-3">
                     <button
                       onClick={handleRetake}
-                      className="flex-1 bg-amber-600 hover:bg-amber-700 text-white rounded-xl py-3 text-sm font-semibold transition-colors"
+                      className="flex-1 bg-nexpura-charcoal hover:bg-nexpura-charcoal-700 text-white rounded-xl py-3 text-sm font-semibold transition-colors"
                     >
                       Retake
                     </button>
@@ -307,19 +311,20 @@ export default function PhotoScannerModal({
                         <span className="text-sm font-medium text-gray-800 truncate mr-3">
                           {m.item_name}
                         </span>
-                        <span className="shrink-0 bg-amber-600 text-white text-xs font-bold rounded-full px-2.5 py-1">
+                        <span className="shrink-0 bg-nexpura-bronze text-white text-xs font-bold rounded-full px-2.5 py-1">
                           ×{m.quantity}
                         </span>
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 leading-snug">
-                    💡 AI tends to undercount stacked or near-identical items. Glance through the counts before applying.
+                  <p className="text-[11px] text-nexpura-amber-muted bg-nexpura-amber-bg border border-nexpura-amber-muted/30 rounded-lg px-3 py-2 mb-4 leading-snug flex items-start gap-2">
+                    <Lightbulb className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+                    <span>AI tends to undercount stacked or near-identical items. Glance through the counts before applying.</span>
                   </p>
                   <div className="flex gap-3">
                     <button
                       onClick={() => { onApply(matches); handleClose(); }}
-                      className="flex-1 bg-amber-600 hover:bg-amber-700 text-white rounded-xl py-3 text-sm font-semibold transition-colors"
+                      className="flex-1 bg-nexpura-charcoal hover:bg-nexpura-charcoal-700 text-white rounded-xl py-3 text-sm font-semibold transition-colors"
                     >
                       ✓ Apply Counts
                     </button>
