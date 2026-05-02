@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { updateSaleStatus, deleteSale, generatePassportFromSaleItem } from "../actions";
+import { updateSaleStatus, deleteSale, generatePassportFromSaleItem, duplicateSale } from "../actions";
 import { processRefund } from "../../refunds/actions";
 import { recordLaybyPayment } from "@/app/(app)/pos/layby-actions";
 
@@ -455,6 +455,40 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
               )}
             </div>
 
+            {/* Edit / Duplicate / Reprint Receipt — always available */}
+            <div className="border-t border-stone-200 pt-4 space-y-2">
+              <Link
+                href={`/sales/${sale.id}/edit`}
+                className="w-full flex items-center justify-center gap-2 bg-nexpura-charcoal text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-nexpura-charcoal-700 transition-all"
+              >
+                Edit Sale
+              </Link>
+              <button
+                onClick={() => {
+                  startTransition(async () => {
+                    const result = await duplicateSale(sale.id);
+                    if (result?.id) {
+                      router.push(`/sales/${result.id}/edit`);
+                    } else if (result?.error) {
+                      setStatusMsg(result.error);
+                    }
+                  });
+                }}
+                disabled={isPending}
+                className="w-full flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 text-sm font-medium px-4 py-2.5 rounded-lg hover:border-stone-900 hover:text-stone-900 transition-all disabled:opacity-50"
+              >
+                {isPending ? "Duplicating…" : "Duplicate Sale"}
+              </button>
+              <a
+                href={`/print/sale/${sale.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 text-sm font-medium px-4 py-2.5 rounded-lg hover:border-stone-900 hover:text-stone-900 transition-all"
+              >
+                Reprint Receipt
+              </a>
+            </div>
+
             {/* View Invoice + Print Invoice */}
             {invoiceId && (
               <div className="border-t border-stone-200 pt-4 space-y-2">
@@ -502,7 +536,7 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
               {showDelete ? (
                 <div className="space-y-2">
                   <p className="text-xs text-stone-500">
-                    Delete this sale permanently? This cannot be undone.
+                    Delete this sale? Stock from any inventoried items will be returned. You can restore from the deleted-sales list within 30 days.
                   </p>
                   <div className="flex gap-2">
                     <button

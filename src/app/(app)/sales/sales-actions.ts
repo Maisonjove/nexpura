@@ -67,11 +67,14 @@ export async function getSales(locationIds: string[] | null): Promise<SaleWithLo
     }
   }
 
-  // Build query
+  // Build query — exclude soft-deleted sales (deleted_at IS NULL) so the
+  // hub list, recent-sales panel, and KPI aggregates all stop showing
+  // sales that an operator has thrown away.
   let query = admin
     .from("sales")
     .select("id, sale_number, customer_name, customer_email, status, payment_method, total, amount_paid, sale_date, created_at, location_id")
     .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   // Apply location filter

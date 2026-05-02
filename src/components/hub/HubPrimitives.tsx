@@ -128,7 +128,10 @@ export function KpiCard({ label, value, href, tone = "neutral", hint }: KpiCardP
 
   const Inner = (
     <div className="min-w-0">
-      <p className="font-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-nexpura-taupe-400 truncate">
+      <p
+        className="font-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-nexpura-taupe-400 break-words leading-tight"
+        title={label}
+      >
         {label}
       </p>
       <p

@@ -30,6 +30,7 @@ export default async function SaleDetailPage({
     .select("*")
     .eq("id", id)
     .eq("tenant_id", tenantId ?? "")
+    .is("deleted_at", null)
     .single();
 
   if (!sale) notFound();
@@ -44,6 +45,7 @@ export default async function SaleDetailPage({
     .from("sale_items")
     .select("*")
     .eq("sale_id", id)
+    .is("deleted_at", null)
     .order("created_at", { ascending: true });
 
   const { data: invoiceRow } = await adminClient

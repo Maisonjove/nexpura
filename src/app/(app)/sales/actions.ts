@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/lib/notifications";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -138,6 +139,9 @@ export async function createSale(
     unit_price: number;
     discount_pct?: number;
     line_total?: number; // ignored server-side
+    inventory_id?: string | null;
+    sku?: string | null;
+    name?: string | null;
   }> = [];
   try {
     const itemsJson = formData.get("line_items") as string;
@@ -170,6 +174,44 @@ export async function createSale(
   const taxAmount = Math.round((subtotal - discountAmount) * taxRate * 100) / 100;
   const total = Math.round((subtotal - discountAmount + taxAmount) * 100) / 100;
 
+  // Split-payment: when payment_method=split the operator entered both a
+  // card and cash amount; persist the totals and validate they sum to the
+  // running total (with $0.01 float tolerance to mirror POS).
+  const paymentMethod = str("payment_method");
+  let splitNotes: string | null = null;
+  if (paymentMethod === "split") {
+    const cardAmt = num("split_card_amount");
+    const cashAmt = num("split_cash_amount");
+    if (Math.abs(cardAmt + cashAmt - total) > 0.01) {
+      return { error: `Split payment must sum to ${total.toFixed(2)} (got ${(cardAmt + cashAmt).toFixed(2)})` };
+    }
+    splitNotes = `Split: card $${cardAmt.toFixed(2)} + cash $${cashAmt.toFixed(2)}`;
+  }
+
+  const baseNotes = str("notes");
+  const combinedNotes = splitNotes ? `${splitNotes}${baseNotes ? `\n${baseNotes}` : ""}` : baseNotes;
+
+  // Pre-flight stock check for any inventoried lines so we don't insert
+  // the sale row before discovering an item went out of stock since the
+  // operator added it.
+  const inventoriedLines = lineItems.filter((it) => it.inventory_id);
+  if (inventoriedLines.length > 0) {
+    const ids = Array.from(new Set(inventoriedLines.map((i) => i.inventory_id!)));
+    const { data: invRows } = await supabase
+      .from("inventory")
+      .select("id, name, quantity, track_quantity")
+      .in("id", ids)
+      .eq("tenant_id", tenantId);
+    for (const line of inventoriedLines) {
+      const inv = (invRows ?? []).find((r) => r.id === line.inventory_id);
+      if (!inv) continue;
+      if (inv.track_quantity === false) continue; // not tracked
+      if ((inv.quantity ?? 0) < line.quantity) {
+        return { error: `Only ${inv.quantity} "${inv.name}" left in stock — adjust the line quantity.` };
+      }
+    }
+  }
+
   const { data: sale, error: saleError } = await supabase
     .from("sales")
     .insert({
@@ -178,12 +220,12 @@ export async function createSale(
       customer_name: str("customer_name"),
       customer_email: str("customer_email"),
       status: str("status") || "quote",
-      payment_method: str("payment_method"),
+      payment_method: paymentMethod,
       subtotal,
       discount_amount: discountAmount,
       tax_amount: taxAmount,
       total,
-      notes: str("notes"),
+      notes: combinedNotes,
       sold_by: userId,
     })
     .select("id")
@@ -201,7 +243,9 @@ export async function createSale(
     link: `/sales/${sale.id}`,
   });
 
-  // Insert line items
+  // Insert line items — now persists discount_percent, inventory_id, sku
+  // alongside the description / qty / unit_price columns the form has
+  // always shipped.
   if (lineItems.length > 0) {
     const saleItemsData = lineItems.map((item, idx) => ({
       tenant_id: tenantId,
@@ -211,10 +255,52 @@ export async function createSale(
       unit_price: item.unit_price,
       // W3-CRIT-04: server-authoritative line_total (not client-supplied)
       line_total: serverLineTotals[idx],
+      discount_percent: Math.min(Math.max(item.discount_pct ?? 0, 0), 100),
+      inventory_id: item.inventory_id ?? null,
+      sku: item.sku ?? null,
     }));
 
     const { error: itemsError } = await supabase.from("sale_items").insert(saleItemsData);
     if (itemsError) return { error: itemsError.message };
+  }
+
+  // Decrement inventory for any line items linked to inventory rows. The
+  // POS uses a single atomic RPC (pos_deduct_stock) for the whole-cart
+  // FOR UPDATE + INSERT sequence; reuse it here so /sales/new's createSale
+  // and /pos go through the same code path. Quote-status sales skip the
+  // decrement (a quote isn't a sold-yet state).
+  const status = str("status") || "quote";
+  if (status !== "quote" && inventoriedLines.length > 0) {
+    const admin = createAdminClient();
+    const { error: stockErr } = await admin.rpc("pos_deduct_stock", {
+      p_tenant_id: tenantId,
+      p_items: inventoriedLines.map((c) => ({
+        inventory_id: c.inventory_id,
+        quantity: c.quantity,
+        name: c.name ?? c.description,
+      })),
+      p_sale_number: saleNumber,
+      p_user_id: userId,
+    });
+    if (stockErr) {
+      // Roll back the sale row we just inserted so we don't leave a
+      // money-entered record without the stock decrement that pairs with
+      // it. The sale-items rows go away with the sale via cascade.
+      await supabase.from("sale_items").delete().eq("sale_id", sale.id);
+      await supabase.from("sales").delete().eq("id", sale.id);
+      const m = /insufficient_stock\|(.+)\|(\-?\d+)$/.exec(stockErr.message);
+      if (m) {
+        const itemName = m[1];
+        const available = Number(m[2]);
+        return {
+          error:
+            available === 0
+              ? `"${itemName}" just sold out — please remove it from the sale.`
+              : `Only ${available} "${itemName}" left in stock — adjust the line quantity.`,
+        };
+      }
+      return { error: stockErr.message };
+    }
   }
 
   // Invalidate dashboard cache. revalidatePath('/sales') chained with
@@ -437,19 +523,50 @@ export async function deleteSale(
     return { error: "Not authenticated" };
   }
 
-  const { supabase, tenantId } = ctx;
+  const { supabase, tenantId, userId } = ctx;
 
-  // Delete line items first
-  await supabase.from("sale_items").delete().eq("sale_id", id).eq("tenant_id", tenantId);
+  // Restore inventory for any sale items that were tied to inventory rows.
+  // Pre-fix this delete just wiped the sale + items, leaving the stock
+  // permanently decremented. With soft-delete + restore, the stock
+  // movements log a counter-entry and the item rows go back to where
+  // they were before the sale.
+  const { data: items } = await supabase
+    .from("sale_items")
+    .select("inventory_id, quantity")
+    .eq("sale_id", id)
+    .eq("tenant_id", tenantId);
+
+  const admin = createAdminClient();
+  for (const it of items ?? []) {
+    if (!it.inventory_id) continue;
+    await admin.from("stock_movements").insert({
+      tenant_id: tenantId,
+      inventory_id: it.inventory_id,
+      movement_type: "adjustment",
+      quantity_change: it.quantity,
+      notes: `Sale deletion restore`,
+      created_by: userId,
+    });
+  }
+
+  // Soft-delete the line items + sale rows. The deleted_at column was
+  // added in 20260502_sales_soft_delete.sql; queries filter for
+  // deleted_at IS NULL so these rows disappear from the list and KPIs.
+  const now = new Date().toISOString();
+  await supabase
+    .from("sale_items")
+    .update({ deleted_at: now })
+    .eq("sale_id", id)
+    .eq("tenant_id", tenantId);
 
   const { error } = await supabase
     .from("sales")
-    .delete()
+    .update({ deleted_at: now })
     .eq("id", id)
     .eq("tenant_id", tenantId);
 
   if (error) return { error: error.message };
-  
+
   // Drop revalidatePath('/sales') before redirect to avoid the
   // cacheComponents "Failed to parse postponed state" 500.
   revalidateTag("dashboard", "default");
@@ -457,4 +574,253 @@ export async function deleteSale(
   revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
   after(() => refreshDashboardStatsAsync(tenantId));
   redirect("/sales");
+}
+
+/**
+ * Duplicate an existing sale into a new draft (status="quote"). Copies
+ * customer, line items, discount; clears payment-state fields so the
+ * operator chooses payment fresh. Inventory is NOT decremented since the
+ * new row is a draft quote — that happens on the duplicate's eventual
+ * paid/completed transition (or when /sales/new createSale path adds
+ * inventory linking, depending on which path the operator confirms it
+ * through).
+ */
+export async function duplicateSale(
+  id: string
+): Promise<{ id?: string; error?: string }> {
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to duplicate sales." : "Not authenticated" };
+  }
+  let ctx;
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+
+  const { supabase, userId, tenantId } = ctx;
+
+  const { data: src } = await supabase
+    .from("sales")
+    .select("*")
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
+  if (!src) return { error: "Sale not found" };
+
+  const { data: srcItems } = await supabase
+    .from("sale_items")
+    .select("description, quantity, unit_price, discount_percent, line_total, inventory_id, sku")
+    .eq("sale_id", id)
+    .eq("tenant_id", tenantId);
+
+  const { data: saleNumberData } = await supabase.rpc("next_sale_number", { p_tenant_id: tenantId });
+  const saleNumber = (saleNumberData as string) || `SALE-${Date.now()}`;
+
+  const { data: newSale, error: newErr } = await supabase
+    .from("sales")
+    .insert({
+      tenant_id: tenantId,
+      sale_number: saleNumber,
+      customer_name: src.customer_name,
+      customer_email: src.customer_email,
+      status: "quote",
+      payment_method: null,
+      subtotal: src.subtotal,
+      discount_amount: src.discount_amount,
+      tax_amount: src.tax_amount,
+      total: src.total,
+      notes: src.notes,
+      sold_by: userId,
+      location_id: src.location_id,
+    })
+    .select("id")
+    .single();
+  if (newErr || !newSale) return { error: newErr?.message ?? "Failed to duplicate" };
+
+  if ((srcItems ?? []).length > 0) {
+    const itemsData = srcItems!.map((it) => ({
+      tenant_id: tenantId,
+      sale_id: newSale.id,
+      description: it.description,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      discount_percent: it.discount_percent ?? 0,
+      line_total: it.line_total,
+      inventory_id: it.inventory_id ?? null,
+      sku: it.sku ?? null,
+    }));
+    await supabase.from("sale_items").insert(itemsData);
+  }
+
+  revalidateTag("dashboard", "default");
+  return { id: newSale.id };
+}
+
+/**
+ * Update an existing sale's customer / line items / discount / payment
+ * method / notes. Recomputes totals server-side from the line-item diff,
+ * mirrors the percent + fixed discount semantics from createSale, and
+ * adjusts inventory by the delta between the previous and new
+ * inventoried-line quantities. Quote-status sales bypass the inventory
+ * adjustment since a quote is not a sold-yet state in either direction.
+ */
+export async function updateSale(
+  id: string,
+  formData: FormData
+): Promise<{ id?: string; error?: string }> {
+  try {
+    await requirePermission("create_invoices");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to edit sales." : "Not authenticated" };
+  }
+  let ctx;
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+  const { supabase, userId, tenantId } = ctx;
+
+  const { data: existing } = await supabase
+    .from("sales")
+    .select("status, sale_number")
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
+  if (!existing) return { error: "Sale not found" };
+
+  const str = (key: string) => (formData.get(key) as string) || null;
+  const num = (key: string) => {
+    const v = formData.get(key) as string;
+    return v && v !== "" ? parseFloat(v) : 0;
+  };
+
+  let lineItems: Array<{
+    description: string;
+    quantity: number;
+    unit_price: number;
+    discount_pct?: number;
+    inventory_id?: string | null;
+    sku?: string | null;
+    name?: string | null;
+  }> = [];
+  try {
+    const itemsJson = formData.get("line_items") as string;
+    if (itemsJson) lineItems = JSON.parse(itemsJson);
+  } catch {
+    // ignore
+  }
+
+  const { data: tenantData } = await supabase
+    .from("tenants")
+    .select("tax_rate")
+    .eq("id", tenantId)
+    .single();
+  const taxRate = tenantData?.tax_rate ?? 0.1;
+
+  const serverLineTotals = lineItems.map((item) => {
+    const disc = Math.min(Math.max(item.discount_pct ?? 0, 0), 100) / 100;
+    return Math.round(item.quantity * item.unit_price * (1 - disc) * 100) / 100;
+  });
+  const subtotal = Math.round(serverLineTotals.reduce((s, n) => s + n, 0) * 100) / 100;
+  const discountAmount = Math.min(Math.max(num("discount_amount"), 0), subtotal);
+  const taxAmount = Math.round((subtotal - discountAmount) * taxRate * 100) / 100;
+  const total = Math.round((subtotal - discountAmount + taxAmount) * 100) / 100;
+
+  const paymentMethod = str("payment_method");
+  let splitNotes: string | null = null;
+  if (paymentMethod === "split") {
+    const cardAmt = num("split_card_amount");
+    const cashAmt = num("split_cash_amount");
+    if (Math.abs(cardAmt + cashAmt - total) > 0.01) {
+      return { error: `Split payment must sum to ${total.toFixed(2)} (got ${(cardAmt + cashAmt).toFixed(2)})` };
+    }
+    splitNotes = `Split: card $${cardAmt.toFixed(2)} + cash $${cashAmt.toFixed(2)}`;
+  }
+  const baseNotes = str("notes");
+  const combinedNotes = splitNotes ? `${splitNotes}${baseNotes ? `\n${baseNotes}` : ""}` : baseNotes;
+
+  // Inventory diff: pull old line items, compute net change per inventory_id.
+  const { data: oldItems } = await supabase
+    .from("sale_items")
+    .select("inventory_id, quantity")
+    .eq("sale_id", id)
+    .eq("tenant_id", tenantId);
+
+  const oldByInv = new Map<string, number>();
+  for (const oi of oldItems ?? []) {
+    if (oi.inventory_id) oldByInv.set(oi.inventory_id, (oldByInv.get(oi.inventory_id) ?? 0) + (oi.quantity ?? 0));
+  }
+  const newByInv = new Map<string, number>();
+  for (const li of lineItems) {
+    if (li.inventory_id) newByInv.set(li.inventory_id, (newByInv.get(li.inventory_id) ?? 0) + li.quantity);
+  }
+  const allInvIds = new Set<string>([...oldByInv.keys(), ...newByInv.keys()]);
+  const status = existing.status;
+
+  // Apply diff via stock_movements only when the sale is in a sold state.
+  // Quote → quote edits don't touch stock; if the user is updating a
+  // paid/completed sale, we adjust to the new line-item set.
+  if (status !== "quote") {
+    const admin = createAdminClient();
+    for (const invId of allInvIds) {
+      const oldQty = oldByInv.get(invId) ?? 0;
+      const newQty = newByInv.get(invId) ?? 0;
+      const delta = newQty - oldQty;
+      if (delta === 0) continue;
+      // Negative delta means we need to deduct more stock; positive means restore.
+      await admin.from("stock_movements").insert({
+        tenant_id: tenantId,
+        inventory_id: invId,
+        movement_type: delta > 0 ? "sale" : "adjustment",
+        quantity_change: -delta,
+        notes: `Sale ${existing.sale_number} edit`,
+        created_by: userId,
+      });
+    }
+  }
+
+  // Replace line items wholesale (simpler than diffing per-line).
+  await supabase.from("sale_items").delete().eq("sale_id", id).eq("tenant_id", tenantId);
+  if (lineItems.length > 0) {
+    const itemsData = lineItems.map((it, idx) => ({
+      tenant_id: tenantId,
+      sale_id: id,
+      description: it.description,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      line_total: serverLineTotals[idx],
+      discount_percent: Math.min(Math.max(it.discount_pct ?? 0, 0), 100),
+      inventory_id: it.inventory_id ?? null,
+      sku: it.sku ?? null,
+    }));
+    const { error: insErr } = await supabase.from("sale_items").insert(itemsData);
+    if (insErr) return { error: insErr.message };
+  }
+
+  const { error: upErr } = await supabase
+    .from("sales")
+    .update({
+      customer_name: str("customer_name"),
+      customer_email: str("customer_email"),
+      payment_method: paymentMethod,
+      subtotal,
+      discount_amount: discountAmount,
+      tax_amount: taxAmount,
+      total,
+      notes: combinedNotes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("tenant_id", tenantId);
+  if (upErr) return { error: upErr.message };
+
+  revalidateTag("dashboard", "default");
+  revalidateTag(CACHE_TAGS.inventory(tenantId), "default");
+  return { id };
 }
