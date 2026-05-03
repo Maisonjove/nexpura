@@ -3,7 +3,27 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { getAuthContext } from "@/lib/auth-context";
+import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 import type { IssueCategory, IssueSeverity, IssueStatus } from "./types";
+
+/**
+ * Joey 2026-05-03 P2-H audit: every entry point in this file used
+ * `auth.isOwner` as the gate, which let ANY tenant owner read /
+ * write / delete pilot_issues across ALL tenants (the table is
+ * platform-wide, not tenant-scoped). That's a Group-16-class data
+ * leak: a hostile owner of any tenant could enumerate all platform
+ * pilot feedback or vandalise other tenants' issues. Now gated on
+ * `isAllowlistedAdmin(auth.email)` — same allowlist as the (admin)
+ * layout. Single helper centralises the check so future actions
+ * inherit it.
+ */
+async function requirePilotAdmin() {
+  const auth = await getAuthContext();
+  if (!auth || !isAllowlistedAdmin(auth.email)) {
+    return null;
+  }
+  return auth;
+}
 
 interface CreateIssueInput {
   title: string;
@@ -21,8 +41,8 @@ interface CreateIssueInput {
 }
 
 export async function createPilotIssue(input: CreateIssueInput) {
-  const auth = await getAuthContext();
-  if (!auth || !auth.isOwner) {
+  const auth = await requirePilotAdmin();
+  if (!auth) {
     return { error: "Unauthorized" };
   }
 
@@ -79,8 +99,8 @@ interface UpdateIssueInput {
 }
 
 export async function updatePilotIssue(input: UpdateIssueInput) {
-  const auth = await getAuthContext();
-  if (!auth || !auth.isOwner) {
+  const auth = await requirePilotAdmin();
+  if (!auth) {
     return { error: "Unauthorized" };
   }
 
@@ -127,8 +147,8 @@ export async function updatePilotIssue(input: UpdateIssueInput) {
 }
 
 export async function deletePilotIssue(id: string) {
-  const auth = await getAuthContext();
-  if (!auth || !auth.isOwner) {
+  const auth = await requirePilotAdmin();
+  if (!auth) {
     return { error: "Unauthorized" };
   }
 
@@ -150,8 +170,8 @@ export async function deletePilotIssue(id: string) {
 
 // Bulk status update
 export async function bulkUpdateStatus(ids: string[], status: IssueStatus) {
-  const auth = await getAuthContext();
-  if (!auth || !auth.isOwner) {
+  const auth = await requirePilotAdmin();
+  if (!auth) {
     return { error: "Unauthorized" };
   }
 

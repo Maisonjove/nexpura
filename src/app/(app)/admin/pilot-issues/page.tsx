@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth-context";
+import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 import { Skeleton } from "@/components/ui/skeleton";
 import PilotIssuesClient from "./PilotIssuesClient";
 import type { PilotIssue } from "./types";
@@ -47,11 +48,19 @@ async function PilotIssuesBody() {
   const auth = await getAuthContext();
   if (!auth) redirect("/login");
 
-  if (!auth.isOwner) {
+  // Joey 2026-05-03 P2-H audit: pre-fix the gate was `!auth.isOwner`,
+  // which let ANY tenant owner (not just Joey) load this page — and
+  // because `loadPilotIssuesData()` queries pilot_issues + tenants
+  // without any tenant filter, every tenant owner could read every
+  // other tenant's pilot feedback + the full tenant list. This is a
+  // platform-wide internal tool, not a tenant-internal one. Fixed by
+  // gating on the platform-admin allowlist (germanijoey@yahoo.com
+  // only — same belt as src/app/(admin)/layout.tsx).
+  if (!isAllowlistedAdmin(auth.email)) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
         <h1 className="text-2xl font-semibold text-stone-900 mb-3">Access Denied</h1>
-        <p className="text-stone-500">This internal tool is only accessible to account owners.</p>
+        <p className="text-stone-500">This internal tool is only accessible to platform admins.</p>
       </div>
     );
   }

@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 import logger from "@/lib/logger";
 
 
@@ -28,7 +29,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check super admin status
+    // Joey 2026-05-03 P2-H audit: pre-fix the gate was super_admins-only.
+    // That's the same belt the (admin) layout uses, but G16 added a
+    // belt-and-suspenders email allowlist on top because super_admins
+    // could conceivably gain stale rows (G17 dropped teo@astry.agency
+    // from super_admins specifically because of this risk). Pin this
+    // admin-only QA-reset endpoint to the same dual gate.
+    if (!isAllowlistedAdmin(user.email)) {
+      return NextResponse.json({ error: "Forbidden - Platform admin access required" }, { status: 403 });
+    }
+
     const adminClient = createAdminClient();
     const { data: superAdmin } = await adminClient
       .from("super_admins")
@@ -263,10 +273,27 @@ export async function POST(request: NextRequest) {
       { category_id: '11111111-1111-1111-1111-111111111120', title: 'Subscription cancellation', description: 'Can cancel subscription', route: '/billing', testing_guidance: 'Cancel flow works.', priority: 'high', sort_order: 6 },
     ];
 
-    // Insert items
+    // Joey 2026-05-03 P2-H audit: pre-fix the upsert had no `onConflict`
+    // target, so every call to this endpoint INSERTED a fresh copy of
+    // every item — running it twice doubled the table, three times
+    // tripled it. The right shape: this is a one-shot seed, refuse to
+    // run if items already exist. Caller can manually clear
+    // qa_checklist_items if a re-seed is intentional.
+    const { count: existingCount } = await supabase
+      .from("qa_checklist_items")
+      .select("*", { count: "exact", head: true });
+    if ((existingCount ?? 0) > 0) {
+      return NextResponse.json({
+        success: false,
+        message: `qa_checklist_items already has ${existingCount} rows; refusing to seed again. TRUNCATE qa_checklist_items first if a re-seed is intentional.`,
+        items_existing: existingCount,
+        categories: categories.length,
+      }, { status: 409 });
+    }
+
     const { data: insertedItems, error: itemError } = await supabase
       .from("qa_checklist_items")
-      .upsert(items.map((item, idx) => ({ ...item, id: undefined })))
+      .insert(items.map((item) => ({ ...item, id: undefined })))
       .select("id");
 
     if (itemError) {
