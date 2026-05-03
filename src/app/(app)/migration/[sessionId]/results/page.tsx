@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { CheckCircle, AlertCircle, XCircle, ArrowRight, Download, Users, Package, Wrench, HeartHandshake } from 'lucide-react';
 import { MigrationStepper } from '../../_components/MigrationStepper';
 import { GoLiveChecklist } from '../../_components/GoLiveChecklist';
+import { RollbackButton } from './RollbackButton';
 
 export const metadata = { title: "Migration · Results — Nexpura" };
 
@@ -175,6 +176,10 @@ export default async function ResultsPage({ params, searchParams }: Props) {
 
         <div>
           <GoLiveChecklist />
+        </div>
+
+        <div className="pt-4 border-t border-stone-100">
+          <RollbackButton sessionId={sessionId} sessionStatus={(session.status as string) ?? "complete"} />
         </div>
       </div>
     </div>
