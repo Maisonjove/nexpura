@@ -1,7 +1,23 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import DOMPurify from "isomorphic-dompurify";
+// Lazy-load DOMPurify on the client to avoid React #419
+// (cacheComponents-mode prerender flake from jsdom init at import).
+// See TemplatesClient for the full root-cause writeup.
+type Sanitizer = (html: string) => string;
+function useDomPurify(): Sanitizer | null {
+  const [sanitize, setSanitize] = useState<Sanitizer | null>(null);
+  useEffect(() => {
+    let alive = true;
+    import("isomorphic-dompurify").then(({ default: DP }) => {
+      if (alive) setSanitize(() => (s: string) => DP.sanitize(s));
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return sanitize;
+}
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -38,6 +54,7 @@ interface Props {
 }
 
 export default function BulkEmailClient({ segments, customers, tags, businessName }: Props) {
+  const sanitize = useDomPurify();
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [testedAt, setTestedAt] = useState<{ at: number; to: string } | null>(null);
@@ -450,7 +467,7 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
               {showPreview ? (
                 <div
                   className="w-full min-h-[200px] p-4 bg-white text-black rounded-lg prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getPreviewHtml()) }}
+                  dangerouslySetInnerHTML={{ __html: sanitize ? sanitize(getPreviewHtml()) : "" }}
                 />
               ) : (
                 <textarea

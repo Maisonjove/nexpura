@@ -1,7 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import DOMPurify from "isomorphic-dompurify";
+// Lazy-load DOMPurify on the client to dodge React #419 from
+// jsdom-bundled isomorphic-dompurify under cacheComponents:true.
+type Sanitizer = (html: string) => string;
+function useDomPurify(): Sanitizer | null {
+  const [sanitize, setSanitize] = useState<Sanitizer | null>(null);
+  useEffect(() => {
+    let alive = true;
+    import("isomorphic-dompurify").then(({ default: DP }) => {
+      if (alive) setSanitize(() => (s: string) => DP.sanitize(s));
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return sanitize;
+}
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -53,6 +68,7 @@ export default function CampaignFormClient({
   campaign,
 }: Props) {
   const router = useRouter();
+  const sanitize = useDomPurify();
   const [loading, setLoading] = useState(false);
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -250,7 +266,7 @@ export default function CampaignFormClient({
               {showPreview ? (
                 <div
                   className="w-full min-h-[300px] p-4 bg-white text-black rounded-lg prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getPreviewHtml()) }}
+                  dangerouslySetInnerHTML={{ __html: sanitize ? sanitize(getPreviewHtml()) : "" }}
                 />
               ) : (
                 <textarea
