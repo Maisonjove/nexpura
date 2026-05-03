@@ -22,16 +22,12 @@ import logger from "@/lib/logger";
  */
 
 
-const PLAN_PRICES: Record<string, number> = {
-  boutique: 89,
-  studio: 179,
-  atelier: 299,
-  // Legacy aliases
-  group: 299,
-  basic: 89,
-  pro: 179,
-  ultimate: 299,
-};
+// Group 16 audit: plan-price source moved to src/lib/plans.ts so all
+// three admin pages (/admin, /admin/tenants, /admin/revenue) share one
+// definition. Pre-fix each page had its own copy and they had drifted
+// (atelier missing on /admin/tenants → understated MRR by $897 against
+// the same dataset).
+import { calculateMRR, calculateProjectedMRR } from "@/lib/plans";
 
 export default function AdminDashboardPage() {
   return (
@@ -68,12 +64,15 @@ async function AdminDashboardBody() {
     (s) => s.status === "suspended"
   ).length;
 
-  const mrr = (subscriptions ?? []).reduce((sum, s) => {
-    if (s.status === "active" || s.status === "trialing") {
-      return sum + (PLAN_PRICES[s.plan] ?? 0);
-    }
-    return sum;
-  }, 0);
+  // Group 16 audit: switched to canonical calculateMRR (paying-only,
+  // excluding free-forever tenants) so this number matches /admin/revenue
+  // exactly. Trialing-projected MRR rendered separately below as a
+  // distinct "If trials convert" card.
+  const tenantMap = new Map(
+    (tenants ?? []).map((t) => [t.id, { is_free_forever: t.is_free_forever ?? false }]),
+  );
+  const mrr = calculateMRR(subscriptions ?? [], tenantMap);
+  const projectedMrr = calculateProjectedMRR(subscriptions ?? [], tenantMap);
 
   const recentTenants = (tenants ?? []).slice(0, 10);
 
@@ -82,7 +81,8 @@ async function AdminDashboardBody() {
     { label: "Active (Paying)", value: activeCount, accent: true },
     { label: "Trialing", value: trialCount, accent: false },
     { label: "Suspended", value: suspendedCount, accent: false },
-    { label: "Est. MRR", value: `$${mrr.toLocaleString()}`, accent: true },
+    { label: "MRR", value: `$${mrr.toLocaleString()}`, accent: true },
+    { label: "If Trials Convert", value: `$${projectedMrr.toLocaleString()}`, accent: false },
   ];
 
   return (
@@ -126,6 +126,7 @@ async function AdminDashboardBody() {
 interface TenantRow {
   id: string;
   name: string;
+  is_free_forever?: boolean | null;
   created_at: string;
 }
 interface SubRow {
@@ -149,7 +150,7 @@ async function loadAdminDashboardData(): Promise<{
 
     const tenantsRes = await adminClient
       .from("tenants")
-      .select("id, name, created_at, deleted_at")
+      .select("id, name, is_free_forever, created_at, deleted_at")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     tenants = tenantsRes.data;

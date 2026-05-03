@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import TenantsClient from "./TenantsClient";
 import logger from "@/lib/logger";
+import { calculateMRR } from "@/lib/plans";
 
 /**
  * /admin/tenants — CC-ready page-route (admin-cluster cleanup pass).
@@ -93,12 +94,19 @@ async function TenantsBody({
     filtered = filtered.filter((t) => t.sub?.status === statusFilter);
   }
 
-  const PLAN_MRR: Record<string, number> = { boutique: 89, studio: 179, group: 0, basic: 89, pro: 179, ultimate: 0 };
-  const totalMRR = (tenants ?? []).reduce((sum, t) => {
-    const sub = subMap.get(t.id);
-    if (sub?.status === "active" && sub?.plan) return sum + (PLAN_MRR[sub.plan] ?? 0);
-    return sum;
-  }, 0);
+  // Group 16 audit: pre-fix this had a hand-rolled PLAN_MRR table that
+  // was missing the 'atelier' key entirely (and counted legacy 'group'
+  // / 'ultimate' as $0), so any atelier tenant — the most common
+  // active plan on prod — counted as $0 toward the MRR shown on this
+  // page. /admin showed $2,451, /admin/revenue $1,076, /admin/tenants
+  // $179 — three different numbers for the same dataset. Routed
+  // through the canonical calculateMRR helper so all three pages now
+  // agree.
+  const subsForMRR = (subscriptions ?? []).map((s) => ({ tenant_id: s.tenant_id, plan: s.plan, status: s.status }));
+  const tenantMap = new Map(
+    (tenants ?? []).map((t) => [t.id, { is_free_forever: t.is_free_forever ?? false }]),
+  );
+  const totalMRR = calculateMRR(subsForMRR, tenantMap);
   const activeTenants = (tenants ?? []).filter((t) => subMap.get(t.id)?.status === "active").length;
   const trialTenants = (tenants ?? []).filter((t) => subMap.get(t.id)?.status === "trialing").length;
 
@@ -122,6 +130,7 @@ interface TenantRow {
   id: string;
   name: string;
   slug: string;
+  is_free_forever?: boolean | null;
   created_at: string;
   deleted_at: string | null;
 }
@@ -154,7 +163,7 @@ async function loadTenantsData(): Promise<{
     const [tenantsRes, subsRes, ownersRes, supportAccessRes] = await Promise.all([
       adminClient
         .from("tenants")
-        .select("id, name, slug, created_at, deleted_at")
+        .select("id, name, slug, is_free_forever, created_at, deleted_at")
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
       adminClient

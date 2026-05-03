@@ -18,16 +18,12 @@ import logger from "@/lib/logger";
  */
 
 
-const PLAN_PRICES: Record<string, number> = {
-  boutique: 89,
-  studio: 179,
-  atelier: 299,
-  group: 299, // custom/legacy
-  // Legacy aliases
-  basic: 89,
-  pro: 179,
-  ultimate: 299,
-};
+// Group 16 audit: switched to canonical PLAN_PRICE_PER_MONTH from
+// src/lib/plans.ts so /admin, /admin/tenants and /admin/revenue all
+// pull from the same source. The MRR helper additionally excludes
+// is_free_forever tenants — pre-fix this page counted those toward
+// MRR, which over-stated the number.
+import { PLAN_PRICE_PER_MONTH as PLAN_PRICES, calculateMRR } from "@/lib/plans";
 
 function fmtCurrency(n: number) {
   return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 }).format(n);
@@ -72,7 +68,9 @@ async function RevenueBody() {
   const pastDueSubs = (subs ?? []).filter((s) => s.status === "past_due");
   const cancelledSubs = (subs ?? []).filter((s) => s.status === "canceled" || s.status === "cancelled");
 
-  const mrr = activeSubs.reduce((sum, s) => sum + (PLAN_PRICES[s.plan] ?? 0), 0);
+  // Use the canonical helper so /admin/revenue MRR matches /admin and
+  // /admin/tenants exactly (all three excluding is_free_forever).
+  const mrr = calculateMRR(subs ?? [], tenantMap);
   const arr = mrr * 12;
 
   // Plan breakdown
