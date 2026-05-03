@@ -14,15 +14,19 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  // PII: scope the title lookup to the authed tenant. Without the
+  // tenant_id eq, requesting another tenant's customer URL leaks that
+  // customer's full name into the browser tab even though the page
+  // body correctly 404s. Also catch the unauth case via getAuthContext
+  // returning null and fall back to a generic title.
+  const auth = await getAuthContext().catch(() => null);
+  if (!auth?.tenantId) return { title: "Customer — Nexpura" };
   const admin = createAdminClient();
-  // Filter deleted_at IS NULL so a soft-deleted customer's name doesn't
-  // leak into the browser tab via <title>. The page body already
-  // notFound()s on deleted_at != null (line 53 below), but the metadata
-  // callback runs independently and didn't share that filter.
   const { data } = await admin
     .from("customers")
     .select("full_name")
     .eq("id", id)
+    .eq("tenant_id", auth.tenantId)
     .is("deleted_at", null)
     .maybeSingle();
   const name = (data?.full_name as string | null) ?? null;
@@ -164,7 +168,7 @@ export default async function CustomerDetailPage({
         // and dangerous to quote. Filter the join.
         const { data } = await admin
           .from("wishlists")
-          .select("id, inventory_id, added_at, inventory!inner(name, sku, retail_price, deleted_at)")
+          .select("id, inventory_id, added_at, notified_at, inventory!inner(name, sku, retail_price, deleted_at)")
           .eq("customer_id", id)
           .eq("tenant_id", tenantId)
           .is("inventory.deleted_at", null)
@@ -214,7 +218,7 @@ export default async function CustomerDetailPage({
       lifetimeSpend={lifetimeSpend}
       lastVisit={lastVisit}
       readOnly={isReviewMode}
-      wishlistItems={wishlistResult as { id: string; inventory_id: string; added_at: string; inventory?: { name: string; sku: string | null; retail_price: number | null } }[]}
+      wishlistItems={wishlistResult as { id: string; inventory_id: string; added_at: string; notified_at?: string | null; inventory?: { name: string; sku: string | null; retail_price: number | null } }[]}
       loyaltyTransactions={loyaltyResult as { id: string; points: number; type: string; description: string | null; created_at: string }[]}
     />
   );

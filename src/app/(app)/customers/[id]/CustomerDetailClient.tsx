@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { archiveCustomer, addCustomerNote } from "../actions";
+import { archiveCustomer, addCustomerNote, removeFromWishlist, notifyWishlistItem } from "../actions";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -147,6 +147,7 @@ type WishlistItem = {
   id: string;
   inventory_id: string;
   added_at: string;
+  notified_at?: string | null;
   inventory?: { name: string; sku: string | null; retail_price: number | null };
 };
 
@@ -196,6 +197,7 @@ export default function CustomerDetailClient({
   const [newNote, setNewNote] = useState("");
   const [noteSubmitting, setNoteSubmitting] = useState(false);
   const [notes, setNotes] = useState(customer.notes || "");
+  const [openComm, setOpenComm] = useState<CustomerCommunication | null>(null);
 
   async function handleArchive() {
     startTransition(async () => {
@@ -652,13 +654,46 @@ export default function CustomerDetailClient({
                       {item.inventory?.sku && (
                         <p className="text-xs text-stone-400 font-mono mt-0.5">SKU: {item.inventory.sku}</p>
                       )}
-                      <p className="text-xs text-stone-400 mt-0.5">Added {fmtDate(item.added_at)}</p>
+                      <p className="text-xs text-stone-400 mt-0.5">
+                        Added {fmtDate(item.added_at)}
+                        {item.notified_at && (
+                          <span className="ml-2 text-emerald-600">· Notified {fmtDate(item.notified_at)}</span>
+                        )}
+                      </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-3">
                       {item.inventory?.retail_price != null && (
                         <p className="text-sm font-semibold text-stone-900">{fmt(item.inventory.retail_price)}</p>
                       )}
-                      <button className="text-xs text-amber-700 hover:underline mt-1">Notify customer</button>
+                      {!readOnly && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const r = await notifyWishlistItem(item.id, customer.id);
+                              if (r.error) alert(r.error);
+                              else router.refresh();
+                            }}
+                            disabled={!!item.notified_at}
+                            className="text-xs text-amber-700 hover:underline disabled:opacity-50 disabled:no-underline disabled:text-stone-400"
+                          >
+                            {item.notified_at ? "Notified" : "Notify customer"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm("Remove this item from the wishlist?")) return;
+                              const r = await removeFromWishlist(item.id, customer.id);
+                              if (r.error) alert(r.error);
+                              else router.refresh();
+                            }}
+                            className="text-xs text-stone-400 hover:text-red-500"
+                            aria-label="Remove from wishlist"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -853,7 +888,12 @@ export default function CustomerDetailClient({
                     whatsapp: "💬",
                   };
                   return (
-                    <div key={comm.id} className="flex items-start gap-4 px-6 py-4 hover:bg-stone-50 transition-colors">
+                    <button
+                      key={comm.id}
+                      type="button"
+                      onClick={() => setOpenComm(comm)}
+                      className="w-full text-left flex items-start gap-4 px-6 py-4 hover:bg-stone-50 transition-colors"
+                    >
                       <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-lg flex-shrink-0">
                         {typeIcons[comm.type] ?? "📧"}
                       </div>
@@ -875,7 +915,7 @@ export default function CustomerDetailClient({
                           {fmtDate(comm.sent_at)} · {new Date(comm.sent_at).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -920,6 +960,53 @@ export default function CustomerDetailClient({
           </div>
         )}
       </div>
+
+      {/* Communication detail modal */}
+      {openComm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setOpenComm(null)}>
+          <div
+            className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-xl max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-amber-700">
+                  {openComm.type.replace(/_/g, " ")}
+                </p>
+                <h3 className="font-semibold text-lg text-stone-900 mt-1">{openComm.subject || "(no subject)"}</h3>
+                <p className="text-xs text-stone-400 mt-1">
+                  {fmtDate(openComm.sent_at)} · {new Date(openComm.sent_at).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}
+                  {openComm.status && <span className="ml-2">· status: {openComm.status}</span>}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpenComm(null)}
+                className="text-stone-400 hover:text-stone-900 text-2xl leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            {openComm.body ? (
+              <div className="bg-stone-50 rounded-lg p-4 text-sm text-stone-700 whitespace-pre-wrap font-mono max-h-[50vh] overflow-y-auto">
+                {openComm.body}
+              </div>
+            ) : (
+              <p className="text-sm text-stone-400 italic">No body recorded for this message.</p>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setOpenComm(null)}
+                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-lg hover:bg-stone-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Archive Modal */}
       {showArchiveModal && (
