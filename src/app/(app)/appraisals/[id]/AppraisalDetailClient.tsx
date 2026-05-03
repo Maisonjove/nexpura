@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { updateAppraisal, issueAppraisal } from "../actions";
+import { updateAppraisal, issueAppraisal, emailAppraisal } from "../actions";
 import type { Appraisal } from "../actions";
 import { Mail, Download, ChevronLeft, Check, Edit2, Shield, User, FileText, Loader2 } from "lucide-react";
 
@@ -105,13 +105,22 @@ export default function AppraisalDetailClient({ appraisal: initial, tenant, user
   }
 
   async function handleEmail() {
-    if (!confirm(`Email appraisal to ${appraisal.customer_email}?`)) return;
+    if (!appraisal.customer_email) {
+      showFeedback("No customer email on this appraisal", true);
+      return;
+    }
+    if (!confirm(`Email appraisal certificate to ${appraisal.customer_email}?`)) return;
     setEmailLoading(true);
-    // Logic for emailing...
-    setTimeout(() => {
+    try {
+      const result = await emailAppraisal(appraisal.id);
+      if (result.error) {
+        showFeedback(result.error, true);
+      } else {
+        showFeedback("Appraisal certificate sent to " + appraisal.customer_email);
+      }
+    } finally {
       setEmailLoading(false);
-      showFeedback("Email sent to " + appraisal.customer_email);
-    }, 1500);
+    }
   }
 
   async function handleInsuranceSend() {

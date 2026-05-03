@@ -4,6 +4,7 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
 } from "@react-pdf/renderer";
 
@@ -79,6 +80,7 @@ const styles = StyleSheet.create({
 
 interface RepairTicketData {
   ticketNumber: string;
+  qrCodeDataUrl?: string | null;
   tenantName: string;
   tenantPhone?: string;
   tenantEmail?: string;
@@ -136,6 +138,14 @@ export default function RepairTicketPDF({ ticket }: { ticket: RepairTicketData }
             <Text style={[styles.businessMeta, { textAlign: "right", marginTop: 4 }]}>
               {fmtDate(ticket.createdAt)}
             </Text>
+            {ticket.qrCodeDataUrl && (
+              // QR encodes the repair_number so the workshop can scan a
+              // ticket and pull the matching record without typing.
+              <Image
+                src={ticket.qrCodeDataUrl}
+                style={{ width: 80, height: 80, marginTop: 8, alignSelf: "flex-end" }}
+              />
+            )}
           </View>
         </View>
 

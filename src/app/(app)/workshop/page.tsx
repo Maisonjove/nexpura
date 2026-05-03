@@ -327,7 +327,7 @@ async function WorkshopKpis({ tenantId }: { tenantId: string }) {
       <KpiCard
         label="Due this week"
         value={kpis.dueThisWeek}
-        href="/workshop/jobs?status=active"
+        href="/workshop/jobs?status=active&filter=due-soon"
         tone={kpis.dueThisWeek > 0 ? "warn" : "neutral"}
       />
       <KpiCard

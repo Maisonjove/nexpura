@@ -162,6 +162,63 @@ export async function createRepair(
     created_by: userId,
   });
 
+  // If a deposit was taken at intake, mark it on the repair + create a
+  // partial-paid invoice so the deposit shows up against the customer
+  // through /customers/[id] → Invoices tab. The payments table is
+  // invoice-centric (NOT NULL invoice_id), so a deposit payment requires
+  // an invoice to attach to. Generate one with status='partial' and
+  // amount_paid = deposit_amount; the customer's Payments view rolls
+  // up these rows.
+  const depositAmount = Number((repairData as { deposit_amount?: number | null }).deposit_amount ?? 0);
+  const customerId = (repairData as { customer_id?: string | null }).customer_id ?? null;
+  if (depositAmount > 0 && customerId) {
+    // Update the repair to mark the deposit as paid (audit-visible).
+    await supabase
+      .from("repairs")
+      .update({ deposit_paid: true })
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId)
+      .then(({ error }) => {
+        if (error) logger.error("[createRepair] Failed to flag deposit_paid:", error);
+      });
+
+    // Spawn a partial invoice + payment pair so the customer's invoices
+    // tab reflects the deposit. Tolerate failures so the repair commit
+    // doesn't roll back if the invoices tables aren't fully provisioned.
+    try {
+      const { data: inv } = await supabase
+        .from("invoices")
+        .insert({
+          tenant_id: tenantId,
+          customer_id: customerId,
+          customer_name: (repairData as { customer_name?: string | null }).customer_name ?? null,
+          status: "partial",
+          subtotal: depositAmount,
+          tax_amount: 0,
+          total: depositAmount,
+          amount_paid: depositAmount,
+          amount_due: 0,
+          notes: `Deposit on repair ${data.id}`,
+          created_by: userId,
+        })
+        .select("id")
+        .single();
+      if (inv?.id) {
+        await supabase.from("payments").insert({
+          tenant_id: tenantId,
+          invoice_id: inv.id,
+          amount: depositAmount,
+          payment_method: "cash",
+          payment_date: new Date().toISOString().split("T")[0],
+          notes: `Deposit on repair intake`,
+          created_by: userId,
+        });
+      }
+    } catch (err) {
+      logger.error("[createRepair] Failed to log deposit payment:", err);
+    }
+  }
+
   // Log initial status to tracking history
   await logStatusChange({
     tenantId,
@@ -199,7 +256,15 @@ export async function createRepair(
     after(() => refreshDashboardStatsAsync(tenantId));
   });
 
+  // Cross-page sync per spec: the customer's Repairs tab + tasks list
+  // must reflect the new repair within seconds. Tag-bust the customer
+  // page so /customers/[id] reloads.
+  if (customerId) {
+    revalidatePath(`/customers/${customerId}`);
+  }
   revalidatePath("/repairs");
+  revalidatePath("/workshop");
+  revalidatePath("/workshop/jobs");
   redirect(`/repairs/${data.id}`);
 }
 

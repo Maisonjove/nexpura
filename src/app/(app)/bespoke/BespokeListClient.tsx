@@ -10,6 +10,7 @@ import { Plus, Bell } from "lucide-react";
 import { toast } from "sonner";
 import logger from "@/lib/logger";
 import { BespokeRow } from "./BespokeRow";
+import BespokeKanban from "./BespokeKanban";
 import { useProgressiveRender } from "@/lib/useProgressiveRender";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -77,6 +78,8 @@ export default function BespokeListClient({
   // from PR #30. Every tab click used to trigger a `router.push` + full RSC
   // round-trip; now it's local state + history.replaceState, ~0 network.
   const [activeTab, setActiveTab] = useState(stageFilter || "all");
+  // View toggle: table vs pipeline kanban (5+ stages with drag).
+  const [view, setView] = useState<"list" | "kanban">("list");
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [notifying, setNotifying] = useState(false);
   const [notifyResult, setNotifyResult] = useState<{ notified: number; skipped: number } | null>(null);
@@ -258,7 +261,32 @@ export default function BespokeListClient({
         })}
       </div>
 
-      {/* TABLE */}
+      {/* View toggle */}
+      <div className="flex justify-end -mt-2 mb-2">
+        <div className="inline-flex rounded-lg border border-stone-200 p-0.5 bg-stone-50">
+          <button
+            onClick={() => setView("list")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              view === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+            }`}
+          >
+            List
+          </button>
+          <button
+            onClick={() => setView("kanban")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              view === "kanban" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+            }`}
+          >
+            Pipeline
+          </button>
+        </div>
+      </div>
+
+      {/* TABLE / KANBAN */}
+      {view === "kanban" ? (
+        <BespokeKanban initialJobs={visibleJobs} />
+      ) : (
       <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
         <Table>
           <TableHeader>
@@ -289,6 +317,7 @@ export default function BespokeListClient({
           </TableBody>
         </Table>
       </Card>
+      )}
     </div>
     </>
   );
