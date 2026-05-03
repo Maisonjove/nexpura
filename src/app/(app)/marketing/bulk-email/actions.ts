@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { sendBulkMarketingEmail } from "@/lib/marketing/email";
+import { sendBulkMarketingEmail, sendMarketingEmail } from "@/lib/marketing/email";
 import { getRecipientsForFilter } from "@/lib/marketing/segments";
 import { requireRole } from "@/lib/auth-context";
 
@@ -90,3 +90,60 @@ export async function sendBulkEmail(data: BulkEmailData) {
     return { error: err instanceof Error ? err.message : "Failed to send emails" };
   }
 }
+
+/**
+ * Sandbox send: route the same campaign payload to ONLY the authed
+ * user's email address — never to any customer. This is the
+ * "test-yourself-first" path required by Joey's master operating
+ * manual rule 7. Owner/manager only (same gate as bulk send).
+ *
+ * Behaviour:
+ *  - Reads the authed user's email from auth.users (not from a form
+ *    field) so a malicious form submission can't reroute the test
+ *    elsewhere.
+ *  - Skips the customer_id linkage so this send doesn't pollute any
+ *    customer's communications history or campaign analytics.
+ *  - No customer_segments query — there's no "audience" for a test.
+ */
+export async function sendTestEmail(data: {
+  subject: string;
+  body: string;
+}): Promise<{ success?: boolean; error?: string; sentTo?: string }> {
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can send test emails." };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: "Authed user has no email on file." };
+
+  const admin = createAdminClient();
+  const { data: userData } = await admin
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  if (!userData?.tenant_id) return { error: "Tenant not found" };
+
+  if (!data.subject?.trim() || !data.body?.trim()) {
+    return { error: "Subject and body are required for the test send." };
+  }
+
+  const result = await sendMarketingEmail({
+    tenantId: userData.tenant_id,
+    to: user.email,
+    toName: "Test recipient",
+    subject: `[TEST] ${data.subject}`,
+    body: data.body,
+    // No campaignId / customerId — keeps this send out of analytics +
+    // out of any customer's history.
+  });
+
+  if (!result.success) {
+    return { error: result.error ?? "Test send failed" };
+  }
+  return { success: true, sentTo: user.email };
+}
+

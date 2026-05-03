@@ -14,7 +14,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { sendBulkEmail } from "./actions";
+import { sendBulkEmail, sendTestEmail } from "./actions";
 import { getRecipientCount } from "../campaigns/actions";
 
 interface Segment {
@@ -39,6 +39,9 @@ interface Props {
 
 export default function BulkEmailClient({ segments, customers, tags, businessName }: Props) {
   const [loading, setLoading] = useState(false);
+  const [testLoading, setTestLoading] = useState(false);
+  const [testedAt, setTestedAt] = useState<{ at: number; to: string } | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
   const [result, setResult] = useState<{
     success: boolean;
     sent?: number;
@@ -92,6 +95,22 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
     fetchCount();
   }, [formData.recipient_type, formData.segment_id, formData.selected_tags, formData.selected_customers]);
 
+  async function handleTestSend() {
+    setTestError(null);
+    if (!formData.subject || !formData.body) {
+      setTestError("Subject and body are required for the test send.");
+      return;
+    }
+    setTestLoading(true);
+    const r = await sendTestEmail({ subject: formData.subject, body: formData.body });
+    setTestLoading(false);
+    if (r.error) {
+      setTestError(r.error);
+    } else {
+      setTestedAt({ at: Date.now(), to: r.sentTo ?? "your inbox" });
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!formData.subject || !formData.body) {
@@ -102,6 +121,22 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
     if (recipientCount === 0) {
       alert("No recipients selected");
       return;
+    }
+
+    // Sandbox-before-send: require a test send within the last 30 min,
+    // OR an explicit "I know what I'm doing" override. Pre-fix you
+    // could blast a typo'd subject line to every customer the moment
+    // you finished typing.
+    const FRESH_TEST_MS = 30 * 60 * 1000;
+    const hasFreshTest = testedAt && Date.now() - testedAt.at < FRESH_TEST_MS;
+    if (!hasFreshTest) {
+      if (
+        !confirm(
+          `You haven't sent a test in the last 30 minutes. Master Manual rule 7 says test before bulk. Continue anyway? (Recommended: cancel and click "Send test to me" first.)`
+        )
+      ) {
+        return;
+      }
     }
 
     if (
@@ -433,14 +468,40 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
           </div>
         </div>
 
+        {/* Sandbox test-send banner */}
+        {testedAt && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-2 rounded-lg">
+            Test sent to {testedAt.to} at {new Date(testedAt.at).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}.
+            Bulk send is unlocked for the next 30 minutes.
+          </div>
+        )}
+        {testError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-4 py-2 rounded-lg">
+            {testError}
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex items-center justify-end gap-3">
           <Link
             href="/marketing"
-            className="px-4 py-2 text-stone-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-stone-400 hover:text-stone-700 transition-colors"
           >
             Cancel
           </Link>
+          <button
+            type="button"
+            onClick={handleTestSend}
+            disabled={testLoading || !formData.subject || !formData.body}
+            className="flex items-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 hover:bg-stone-50 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Send this email to your own address as a sandbox test before going to the audience"
+          >
+            {testLoading ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Sending test…</>
+            ) : (
+              <>📨 Send test to me</>
+            )}
+          </button>
           <button
             type="submit"
             disabled={loading || recipientCount === 0}

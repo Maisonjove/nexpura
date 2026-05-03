@@ -1,35 +1,48 @@
-import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import BulkEmailClient from "./BulkEmailClient";
 
 export const metadata = { title: "Bulk Email — Nexpura" };
 
-export default async function BulkEmailPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+/**
+ * Bulk Email — sync top-level shell + dynamic body inside Suspense.
+ * Pre-fix this page used `export default async function BulkEmailPage()`
+ * with a top-level await on auth + segments + customers, which under
+ * cacheComponents:true throws React error #419 ("Cannot use postpone
+ * outside of a Server Component") on the prerender path. The /marketing
+ * hub already moved to this pattern; bulk-email had been left behind.
+ */
+export default function BulkEmailPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+      <BulkEmailBody />
+    </Suspense>
+  );
+}
+
+async function BulkEmailBody() {
+  const headersList = await headers();
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) redirect("/login");
 
   const admin = createAdminClient();
-
-  const { data: userData } = await admin
-    .from("users")
-    .select("tenant_id, tenants(name, business_name)")
-    .eq("id", user?.id ?? "")
+  const { data: tenantRow } = await admin
+    .from("tenants")
+    .select("name, business_name")
+    .eq("id", tenantId)
     .single();
+  const businessName = tenantRow?.business_name || tenantRow?.name || "Business";
 
-  const tenantId = userData?.tenant_id ?? "";
-  const tenantData = userData?.tenants as { name?: string; business_name?: string } | null;
-  const businessName = tenantData?.business_name || tenantData?.name || "Business";
-
-  // Fetch segments
   const { data: segments } = await admin
     .from("customer_segments")
     .select("id, name, customer_count")
     .eq("tenant_id", tenantId)
     .order("name");
 
-  // Fetch customer tags
   const { data: customers } = await admin
     .from("customers")
     .select("id, full_name, email, tags")
