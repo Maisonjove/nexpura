@@ -142,8 +142,8 @@ interface Task {
   due_date: string;
   priority: string;
   status: string;
-  linked_type: string | null;
-  linked_id: string | null;
+  related_type: string | null;
+  related_id: string | null;
 }
 
 interface Customer {
