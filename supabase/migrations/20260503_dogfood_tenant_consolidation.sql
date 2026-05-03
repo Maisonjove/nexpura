@@ -72,9 +72,11 @@ UPDATE subscriptions
    AND status = 'active';
 
 -- ─── 5. test 4's subscription — its tenant is soft-deleted, mark
---      cancelled so the active-subs query no longer surfaces it.
+--      canceled so the active-subs query no longer surfaces it.
+--      (Schema uses American spelling — subscriptions_status_check
+--      enforces the canonical 'canceled', not the British 'cancelled'.)
 UPDATE subscriptions
-   SET status = 'cancelled',
+   SET status = 'canceled',
        updated_at = NOW()
  WHERE tenant_id = '25841dae-5124-4206-8c55-d05fd4e28d3c'
    AND status IN ('active', 'trialing');
@@ -82,7 +84,25 @@ UPDATE subscriptions
 -- ─── 6. drop is_admin_gifted ──────────────────────────────────────
 ALTER TABLE subscriptions DROP COLUMN IF EXISTS is_admin_gifted;
 
--- ─── 7. CHECK constraint on tenants.is_free_forever ───────────────
+-- ─── 7. align is_free_forever with the new single-tenant policy ────
+-- Pre-migration there's exactly one tenant flagged is_free_forever=true
+-- that ISN'T the dogfood tenant: the "Test" tenant 5400f9c2 owned by
+-- joeygermani11@icloud.com. Flip it false so the CHECK constraint
+-- below can be added without violating any existing row. The dogfood
+-- tenant gets the flag affirmatively so the secondary belt-and-
+-- suspenders MRR-exclusion path (calculateMRRByCurrency falls back to
+-- is_free_forever when tenant_id doesn't match the canonical id —
+-- e.g. legacy callers that don't pass tenants map) keeps working.
+UPDATE tenants
+   SET is_free_forever = false
+ WHERE id != '316a3313-d4fe-4dc8-8ad6-86a11f0f0209'
+   AND is_free_forever = true;
+UPDATE tenants
+   SET is_free_forever = true
+ WHERE id = '316a3313-d4fe-4dc8-8ad6-86a11f0f0209'
+   AND is_free_forever = false;
+
+-- ─── 8. CHECK constraint on tenants.is_free_forever ────────────────
 -- The dogfood tenant is the only row allowed to have
 -- is_free_forever=true. Any future attempt to flip another tenant
 -- (admin script, manual tweak, RPC call) gets rejected at the DB
