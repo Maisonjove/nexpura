@@ -29,6 +29,10 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/cron/fx-refresh",
+      "schedule": "0 2 * * *"
+    },
+    {
       "path": "/api/cron/trial-end-checker",
       "schedule": "0 0 * * *"
     },

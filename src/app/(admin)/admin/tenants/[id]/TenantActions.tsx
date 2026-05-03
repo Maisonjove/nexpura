@@ -181,9 +181,9 @@ export default function TenantActions({
             onChange={(e) => setPlan(e.target.value)}
             className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-stone-900/20"
           >
-            <option value="boutique">Boutique ($89/mo)</option>
-            <option value="studio">Studio ($179/mo)</option>
-            <option value="atelier">Atelier ($299/mo)</option>
+            <option value="boutique">Boutique</option>
+            <option value="studio">Studio</option>
+            <option value="atelier">Atelier</option>
             <option value="group">Legacy Group</option>
           </select>
           <button

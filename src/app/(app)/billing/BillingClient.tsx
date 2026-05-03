@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { STRIPE_PRICES } from "@/lib/stripe/prices";
+import { PLANS as MASTER_PLANS, type CurrencyCode } from "@/data/pricing";
 import logger from "@/lib/logger";
-
-type Plan = "boutique" | "studio" | "atelier";
 
 interface BillingClientProps {
   tenantId: string;
@@ -15,40 +13,44 @@ interface BillingClientProps {
   currentPeriodEnd: string | null;
   subdomain: string;
   email: string;
+  /** Tenant's billing currency — controls which price the plan card
+   *  displays and which price ID is used at checkout. */
+  currency: CurrencyCode;
 }
 
-const PLANS = [
+// Map the marketing PLANS (full feature copy + multi-currency) to the
+// terser plan-card shape the /billing UI uses. Phase 1.5 post-audit
+// removed the standalone `monthlyPrice: 89/179/299` table here in
+// favour of canonical lookup against src/data/pricing.ts.
+const PLAN_CARD_DESCRIPTORS: Array<{
+  id: "boutique" | "studio" | "atelier";
+  description: string;
+  features: string[];
+  popular?: boolean;
+}> = [
   {
     id: "boutique",
-    name: "Boutique",
-    monthlyPrice: 89,
     description: "For independent jewellers.",
     features: ["1 User", "1 Store", "Unlimited Invoices", "Core Operations", "Jewellery Passports"],
   },
   {
     id: "studio",
-    name: "Studio",
-    monthlyPrice: 179,
     description: "For growing jewellery studios.",
     features: ["Up to 5 Users", "Up to 3 Stores", "Advanced Analytics", "Website Builder", "Connect Website", "Migration Hub"],
     popular: true,
   },
   {
     id: "atelier",
-    name: "Atelier",
-    monthlyPrice: 299,
     description: "For high-volume jewellery groups.",
     features: ["Unlimited Users", "Unlimited Stores", "All Features Included", "Priority Support", "Custom Domain", "White-glove Migration"],
   },
 ];
 
-// Calculate annual price (20% off): monthly × 12 × 0.8
-function getDisplayPrice(monthlyPrice: number, interval: "monthly" | "annual"): string {
-  if (interval === "monthly") {
-    return `$${monthlyPrice}`;
-  }
-  const annualPrice = Math.round(monthlyPrice * 12 * 0.8);
-  return `$${annualPrice.toLocaleString()}`;
+function getDisplayPrice(planId: string, currency: CurrencyCode): { display: string; symbol: string } {
+  const planRow = MASTER_PLANS.find((p) => p.id === planId);
+  if (!planRow) return { display: "—", symbol: "$" };
+  const price = planRow.pricing[currency];
+  return { display: `${price.symbol}${price.amount}`, symbol: price.symbol };
 }
 
 const COMPARISON = [
@@ -69,19 +71,21 @@ export default function BillingClient({
   currentPeriodEnd,
   subdomain,
   email,
+  currency,
 }: BillingClientProps) {
-  const [interval, setInterval] = useState<"monthly" | "annual">("monthly");
   const [loading, setLoading] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleUpgrade(planId: string) {
     setLoading(planId);
     try {
-      const priceId = STRIPE_PRICES[planId as keyof typeof STRIPE_PRICES]?.[interval as "monthly" | "annual"];
-      const res = await fetch("/api/stripe/create-checkout-session", {
+      // Phase 1.5 post-audit: monthly-only path. The new /api/billing/checkout
+      // resolves price_id from PLANS keyed by tenant.currency on the server;
+      // the client just passes plan name.
+      const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId, subdomain, email }),
+        body: JSON.stringify({ plan: planId }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
@@ -130,81 +134,59 @@ export default function BillingClient({
         </div>
       </div>
 
-      {/* Pricing Toggle */}
-      <div className="flex justify-center">
-        <div className="bg-stone-100 p-1 rounded-xl inline-flex items-center gap-1">
-          <button
-            onClick={() => setInterval("monthly")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-              interval === "monthly" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setInterval("annual")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${
-              interval === "annual" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
-            }`}
-          >
-            Annual
-            <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold uppercase">Save 20%</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Plan Cards */}
+      {/* Plan Cards — monthly only per Phase 1.5 post-audit; annual
+           toggle removed. Prices shown in tenant's billing currency. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {PLANS.map((plan) => (
-          <div
-            key={plan.id}
-            className={`relative bg-white rounded-3xl border-2 p-8 flex flex-col transition-all ${
-              plan.id === currentPlan ? "border-amber-600 ring-4 ring-amber-600/5" : "border-stone-100 hover:border-stone-200 shadow-sm"
-            }`}
-          >
-            {plan.popular && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-700 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
-                Most Popular
-              </div>
-            )}
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-stone-900">{plan.name}</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold tracking-tight text-stone-900">{getDisplayPrice(plan.monthlyPrice, interval)}</span>
-                <span className="text-stone-500 text-sm font-medium">/{interval === "monthly" ? "mo" : "yr"}</span>
-              </div>
-              {interval === "annual" && (
-                <p className="text-xs text-emerald-600 mt-1">
-                  Save ${Math.round(plan.monthlyPrice * 12 * 0.2).toLocaleString()}/year
-                </p>
-              )}
-              <p className="mt-4 text-sm text-stone-500 leading-relaxed">{plan.description}</p>
-            </div>
-
-            <ul className="space-y-4 mb-10 flex-1">
-              {plan.features.map((feat) => (
-                <li key={feat} className="flex items-center gap-3 text-sm text-stone-600">
-                  <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                  {feat}
-                </li>
-              ))}
-            </ul>
-
-            <button
-              onClick={() => handleUpgrade(plan.id)}
-              disabled={loading === plan.id || plan.id === currentPlan}
-              className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
-                plan.id === currentPlan
-                  ? "bg-stone-50 text-stone-400 cursor-default"
-                  : "bg-[#071A0D] text-white hover:bg-stone-800 shadow-md shadow-stone-900/10 active:scale-[0.98]"
+        {PLAN_CARD_DESCRIPTORS.map((descriptor) => {
+          const masterPlan = MASTER_PLANS.find((p) => p.id === descriptor.id)!;
+          const planName = masterPlan.name;
+          const { display } = getDisplayPrice(descriptor.id, currency);
+          return (
+            <div
+              key={descriptor.id}
+              className={`relative bg-white rounded-3xl border-2 p-8 flex flex-col transition-all ${
+                descriptor.id === currentPlan ? "border-amber-600 ring-4 ring-amber-600/5" : "border-stone-100 hover:border-stone-200 shadow-sm"
               }`}
             >
-              {loading === plan.id ? "Processing..." : plan.id === currentPlan ? "Current Plan" : `Upgrade to ${plan.name}`}
-            </button>
-          </div>
-        ))}
+              {descriptor.popular && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-700 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                  Most Popular
+                </div>
+              )}
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-stone-900">{planName}</h3>
+                <div className="mt-4 flex items-baseline gap-1">
+                  <span className="text-4xl font-bold tracking-tight text-stone-900">{display}</span>
+                  <span className="text-stone-500 text-sm font-medium">/mo</span>
+                </div>
+                <p className="mt-4 text-sm text-stone-500 leading-relaxed">{descriptor.description}</p>
+              </div>
+
+              <ul className="space-y-4 mb-10 flex-1">
+                {descriptor.features.map((feat) => (
+                  <li key={feat} className="flex items-center gap-3 text-sm text-stone-600">
+                    <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {feat}
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                onClick={() => handleUpgrade(descriptor.id)}
+                disabled={loading === descriptor.id || descriptor.id === currentPlan}
+                className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
+                  descriptor.id === currentPlan
+                    ? "bg-stone-50 text-stone-400 cursor-default"
+                    : "bg-[#071A0D] text-white hover:bg-stone-800 shadow-md shadow-stone-900/10 active:scale-[0.98]"
+                }`}
+              >
+                {loading === descriptor.id ? "Processing..." : descriptor.id === currentPlan ? "Current Plan" : `Upgrade to ${planName}`}
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* Comparison Table */}

@@ -113,12 +113,6 @@ const PRICING_FAQS: FAQItem[] = [
       "Full access to your selected plan's workflows for 14 days, including POS, repairs, bespoke, inventory, customers, and reporting.",
   },
   {
-    id: 'annual-billing',
-    question: 'Do you offer annual billing?',
-    answer:
-      'Yes. Annual billing is available on all plans with a discount versus monthly. Speak to our team for current annual pricing.',
-  },
-  {
     id: 'trial-ends',
     question: 'What happens after my trial ends?',
     answer:

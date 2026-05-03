@@ -29,7 +29,14 @@ interface Tenant {
 
 interface Props {
   tenants: Tenant[];
-  totalMRR: number;
+  /** Per-currency MRR formatted as "A$1,200 · US$800 · £400 · €200".
+   *  Joey 2026-05-03 — replaced the legacy single-AUD-number display
+   *  to stop silently mis-summing non-AUD subs. Full breakdown +
+   *  ≈ AUD total lives on /admin/revenue. */
+  totalMRRDisplay: string;
+  /** Count of subs whose currency was inferred from tenant.currency
+   *  rather than recorded by Stripe. Surfaced as a small badge. */
+  fallbackSubCount: number;
   activeTenants: number;
   trialTenants: number;
   query: string;
@@ -104,10 +111,11 @@ function formatDate(dateStr: string | null | undefined) {
   });
 }
 
-export default function TenantsClient({ 
-  tenants, 
-  totalMRR, 
-  activeTenants, 
+export default function TenantsClient({
+  tenants,
+  totalMRRDisplay,
+  fallbackSubCount,
+  activeTenants,
   trialTenants,
   query,
   planFilter,
@@ -128,7 +136,12 @@ export default function TenantsClient({
         <div className="flex items-center gap-6 text-right">
           <div>
             <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">MRR</p>
-            <p className="text-xl font-bold text-emerald-600">${totalMRR}/mo</p>
+            <p className="text-sm font-bold text-emerald-600 leading-snug">{totalMRRDisplay}</p>
+            {fallbackSubCount > 0 && (
+              <p className="text-[10px] text-amber-700 mt-0.5">
+                incl. {fallbackSubCount} admin-set
+              </p>
+            )}
           </div>
           <div>
             <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">Active</p>

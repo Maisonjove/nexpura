@@ -13,6 +13,7 @@ import {
   SHELL_COOKIE_NAME,
   SHELL_COOKIE_MAX_AGE,
 } from "@/lib/dashboard/shell-cookie";
+import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 import logger from "@/lib/logger";
 
 /**
@@ -158,17 +159,23 @@ export async function POST(request: NextRequest) {
     // and skip its DB round-trip on the first cold render.
     // ─────────────────────────────────────────────────────────────
     const admin = createAdminClient();
+    // Joey 2026-05-03: switched tenants!inner → tenants (left join). The
+    // allowlisted-admin (germanijoey@yahoo.com) now has tenant_id=NULL
+    // post tenant-consolidation migration, and an inner join with
+    // .single() would have failed for that user — locking him out of
+    // the platform. The left-join still returns the row (with
+    // tenants=null) and the no-tenant branch below routes him to /admin.
     const { data: profile } = await admin
       .from("users")
       .select(
-        "totp_enabled, tenant_id, role, tenants!inner(slug, name, business_name, business_type, currency, timezone)",
+        "totp_enabled, tenant_id, role, tenants(slug, name, business_name, business_type, currency, timezone)",
       )
       .eq("id", data.user.id)
-      .single();
+      .maybeSingle();
 
     const profileTyped = profile as {
       totp_enabled?: boolean;
-      tenant_id?: string;
+      tenant_id?: string | null;
       role?: string;
       tenants?: {
         slug?: string | null;
@@ -177,7 +184,7 @@ export async function POST(request: NextRequest) {
         business_type?: string | null;
         currency?: string | null;
         timezone?: string | null;
-      };
+      } | null;
     } | null;
 
     // Build + sign the shell cookie. Fire-and-forget: if signing fails
@@ -240,6 +247,21 @@ export async function POST(request: NextRequest) {
     // Resolve tenant slug so the client can skip the middleware
     // /dashboard → /{slug}/dashboard redirect round-trip on first nav.
     const tenantSlug = profileTyped?.tenants?.slug ?? null;
+
+    // Joey 2026-05-03: platform-admin routing. germanijoey@yahoo.com is
+    // the only allowlisted admin and post tenant-consolidation has
+    // tenant_id=NULL — they belong on /admin, not the tenant
+    // /{slug}/dashboard path. Belt-and-suspenders: middleware enforces
+    // the same gate so a stale `redirectTo` querystring couldn't bypass.
+    if (isAllowlistedAdmin(data.user.email) && !profileTyped?.tenant_id) {
+      return attachShellCookie(
+        NextResponse.json({
+          success: true,
+          redirectTo: "/admin",
+          tenantSlug: null,
+        }),
+      );
+    }
 
     return attachShellCookie(
       NextResponse.json({

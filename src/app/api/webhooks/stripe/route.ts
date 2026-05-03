@@ -258,6 +258,23 @@ async function handleSubscriptionUpdated(
     ? new Date(subAny.current_period_end * 1000).toISOString()
     : null;
 
+  // Phase 1.5 post-audit (Joey 2026-05-03): capture stripe_price_id +
+  // currency from the subscription so calculateMRRByCurrency can
+  // match against src/data/pricing.ts PLANS without N round-trips
+  // back to Stripe per page load.
+  //
+  // Stripe items.data is an array — a sub can in theory carry
+  // multiple line items. Nexpura's plans are single-price subs so
+  // index 0 is correct; if a future plan adds an add-on item, this
+  // will need to pick the primary plan price (likely by checking
+  // metadata or the largest unit_amount).
+  const firstItem = subscription.items?.data?.[0];
+  const stripePriceId = firstItem?.price?.id ?? null;
+  // Stripe sends currency as lowercase 3-letter code; normalise to
+  // upper-case to match PLANS keys + the new currency CHECK.
+  const currency = (firstItem?.price?.currency ?? subscription.currency ?? null);
+  const currencyUpper = currency ? currency.toUpperCase() : null;
+
   // Update subscription in database
   const { data: sub } = await supabase
     .from("subscriptions")
@@ -270,6 +287,8 @@ async function handleSubscriptionUpdated(
     if (currentPeriodEnd !== null) {
       subUpdate.current_period_end = currentPeriodEnd;
     }
+    if (stripePriceId !== null) subUpdate.stripe_price_id = stripePriceId;
+    if (currencyUpper !== null) subUpdate.currency = currencyUpper;
     await supabase
       .from("subscriptions")
       .update(subUpdate)
@@ -299,6 +318,8 @@ async function handleSubscriptionUpdated(
         stripe_customer_id: stripeCustomerId,
         stripe_sub_id: stripeSubId,
         current_period_end: currentPeriodEnd,
+        stripe_price_id: stripePriceId,
+        currency: currencyUpper,
       });
 
       await supabase

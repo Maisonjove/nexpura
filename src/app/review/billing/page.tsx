@@ -41,6 +41,7 @@ export default async function ReviewBillingPage() {
         currentPeriodEnd={subscription?.current_period_end ?? null}
         subdomain=""
         email="review@nexpura.com"
+        currency="AUD"
       />
     </div>
   );

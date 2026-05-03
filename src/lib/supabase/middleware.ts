@@ -574,6 +574,15 @@ async function _updateSessionInner(request: NextRequest) {
 
     const userProfile = await resolveMiddlewareProfile(request, user.id);
     if (!userProfile || !userProfile.tenant_id) {
+      // Joey 2026-05-03: same allowlist-admin → /admin shortcut as the
+      // flat-route branch below. Without this, allowlisted admin
+      // visiting /{any}/dashboard via stale bookmark would bounce to
+      // /onboarding instead of /admin.
+      if (isAllowlistedAdmin(user.email)) {
+        const adminUrl = request.nextUrl.clone();
+        adminUrl.pathname = "/admin";
+        return redirectWithCookies(adminUrl, supabaseResponse);
+      }
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = "/onboarding";
       return redirectWithCookies(onboardingUrl, supabaseResponse);
@@ -683,6 +692,19 @@ async function _updateSessionInner(request: NextRequest) {
 
     const userProfile = await resolveMiddlewareProfile(request, user.id);
     if (!userProfile || !userProfile.tenant_id) {
+      // Joey 2026-05-03: allowlisted platform admin with no tenant
+      // routes to /admin (where the platform-wide super-admin surface
+      // lives). Non-allowlisted no-tenant users still go to /onboarding
+      // (their account is mid-signup or their tenant was wiped — same
+      // existing behaviour). The /admin layout still does the
+      // super_admins lookup so an allowlisted email without the row
+      // gets bounced to /dashboard from there (which itself bounces to
+      // /onboarding for no-tenant users — harmless loop terminator).
+      if (isAllowlistedAdmin(user.email)) {
+        const adminUrl = request.nextUrl.clone();
+        adminUrl.pathname = "/admin";
+        return redirectWithCookies(adminUrl, supabaseResponse);
+      }
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = "/onboarding";
       return redirectWithCookies(onboardingUrl, supabaseResponse);
