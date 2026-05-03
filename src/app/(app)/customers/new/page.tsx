@@ -1,6 +1,8 @@
 import Link from "next/link";
 import CustomerForm from "../CustomerForm";
 
+export const metadata = { title: "New Customer — Nexpura" };
+
 export default async function NewCustomerPage({
   searchParams,
 }: {

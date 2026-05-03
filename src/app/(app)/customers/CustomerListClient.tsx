@@ -354,34 +354,50 @@ export default function CustomerListClient({
                 return (
                   <TableRow
                     key={customer.id}
-                    className="hover:bg-stone-50/60 border-stone-100 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/customers/${customer.id}`)}
+                    className="hover:bg-stone-50/60 border-stone-100 transition-colors group"
                   >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
+                    <TableCell className="p-0">
+                      <Link
+                        href={`/customers/${customer.id}`}
+                        className="flex items-center gap-3 px-4 py-2.5"
+                      >
                         <Avatar className="w-8 h-8">
                           <AvatarFallback className="bg-stone-100 text-stone-600 text-xs font-semibold">
                             {initials}
                           </AvatarFallback>
                         </Avatar>
                         <span className="text-sm font-medium text-stone-900">{name}</span>
-                      </div>
+                      </Link>
                     </TableCell>
-                    <TableCell className="text-sm text-stone-700">{customer.mobile || customer.phone || "—"}</TableCell>
-                    <TableCell className="text-sm text-stone-700">{customer.email || "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1.5 flex-wrap">
-                        {tags.map((tag) => <span key={tag}>{getTagBadge(tag)}</span>)}
-                        {tags.length === 0 && <span className="text-stone-300 text-xs">—</span>}
-                      </div>
+                    <TableCell className="p-0">
+                      <Link href={`/customers/${customer.id}`} className="block px-4 py-2.5 text-sm text-stone-700">
+                        {customer.mobile || customer.phone || "—"}
+                      </Link>
                     </TableCell>
-                    <TableCell className="text-sm text-stone-700">
-                      {customer.updated_at
-                        ? new Date(customer.updated_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
-                        : "—"}
+                    <TableCell className="p-0">
+                      <Link href={`/customers/${customer.id}`} className="block px-4 py-2.5 text-sm text-stone-700">
+                        {customer.email || "—"}
+                      </Link>
                     </TableCell>
-                    <TableCell>
-                      <ArrowRight className="w-4 h-4 text-stone-300 hover:text-amber-700" />
+                    <TableCell className="p-0">
+                      <Link href={`/customers/${customer.id}`} className="block px-4 py-2.5">
+                        <div className="flex gap-1.5 flex-wrap">
+                          {tags.map((tag) => <span key={tag}>{getTagBadge(tag)}</span>)}
+                          {tags.length === 0 && <span className="text-stone-300 text-xs">—</span>}
+                        </div>
+                      </Link>
+                    </TableCell>
+                    <TableCell className="p-0">
+                      <Link href={`/customers/${customer.id}`} className="block px-4 py-2.5 text-sm text-stone-700">
+                        {customer.updated_at
+                          ? new Date(customer.updated_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
+                          : "—"}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="p-0">
+                      <Link href={`/customers/${customer.id}`} className="flex items-center px-4 py-2.5">
+                        <ArrowRight className="w-4 h-4 text-stone-300 group-hover:text-amber-700" />
+                      </Link>
                     </TableCell>
                   </TableRow>
                 );

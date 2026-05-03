@@ -6,6 +6,8 @@ import Link from "next/link";
 import CustomerForm from "../../CustomerForm";
 import { decryptCustomerPii } from "@/lib/customer-pii";
 
+export const metadata = { title: "Edit Customer — Nexpura" };
+
 export default async function EditCustomerPage({
   params,
 }: {

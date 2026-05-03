@@ -459,3 +459,49 @@ export async function addCustomerNote(
     return { error: "Operation failed" };
   }
 }
+
+export async function removeFromWishlist(
+  wishlistId: string,
+  customerId: string,
+): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const auth = await requireAuth();
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("wishlists")
+      .delete()
+      .eq("id", wishlistId)
+      .eq("tenant_id", auth.tenantId);
+    if (error) return { error: error.message };
+    revalidatePath(`/customers/${customerId}`);
+    return { success: true };
+  } catch (error) {
+    logger.error("removeFromWishlist failed", { error });
+    return { error: "Operation failed" };
+  }
+}
+
+export async function notifyWishlistItem(
+  wishlistId: string,
+  customerId: string,
+): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const auth = await requireAuth();
+    const admin = createAdminClient();
+    // Stamp notified_at; the actual send is handled downstream by the
+    // notifications worker. Setting the timestamp also short-circuits
+    // the back-in-stock automation from firing twice.
+    const { error } = await admin
+      .from("wishlists")
+      .update({ notified_at: new Date().toISOString() })
+      .eq("id", wishlistId)
+      .eq("tenant_id", auth.tenantId);
+    if (error) return { error: error.message };
+    revalidatePath(`/customers/${customerId}`);
+    return { success: true };
+  } catch (error) {
+    logger.error("notifyWishlistItem failed", { error });
+    return { error: "Operation failed" };
+  }
+}
+
