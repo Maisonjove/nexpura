@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -16,7 +16,124 @@ import {
   Sparkles,
   AlertCircle,
   Calendar,
+  Check,
+  X,
+  Moon,
 } from "lucide-react";
+import { snoozeReminder, dismissReminder, completeReminder } from "./actions";
+
+/**
+ * Per-row action toolbar — Group 14 audit fix. Pre-fix /reminders had
+ * no list-level actions; staff had to navigate to each source page.
+ * The buttons here stop pointer propagation so clicking them doesn't
+ * trigger the parent <Link>'s navigation.
+ *
+ * - Snooze: pops a small day-picker (1d/3d/1w/30d), persists to
+ *   reminder_dismissals with snoozed_until = now + N days.
+ * - Dismiss: persists with dismissed_at = now and audit-logs.
+ * - Complete: only meaningful for task reminders (key prefix
+ *   "task:"). Hidden for other types — those use the source-page
+ *   "complete" action via the ChevronRight link.
+ *
+ * Optimistic UI: the parent re-renders after the server action's
+ * revalidatePath completes; in the interim we hide the row locally
+ * via the `onActioned` callback the parent supplies.
+ */
+function ReminderActions({
+  reminderKey,
+  canComplete,
+  onActioned,
+}: {
+  reminderKey: string;
+  canComplete: boolean;
+  onActioned: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [showSnooze, setShowSnooze] = useState(false);
+
+  function handle(label: "snooze" | "dismiss" | "complete", days?: number) {
+    startTransition(async () => {
+      let r;
+      if (label === "snooze") r = await snoozeReminder(reminderKey, days ?? 1);
+      else if (label === "dismiss") r = await dismissReminder(reminderKey);
+      else r = await completeReminder(reminderKey);
+      if (r?.error) {
+        alert(r.error);
+        return;
+      }
+      onActioned();
+    });
+  }
+
+  return (
+    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      {showSnooze ? (
+        <div className="flex items-center gap-1 bg-stone-50 border border-stone-200 rounded-md px-1 py-0.5">
+          {[
+            { label: "1d", days: 1 },
+            { label: "3d", days: 3 },
+            { label: "1w", days: 7 },
+            { label: "30d", days: 30 },
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              type="button"
+              disabled={pending}
+              onClick={(e) => { e.preventDefault(); handle("snooze", opt.days); setShowSnooze(false); }}
+              className="text-xs font-mono px-1.5 py-0.5 rounded hover:bg-amber-50 text-stone-700 disabled:opacity-50"
+              title={`Snooze ${opt.label}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); setShowSnooze(false); }}
+            className="text-xs text-stone-400 hover:text-stone-700 px-1"
+            aria-label="Cancel snooze"
+          >
+            ×
+          </button>
+        </div>
+      ) : (
+        <>
+          {canComplete && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={(e) => { e.preventDefault(); handle("complete"); }}
+              title="Mark complete"
+              aria-label="Mark complete"
+              className="p-1.5 rounded text-stone-400 hover:text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
+            >
+              <Check className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={pending}
+            onClick={(e) => { e.preventDefault(); setShowSnooze(true); }}
+            title="Snooze"
+            aria-label="Snooze"
+            className="p-1.5 rounded text-stone-400 hover:text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+          >
+            <Moon className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={(e) => { e.preventDefault(); handle("dismiss"); }}
+            title="Dismiss"
+            aria-label="Dismiss"
+            className="p-1.5 rounded text-stone-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 interface Task {
   id: string;
@@ -113,6 +230,16 @@ export default function RemindersClient({
   customerEvents,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"all" | "tasks" | "pickups" | "laybys" | "events">("all");
+  // Optimistically hide a reminder the moment its server action returns
+  // (revalidatePath handles the canonical re-render but the user
+  // shouldn't see a delay).
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+  const hideKey = (key: string) => setHiddenKeys((prev) => {
+    const next = new Set(prev);
+    next.add(key);
+    return next;
+  });
+  const isHidden = (key: string) => hiddenKeys.has(key);
 
   const totalReminders =
     tasks.length + readyRepairs.length + readyBespoke.length + upcomingLaybys.length + customerEvents.length;
@@ -198,7 +325,7 @@ export default function RemindersClient({
               <span className="text-xs text-stone-400">({tasks.length})</span>
             </div>
             <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-100">
-              {tasks.map((task) => (
+              {tasks.filter((t) => !isHidden(`task:${t.id}`)).map((task) => (
                 <Link
                   key={task.id}
                   href={`/tasks?task=${task.id}`}
@@ -229,6 +356,11 @@ export default function RemindersClient({
                       {formatDueDate(task.due_date)}
                     </span>
                   </div>
+                  <ReminderActions
+                    reminderKey={`task:${task.id}`}
+                    canComplete
+                    onActioned={() => hideKey(`task:${task.id}`)}
+                  />
                   <ChevronRight className="w-4 h-4 text-stone-300" />
                 </Link>
               ))}
@@ -248,7 +380,7 @@ export default function RemindersClient({
                 </span>
               </div>
               <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-100">
-                {readyRepairs.map((repair) => (
+                {readyRepairs.filter((r) => !isHidden(`repair:${r.id}`)).map((repair) => (
                   <Link
                     key={repair.id}
                     href={`/repairs/${repair.id}`}
@@ -276,10 +408,15 @@ export default function RemindersClient({
                         <Phone className="w-4 h-4 text-stone-400" />
                       </a>
                     )}
+                    <ReminderActions
+                      reminderKey={`repair:${repair.id}`}
+                      canComplete={false}
+                      onActioned={() => hideKey(`repair:${repair.id}`)}
+                    />
                     <ChevronRight className="w-4 h-4 text-stone-300" />
                   </Link>
                 ))}
-                {readyBespoke.map((job) => (
+                {readyBespoke.filter((b) => !isHidden(`bespoke:${b.id}`)).map((job) => (
                   <Link
                     key={job.id}
                     href={`/bespoke/${job.id}`}
@@ -306,6 +443,11 @@ export default function RemindersClient({
                         <Phone className="w-4 h-4 text-stone-400" />
                       </a>
                     )}
+                    <ReminderActions
+                      reminderKey={`bespoke:${job.id}`}
+                      canComplete={false}
+                      onActioned={() => hideKey(`bespoke:${job.id}`)}
+                    />
                     <ChevronRight className="w-4 h-4 text-stone-300" />
                   </Link>
                 ))}
@@ -322,7 +464,7 @@ export default function RemindersClient({
               <span className="text-xs text-stone-400">({upcomingLaybys.length})</span>
             </div>
             <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-100">
-              {upcomingLaybys.map((layby) => {
+              {upcomingLaybys.filter((l) => !isHidden(`layby:${l.id}`)).map((layby) => {
                 const remaining = layby.total_amount - layby.amount_paid;
                 return (
                   <Link
@@ -348,6 +490,11 @@ export default function RemindersClient({
                       </p>
                       <p className="text-xs text-stone-400">Next payment</p>
                     </div>
+                    <ReminderActions
+                      reminderKey={`layby:${layby.id}`}
+                      canComplete={false}
+                      onActioned={() => hideKey(`layby:${layby.id}`)}
+                    />
                     <ChevronRight className="w-4 h-4 text-stone-300" />
                   </Link>
                 );
@@ -365,7 +512,7 @@ export default function RemindersClient({
               <span className="text-xs text-stone-400">({customerEvents.length})</span>
             </div>
             <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-100">
-              {customerEvents.map((event, idx) => (
+              {customerEvents.filter((e) => !isHidden(`customer_${e.type}:${e.customerId}`)).map((event, idx) => (
                 <Link
                   key={`${event.customerId}-${event.type}-${idx}`}
                   href={`/customers/${event.customerId}`}
@@ -421,6 +568,11 @@ export default function RemindersClient({
                       </a>
                     )}
                   </div>
+                  <ReminderActions
+                    reminderKey={`customer_${event.type}:${event.customerId}`}
+                    canComplete={false}
+                    onActioned={() => hideKey(`customer_${event.type}:${event.customerId}`)}
+                  />
                   <ChevronRight className="w-4 h-4 text-stone-300" />
                 </Link>
               ))}

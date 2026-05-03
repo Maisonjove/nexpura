@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateEnquiryStatus } from "./actions";
+import { updateEnquiryStatus, convertEnquiry } from "./actions";
 
 interface Enquiry {
   id: string;
@@ -226,6 +226,36 @@ export default function EnquiriesClient({ enquiries, tenantId: _tenantId }: Prop
                 <div>
                   <p className="text-xs text-stone-500 mb-1">Notes / Message</p>
                   <p className="text-sm text-stone-900 bg-stone-50 rounded-lg p-3">{selectedEnquiry.message}</p>
+                </div>
+              )}
+
+              {/* Convert to repair / quote / sale (Group 14 audit). Pre-fix
+                  /enquiries was list+status only — staff couldn't promote
+                  an enquiry into a downstream entity without manually
+                  copying contact info into a new repair. */}
+              {selectedEnquiry.status !== "converted" && (
+                <div>
+                  <p className="text-xs text-stone-500 mb-2">Convert to</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {(["repair", "quote", "sale"] as const).map((target) => (
+                      <button
+                        key={target}
+                        onClick={async () => {
+                          if (!confirm(`Convert this enquiry to a ${target}? This creates a new ${target} linked to the customer (auto-created if needed) and marks the enquiry as converted.`)) return;
+                          const r = await convertEnquiry(selectedEnquiry.id, target);
+                          if (r.error) { alert(r.error); return; }
+                          if (r.destinationId && r.destinationType) {
+                            const dest = r.destinationType === "repair" ? "repairs" : r.destinationType === "quote" ? "quotes" : "sales";
+                            window.location.href = `/${dest}/${r.destinationId}`;
+                          }
+                        }}
+                        disabled={isPending}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold capitalize bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700 disabled:opacity-50"
+                      >
+                        + {target}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
