@@ -1,4 +1,5 @@
 import { PLANS, type CurrencyCode } from '@/data/pricing';
+import { NEXPURA_DOGFOOD_TENANT_ID } from '@/lib/dogfood-tenant';
 
 export type PlanId = 'boutique' | 'studio' | 'atelier';
 
@@ -148,6 +149,22 @@ export interface MRRBreakdown {
   totalSubCount: number;
 }
 
+// Joey 2026-05-03 architectural change: the is_free_forever exclusion
+// is removed as the primary MRR gate. Post-migration, a DB CHECK
+// constraint enforces is_free_forever=true on the Nexpura dogfood
+// tenant only — so the single id NEXPURA_DOGFOOD_TENANT_ID is the
+// canonical exclusion. is_free_forever is kept as a belt-and-suspenders
+// fallback (reduces blast radius if the constraint ever drifts), but
+// the dogfood-id check is authoritative.
+function isExcludedFromMRR(
+  tenantId: string | undefined,
+  tenant: TenantForMRR | undefined,
+): boolean {
+  if (tenantId === NEXPURA_DOGFOOD_TENANT_ID) return true;
+  if (tenant?.is_free_forever) return true;
+  return false;
+}
+
 export function calculateMRRByCurrency(
   subs: SubForMRR[],
   tenants?: Map<string, TenantForMRR>,
@@ -159,7 +176,7 @@ export function calculateMRRByCurrency(
     if (s.status !== 'active') continue;
     if (!s.tenant_id) continue;
     const t = tenants?.get(s.tenant_id);
-    if (t?.is_free_forever) continue;
+    if (isExcludedFromMRR(s.tenant_id, t)) continue;
     const resolved = resolveSubAmount(s, tenants);
     if (!resolved) continue;
     byCurrency[resolved.currency] = (byCurrency[resolved.currency] ?? 0) + resolved.amount;
@@ -180,7 +197,7 @@ export function calculateProjectedMRRByCurrency(
     if (s.status !== 'active' && s.status !== 'trialing') continue;
     if (!s.tenant_id) continue;
     const t = tenants?.get(s.tenant_id);
-    if (t?.is_free_forever) continue;
+    if (isExcludedFromMRR(s.tenant_id, t)) continue;
     const resolved = resolveSubAmount(s, tenants);
     if (!resolved) continue;
     byCurrency[resolved.currency] = (byCurrency[resolved.currency] ?? 0) + resolved.amount;
