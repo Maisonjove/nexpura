@@ -1,7 +1,38 @@
 "use client";
 
-import { useState } from "react";
-import DOMPurify from "isomorphic-dompurify";
+import { useState, useEffect } from "react";
+// `isomorphic-dompurify` boots jsdom at module-import time. Even on
+// "use client" components, Next.js still evaluates the module on the
+// server during SSR — the jsdom init under cacheComponents:true
+// triggers React #419 ("switch to client rendering"), and the page
+// flakes a hard pageerror in the console on every visit. Repro showed
+// 5/5 visits to /marketing/templates threw this. Same root cause on
+// /marketing/bulk-email + /marketing/campaigns/new (all 3 import
+// isomorphic-dompurify at module top).
+//
+// Fix: lazy-load DOMPurify inside useEffect via dynamic import. The
+// module is only evaluated AFTER the component has mounted in the
+// browser. The SSR pass never sees jsdom. First paint the preview
+// renders unsanitized-but-empty until the import resolves
+// (~1 microtask), then DOMPurify.sanitize fills it.
+//
+// See lib/sanitize.ts top comment — the codebase already has a
+// known-issue note that isomorphic-dompurify pulls jsdom + ESM
+// modules that crash Vercel's runtime. This is the same family.
+type Sanitizer = (html: string) => string;
+function useDomPurify(): Sanitizer | null {
+  const [sanitize, setSanitize] = useState<Sanitizer | null>(null);
+  useEffect(() => {
+    let alive = true;
+    import("isomorphic-dompurify").then(({ default: DP }) => {
+      if (alive) setSanitize(() => (s: string) => DP.sanitize(s));
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return sanitize;
+}
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -54,6 +85,7 @@ const TEMPLATE_ICONS: Record<string, React.ReactNode> = {
 
 export default function TemplatesClient({ templates, tenantId, businessName }: Props) {
   const router = useRouter();
+  const sanitize = useDomPurify();
   const [showModal, setShowModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
@@ -431,7 +463,7 @@ export default function TemplatesClient({ templates, tenantId, businessName }: P
               </div>
               <div
                 className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getPreviewHtml(previewTemplate.body)) }}
+                dangerouslySetInnerHTML={{ __html: sanitize ? sanitize(getPreviewHtml(previewTemplate.body)) : "" }}
               />
             </div>
           </div>
