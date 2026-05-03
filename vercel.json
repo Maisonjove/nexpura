@@ -33,6 +33,10 @@
       "schedule": "0 2 * * *"
     },
     {
+      "path": "/api/cron/process-tenant-deletions",
+      "schedule": "0 4 * * *"
+    },
+    {
       "path": "/api/cron/trial-end-checker",
       "schedule": "0 0 * * *"
     },
