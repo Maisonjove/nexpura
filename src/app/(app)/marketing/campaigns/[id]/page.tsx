@@ -56,32 +56,35 @@ export default async function CampaignDetailPage({
 
   if (!campaign) notFound();
 
-  // Pull individual email_logs rows linked to this campaign for the
-  // breakdown tab. A campaign that's been sent will have one row per
-  // recipient with status=sent|delivered|opened|bounced|complained.
+  // Marketing sends go into email_sends (not email_logs — that's for
+  // transactional invoice/repair-ready emails). email_sends has
+  // campaign_id as a direct FK, plus opened_at + clicked_at timestamps
+  // populated by Resend webhooks. /marketing/analytics aggregates from
+  // the same table, so reading from here keeps the campaign detail
+  // numbers reconciled with the analytics aggregates.
   const { data: deliveries } = await admin
-    .from("email_logs")
-    .select("id, recipient, status, bounce_reason, created_at")
+    .from("email_sends")
+    .select("id, email, status, error_message, sent_at, delivered_at, opened_at, clicked_at")
     .eq("tenant_id", tenantId)
-    .eq("reference_type", "campaign")
-    .eq("reference_id", id)
-    .order("created_at", { ascending: false })
+    .eq("campaign_id", id)
+    .order("sent_at", { ascending: false })
     .limit(200);
 
-  // Stats: prefer the persisted jsonb column (populated by the send
-  // worker / Resend webhooks), fall back to counting the email_logs
-  // rows we just pulled. If the campaign hasn't been sent yet, every
-  // bucket is 0.
+  // Stats: prefer the persisted jsonb column on the campaign row (set
+  // by the send action when the bulk send completes), fall back to
+  // counting email_sends rows for whichever buckets the jsonb hasn't
+  // populated. opened_at / clicked_at on email_sends ARE the source
+  // of truth for opens + clicks (jsonb is just a snapshot at send time).
   const persistedStats = (campaign.stats as CampaignStats | null) ?? {};
-  const logsByStatus: Record<string, number> = {};
-  for (const d of deliveries ?? []) {
-    logsByStatus[d.status] = (logsByStatus[d.status] ?? 0) + 1;
-  }
-  const sent = persistedStats.sent ?? (deliveries?.length ?? 0);
-  const delivered = persistedStats.delivered ?? logsByStatus["delivered"] ?? logsByStatus["sent"] ?? 0;
-  const opened = persistedStats.opened ?? logsByStatus["opened"] ?? 0;
-  const clicked = persistedStats.clicked ?? logsByStatus["clicked"] ?? 0;
-  const bounced = persistedStats.bounced ?? logsByStatus["bounced"] ?? 0;
+  const sendsRows = deliveries ?? [];
+  const sent = persistedStats.sent ?? sendsRows.filter((d) => d.status === "sent" || d.status === "delivered").length;
+  const delivered = persistedStats.delivered ?? sendsRows.filter((d) => d.delivered_at).length;
+  // Opens/clicks: trust the timestamps over the jsonb (which is stale
+  // immediately after send). Also surfaces opens that happen after
+  // the send action committed its initial stats snapshot.
+  const opened = sendsRows.filter((d) => d.opened_at).length || (persistedStats.opened ?? 0);
+  const clicked = sendsRows.filter((d) => d.clicked_at).length || (persistedStats.clicked ?? 0);
+  const bounced = persistedStats.bounced ?? sendsRows.filter((d) => d.status === "bounced" || d.status === "failed").length;
   const unsubscribed = persistedStats.unsubscribed ?? 0;
   const converted = persistedStats.converted ?? 0;
   const conversionRevenue = persistedStats.conversion_revenue ?? 0;
@@ -163,14 +166,14 @@ export default async function CampaignDetailPage({
         <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
           <h2 className="text-base font-semibold text-stone-900">Delivery breakdown</h2>
           <span className="text-xs text-stone-500">
-            {deliveries?.length ?? 0} log row{(deliveries?.length ?? 0) === 1 ? "" : "s"}
+            {deliveries?.length ?? 0} send row{(deliveries?.length ?? 0) === 1 ? "" : "s"}
           </span>
         </div>
         {!deliveries || deliveries.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-stone-400">
             {campaign.status === "draft" || campaign.status === "scheduled"
-              ? "Campaign hasn't sent yet — delivery logs will appear here once it fires."
-              : "No delivery logs found for this campaign."}
+              ? "Campaign hasn't sent yet — delivery rows will appear here once it fires."
+              : "No delivery rows found for this campaign."}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -179,17 +182,21 @@ export default async function CampaignDetailPage({
                 <tr className="bg-stone-50 border-b border-stone-100">
                   <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">Recipient</th>
                   <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">Status</th>
-                  <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">Bounce reason</th>
-                  <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">Logged</th>
+                  <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">Opened</th>
+                  <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">Clicked</th>
+                  <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">Error</th>
+                  <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">Sent</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {deliveries.map((d) => (
                   <tr key={d.id} className="hover:bg-stone-50/60">
-                    <td className="px-6 py-3 text-stone-900">{d.recipient}</td>
+                    <td className="px-6 py-3 text-stone-900">{d.email}</td>
                     <td className="px-6 py-3"><StatusBadge status={d.status} /></td>
-                    <td className="px-6 py-3 text-xs text-red-600 max-w-md truncate">{d.bounce_reason ?? "—"}</td>
-                    <td className="px-6 py-3 text-xs text-stone-500">{fmtDate(d.created_at)}</td>
+                    <td className="px-6 py-3 text-xs text-stone-500">{fmtDate(d.opened_at as string | null)}</td>
+                    <td className="px-6 py-3 text-xs text-stone-500">{fmtDate(d.clicked_at as string | null)}</td>
+                    <td className="px-6 py-3 text-xs text-red-600 max-w-md truncate">{d.error_message ?? "—"}</td>
+                    <td className="px-6 py-3 text-xs text-stone-500">{fmtDate(d.sent_at as string | null)}</td>
                   </tr>
                 ))}
               </tbody>
