@@ -236,6 +236,15 @@ function isAlwaysPublicApiPath(pathname: string): boolean {
     // middleware (Origin/Referer must end with our hostname) and
     // rate-limited per-IP via checkRateLimit("api", ...).
     pathname.startsWith("/api/shop/") ||
+    // Keep-warm endpoints (P2-G audit 2026-05-03 — Joey). Vercel Cron
+    // hits these every 5 min to keep the runtime + Supabase pool warm.
+    // Pre-fix: middleware 401'd them so the keep-warm work never ran
+    // (~105,000 wasted invocations/year, no cold-start prevention).
+    // Routes have their own bearer check (or are intentionally public
+    // per the comment in /api/warm — the read is a 1-row LIMIT 1 ping
+    // with no data leak in the response).
+    pathname === "/api/warm" ||
+    pathname === "/api/dashboard/warm" ||
     // Public landing-page AI Copilot — answers Nexpura questions for
     // unauthenticated visitors. Rate-limited per IP via the "ai" bucket
     // (see src/app/api/ai/landing-copilot/route.ts).
