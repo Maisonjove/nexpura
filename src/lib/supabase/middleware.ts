@@ -20,6 +20,45 @@ import {
 import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// ── Subdomain rewrite helpers (Joey 2026-05-03 P0) ───────────────────
+// Reserved subdomains we never treat as tenant storefronts. Rather than
+// an allowlist of tenant subdomains (which would require a DB lookup
+// for every request), we use a small denylist of platform-owned names.
+// `(shop)/[subdomain]/page.tsx` itself does the website_config lookup
+// and 404s if the subdomain doesn't match a tenant.
+const RESERVED_SUBDOMAINS = new Set([
+  "www", "app", "api", "admin", "blog", "docs", "help", "status",
+  "mail", "smtp", "imap", "pop", "ftp", "cdn", "static", "assets",
+  "preview", "staging", "dev", "test",
+]);
+
+function extractTenantSubdomain(host: string): string | null {
+  // Strip port. Lowercase to be safe.
+  const hostname = host.split(":")[0].toLowerCase();
+  const m = hostname.match(/^([a-z0-9-]+)\.nexpura\.com$/);
+  if (!m) return null;
+  const sub = m[1];
+  if (RESERVED_SUBDOMAINS.has(sub)) return null;
+  if (sub === "nexpura") return null;
+  return sub;
+}
+
+// Pathnames the subdomain rewrite must NEVER touch — Next.js internals,
+// favicon, the storefront's own static assets, etc. Rewriting these
+// would either break HMR / static asset paths or send them through the
+// (shop)/[subdomain] route that has no /_next handler.
+function shouldRewriteForSubdomain(pathname: string): boolean {
+  if (pathname.startsWith("/_next/")) return false;
+  if (pathname.startsWith("/api/")) return false;
+  if (pathname === "/favicon.ico") return false;
+  if (pathname === "/robots.txt") return false;
+  if (pathname === "/sitemap.xml") return false;
+  if (pathname === "/widget.js") return false;
+  if (pathname.startsWith("/embed/")) return false;
+  if (pathname.startsWith("/auth/")) return false;
+  return true;
+}
+
 // Profile shape middleware actually consumes. Deliberately a narrow
 // subset of the users/tenants row so both the shell-cookie fast path
 // and the getCachedUserProfile slow path converge on it.
@@ -357,6 +396,29 @@ export async function updateSession(request: NextRequest) {
 
 async function _updateSessionInner(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  // ── Subdomain → path rewrite (Joey 2026-05-03 P0) ────────────────────
+  // The website builder UI surfaces `<subdomain>.nexpura.com` to tenants
+  // as the public URL of their storefront (DomainTab, PreviewTab,
+  // SetupTab). The Vercel project owns nexpura.com but not (yet) the
+  // wildcard *.nexpura.com — once the wildcard is added there, this
+  // middleware rewrite is what actually routes the request to the
+  // (shop)/[subdomain] page that already exists.
+  //
+  // Without this rewrite, even with the wildcard cert provisioned,
+  // `https://maisonjove.nexpura.com/` would just hit the marketing
+  // home page (Next.js sees pathname="/", host doesn't matter).
+  //
+  // We do this BEFORE isPublicPath so a / on a tenant subdomain
+  // becomes /<sub>/ and isPublicPath sees the rewritten path.
+  const earlyHost = request.headers.get("host") || "";
+  const subFromHost = extractTenantSubdomain(earlyHost);
+  if (subFromHost && shouldRewriteForSubdomain(pathname)) {
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname = `/${subFromHost}${pathname === "/" ? "" : pathname}`;
+    return NextResponse.rewrite(rewriteUrl);
+  }
+  // ── end subdomain rewrite ────────────────────────────────────────────
 
   // Short-circuit for public & marketing routes — no Supabase round-trip needed.
   // This eliminates the 50-100ms auth.getUser() latency on every marketing page nav.
