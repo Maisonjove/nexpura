@@ -290,7 +290,7 @@ export async function processChunkOfRows(
       ),
     };
 
-    let result: { status: string; recordId?: string; error?: string; invoiceNumber?: string } = { status: 'skipped' };
+    let result: { status: string; recordId?: string; error?: string; invoiceNumber?: string; warnings?: string[] } = { status: 'skipped' };
 
     if (entity === 'customers') {
       result = await importCustomer(admin, ctx, importRow, mappedData);
@@ -356,6 +356,15 @@ export async function processChunkOfRows(
     else if (result.status === 'error') { acc.errors++; acc.byEntity[entity].error++; }
     else if (result.status === 'skipped') { acc.skipped++; acc.byEntity[entity].skipped++; }
 
+    // Per-row warnings (e.g. blank required field accepted as NULL):
+    // increment the job-level warning counter so migration_jobs reflects
+    // reality even when a row is otherwise a clean success. Pre-fix the
+    // counter only ticked for duplicates, so silent substitutions
+    // (Group 13 audit finding) hid in success_count.
+    if (result.warnings && result.warnings.length > 0) {
+      acc.warnings++;
+    }
+
     const destinationTable = entity === 'customers' ? 'customers'
       : entity === 'inventory' ? 'inventory'
       : entity === 'repairs' ? 'repairs'
@@ -365,6 +374,16 @@ export async function processChunkOfRows(
       : entity === 'payments' ? 'payments'
       : null;
 
+    // Compose warning_message from result.warnings (data-integrity flags
+    // from the importer) or the duplicate fallback. Status is downgraded
+    // to 'warning' if EITHER condition fires — pre-fix only duplicates
+    // ever flipped the status, so silent substitutions (e.g. blank
+    // full_name → NULL) appeared as clean 'success' rows.
+    const isDuplicate = result.status === 'duplicate';
+    const hasWarnings = (result.warnings?.length ?? 0) > 0;
+    const warningParts: string[] = [];
+    if (isDuplicate) warningParts.push(`Duplicate — matched existing record ${result.recordId}`);
+    if (hasWarnings) warningParts.push(...(result.warnings as string[]));
     jobRecords.push({
       tenant_id: tenantId,
       job_id: jobId,
@@ -375,9 +394,9 @@ export async function processChunkOfRows(
       source_external_id: importRow.sourceExternalId || null,
       destination_record_id: result.recordId || null,
       destination_table: destinationTable,
-      status: result.status === 'duplicate' ? 'warning' : result.status,
+      status: (isDuplicate || hasWarnings) ? 'warning' : result.status,
       error_message: result.error || null,
-      warning_message: result.status === 'duplicate' ? `Duplicate — matched existing record ${result.recordId}` : null,
+      warning_message: warningParts.length ? warningParts.join('; ') : null,
       source_data: { ...sourceRow, _mapped: mappedData },
     });
 
@@ -623,6 +642,7 @@ async function runChunk(
     total_errors: acc.errors,
     total_skipped: acc.skipped,
     total_duplicates: acc.duplicates,
+    total_warnings: acc.warnings,
   };
 
   if (fileFinished) {
@@ -632,7 +652,11 @@ async function runChunk(
       current_row_offset: 0,
       processed_records: acc.processed,
       success_count: acc.success,
-      warning_count: acc.duplicates,
+      // warning_count counts BOTH duplicates AND row-level warnings
+      // (e.g. blank required field accepted as NULL). Pre-fix only
+      // duplicates ticked the counter, so silent substitutions hid
+      // in success_count.
+      warning_count: acc.duplicates + acc.warnings,
       error_count: acc.errors,
       skipped_count: acc.skipped,
       results_summary: updatedSummary,

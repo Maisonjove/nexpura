@@ -21,6 +21,13 @@ interface EntitySummary {
   warnings: number;
 }
 
+interface UnmappedFile {
+  fileId: string;
+  fileName: string;
+  entity: string;
+  unmappedColumns: string[];
+}
+
 interface Props {
   sessionId: string;
   summary: EntitySummary[];
@@ -29,9 +36,10 @@ interface Props {
   aiSummary: any;
   dataScope: string;
   rt?: string;
+  unmappedColumns?: UnmappedFile[];
 }
 
-export function PreviewClient({ sessionId, summary, totalErrors, totalWarnings, aiSummary, dataScope, rt }: Props) {
+export function PreviewClient({ sessionId, summary, totalErrors, totalWarnings, aiSummary, dataScope, rt, unmappedColumns = [] }: Props) {
   const router = useRouter();
   const [scope, setScope] = useState(dataScope || 'active');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -109,6 +117,51 @@ export function PreviewClient({ sessionId, summary, totalErrors, totalWarnings, 
 
       {/* Summary */}
       <ImportPreviewPanel summary={summary} totalErrors={totalErrors} totalWarnings={totalWarnings} />
+
+      {/* Unmapped CSV columns — surface BEFORE the import runs so the
+          user knows what data they're about to drop. Pre-fix any
+          source column that wasn't auto-mapped just disappeared at
+          execute time with no warning (Group 13 audit finding). */}
+      {unmappedColumns.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+          <div className="flex items-start gap-3 mb-3">
+            <AlertTriangle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-stone-900 text-sm">
+                {unmappedColumns.reduce((n, u) => n + u.unmappedColumns.length, 0)} column{unmappedColumns.reduce((n, u) => n + u.unmappedColumns.length, 0) === 1 ? "" : "s"} won&rsquo;t be imported
+              </h3>
+              <p className="text-stone-700 text-xs mt-1">
+                These CSV columns weren&rsquo;t mapped to a Nexpura field and will be dropped on import. Go back to the mapping step if any of these are data you need.
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3 ml-8">
+            {unmappedColumns.map((u) => (
+              <div key={u.fileId}>
+                <p className="text-xs text-stone-500 font-medium">
+                  <span className="text-stone-900">{u.fileName}</span>
+                  <span className="text-stone-400"> ({u.entity})</span>
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {u.unmappedColumns.map((col) => (
+                    <span key={col} className="text-xs bg-white border border-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-mono">
+                      {col}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 ml-8">
+            <a
+              href={`/migration/${sessionId}/mapping${rt ? `?rt=${rt}` : ""}`}
+              className="text-xs font-semibold text-amber-700 hover:underline"
+            >
+              ← Back to mapping
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Start Import */}
       {!showConfirm ? (
