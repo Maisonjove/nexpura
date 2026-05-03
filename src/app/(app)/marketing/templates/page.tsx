@@ -1,28 +1,34 @@
-import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { AUTH_HEADERS } from "@/lib/cached-auth";
 import TemplatesClient from "./TemplatesClient";
 
 export const metadata = { title: "Email Templates — Nexpura" };
 
-export default async function TemplatesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function TemplatesPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+      <TemplatesBody />
+    </Suspense>
+  );
+}
+
+async function TemplatesBody() {
+  const headersList = await headers();
+  const tenantId = headersList.get(AUTH_HEADERS.TENANT_ID);
+  if (!tenantId) redirect("/login");
 
   const admin = createAdminClient();
-
-  const { data: userData } = await admin
-    .from("users")
-    .select("tenant_id, tenants(name, business_name)")
-    .eq("id", user?.id ?? "")
+  const { data: tenantRow } = await admin
+    .from("tenants")
+    .select("name, business_name")
+    .eq("id", tenantId)
     .single();
+  const businessName = tenantRow?.business_name || tenantRow?.name || "Business";
 
-  const tenantId = userData?.tenant_id ?? "";
-  const tenantData = userData?.tenants as { name?: string; business_name?: string } | null;
-  const businessName = tenantData?.business_name || tenantData?.name || "Business";
-
-  // Fetch templates
   const { data: templates } = await admin
     .from("email_templates")
     .select("*")
@@ -30,7 +36,6 @@ export default async function TemplatesPage() {
     .order("is_system", { ascending: false })
     .order("name");
 
-  // Format templates with proper typing
   const formattedTemplates = (templates || []).map((t) => ({
     ...t,
     variables: (t.variables as string[]) || [],
