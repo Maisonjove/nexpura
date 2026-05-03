@@ -34,16 +34,35 @@ export async function GET(
 
   const admin = createAdminClient();
 
-  // Resolve tenant by subdomain
-  const { data: tenant } = await admin
-    .from("tenants")
-    .select("id, name, business_name, phone, email, address_line1, suburb, state, postcode")
+  // Joey 2026-05-03 P2-B audit: pre-fix this resolved tenant from
+  // tenants.subdomain (a different column to website_config.subdomain
+  // used by every sibling endpoint), and didn't filter deleted_at. Now
+  // resolve via website_config.subdomain + JOIN tenants for the contact
+  // fields, with deleted_at and published guards. Brings repair-track
+  // into line with /enquiry / /appointment / /repair-enquiry.
+  const { data: config } = await admin
+    .from("website_config")
+    .select("tenant_id, published, tenants!inner(id, name, business_name, phone, email, address_line1, suburb, state, postcode, deleted_at)")
     .eq("subdomain", subdomain)
-    .single();
-
-  if (!tenant) {
+    .maybeSingle();
+  const tenantsRel = (config as unknown as {
+    tenants?: {
+      id: string;
+      name: string | null;
+      business_name: string | null;
+      phone: string | null;
+      email: string | null;
+      address_line1: string | null;
+      suburb: string | null;
+      state: string | null;
+      postcode: string | null;
+      deleted_at: string | null;
+    } | null;
+  })?.tenants;
+  if (!config?.published || !tenantsRel || tenantsRel.deleted_at) {
     return NextResponse.json({ error: "Store not found" }, { status: 404 });
   }
+  const tenant = tenantsRel;
 
   // Look up repair by ticket number (case-insensitive)
   const { data: repair } = await admin

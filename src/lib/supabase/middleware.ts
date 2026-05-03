@@ -227,6 +227,15 @@ function isAlwaysPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/bespoke/approval-response") ||
     pathname.startsWith("/api/bespoke/approval-validate") ||
     pathname.startsWith("/api/contact") ||
+    // Public storefront endpoints (P2-B audit 2026-05-03 — Joey).
+    // Anonymous customers submit enquiry / appointment / repair-enquiry
+    // forms from nexpura.com/{subdomain}/* AND from iframe-embedded
+    // widgets at /embed/{tenantId}/*. Pre-fix: every submission hit the
+    // AAL2 401-Unauthorized gate, so storefront forms silently failed
+    // for every customer. Routes are CSRF-gated via the top-level
+    // middleware (Origin/Referer must end with our hostname) and
+    // rate-limited per-IP via checkRateLimit("api", ...).
+    pathname.startsWith("/api/shop/") ||
     // Public landing-page AI Copilot — answers Nexpura questions for
     // unauthenticated visitors. Rate-limited per IP via the "ai" bucket
     // (see src/app/api/ai/landing-copilot/route.ts).

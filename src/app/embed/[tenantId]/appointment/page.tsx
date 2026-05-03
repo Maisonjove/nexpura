@@ -24,10 +24,14 @@ export default function EmbedAppointmentPage({ params }: Props) {
 
 async function AppointmentBody({ paramsPromise }: { paramsPromise: Promise<{ tenantId: string }> }) {
   const { tenantId } = await paramsPromise;
-  const businessName = await loadBusinessName(tenantId);
-  // Consistent with /embed/[tenantId] (catalogue) — don't render a
-  // submittable form for a non-existent tenant.
-  if (businessName === null) notFound();
+  // Joey 2026-05-03 P2-B audit: resolve {businessName, subdomain} together.
+  // Without subdomain, the inline form below would post to
+  // /api/shop/{tenantId}/appointment — but the API endpoint expects a
+  // SUBDOMAIN, not a tenant_id. Pre-fix: every embed-form submission
+  // 404'd silently (fetch resolves on 4xx, embed shows "thank you").
+  const tenantInfo = await loadTenantForEmbed(tenantId);
+  if (!tenantInfo) notFound();
+  const { businessName, subdomain } = tenantInfo;
 
   return (
     <html lang="en">
@@ -128,7 +132,11 @@ async function AppointmentBody({ paramsPromise }: { paramsPromise: Promise<{ ten
               notes: fd.get('notes'),
             };
             try {
-              await fetch('/api/shop/${tenantId}/appointment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+              const r = await fetch('/api/shop/${subdomain}/appointment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+              if (!r.ok) {
+                const errEl = document.getElementById('error-msg'); if (errEl) errEl.style.display = 'block';
+                return;
+              }
               document.getElementById('appt-form').style.display = 'none';
               document.getElementById('success-msg').style.display = 'block';
             } catch(err) {
@@ -141,13 +149,33 @@ async function AppointmentBody({ paramsPromise }: { paramsPromise: Promise<{ ten
   );
 }
 
-async function loadBusinessName(tenantId: string): Promise<string | null> {
+// Joey 2026-05-03 P2-B audit: replaces loadBusinessName(). Resolves the
+// (businessName, subdomain) tuple in one query and excludes soft-deleted
+// tenants. Subdomain is the value the form posts to; without it the embed
+// form had nothing to submit against.
+async function loadTenantForEmbed(
+  tenantId: string,
+): Promise<{ businessName: string; subdomain: string } | null> {
   const admin = createAdminClient();
   const { data: tenant } = await admin
     .from("tenants")
-    .select("business_name, name")
+    .select("business_name, name, deleted_at")
     .eq("id", tenantId)
+    .is("deleted_at", null)
     .maybeSingle();
   if (!tenant) return null;
-  return (tenant.business_name as string | null) || (tenant.name as string | null) || "Jewellery Store";
+  const businessName =
+    (tenant.business_name as string | null) ||
+    (tenant.name as string | null) ||
+    "Jewellery Store";
+  // The form posts to /api/shop/{subdomain}/* — endpoint resolves
+  // tenant via website_config.subdomain. Bail if the tenant has no
+  // website_config row (= they never set up an online surface).
+  const { data: wc } = await admin
+    .from("website_config")
+    .select("subdomain")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (!wc?.subdomain) return null;
+  return { businessName, subdomain: wc.subdomain as string };
 }

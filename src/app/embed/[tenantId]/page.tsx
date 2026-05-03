@@ -190,10 +190,23 @@ async function loadCatalogueData(
   cacheTag(`embed-catalogue:${tenantId}`);
   const supabase = createAdminClient();
 
+  // Joey 2026-05-03 P2-B audit: pre-fix this rendered the catalogue
+  // for ANY tenant with a website_config row — including soft-deleted
+  // tenants, and tenants who configured a website but never flipped
+  // published=true. Both cases now 404.
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("id")
+    .eq("id", tenantId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!tenant) return null;
+
   const { data: config } = await supabase
     .from("website_config")
     .select("*")
     .eq("tenant_id", tenantId)
+    .eq("published", true)
     .maybeSingle();
 
   if (!config) return null;
