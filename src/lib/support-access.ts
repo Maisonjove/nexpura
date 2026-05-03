@@ -120,8 +120,14 @@ export async function approveSupportAccess(
     return { success: false, error: error.message };
   }
 
-  // Log the approval
-  await admin.from("activity_logs").insert({
+  // Log the approval. Group 17 audit: pre-fix this targeted "activity_logs"
+  // (plural) which doesn't exist on this project — the canonical table is
+  // "activity_log" (singular). Combined with the bare `await admin.from(...)`
+  // pattern that swallowed the error (Group 14/16 systemic finding), the
+  // approve/deny/revoke audit trail has been silently failing since the
+  // support-access feature shipped. Verified live: `WHERE action LIKE
+  // 'support_access%'` returned 0 rows on prod before this fix.
+  const { error: logErr } = await admin.from("activity_log").insert({
     tenant_id: request.tenant_id,
     user_id: approvedBy,
     action: "support_access_approved",
@@ -132,16 +138,35 @@ export async function approveSupportAccess(
       expires_at: expiresAt.toISOString(),
     },
   });
+  if (logErr) {
+    logger.error("[support-access] approval audit-log insert failed", logErr);
+    // Non-blocking — the approval itself succeeded; log the audit miss
+    // for ops investigation but don't fail the user-facing flow.
+  }
 
   return { success: true };
 }
 
 /**
- * Deny a support access request
+ * Deny a support access request.
+ *
+ * Group 17 audit: deny is intentionally callable while logged-out (the
+ * email-delivered token IS the auth — clicking the link from the email
+ * client without a separate login was the design intent). But the
+ * pre-fix audit logic ONLY logged the denial when `deniedBy` was set,
+ * so anonymous denies (the most common path) left no record at all.
+ * Combined with the wrong-table-name bug (was "activity_logs", actual
+ * table is "activity_log"), the deny path produced ZERO audit rows
+ * historically.
+ *
+ * Now: always insert an audit row. user_id stays nullable in
+ * activity_log; anonymous denies record user_id=null with optional
+ * IP/user-agent context the caller passes in for attribution.
  */
 export async function denySupportAccess(
   token: string,
-  deniedBy?: string
+  deniedBy?: string,
+  context?: { ipAddress?: string | null; userAgent?: string | null },
 ): Promise<{ success: boolean; error?: string }> {
   const admin = createAdminClient();
 
@@ -167,18 +192,23 @@ export async function denySupportAccess(
     return { success: false, error: error.message };
   }
 
-  // Log the denial
-  if (deniedBy) {
-    await admin.from("activity_logs").insert({
-      tenant_id: request.tenant_id,
-      user_id: deniedBy,
-      action: "support_access_denied",
-      entity_type: "support_access",
-      entity_id: request.id,
-      details: {
-        requested_by_email: request.requested_by_email,
-      },
-    });
+  // Always log the denial — even anonymous. activity_log.user_id is
+  // nullable, so this is safe.
+  const { error: logErr } = await admin.from("activity_log").insert({
+    tenant_id: request.tenant_id,
+    user_id: deniedBy ?? null,
+    action: "support_access_denied",
+    entity_type: "support_access",
+    entity_id: request.id,
+    details: {
+      requested_by_email: request.requested_by_email,
+      anonymous: !deniedBy,
+    },
+    ip_address: context?.ipAddress ?? null,
+    user_agent: context?.userAgent ?? null,
+  });
+  if (logErr) {
+    logger.error("[support-access] denial audit-log insert failed", logErr);
   }
 
   return { success: true };
@@ -220,8 +250,8 @@ export async function revokeSupportAccess(
     return { success: false, error: error.message };
   }
 
-  // Log the revocation
-  await admin.from("activity_logs").insert({
+  // Log the revocation. Group 17: same wrong-table-name fix as approve/deny.
+  const { error: logErr } = await admin.from("activity_log").insert({
     tenant_id: request.tenant_id,
     user_id: revokedBy,
     action: "support_access_revoked",
@@ -231,6 +261,9 @@ export async function revokeSupportAccess(
       requested_by_email: request.requested_by_email,
     },
   });
+  if (logErr) {
+    logger.error("[support-access] revoke audit-log insert failed", logErr);
+  }
 
   return { success: true };
 }

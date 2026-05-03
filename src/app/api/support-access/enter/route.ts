@@ -48,8 +48,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Log the access
-  await adminClient.from("activity_logs").insert({
+  // Log the access. Group 17 audit: same wrong-table fix as
+  // lib/support-access.ts — was "activity_logs" (plural, doesn't exist),
+  // canonical table is "activity_log" (singular). Also captures the IP
+  // from the rate-limit branch so audit rows include the network
+  // origin of the support session entry.
+  const userAgent = request.headers.get("user-agent") ?? null;
+  const { error: logErr } = await adminClient.from("activity_log").insert({
     tenant_id: tenantId,
     user_id: user.id,
     action: "support_access_entered",
@@ -58,7 +63,14 @@ export async function GET(request: NextRequest) {
       super_admin_email: user.email,
       expires_at: expiresAt,
     },
+    ip_address: ip === "anonymous" ? null : ip,
+    user_agent: userAgent,
   });
+  if (logErr) {
+    // Audit log is non-blocking — proceed with the redirect even if
+    // the row insert failed (e.g. transient DB issue). Log to monitoring.
+    console.error("[support-access/enter] audit-log insert failed", logErr);
+  }
 
   // Set a cookie to indicate support access mode
   const cookieStore = await cookies();
