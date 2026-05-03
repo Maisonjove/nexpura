@@ -1,31 +1,87 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useRef, useTransition } from "react";
 import { format } from "date-fns";
-import { 
-  Calendar, 
-  User, 
-  Tag, 
-  MessageSquare, 
-  History, 
-  Paperclip, 
-  CheckCircle2, 
+import {
+  Calendar,
+  User,
+  Tag,
+  MessageSquare,
+  History,
+  Paperclip,
+  CheckCircle2,
   Circle,
   Send,
   Trash2
 } from "lucide-react";
-import { updateTask, addTaskComment } from "../actions";
+import { updateTask, addTaskComment, addTaskAttachment, deleteTaskAttachment } from "../actions";
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
-export default function TaskDetailClient({ 
-  task, 
-  initialComments, 
+export default function TaskDetailClient({
+  task,
+  initialComments,
   activities,
-  attachments 
+  attachments: initialAttachments
 }: any) {
   const [comments, setComments] = useState(initialComments);
+  const [attachments, setAttachments] = useState<Array<{ id: string; file_name: string; file_url: string; file_type?: string; file_size?: number }>>(initialAttachments);
   const [newComment, setNewComment] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
+
+  /**
+   * Upload attachment via the Supabase Storage 'inventory-photos' bucket
+   * (the catch-all public bucket used by /expenses receipts and other
+   * task attachments). 10MB cap + JPEG/PNG/WEBP/HEIC/HEIC/PDF whitelist.
+   * Group 14 audit fix — pre-fix the "+ Upload" button had no handler.
+   */
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError(null);
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("File too large — max 10 MB.");
+      return;
+    }
+    const ACCEPTED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
+    if (!ACCEPTED.includes(file.type)) {
+      setUploadError(`Unsupported type "${file.type}". Use JPEG/PNG/WEBP/HEIC/PDF.`);
+      return;
+    }
+    setUploading(true);
+    try {
+      const supabase = createBrowserClient();
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+      const path = `task-attachment-${task.id}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("inventory-photos")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) {
+        setUploadError(upErr.message);
+        return;
+      }
+      const { data: pub } = supabase.storage.from("inventory-photos").getPublicUrl(path);
+      const r = await addTaskAttachment(task.id, file.name, pub.publicUrl, file.type, file.size);
+      if (r.error || !r.data) {
+        setUploadError(r.error ?? "Failed to attach file");
+        return;
+      }
+      setAttachments((prev) => [r.data!, ...prev]);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleDeleteAttachment(attachmentId: string) {
+    if (!confirm("Delete this attachment? This cannot be undone.")) return;
+    const r = await deleteTaskAttachment(attachmentId);
+    if (r.error) { setUploadError(r.error); return; }
+    setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+  }
 
   async function handleStatusToggle() {
     const newStatus = task.status === "completed" ? "todo" : "completed";
@@ -191,19 +247,46 @@ export default function TaskDetailClient({
               <Paperclip size={18} className="text-amber-700" />
               <h3 className="font-bold text-sm text-stone-900">Attachments</h3>
             </div>
-            <button className="text-[10px] font-bold text-amber-700 uppercase tracking-widest hover:underline">+ Upload</button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="text-[10px] font-bold text-amber-700 uppercase tracking-widest hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {uploading ? "Uploading…" : "+ Upload"}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
+              className="hidden"
+              onChange={handleUpload}
+            />
           </div>
           <div className="p-5 space-y-3">
+            {uploadError && (
+              <p className="text-xs text-red-600">{uploadError}</p>
+            )}
             {attachments.length === 0 ? (
               <p className="text-xs text-stone-400 italic">No files attached.</p>
             ) : (
-              attachments.map((file: any) => (
+              attachments.map((file: { id: string; file_name: string; file_url: string }) => (
                 <div key={file.id} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg group">
-                  <div className="flex items-center gap-2 overflow-hidden">
+                  <a
+                    href={file.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 overflow-hidden flex-1 hover:underline"
+                  >
                     <div className="p-1.5 bg-white rounded border border-stone-200 text-stone-400"><Paperclip size={12} /></div>
                     <span className="text-xs font-medium text-stone-700 truncate">{file.file_name}</span>
-                  </div>
-                  <button className="text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAttachment(file.id)}
+                    title={`Delete ${file.file_name}`}
+                    className="text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                  >
                     <Trash2 size={14} />
                   </button>
                 </div>
