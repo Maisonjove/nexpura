@@ -287,7 +287,25 @@ function augmentVaryForHotPrefetch(
 // The spec says CSP frame-ancestors supersedes X-Frame-Options when both
 // are present, so the end behaviour matched the CSP — but the presence
 // of the header is misleading. Removed.
-function addSecurityHeaders(response: NextResponse): NextResponse {
+//
+// Joey 2026-05-03 P2-B audit: pre-fix every response (including
+// /embed/* and /widget.js) carried `frame-ancestors 'self' annot8.dev
+// openclaw.ai astry.agency` — which BLOCKED the embed from being
+// iframed on customer websites (the entire point of the embed
+// feature). Maison Jove pasting the snippet on www.maisonjove.com.au
+// would see "blocked by CSP" in the browser console and a blank
+// iframe. Now /embed/* and /widget.js use `frame-ancestors *` (any
+// origin can iframe them), and every other path keeps the strict
+// allowlist for clickjack defence on the actual app surface.
+function addSecurityHeaders(
+  response: NextResponse,
+  pathname: string,
+): NextResponse {
+  const isPublicEmbed =
+    pathname.startsWith("/embed/") || pathname === "/widget.js";
+  const frameAncestors = isPublicEmbed
+    ? "frame-ancestors *"
+    : "frame-ancestors 'self' https://annot8.dev https://*.annot8.dev https://openclaw.ai https://*.openclaw.ai https://astry.agency https://*.astry.agency";
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.vercel-scripts.com https://*.supabase.co https://*.sentry.io https://*.sentry-cdn.com https://js.stripe.com https://checkout.stripe.com https://www.annot8.dev https://cdnjs.cloudflare.com",
@@ -296,7 +314,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     "font-src 'self' https://fonts.gstatic.com data:",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io https://api.stripe.com https://checkout.stripe.com https://*.vercel-insights.com https://*.google-analytics.com https://*.googleapis.com https://www.annot8.dev",
     "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://*.supabase.co",
-    "frame-ancestors 'self' https://annot8.dev https://*.annot8.dev https://openclaw.ai https://*.openclaw.ai https://astry.agency https://*.astry.agency",
+    frameAncestors,
     "form-action 'self'",
     "base-uri 'self'",
     "object-src 'none'",
@@ -414,15 +432,16 @@ export async function middleware(request: NextRequest) {
   // can't slip headers through on a middleware error.
   const scrubbed = stripForgedAuthHeaders(request);
 
+  const pathname = request.nextUrl.pathname;
   try {
     // CSRF gate before the main pipeline so auth side-effects don't
     // run on rejected cross-origin mutations.
     const csrfReject = await enforceApiCsrf(scrubbed);
-    if (csrfReject) return addSecurityHeaders(csrfReject);
+    if (csrfReject) return addSecurityHeaders(csrfReject, pathname);
 
     const response = await withTimeout(_proxyInner(scrubbed), 4500);
     augmentVaryForHotPrefetch(scrubbed, response);
-    return addSecurityHeaders(response);
+    return addSecurityHeaders(response, pathname);
   } catch (err) {
     const isTimeout = err instanceof Error && err.message === "MIDDLEWARE_TIMEOUT";
     if (!isTimeout) console.error("[middleware] unexpected error -- passing through:", err);
@@ -431,7 +450,7 @@ export async function middleware(request: NextRequest) {
     // downstream handlers.
     const fallback = NextResponse.next({ request: scrubbed });
     augmentVaryForHotPrefetch(scrubbed, fallback);
-    return addSecurityHeaders(fallback);
+    return addSecurityHeaders(fallback, pathname);
   }
 }
 
