@@ -29,8 +29,13 @@ async function fetchMetrics(tenantId: string, gstRate: number): Promise<MetricsD
       admin.from("sales").select("total").eq("tenant_id", tenantId).in("status", ["paid", "completed"]).gte("sale_date", prevMonthStart).lte("sale_date", prevMonthEnd),
       admin.from("refunds").select("total, refund_method").eq("tenant_id", tenantId).gte("created_at", monthStart),
       admin.from("invoices").select("amount_due, status").eq("tenant_id", tenantId).in("status", ["sent", "overdue", "partially_paid", "draft"]).is("deleted_at", null),
-      admin.from("invoices").select("total").eq("tenant_id", tenantId).eq("status", "paid").gte("created_at", monthStart).is("deleted_at", null),
-      admin.from("invoices").select("total").eq("tenant_id", tenantId).eq("status", "paid").gte("created_at", prevMonthStart).lte("created_at", prevMonthEnd).is("deleted_at", null),
+      // Standalone invoices only (sale_id IS NULL). POS sales create a
+      // linked invoice record with sale_id set; counting both would
+      // double the revenue figure for every POS transaction. Pre-fix
+      // the metrics card showed ~2x the real number for tenants that
+      // run POS heavily.
+      admin.from("invoices").select("total").eq("tenant_id", tenantId).eq("status", "paid").is("sale_id", null).gte("created_at", monthStart).is("deleted_at", null),
+      admin.from("invoices").select("total").eq("tenant_id", tenantId).eq("status", "paid").is("sale_id", null).gte("created_at", prevMonthStart).lte("created_at", prevMonthEnd).is("deleted_at", null),
       admin.from("sales").select("sale_date, total").eq("tenant_id", tenantId).in("status", ["paid", "completed"]).gte("sale_date", new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]).order("sale_date", { ascending: true }),
       admin.from("refunds").select("created_at, total").eq("tenant_id", tenantId).gte("created_at", new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()),
     ]);
@@ -118,7 +123,8 @@ async function fetchFinanceHubData(tenantId: string): Promise<FinanceHubData> {
     upcomingPaymentsRes,
     recentPaymentsRes,
     overdueAmountRes,
-    paidThisMonthRes,
+    paidSalesThisMonthRes,
+    paidStandaloneInvoicesThisMonthRes,
     expensesThisMonthRes,
     refundsThisMonthRes,
   ] = await Promise.all([
@@ -168,13 +174,24 @@ async function fetchFinanceHubData(tenantId: string): Promise<FinanceHubData> {
       .not("status", "in", '("paid","voided","draft","cancelled")')
       .lt("due_date", todayIso)
       .is("deleted_at", null),
-    // Paid this month (sales + invoices count toward "paid this month")
+    // Paid this month — POS sales + standalone (non-POS) paid invoices.
+    // Linked invoices (sale_id NOT NULL) are skipped so we don't
+    // double-count POS revenue. Net Revenue panel reads this minus
+    // refunds/expenses.
     admin
       .from("sales")
       .select("total")
       .eq("tenant_id", tenantId)
       .in("status", ["paid", "completed"])
       .gte("sale_date", monthStart),
+    admin
+      .from("invoices")
+      .select("total")
+      .eq("tenant_id", tenantId)
+      .eq("status", "paid")
+      .is("sale_id", null)
+      .is("deleted_at", null)
+      .gte("created_at", monthStart),
     // Expenses this month
     admin
       .from("expenses")
@@ -233,10 +250,15 @@ async function fetchFinanceHubData(tenantId: string): Promise<FinanceHubData> {
     (sum, r) => sum + (Number(r.amount_due) || 0),
     0
   );
-  const paidThisMonth = (paidThisMonthRes.data ?? []).reduce(
-    (sum, r) => sum + (Number(r.total) || 0),
-    0
-  );
+  const paidThisMonth =
+    (paidSalesThisMonthRes.data ?? []).reduce(
+      (sum, r) => sum + (Number(r.total) || 0),
+      0,
+    ) +
+    (paidStandaloneInvoicesThisMonthRes.data ?? []).reduce(
+      (sum, r) => sum + (Number(r.total) || 0),
+      0,
+    );
   const expensesThisMonth = (expensesThisMonthRes.data ?? []).reduce(
     (sum, r) => sum + (Number(r.amount) || 0),
     0

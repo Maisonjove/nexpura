@@ -34,6 +34,18 @@ export async function GET(req: NextRequest) {
   const from = searchParams.get("from") ?? "";
   const to = searchParams.get("to") ?? "";
   const category = searchParams.get("category") ?? "all";
+
+  // Inverted date range — if both bounds are set and from > to, the query
+  // returns nothing silently and the report looks empty. Surface a 400
+  // so the UI can show a real error instead of confusing the user with
+  // "no expenses".
+  if (from && to && from > to) {
+    return NextResponse.json(
+      { error: "Date range is inverted: 'from' must be on or before 'to'." },
+      { status: 400 },
+    );
+  }
+
   let query = admin
     .from("expenses")
     .select("id, description, category, amount, invoice_ref, expense_date, created_at")

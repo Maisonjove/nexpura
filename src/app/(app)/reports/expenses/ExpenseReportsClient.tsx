@@ -55,16 +55,32 @@ export default function ExpenseReportsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rangeError, setRangeError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Client-side guard so the user sees the error before the request
+    // even fires. Server still re-validates and returns 400.
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      setRangeError("End date is before start date — no expenses to show.");
+      setExpenses([]);
+      setLoading(false);
+      return;
+    }
+    setRangeError(null);
     setLoading(true);
     fetch(`/api/reports/expenses?from=${dateFrom}&to=${dateTo}&category=${categoryFilter}`)
-      .then((r) => r.json())
-      .then((data) => {
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => ({}));
+          setRangeError(body.error ?? `Request failed (${r.status}).`);
+          setExpenses([]);
+          return;
+        }
+        const data = await r.json();
         setExpenses(data.expenses ?? []);
-        setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => setRangeError("Network error loading expenses."))
+      .finally(() => setLoading(false));
   }, [dateFrom, dateTo, categoryFilter]);
 
   const total = expenses.reduce((s, e) => s + (e.amount || 0), 0);
@@ -134,6 +150,12 @@ export default function ExpenseReportsPage() {
           </Link>
         </div>
       </div>
+
+      {rangeError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+          {rangeError}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white border border-stone-200 rounded-xl p-4 flex flex-wrap items-end gap-4 shadow-sm">
