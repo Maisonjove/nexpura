@@ -380,7 +380,11 @@ describe("Shopify callback tenant binding (W6-CRIT-08)", () => {
   const src = read("src/app/api/integrations/shopify/callback/route.ts");
 
   it("requires the signed-in session tenant to match the signed state tenant", () => {
-    expect(src).toMatch(/getAuthContext/);
+    // Group 15 audit replaced the bare getAuthContext call with
+    // requireIntegrationManager (which wraps getAuthContext + a role
+    // check). The contract — tenant resolved from session, not URL —
+    // is preserved either way.
+    expect(src).toMatch(/getAuthContext|requireIntegrationManager/);
     expect(src).toMatch(/Tenant mismatch|tenant mismatch/);
   });
 

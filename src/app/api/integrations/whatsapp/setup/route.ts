@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthContext, upsertIntegration } from "@/lib/integrations";
+import { requireIntegrationManager, upsertIntegration } from "@/lib/integrations";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { tenantId } = await getAuthContext();
+    const { tenantId } = await requireIntegrationManager();
     const body = await req.json();
     const { business_account_id, phone_number_id, access_token } = body;
 
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(_req: NextRequest) {
   try {
-    const { tenantId } = await getAuthContext();
+    const { tenantId } = await requireIntegrationManager();
     const { getIntegration } = await import("@/lib/integrations");
     const integration = await getIntegration(tenantId, "whatsapp");
 

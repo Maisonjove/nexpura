@@ -28,6 +28,34 @@ async function getAuthContext() {
   return { supabase, userId: user.id, tenantId: userData.tenant_id };
 }
 
+/**
+ * Group 15 audit: bulk-import is high blast-radius — a single CSV can
+ * inject thousands of rows into customers / inventory / repairs / sales
+ * across the tenant. Pre-fix every importX function only checked
+ * `getAuthContext` (authenticated + has-tenant), so a salesperson or
+ * workshop staffer could bulk-replace customer records, flood the
+ * inventory with synthetic rows, or stub-out fake sales. Aligning with
+ * the export side of this file (which already requires owner via
+ * getExportContext) and with /migration which is owner+manager-gated.
+ *
+ * Owner+manager only — same blast-radius as scheduled reports + email
+ * domain config.
+ */
+async function getImportContext() {
+  const ctx = await getAuthContext();
+  try {
+    await requireRole("owner", "manager");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    throw new Error(
+      msg.startsWith("permission_denied")
+        ? "Only owner or manager can run bulk imports."
+        : "Not authenticated",
+    );
+  }
+  return ctx;
+}
+
 function chunk<T>(arr: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
@@ -51,7 +79,7 @@ export interface SupplierRow {
 
 export async function importSuppliers(rows: SupplierRow[]): Promise<ImportResult> {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { supabase, tenantId } = await getImportContext();
     const errors: { row: number; reason: string }[] = [];
     let imported = 0;
 
@@ -135,7 +163,7 @@ export interface InventoryRow {
 
 export async function importInventory(rows: InventoryRow[]): Promise<ImportResult> {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { supabase, tenantId } = await getImportContext();
     const errors: { row: number; reason: string }[] = [];
     let imported = 0;
 
@@ -224,7 +252,7 @@ export interface CustomerRow {
 
 export async function importCustomers(rows: CustomerRow[]): Promise<ImportResult> {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { supabase, tenantId } = await getImportContext();
     const errors: { row: number; reason: string }[] = [];
     let imported = 0;
 
@@ -312,7 +340,7 @@ export interface RepairRow {
 
 export async function importRepairs(rows: RepairRow[]): Promise<ImportResult> {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { supabase, tenantId } = await getImportContext();
     const errors: { row: number; reason: string }[] = [];
     let imported = 0;
 
@@ -387,7 +415,7 @@ export interface BespokeJobRow {
 
 export async function importBespokeJobs(rows: BespokeJobRow[]): Promise<ImportResult> {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { supabase, tenantId } = await getImportContext();
     const errors: { row: number; reason: string }[] = [];
     let imported = 0;
 
@@ -461,7 +489,7 @@ export interface SaleRow {
 
 export async function importSales(rows: SaleRow[]): Promise<ImportResult> {
   try {
-    const { supabase, tenantId } = await getAuthContext();
+    const { supabase, tenantId } = await getImportContext();
     const errors: { row: number; reason: string }[] = [];
     let imported = 0;
 

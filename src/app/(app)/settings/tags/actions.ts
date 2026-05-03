@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { revalidatePath, updateTag } from "next/cache"
 import { logger } from "@/lib/logger"
-import { requireAuth } from "@/lib/auth-context"
+import { requireAuth, requireRole } from "@/lib/auth-context"
 
 async function getTenantId() {
   const supabase = await createClient()
@@ -30,6 +30,17 @@ async function getTenantId() {
 
 export async function createTagTemplate(formData: FormData) {
   try {
+    // Group 15 audit: tag templates configure printed stock labels — they
+    // determine what data leaves the building on every printed tag (price,
+    // SKU, store name). Pre-fix only deleteTagTemplate was role-gated;
+    // create/update were callable by any authenticated tenant member, so
+    // a salesperson could ship a template that hides the price field or
+    // reduces font sizes. Bringing this in line with the delete gate.
+    try {
+      await requireRole("owner", "manager");
+    } catch {
+      return { error: "Only owner or manager can create tag templates." };
+    }
     const { supabase, tenantId } = await getTenantId()
 
     const { error } = await supabase.from("stock_tag_templates").insert({
@@ -63,6 +74,12 @@ export async function createTagTemplate(formData: FormData) {
 
 export async function updateTagTemplate(id: string, formData: FormData) {
   try {
+    // Same gate as createTagTemplate (Group 15 audit fix).
+    try {
+      await requireRole("owner", "manager");
+    } catch {
+      return { error: "Only owner or manager can update tag templates." };
+    }
     const { supabase, tenantId } = await getTenantId()
 
     const { error } = await supabase
@@ -129,13 +146,27 @@ export async function deleteTagTemplate(id: string): Promise<{ success?: boolean
 
 export async function setDefaultTemplate(id: string): Promise<{ success?: boolean; error?: string }> {
   try {
+    // Group 15 audit: changing the default template changes which template
+    // every staff print job picks up by default. Same gate as the rest of
+    // the tag-template mutations.
+    try {
+      await requireRole("owner", "manager");
+    } catch {
+      return { error: "Only owner or manager can change the default tag template." };
+    }
     const { supabase, tenantId } = await getTenantId()
 
-    // Unset all defaults first
-    await supabase
+    // Unset all defaults first. Group 15 audit: the prior version of this
+    // action had a bare `await supabase.from(...).update(...)` here with no
+    // {error} destructure — the systemic swallowed-update pattern Joey
+    // flagged. Capture + surface it so a partial state ("unset succeeded
+    // but new default-set fails") can't leave the tenant with zero
+    // defaults silently.
+    const { error: clearErr } = await supabase
       .from("stock_tag_templates")
       .update({ is_default: false })
       .eq("tenant_id", tenantId)
+    if (clearErr) return { error: clearErr.message }
 
     const { error } = await supabase
       .from("stock_tag_templates")

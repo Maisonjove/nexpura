@@ -159,6 +159,14 @@ export async function verifyEmailDomain(): Promise<{ success?: boolean; verified
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
 
+  // Group 15 audit: aligned with the rest of the email-domain functions
+  // (add / remove / updateFromName / updateReplyToEmail are owner-only).
+  // verifyEmailDomain also writes back to email_domains (status,
+  // dns_records, verified_at) — same mutation surface, same gate.
+  if (ctx.role !== "owner") {
+    return { error: "Only the account owner can manage email domains" };
+  }
+
   const admin = createAdminClient();
 
   // Get current domain

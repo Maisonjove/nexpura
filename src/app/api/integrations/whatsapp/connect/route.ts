@@ -5,13 +5,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthContext, upsertIntegration } from "@/lib/integrations";
+import { requireIntegrationManager, upsertIntegration } from "@/lib/integrations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
-    const { tenantId } = await getAuthContext();
+    const { tenantId } = await requireIntegrationManager();
 
     // Rate limit integration connections per tenant
     const { success: rateLimitOk } = await checkRateLimit(`whatsapp-connect:${tenantId}`);
