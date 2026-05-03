@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resend } from "@/lib/email/resend";
 import { escapeHtml } from "@/lib/sanitize";
+import { revalidatePath } from "next/cache";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -172,17 +173,54 @@ export async function resendEmailLog(logId: string) {
     const safeSubject = log.subject ? escapeHtml(log.subject) : "";
     const { error: sendError } = await resend.emails.send({
       from: `${businessName} <${fromEmail}>`,
-      to: [log.recipient_email],
+      to: [log.recipient],
       subject: log.subject || "Re-sent message",
       html: `<div><p>Re-sending previous message:</p><hr/><p>${safeSubject}</p></div>`,
     });
     if (sendError) return { error: sendError.message };
 
-    // Log re-send
-    await supabase.from("email_logs").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", logId);
+    // Log re-send. email_logs has no sent_at column — created_at is the
+    // canonical timestamp, and we don't want to clobber it on re-send;
+    // just bump the status back to 'sent' and clear bounce_reason.
+    await supabase
+      .from("email_logs")
+      .update({ status: "sent", bounce_reason: null })
+      .eq("id", logId);
 
     return { success: true };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
 }
+
+export async function markNotificationRead(
+  notificationId: string,
+): Promise<{ success?: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("id", notificationId)
+    .eq("tenant_id", ctx.tenantId);
+  if (error) return { error: error.message };
+  revalidatePath("/communications");
+  return { success: true };
+}
+
+export async function markAllNotificationsRead(): Promise<{ success?: boolean; error?: string; updated?: number }> {
+  let ctx;
+  try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("tenant_id", ctx.tenantId)
+    .eq("is_read", false)
+    .select("id");
+  if (error) return { error: error.message };
+  revalidatePath("/communications");
+  return { success: true, updated: data?.length ?? 0 };
+}
+

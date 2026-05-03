@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useMemo, useTransition, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { resendEmailLog } from "./actions";
+import { resendEmailLog, markNotificationRead, markAllNotificationsRead } from "./actions";
 import {
   RefreshCw,
   Package,
@@ -15,6 +15,7 @@ import {
   Clock,
   AlertTriangle,
   Bell,
+  Search,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,15 +33,14 @@ export interface Communication {
 
 export interface EmailLog {
   id: string;
-  recipient_email: string;
-  recipient_name: string | null;
-  template_type: string;
+  recipient: string;
+  email_type: string;
   subject: string | null;
   status: string;
-  resend_message_id: string | null;
-  linked_entity_type: string | null;
-  linked_entity_id: string | null;
-  sent_at: string;
+  resend_id: string | null;
+  reference_type: string | null;
+  reference_id: string | null;
+  bounce_reason: string | null;
   created_at: string;
 }
 
@@ -100,11 +100,107 @@ const NOTIF_TYPE_ICONS: Record<string, LucideIcon> = {
   system: Bell,
 };
 
-function CommunicationsListClientInner({ comms, emailLogs, notifications }: Props) {
+function CommunicationsListClientInner({ comms, emailLogs, notifications: initialNotifs }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeTab = (searchParams.get('tab') || 'emails') as TabId;
+
+  // Local copy of notifications so optimistic mark-read doesn't require a
+  // full page round-trip.
+  const [notifications, setNotifications] = useState(initialNotifs);
+  const [, startTransition] = useTransition();
+
+  // Filters (per-tab; preserved in URL so back-button restores them).
+  const search = searchParams.get("q") ?? "";
+  const dateFrom = searchParams.get("from") ?? "";
+  const dateTo = searchParams.get("to") ?? "";
+
+  function pushParams(updates: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(updates)) {
+      if (v == null || v === "") params.delete(k);
+      else params.set(k, v);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
+  function inDateRange(iso: string) {
+    if (!dateFrom && !dateTo) return true;
+    const d = iso.slice(0, 10);
+    if (dateFrom && d < dateFrom) return false;
+    if (dateTo && d > dateTo) return false;
+    return true;
+  }
+
+  const filteredEmailLogs = useMemo(() => {
+    const needle = search.toLowerCase();
+    return emailLogs.filter((l) => {
+      if (!inDateRange(l.created_at)) return false;
+      if (!needle) return true;
+      return (
+        l.recipient.toLowerCase().includes(needle) ||
+        (l.subject ?? "").toLowerCase().includes(needle) ||
+        l.email_type.toLowerCase().includes(needle)
+      );
+    });
+  }, [emailLogs, search, dateFrom, dateTo]);
+
+  const filteredComms = useMemo(() => {
+    const needle = search.toLowerCase();
+    return comms.filter((c) => {
+      if (!inDateRange(c.created_at)) return false;
+      if (!needle) return true;
+      return (
+        (c.customer_name ?? "").toLowerCase().includes(needle) ||
+        (c.customer_email ?? "").toLowerCase().includes(needle) ||
+        (c.subject ?? "").toLowerCase().includes(needle)
+      );
+    });
+  }, [comms, search, dateFrom, dateTo]);
+
+  const filteredNotifs = useMemo(() => {
+    const needle = search.toLowerCase();
+    return notifications.filter((n) => {
+      if (!inDateRange(n.created_at)) return false;
+      if (!needle) return true;
+      return (
+        n.title.toLowerCase().includes(needle) ||
+        (n.body ?? "").toLowerCase().includes(needle) ||
+        n.type.toLowerCase().includes(needle)
+      );
+    });
+  }, [notifications, search, dateFrom, dateTo]);
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  function handleMarkOne(id: string) {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    startTransition(async () => {
+      const r = await markNotificationRead(id);
+      if (r.error) {
+        // Revert
+        setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: false } : n)));
+        toast.error(r.error);
+      }
+    });
+  }
+
+  function handleMarkAll() {
+    if (unreadCount === 0) return;
+    const before = notifications;
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    startTransition(async () => {
+      const r = await markAllNotificationsRead();
+      if (r.error) {
+        setNotifications(before);
+        toast.error(r.error);
+      } else {
+        toast.success(`Marked ${r.updated ?? unreadCount} as read`);
+      }
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -117,6 +213,51 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
         >
           + New Message
         </Link>
+      </div>
+
+      {/* Filter bar */}
+      <div className="bg-white border border-stone-200 rounded-xl p-4 flex flex-wrap items-end gap-3 shadow-sm">
+        <div className="relative flex-1 min-w-[220px]">
+          <label className="block text-xs text-stone-500 font-medium mb-1">Search</label>
+          <Search className="absolute left-2.5 top-7 h-4 w-4 text-stone-400" />
+          <input
+            type="text"
+            defaultValue={search}
+            onChange={(e) => pushParams({ q: e.target.value })}
+            placeholder="Recipient, subject, type…"
+            className="pl-9 h-9 w-full text-sm border border-stone-200 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-700"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-stone-500 font-medium mb-1">From</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => pushParams({ from: e.target.value })}
+            className="h-9 px-3 text-sm border border-stone-200 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-700"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-stone-500 font-medium mb-1">To</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => pushParams({ to: e.target.value })}
+            className="h-9 px-3 text-sm border border-stone-200 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-700"
+          />
+        </div>
+        {(search || dateFrom || dateTo) && (
+          <button
+            type="button"
+            onClick={() => pushParams({ q: null, from: null, to: null })}
+            className="h-9 px-3 text-xs text-stone-600 border border-stone-200 rounded-md hover:bg-stone-50"
+          >
+            Clear
+          </button>
+        )}
+        {dateFrom && dateTo && dateFrom > dateTo && (
+          <p className="w-full text-xs text-red-600">End date is before start date — no rows match.</p>
+        )}
       </div>
 
       {/* Tabs */}
@@ -139,8 +280,10 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
                 </span>
               )}
               {tab === "notifications" && notifications.length > 0 && (
-                <span className="ml-2 bg-stone-100 text-stone-600 text-xs rounded-full px-2 py-0.5">
-                  {notifications.length}
+                <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${
+                  unreadCount > 0 ? "bg-amber-100 text-amber-700 font-semibold" : "bg-stone-100 text-stone-600"
+                }`}>
+                  {unreadCount > 0 ? `${unreadCount} unread` : notifications.length}
                 </span>
               )}
             </button>
@@ -150,8 +293,10 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
         {/* Sent Emails Tab */}
         {activeTab === "emails" && (
           <>
-            {emailLogs.length === 0 ? (
-              <div className="px-5 py-12 text-center text-sm text-stone-400">No emails logged yet</div>
+            {filteredEmailLogs.length === 0 ? (
+              <div className="px-5 py-12 text-center text-sm text-stone-400">
+                {emailLogs.length === 0 ? "No emails logged yet" : "No emails match your filters"}
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -167,15 +312,14 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {emailLogs.map((log) => (
+                    {filteredEmailLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-stone-50">
                         <td className="px-5 py-3">
-                          <p className="font-medium text-stone-900">{log.recipient_name ?? log.recipient_email}</p>
-                          <p className="text-xs text-stone-400">{log.recipient_email}</p>
+                          <p className="font-medium text-stone-900">{log.recipient}</p>
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full font-mono">
-                            {log.template_type}
+                            {log.email_type}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-stone-600 max-w-48 truncate">{log.subject ?? "—"}</td>
@@ -183,20 +327,25 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLOURS[log.status] || "bg-stone-100 text-stone-600"}`}>
                             {log.status}
                           </span>
+                          {log.bounce_reason && (
+                            <p className="text-[11px] text-red-600 mt-0.5 max-w-44 truncate" title={log.bounce_reason}>
+                              {log.bounce_reason}
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-3">
-                          {log.linked_entity_type && log.linked_entity_id ? (
+                          {log.reference_type && log.reference_id ? (
                             <Link
-                              href={`${ENTITY_HREFS[log.linked_entity_type] || "/"}${log.linked_entity_id}`}
+                              href={`${ENTITY_HREFS[log.reference_type] || "/"}${log.reference_id}`}
                               className="text-xs text-amber-700 hover:underline capitalize"
                             >
-                              {log.linked_entity_type} ↗
+                              {log.reference_type} ↗
                             </Link>
                           ) : (
                             <span className="text-stone-400">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs text-stone-400">{formatDate(log.sent_at || log.created_at)}</td>
+                        <td className="px-4 py-3 text-xs text-stone-400">{formatDate(log.created_at)}</td>
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={async () => {
@@ -223,8 +372,10 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
         {/* Manual Messages Tab */}
         {activeTab === "manual" && (
           <>
-            {comms.length === 0 ? (
-              <div className="px-5 py-12 text-center text-sm text-stone-400">No manual messages yet</div>
+            {filteredComms.length === 0 ? (
+              <div className="px-5 py-12 text-center text-sm text-stone-400">
+                {comms.length === 0 ? "No manual messages yet" : "No manual messages match your filters"}
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -239,7 +390,7 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {comms.map((comm) => (
+                    {filteredComms.map((comm) => (
                       <tr key={comm.id} className="hover:bg-stone-50">
                         <td className="px-5 py-3">
                           <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full capitalize">{comm.type}</span>
@@ -272,11 +423,31 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
         {/* Notifications Tab */}
         {activeTab === "notifications" && (
           <>
-            {notifications.length === 0 ? (
+            {/* Mark-all-read action bar */}
+            {notifications.length > 0 && (
+              <div className="px-5 py-3 border-b border-stone-100 flex items-center justify-between">
+                <p className="text-xs text-stone-500">
+                  {unreadCount > 0
+                    ? `${unreadCount} unread of ${notifications.length}`
+                    : `All ${notifications.length} read`}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleMarkAll}
+                  disabled={unreadCount === 0}
+                  className="text-xs font-semibold text-amber-700 hover:text-amber-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Mark all read
+                </button>
+              </div>
+            )}
+            {filteredNotifs.length === 0 ? (
               <div className="px-5 py-12 text-center text-sm text-stone-400">
                 <Bell className="w-8 h-8 mx-auto mb-2 text-nexpura-taupe-400" strokeWidth={1.5} />
-                <p>No notifications yet</p>
-                <p className="mt-2 text-xs">Notifications appear here when triggered by platform events</p>
+                <p>{notifications.length === 0 ? "No notifications yet" : "No notifications match your filters"}</p>
+                {notifications.length === 0 && (
+                  <p className="mt-2 text-xs">Notifications appear here when triggered by platform events</p>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -293,7 +464,7 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {notifications.map((notif) => {
+                    {filteredNotifs.map((notif) => {
                       const NotifIcon = NOTIF_TYPE_ICONS[notif.type] ?? Bell;
                       return (
                       <tr key={notif.id} className={`hover:bg-stone-50 ${!notif.is_read ? "bg-nexpura-bronze/5" : ""}`}>
@@ -317,11 +488,22 @@ function CommunicationsListClientInner({ comms, emailLogs, notifications }: Prop
                         </td>
                         <td className="px-4 py-3 text-xs text-stone-400">{formatDate(notif.created_at)}</td>
                         <td className="px-4 py-3">
-                          {notif.link && (
-                            <a href={notif.link} className="text-xs text-nexpura-bronze hover:underline">
-                              View →
-                            </a>
-                          )}
+                          <div className="flex items-center gap-2 justify-end">
+                            {!notif.is_read && (
+                              <button
+                                type="button"
+                                onClick={() => handleMarkOne(notif.id)}
+                                className="text-xs font-semibold text-amber-700 hover:underline"
+                              >
+                                Mark read
+                              </button>
+                            )}
+                            {notif.link && (
+                              <a href={notif.link} className="text-xs text-nexpura-bronze hover:underline">
+                                View →
+                              </a>
+                            )}
+                          </div>
                         </td>
                       </tr>
                       );
