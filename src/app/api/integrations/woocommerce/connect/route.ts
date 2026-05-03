@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthContext, upsertIntegration } from "@/lib/integrations";
+import { requireIntegrationManager, upsertIntegration } from "@/lib/integrations";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { tenantId } = await getAuthContext();
+    const { tenantId } = await requireIntegrationManager();
     const body = await req.json();
     
     const { store_url, consumer_key, consumer_secret } = body;

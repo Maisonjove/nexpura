@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integrations";
+import { requireIntegrationManager, getIntegration, upsertIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -71,7 +71,7 @@ export async function POST(_req: NextRequest) {
   }
 
   try {
-    const { tenantId } = await getAuthContext();
+    const { tenantId } = await requireIntegrationManager();
     const integration = await getIntegration(tenantId, "xero");
 
     if (!integration || integration.status !== "connected") {

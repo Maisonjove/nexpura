@@ -22,7 +22,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connection } from "next/server";
 import crypto from "crypto";
-import { getAuthContext } from "@/lib/integrations";
+import { requireIntegrationManager } from "@/lib/integrations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { signOAuthState } from "@/lib/webhook-security";
 import logger from "@/lib/logger";
@@ -40,7 +40,7 @@ export async function GET(_req: NextRequest) {
   await connection();
 
   try {
-    const { tenantId } = await getAuthContext();
+    const { tenantId } = await requireIntegrationManager();
 
     // Rate limit OAuth initiations
     const { success: rateLimitOk } = await checkRateLimit(`gcal-connect:${tenantId}`);

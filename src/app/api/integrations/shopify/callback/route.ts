@@ -30,7 +30,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connection } from "next/server";
 import crypto from "crypto";
-import { upsertIntegration, getAuthContext } from "@/lib/integrations";
+import { upsertIntegration, requireIntegrationManager } from "@/lib/integrations";
 import {
   verifyShopifyOAuthHmac,
   verifyOAuthState,
@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
     // 3. Session tenant MUST match the tenant in the signed state. No
     //    cross-tenant install — even if a logged-in owner of tenant A
     //    somehow surfaces a state signed for tenant B, we bail.
-    const { tenantId: sessionTenantId } = await getAuthContext();
+    const { tenantId: sessionTenantId } = await requireIntegrationManager();
     if (sessionTenantId !== decoded.tenantId) {
       logger.warn("[shopify/callback] tenant mismatch", {
         session: sessionTenantId,

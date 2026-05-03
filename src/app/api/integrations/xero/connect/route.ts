@@ -26,7 +26,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { getAuthContext } from "@/lib/integrations";
+import { requireIntegrationManager } from "@/lib/integrations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { signOAuthState } from "@/lib/webhook-security";
 import logger from "@/lib/logger";
@@ -55,7 +55,7 @@ export async function GET(_req: NextRequest) {
   }
 
   try {
-    const { tenantId } = await getAuthContext();
+    const { tenantId } = await requireIntegrationManager();
 
     const clientId = process.env.XERO_CLIENT_ID;
     const redirectUri = process.env.XERO_REDIRECT_URI;

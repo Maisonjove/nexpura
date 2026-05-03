@@ -233,3 +233,30 @@ export async function getAuthContext() {
     role: userData.role as string,
   };
 }
+
+/**
+ * Group 15 audit: every integrations API route was using getAuthContext()
+ * which only authenticates — no role check. So any tenant member
+ * (salesperson, workshop staff) could:
+ *   - POST /api/integrations/whatsapp/setup with their own access_token
+ *     → upsertIntegration writes to integrations table → next outbound
+ *     WhatsApp flows through their account.
+ *   - POST /api/integrations/woocommerce/connect with their store creds.
+ *   - GET /api/integrations/xero/connect → completes OAuth in their name.
+ *   - POST /api/integrations/xero/sync → triggers a sync of financial
+ *     data without owner approval.
+ *
+ * upsertIntegration uses createAdminClient() which bypasses RLS, so
+ * the new RLS owner+manager-gate on integrations doesn't help here —
+ * the API-route role gate IS the only check.
+ *
+ * This helper wraps getAuthContext + role check so the fix is one-line
+ * per route. owner+manager matches the integrations RLS write policy.
+ */
+export async function requireIntegrationManager() {
+  const ctx = await getAuthContext();
+  if (!["owner", "manager"].includes(ctx.role)) {
+    throw new Error("Only owner or manager can manage integrations");
+  }
+  return ctx;
+}

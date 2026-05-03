@@ -31,7 +31,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connection } from "next/server";
 import crypto from "crypto";
-import { getAuthContext, upsertIntegration } from "@/lib/integrations";
+import { requireIntegrationManager, upsertIntegration } from "@/lib/integrations";
 import { verifyOAuthState } from "@/lib/webhook-security";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { tenantId: sessionTenantId } = await getAuthContext();
+    const { tenantId: sessionTenantId } = await requireIntegrationManager();
 
     const { searchParams } = new URL(req.url);
     const code = searchParams.get("code");
