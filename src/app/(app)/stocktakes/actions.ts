@@ -207,6 +207,46 @@ export async function startStocktake(stocktakeId: string): Promise<{ error?: str
   }
 }
 
+/**
+ * Cancel a stocktake. Used to abandon a count without applying any
+ * adjustments — useful when stock movements happened mid-count and
+ * the operator wants to start over. Status flips to 'cancelled', the
+ * counted_qty values stay in stocktake_items for audit, no inventory
+ * movements are posted.
+ */
+export async function cancelStocktake(stocktakeId: string): Promise<{ error?: string }> {
+  try {
+    await requirePermission("edit_inventory");
+    const { userId, tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+
+    const { data: existing } = await admin
+      .from("stocktakes")
+      .select("status")
+      .eq("id", stocktakeId)
+      .eq("tenant_id", tenantId)
+      .single();
+    if (!existing) return { error: "Stocktake not found" };
+    if (existing.status === "completed" || existing.status === "cancelled") {
+      return { error: `Stocktake is already ${existing.status} — terminal state.` };
+    }
+
+    const { error } = await admin
+      .from("stocktakes")
+      .update({ status: "cancelled", completed_at: new Date().toISOString() })
+      .eq("id", stocktakeId)
+      .eq("tenant_id", tenantId);
+    if (error) return { error: error.message };
+
+    await logActivity(tenantId, userId, "cancelled_stocktake", "stocktake", stocktakeId, "");
+    revalidatePath("/stocktakes");
+    revalidatePath(`/stocktakes/${stocktakeId}`);
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
 export async function countItem(
   itemId: string,
   stocktakeId: string,

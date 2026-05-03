@@ -12,6 +12,51 @@ interface SupplierData {
   website: string | null;
   address: string | null;
   notes: string | null;
+  tax_id?: string | null;
+  payment_terms?: string | null;
+}
+
+const PAYMENT_TERMS = [
+  { value: "", label: "—" },
+  { value: "due_on_receipt", label: "Due on receipt" },
+  { value: "net_7", label: "Net 7 days" },
+  { value: "net_14", label: "Net 14 days" },
+  { value: "net_30", label: "Net 30 days" },
+  { value: "net_60", label: "Net 60 days" },
+  { value: "prepaid", label: "Prepaid" },
+  { value: "cod", label: "Cash on delivery" },
+];
+
+// Tax-ID validators by jurisdiction. Tenants in AU use 11-digit ABN
+// (most common); we also accept a generic alphanumeric fallback so
+// tenants in NZ / US / EU aren't blocked. Checksum is validated for
+// the AU 11-digit case via the published modulus-89 algorithm.
+function validateAbn(raw: string): boolean {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length !== 11) return false;
+  const weights = [10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
+  const sum = digits.split("").reduce((acc, d, i) => {
+    const n = parseInt(d, 10);
+    return acc + (i === 0 ? n - 1 : n) * weights[i];
+  }, 0);
+  return sum % 89 === 0;
+}
+
+function validateTaxId(raw: string): { ok: boolean; reason?: string } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { ok: true }; // optional field
+  // 11 digits → assume AU ABN, run checksum
+  if (/^\d[\d\s]{9,14}\d$/.test(trimmed)) {
+    if (!validateAbn(trimmed)) {
+      return { ok: false, reason: "11-digit value looks like an Australian ABN but checksum failed." };
+    }
+    return { ok: true };
+  }
+  // Generic fallback: 6-20 alphanumeric chars (covers EIN, VAT, GST etc.)
+  if (!/^[A-Za-z0-9\- ]{6,20}$/.test(trimmed)) {
+    return { ok: false, reason: "Tax ID must be 6-20 alphanumeric characters." };
+  }
+  return { ok: true };
 }
 
 interface Props {
@@ -56,6 +101,15 @@ export default function SupplierForm({ mode, supplier }: Props) {
     e.preventDefault();
     setError(null);
     const formData = new FormData(e.currentTarget);
+
+    // Tax ID validation: optional, but if provided must pass shape +
+    // (for AU 11-digit values) the ABN checksum.
+    const taxIdRaw = (formData.get("tax_id") as string) || "";
+    const taxCheck = validateTaxId(taxIdRaw);
+    if (!taxCheck.ok) {
+      setError(taxCheck.reason ?? "Invalid Tax ID");
+      return;
+    }
 
     startTransition(async () => {
       if (mode === "create") {
@@ -131,6 +185,38 @@ export default function SupplierForm({ mode, supplier }: Props) {
               placeholder="https://supplier.com"
               className={inputCls}
             />
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Tax & Terms">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <FieldLabel htmlFor="tax_id">Tax ID (ABN / EIN / VAT)</FieldLabel>
+            <input
+              id="tax_id"
+              name="tax_id"
+              type="text"
+              defaultValue={supplier?.tax_id || ""}
+              placeholder="e.g. 53 004 085 616"
+              className={inputCls}
+            />
+            <p className="text-xs text-stone-500 mt-1">
+              Optional. AU 11-digit ABNs are checksum-validated.
+            </p>
+          </div>
+          <div>
+            <FieldLabel htmlFor="payment_terms">Payment Terms</FieldLabel>
+            <select
+              id="payment_terms"
+              name="payment_terms"
+              defaultValue={supplier?.payment_terms || ""}
+              className={inputCls}
+            >
+              {PAYMENT_TERMS.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
           </div>
         </div>
       </Section>

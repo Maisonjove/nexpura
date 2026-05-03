@@ -36,9 +36,22 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const [searchTerm, setSearchTerm] = useState("");
+
   const filtered = items.filter((i) => {
     if (i.memo_type !== tab) return false;
     if (statusFilter !== "all" && i.status !== statusFilter) return false;
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      const hay = [
+        i.item_name,
+        i.memo_number,
+        // customer/supplier name lookups happen below the table; we
+        // search the item's own searchable fields here.
+        (i as { notes?: string | null }).notes ?? "",
+      ].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
 
@@ -56,6 +69,12 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
     if (i.status !== "active" || !i.due_back_date) return false;
     return new Date(i.due_back_date) < new Date();
   }).length;
+
+  // Turnover = sold count / (sold + active + returned). Captures how often
+  // a consignor's stock actually sells, not pure sold/active.
+  const soldCount = items.filter((i) => i.status === "sold").length;
+  const turnoverDenom = items.filter((i) => ["sold", "active", "returned"].includes(i.status)).length;
+  const turnoverPct = turnoverDenom > 0 ? Math.round((soldCount / turnoverDenom) * 100) : 0;
 
   function handleQuickStatus(id: string, status: "returned" | "sold" | "expired" | "lost") {
     const extra: Record<string, string> = {};
@@ -126,7 +145,7 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
           </div>
           <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
             <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Turnover Rate</p>
-            <p className="text-2xl font-bold text-stone-900">12%</p>
+            <p className="text-2xl font-bold text-stone-900">{turnoverPct}%</p>
           </div>
         </div>
       )}
@@ -162,8 +181,10 @@ export default function MemoListClient({ items, customers, suppliers, tenantId }
           <div className="bg-white rounded-2xl border border-stone-200 p-4 space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={14} />
-              <input 
-                placeholder="Search items..." 
+              <input
+                placeholder="Search items..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-nexpura-bronze"
               />
             </div>

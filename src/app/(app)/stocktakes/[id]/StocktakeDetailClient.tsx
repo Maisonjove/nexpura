@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { startStocktake, countItem, completeStocktake, addManualStocktakeItem } from "../actions";
+import { startStocktake, countItem, completeStocktake, addManualStocktakeItem, cancelStocktake } from "../actions";
 import type { Stocktake, StocktakeItem } from "../actions";
 import CameraScannerModal from "@/components/CameraScannerModal";
 import PhotoScannerModal, { type PhotoMatch } from "@/components/PhotoScannerModal";
@@ -117,6 +117,15 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
     });
   }
 
+  function handleCancel() {
+    if (!confirm("Cancel this stocktake? Counted values will be kept for audit, but no inventory adjustments will be posted. This is terminal.")) return;
+    startTransition(async () => {
+      const result = await cancelStocktake(stocktake.id);
+      if (result.error) { setError(result.error); return; }
+      router.refresh();
+    });
+  }
+
   function handleAddManual() {
     if (!manualName.trim()) return;
     startTransition(async () => {
@@ -194,6 +203,13 @@ export default function StocktakeDetailClient({ stocktake: initial, items: initi
                 className="px-4 py-2 bg-nexpura-charcoal text-white rounded-lg text-sm font-medium hover:bg-nexpura-charcoal-700 disabled:opacity-60"
               >
                 ✓ Apply & Complete
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={isPending}
+                className="px-3 py-2 border border-nexpura-oxblood/40 text-nexpura-oxblood rounded-lg text-sm font-medium hover:bg-nexpura-oxblood-bg disabled:opacity-60"
+              >
+                Cancel Stocktake
               </button>
             </>
           )}
