@@ -293,12 +293,23 @@ export async function saveEODReconciliation(params: {
   };
 
   let resultId: string | undefined;
-  
+
   if (params.summary.existingReconciliation) {
+    // Block double-close: a reconciliation already in 'submitted' state
+    // is terminal. Lock-down per spec: "After close: prior-day
+    // transactions can't be edited". Allow re-saving the draft up
+    // until submission, but reject any attempt to overwrite a
+    // submitted record.
+    if (params.summary.existingReconciliation.status === "submitted") {
+      return {
+        error: "This day's reconciliation is already closed. Re-opening would invalidate the audit trail. Contact support if a correction is needed.",
+      };
+    }
     const { data, error } = await admin
       .from("eod_reconciliations")
       .update(payload)
       .eq("id", params.summary.existingReconciliation.id)
+      .neq("status", "submitted") // race-safe guard
       .select("id")
       .single();
     if (error) return { error: error.message };

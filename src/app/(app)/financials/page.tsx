@@ -248,11 +248,18 @@ async function fetchFinanceHubData(tenantId: string): Promise<FinanceHubData> {
 
   const netRevenue = paidThisMonth - refundsThisMonth - expensesThisMonth;
 
-  // TODO: end-of-day reconciliation — wire to /eod state once a
-  // `reconciliation_sessions` (or similar) table is queryable to know
-  // whether today's session has started/finalised. For now the panel
-  // shows a static "Today's reconciliation not started" CTA.
-  const reconciliationStarted = false;
+  // End-of-day reconciliation status: query eod_reconciliations for today.
+  // "Started" = a draft row exists; "Submitted" = the row's status='submitted'.
+  // The hub uses a single boolean — true means an operator has at least
+  // begun today's count, false shows the "not started" CTA.
+  const todayLocal = new Date().toISOString().split("T")[0];
+  const { data: todayEod } = await admin
+    .from("eod_reconciliations")
+    .select("id, status")
+    .eq("tenant_id", tenantId)
+    .eq("reconciliation_date", todayLocal)
+    .maybeSingle();
+  const reconciliationStarted = !!todayEod;
 
   return {
     overdueInvoices,

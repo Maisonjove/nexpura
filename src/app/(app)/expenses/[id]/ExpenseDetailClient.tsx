@@ -13,11 +13,25 @@ interface Expense {
   invoice_ref: string | null;
   expense_date: string;
   notes: string | null;
+  receipt_url: string | null;
   created_at: string;
+}
+
+interface AuditLog {
+  id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  old_data: Record<string, unknown> | null;
+  new_data: Record<string, unknown> | null;
+  created_at: string;
+  user_id: string | null;
 }
 
 interface Props {
   expense: Expense;
+  auditLogs: AuditLog[];
+  userMap: Record<string, { full_name: string | null; email: string | null }>;
 }
 
 const CATEGORY_COLOURS: Record<string, string> = {
@@ -31,6 +45,12 @@ const CATEGORY_COLOURS: Record<string, string> = {
   other: "bg-stone-900/10 text-stone-900/70",
 };
 
+const ACTION_LABEL: Record<string, string> = {
+  expense_create: "Expense created",
+  expense_update: "Expense edited",
+  expense_delete: "Expense deleted",
+};
+
 function fmtCurrency(amount: number) {
   return new Intl.NumberFormat("en-AU", {
     style: "currency",
@@ -39,7 +59,18 @@ function fmtCurrency(amount: number) {
   }).format(amount);
 }
 
-export default function ExpenseDetailClient({ expense }: Props) {
+function fmtAuditWhen(d: string) {
+  const date = new Date(d);
+  return date.toLocaleString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export default function ExpenseDetailClient({ expense, auditLogs, userMap }: Props) {
   const [isPending, startTransition] = useTransition();
   const [showDelete, setShowDelete] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -129,6 +160,22 @@ export default function ExpenseDetailClient({ expense }: Props) {
               <span className="text-sm text-stone-900 font-mono">{expense.invoice_ref}</span>
             </div>
           )}
+          {expense.receipt_url && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-stone-400 uppercase tracking-wider">Receipt</span>
+              <a
+                href={expense.receipt_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-amber-700 hover:underline"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                View receipt
+              </a>
+            </div>
+          )}
         </div>
 
         {expense.notes && (
@@ -138,6 +185,35 @@ export default function ExpenseDetailClient({ expense }: Props) {
           </div>
         )}
       </div>
+
+      {/* Audit trail */}
+      {auditLogs.length > 0 && (
+        <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-stone-900">Activity</h2>
+            <span className="text-xs text-stone-400">{auditLogs.length} event{auditLogs.length === 1 ? "" : "s"}</span>
+          </div>
+          <ol className="space-y-3">
+            {auditLogs.map((log) => {
+              const u = log.user_id ? userMap[log.user_id] : null;
+              const who = u?.full_name || u?.email || "system";
+              const label = ACTION_LABEL[log.action] || log.action.replaceAll("_", " ");
+              return (
+                <li key={log.id} className="flex gap-3">
+                  <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 mt-2" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-stone-900">
+                      <span className="font-medium">{label}</span>
+                      <span className="text-stone-400"> · by {who}</span>
+                    </p>
+                    <p className="text-xs text-stone-400">{fmtAuditWhen(log.created_at)}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
 
       {/* Delete */}
       <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">

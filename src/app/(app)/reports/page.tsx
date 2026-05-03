@@ -645,8 +645,9 @@ export default async function ReportsPage() {
         <div className="px-5 py-4 border-b border-stone-200">
           <h2 className="text-base font-semibold text-stone-900">More Reports</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-stone-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-stone-100">
           {[
+            { href: "/reports/customers", icon: "👥", title: "Customer Intelligence", desc: "Spend, AOV, frequency, CSV export" },
             { href: "/reports/suppliers", icon: "🏭", title: "Supplier Performance", desc: "Order count, spend, delivery metrics" },
             { href: "/reports/expenses", icon: "💰", title: "Expense Report", desc: "Filter, export expenses by category" },
             { href: "/reports/stock", icon: "📦", title: "Stock Movement", desc: "Stock in, out, and adjustments" },
