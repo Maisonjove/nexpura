@@ -77,11 +77,15 @@ async function PrintReceiptPage({
     }
   }
 
+  // Joey 2026-05-03 P2-D audit: filter soft-deleted records on both
+  // jobType branches. Without this, /print/receipt/repair/{deleted-id}
+  // would render a soft-deleted repair's receipt.
   if (jobType === "repair") {
     const { data } = await admin.from("repairs")
       .select("*, customers(id, full_name, email, mobile)")
       .eq("id", jobId)
       .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
+      .is("deleted_at", null)
       .single();
     if (!data) notFound();
     await guardLocation(data.location_id);
@@ -94,6 +98,7 @@ async function PrintReceiptPage({
       .select("*, customers(id, full_name, email, mobile)")
       .eq("id", jobId)
       .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
+      .is("deleted_at", null)
       .single();
     if (!data) notFound();
     await guardLocation(data.location_id);

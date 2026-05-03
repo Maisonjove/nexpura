@@ -38,7 +38,11 @@ async function PrintInvoicePage({
     redirect("/login");
   }
 
-  // Fetch invoice with tenant info - MUST match user's tenant
+  // Fetch invoice with tenant info - MUST match user's tenant.
+  // Joey 2026-05-03 P2-D audit: filter soft-deleted invoices so a
+  // /print/invoice/{deleted-id} URL doesn't render a deleted invoice
+  // (e.g. one cancelled and re-issued). Same pattern applied to all
+  // five print routes.
   const { data: invoice } = await admin
     .from("invoices")
     .select(`
@@ -47,6 +51,7 @@ async function PrintInvoicePage({
     `)
     .eq("id", id)
     .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
+    .is("deleted_at", null)
     .single();
   if (!invoice) notFound();
 

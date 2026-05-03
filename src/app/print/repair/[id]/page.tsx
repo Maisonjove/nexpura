@@ -56,11 +56,13 @@ async function PrintRepairPage({
   const contactLine = [tenantPhone, tenantEmail].filter(Boolean).join(" · ");
   const headerDetails = [addressLine, contactLine].filter(Boolean).join(" · ");
 
+  // Joey 2026-05-03 P2-D audit: filter soft-deleted repairs.
   const { data: repair } = await admin
     .from("repairs")
     .select("*, customers(id, full_name, email, mobile, address_line1, suburb, state, postcode, pii_enc)")
     .eq("id", id)
     .eq("tenant_id", userData.tenant_id) // SECURITY: Tenant isolation
+    .is("deleted_at", null)
     .single();
 
   if (!repair) notFound();
