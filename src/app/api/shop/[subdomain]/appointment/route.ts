@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
+import logger from "@/lib/logger";
 
 /**
  * Launch-QA W5-CRIT-001: this public shop endpoint previously accepted a
@@ -34,14 +35,19 @@ export async function POST(
     const admin = createAdminClient();
 
     // Resolve tenant_id strictly from the subdomain. The body is not trusted.
+    // Joey 2026-05-03 P2-B audit: also enforce published=true (matches the
+    // sibling /enquiry endpoint behaviour) and reject soft-deleted tenants
+    // by JOIN. Pre-fix unpublished or soft-deleted tenants accepted
+    // submissions silently.
     const { data: config } = await admin
       .from("website_config")
-      .select("tenant_id")
+      .select("tenant_id, published, tenants!inner(deleted_at)")
       .eq("subdomain", subdomain)
-      .single();
+      .maybeSingle();
     const tenantId = config?.tenant_id;
+    const tenantsRel = (config as unknown as { tenants?: { deleted_at: string | null } | null })?.tenants;
 
-    if (!tenantId) {
+    if (!tenantId || !config?.published || tenantsRel?.deleted_at) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
     }
 
@@ -67,14 +73,19 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Create in-app notification
-    await admin.from("notifications").insert({
+    // Create in-app notification. Joey 2026-05-03 P2-B audit: capture
+    // the error so a silent fail (RLS, schema drift, etc.) shows up in
+    // logs instead of returning ok=true with no dashboard alert.
+    const { error: notifErr } = await admin.from("notifications").insert({
       tenant_id: tenantId,
       type: "appointment_request",
       title: "New Appointment Request",
       body: `${name} requested a ${appointment_type} appointment on ${preferred_date}`,
       link: `/enquiries`,
     });
+    if (notifErr) {
+      logger.error("[shop/appointment] notification insert failed", { tenantId, err: notifErr });
+    }
 
     return NextResponse.json({ ok: true, id: enquiry?.id });
   } catch (e) {

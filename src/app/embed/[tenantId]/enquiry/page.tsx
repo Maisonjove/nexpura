@@ -30,12 +30,14 @@ export default function EmbedEnquiryPage({ params }: Props) {
 
 async function EnquiryBody({ paramsPromise }: { paramsPromise: Promise<{ tenantId: string }> }) {
   const { tenantId } = await paramsPromise;
-  const businessName = await loadBusinessName(tenantId);
-  // Don't render a fake-looking enquiry form for a non-existent tenant —
-  // matches /embed/[tenantId] (catalogue) behaviour. Customers who see this
-  // in an embedded iframe on a misconfigured jeweller site get the iframe's
-  // not-found fallback instead of a form that submits into the void.
-  if (businessName === null) notFound();
+  // Joey 2026-05-03 P2-B audit: pre-fix this resolved only businessName
+  // and the inline form posted to /api/shop/{tenantId}/enquiry — but
+  // the API expects a SUBDOMAIN. Every embed-form submission silently
+  // 404'd. Now resolve {businessName, subdomain} in one go and reject
+  // soft-deleted tenants.
+  const tenantInfo = await loadTenantForEmbed(tenantId);
+  if (!tenantInfo) notFound();
+  const { businessName, subdomain } = tenantInfo;
 
   return (
     <html lang="en">
@@ -97,7 +99,11 @@ async function EnquiryBody({ paramsPromise }: { paramsPromise: Promise<{ tenantI
               message: fd.get('message'),
             };
             try {
-              await fetch('/api/shop/${tenantId}/enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+              const r = await fetch('/api/shop/${subdomain}/enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+              if (!r.ok) {
+                const errEl = document.getElementById('error-msg'); if (errEl) errEl.style.display = 'block';
+                return;
+              }
               document.getElementById('enquiry-form').style.display = 'none';
               document.getElementById('success-msg').style.display = 'block';
             } catch(err) {
@@ -110,16 +116,29 @@ async function EnquiryBody({ paramsPromise }: { paramsPromise: Promise<{ tenantI
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Cacheable per tenant. Pure w.r.t. tenantId input.
-// ─────────────────────────────────────────────────────────────────────────
-async function loadBusinessName(tenantId: string): Promise<string | null> {
+// Joey 2026-05-03 P2-B audit: returns null on soft-deleted tenants AND
+// on tenants without a website_config row (so the form has no subdomain
+// to submit against). Replaces loadBusinessName.
+async function loadTenantForEmbed(
+  tenantId: string,
+): Promise<{ businessName: string; subdomain: string } | null> {
   const admin = createAdminClient();
   const { data: tenant } = await admin
     .from("tenants")
-    .select("business_name, name")
+    .select("business_name, name, deleted_at")
     .eq("id", tenantId)
+    .is("deleted_at", null)
     .maybeSingle();
   if (!tenant) return null;
-  return (tenant.business_name as string | null) || (tenant.name as string | null) || "Jewellery Store";
+  const businessName =
+    (tenant.business_name as string | null) ||
+    (tenant.name as string | null) ||
+    "Jewellery Store";
+  const { data: wc } = await admin
+    .from("website_config")
+    .select("subdomain")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (!wc?.subdomain) return null;
+  return { businessName, subdomain: wc.subdomain as string };
 }

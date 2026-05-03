@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
+import logger from "@/lib/logger";
 
 /**
  * Launch-QA W5-CRIT-001: this public shop endpoint previously accepted a
@@ -34,14 +35,17 @@ export async function POST(
     const admin = createAdminClient();
 
     // Resolve tenant_id strictly from the subdomain. The body is not trusted.
+    // Joey 2026-05-03 P2-B audit: enforce published=true and reject
+    // soft-deleted tenants (matches the sibling /enquiry endpoint).
     const { data: config } = await admin
       .from("website_config")
-      .select("tenant_id")
+      .select("tenant_id, published, tenants!inner(deleted_at)")
       .eq("subdomain", subdomain)
-      .single();
+      .maybeSingle();
     const tenantId = config?.tenant_id;
+    const tenantsRel = (config as unknown as { tenants?: { deleted_at: string | null } | null })?.tenants;
 
-    if (!tenantId) {
+    if (!tenantId || !config?.published || tenantsRel?.deleted_at) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
     }
 
@@ -66,23 +70,19 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Look up store owner — currently only used to keep the query logic
-    // consistent across tenants; primary notification is in-app below.
-    await admin
-      .from("users")
-      .select("email, full_name")
-      .eq("tenant_id", tenantId)
-      .eq("role", "owner")
-      .single();
-
-    // Create in-app notification
-    await admin.from("notifications").insert({
+    // Joey 2026-05-03 P2-B audit: removed the dead users SELECT. The
+    // result was never used and just added an unnecessary admin query.
+    // The notification is the only side effect now.
+    const { error: notifErr } = await admin.from("notifications").insert({
       tenant_id: tenantId,
       type: "repair_enquiry",
       title: "New Repair Enquiry",
       body: `${name} submitted a repair enquiry for: ${item_description.slice(0, 60)}`,
       link: `/enquiries`,
     });
+    if (notifErr) {
+      logger.error("[shop/repair-enquiry] notification insert failed", { tenantId, err: notifErr });
+    }
 
     return NextResponse.json({ ok: true, id: enquiry?.id });
   } catch (e) {

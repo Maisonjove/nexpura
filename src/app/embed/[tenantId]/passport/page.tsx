@@ -76,20 +76,42 @@ async function PassportBody({ paramsPromise }: { paramsPromise: Promise<{ tenant
               if (d.error || !d.passport) {
                 res.innerHTML = '<div class="error">Passport not found. Please check the ID and try again.</div>';
               } else {
+                // Joey 2026-05-03 P2-B audit: pre-fix this template
+                // built innerHTML from tenant-controlled fields
+                // (title, jewellery_type, current_owner_name) — stored
+                // XSS if any field contained HTML. Now build via DOM
+                // APIs so each field is treated as text. Static
+                // attributes (passport_uid in href) are scrubbed via
+                // encodeURIComponent.
                 const p = d.passport;
-                res.innerHTML = \`<div class="result">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                    <span class="uid">\${p.passport_uid}</span>
-                    <span class="badge badge-active">✓ Authentic</span>
-                  </div>
-                  <div class="row"><span class="label">Item</span><span class="value">\${p.title}</span></div>
-                  <div class="row"><span class="label">Type</span><span class="value">\${p.jewellery_type || '—'}</span></div>
-                  <div class="row"><span class="label">Owner</span><span class="value">\${p.current_owner_name || '—'}</span></div>
-                  <div class="row"><span class="label">Issued</span><span class="value">\${new Date(p.created_at).toLocaleDateString('en-AU')}</span></div>
-                  <div style="margin-top:16px;text-align:center">
-                    <a href="/verify/\${p.passport_uid}" target="_blank" style="color:amber-700;font-size:13px;text-decoration:none">View full passport →</a>
-                  </div>
-                </div>\`;
+                res.innerHTML = '';
+                const wrap = document.createElement('div'); wrap.className = 'result';
+                const head = document.createElement('div');
+                head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:16px';
+                const uid = document.createElement('span'); uid.className = 'uid'; uid.textContent = p.passport_uid;
+                const badge = document.createElement('span'); badge.className = 'badge badge-active'; badge.textContent = '✓ Authentic';
+                head.appendChild(uid); head.appendChild(badge);
+                wrap.appendChild(head);
+                function row(label, val) {
+                  const r = document.createElement('div'); r.className = 'row';
+                  const l = document.createElement('span'); l.className = 'label'; l.textContent = label;
+                  const v = document.createElement('span'); v.className = 'value'; v.textContent = val ?? '—';
+                  r.appendChild(l); r.appendChild(v);
+                  return r;
+                }
+                wrap.appendChild(row('Item', p.title));
+                wrap.appendChild(row('Type', p.jewellery_type || '—'));
+                wrap.appendChild(row('Owner', p.current_owner_name || '—'));
+                wrap.appendChild(row('Issued', new Date(p.created_at).toLocaleDateString('en-AU')));
+                const linkWrap = document.createElement('div'); linkWrap.style.cssText = 'margin-top:16px;text-align:center';
+                const link = document.createElement('a');
+                link.href = '/verify/' + encodeURIComponent(p.passport_uid);
+                link.target = '_blank';
+                link.style.cssText = 'color:#92400e;font-size:13px;text-decoration:none';
+                link.textContent = 'View full passport →';
+                linkWrap.appendChild(link);
+                wrap.appendChild(linkWrap);
+                res.appendChild(wrap);
               }
             } catch(e) {
               res.innerHTML = '<div class="error">An error occurred. Please try again.</div>';
@@ -102,12 +124,16 @@ async function PassportBody({ paramsPromise }: { paramsPromise: Promise<{ tenant
   );
 }
 
+// Joey 2026-05-03 P2-B audit: filter out soft-deleted tenants. Pre-fix
+// soft-deleted tenants rendered a working passport widget pointing at
+// a tenant that no longer exists.
 async function loadBusinessName(tenantId: string): Promise<string | null> {
   const admin = createAdminClient();
   const { data: tenant } = await admin
     .from("tenants")
     .select("business_name, name")
     .eq("id", tenantId)
+    .is("deleted_at", null)
     .maybeSingle();
   if (!tenant) return null;
   return (tenant.business_name as string | null) || (tenant.name as string | null) || "Jewellery Store";
