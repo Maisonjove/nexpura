@@ -33,6 +33,17 @@ export interface ImportResult {
   status: ImportStatus;
   recordId?: string;
   error?: string;
+  /**
+   * Per-row warnings — non-fatal data-integrity flags raised during the
+   * import (e.g. blank required field accepted as NULL). Pre-fix the
+   * blank-full_name case was silently substituted with the literal
+   * string "Unknown" and the row counted as a clean success — no audit
+   * trail, no warning bucket, jewellers' legacy migrations would land
+   * "Unknown" customers without anyone noticing. Now: substitutions
+   * return warnings that flow through to migration_jobs.warning_count
+   * and the job_records row's warning_message column.
+   */
+  warnings?: string[];
 }
 
 // ─── Default mappings per entity ──────────────────────────────────────────────
@@ -472,6 +483,16 @@ export async function importCustomer(
       return { status: 'error', error: 'Row missing name, email, and phone — cannot identify customer' };
     }
 
+    // Track non-fatal data-integrity warnings on this row. Anything
+    // pushed here flows through to migration_jobs.warning_count and
+    // surfaces on the job_records row's warning_message column —
+    // pre-fix this signal was lost (the only post-import surface was
+    // a counter that lumped substitutions in with successes).
+    const rowWarnings: string[] = [];
+    if (!derivedFullName) {
+      rowWarnings.push("full_name was blank in the source row — saved as NULL");
+    }
+
     const duplicateId = await findDuplicateCustomer(admin, ctx.tenantId, {
       email: mappedData.email as string | undefined,
       phone: (mappedData.mobile || mappedData.phone) as string | undefined,
@@ -503,7 +524,13 @@ export async function importCustomer(
         tenant_id: ctx.tenantId,
         first_name: firstName || null,
         last_name: lastName || null,
-        full_name: derivedFullName || 'Unknown',
+        // W14-DATA-INT (Group 13 audit): preserve NULL when the source
+        // row had no full_name. Pre-fix wrote the literal "Unknown"
+        // so nothing flagged the row downstream — staff couldn't
+        // distinguish a real "Unknown" customer from a data-integrity
+        // miss. NULL + a warning entry on the row keeps the audit
+        // trail intact.
+        full_name: derivedFullName || null,
         email: (mappedData.email || null) as string | null,
         mobile: ((mappedData.mobile || mappedData.phone) || null) as string | null,
         birthday: (mappedData.birthday || null) as string | null,
@@ -516,7 +543,11 @@ export async function importCustomer(
       .single();
 
     if (error) return { status: 'error', error: error.message };
-    return { status: 'success', recordId: (created as { id: string }).id };
+    return {
+      status: 'success',
+      recordId: (created as { id: string }).id,
+      warnings: rowWarnings.length ? rowWarnings : undefined,
+    };
   } catch (e: unknown) {
     return { status: 'error', error: e instanceof Error ? e.message : String(e) };
   }
