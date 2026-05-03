@@ -1,7 +1,20 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import DOMPurify from "isomorphic-dompurify";
+
+// Lazy-load DOMPurify on the client (Group 14 carryover from Group 12).
+type Sanitizer = (html: string) => string;
+function useDomPurify(): Sanitizer | null {
+  const [sanitize, setSanitize] = useState<Sanitizer | null>(null);
+  useEffect(() => {
+    let alive = true;
+    import("isomorphic-dompurify").then(({ default: DP }) => {
+      if (alive) setSanitize(() => (s: string) => DP.sanitize(s));
+    });
+    return () => { alive = false; };
+  }, []);
+  return sanitize;
+}
 
 type Message = {
   id: string;
@@ -23,7 +36,7 @@ const SUGGESTED_QUESTIONS = [
   "Compare this month to last month",
 ];
 
-function renderMarkdown(text: string) {
+function renderMarkdown(text: string, sanitize: Sanitizer | null) {
   text = text.replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold text-stone-900 mt-3 mb-1">$1</h3>');
   text = text.replace(/^## (.+)$/gm, '<h2 class="font-semibold text-lg font-semibold text-stone-900 mt-4 mb-2">$1</h2>');
   text = text.replace(/^# (.+)$/gm, '<h1 class="font-semibold text-xl font-semibold text-stone-900 mt-4 mb-2">$1</h1>');
@@ -34,10 +47,11 @@ function renderMarkdown(text: string) {
   text = text.replace(/\n\n/g, '</p><p class="mb-2">');
   text = text.replace(/\n/g, '<br/>');
   const html = `<p class="mb-2">${text}</p>`;
-  return DOMPurify.sanitize(html);
+  return sanitize ? sanitize(html) : "";
 }
 
 export default function CopilotClient({ firstName, tenantId }: CopilotClientProps) {
+  const sanitize = useDomPurify();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -171,7 +185,7 @@ export default function CopilotClient({ firstName, tenantId }: CopilotClientProp
                     : "bg-stone-50 border border-stone-200 text-stone-900 rounded-tl-sm"
                 }`}>
                   {msg.role === "assistant" ? (
-                    <div className="prose-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                    <div className="prose-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content, sanitize) }} />
                   ) : (
                     <p className="whitespace-pre-wrap">{msg.content}</p>
                   )}
@@ -186,7 +200,7 @@ export default function CopilotClient({ firstName, tenantId }: CopilotClientProp
                 </div>
                 <div className="max-w-[85%] bg-stone-50 border border-stone-200 rounded-2xl rounded-tl-sm px-5 py-3 text-sm text-stone-900">
                   {streamingContent ? (
-                    <div className="prose-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent) }} />
+                    <div className="prose-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent, sanitize) }} />
                   ) : (
                     <div className="flex items-center gap-1.5 h-5">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce" />

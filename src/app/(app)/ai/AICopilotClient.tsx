@@ -1,7 +1,23 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import DOMPurify from "isomorphic-dompurify";
+
+// Lazy-load DOMPurify on the client to dodge React #419 from
+// jsdom-bundled isomorphic-dompurify under cacheComponents:true.
+// Same fix as Group 12 marketing pages — see /marketing/templates
+// for the full root-cause writeup.
+type Sanitizer = (html: string) => string;
+function useDomPurify(): Sanitizer | null {
+  const [sanitize, setSanitize] = useState<Sanitizer | null>(null);
+  useEffect(() => {
+    let alive = true;
+    import("isomorphic-dompurify").then(({ default: DP }) => {
+      if (alive) setSanitize(() => (s: string) => DP.sanitize(s));
+    });
+    return () => { alive = false; };
+  }, []);
+  return sanitize;
+}
 
 type Conversation = {
   id: string;
@@ -39,7 +55,7 @@ function timeAgo(dateStr: string) {
   return `${days}d ago`;
 }
 
-function renderMarkdown(text: string) {
+function renderMarkdown(text: string, sanitize: Sanitizer | null) {
   // Handle headings
   text = text.replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold text-stone-900 mt-3 mb-1">$1</h3>');
   text = text.replace(/^## (.+)$/gm, '<h2 class="font-semibold text-lg font-semibold text-stone-900 mt-4 mb-2">$1</h2>');
@@ -55,10 +71,11 @@ function renderMarkdown(text: string) {
   text = text.replace(/\n\n/g, '</p><p class="mb-2">');
   text = text.replace(/\n/g, '<br/>');
   const html = `<p class="mb-2">${text}</p>`;
-  return DOMPurify.sanitize(html);
+  return sanitize ? sanitize(html) : "";
 }
 
 export default function AICopilotClient({ conversations: initialConversations, plan }: Props) {
+  const sanitize = useDomPurify();
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
   const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -329,7 +346,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
                     {msg.role === "assistant" ? (
                       <div
                         className="prose-sm leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content, sanitize) }}
                       />
                     ) : (
                       <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
@@ -349,7 +366,7 @@ export default function AICopilotClient({ conversations: initialConversations, p
                   <div className="max-w-[75%] bg-white border border-stone-200 rounded-2xl rounded-tl-sm shadow-sm px-4 py-3 text-sm text-stone-900">
                     <div
                       className="prose-sm leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent) }}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent, sanitize) }}
                     />
                     <span className="inline-block w-1.5 h-3.5 bg-amber-700 animate-pulse ml-0.5 rounded-sm" />
                   </div>
