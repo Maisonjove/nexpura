@@ -6,7 +6,7 @@ import PricingClient from "./PricingClient";
 export const metadata: Metadata = {
   title: "Pricing — Nexpura",
   description:
-    "Three plans for jewellery businesses of every size. Start with a 14-day free trial — Boutique, Studio, or Atelier — billed monthly or annually.",
+    "Three plans for jewellery businesses of every size. Start with a 14-day free trial — Boutique, Studio, or Atelier — billed monthly.",
   openGraph: {
     title: "Pricing — Nexpura",
     description:

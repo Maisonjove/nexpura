@@ -4,6 +4,7 @@ import { getAuthContext } from "@/lib/auth-context";
 import { getCached, tenantCacheKey } from "@/lib/cache";
 import BillingClient from "./BillingClient";
 import { getEntitlementContext } from "@/lib/auth/entitlements";
+import { SUPPORTED_CURRENCIES, type CurrencyCode } from "@/data/pricing";
 
 export const metadata = { title: "Billing — Nexpura" };
 
@@ -25,8 +26,8 @@ export default async function BillingPage() {
 
   const admin = createAdminClient();
 
-  // Parallel fetch - subscription + entitlements + website config
-  const [subscriptionResult, ctx, websiteData] = await Promise.all([
+  // Parallel fetch - subscription + entitlements + website config + tenant currency
+  const [subscriptionResult, ctx, websiteData, tenantRow] = await Promise.all([
     admin
       .from("subscriptions")
       .select("status, trial_ends_at, current_period_end")
@@ -47,9 +48,15 @@ export default async function BillingPage() {
       },
       300
     ),
+    admin.from("tenants").select("currency").eq("id", tenantId).single(),
   ]);
 
   const subscription = subscriptionResult.data;
+  const tenantCurrency: CurrencyCode = SUPPORTED_CURRENCIES.includes(
+    (tenantRow.data?.currency ?? "").toUpperCase() as CurrencyCode,
+  )
+    ? (tenantRow.data!.currency!.toUpperCase() as CurrencyCode)
+    : "AUD";
 
   return (
     <BillingClient
@@ -60,6 +67,7 @@ export default async function BillingPage() {
       currentPeriodEnd={subscription?.current_period_end ?? null}
       subdomain={websiteData?.subdomain ?? ctx.tenantId ?? ""}
       email={email ?? ""}
+      currency={tenantCurrency}
     />
   );
 }

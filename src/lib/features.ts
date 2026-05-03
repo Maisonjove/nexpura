@@ -1,7 +1,7 @@
 /**
  * Nexpura Plan Entitlements
  *
- * Plans:  boutique ($89) | studio ($179) | atelier ($299)
+ * Plans:  boutique | studio | atelier — pricing in src/data/pricing.ts (4 currencies)
  * Legacy: basic=boutique, pro=studio, group=atelier, ultimate=atelier
  * 
  * Feature breakdown:

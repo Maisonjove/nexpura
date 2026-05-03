@@ -40,7 +40,7 @@ const SECTIONS: LegalSection[] = [
   {
     id: "subscriptions",
     title: "Subscriptions",
-    body: "Nexpura offers tiered subscription plans (Boutique, Studio, and Atelier) billed monthly or annually. Pricing is shown in your regional currency (AUD, USD, GBP, or EUR) based on your location, and prices listed on the pricing page are exclusive of applicable taxes; taxes (such as GST, VAT, or US sales tax) are calculated and added at checkout based on your billing address. New accounts begin with a 14-day free trial. Payment details are required to activate your trial. You will not be charged until your 14-day trial ends. You can cancel anytime before then. All payments are processed securely through Stripe. Subscriptions automatically renew unless cancelled before the renewal date. You may cancel at any time through your account settings.",
+    body: "Nexpura offers tiered subscription plans (Boutique, Studio, and Atelier) billed monthly. Pricing is shown in your regional currency (AUD, USD, GBP, or EUR) based on your location, and prices listed on the pricing page are exclusive of applicable taxes; taxes (such as GST, VAT, or US sales tax) are calculated and added at checkout based on your billing address. New accounts begin with a 14-day free trial. Payment details are required to activate your trial. You will not be charged until your 14-day trial ends. You can cancel anytime before then. All payments are processed securely through Stripe. Subscriptions automatically renew unless cancelled before the renewal date. You may cancel at any time through your account settings.",
   },
   {
     id: "data-and-privacy",

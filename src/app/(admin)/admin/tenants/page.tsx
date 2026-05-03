@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import TenantsClient from "./TenantsClient";
 import logger from "@/lib/logger";
-import { calculateMRR } from "@/lib/plans";
+import { calculateMRRByCurrency, formatMRRByCurrency } from "@/lib/plans";
 
 /**
  * /admin/tenants — CC-ready page-route (admin-cluster cleanup pass).
@@ -94,26 +94,27 @@ async function TenantsBody({
     filtered = filtered.filter((t) => t.sub?.status === statusFilter);
   }
 
-  // Group 16 audit: pre-fix this had a hand-rolled PLAN_MRR table that
-  // was missing the 'atelier' key entirely (and counted legacy 'group'
-  // / 'ultimate' as $0), so any atelier tenant — the most common
-  // active plan on prod — counted as $0 toward the MRR shown on this
-  // page. /admin showed $2,451, /admin/revenue $1,076, /admin/tenants
-  // $179 — three different numbers for the same dataset. Routed
-  // through the canonical calculateMRR helper so all three pages now
-  // agree.
-  const subsForMRR = (subscriptions ?? []).map((s) => ({ tenant_id: s.tenant_id, plan: s.plan, status: s.status }));
+  // Joey 2026-05-03: per-currency MRR. Predecessor pages had three
+  // different totals for the same dataset (Group 16 audit) AND silently
+  // mis-summed non-AUD subs as AUD. Now: shared helper, four-currency
+  // breakdown rendered as a single inline string. Full breakdown lives
+  // on /admin/revenue.
   const tenantMap = new Map(
-    (tenants ?? []).map((t) => [t.id, { is_free_forever: t.is_free_forever ?? false }]),
+    (tenants ?? []).map((t) => [
+      t.id,
+      { is_free_forever: t.is_free_forever ?? false, currency: t.currency ?? null },
+    ]),
   );
-  const totalMRR = calculateMRR(subsForMRR, tenantMap);
+  const mrrBreakdown = calculateMRRByCurrency(subscriptions ?? [], tenantMap);
+  const totalMRRDisplay = formatMRRByCurrency(mrrBreakdown.byCurrency);
   const activeTenants = (tenants ?? []).filter((t) => subMap.get(t.id)?.status === "active").length;
   const trialTenants = (tenants ?? []).filter((t) => subMap.get(t.id)?.status === "trialing").length;
 
   return (
     <TenantsClient
       tenants={filtered}
-      totalMRR={totalMRR}
+      totalMRRDisplay={totalMRRDisplay}
+      fallbackSubCount={mrrBreakdown.fallbackSubCount}
       activeTenants={activeTenants}
       trialTenants={trialTenants}
       query={query}
@@ -133,6 +134,7 @@ interface TenantRow {
   is_free_forever?: boolean | null;
   created_at: string;
   deleted_at: string | null;
+  currency: string | null;
 }
 interface SubRow {
   tenant_id: string;
@@ -140,6 +142,8 @@ interface SubRow {
   status: string;
   trial_ends_at: string | null;
   current_period_end: string | null;
+  stripe_price_id: string | null;
+  currency: string | null;
 }
 interface OwnerRow {
   tenant_id: string;
@@ -163,12 +167,14 @@ async function loadTenantsData(): Promise<{
     const [tenantsRes, subsRes, ownersRes, supportAccessRes] = await Promise.all([
       adminClient
         .from("tenants")
-        .select("id, name, slug, is_free_forever, created_at, deleted_at")
+        .select("id, name, slug, is_free_forever, created_at, deleted_at, currency")
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
       adminClient
         .from("subscriptions")
-        .select("tenant_id, plan, status, trial_ends_at, current_period_end"),
+        .select(
+          "tenant_id, plan, status, trial_ends_at, current_period_end, stripe_price_id, currency",
+        ),
       adminClient.from("users").select("tenant_id, email").eq("role", "owner"),
       adminClient
         .from("support_access_requests")
