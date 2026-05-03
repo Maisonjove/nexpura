@@ -55,7 +55,21 @@ echo "$CHANGED" | sed 's/^/  /' >&2
 #   - tailwind.config.*, postcss.config.*, src/middleware.ts, src/styles/**
 SERVER_ONLY_PATTERN='^(src/lib/|src/app/api/|supabase/|scripts/|e2e/|docs/|\.github/|[^/]*\.md$|\.gitignore$|\.gitattributes$|CHANGELOG[^/]*$|README[^/]*$)'
 
+# Even within "src/lib/" there's a small denylist of files that DO affect
+# rendered routing/UI and must always trigger a rebuild. Joey 2026-05-03:
+# the allowlist initially routed src/lib/supabase/middleware.ts → skip,
+# which masked a routing change (admin-allowlist branch in the post-
+# audit dogfood-consolidation PR). Add new paths here when you find a
+# similar foot-gun.
+ALWAYS_BUILD_PATTERN='^(src/lib/supabase/middleware\.ts$|src/middleware\.ts$|src/lib/auth/entitlements\.ts$)'
+
 NON_SERVER_ONLY=$(echo "$CHANGED" | grep -Ev "$SERVER_ONLY_PATTERN" || true)
+ALWAYS_BUILD_HITS=$(echo "$CHANGED" | grep -E "$ALWAYS_BUILD_PATTERN" || true)
+if [ -n "$ALWAYS_BUILD_HITS" ]; then
+  log "always-build paths touched — building."
+  echo "$ALWAYS_BUILD_HITS" | sed 's/^/  + /' >&2
+  exit 1
+fi
 if [ -z "$NON_SERVER_ONLY" ]; then
   log "all $(echo "$CHANGED" | wc -l | tr -d ' ') changed file(s) are server-only — skipping preview build."
   exit 0
