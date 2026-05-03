@@ -165,13 +165,39 @@ export default async function RemindersPage() {
     customer: Array.isArray(l.customer) ? l.customer[0] || null : l.customer,
   }));
 
+  // Filter out reminders the current user has dismissed or snoozed.
+  // reminder_dismissals table is user-scoped; one row per
+  // user_id + reminder_key composite. Keys are constructed below to
+  // match the client-side action calls.
+  const { data: hiddenStates } = await admin
+    .from("reminder_dismissals")
+    .select("reminder_key, dismissed_at, snoozed_until")
+    .eq("user_id", userId);
+
+  const nowMs = Date.now();
+  const hiddenKeys = new Set<string>();
+  for (const row of hiddenStates ?? []) {
+    if (row.dismissed_at) hiddenKeys.add(row.reminder_key as string);
+    else if (row.snoozed_until && new Date(row.snoozed_until as string).getTime() > nowMs) {
+      hiddenKeys.add(row.reminder_key as string);
+    }
+  }
+
+  const filteredTasks = (upcomingTasks.data || []).filter((t) => !hiddenKeys.has(`task:${t.id}`));
+  const filteredRepairs = transformedRepairs.filter((r: { id: string }) => !hiddenKeys.has(`repair:${r.id}`));
+  const filteredBespoke = transformedBespoke.filter((b: { id: string }) => !hiddenKeys.has(`bespoke:${b.id}`));
+  const filteredLaybys = transformedLaybys.filter((l: { id: string }) => !hiddenKeys.has(`layby:${l.id}`));
+  const filteredCustomerEvents = upcomingCustomerEvents.filter(
+    (e) => !hiddenKeys.has(`customer_${e.type}:${e.customerId}`)
+  );
+
   return (
     <RemindersClient
-      tasks={upcomingTasks.data || []}
-      readyRepairs={transformedRepairs}
-      readyBespoke={transformedBespoke}
-      upcomingLaybys={transformedLaybys}
-      customerEvents={upcomingCustomerEvents}
+      tasks={filteredTasks}
+      readyRepairs={filteredRepairs}
+      readyBespoke={filteredBespoke}
+      upcomingLaybys={filteredLaybys}
+      customerEvents={filteredCustomerEvents}
     />
   );
 }
