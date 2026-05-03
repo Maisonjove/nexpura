@@ -7,6 +7,16 @@ import { safeBearerMatch } from "@/lib/timing-safe-compare";
  * POST /api/cron/payment-required
  * Can be called by admin to start a 48h grace period for a tenant
  * Body: { tenantId: string }
+ *
+ * Joey 2026-05-03 P2-G audit: this endpoint is POST-only by design
+ * (admin-triggered for a specific tenantId), but vercel.json had it
+ * scheduled as a daily cron. Vercel Cron sends GET, so the daily
+ * cron was hitting POST → 405 Method Not Allowed every day since
+ * the schedule was added — i.e., the cron has never executed.
+ * Removed from vercel.json so the cron stops bouncing. The admin-
+ * triggered POST flow is preserved for ad-hoc ops use. The actual
+ * "scan for tenants whose trial expired and put them in grace"
+ * logic lives in trial-end-checker (which runs daily 00:00 UTC).
  */
 export async function POST(request: NextRequest) {
   // Accept ONLY CRON_SECRET. Previously the service_role key was
