@@ -147,7 +147,7 @@ const EXEMPT_TENANT_ROUTES = new Set([
   "marketing", "tasks", "copilot", "website", "documents",
   "integrations", "reminders", "support", "settings", "billing",
   "suspended", "communications", "notifications", "migration", "ai",
-  "enquiries", "print-queue", "actions",
+  "enquiries", "print-queue", "actions", "verification",
 ]);
 
 // Exempt paths
