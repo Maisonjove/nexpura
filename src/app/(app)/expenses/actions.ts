@@ -93,6 +93,16 @@ export async function createExpense(
   if (isNaN(amount) || amount <= 0) return { error: "Valid amount is required" };
 
   const today = new Date().toISOString().split("T")[0];
+  const expenseDate = str("expense_date") || today;
+  // Block future-dated expenses — the till/audit story breaks if someone
+  // logs a $200 outgoing for next month. Spec: "no future dates".
+  if (expenseDate > today) {
+    return { error: "Expense date cannot be in the future." };
+  }
+
+  // Receipt URL is optional; the form's receipt-upload widget writes the
+  // public bucket URL into a hidden field which we persist on the row.
+  const receiptUrl = str("receipt_url");
 
   const { data, error } = await supabase
     .from("expenses")
@@ -102,8 +112,9 @@ export async function createExpense(
       category: str("category") || "other",
       amount,
       invoice_ref: str("invoice_ref"),
-      expense_date: str("expense_date") || today,
+      expense_date: expenseDate,
       notes: str("notes"),
+      receipt_url: receiptUrl,
       created_by: userId,
     })
     .select("id")
@@ -150,6 +161,10 @@ export async function updateExpense(
   const amount = parseFloat(formData.get("amount") as string);
 
   const today = new Date().toISOString().split("T")[0];
+  const expenseDate = str("expense_date") || today;
+  if (expenseDate > today) {
+    return { error: "Expense date cannot be in the future." };
+  }
 
   // Get old data for audit
   const { data: oldData } = await supabase
@@ -166,8 +181,9 @@ export async function updateExpense(
       category: str("category") || "other",
       amount,
       invoice_ref: str("invoice_ref"),
-      expense_date: str("expense_date") || today,
+      expense_date: expenseDate,
       notes: str("notes"),
+      receipt_url: str("receipt_url"),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)

@@ -66,6 +66,7 @@ export default async function SupplierReportsPage() {
     name: string;
     email: string | null;
     phone: string | null;
+    paymentTerms: string | null;
     orderCount: number;
     totalSpend: number;
     avgDeliveryDays: number | null;
@@ -104,6 +105,7 @@ export default async function SupplierReportsPage() {
       name: s.name,
       email: s.email,
       phone: s.phone,
+      paymentTerms: s.payment_terms,
       orderCount: supplierOrders.length,
       totalSpend,
       avgDeliveryDays: avgDelivery,
@@ -169,6 +171,7 @@ export default async function SupplierReportsPage() {
               <thead>
                 <tr className="border-b border-stone-100">
                   <th className="text-left px-5 py-3 text-xs font-medium text-stone-400 uppercase tracking-wider">Supplier</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-stone-400 uppercase tracking-wider">Payment Terms</th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-stone-400 uppercase tracking-wider">Orders</th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-stone-400 uppercase tracking-wider">Total Spend</th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-stone-400 uppercase tracking-wider">Avg Delivery</th>
@@ -184,6 +187,15 @@ export default async function SupplierReportsPage() {
                         {s.name}
                       </Link>
                       {s.email && <p className="text-xs text-stone-400">{s.email}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-stone-600 text-xs">
+                      {s.paymentTerms ? (
+                        <span className="inline-flex items-center px-2 py-0.5 bg-stone-100 text-stone-700 rounded-full font-medium uppercase tracking-wide">
+                          {s.paymentTerms}
+                        </span>
+                      ) : (
+                        <span className="text-stone-400">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-stone-900">{s.orderCount}</td>
                     <td className="px-4 py-3 text-right font-medium text-stone-900">{fmtCurrency(s.totalSpend)}</td>

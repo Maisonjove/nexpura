@@ -14,7 +14,9 @@ export default async function ExpenseDetailPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: userData } = await createAdminClient()
+  const admin = createAdminClient();
+
+  const { data: userData } = await admin
     .from("users")
     .select("tenant_id")
     .eq("id", user?.id ?? "")
@@ -31,5 +33,38 @@ export default async function ExpenseDetailPage({
 
   if (!expense) notFound();
 
-  return <ExpenseDetailClient expense={expense} />;
+  const { data: auditLogs } = await admin
+    .from("audit_logs")
+    .select("id, action, entity_type, entity_id, old_data, new_data, created_at, user_id")
+    .eq("tenant_id", tenantId ?? "")
+    .eq("entity_type", "expense")
+    .eq("entity_id", id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  let userMap: Record<string, { full_name: string | null; email: string | null }> = {};
+  const userIds = Array.from(
+    new Set(
+      (auditLogs ?? [])
+        .map((l) => l.user_id)
+        .filter((u): u is string => !!u),
+    ),
+  );
+  if (userIds.length > 0) {
+    const { data: users } = await admin
+      .from("users")
+      .select("id, full_name, email")
+      .in("id", userIds);
+    userMap = Object.fromEntries(
+      (users ?? []).map((u) => [u.id, { full_name: u.full_name, email: u.email }]),
+    );
+  }
+
+  return (
+    <ExpenseDetailClient
+      expense={expense}
+      auditLogs={auditLogs ?? []}
+      userMap={userMap}
+    />
+  );
 }

@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { createExpense, updateExpense } from "./actions";
+import { createClient } from "@/lib/supabase/client";
+
+const MAX_BYTES = 10 * 1024 * 1024;
+const ACCEPTED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
 
 interface ExpenseData {
   id: string;
@@ -11,6 +15,7 @@ interface ExpenseData {
   invoice_ref: string | null;
   expense_date: string;
   notes: string | null;
+  receipt_url?: string | null;
 }
 
 interface Props {
@@ -64,13 +69,49 @@ function FieldLabel({
 export default function ExpenseForm({ mode, expense }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(expense?.receipt_url ?? null);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
+
+  async function handleReceipt(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    if (file.size > MAX_BYTES) {
+      setError(`Receipt is ${(file.size / 1024 / 1024).toFixed(1)} MB. Max is 10 MB.`);
+      return;
+    }
+    if (!ACCEPTED.includes(file.type)) {
+      setError(`Unsupported type "${file.type}". Use JPEG/PNG/WEBP/PDF.`);
+      return;
+    }
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+      const path = `expense-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("inventory-photos")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) {
+        setError(upErr.message);
+        return;
+      }
+      const { data } = supabase.storage.from("inventory-photos").getPublicUrl(path);
+      setReceiptUrl(data.publicUrl);
+    } finally {
+      setUploading(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     const formData = new FormData(e.currentTarget);
+    formData.set("receipt_url", receiptUrl ?? "");
 
     startTransition(async () => {
       if (mode === "create") {
@@ -165,6 +206,49 @@ export default function ExpenseForm({ mode, expense }: Props) {
               className={inputCls}
             />
           </div>
+        </div>
+      </Section>
+
+      <Section title="Receipt">
+        <div className="space-y-3">
+          <p className="text-xs text-stone-500">
+            Upload a photo or PDF of the receipt (max 10 MB). Optional.
+          </p>
+          {receiptUrl ? (
+            <div className="flex items-center gap-3">
+              <a
+                href={receiptUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-amber-700 underline"
+              >
+                View receipt
+              </a>
+              <button
+                type="button"
+                onClick={() => setReceiptUrl(null)}
+                className="text-xs text-stone-500 hover:text-red-500"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              disabled={uploading}
+              className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-50"
+            >
+              {uploading ? "Uploading…" : "Upload receipt"}
+            </button>
+          )}
+          <input
+            ref={fileInput}
+            type="file"
+            accept={ACCEPTED.join(",")}
+            className="hidden"
+            onChange={handleReceipt}
+          />
         </div>
       </Section>
 
