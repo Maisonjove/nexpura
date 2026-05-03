@@ -17,6 +17,8 @@ import {
   SHELL_COOKIE_NAME,
   verifyShellCookie,
 } from "@/lib/dashboard/shell-cookie";
+import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Profile shape middleware actually consumes. Deliberately a narrow
 // subset of the users/tenants row so both the shell-cookie fast path
@@ -492,6 +494,45 @@ async function _updateSessionInner(request: NextRequest) {
       loginUrl.pathname = "/login";
       return redirectWithCookies(loginUrl, supabaseResponse);
     }
+
+    // ─── Group 16 P0 fix — admin RBAC at the middleware layer ────────
+    // PRE-FIX: the email-allowlist + super_admins check lived only in
+    // (admin)/layout.tsx, which runs AFTER Next.js has started streaming
+    // the response. The auth guard called redirect() inside a Suspense
+    // boundary, but the page.tsx data fetch had ALREADY run in parallel
+    // and its results were embedded in the RSC payload that streamed to
+    // the browser before the redirect digest fired. Net: a non-Joey
+    // owner hitting /admin with curl received the full admin payload
+    // (total tenants, MRR, recent signups, full subscriptions table)
+    // in HTTP 200 body before the meta-refresh redirect kicked in.
+    // Verified live during Group 16 audit harness with attack-tenant-B
+    // owner JWT — pulled total=37, MRR=$2,451, 10 tenant names + the
+    // entire subscriptions list.
+    //
+    // Fix: enforce the allowlist + super_admins gate HERE, before any
+    // page render starts. A non-admin user gets a clean 302 to
+    // /dashboard with zero body content. This pre-empts the streaming
+    // render so curl + browser both see the same redirect, no leakage.
+    if (!isAllowlistedAdmin(user.email)) {
+      const dashboardUrl = request.nextUrl.clone();
+      dashboardUrl.pathname = "/dashboard";
+      return redirectWithCookies(dashboardUrl, supabaseResponse);
+    }
+    // Belt-and-suspenders: even an allowlisted email must be present in
+    // super_admins. Same shape as the layout check, just earlier.
+    const adminClient = createAdminClient();
+    const { data: superAdmin } = await adminClient
+      .from("super_admins")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!superAdmin) {
+      const dashboardUrl = request.nextUrl.clone();
+      dashboardUrl.pathname = "/dashboard";
+      return redirectWithCookies(dashboardUrl, supabaseResponse);
+    }
+    // ─── end admin gate ──────────────────────────────────────────────
+
     // PR-05: /admin is the super-admin surface — the AAL2 gate matters
     // most here. totp_enabled is read from the shell cookie (set at login
     // + signed) so we skip the users-table round-trip on every /admin nav.
