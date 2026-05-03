@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
-import { requireAuth } from "@/lib/auth-context";
+import { requireAuth, requireRole } from "@/lib/auth-context";
 
 export interface TaskTemplate {
   id: string;
@@ -49,6 +49,16 @@ export async function createTaskTemplate(input: {
   priority: string;
 }): Promise<{ data?: TaskTemplate; error?: string }> {
   try {
+    // Group 15 audit: task templates pre-populate every staff member's
+    // to-do list. Pre-fix only deleteTaskTemplate was role-gated; create
+    // and update were callable by any tenant member, so a salesperson
+    // could ship workflow templates that flood the team. Aligning with
+    // the delete gate.
+    try {
+      await requireRole("owner", "manager");
+    } catch {
+      return { error: "Only owner or manager can create task templates." };
+    }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
@@ -92,6 +102,12 @@ export async function updateTaskTemplate(
   }
 ): Promise<{ error?: string }> {
   try {
+    // Same gate as createTaskTemplate (Group 15 audit fix).
+    try {
+      await requireRole("owner", "manager");
+    } catch {
+      return { error: "Only owner or manager can update task templates." };
+    }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
