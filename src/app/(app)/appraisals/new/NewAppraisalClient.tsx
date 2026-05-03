@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { createAppraisal } from "../actions";
+import { createClient } from "@/lib/supabase/client";
 import { SubmitButton } from "@/components/ui/submit-button";
+
+const MAX_BYTES = 10 * 1024 * 1024;
+const ACCEPTED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
 interface Customer {
   id: string;
@@ -20,13 +25,61 @@ interface Props {
 
 export default function NewAppraisalClient({ customers }: Props) {
   const router = useRouter();
+  const fileInput = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  async function handlePhotos(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const newUrls: string[] = [];
+      for (const file of files) {
+        if (file.size > MAX_BYTES) {
+          setError(`${file.name} is over 10 MB.`);
+          continue;
+        }
+        if (!ACCEPTED.includes(file.type)) {
+          setError(`${file.name} type ${file.type} not supported.`);
+          continue;
+        }
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const path = `appraisal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("inventory-photos")
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (upErr) {
+          setError(upErr.message);
+          continue;
+        }
+        const { data } = supabase.storage.from("inventory-photos").getPublicUrl(path);
+        newUrls.push(data.publicUrl);
+      }
+      setPhotos((prev) => [...prev, ...newUrls]);
+    } finally {
+      setUploading(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
+  function removePhoto(url: string) {
+    setPhotos((prev) => prev.filter((p) => p !== url));
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (photos.length === 0) {
+      setError("At least one photo is required for an appraisal.");
+      return;
+    }
     const fd = new FormData(e.currentTarget);
+    fd.set("images", JSON.stringify(photos));
     startTransition(async () => {
       try {
         const result = await createAppraisal(fd);
@@ -296,11 +349,59 @@ export default function NewAppraisalClient({ customers }: Props) {
             </div>
           </div>
 
+          {/* Photos — required (at least one) per spec. Multiple uploads
+              into the inventory-photos bucket; URLs collected client-side
+              and submitted as a JSON-encoded "images" form field. */}
+          <div>
+            <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-3">
+              Photos <span className="text-red-500">*</span>
+            </h3>
+            <p className="text-xs text-stone-500 mb-3">
+              At least one photo is required. Up to 10 MB each. JPEG / PNG / WEBP / HEIC.
+            </p>
+            {photos.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3">
+                {photos.map((url) => (
+                  <div key={url} className="relative w-full aspect-square rounded-lg overflow-hidden border border-stone-200">
+                    <Image src={url} alt="Appraisal photo" fill sizes="120px" className="object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(url)}
+                      className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full text-xs hover:bg-black/80"
+                      aria-label="Remove photo"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              disabled={uploading}
+              className="w-full border-2 border-dashed border-stone-200 rounded-xl p-6 text-center bg-stone-50/50 hover:border-amber-600/40 hover:bg-amber-50/40 transition-colors disabled:opacity-50"
+            >
+              <p className="text-sm text-stone-500">
+                {uploading ? "Uploading…" : photos.length === 0 ? "Click to add photos (required)" : "Add more photos"}
+              </p>
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              accept={ACCEPTED.join(",")}
+              className="hidden"
+              onChange={handlePhotos}
+            />
+          </div>
+
           <div className="flex gap-3 pt-4 border-t border-stone-100">
             <SubmitButton
               isPending={isPending}
               idleLabel="Create Appraisal"
               pendingLabel="Creating…"
+              disabled={photos.length === 0}
               className="px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
             />
             <Link

@@ -358,7 +358,7 @@ async function WorkshopJobsBody({
       depositAmount: null,
       balanceDue: a.fee ?? null,
       lastUpdate: a.updated_at ?? a.created_at,
-      href: `/appraisals`,
+      href: `/appraisals/${a.id}`,
     };
   });
 

@@ -12,6 +12,7 @@ import { formatDateForExport } from "@/lib/export";
 import { toast } from "sonner";
 import logger from "@/lib/logger";
 import { RepairRow } from "./RepairRow";
+import RepairsKanban from "./RepairsKanban";
 import { useProgressiveRender } from "@/lib/useProgressiveRender";
 
 // CameraScannerModal pulls in camera + barcode-detection APIs; ExportButtons
@@ -102,6 +103,12 @@ export default function RepairsListClient({
   const router = useRouter();
   const pathname = usePathname();
   const [, startTransition] = useTransition();
+
+  // List | Kanban view toggle. Kanban renders the same data grouped by
+  // stage with @dnd-kit drag-and-drop; dropping a card on another column
+  // calls advanceRepairStage which updates the DB + invalidates the
+  // workshop / dashboard caches.
+  const [view, setView] = useState<"list" | "kanban">("list");
 
   // Stage filtering is entirely client-side now. URL stays the source of truth
   // across refresh / share, but tab clicks update local state for instant
@@ -310,6 +317,30 @@ export default function RepairsListClient({
         </div>
       )}
 
+      {/* View toggle: list vs kanban. Kanban renders the same data
+          grouped by stage with @dnd-kit drag-and-drop; dropping a card
+          calls advanceRepairStage. */}
+      <div className="flex justify-end">
+        <div className="inline-flex rounded-lg border border-stone-200 p-0.5 bg-stone-50">
+          <button
+            onClick={() => setView("list")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              view === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+            }`}
+          >
+            List
+          </button>
+          <button
+            onClick={() => setView("kanban")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              view === "kanban" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+            }`}
+          >
+            Kanban
+          </button>
+        </div>
+      </div>
+
       {/* STAGE TABS — labels now show the precomputed tenant-wide count
           next to each stage key when available. Falls back to label-only
           when the stats row is missing (first-ever visit). */}
@@ -343,7 +374,10 @@ export default function RepairsListClient({
         })}
       </div>
 
-      {/* TABLE */}
+      {/* TABLE / KANBAN */}
+      {view === "kanban" ? (
+        <RepairsKanban initialRepairs={visibleRepairs} />
+      ) : (
       <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
         <Table>
           <TableHeader>
@@ -383,6 +417,7 @@ export default function RepairsListClient({
             </TableBody>
         </Table>
       </Card>
+      )}
 
       {/* Camera Scanner Modal */}
       {showCameraScanner && (

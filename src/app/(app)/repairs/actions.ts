@@ -162,6 +162,27 @@ export async function createRepair(
     created_by: userId,
   });
 
+  // If a deposit was taken at intake, log it as a payment row on the
+  // customer so /customers/[id]/Payments tab + the till reconcile.
+  // Pre-fix the deposit field was stored on the repair only — money in
+  // the till had no audit trail outside the repair record.
+  const depositAmount = Number((repairData as { deposit_amount?: number | null }).deposit_amount ?? 0);
+  const customerId = (repairData as { customer_id?: string | null }).customer_id ?? null;
+  if (depositAmount > 0 && customerId) {
+    await supabase.from("payments").insert({
+      tenant_id: tenantId,
+      customer_id: customerId,
+      amount: depositAmount,
+      payment_method: "cash",
+      reference_type: "repair",
+      reference_id: data.id,
+      notes: `Deposit on repair intake`,
+      created_by: userId,
+    }).then(({ error: payErr }) => {
+      if (payErr) logger.error("[createRepair] Failed to log deposit payment:", payErr);
+    });
+  }
+
   // Log initial status to tracking history
   await logStatusChange({
     tenantId,
@@ -199,7 +220,15 @@ export async function createRepair(
     after(() => refreshDashboardStatsAsync(tenantId));
   });
 
+  // Cross-page sync per spec: the customer's Repairs tab + tasks list
+  // must reflect the new repair within seconds. Tag-bust the customer
+  // page so /customers/[id] reloads.
+  if (customerId) {
+    revalidatePath(`/customers/${customerId}`);
+  }
   revalidatePath("/repairs");
+  revalidatePath("/workshop");
+  revalidatePath("/workshop/jobs");
   redirect(`/repairs/${data.id}`);
 }
 

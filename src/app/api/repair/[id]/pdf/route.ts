@@ -88,6 +88,7 @@ export async function GET(
 
   const ticketData = {
     ticketNumber: repair.repair_number ?? repair.id,
+    qrCodeDataUrl: await (await import("qrcode")).toDataURL(repair.repair_number ?? repair.id, { width: 96, margin: 0 }).catch(() => null),
     tenantName: tenant?.business_name || tenant?.name || "Your Store Name",
     tenantPhone: tenant?.phone ?? undefined,
     tenantEmail: tenant?.email ?? undefined,

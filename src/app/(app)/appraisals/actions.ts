@@ -118,6 +118,21 @@ export async function createAppraisal(formData: FormData): Promise<{ id?: string
       return val ? parseFloat(val) : null;
     };
 
+    // Photos: client uploads to inventory-photos bucket and serializes
+    // the resulting URL list as JSON. Spec requires at least one photo
+    // — server enforces in addition to client-side gate so a forged
+    // POST can't slip through.
+    let images: string[] = [];
+    try {
+      const raw = formData.get("images") as string | null;
+      if (raw) images = JSON.parse(raw);
+    } catch {
+      images = [];
+    }
+    if (!Array.isArray(images) || images.length === 0) {
+      return { error: "At least one photo is required for an appraisal." };
+    }
+
     const { data, error } = await admin
       .from("appraisals")
       .insert({
@@ -159,6 +174,7 @@ export async function createAppraisal(formData: FormData): Promise<{ id?: string
         methodology: (formData.get("methodology") as string) || null,
         notes: (formData.get("notes") as string) || null,
         fee: parseNum("fee"),
+        images,
         created_by: userId,
       })
       .select("id")
@@ -284,6 +300,81 @@ export async function issueAppraisal(id: string): Promise<{ error?: string }> {
     revalidatePath("/appraisals");
     revalidatePath(`/appraisals/${id}`);
     return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+/**
+ * Email the appraisal certificate to the customer. Pulls the PDF route's
+ * URL into the email body and uses Resend (same path as quote/invoice
+ * emails). Caller must have already issued the appraisal — this is a
+ * delivery, not an issue, action.
+ */
+export async function emailAppraisal(id: string): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const { userId, tenantId } = await getAuthContext();
+    const admin = createAdminClient();
+
+    const { data: ap } = await admin
+      .from("appraisals")
+      .select("id, appraisal_number, status, customer_name, customer_email, item_name, appraised_value")
+      .eq("id", id)
+      .eq("tenant_id", tenantId)
+      .single();
+    if (!ap) return { error: "Appraisal not found" };
+    if (!ap.customer_email) return { error: "No customer email on file." };
+
+    const { data: tenant } = await admin
+      .from("tenants")
+      .select("business_name, name, email")
+      .eq("id", tenantId)
+      .single();
+    const businessName = tenant?.business_name || tenant?.name || "Your Jeweller";
+    const fromEmail = tenant?.email || "noreply@nexpura.com";
+
+    const { Resend } = await import("resend");
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) return { error: "Email service is not configured." };
+    const resend = new Resend(apiKey);
+
+    const valueStr = ap.appraised_value != null
+      ? `$${Number(ap.appraised_value).toFixed(2)}`
+      : "see attached";
+
+    const html = `
+      <div style="font-family: Georgia, serif; max-width: 540px; margin: 0 auto; padding: 24px;">
+        <h1 style="color: #1c1917;">${businessName} Appraisal Certificate</h1>
+        <p>${ap.customer_name ? `Dear ${ap.customer_name},` : "Hello,"}</p>
+        <p>Please find attached the appraisal certificate for:</p>
+        <div style="background: #fafaf9; border: 1px solid #e7e5e4; padding: 16px; border-radius: 8px; margin: 16px 0;">
+          <p style="margin: 0 0 8px;"><strong>${ap.item_name}</strong></p>
+          <p style="margin: 0; color: #57534e;">Appraised value: ${valueStr}</p>
+          <p style="margin: 8px 0 0; color: #78716c; font-size: 12px;">Reference: ${ap.appraisal_number}</p>
+        </div>
+        <p>The certificate PDF can be downloaded at:<br>
+          <a href="https://nexpura.com/api/appraisals/${id}/pdf">View Certificate</a>
+        </p>
+        <p style="color: #78716c; font-size: 12px; margin-top: 24px;">— ${businessName}</p>
+      </div>
+    `;
+
+    const { error: sendErr } = await resend.emails.send({
+      from: `${businessName} <${fromEmail}>`,
+      to: ap.customer_email,
+      subject: `Your appraisal certificate from ${businessName}`,
+      html,
+    });
+    if (sendErr) return { error: sendErr.message };
+
+    await logActivity(tenantId, userId, "emailed_appraisal", "appraisal", id, "");
+    await logAuditEvent({
+      tenantId, userId, action: "appraisal_issue",
+      entityType: "appraisal", entityId: id,
+      newData: { emailed: true, sentTo: ap.customer_email },
+    });
+    revalidatePath(`/appraisals/${id}`);
+    return { success: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error" };
   }
