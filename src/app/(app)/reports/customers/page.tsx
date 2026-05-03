@@ -33,15 +33,23 @@ export default async function CustomerReportsPage() {
 
   const admin = createAdminClient();
 
+  // Pull customers + every linked sale, then filter to revenue-bearing
+  // statuses ('paid', 'completed') in JS. Pre-fix this counted refunded/
+  // voided/cancelled sales toward totalSpend + AOV — a $5,000 sale that
+  // got refunded made the customer look like a $5,000 spender. We can't
+  // filter on the joined relation directly via PostgREST without losing
+  // customers who have no qualifying sales, so pull all + filter.
   const { data: customers } = await admin
     .from("customers")
-    .select("id, full_name, email, is_vip, store_credit, sales(total)")
+    .select("id, full_name, email, is_vip, store_credit, sales(total, status)")
     .eq("tenant_id", tenantId)
     .is("deleted_at", null);
 
+  const REVENUE_STATUSES = new Set(["paid", "completed"]);
   const rows: CustomerRow[] = (customers || []).map((c) => {
-    const sales = (c.sales as Array<{ total: number | null }> | null) || [];
-    const totalSpend = sales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+    const allSales = (c.sales as Array<{ total: number | null; status: string | null }> | null) || [];
+    const realSales = allSales.filter((s) => s.status && REVENUE_STATUSES.has(s.status));
+    const totalSpend = realSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
     return {
       id: c.id,
       full_name: c.full_name,
@@ -49,7 +57,7 @@ export default async function CustomerReportsPage() {
       is_vip: !!c.is_vip,
       store_credit: Number(c.store_credit) || 0,
       totalSpend,
-      saleCount: sales.length,
+      saleCount: realSales.length,
     };
   });
 
