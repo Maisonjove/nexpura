@@ -3,10 +3,15 @@
  *
  * Phase 1.5 post-audit (Joey 2026-05-03 directive). Daily 02:00 UTC.
  *
- * Fetches latest FX rates from exchangerate.host (free, no API key)
- * for the 4 currencies the platform supports (AUD/USD/GBP/EUR), then
- * writes one row per ordered pair into fx_rates. Source-of-truth for
- * the "≈ A$X total (FX rates updated daily)" line on /admin/revenue.
+ * Fetches latest FX rates from Frankfurter (api.frankfurter.dev,
+ * ECB-sourced, free, no API key) for the 4 currencies the platform
+ * supports (AUD/USD/GBP/EUR), then writes one row per ordered pair
+ * into fx_rates. Source-of-truth for the "≈ A$X total (FX rates
+ * updated daily)" line on /admin/revenue.
+ *
+ * (Original spec named exchangerate.host — they moved to a paid-key
+ * model in 2025; Frankfurter is the closest free no-key replacement
+ * and is ECB-backed which is appropriate for monthly FX averages.)
  *
  * Auth: bearer match against CRON_SECRET (same convention as the
  * other 9 vercel-managed crons).
@@ -26,17 +31,16 @@ import logger from "@/lib/logger";
 const SUPPORTED = ["AUD", "USD", "GBP", "EUR"] as const;
 type Currency = (typeof SUPPORTED)[number];
 
-interface ExchangeRateResponse {
-  success?: boolean;
+interface FrankfurterResponse {
+  amount?: number;
   base?: string;
   date?: string;
   rates?: Record<string, number>;
-  error?: { type?: string; info?: string };
 }
 
 async function fetchRatesForBase(base: Currency, targets: Currency[]): Promise<Record<string, number> | null> {
   const symbols = targets.filter((t) => t !== base).join(",");
-  const url = `https://api.exchangerate.host/latest?base=${base}&symbols=${symbols}`;
+  const url = `https://api.frankfurter.dev/v1/latest?base=${base}&symbols=${symbols}`;
   try {
     const resp = await fetch(url, {
       // Don't cache — the cron is the cache layer. Vercel's fetch cache
@@ -51,11 +55,7 @@ async function fetchRatesForBase(base: Currency, targets: Currency[]): Promise<R
       logger.error(`[fx-refresh] upstream ${base} returned HTTP ${resp.status}`);
       return null;
     }
-    const json = (await resp.json()) as ExchangeRateResponse;
-    if (json.error) {
-      logger.error(`[fx-refresh] upstream ${base} error:`, json.error);
-      return null;
-    }
+    const json = (await resp.json()) as FrankfurterResponse;
     return json.rates ?? null;
   } catch (err) {
     logger.error(`[fx-refresh] upstream ${base} fetch failed:`, err);
