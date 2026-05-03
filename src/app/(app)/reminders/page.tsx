@@ -35,7 +35,7 @@ export default async function RemindersPage() {
     // always returned zero task reminders. (Group 14 audit finding.)
     admin
       .from("tasks")
-      .select("id, title, description, due_date, priority, status, linked_type, linked_id")
+      .select("id, title, description, due_date, priority, status, related_type, related_id")
       .eq("tenant_id", tenantId)
       .eq("assigned_to", userId)
       .in("status", ["todo", "in_progress", "blocked"])
