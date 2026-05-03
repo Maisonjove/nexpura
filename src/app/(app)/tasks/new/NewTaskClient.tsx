@@ -19,11 +19,24 @@ interface TeamMember {
   email: string | null;
 }
 
-interface Props {
-  teamMembers: TeamMember[];
+interface LinkCandidate {
+  id: string;
+  label: string;
 }
 
-export default function NewTaskClient({ teamMembers }: Props) {
+interface LinkCandidates {
+  repair: LinkCandidate[];
+  bespoke: LinkCandidate[];
+  inventory: LinkCandidate[];
+  supplier: LinkCandidate[];
+}
+
+interface Props {
+  teamMembers: TeamMember[];
+  linkCandidates?: LinkCandidates;
+}
+
+export default function NewTaskClient({ teamMembers, linkCandidates }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -192,15 +205,53 @@ export default function NewTaskClient({ teamMembers }: Props) {
           {form.linked_type && (
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">
-                {LINKED_TYPE_LABELS[form.linked_type]} ID
+                {LINKED_TYPE_LABELS[form.linked_type]}
               </label>
-              <input
-                type="text"
-                value={form.linked_id}
-                onChange={(e) => setForm((p) => ({ ...p, linked_id: e.target.value }))}
-                placeholder="Paste ID here"
-                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
-              />
+              {/* Real picker — pre-fix this was a free-text "Paste ID
+                  here" input with no validation. Now: searchable
+                  dropdown of recent active records of the chosen type
+                  pre-fetched on /tasks/new. The native datalist gives
+                  type-ahead filtering for free in the browser; falling
+                  back to the previously-supplied linked_id if the
+                  caller pre-filled via query params (e.g. linking from
+                  /repairs/[id]). */}
+              {linkCandidates && linkCandidates[form.linked_type as keyof LinkCandidates]?.length > 0 ? (
+                <>
+                  <input
+                    type="text"
+                    list={`link-candidates-${form.linked_type}`}
+                    value={
+                      // Display the candidate's label if we have a match;
+                      // otherwise fall back to whatever ID was pasted in
+                      // via query params (deep link flow).
+                      linkCandidates[form.linked_type as keyof LinkCandidates].find((c) => c.id === form.linked_id)?.label ?? form.linked_id
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const match = linkCandidates[form.linked_type as keyof LinkCandidates].find((c) => c.label === raw);
+                      setForm((p) => ({ ...p, linked_id: match?.id ?? raw }));
+                    }}
+                    placeholder={`Search recent ${LINKED_TYPE_LABELS[form.linked_type].toLowerCase()}s…`}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
+                  />
+                  <datalist id={`link-candidates-${form.linked_type}`}>
+                    {linkCandidates[form.linked_type as keyof LinkCandidates].map((c) => (
+                      <option key={c.id} value={c.label} />
+                    ))}
+                  </datalist>
+                  <p className="text-xs text-stone-400 mt-1">
+                    Type to filter, or paste a UUID directly. Showing {linkCandidates[form.linked_type as keyof LinkCandidates].length} most recent.
+                  </p>
+                </>
+              ) : (
+                <input
+                  type="text"
+                  value={form.linked_id}
+                  onChange={(e) => setForm((p) => ({ ...p, linked_id: e.target.value }))}
+                  placeholder="Paste ID here"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
+                />
+              )}
             </div>
           )}
 
