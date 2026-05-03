@@ -36,10 +36,10 @@ export default async function TaskDetailPage({
   ]);
 
   return (
-    <TaskDetailClient 
-      task={task} 
-      initialComments={comments.data || []} 
-      activities={activities || []}
+    <TaskDetailClient
+      task={task}
+      initialComments={comments.data || []}
+      activities={activities.data || []}
       attachments={attachments.data || []}
     />
   );
