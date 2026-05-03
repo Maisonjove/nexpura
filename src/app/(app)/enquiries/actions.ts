@@ -220,8 +220,14 @@ export async function convertEnquiry(
     if (!destinationId) return { error: "Conversion failed" };
 
     // Mark enquiry converted with a pointer back at the destination
-    // (enables idempotency + audit trail).
-    await admin
+    // (enables idempotency + audit trail). Surface the update error
+    // explicitly — the previous version `await … .update(…)` silently
+    // swallowed a 23514 status check-constraint violation on prod,
+    // leaving the destination row created but the enquiry still at
+    // 'new'. Status check was widened in
+    // 20260503_shop_enquiries_status_widen.sql; this guard surfaces
+    // any future schema drift instead of repeating that bug.
+    const { error: enqUpdateErr } = await admin
       .from("shop_enquiries")
       .update({
         status: "converted",
@@ -229,6 +235,12 @@ export async function convertEnquiry(
       })
       .eq("id", enquiryId)
       .eq("tenant_id", tenantId);
+    if (enqUpdateErr) {
+      logger.error("convertEnquiry: enquiry status update failed after destination created", {
+        enquiryId, destinationId, target, error: enqUpdateErr.message,
+      });
+      return { error: `Created ${target} but failed to mark enquiry converted: ${enqUpdateErr.message}` };
+    }
 
     await logAuditEvent({
       tenantId,
