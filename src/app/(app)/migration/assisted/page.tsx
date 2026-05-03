@@ -2,6 +2,8 @@ import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { redirect } from "next/navigation";
 import AssistedMigrationClient from "./_components/AssistedMigrationClient";
 
+export const metadata = { title: "Assisted Migration — Nexpura" };
+
 export default async function AssistedMigrationPage({
   searchParams,
 }: {

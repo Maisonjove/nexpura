@@ -147,18 +147,24 @@ async function VerifyPage({
   // Use admin client (service role) - bypasses RLS, safe because we're server-side only
   const supabase = createAdminClient();
 
-  // Try to find passport by passport_uid first, then by identity_number
+  // Try to find passport by passport_uid first, then by identity_number.
+  // Use ilike for case-insensitive match — the regex above already
+  // accepts NXP-xxxxxx case-insensitively, but the previous .eq()
+  // here was case-sensitive against the stored uppercase form, so a
+  // QR scanned as `nxp-8b3e77` would resolve to "Passport Not Found"
+  // even though the staff /passports/verify action handles the same
+  // input via .ilike. Aligning the behaviour.
   let passport = null;
-  
+
   // First try passport_uid (legacy format like NXP-XXXXXX)
   const { data: byUid } = await supabase
     .from("passports")
     .select("*")
-    .eq("passport_uid", uid)
+    .ilike("passport_uid", uid)
     .eq("is_public", true)
     .eq("status", "active")
     .is("deleted_at", null)
-    .single();
+    .maybeSingle();
   
   if (byUid) {
     passport = byUid;
@@ -173,7 +179,7 @@ async function VerifyPage({
         .eq("is_public", true)
         .eq("status", "active")
         .is("deleted_at", null)
-        .single();
+        .maybeSingle();
       passport = byIdentity;
     }
   }

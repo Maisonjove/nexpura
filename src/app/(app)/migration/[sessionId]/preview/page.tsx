@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { MigrationStepper } from '../../_components/MigrationStepper';
 import { PreviewClient } from './PreviewClient';
 
+export const metadata = { title: "Migration · Preview — Nexpura" };
 
 interface Props {
   params: Promise<{ sessionId: string }>;

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { redirect } from "next/navigation";
 
+export const metadata = { title: "New Migration — Nexpura" };
+
 export default async function NewMigrationPage({
   searchParams,
 }: {

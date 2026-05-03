@@ -2,6 +2,8 @@ import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { redirect } from "next/navigation";
 import FilesClient from "./FilesClient";
 
+export const metadata = { title: "Migration · Files — Nexpura" };
+
 export default async function FilesPage({
   params,
   searchParams,

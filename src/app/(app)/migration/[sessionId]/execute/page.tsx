@@ -2,6 +2,8 @@ import { getAuthOrReviewContext } from "@/lib/auth/review";
 import { redirect } from "next/navigation";
 import ExecuteClient from "./ExecuteClient";
 
+export const metadata = { title: "Migration · Execute — Nexpura" };
+
 export default async function ExecutePage({
   params,
   searchParams,

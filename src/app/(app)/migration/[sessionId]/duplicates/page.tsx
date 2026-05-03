@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, Users } from 'lucide-react';
 import { MigrationStepper } from '../../_components/MigrationStepper';
 
+export const metadata = { title: "Migration · Duplicates — Nexpura" };
 
 interface Props {
   params: Promise<{ sessionId: string }>;

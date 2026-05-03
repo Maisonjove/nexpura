@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { MigrationStepper } from '../../_components/MigrationStepper';
 import { MappingTableWrapper } from './MappingTableWrapper';
 
+export const metadata = { title: "Migration · Map fields — Nexpura" };
 
 interface Props {
   params: Promise<{ sessionId: string }>;
