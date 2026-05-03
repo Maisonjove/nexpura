@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CheckIcon } from "@heroicons/react/24/outline";
 import { PLANS as MASTER_PLANS, type CurrencyCode } from "@/data/pricing";
 import logger from "@/lib/logger";
 
@@ -100,126 +101,243 @@ export default function BillingClient({
   const isActive = subscriptionStatus === "active";
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12 pb-20">
-      {/* Header */}
-      <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold text-stone-900">Subscription & Plan</h1>
-        <p className="text-stone-500 max-w-2xl mx-auto">
-          Manage your Nexpura plan and billing details. All plans include core jewellery operations.
-        </p>
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12 px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+      <div className="max-w-[1200px] mx-auto">
+        {/* Page Header */}
+        <div className="mb-16">
+          <p className="text-xs uppercase tracking-luxury text-stone-500 mb-4">
+            Account
+          </p>
+          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-stone-900 leading-tight">
+            Billing
+          </h1>
+          <p className="text-stone-500 mt-4 max-w-xl text-base leading-relaxed">
+            Your subscription, plans, and payment history.
+          </p>
+        </div>
 
         {/* Status card */}
-        <div className="inline-flex items-center gap-6 bg-white border border-stone-200 px-6 py-3 rounded-2xl shadow-sm mt-4">
-          <div className="text-left">
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Current Plan</p>
-            <p className="text-sm font-bold text-amber-700 capitalize">{currentPlan}</p>
-          </div>
-          <div className="w-px h-8 bg-stone-100" />
-          <div className="text-left">
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Status</p>
-            <p className="text-sm font-semibold text-stone-900">
-              {isTrial ? "Free Trial" : isActive ? "Active" : "No active subscription"}
-            </p>
-          </div>
-          <div className="w-px h-8 bg-stone-100" />
-          <div className="text-left">
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-              {isTrial ? "Trial Ends" : "Next Billing"}
-            </p>
-            <p className="text-sm font-semibold text-stone-900">
-              {isTrial && trialEndsAt ? new Date(trialEndsAt).toLocaleDateString("en-AU") :
-               isActive && currentPeriodEnd ? new Date(currentPeriodEnd).toLocaleDateString("en-AU") : "—"}
-            </p>
+        <div className="bg-white border border-stone-200 rounded-2xl px-6 py-6 sm:px-8 sm:py-7 mb-20 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-0 sm:divide-x sm:divide-stone-200">
+            <div className="sm:pr-8">
+              <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-2">
+                Current Plan
+              </p>
+              <p className="font-serif text-2xl text-stone-900 capitalize">
+                {currentPlan}
+              </p>
+            </div>
+            <div className="sm:px-8">
+              <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-2">
+                Status
+              </p>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isActive ? "bg-emerald-500" : isTrial ? "bg-amber-500" : "bg-stone-300"
+                  }`}
+                />
+                <p className="text-base font-medium text-stone-900">
+                  {isTrial ? "Free Trial" : isActive ? "Active" : "No subscription"}
+                </p>
+              </div>
+            </div>
+            <div className="sm:pl-8">
+              <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-2">
+                {isTrial ? "Trial Ends" : "Next Billing"}
+              </p>
+              <p className="text-base font-medium text-stone-900">
+                {isTrial && trialEndsAt
+                  ? new Date(trialEndsAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+                  : isActive && currentPeriodEnd
+                  ? new Date(currentPeriodEnd).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+                  : "—"}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Plan Cards — monthly only per Phase 1.5 post-audit; annual
-           toggle removed. Prices shown in tenant's billing currency. */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {PLAN_CARD_DESCRIPTORS.map((descriptor) => {
-          const masterPlan = MASTER_PLANS.find((p) => p.id === descriptor.id)!;
-          const planName = masterPlan.name;
-          const { display } = getDisplayPrice(descriptor.id, currency);
-          return (
-            <div
-              key={descriptor.id}
-              className={`relative bg-white rounded-3xl border-2 p-8 flex flex-col transition-all ${
-                descriptor.id === currentPlan ? "border-amber-600 ring-4 ring-amber-600/5" : "border-stone-100 hover:border-stone-200 shadow-sm"
-              }`}
-            >
-              {descriptor.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-700 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
-                  Most Popular
-                </div>
-              )}
-              <div className="mb-8">
-                <h3 className="text-xl font-bold text-stone-900">{planName}</h3>
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-4xl font-bold tracking-tight text-stone-900">{display}</span>
-                  <span className="text-stone-500 text-sm font-medium">/mo</span>
-                </div>
-                <p className="mt-4 text-sm text-stone-500 leading-relaxed">{descriptor.description}</p>
-              </div>
+        {/* Plans Section Heading */}
+        <div className="mb-10">
+          <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+            Plans
+          </p>
+          <h2 className="font-serif text-3xl sm:text-4xl text-stone-900 leading-tight">
+            Choose your plan
+          </h2>
+          <p className="text-stone-500 max-w-xl mt-3 text-base leading-relaxed">
+            All plans include core jewellery operations. Upgrade anytime; downgrade at the end of your billing cycle.
+          </p>
+        </div>
 
-              <ul className="space-y-4 mb-10 flex-1">
-                {descriptor.features.map((feat) => (
-                  <li key={feat} className="flex items-center gap-3 text-sm text-stone-600">
-                    <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                    {feat}
-                  </li>
-                ))}
-              </ul>
+        {/* Plan Cards — monthly only per Phase 1.5 post-audit; annual
+             toggle removed. Prices shown in tenant's billing currency. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-24">
+          {PLAN_CARD_DESCRIPTORS.map((descriptor) => {
+            const masterPlan = MASTER_PLANS.find((p) => p.id === descriptor.id)!;
+            const planName = masterPlan.name;
+            const { display } = getDisplayPrice(descriptor.id, currency);
+            const isCurrent = descriptor.id === currentPlan;
+            const isFeatured = descriptor.popular;
 
-              <button
-                onClick={() => handleUpgrade(descriptor.id)}
-                disabled={loading === descriptor.id || descriptor.id === currentPlan}
-                className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
-                  descriptor.id === currentPlan
-                    ? "bg-stone-50 text-stone-400 cursor-default"
-                    : "bg-[#071A0D] text-white hover:bg-stone-800 shadow-md shadow-stone-900/10 active:scale-[0.98]"
+            return (
+              <div
+                key={descriptor.id}
+                className={`relative rounded-2xl p-8 flex flex-col transition-all duration-400 ${
+                  isFeatured
+                    ? "bg-white border border-nexpura-bronze shadow-[0_8px_32px_rgba(139,115,85,0.10)]"
+                    : "bg-white border border-stone-200 hover:border-stone-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
                 }`}
               >
-                {loading === descriptor.id ? "Processing..." : descriptor.id === currentPlan ? "Current Plan" : `Upgrade to ${planName}`}
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                {descriptor.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-nexpura-bronze text-white text-[0.6875rem] tracking-[0.15em] uppercase px-3 py-1 rounded-full shadow-sm">
+                    Most Popular
+                  </div>
+                )}
 
-      {/* Comparison Table */}
-      <div className="bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-sm">
-        <div className="px-8 py-6 bg-stone-50 border-b border-stone-200">
-          <h2 className="text-lg font-bold text-stone-900">Feature Comparison</h2>
+                {isCurrent && (
+                  <div className="absolute top-6 right-6">
+                    <span className="nx-badge-success">Current</span>
+                  </div>
+                )}
+
+                <div className="mb-8">
+                  <h3 className="font-serif text-2xl text-stone-900">{planName}</h3>
+                  <p className="mt-2 text-sm text-stone-500 leading-relaxed">
+                    {descriptor.description}
+                  </p>
+                  <div className="mt-6 flex items-baseline gap-1.5">
+                    <span className="font-serif text-5xl text-stone-900 leading-none">
+                      {display}
+                    </span>
+                    <span className="text-stone-500 text-sm">/ month</span>
+                  </div>
+                </div>
+
+                <div className="h-px bg-stone-200 mb-6" />
+
+                <ul className="space-y-3.5 mb-10 flex-1">
+                  {descriptor.features.map((feat) => (
+                    <li key={feat} className="flex items-start gap-3 text-sm text-stone-700">
+                      <CheckIcon
+                        className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                          isFeatured ? "text-nexpura-bronze" : "text-stone-400"
+                        }`}
+                        strokeWidth={2.5}
+                      />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => handleUpgrade(descriptor.id)}
+                  disabled={loading === descriptor.id || isCurrent}
+                  className={`w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-sm font-medium tracking-[0.01em] transition-all duration-200 ${
+                    isCurrent
+                      ? "bg-stone-100 text-stone-400 cursor-default border border-stone-200"
+                      : isFeatured
+                      ? "bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] text-white shadow-[0_2px_4px_rgba(0,0,0,0.25),0_8px_24px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)] hover:from-[#444] hover:to-[#222] active:scale-[0.99] disabled:opacity-60"
+                      : "bg-white text-stone-900 border border-stone-300 hover:bg-stone-50 hover:border-stone-400 active:scale-[0.99] disabled:opacity-60"
+                  }`}
+                >
+                  {loading === descriptor.id
+                    ? "Processing…"
+                    : isCurrent
+                    ? "Current Plan"
+                    : `Upgrade to ${planName}`}
+                </button>
+              </div>
+            );
+          })}
         </div>
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-stone-100">
-              <th className="px-8 py-4 text-[11px] font-bold text-stone-400 uppercase tracking-widest">Feature</th>
-              <th className="px-8 py-4 text-[11px] font-bold text-stone-400 uppercase tracking-widest text-center">Boutique</th>
-              <th className="px-8 py-4 text-[11px] font-bold text-stone-400 uppercase tracking-widest text-center">Studio</th>
-              <th className="px-8 py-4 text-[11px] font-bold text-stone-400 uppercase tracking-widest text-center text-amber-700">Atelier</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-50">
-            {COMPARISON.map((row) => (
-              <tr key={row.label} className="hover:bg-stone-50/50 transition-colors">
-                <td className="px-8 py-4 text-sm font-medium text-stone-700">{row.label}</td>
-                <td className="px-8 py-4 text-sm text-stone-500 text-center">
-                  {typeof row.boutique === "boolean" ? (row.boutique ? "✅" : "—") : row.boutique}
-                </td>
-                <td className="px-8 py-4 text-sm text-stone-500 text-center">
-                  {typeof row.studio === "boolean" ? (row.studio ? "✅" : "—") : row.studio}
-                </td>
-                <td className="px-8 py-4 text-sm text-stone-900 font-semibold text-center">
-                  {typeof row.atelier === "boolean" ? (row.atelier ? "✅" : "—") : row.atelier}
-                </td>
+
+        {/* Comparison Table */}
+        <div className="mb-10">
+          <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+            Compare
+          </p>
+          <h2 className="font-serif text-3xl sm:text-4xl text-stone-900 leading-tight">
+            Feature comparison
+          </h2>
+          <p className="text-stone-500 max-w-xl mt-3 text-base leading-relaxed">
+            See what&apos;s included at every tier.
+          </p>
+        </div>
+
+        <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-stone-200">
+                <th className="px-6 sm:px-8 py-5 text-[0.6875rem] font-semibold text-stone-500 uppercase tracking-luxury">
+                  Feature
+                </th>
+                <th className="px-6 sm:px-8 py-5 text-[0.6875rem] font-semibold text-stone-500 uppercase tracking-luxury text-center">
+                  Boutique
+                </th>
+                <th className="px-6 sm:px-8 py-5 text-[0.6875rem] font-semibold text-stone-500 uppercase tracking-luxury text-center">
+                  Studio
+                </th>
+                <th className="px-6 sm:px-8 py-5 text-[0.6875rem] font-semibold text-nexpura-bronze uppercase tracking-luxury text-center">
+                  Atelier
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {COMPARISON.map((row) => (
+                <tr key={row.label} className="hover:bg-stone-50/50 transition-colors duration-200">
+                  <td className="px-6 sm:px-8 py-4 text-sm font-medium text-stone-700">
+                    {row.label}
+                  </td>
+                  <td className="px-6 sm:px-8 py-4 text-sm text-stone-600 text-center">
+                    {typeof row.boutique === "boolean" ? (
+                      row.boutique ? (
+                        <CheckIcon className="w-4 h-4 text-stone-700 mx-auto" strokeWidth={2.5} />
+                      ) : (
+                        <span className="text-stone-300">—</span>
+                      )
+                    ) : (
+                      row.boutique
+                    )}
+                  </td>
+                  <td className="px-6 sm:px-8 py-4 text-sm text-stone-600 text-center">
+                    {typeof row.studio === "boolean" ? (
+                      row.studio ? (
+                        <CheckIcon className="w-4 h-4 text-stone-700 mx-auto" strokeWidth={2.5} />
+                      ) : (
+                        <span className="text-stone-300">—</span>
+                      )
+                    ) : (
+                      row.studio
+                    )}
+                  </td>
+                  <td className="px-6 sm:px-8 py-4 text-sm font-medium text-stone-900 text-center">
+                    {typeof row.atelier === "boolean" ? (
+                      row.atelier ? (
+                        <CheckIcon className="w-4 h-4 text-nexpura-bronze mx-auto" strokeWidth={2.5} />
+                      ) : (
+                        <span className="text-stone-300">—</span>
+                      )
+                    ) : (
+                      row.atelier
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer help text */}
+        <p className="text-center text-sm text-stone-500 mt-16">
+          Questions about billing? Contact{" "}
+          <a
+            href="mailto:support@nexpura.com"
+            className="text-nexpura-bronze hover:text-nexpura-bronze-hover transition-colors duration-200"
+          >
+            support@nexpura.com
+          </a>
+        </p>
       </div>
     </div>
   );
