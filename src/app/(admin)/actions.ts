@@ -77,8 +77,15 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
     }
     // Plan change on existing sub: only mirror plan to tenants below
     // (no subscription_status change — admin uses changeTenantStatus
-    // for that).
-    await adminClient.from("tenants").update({ plan: normalisedPlan }).eq("id", tenantId);
+    // for that). Group 16 audit: error capture added — pre-fix this
+    // bare update could silently no-op (typo'd id, RLS denial, etc.)
+    // and the admin would see "success" while the tenants row still
+    // showed the old plan.
+    const { error: tenantPlanErr } = await adminClient
+      .from("tenants")
+      .update({ plan: normalisedPlan })
+      .eq("id", tenantId);
+    if (tenantPlanErr) throw new Error(tenantPlanErr.message);
   } else {
     // Create subscription if it doesn't exist
     const trialEnds = new Date();
@@ -96,12 +103,14 @@ export async function changeTenantPlan(tenantId: string, newPlan: Plan) {
     // Mirror to tenants — paywall reads tenants.subscription_status,
     // and a tenant with no prior subscription row may have stale
     // suspended/grace state on the tenants row from a wipe-and-restart.
-    await adminClient.from("tenants").update({
+    // Group 16 audit: error capture added (was bare).
+    const { error: tenantMirrorErr } = await adminClient.from("tenants").update({
       plan: normalisedPlan,
       subscription_status: "trialing",
       grace_period_ends_at: null,
       payment_required_notified_at: null,
     }).eq("id", tenantId);
+    if (tenantMirrorErr) throw new Error(tenantMirrorErr.message);
   }
 
   await logActivity(adminClient, adminUserId, "change_tenant_plan", {
@@ -166,7 +175,11 @@ export async function assignFreeForever(tenantId: string) {
   const { adminClient, adminUserId } = await assertSuperAdmin();
   // Tenants row: mark free-forever + flip status. Clear stale grace
   // fields so a tenant previously in grace becomes immediately usable.
-  await adminClient
+  // Group 16 audit: error capture added — pre-fix two bare updates
+  // could partial-fail and the admin would see "success" while the
+  // tenant ended up with one mutation applied (e.g. tenants flipped
+  // but subscription cron still fighting it).
+  const { error: tenantFFErr } = await adminClient
     .from("tenants")
     .update({
       is_free_forever: true,
@@ -175,9 +188,10 @@ export async function assignFreeForever(tenantId: string) {
       payment_required_notified_at: null,
     })
     .eq("id", tenantId);
+  if (tenantFFErr) throw new Error(tenantFFErr.message);
   // Subscriptions row: mirror to active so the subs cron stops trying
   // to flip them to grace/suspended. Clear any leftover grace state.
-  await adminClient
+  const { error: subFFErr } = await adminClient
     .from("subscriptions")
     .update({
       status: "active",
@@ -185,6 +199,7 @@ export async function assignFreeForever(tenantId: string) {
       grace_24h_sent: false,
     })
     .eq("tenant_id", tenantId);
+  if (subFFErr) throw new Error(subFFErr.message);
 
   await logActivity(adminClient, adminUserId, "assign_free_forever", { tenantId });
 
@@ -216,11 +231,15 @@ export async function deleteTenant(tenantId: string) {
     .eq("id", tenantId);
   if (error) throw new Error(error.message);
 
-  // Also cancel subscription
-  await adminClient
+  // Also cancel subscription. Group 16 audit: error capture added —
+  // pre-fix this bare update could fail and the tenant would be
+  // soft-deleted while subscriptions still showed as active, putting
+  // the row in a contradictory state.
+  const { error: cancelErr } = await adminClient
     .from("subscriptions")
     .update({ status: "canceled" })
     .eq("tenant_id", tenantId);
+  if (cancelErr) throw new Error(cancelErr.message);
 
   await logActivity(adminClient, adminUserId, "delete_tenant", { tenantId });
 
@@ -232,7 +251,12 @@ export async function forcePaidGracePeriod(tenantId: string) {
   const { adminClient, adminUserId } = await assertSuperAdmin();
   // Trigger via the cron route handler logic inline
   const graceEnd = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-  await adminClient
+  // Group 16 audit: error capture added on both updates — pre-fix
+  // both were bare. A partial failure (e.g. tenants succeeds, subs
+  // fails) would leave the tenant in mismatched state where the
+  // paywall reads grace_period from the tenants row but the
+  // subscription cron still has it as active and overrides.
+  const { error: subsGraceErr } = await adminClient
     .from("subscriptions")
     .update({
       status: "payment_required",
@@ -240,7 +264,8 @@ export async function forcePaidGracePeriod(tenantId: string) {
       grace_24h_sent: false,
     })
     .eq("tenant_id", tenantId);
-  await adminClient
+  if (subsGraceErr) throw new Error(subsGraceErr.message);
+  const { error: tenantGraceErr } = await adminClient
     .from("tenants")
     .update({
       subscription_status: "grace_period",
@@ -249,6 +274,7 @@ export async function forcePaidGracePeriod(tenantId: string) {
       is_free_forever: false,
     })
     .eq("id", tenantId);
+  if (tenantGraceErr) throw new Error(tenantGraceErr.message);
 
   // Send email (import inline to avoid circular)
   const { sendFreeToPaidConversionEmail } = await import("@/lib/email/send");
