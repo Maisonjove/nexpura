@@ -291,6 +291,7 @@ const TENANT_APP_ROUTES = new Set([
   "enquiries",
   "print-queue",
   "actions",
+  "verification",
 ]);
 
 // Tenant-prefixed routes that ALSO have a matching (shop)/[subdomain]/<route>
