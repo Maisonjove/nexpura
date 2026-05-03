@@ -97,8 +97,19 @@ export async function denyAccess(
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const result = await denySupportAccess(token, user?.id);
-    
+    // Group 17 audit: capture IP + user-agent for anonymous deny so the
+    // audit log has SOME attribution even when the click came from an
+    // email client without a session. The header reads here are best-
+    // effort — if behind a proxy chain that strips them, the row still
+    // gets written with nulls.
+    const hdrs = await import("next/headers").then((m) => m.headers());
+    const ipAddress = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim()
+      ?? hdrs.get("x-real-ip")
+      ?? null;
+    const userAgent = hdrs.get("user-agent") ?? null;
+
+    const result = await denySupportAccess(token, user?.id, { ipAddress, userAgent });
+
     if (!result.success) return result;
 
     revalidatePath("/admin");
