@@ -25,9 +25,15 @@ export default async function CommunicationsPage() {
       .select("id, type, subject, customer_name, customer_email, status, sent_at, created_at")
       .eq("tenant_id", tenantId ?? "")
       .order("created_at", { ascending: false }),
+    // email_logs columns are: recipient (not recipient_email), email_type
+    // (not template_type), resend_id (not resend_message_id),
+    // reference_type/_id (not linked_entity_type/_id), and there is no
+    // sent_at — only created_at. Pre-fix the wrong column names made the
+    // PostgREST select error out, so emailLogs came back null and the
+    // Sent Emails tab silently rendered "No emails logged yet" forever.
     admin
       .from("email_logs")
-      .select("id, recipient_email, recipient_name, template_type, subject, status, resend_message_id, linked_entity_type, linked_entity_id, sent_at, created_at")
+      .select("id, recipient, email_type, subject, status, resend_id, reference_type, reference_id, bounce_reason, created_at")
       .eq("tenant_id", tenantId ?? "")
       .order("created_at", { ascending: false })
       .limit(100),
