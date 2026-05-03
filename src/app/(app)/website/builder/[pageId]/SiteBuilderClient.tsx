@@ -1,8 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Undo2, Redo2, Smartphone, Monitor } from "lucide-react";
 import { saveSections, deleteSection } from "../actions";
 import type { SitePage, SiteSection } from "../actions";
 
@@ -380,6 +398,96 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Undo/redo history (Group 13 audit). Stack of section-list snapshots,
+  // pointer to the current state. Push on every mutating action; undo
+  // moves the pointer back without truncating, redo moves it forward.
+  // Pre-fix: no way to undo a delete/reorder/AI rewrite — staff had to
+  // reload the page and lose any unsaved changes.
+  const [history, setHistory] = useState<SiteSection[][]>([initialSections]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  // Viewport toggle for the preview area — desktop = full width,
+  // mobile = constrained to 375px.
+  const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
+  // applySections: write a new sections snapshot, push it onto history,
+  // truncate any redo branch (standard undo-stack behaviour after a new
+  // edit). Wraps every mutation site below.
+  const applySections = useCallback((next: SiteSection[]) => {
+    setSections(next);
+    setHistory((prev) => {
+      const truncated = prev.slice(0, historyIndex + 1);
+      truncated.push(next);
+      // Cap history at 50 entries so a long editing session doesn't
+      // balloon memory. FIFO drop from the front.
+      return truncated.length > 50 ? truncated.slice(truncated.length - 50) : truncated;
+    });
+    setHistoryIndex((i) => Math.min(i + 1, 49));
+    setSaved(false);
+  }, [historyIndex]);
+
+  function undo() {
+    if (!canUndo) return;
+    setHistoryIndex((i) => i - 1);
+    setSections(history[historyIndex - 1]);
+    setSaved(false);
+  }
+  function redo() {
+    if (!canRedo) return;
+    setHistoryIndex((i) => i + 1);
+    setSections(history[historyIndex + 1]);
+    setSaved(false);
+  }
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z = redo.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const meta = e.ctrlKey || e.metaKey;
+      if (!meta) return;
+      if (e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) {
+          setHistoryIndex((i) => {
+            const next = i - 1;
+            if (next >= 0) setSections(history[next]);
+            return Math.max(next, 0);
+          });
+          setSaved(false);
+        }
+      } else if (e.key === "z" && e.shiftKey) {
+        e.preventDefault();
+        if (canRedo) {
+          setHistoryIndex((i) => {
+            const next = i + 1;
+            if (next <= history.length - 1) setSections(history[next]);
+            return Math.min(next, history.length - 1);
+          });
+          setSaved(false);
+        }
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canUndo, canRedo, history]);
+
+  // dnd-kit sensors — pointer for mouse/touch, keyboard for a11y.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = sections.findIndex((s) => s.id === active.id);
+    const newIndex = sections.findIndex((s) => s.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(sections, oldIndex, newIndex).map((s, i) => ({ ...s, display_order: i }));
+    applySections(reordered);
+  }
   const [isPending, startTransition] = useTransition();
 
   const selectedSection = sections.find((s) => s.id === selectedId) ?? null;
@@ -393,16 +501,14 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
     if (idx === 0) return;
     const next = [...sections];
     [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-    setSections(next.map((s, i) => ({ ...s, display_order: i })));
-    setSaved(false);
+    applySections(next.map((s, i) => ({ ...s, display_order: i })));
   }
 
   function handleMoveDown(idx: number) {
     if (idx === sections.length - 1) return;
     const next = [...sections];
     [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-    setSections(next.map((s, i) => ({ ...s, display_order: i })));
-    setSaved(false);
+    applySections(next.map((s, i) => ({ ...s, display_order: i })));
   }
 
   function handleAddSection(type: string) {
@@ -417,10 +523,9 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    setSections((prev) => [...prev, newSection]);
+    applySections([...sections, newSection]);
     setSelectedId(newSection.id);
     setShowAddSection(false);
-    setSaved(false);
   }
 
   function handleDeleteClick(sectionId: string) {
@@ -439,7 +544,7 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
       if (result.error) {
         toast.error(result.error, { id: deleteToast });
       } else {
-        setSections((prev) => prev.filter((s) => s.id !== showDeleteConfirm));
+        applySections(sections.filter((s) => s.id !== showDeleteConfirm));
         if (selectedId === showDeleteConfirm) setSelectedId(null);
         toast.success(`${sectionType} deleted`, { id: deleteToast });
       }
@@ -489,25 +594,26 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
-          {sections.map((section, idx) => {
-            const typeInfo = SECTION_TYPES.find((t) => t.type === section.section_type);
-            const isSelected = selectedId === section.id;
-            return (
-              <div
-                key={section.id}
-                onClick={() => setSelectedId(section.id)}
-                className={`group flex items-center gap-2 px-3 py-2.5 cursor-pointer transition-colors ${isSelected ? "bg-stone-100 border-r-2 border-amber-600" : "hover:bg-stone-50"}`}
-              >
-                <span className="text-base flex-shrink-0">{typeInfo?.icon || "📄"}</span>
-                <span className="flex-1 text-xs font-medium text-stone-700 truncate">{typeInfo?.label || section.section_type}</span>
-                <div className="flex-shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => { e.stopPropagation(); handleMoveUp(idx); }} className="p-0.5 hover:bg-stone-200 rounded text-stone-400 hover:text-stone-600 text-xs" title="Move up">↑</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleMoveDown(idx); }} className="p-0.5 hover:bg-stone-200 rounded text-stone-400 hover:text-stone-600 text-xs" title="Move down">↓</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDeleteClick(section.id); }} className="p-0.5 hover:bg-red-100 rounded text-stone-400 hover:text-red-600 text-xs" title="Delete">✕</button>
-                </div>
-              </div>
-            );
-          })}
+          {/* Drag-drop reorder via @dnd-kit (Group 13 audit). The
+              existing ↑/↓ arrow controls are kept for keyboard /
+              accessibility users; both interactions coexist. Drag
+              handle is the entire row + a left-edge grab indicator. */}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              {sections.map((section, idx) => (
+                <SortableSidebarRow
+                  key={section.id}
+                  section={section}
+                  idx={idx}
+                  isSelected={selectedId === section.id}
+                  onSelect={() => setSelectedId(section.id)}
+                  onMoveUp={() => handleMoveUp(idx)}
+                  onMoveDown={() => handleMoveDown(idx)}
+                  onDelete={() => handleDeleteClick(section.id)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
 
         <div className="border-t border-stone-200 p-3">
@@ -522,18 +628,60 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
 
       {/* Main: section preview */}
       <div className="flex-1 overflow-y-auto bg-stone-100 p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
           <h3 className="text-sm font-semibold text-stone-600">Page Preview</h3>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
-          >
-            {saving ? "Saving…" : saved ? "✓ Saved" : "Save Page"}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Undo / Redo */}
+            <div className="inline-flex border border-stone-200 rounded-md overflow-hidden">
+              <button
+                onClick={undo}
+                disabled={!canUndo}
+                title="Undo (Ctrl/Cmd+Z)"
+                aria-label="Undo"
+                className="px-2.5 h-9 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Undo2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={redo}
+                disabled={!canRedo}
+                title="Redo (Ctrl/Cmd+Shift+Z)"
+                aria-label="Redo"
+                className="px-2.5 h-9 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed border-l border-stone-200"
+              >
+                <Redo2 className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Viewport toggle */}
+            <div className="inline-flex border border-stone-200 rounded-md overflow-hidden">
+              <button
+                onClick={() => setViewport("desktop")}
+                title="Desktop preview"
+                aria-label="Desktop preview"
+                className={`px-2.5 h-9 ${viewport === "desktop" ? "bg-amber-700 text-white" : "bg-white text-stone-700 hover:bg-stone-50"}`}
+              >
+                <Monitor className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewport("mobile")}
+                title="Mobile preview"
+                aria-label="Mobile preview"
+                className={`px-2.5 h-9 border-l border-stone-200 ${viewport === "mobile" ? "bg-amber-700 text-white" : "bg-white text-stone-700 hover:bg-stone-50"}`}
+              >
+                <Smartphone className="w-4 h-4" />
+              </button>
+            </div>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving…" : saved ? "✓ Saved" : "Save Page"}
+            </button>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl overflow-hidden shadow-sm space-y-0">
+        <div className={`bg-white rounded-xl overflow-hidden shadow-sm space-y-0 ${viewport === "mobile" ? "max-w-[390px] mx-auto border border-stone-300" : ""}`}>
           {sections.length === 0 ? (
             <div className="py-24 text-center text-stone-400">
               <p className="text-4xl mb-3">📄</p>
@@ -633,6 +781,56 @@ export default function SiteBuilderClient({ page, initialSections }: Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// SortableSidebarRow — one row in the section list. useSortable wires
+// drag listeners + transform style; the existing ↑/↓/✕ buttons are
+// kept inline for keyboard users and stop drag propagation so a click
+// on a button doesn't start a drag.
+// ────────────────────────────────────────────────────────────────────
+function SortableSidebarRow({
+  section,
+  isSelected,
+  onSelect,
+  onMoveUp,
+  onMoveDown,
+  onDelete,
+}: {
+  section: SiteSection;
+  idx: number;
+  isSelected: boolean;
+  onSelect: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  const typeInfo = SECTION_TYPES.find((t) => t.type === section.section_type);
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={onSelect}
+      className={`group flex items-center gap-2 px-3 py-2.5 cursor-pointer transition-colors ${isSelected ? "bg-stone-100 border-r-2 border-amber-600" : "hover:bg-stone-50"}`}
+    >
+      <div className="flex items-center gap-2 flex-1 min-w-0" {...attributes} {...listeners}>
+        <span className="text-base flex-shrink-0 text-stone-300 group-hover:text-stone-500 transition-colors" aria-hidden>⋮⋮</span>
+        <span className="text-base flex-shrink-0">{typeInfo?.icon || "📄"}</span>
+        <span className="flex-1 text-xs font-medium text-stone-700 truncate">{typeInfo?.label || section.section_type}</span>
+      </div>
+      <div className="flex-shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onPointerDown={(e) => e.stopPropagation()}>
+        <button onClick={(e) => { e.stopPropagation(); onMoveUp(); }} className="p-0.5 hover:bg-stone-200 rounded text-stone-400 hover:text-stone-600 text-xs" title="Move up" aria-label={`Move ${typeInfo?.label || section.section_type} up`}>↑</button>
+        <button onClick={(e) => { e.stopPropagation(); onMoveDown(); }} className="p-0.5 hover:bg-stone-200 rounded text-stone-400 hover:text-stone-600 text-xs" title="Move down" aria-label={`Move ${typeInfo?.label || section.section_type} down`}>↓</button>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-0.5 hover:bg-red-100 rounded text-stone-400 hover:text-red-600 text-xs" title="Delete" aria-label={`Delete ${typeInfo?.label || section.section_type}`}>✕</button>
+      </div>
     </div>
   );
 }

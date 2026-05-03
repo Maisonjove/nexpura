@@ -90,9 +90,80 @@ export async function getWebsiteConfig(): Promise<{ data?: WebsiteConfigData | n
   }
 }
 
+/**
+ * Validate a website URL string before persisting it. Pre-fix the
+ * /website/connect form would accept any free-text input — typoed
+ * domains like `htps://shop.com` or `totally-fake-domain-zzz.test`
+ * just got stored on tenants.website_url with no validation, so the
+ * downstream "Not connected" indicator from ConnectionStatus had no
+ * attribution to root cause. Now: client-side format check + server-
+ * side resolve check, with clear errors for each failure mode.
+ */
+async function validateWebsiteUrl(rawUrl: string): Promise<{ ok: true; url: URL } | { ok: false; error: string }> {
+  const trimmed = (rawUrl ?? "").trim();
+  if (!trimmed) return { ok: false, error: "URL is required." };
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return { ok: false, error: "Invalid URL — must include the protocol (e.g. https://shop.example.com)." };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { ok: false, error: "URL must start with http:// or https://." };
+  }
+  // Reject obvious junk: TLDs that don't resolve, IP literals, etc.
+  // .test, .invalid, .example are RFC 2606 reserved (will never resolve).
+  const host = parsed.hostname;
+  if (!host.includes(".")) {
+    return { ok: false, error: "URL host must include a domain (e.g. shop.example.com)." };
+  }
+  const reservedTLDs = ["test", "invalid", "example", "localhost"];
+  const hostLower = host.toLowerCase();
+  for (const tld of reservedTLDs) {
+    if (hostLower === tld || hostLower.endsWith("." + tld)) {
+      return { ok: false, error: `URL uses the reserved \`.${tld}\` suffix — pick a real domain.` };
+    }
+  }
+
+  // Server-side resolve check via DNS-over-HTTPS (Google). Cheap, no
+  // libraries needed, and tolerant of Vercel's edge runtime where
+  // Node's `dns` module is unavailable.
+  try {
+    const lookup = await fetch(
+      `https://dns.google/resolve?name=${encodeURIComponent(host)}&type=A`,
+      { method: "GET", signal: AbortSignal.timeout(5000) },
+    );
+    if (lookup.ok) {
+      const dnsBody = await lookup.json() as { Status?: number; Answer?: Array<unknown> };
+      // Status 0 = NOERROR; 3 = NXDOMAIN. Accept anything that returned
+      // at least one A record. NXDOMAIN means the domain truly doesn't
+      // resolve — reject.
+      if (dnsBody.Status === 3 || !dnsBody.Answer || dnsBody.Answer.length === 0) {
+        return { ok: false, error: `Domain ${host} doesn't resolve. Check the URL and try again, or save it later once DNS is set up.` };
+      }
+    }
+    // If the DNS API itself is unreachable, fall through to accept —
+    // we don't want a Google outage to block valid saves.
+  } catch {
+    // Network error on DNS lookup — accept and let downstream
+    // ConnectionStatus probe surface "Not connected" if needed.
+  }
+
+  return { ok: true, url: parsed };
+}
+
 export async function saveWebsiteConfig(formData: WebsiteConfigData): Promise<{ success?: boolean; error?: string }> {
   try {
     const { supabase, tenantId } = await getAuthContext();
+
+    // Validate any external_url before persisting (Group 13 audit).
+    if (formData.external_url) {
+      const v = await validateWebsiteUrl(formData.external_url);
+      if (!v.ok) return { error: v.error };
+      // Normalise — strip trailing slash, lowercase host
+      formData.external_url = v.url.protocol + "//" + v.url.host.toLowerCase() + (v.url.pathname === "/" ? "" : v.url.pathname);
+    }
 
     const { data: existing } = await supabase
       .from("website_config")

@@ -190,6 +190,7 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
   const [siteUrl, setSiteUrl] = useState<string>((config?.external_url as string) ?? "");
   const [editingUrl, setEditingUrl] = useState(false);
   const [urlInput, setUrlInput] = useState(siteUrl);
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<string | null>(null);
@@ -235,12 +236,33 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
   }
 
   function saveUrl() {
+    setUrlError(null);
+    // Client-side fast-fail: structural format check before round-tripping.
+    const trimmed = urlInput.trim();
+    if (!trimmed) {
+      setUrlError("URL is required.");
+      return;
+    }
+    try {
+      const u = new URL(trimmed);
+      if (u.protocol !== "http:" && u.protocol !== "https:") {
+        setUrlError("URL must start with http:// or https://.");
+        return;
+      }
+    } catch {
+      setUrlError("Invalid URL — must include the protocol (e.g. https://shop.example.com).");
+      return;
+    }
     startTransition(async () => {
-      await saveWebsiteConfig({
-        external_url: urlInput,
+      const r = await saveWebsiteConfig({
+        external_url: trimmed,
         website_type: (config?.website_type as string) ?? "external"
       });
-      setSiteUrl(urlInput);
+      if (r?.error) {
+        setUrlError(r.error);
+        return;
+      }
+      setSiteUrl(trimmed);
       setEditingUrl(false);
       setMsg("Site URL saved.");
       setTimeout(() => setMsg(null), 3000);
@@ -351,27 +373,32 @@ export default function SiteConnectClient({ tenantId, config, hasWebsite }: Prop
         </div>
 
         {editingUrl ? (
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://yourjewellerystore.com"
-              className="flex-1 px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze"
-            />
-            <button
-              onClick={saveUrl}
-              disabled={isPending}
-              className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50"
-            >
-              {isPending ? "Saving…" : "Save"}
-            </button>
-            <button
-              onClick={() => { setEditingUrl(false); setUrlInput(siteUrl); }}
-              className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50"
-            >
-              Cancel
-            </button>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={urlInput}
+                onChange={(e) => { setUrlInput(e.target.value); setUrlError(null); }}
+                placeholder="https://yourjewellerystore.com"
+                className={`flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none ${urlError ? "border-red-300 focus:border-red-500" : "border-stone-200 focus:border-nexpura-bronze"}`}
+              />
+              <button
+                onClick={saveUrl}
+                disabled={isPending}
+                className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 disabled:opacity-50"
+              >
+                {isPending ? "Saving…" : "Save"}
+              </button>
+              <button
+                onClick={() => { setEditingUrl(false); setUrlInput(siteUrl); setUrlError(null); }}
+                className="px-4 py-2 text-sm border border-stone-200 rounded-lg hover:bg-stone-50"
+              >
+                Cancel
+              </button>
+            </div>
+            {urlError && (
+              <p className="text-xs text-red-600">{urlError}</p>
+            )}
           </div>
         ) : siteUrl ? (
           <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
