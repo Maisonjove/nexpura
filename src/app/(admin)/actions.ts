@@ -213,12 +213,22 @@ export async function assignFreeForever(tenantId: string) {
 }
 
 export async function saveTenantAdminNotes(tenantId: string, notes: string) {
-  const { adminClient } = await assertSuperAdmin();
+  const { adminClient, adminUserId } = await assertSuperAdmin();
   const { error } = await adminClient
     .from("tenants")
     .update({ admin_notes: notes })
     .eq("id", tenantId);
   if (error) throw new Error(error.message);
+  // Group 16 audit: Joey's brief — "Each action must be audit-logged
+  // with Joey's identity." This was the only mutation in the file
+  // that wasn't being logged. The notes themselves can be sensitive
+  // (escalation history, billing disputes, support-access reasoning),
+  // and a write surface that doesn't carry an audit trail is the
+  // wrong shape for a multi-admin future.
+  await logActivity(adminClient, adminUserId, "save_tenant_admin_notes", {
+    tenantId,
+    notesLength: notes.length,
+  });
   revalidatePath(`/admin/tenants/${tenantId}`);
 }
 
@@ -400,6 +410,20 @@ export async function requestSupportAccess(
   if (!emailResult.success) {
     return { success: false, error: `Failed to send email: ${emailResult.error}` };
   }
+
+  // Group 16 audit: support-access requests are the highest-stakes
+  // admin mutation surface (initiate read-only impersonation of a
+  // tenant). Pre-fix this action only relied on
+  // support_access_requests row insertion + email dispatch for its
+  // audit trail — neither is a queryable admin-action history.
+  // Adding to admin_audit_logs so the same UI that shows changes-by-
+  // Joey for plan/status/free-forever also shows access-request
+  // history.
+  await logActivity(adminClient, user.id, "request_support_access", {
+    tenantId,
+    recipientEmail,
+    reasonProvided: !!reason,
+  });
 
   revalidatePath("/admin");
   return { success: true };
