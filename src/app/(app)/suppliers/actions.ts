@@ -99,6 +99,8 @@ export async function createSupplier(
       website: str("website"),
       address: str("address"),
       notes: str("notes"),
+      tax_id: str("tax_id"),
+      payment_terms: str("payment_terms"),
     })
     .select("id")
     .single();
@@ -162,6 +164,8 @@ export async function updateSupplier(
       website: str("website"),
       address: str("address"),
       notes: str("notes"),
+      tax_id: str("tax_id"),
+      payment_terms: str("payment_terms"),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -206,6 +210,22 @@ export async function deleteSupplier(
   }
 
   const { supabase, userId, tenantId } = ctx;
+
+  // Block delete if the supplier has active purchase orders. A supplier
+  // with pending stock owed to them shouldn't disappear from the list —
+  // the operator either receives or cancels the PO first. Spec: "block
+  // delete if active orders exist".
+  const { count: activeCount } = await supabase
+    .from("purchase_orders")
+    .select("id", { count: "exact", head: true })
+    .eq("supplier_id", id)
+    .eq("tenant_id", tenantId)
+    .in("status", ["draft", "ordered", "partial"]);
+  if (activeCount && activeCount > 0) {
+    return {
+      error: `Supplier has ${activeCount} active purchase order${activeCount === 1 ? "" : "s"}. Receive or cancel them before deleting.`,
+    };
+  }
 
   // Get old data for audit
   const { data: oldData } = await supabase

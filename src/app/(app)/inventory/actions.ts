@@ -410,6 +410,23 @@ export async function adjustStock(
   const tenantId = await getTenantId(supabase);
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Block ad-hoc adjustments while a stocktake is in progress so the
+  // count doesn't race against side-effects. The stocktake's own
+  // completeStocktake() posts adjustments under movement_type='stocktake'
+  // — those bypass this guard. Callers see a friendly explanation.
+  if (movementType !== "stocktake") {
+    const { count: activeStocktakes } = await supabase
+      .from("stocktakes")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("status", "in_progress");
+    if (activeStocktakes && activeStocktakes > 0) {
+      throw new Error(
+        "A stocktake is in progress — finish or cancel it before making manual adjustments.",
+      );
+    }
+  }
+
   // The DB has a BEFORE INSERT trigger `sync_inventory_on_stock_movement_insert`
   // (function `sync_inventory_quantity()` — verified 2026-04-25) that:
   //   1. Reads inventory.quantity at insert time

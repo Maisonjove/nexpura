@@ -173,6 +173,108 @@ export async function updatePurchaseOrderStatus(
   }
 }
 
+/**
+ * Receive specific quantities against a PO line by line. Lets the
+ * operator log a partial shipment without flipping the whole PO to
+ * received. Each line accepts a "receive_qty" ≤ remaining (ordered −
+ * already_received). When the running total covers the ordered qty,
+ * the PO auto-flips to "received"; otherwise stays "partial".
+ */
+export async function receivePOLines(
+  poId: string,
+  receipts: Array<{ inventoryItemId: string; receiveQty: number }>,
+): Promise<{ success?: boolean; status?: string; error?: string }> {
+  try {
+    await requirePermission("edit_inventory");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "permission_denied";
+    return { error: msg.startsWith("permission_denied") ? "You don't have permission to receive purchase orders." : "Not authenticated" };
+  }
+  const { userId, tenantId } = await getAuthContext();
+  const admin = createAdminClient();
+
+  const { data: po } = await admin
+    .from("purchase_orders")
+    .select("id, order_number, status, items")
+    .eq("id", poId)
+    .eq("tenant_id", tenantId)
+    .single();
+  if (!po) return { error: "Purchase order not found" };
+  if (po.status === "received" || po.status === "cancelled") {
+    return { error: `PO is already ${po.status} — cannot receive further.` };
+  }
+
+  type POItem = {
+    description: string;
+    quantity: number;
+    received_qty?: number | null;
+    inventory_item_id?: string | null;
+    unit_price?: number;
+    line_total?: number;
+  };
+  const poItems = (po.items as POItem[]) ?? [];
+  const updatedItems: POItem[] = [];
+  let totalOrdered = 0;
+  let totalReceived = 0;
+
+  for (const it of poItems) {
+    const ordered = Number(it.quantity ?? 0);
+    let received = Number(it.received_qty ?? 0);
+    const matching = receipts.find((r) => r.inventoryItemId && it.inventory_item_id === r.inventoryItemId);
+    if (matching && matching.receiveQty > 0 && it.inventory_item_id) {
+      const room = ordered - received;
+      const adding = Math.min(matching.receiveQty, room);
+      if (adding > 0) {
+        // Inventory increment + stock_movement
+        const { data: inv } = await admin
+          .from("inventory")
+          .select("id, quantity, name")
+          .eq("id", it.inventory_item_id)
+          .eq("tenant_id", tenantId)
+          .single();
+        if (inv) {
+          const newQty = (inv.quantity || 0) + adding;
+          await admin.from("inventory")
+            .update({ quantity: newQty, updated_at: new Date().toISOString() })
+            .eq("id", inv.id)
+            .eq("tenant_id", tenantId);
+          await admin.from("stock_movements").insert({
+            tenant_id: tenantId,
+            inventory_id: inv.id,
+            movement_type: "purchase_order_receive",
+            quantity_change: adding,
+            quantity_after: newQty,
+            notes: `Partial receive against PO ${po.order_number || poId.slice(0, 8)}`,
+            created_by: userId,
+          });
+        }
+        received += adding;
+      }
+    }
+    updatedItems.push({ ...it, received_qty: received });
+    totalOrdered += ordered;
+    totalReceived += received;
+  }
+
+  const newStatus = totalReceived >= totalOrdered ? "received" : "partial";
+  const updates: Record<string, unknown> = {
+    items: updatedItems,
+    status: newStatus,
+    updated_at: new Date().toISOString(),
+  };
+  if (newStatus === "received") updates.received_date = new Date().toISOString().split("T")[0];
+
+  const { error: upErr } = await admin
+    .from("purchase_orders")
+    .update(updates)
+    .eq("id", poId)
+    .eq("tenant_id", tenantId);
+  if (upErr) return { error: upErr.message };
+
+  revalidatePath(`/suppliers`);
+  return { success: true, status: newStatus };
+}
+
 export async function getPurchaseOrders(supplierId: string): Promise<{ data?: any[]; error?: string }> {
   try {
     const { supabase, tenantId } = await getAuthContext();

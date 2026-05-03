@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { logAuditEvent } from "@/lib/audit";
+import { requirePermission } from "@/lib/auth-context";
 import { requireAuth } from "@/lib/auth-context";
 
 async function getAuthContext() {
@@ -168,6 +169,16 @@ export async function updateMemoStatus(
   extraFields?: { returned_date?: string; sold_date?: string; invoice_id?: string }
 ): Promise<{ error?: string }> {
   try {
+    // Memo status transitions can move money-equivalent items
+    // (consignment goods marked sold = revenue), so gate on edit_inventory
+    // — same gate as adjustStock + receive + transfers. Pre-fix any
+    // authenticated user could mark items returned/sold.
+    try {
+      await requirePermission("edit_inventory");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "permission_denied";
+      return { error: msg.startsWith("permission_denied") ? "You don't have permission to update memo items." : "Not authenticated" };
+    }
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
