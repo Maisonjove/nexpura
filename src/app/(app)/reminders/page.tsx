@@ -29,13 +29,16 @@ export default async function RemindersPage() {
     // Customer birthdays/anniversaries this month
     customerEvents,
   ] = await Promise.all([
-    // Tasks due soon
+    // Tasks due soon. tasks_status_check accepts ('todo', 'in_progress',
+    // 'blocked', 'done', 'completed', 'cancelled') — the previous filter
+    // used 'pending' which is not a valid status, so this query
+    // always returned zero task reminders. (Group 14 audit finding.)
     admin
       .from("tasks")
       .select("id, title, description, due_date, priority, status, linked_type, linked_id")
       .eq("tenant_id", tenantId)
       .eq("assigned_to", userId)
-      .in("status", ["pending", "in_progress"])
+      .in("status", ["todo", "in_progress", "blocked"])
       .not("due_date", "is", null)
       .lte("due_date", nextWeek)
       .order("due_date", { ascending: true })
