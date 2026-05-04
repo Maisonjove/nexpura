@@ -20,16 +20,13 @@ function useDomPurify(): Sanitizer | null {
 }
 import Link from "next/link";
 import {
-  ArrowLeft,
-  Send,
-  Users,
-  Eye,
-  Loader2,
-  CheckCircle,
-  AlertCircle,
-  Search,
-  X,
-} from "lucide-react";
+  ArrowLeftIcon,
+  PaperAirplaneIcon,
+  ArrowPathIcon,
+  CheckCircleIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import { sendBulkEmail, sendTestEmail } from "./actions";
 import { getRecipientCount } from "../campaigns/actions";
 
@@ -211,47 +208,54 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
 
   if (result?.success) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-8 text-center">
-          <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Emails Sent!</h2>
-          <p className="text-stone-300 mb-4">
-            Successfully sent {result.sent} email{result.sent !== 1 ? "s" : ""}
-            {result.failed ? `. ${result.failed} failed.` : "."}
-          </p>
-          {result.errors && result.errors.length > 0 && (
-            <div className="text-left bg-red-500/10 border border-red-500/20 rounded-lg p-4 mt-4">
-              <p className="text-red-400 text-sm font-medium mb-2">Some errors occurred:</p>
-              <ul className="text-red-300 text-sm space-y-1">
-                {result.errors.map((err, i) => (
-                  <li key={i}>• {err}</li>
-                ))}
-              </ul>
+      <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+        <div className="max-w-[960px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+          <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center max-w-2xl mx-auto">
+            <CheckCircleIcon className="w-8 h-8 text-stone-400 mx-auto mb-6" />
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Sent
+            </p>
+            <h2 className="font-serif text-3xl text-stone-900 tracking-tight mb-4">
+              Emails on their way
+            </h2>
+            <p className="text-stone-500 text-sm max-w-sm mx-auto leading-relaxed mb-8">
+              Successfully sent {result.sent} email{result.sent !== 1 ? "s" : ""}
+              {result.failed ? `. ${result.failed} failed.` : "."}
+            </p>
+            {result.errors && result.errors.length > 0 && (
+              <div className="text-left border-l-2 border-red-400 pl-4 py-1 mb-8">
+                <p className="text-sm text-red-600 font-medium mb-1">Some errors occurred</p>
+                <ul className="text-sm text-red-600 space-y-1 leading-relaxed">
+                  {result.errors.map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="flex items-center justify-center gap-3">
+              <Link
+                href="/marketing"
+                className="px-4 py-2 text-sm text-stone-500 hover:text-stone-900 transition-colors duration-200"
+              >
+                Back to Marketing
+              </Link>
+              <button
+                onClick={() => {
+                  setResult(null);
+                  setFormData({
+                    subject: "",
+                    body: "",
+                    recipient_type: "all",
+                    segment_id: "",
+                    selected_tags: [],
+                    selected_customers: [],
+                  });
+                }}
+                className="nx-btn-primary inline-flex items-center gap-2"
+              >
+                Send another
+              </button>
             </div>
-          )}
-          <div className="flex items-center justify-center gap-4 mt-6">
-            <Link
-              href="/marketing"
-              className="px-4 py-2 text-stone-400 hover:text-white transition-colors"
-            >
-              Back to Marketing
-            </Link>
-            <button
-              onClick={() => {
-                setResult(null);
-                setFormData({
-                  subject: "",
-                  body: "",
-                  recipient_type: "all",
-                  segment_id: "",
-                  selected_tags: [],
-                  selected_customers: [],
-                });
-              }}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors"
-            >
-              Send Another
-            </button>
           </div>
         </div>
       </div>
@@ -259,285 +263,308 @@ export default function BulkEmailClient({ segments, customers, tags, businessNam
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href="/marketing"
-          className="p-2 hover:bg-white/[0.05] rounded-lg text-stone-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Bulk Email</h1>
-          <p className="text-stone-400 text-sm mt-1">
-            Send a quick one-off email to multiple customers
-          </p>
-        </div>
-      </div>
-
-      {result?.success === false && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-red-400 font-medium">Failed to send emails</p>
-            <p className="text-red-300 text-sm">{result.errors?.[0]}</p>
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Recipients */}
-        <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-400" />
-            Recipients
-            {recipientCount !== null && (
-              <span className="ml-auto text-sm font-normal text-stone-400">
-                {recipientCount} recipient{recipientCount !== 1 ? "s" : ""}
-              </span>
-            )}
-          </h2>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { value: "all", label: "All Customers" },
-                { value: "segment", label: "Segment" },
-                { value: "tags", label: "By Tags" },
-                { value: "manual", label: "Select Manually" },
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      recipient_type: option.value as "all" | "segment" | "tags" | "manual",
-                    }))
-                  }
-                  className={`px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
-                    formData.recipient_type === option.value
-                      ? "border-amber-500 bg-amber-500/10 text-amber-400"
-                      : "border-white/[0.06] text-stone-400 hover:border-white/[0.12]"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-
-            {formData.recipient_type === "segment" && (
-              <select
-                value={formData.segment_id}
-                onChange={(e) => setFormData((prev) => ({ ...prev, segment_id: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
-              >
-                <option value="">Select a segment...</option>
-                {segments.map((segment) => (
-                  <option key={segment.id} value={segment.id}>
-                    {segment.name} ({segment.customer_count} customers)
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {formData.recipient_type === "tags" && (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        selected_tags: prev.selected_tags.includes(tag)
-                          ? prev.selected_tags.filter((t) => t !== tag)
-                          : [...prev.selected_tags, tag],
-                      }));
-                    }}
-                    className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                      formData.selected_tags.includes(tag)
-                        ? "bg-amber-500 text-white"
-                        : "bg-[#252525] text-stone-400 hover:text-white"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-                {tags.length === 0 && <p className="text-stone-500 text-sm">No tags found</p>}
-              </div>
-            )}
-
-            {formData.recipient_type === "manual" && (
-              <div className="space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
-                  <input
-                    type="text"
-                    placeholder="Search customers..."
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
-                  />
-                </div>
-
-                {formData.selected_customers.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.selected_customers.map((id) => {
-                      const customer = customers.find((c) => c.id === id);
-                      return (
-                        <span
-                          key={id}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-sm"
-                        >
-                          {customer?.full_name || customer?.email}
-                          <button
-                            type="button"
-                            onClick={() => toggleCustomer(id)}
-                            className="hover:text-amber-200"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className="max-h-48 overflow-y-auto border border-white/[0.06] rounded-lg divide-y divide-white/[0.06]">
-                  {filteredCustomers.map((customer) => (
-                    <label
-                      key={customer.id}
-                      className="flex items-center gap-3 p-3 hover:bg-white/[0.02] cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.selected_customers.includes(customer.id)}
-                        onChange={() => toggleCustomer(customer.id)}
-                        className="w-4 h-4 rounded border-stone-600 bg-stone-700 text-amber-500 focus:ring-nexpura-bronze"
-                      />
-                      <div>
-                        <p className="text-white text-sm">{customer.full_name || "No name"}</p>
-                        <p className="text-stone-500 text-xs">{customer.email}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Email Content */}
-        <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Send className="w-5 h-5 text-green-400" />
-            Email Content
-          </h2>
-
-          <div className="space-y-4">
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+      <div className="max-w-[960px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="flex items-start justify-between gap-6 mb-14">
+          <div className="flex items-start gap-4">
+            <Link
+              href="/marketing"
+              className="mt-2 text-stone-400 hover:text-nexpura-bronze transition-colors duration-300"
+              aria-label="Back to marketing"
+            >
+              <ArrowLeftIcon className="w-5 h-5" />
+            </Link>
             <div>
-              <label className="block text-sm font-medium text-stone-300 mb-1">
-                Subject <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.subject}
-                onChange={(e) => setFormData((prev) => ({ ...prev, subject: e.target.value }))}
-                placeholder="e.g., Important Update from Our Store"
-                className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-stone-300">
-                  Message <span className="text-red-400">*</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowPreview(!showPreview)}
-                  className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
-                >
-                  <Eye className="w-3 h-3" />
-                  {showPreview ? "Edit" : "Preview"}
-                </button>
-              </div>
-              {showPreview ? (
-                <div
-                  className="w-full min-h-[200px] p-4 bg-white text-black rounded-lg prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: sanitize ? sanitize(getPreviewHtml()) : "" }}
-                />
-              ) : (
-                <textarea
-                  value={formData.body}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, body: e.target.value }))}
-                  placeholder="Write your message here..."
-                  rows={8}
-                  className="w-full px-3 py-2 bg-[#252525] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
-                />
-              )}
-              <p className="text-xs text-stone-500 mt-1">
-                Variables: {"{{customer_name}}"}, {"{{business_name}}"}
+              <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+                Marketing
+              </p>
+              <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-[1.08] tracking-tight">
+                Bulk Email
+              </h1>
+              <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+                Send a one-off email to a curated group of customers. Test before you send.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Sandbox test-send banner */}
-        {testedAt && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-2 rounded-lg">
-            Test sent to {testedAt.to} at {new Date(testedAt.at).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}.
-            Bulk send is unlocked for the next 30 minutes.
-          </div>
-        )}
-        {testError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-4 py-2 rounded-lg">
-            {testError}
+        {result?.success === false && (
+          <div
+            role="alert"
+            className="border-l-2 border-red-400 pl-4 py-1 mb-8 text-sm text-red-600 leading-relaxed"
+          >
+            <p className="font-medium">Failed to send emails</p>
+            <p className="mt-0.5">{result.errors?.[0]}</p>
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3">
-          <Link
-            href="/marketing"
-            className="px-4 py-2 text-stone-400 hover:text-stone-700 transition-colors"
-          >
-            Cancel
-          </Link>
-          <button
-            type="button"
-            onClick={handleTestSend}
-            disabled={testLoading || !formData.subject || !formData.body}
-            className="flex items-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 hover:bg-stone-50 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Send this email to your own address as a sandbox test before going to the audience"
-          >
-            {testLoading ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Sending test…</>
-            ) : (
-              <>📨 Send test to me</>
-            )}
-          </button>
-          <button
-            type="submit"
-            disabled={loading || recipientCount === 0}
-            className="flex items-center gap-2 px-6 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-amber-600/50 text-white rounded-lg font-medium transition-colors"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                Send to {recipientCount || 0} Recipient{recipientCount !== 1 ? "s" : ""}
-              </>
-            )}
-          </button>
-        </div>
-      </form>
+        <form onSubmit={handleSubmit} className="space-y-8 lg:space-y-12">
+          {/* Recipients */}
+          <section className="bg-white border border-stone-200 rounded-2xl p-8 lg:p-10">
+            <div className="flex items-baseline justify-between gap-4 mb-7">
+              <div>
+                <p className="text-xs uppercase tracking-luxury text-stone-500 mb-2">
+                  Step 01
+                </p>
+                <h2 className="font-serif text-2xl text-stone-900 tracking-tight">
+                  Recipients
+                </h2>
+              </div>
+              {recipientCount !== null && (
+                <span className="text-sm text-stone-500 tabular-nums shrink-0">
+                  {recipientCount} recipient{recipientCount !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { value: "all", label: "All Customers" },
+                  { value: "segment", label: "Segment" },
+                  { value: "tags", label: "By Tags" },
+                  { value: "manual", label: "Select Manually" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        recipient_type: option.value as "all" | "segment" | "tags" | "manual",
+                      }))
+                    }
+                    className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all duration-200 ${
+                      formData.recipient_type === option.value
+                        ? "border-nexpura-bronze/40 bg-nexpura-bronze/[0.06] text-stone-900"
+                        : "border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              {formData.recipient_type === "segment" && (
+                <select
+                  value={formData.segment_id}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, segment_id: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 bg-white focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                >
+                  <option value="">Select a segment...</option>
+                  {segments.map((segment) => (
+                    <option key={segment.id} value={segment.id}>
+                      {segment.name} ({segment.customer_count} customers)
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {formData.recipient_type === "tags" && (
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          selected_tags: prev.selected_tags.includes(tag)
+                            ? prev.selected_tags.filter((t) => t !== tag)
+                            : [...prev.selected_tags, tag],
+                        }));
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm border transition-all duration-200 ${
+                        formData.selected_tags.includes(tag)
+                          ? "border-nexpura-bronze/40 bg-nexpura-bronze/[0.06] text-stone-900"
+                          : "bg-white border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                  {tags.length === 0 && <p className="text-stone-500 text-sm">No tags found</p>}
+                </div>
+              )}
+
+              {formData.recipient_type === "manual" && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                    <input
+                      type="text"
+                      placeholder="Search customers..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                    />
+                  </div>
+
+                  {formData.selected_customers.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.selected_customers.map((id) => {
+                        const customer = customers.find((c) => c.id === id);
+                        return (
+                          <span
+                            key={id}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-nexpura-bronze/[0.08] text-stone-700 rounded-full text-xs font-medium"
+                          >
+                            {customer?.full_name || customer?.email}
+                            <button
+                              type="button"
+                              onClick={() => toggleCustomer(id)}
+                              className="text-stone-500 hover:text-stone-900 transition-colors"
+                              aria-label="Remove"
+                            >
+                              <XMarkIcon className="w-3 h-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="max-h-56 overflow-y-auto border border-stone-200 rounded-lg divide-y divide-stone-100">
+                    {filteredCustomers.map((customer) => (
+                      <label
+                        key={customer.id}
+                        className="flex items-center gap-3 p-3 hover:bg-stone-50 cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.selected_customers.includes(customer.id)}
+                          onChange={() => toggleCustomer(customer.id)}
+                          className="w-4 h-4 rounded border-stone-300 text-nexpura-bronze focus:ring-nexpura-bronze/20"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-stone-900 text-sm truncate">{customer.full_name || "No name"}</p>
+                          <p className="text-stone-500 text-xs truncate">{customer.email}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Email Content */}
+          <section className="bg-white border border-stone-200 rounded-2xl p-8 lg:p-10">
+            <div className="mb-7">
+              <p className="text-xs uppercase tracking-luxury text-stone-500 mb-2">
+                Step 02
+              </p>
+              <h2 className="font-serif text-2xl text-stone-900 tracking-tight">
+                Email Content
+              </h2>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  Subject <span className="text-stone-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.subject}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, subject: e.target.value }))}
+                  placeholder="e.g., Important update from our store"
+                  className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-stone-700">
+                    Message <span className="text-stone-400">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPreview(!showPreview)}
+                    className="text-xs text-nexpura-bronze hover:text-nexpura-bronze-hover transition-colors duration-200"
+                  >
+                    {showPreview ? "Edit" : "Preview"}
+                  </button>
+                </div>
+                {showPreview ? (
+                  <div
+                    className="w-full min-h-[200px] p-4 bg-stone-50 border border-stone-200 text-stone-900 rounded-lg prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: sanitize ? sanitize(getPreviewHtml()) : "" }}
+                  />
+                ) : (
+                  <textarea
+                    value={formData.body}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, body: e.target.value }))}
+                    placeholder="Write your message here..."
+                    rows={8}
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200 resize-y"
+                  />
+                )}
+                <p className="text-xs text-stone-500 mt-2 leading-relaxed">
+                  Variables: {"{{customer_name}}"}, {"{{business_name}}"}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Sandbox test-send banner */}
+          {testedAt && (
+            <div className="border-l-2 border-stone-300 pl-4 py-1 text-sm text-stone-600 leading-relaxed">
+              Test sent to {testedAt.to} at {new Date(testedAt.at).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}.
+              Bulk send is unlocked for the next 30 minutes.
+            </div>
+          )}
+          {testError && (
+            <div role="alert" className="border-l-2 border-red-400 pl-4 py-1 text-sm text-red-600 leading-relaxed">
+              {testError}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Link
+              href="/marketing"
+              className="px-4 py-2 text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors duration-200"
+            >
+              Cancel
+            </Link>
+            <button
+              type="button"
+              onClick={handleTestSend}
+              disabled={testLoading || !formData.subject || !formData.body}
+              className="inline-flex items-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50 rounded-md text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Send this email to your own address as a sandbox test before going to the audience"
+            >
+              {testLoading ? (
+                <>
+                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                  Sending test...
+                </>
+              ) : (
+                <>Send test to me</>
+              )}
+            </button>
+            <button
+              type="submit"
+              disabled={loading || recipientCount === 0}
+              className="nx-btn-primary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <PaperAirplaneIcon className="w-4 h-4" />
+                  Send to {recipientCount || 0} recipient{recipientCount !== 1 ? "s" : ""}
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
