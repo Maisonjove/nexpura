@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, usePathname } from "next/navigation";
+import { ReceiptRefundIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
 
 interface Refund {
   id: string;
@@ -30,11 +31,19 @@ function fmtCurrency(n: number) {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700",
-  approved: "bg-blue-50 text-blue-700",
-  rejected: "bg-stone-100 text-stone-600",
-  completed: "bg-red-50 text-red-700",
-  voided: "bg-stone-100 text-stone-500",
+  pending: "nx-badge-warning",
+  approved: "nx-badge-neutral",
+  rejected: "nx-badge-neutral",
+  completed: "nx-badge-success",
+  voided: "nx-badge-neutral",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+  completed: "Refunded",
+  voided: "Voided",
 };
 
 export default function RefundListClient({ refunds }: { refunds: Refund[] }) {
@@ -56,88 +65,122 @@ export default function RefundListClient({ refunds }: { refunds: Refund[] }) {
   }, [refunds, activeStatus]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-stone-900">Refunds</h1>
-          <p className="text-stone-500 text-sm mt-1">
-            {filtered.length} refund{filtered.length !== 1 ? "s" : ""}
-            {activeStatus !== "all" && ` (filtered: ${activeStatus})`}
-          </p>
+    <div className="bg-nexpura-ivory min-h-screen">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-6 mb-14">
+          <div>
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Sales
+            </p>
+            <h1 className="font-serif font-medium text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+              Refunds
+            </h1>
+            <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+              {filtered.length} refund{filtered.length !== 1 ? "s" : ""}
+              {activeStatus !== "all" && ` (filtered: ${activeStatus})`}
+              {" — "}process refunds from individual sale records.
+            </p>
+          </div>
+          <Link
+            href="/sales"
+            className="nx-btn-primary inline-flex items-center gap-2 shrink-0"
+          >
+            Go to Sales
+            <ArrowRightIcon className="w-4 h-4" />
+          </Link>
         </div>
-        <p className="text-sm text-stone-400">Process refunds from individual sale records</p>
-      </div>
 
-      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-1 p-2 overflow-x-auto">
+        {/* Status filter tabs */}
+        <div className="bg-white border border-stone-200 rounded-2xl p-1.5 mb-10 inline-flex flex-wrap gap-1 max-w-full">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setStatus(tab.value)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-xl whitespace-nowrap transition-all duration-200 ${
                 activeStatus === tab.value
                   ? "bg-nexpura-charcoal text-white"
-                  : "text-stone-600 hover:bg-stone-100"
+                  : "text-stone-600 hover:text-nexpura-bronze hover:bg-stone-50"
               }`}
             >
               {tab.label}
             </button>
           ))}
         </div>
-      </div>
 
-      {filtered.length === 0 ? (
-        <div className="bg-white border border-stone-200 rounded-xl p-12 text-center shadow-sm">
-          <p className="font-medium text-stone-900 mb-1">
-            {activeStatus === "all" ? "No refunds yet" : `No ${activeStatus} refunds`}
-          </p>
-          <p className="text-sm text-stone-500">Process refunds from individual sale records.</p>
-          <Link href="/sales" className="mt-4 inline-block text-sm text-amber-700 hover:underline font-medium">
-            Go to Sales →
-          </Link>
-        </div>
-      ) : (
-        <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-stone-200 bg-stone-50/60">
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-5 py-3">Refund #</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Customer</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Reason</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Method</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Status</th>
-                <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Amount</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Date</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {filtered.map((r) => (
-                <tr key={r.id} className="hover:bg-stone-50/50 transition-colors">
-                  <td className="px-5 py-3 text-sm font-mono font-semibold text-stone-900">{r.refund_number}</td>
-                  <td className="px-4 py-3 text-sm text-stone-700">{r.customer_name || <span className="text-stone-400">Walk-in</span>}</td>
-                  <td className="px-4 py-3 text-sm text-stone-500 max-w-[160px] truncate">{r.reason || "—"}</td>
-                  <td className="px-4 py-3 text-sm text-stone-500 capitalize">{r.refund_method || "—"}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_BADGE[r.status] || "bg-stone-100 text-stone-500"}`}>
-                      {r.status === "completed" ? "processed" : r.status}
+        {/* List or Empty State */}
+        {filtered.length === 0 ? (
+          <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+            <ReceiptRefundIcon className="w-8 h-8 text-stone-300 mx-auto mb-5" />
+            <h3 className="font-serif text-2xl text-stone-900 mb-3 tracking-tight">
+              {activeStatus === "all" ? "No refunds yet" : `No ${activeStatus} refunds`}
+            </h3>
+            <p className="text-stone-500 text-sm mb-7 max-w-sm mx-auto leading-relaxed">
+              Process refunds from individual sale records to keep customer balances accurate.
+            </p>
+            <Link
+              href="/sales"
+              className="nx-btn-primary inline-flex items-center gap-2"
+            >
+              Go to Sales
+              <ArrowRightIcon className="w-4 h-4" />
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map((r) => (
+              <Link
+                key={r.id}
+                href={`/refunds/${r.id}`}
+                className="group block nx-card hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start">
+                  {/* Refund # + Customer */}
+                  <div className="md:col-span-4 min-w-0">
+                    <p className="font-mono text-sm font-semibold text-stone-900 tabular-nums">
+                      {r.refund_number || "—"}
+                    </p>
+                    <p className="text-sm text-stone-700 mt-1.5 truncate">
+                      {r.customer_name || <span className="text-stone-400">Walk-in</span>}
+                    </p>
+                  </div>
+
+                  {/* Reason + Method */}
+                  <div className="md:col-span-4 min-w-0">
+                    <p className="text-sm text-stone-700 truncate">
+                      {r.reason || <span className="text-stone-400">No reason</span>}
+                    </p>
+                    <p className="text-xs text-stone-500 mt-1.5 capitalize">
+                      {r.refund_method || "—"}
+                    </p>
+                  </div>
+
+                  {/* Status + Date */}
+                  <div className="md:col-span-2 min-w-0">
+                    <span className={STATUS_BADGE[r.status] || "nx-badge-neutral"}>
+                      {STATUS_LABEL[r.status] || r.status}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right font-semibold text-red-600">−{fmtCurrency(r.total)}</td>
-                  <td className="px-4 py-3 text-sm text-stone-400">
-                    {new Date(r.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link href={`/refunds/${r.id}`} className="text-xs text-amber-700 hover:text-[#7a6447] font-medium transition-colors">
-                      View →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                    <p className="text-xs text-stone-500 mt-2 tabular-nums">
+                      {new Date(r.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                    </p>
+                  </div>
+
+                  {/* Amount */}
+                  <div className="md:col-span-2 md:text-right">
+                    <p className="text-base font-semibold text-stone-900 tabular-nums">
+                      −{fmtCurrency(r.total)}
+                    </p>
+                    <span className="text-xs text-stone-400 group-hover:text-nexpura-bronze inline-flex items-center gap-1 mt-2 transition-colors duration-300 md:justify-end">
+                      View
+                      <ArrowRightIcon className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-0.5" />
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
