@@ -2,8 +2,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { Suspense } from "react";
-import Link from "next/link";
-import { Plus } from "lucide-react";
 import { getAuthContext } from "@/lib/auth-context";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,14 +17,10 @@ const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 // Dynamic rendering is explicit — the page reads searchParams, auth,
 // and DB inside its Suspense child. Making that explicit prevents Next
 // from trying to prerender + failing on auth.
-
-// Synchronous top level — the shell (title + New Repair button + Suspense
-// fallback skeleton) emits in the first streamed HTML chunk on hard-nav
-// before the dynamic body (searchParams, auth, DB reads) resolves.
 //
-// searchParams is a Promise, passed by value into `<RepairsBody>` and
-// awaited there inside the Suspense boundary. Awaiting it here would
-// block the shell render.
+// The page no longer renders its own header — RepairsListClient owns the
+// polished serif h1 + "Workshop" eyebrow + primary CTA so the layout stays
+// consistent between the loading skeleton and the hydrated client view.
 
 export default function RepairsPage({
   searchParams,
@@ -34,23 +28,12 @@ export default function RepairsPage({
   searchParams: Promise<{ view?: string; q?: string; stage?: string; rt?: string }>;
 }) {
   return (
-    <div className="space-y-6 max-w-[1400px]">
-      {/* Shell: prerendered at build time, served from CDN edge. */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Repairs</h1>
-        <Link
-          href="/repairs/new"
-          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2"
-        >
-          <Plus className="w-4 h-4 mr-2" /> New Repair
-        </Link>
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        <Suspense fallback={<RepairsBodySkeleton />}>
+          <RepairsBody searchParams={searchParams} />
+        </Suspense>
       </div>
-
-      {/* Body — streamed. All dynamic APIs (searchParams, headers, auth,
-          DB reads) live here so the shell above can be fully static. */}
-      <Suspense fallback={<RepairsBodySkeleton />}>
-        <RepairsBody searchParams={searchParams} />
-      </Suspense>
     </div>
   );
 }
@@ -159,7 +142,7 @@ async function RepairsBody({
   if (!canView) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
-        <h1 className="text-2xl font-semibold text-stone-900 mb-3">Access Denied</h1>
+        <h1 className="font-serif text-3xl text-stone-900 mb-3">Access Denied</h1>
         <p className="text-stone-500">You don&apos;t have permission to view repairs.</p>
       </div>
     );
@@ -186,44 +169,57 @@ async function RepairsBody({
       stageFilter={stageFilter}
       precomputedStageCounts={(statsResult.data?.repairs_stage_counts as Record<string, number> | null) ?? null}
       precomputedOverdueCount={(statsResult.data?.repairs_overdue_count as number | null) ?? null}
-      hideTitleBlock
     />
   );
 }
 
 function RepairsBodySkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="border-b border-stone-200 flex gap-6 overflow-x-auto pb-3">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-4 w-16 rounded-md flex-shrink-0" />
+    <div>
+      {/* Header skeleton — matches the polished client header layout. */}
+      <div className="flex items-start justify-between gap-6 mb-14">
+        <div>
+          <Skeleton className="h-3 w-20 mb-3" />
+          <Skeleton className="h-12 w-64 mb-4" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <Skeleton className="h-10 w-32 rounded-md" />
+      </div>
+
+      {/* Stat strip skeleton */}
+      <div className="mb-14 grid grid-cols-1 sm:grid-cols-3 gap-y-8 gap-x-6 sm:divide-x sm:divide-stone-200">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="sm:px-8 sm:first:pl-0">
+            <Skeleton className="h-3 w-20 mb-3" />
+            <Skeleton className="h-10 w-16" />
+          </div>
         ))}
       </div>
-      <div className="border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white">
-        <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-stone-100 text-xs font-medium uppercase tracking-wider text-stone-400">
-          <span className="col-span-3">Customer</span>
-          <span className="col-span-4">Item &amp; Issue</span>
-          <span className="col-span-2">Status</span>
-          <span className="col-span-2">Due</span>
-          <span className="col-span-1"></span>
-        </div>
-        <div className="divide-y divide-stone-100">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="grid grid-cols-12 gap-4 px-6 py-3 items-center">
-              <div className="col-span-3 flex items-center gap-3">
-                <Skeleton className="h-8 w-8 rounded-full" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-              <div className="col-span-4">
-                <Skeleton className="h-4 w-20 mb-1" />
+
+      {/* Stage tab pill row */}
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-9 w-24 rounded-full flex-shrink-0" />
+        ))}
+      </div>
+
+      {/* Card list skeleton */}
+      <div className="space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white border border-stone-200 rounded-2xl p-6">
+            <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1.4fr_1.6fr_1fr_1fr_auto] gap-4 items-center">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-32" />
+              <div>
+                <Skeleton className="h-4 w-28 mb-2" />
                 <Skeleton className="h-3 w-40" />
               </div>
-              <div className="col-span-2"><Skeleton className="h-5 w-20 rounded-full" /></div>
-              <div className="col-span-2"><Skeleton className="h-4 w-16" /></div>
-              <div className="col-span-1 flex justify-center"><Skeleton className="h-4 w-4" /></div>
+              <Skeleton className="h-5 w-20 rounded-full" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-4" />
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -4,10 +4,16 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter, usePathname } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Camera, Bell } from "lucide-react";
+import {
+  PlusIcon,
+  CameraIcon,
+  BellIcon,
+  WrenchScrewdriverIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
+  XMarkIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
 import { formatDateForExport } from "@/lib/export";
 import { toast } from "sonner";
 import logger from "@/lib/logger";
@@ -57,13 +63,12 @@ interface Props {
   /** Precomputed tenant-wide count of overdue (non-ready non-collected) repairs. */
   precomputedOverdueCount?: number | null;
   /**
-   * When true, skip rendering the h1 + primary-action button AND the
-   * stage tabs because page.tsx rendered them synchronously as a server
-   * shell above the Suspense boundary that wraps this client. Prevents
-   * duplicate title / tab flashes when the list streams in. The client
-   * still owns tab *interactivity* — switching tabs works via the same
-   * local state + history.replaceState model as before; the server tabs
-   * are non-interactive anchor-links that only serve the initial paint.
+   * When true, skip rendering the h1 + primary-action button because
+   * page.tsx rendered them synchronously as a server shell above the
+   * Suspense boundary that wraps this client. Prevents duplicate title
+   * flashes when the list streams in. The client still owns tab
+   * *interactivity* — switching tabs works via the same local state +
+   * history.replaceState model as before.
    */
   hideTitleBlock?: boolean;
 }
@@ -77,17 +82,15 @@ interface Props {
 // rendered "no repairs". Removed.
 export const ALL_REPAIR_STAGES = [
   { key: "all", label: "All" },
-  { key: "intake", label: "Intake" },
+  { key: "intake", label: "Booked-In" },
   { key: "assessed", label: "Assessed" },
   { key: "quoted", label: "Quoted" },
   { key: "approved", label: "Approved" },
   { key: "in_progress", label: "In Progress" },
   { key: "ready", label: "Ready" },
-  { key: "collected", label: "Collected" },
+  { key: "collected", label: "Completed" },
   { key: "cancelled", label: "Cancelled" },
 ];
-
-// isOverdue / getInitials now live in ./RepairRow.tsx (used per-row).
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -106,8 +109,7 @@ export default function RepairsListClient({
 
   // List | Kanban view toggle. Kanban renders the same data grouped by
   // stage with @dnd-kit drag-and-drop; dropping a card on another column
-  // calls advanceRepairStage which updates the DB + invalidates the
-  // workshop / dashboard caches.
+  // calls advanceRepairStage which updates the DB + invalidates caches.
   const [view, setView] = useState<"list" | "kanban">("list");
 
   // Stage filtering is entirely client-side now. URL stays the source of truth
@@ -174,8 +176,6 @@ export default function RepairsListClient({
     }
   }
 
-  const useSampleData = false; // Always use real data — show empty state when no repairs
-
   // Stage tab click: instant client-side filter + shallow URL sync so refresh
   // and share-links still land on the right tab. No server round-trip.
   function setStage(stage: string) {
@@ -201,150 +201,118 @@ export default function RepairsListClient({
     startTransition(() => router.push(`${pathname}?${params.toString()}`));
   }
 
-  // Stage-badge lookup moved into RepairRow component (module-level map,
-  // not recreated per render). Kept this comment as a signpost.
-
   // Progressive-render cap: start at 40 (about a viewport's worth), fill
   // the rest in 40-row batches across animation frames so the initial
   // hydration doesn't block on reconciling 200 rows at once.
   const renderCap = useProgressiveRender(visibleRepairs.length, { initialCount: 40, batchSize: 40 });
 
-  return (
+  // Total tenant-wide count for the stat strip "Active" cell — sum of all
+  // non-terminal stages. Falls back to loaded-row count.
+  const TERMINAL_STAGES = ["collected", "cancelled"];
+  const activeCount = precomputedStageCounts
+    ? Object.entries(precomputedStageCounts)
+        .filter(([k]) => !TERMINAL_STAGES.includes(k))
+        .reduce((s, [, n]) => s + n, 0)
+    : repairs.filter(r => !TERMINAL_STAGES.includes(r.stage)).length;
+
+  // ── Body content (header, stats, filters, view toggle, list/kanban) ───
+  const Body = (
     <>
-      {/* Bulk Notify Modal */}
-      {showNotifyModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-            <h3 className="font-bold text-stone-900 text-lg mb-2">Notify Ready Customers?</h3>
-            <p className="text-sm text-stone-500 mb-6">
-              Send a &quot;ready for collection&quot; email to <strong>{readyRepairs.length}</strong> customer{readyRepairs.length !== 1 ? "s" : ""} with repairs in the <em>Ready</em> stage.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowNotifyModal(false)}
-                disabled={notifying}
-                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBulkNotify}
-                disabled={notifying}
-                className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                <Bell className="w-4 h-4" />
-                {notifying ? "Sending…" : `Notify ${readyRepairs.length} Customer${readyRepairs.length !== 1 ? "s" : ""}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {notifyResult && (
-        <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800 flex items-center justify-between">
-          <span>✅ {notifyResult.notified} customer{notifyResult.notified !== 1 ? "s" : ""} notified{notifyResult.skipped > 0 ? `, ${notifyResult.skipped} skipped (no email)` : ""}.</span>
-          <button onClick={() => setNotifyResult(null)} className="text-emerald-600 hover:text-emerald-800 text-xs">Dismiss</button>
-        </div>
-      )}
-    <div className="space-y-6 max-w-[1400px]">
-      {/* HEADER — skipped when page.tsx renders a server shell above.
-          Kept inline for standalone use (tests, other entry points). */}
+      {/* HEADER — owned by the client so the polished serif title hydrates
+          without a flash. page.tsx may pass hideTitleBlock=true to suppress
+          this when it renders its own server shell. */}
       {!hideTitleBlock && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Repairs</h1>
-            <div className="hidden sm:flex items-center gap-2">
-              {repairs.length > 0 && (
-                <>
-                  {inProgressCount > 0 && (
-                    <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                      {inProgressCount} In Progress
-                    </Badge>
-                  )}
-                  {readyDisplayCount > 0 && (
-                    <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                      {readyDisplayCount} Ready
-                    </Badge>
-                  )}
-                  {overdueDisplayCount > 0 && (
-                    <Badge variant="outline" className="text-red-600 font-medium border-red-200 bg-red-50">
-                      {overdueDisplayCount} Overdue
-                    </Badge>
-                  )}
-                </>
-              )}
-            </div>
+        <div className="flex items-start justify-between gap-6 mb-14">
+          <div>
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Workshop
+            </p>
+            <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+              Repairs
+            </h1>
+            <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+              Track every repair through the workshop, from booking-in to
+              ready-for-collection.
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            {readyRepairs.length > 0 && (
-              <button
-                onClick={() => setShowNotifyModal(true)}
-                className="inline-flex items-center gap-1.5 h-9 px-3 border border-emerald-300 bg-emerald-50 rounded-md text-sm text-emerald-700 hover:bg-emerald-100 transition-colors font-medium"
-                title={`Notify ${readyRepairs.length} ready customer${readyRepairs.length !== 1 ? "s" : ""}`}
-              >
-                <Bell className="w-4 h-4" />
-                Notify All Ready
-              </button>
-            )}
-            <ExportButtons
-              data={exportRows}
-              columns={[
-                { key: 'repair_number', label: 'Repair #' },
-                { key: 'customer', label: 'Customer' },
-                { key: 'item_type', label: 'Item Type' },
-                { key: 'description', label: 'Description' },
-                { key: 'repair_type', label: 'Repair Type' },
-                { key: 'stage', label: 'Status' },
-                { key: 'priority', label: 'Priority' },
-                { key: 'due_date', label: 'Due Date' },
-                { key: 'created_at', label: 'Created' },
-              ]}
-              filename={`repairs-export-${new Date().toISOString().split('T')[0]}`}
-              sheetName="Repairs"
-              size="sm"
-            />
-            <button
-              onClick={() => setShowCameraScanner(true)}
-              className="inline-flex items-center gap-1.5 h-9 px-3 border border-stone-200 rounded-md text-sm text-stone-600 hover:bg-stone-50 transition-colors"
-              title="Scan repair ticket barcode"
+          <Link
+            href="/repairs/new"
+            className="nx-btn-primary inline-flex items-center gap-2 shrink-0"
+          >
+            <PlusIcon className="w-4 h-4" />
+            New Repair
+          </Link>
+        </div>
+      )}
+
+      {/* Notify result banner */}
+      {notifyResult && (
+        <div className="mb-8 px-5 py-3 bg-emerald-50/60 border border-emerald-200/70 rounded-2xl text-sm text-emerald-800 flex items-center justify-between">
+          <span className="inline-flex items-center gap-2">
+            <CheckCircleIcon className="w-4 h-4" />
+            {notifyResult.notified} customer{notifyResult.notified !== 1 ? "s" : ""} notified
+            {notifyResult.skipped > 0 ? `, ${notifyResult.skipped} skipped (no email)` : ""}.
+          </span>
+          <button
+            onClick={() => setNotifyResult(null)}
+            className="text-emerald-700 hover:text-emerald-900 text-xs font-medium"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* STAT STRIP — bare typography over ivory, hairline dividers between
+          cells on sm+. Mirrors InvoiceListClient's polished metric pattern.
+          Only `Overdue` gets a tasteful semantic accent (oxblood) when > 0. */}
+      {repairs.length > 0 && (
+        <div className="mb-14 grid grid-cols-2 sm:grid-cols-4 gap-y-8 gap-x-6 sm:divide-x sm:divide-stone-200">
+          <div className="sm:px-8 sm:first:pl-0">
+            <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+              Active
+            </p>
+            <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
+              {activeCount}
+            </p>
+          </div>
+          <div className="sm:px-8">
+            <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+              In Progress
+            </p>
+            <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
+              {inProgressCount}
+            </p>
+          </div>
+          <div className="sm:px-8">
+            <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+              Ready
+            </p>
+            <p
+              className={`font-serif text-4xl leading-none tracking-tight tabular-nums ${
+                readyDisplayCount > 0 ? "text-nexpura-emerald-deep" : "text-stone-900"
+              }`}
             >
-              <Camera className="w-4 h-4" />
-              Scan
-            </button>
-            <Link href="/repairs/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
-              <Plus className="w-4 h-4 mr-2" /> New Repair
-            </Link>
+              {readyDisplayCount}
+            </p>
+          </div>
+          <div className="sm:px-8">
+            <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+              Overdue
+            </p>
+            <p
+              className={`font-serif text-4xl leading-none tracking-tight tabular-nums ${
+                overdueDisplayCount > 0 ? "text-nexpura-oxblood" : "text-stone-900"
+              }`}
+            >
+              {overdueDisplayCount}
+            </p>
           </div>
         </div>
       )}
 
-      {/* View toggle: list vs kanban. Kanban renders the same data
-          grouped by stage with @dnd-kit drag-and-drop; dropping a card
-          calls advanceRepairStage. */}
-      <div className="flex justify-end">
-        <div className="inline-flex rounded-lg border border-stone-200 p-0.5 bg-stone-50">
-          <button
-            onClick={() => setView("list")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              view === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
-            }`}
-          >
-            List
-          </button>
-          <button
-            onClick={() => setView("kanban")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              view === "kanban" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
-            }`}
-          >
-            Kanban
-          </button>
-        </div>
-      </div>
-
-      {/* STAGE TABS — labels now show the precomputed tenant-wide count
-          next to each stage key when available. Falls back to label-only
-          when the stats row is missing (first-ever visit). */}
-      <div className="border-b border-stone-200 flex gap-6 overflow-x-auto">
+      {/* STAGE FILTER PILLS — rounded-full, charcoal active, white-with-border idle.
+          Matches the bespoke / laybys filter pattern. */}
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto whitespace-nowrap no-scrollbar pb-1">
         {ALL_REPAIR_STAGES.map((tab) => {
           const isActive = activeTab === tab.key;
           const count =
@@ -357,15 +325,19 @@ export default function RepairsListClient({
             <button
               key={tab.key}
               onClick={() => setStage(tab.key === "all" ? "" : tab.key)}
-              className={`pb-3 px-1 text-sm transition-colors whitespace-nowrap ${
+              className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all duration-300 flex-shrink-0 ${
                 isActive
-                  ? "border-b-2 border-amber-600 text-stone-900 font-medium"
-                  : "text-stone-400 hover:text-stone-600"
+                  ? "bg-stone-900 text-white"
+                  : "bg-white border border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900"
               }`}
             >
               {tab.label}
               {count !== null && count !== undefined && count > 0 && (
-                <span className={`ml-1.5 text-xs ${isActive ? "text-amber-700" : "text-stone-400"}`}>
+                <span
+                  className={`ml-1.5 text-xs tabular-nums ${
+                    isActive ? "text-white/70" : "text-stone-400"
+                  }`}
+                >
                   {count}
                 </span>
               )}
@@ -374,52 +346,176 @@ export default function RepairsListClient({
         })}
       </div>
 
-      {/* TABLE / KANBAN */}
+      {/* CONTROL BAR — quiet utility row: notify, scan, export, view toggle. */}
+      <div className="flex items-center justify-end gap-2 mb-5 flex-wrap">
+        {readyRepairs.length > 0 && (
+          <button
+            onClick={() => setShowNotifyModal(true)}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm text-stone-600 bg-white border border-stone-200 hover:border-stone-300 hover:text-stone-900 transition-all duration-200"
+            title={`Notify ${readyRepairs.length} ready customer${readyRepairs.length !== 1 ? "s" : ""}`}
+          >
+            <BellIcon className="w-4 h-4 text-stone-400" />
+            Notify Ready
+          </button>
+        )}
+        <ExportButtons
+          data={exportRows}
+          columns={[
+            { key: 'repair_number', label: 'Repair #' },
+            { key: 'customer', label: 'Customer' },
+            { key: 'item_type', label: 'Item Type' },
+            { key: 'description', label: 'Description' },
+            { key: 'repair_type', label: 'Repair Type' },
+            { key: 'stage', label: 'Status' },
+            { key: 'priority', label: 'Priority' },
+            { key: 'due_date', label: 'Due Date' },
+            { key: 'created_at', label: 'Created' },
+          ]}
+          filename={`repairs-export-${new Date().toISOString().split('T')[0]}`}
+          sheetName="Repairs"
+          size="sm"
+        />
+        <button
+          onClick={() => setShowCameraScanner(true)}
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm text-stone-600 bg-white border border-stone-200 hover:border-stone-300 hover:text-stone-900 transition-all duration-200"
+          title="Scan repair ticket barcode"
+        >
+          <CameraIcon className="w-4 h-4 text-stone-400" />
+          Scan
+        </button>
+
+        {/* List / Kanban view toggle */}
+        <div className="inline-flex rounded-full border border-stone-200 p-0.5 bg-white">
+          <button
+            onClick={() => setView("list")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200 ${
+              view === "list"
+                ? "bg-stone-900 text-white"
+                : "text-stone-500 hover:text-stone-900"
+            }`}
+            aria-label="List view"
+          >
+            <ListBulletIcon className="w-3.5 h-3.5" />
+            List
+          </button>
+          <button
+            onClick={() => setView("kanban")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200 ${
+              view === "kanban"
+                ? "bg-stone-900 text-white"
+                : "text-stone-500 hover:text-stone-900"
+            }`}
+            aria-label="Kanban view"
+          >
+            <Squares2X2Icon className="w-3.5 h-3.5" />
+            Kanban
+          </button>
+        </div>
+      </div>
+
+      {/* LIST or KANBAN */}
       {view === "kanban" ? (
         <RepairsKanban initialRepairs={visibleRepairs} />
+      ) : visibleRepairs.length === 0 ? (
+        <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+          <WrenchScrewdriverIcon className="w-8 h-8 text-stone-300 mx-auto mb-5" strokeWidth={1.5} />
+          <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+            {activeTab === "all" ? "No repairs yet" : "No repairs in this stage"}
+          </h3>
+          <p className="text-stone-500 text-sm mb-7 max-w-sm mx-auto leading-relaxed">
+            {activeTab === "all"
+              ? "Book in your first repair to start tracking work through the workshop."
+              : "Try a different filter to see other repairs."}
+          </p>
+          {activeTab === "all" ? (
+            <Link href="/repairs/new" className="nx-btn-primary inline-flex items-center gap-2">
+              <PlusIcon className="w-4 h-4" />
+              New Repair
+            </Link>
+          ) : (
+            <button
+              onClick={() => setStage("")}
+              className="nx-btn-primary inline-flex items-center gap-2"
+            >
+              View all repairs
+            </button>
+          )}
+        </div>
       ) : (
-      <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-stone-100">
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Customer</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Item & Issue</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Status</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Due</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Tech</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Deposit</TableHead>
-              <TableHead className="w-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleRepairs.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-16 text-stone-400">
-                  <div className="flex flex-col items-center gap-3">
-                    <svg className="w-10 h-10 text-stone-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                    <p className="text-sm font-medium text-stone-400">No repairs found</p>
-                    <p className="text-xs text-stone-300">Create a new repair to get started</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              // Memoized row component; each row only re-renders when its
-              // own `repair` prop identity changes. Slicing by renderCap
-              // means the initial paint contains ~40 rows; the remainder
-              // fills in across subsequent animation frames via the
-              // progressive-render hook.
-              visibleRepairs.slice(0, renderCap).map((repair) => (
-                <RepairRow key={repair.id} repair={repair} />
-              ))
-            )}
-            </TableBody>
-        </Table>
-      </Card>
+        <div className="space-y-3">
+          {/* Column header (desktop only) */}
+          <div className="hidden md:grid grid-cols-[1.1fr_1.4fr_1.6fr_1fr_1fr_auto] gap-4 px-6 py-2 text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury">
+            <div>Repair #</div>
+            <div>Customer</div>
+            <div>Item &amp; Issue</div>
+            <div>Status</div>
+            <div>ETA</div>
+            <div className="w-4" />
+          </div>
+
+          {/* Memoized row component; each row only re-renders when its
+              own `repair` prop identity changes. Slicing by renderCap
+              means the initial paint contains ~40 rows; the remainder
+              fills in across subsequent animation frames via the
+              progressive-render hook. */}
+          {visibleRepairs.slice(0, renderCap).map((repair) => (
+            <RepairRow key={repair.id} repair={repair} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+
+  // Modals + scanner — rendered at the root regardless of layout mode.
+  const overlays = (
+    <>
+      {showNotifyModal && (
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-stone-200 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.12)] w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-stone-200">
+              <h2 className="font-serif text-2xl text-stone-900 tracking-tight">
+                Notify Ready Customers?
+              </h2>
+              <button
+                onClick={() => setShowNotifyModal(false)}
+                disabled={notifying}
+                className="text-stone-400 hover:text-stone-700 transition-colors duration-200 disabled:opacity-50"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-stone-500 leading-relaxed">
+                Send a &ldquo;ready for collection&rdquo; email to{" "}
+                <strong className="text-stone-900">{readyRepairs.length}</strong> customer
+                {readyRepairs.length !== 1 ? "s" : ""} with repairs in the{" "}
+                <em className="text-stone-700">Ready</em> stage.
+              </p>
+              <div className="flex items-center justify-end gap-2 mt-6 pt-5 border-t border-stone-200">
+                <button
+                  onClick={() => setShowNotifyModal(false)}
+                  disabled={notifying}
+                  className="px-4 py-2 rounded-md text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors duration-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkNotify}
+                  disabled={notifying}
+                  className="nx-btn-primary inline-flex items-center gap-2 disabled:opacity-50"
+                >
+                  <BellIcon className="w-4 h-4" />
+                  {notifying
+                    ? "Sending…"
+                    : `Notify ${readyRepairs.length} Customer${readyRepairs.length !== 1 ? "s" : ""}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Camera Scanner Modal */}
       {showCameraScanner && (
         <CameraScannerModal
           title="Scan Repair Ticket"
@@ -438,7 +534,30 @@ export default function RepairsListClient({
           onClose={() => setShowCameraScanner(false)}
         />
       )}
-    </div>
+    </>
+  );
+
+  // When `hideTitleBlock` is true, page.tsx already wraps us in its own
+  // server shell. Render body inline so we don't double-wrap.
+  if (hideTitleBlock) {
+    return (
+      <>
+        {overlays}
+        <div className="max-w-[1400px]">{Body}</div>
+      </>
+    );
+  }
+
+  // Standalone mode (tests, other entry points): render the full
+  // ivory-backed design-system page including container.
+  return (
+    <>
+      {overlays}
+      <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+        <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+          {Body}
+        </div>
+      </div>
     </>
   );
 }

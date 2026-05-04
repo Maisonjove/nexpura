@@ -1,11 +1,8 @@
 "use client";
 
 import { memo } from "react";
-import { useRouter } from "next/navigation";
-import { TableCell, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRightIcon } from "@heroicons/react/24/outline";
 
 type Customer = { id: string; full_name: string | null } | null;
 
@@ -22,31 +19,29 @@ export interface RepairRowData {
   customers: Customer;
 }
 
-// Module-level stage-badge map. Previously `getStatusBadge` was a nested
-// function inside the main client — recreated on every render + running
-// through a 10-case switch per row. The map is built once at module load.
+// Module-level stage-badge map. Built once at module load — avoids the
+// per-row recreation cost of an inline switch / object literal.
+//
+// Colour restraint: only two stages get a coloured badge — `ready`
+// (success / emerald) and `cancelled` (danger / oxblood). Everything
+// else uses the quiet neutral pill so a pipeline with mixed work doesn't
+// look like a riot of amber. Status meaning still comes through clearly
+// from the *label* itself.
 const STAGE_BADGE_PROPS: Record<string, { label: string; className: string }> = {
-  intake: { label: "Intake", className: "bg-stone-100 text-stone-600 hover:bg-stone-100 border border-stone-200" },
-  assessed: { label: "Assessed", className: "bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200" },
-  quoted: { label: "Quoted", className: "bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200" },
-  approved: { label: "Approved", className: "bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200" },
-  in_progress: { label: "In Progress", className: "bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200" },
-  quality_check: { label: "Quality Check", className: "bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-200" },
-  ready: { label: "Ready", className: "bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200" },
-  collected: { label: "Collected", className: "bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200" },
-  cancelled: { label: "Cancelled", className: "bg-red-50 text-red-700 hover:bg-red-50 border border-red-200" },
+  intake:        { label: "Booked-In",   className: "nx-badge-neutral" },
+  assessed:      { label: "Assessed",    className: "nx-badge-neutral" },
+  quoted:        { label: "Quoted",      className: "nx-badge-neutral" },
+  approved:      { label: "Approved",    className: "nx-badge-neutral" },
+  in_progress:   { label: "In Progress", className: "nx-badge-neutral" },
+  quality_check: { label: "Quality Check", className: "nx-badge-neutral" },
+  ready:         { label: "Ready",       className: "nx-badge-success" },
+  collected:     { label: "Completed",   className: "nx-badge-success" },
+  cancelled:     { label: "Cancelled",   className: "nx-badge-danger"  },
 };
-const DEFAULT_BADGE = { label: "Unknown", className: "bg-stone-100 text-stone-600 border border-stone-200" };
+const DEFAULT_BADGE = { label: "Unknown", className: "nx-badge-neutral" };
 
 // Cheap singleton formatter (avoid re-constructing Intl.DateTimeFormat per row).
 const DATE_FMT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
-
-function formatInitials(name: string): string {
-  const parts = name.split(" ");
-  let result = "";
-  for (const p of parts) if (p) result += p[0];
-  return result.toUpperCase().slice(0, 2);
-}
 
 function isOverdue(due_date: string | null, stage: string): boolean {
   if (!due_date) return false;
@@ -55,47 +50,81 @@ function isOverdue(due_date: string | null, stage: string): boolean {
 }
 
 function RepairRowInner({ repair }: { repair: RepairRowData }) {
-  const router = useRouter();
   const badge = STAGE_BADGE_PROPS[repair.stage] ?? DEFAULT_BADGE;
   const name = repair.customers?.full_name || "Unknown";
   const overdue = isOverdue(repair.due_date, repair.stage);
   const dueText = repair.due_date ? DATE_FMT.format(new Date(repair.due_date)) : "—";
 
   return (
-    <TableRow
-      className="hover:bg-stone-50/60 border-stone-100 cursor-pointer"
-      onClick={() => router.push(`/repairs/${repair.id}`)}
+    <Link
+      href={`/repairs/${repair.id}`}
+      className="group block bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
     >
-      <TableCell>
-        <div className="flex items-center gap-3">
-          <Avatar className="w-8 h-8">
-            <AvatarFallback className="bg-stone-100 text-stone-600 text-xs font-semibold">
-              {formatInitials(name)}
-            </AvatarFallback>
-          </Avatar>
-          <span className="text-sm font-medium text-stone-900">{name}</span>
+      <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1.4fr_1.6fr_1fr_1fr_auto] gap-4 md:items-center">
+        {/* Repair # */}
+        <div>
+          <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1">
+            Repair #
+          </p>
+          <span className="font-mono text-sm text-nexpura-bronze group-hover:text-nexpura-bronze-hover transition-colors duration-200 tabular-nums">
+            {repair.repair_number ?? repair.id.slice(0, 8)}
+          </span>
         </div>
-      </TableCell>
-      <TableCell>
-        <p className="font-medium text-sm text-stone-900">{repair.item_type}</p>
-        <p className="text-xs text-stone-400 mt-0.5">{repair.item_description}</p>
-      </TableCell>
-      <TableCell>
-        <Badge className={badge.className}>{badge.label}</Badge>
-      </TableCell>
-      <TableCell className={`text-sm ${overdue ? "text-red-600 font-medium" : "text-stone-700"}`}>
-        {dueText}
-      </TableCell>
-      <TableCell className="text-sm text-stone-700">—</TableCell>
-      <TableCell className="text-sm font-medium text-stone-900">—</TableCell>
-      <TableCell>
-        <ArrowRight className="w-4 h-4 text-stone-300 hover:text-amber-700" />
-      </TableCell>
-    </TableRow>
+
+        {/* Customer */}
+        <div>
+          <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1">
+            Customer
+          </p>
+          <p className="text-sm font-medium text-stone-900 truncate">{name}</p>
+        </div>
+
+        {/* Item & Issue */}
+        <div className="min-w-0">
+          <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1">
+            Item
+          </p>
+          <p className="font-serif text-base text-stone-900 leading-snug tracking-tight truncate">
+            {repair.item_type}
+          </p>
+          <p className="text-xs text-stone-500 mt-1 truncate leading-relaxed">
+            {repair.item_description}
+          </p>
+        </div>
+
+        {/* Status */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1 w-full">
+            Status
+          </p>
+          <span className={badge.className}>{badge.label}</span>
+          {overdue && <span className="nx-badge-danger">Overdue</span>}
+        </div>
+
+        {/* Due / ETA */}
+        <div>
+          <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1">
+            ETA
+          </p>
+          <p
+            className={`text-sm tabular-nums ${
+              overdue ? "text-nexpura-oxblood font-medium" : "text-stone-700"
+            }`}
+          >
+            {dueText}
+          </p>
+        </div>
+
+        {/* Arrow */}
+        <div className="flex md:justify-end">
+          <ArrowRightIcon className="w-4 h-4 text-stone-400 group-hover:text-nexpura-bronze group-hover:translate-x-0.5 transition-all duration-300" />
+        </div>
+      </div>
+    </Link>
   );
 }
 
 // Memoized: a row only re-renders when its `repair` prop identity changes.
-// Repair objects come straight from the server-rendered props and are
-// stable across re-renders (tab filter just reslices a stable array).
+// Repair objects come straight from server-rendered props and are stable
+// across re-renders (tab filter just reslices a stable array).
 export const RepairRow = memo(RepairRowInner);

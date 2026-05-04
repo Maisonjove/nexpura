@@ -15,13 +15,13 @@ import { advanceRepairStage } from "./actions";
 import type { Repair } from "./RepairsListClient";
 
 const KANBAN_STAGES = [
-  { key: "intake", label: "Intake" },
+  { key: "intake", label: "Booked-In" },
   { key: "assessed", label: "Assessed" },
   { key: "quoted", label: "Quoted" },
   { key: "approved", label: "Approved" },
   { key: "in_progress", label: "In Progress" },
   { key: "ready", label: "Ready" },
-  { key: "collected", label: "Collected" },
+  { key: "collected", label: "Completed" },
 ];
 
 function fmtDue(d: string | null | undefined) {
@@ -46,27 +46,35 @@ function RepairCard({ repair }: { repair: Repair }) {
       }
     : undefined;
   const overdue = isOverdue(repair.stage, repair.due_date);
+  const customerName = repair.customers?.full_name;
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
-      className={`bg-white rounded-lg border ${
-        overdue ? "border-nexpura-oxblood/40" : "border-stone-200"
-      } p-3 mb-2 shadow-sm cursor-grab active:cursor-grabbing touch-none`}
+      className="bg-white rounded-xl border border-stone-200 p-4 mb-2.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.05)] hover:border-stone-300 transition-all duration-300 cursor-grab active:cursor-grabbing touch-none"
     >
       <Link
         href={`/repairs/${repair.id}`}
         onClick={(e) => e.stopPropagation()}
         className="block"
       >
-        <p className="text-xs font-mono text-stone-500">{repair.repair_number ?? repair.id.slice(0, 8)}</p>
-        <p className="text-sm font-medium text-stone-900 mt-1 line-clamp-2">
-          {(repair as { item_description?: string | null }).item_description ?? "—"}
+        <p className="font-mono text-[0.6875rem] text-stone-400 tabular-nums">
+          {repair.repair_number ?? repair.id.slice(0, 8)}
         </p>
+        <p className="font-serif text-base text-stone-900 leading-snug tracking-tight mt-1 line-clamp-2">
+          {repair.item_description ?? repair.item_type ?? "—"}
+        </p>
+        {customerName && (
+          <p className="text-xs text-stone-500 mt-1.5 truncate">{customerName}</p>
+        )}
         {repair.due_date && (
-          <p className={`text-xs mt-1 ${overdue ? "text-nexpura-oxblood font-medium" : "text-stone-500"}`}>
+          <p
+            className={`text-xs mt-2 tabular-nums ${
+              overdue ? "text-nexpura-oxblood font-medium" : "text-stone-500"
+            }`}
+          >
             Due {fmtDue(repair.due_date)}
           </p>
         )}
@@ -88,18 +96,24 @@ function StageColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`bg-stone-50 rounded-xl p-3 min-h-[400px] flex-shrink-0 w-64 ${
-        isOver ? "ring-2 ring-amber-500/50" : ""
+      className={`bg-white border rounded-2xl p-3 min-h-[440px] flex-shrink-0 w-64 transition-colors duration-200 ${
+        isOver ? "border-nexpura-bronze ring-2 ring-nexpura-bronze/20" : "border-stone-200"
       }`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-semibold text-stone-700 uppercase tracking-wider">{label}</h3>
-        <span className="text-xs text-stone-500">{repairs.length}</span>
+      <div className="flex items-center justify-between mb-3 px-2 py-2">
+        <h3 className="text-[0.6875rem] font-semibold text-stone-500 uppercase tracking-luxury">
+          {label}
+        </h3>
+        <span className="text-xs text-stone-500 tabular-nums font-medium">
+          {repairs.length}
+        </span>
       </div>
       <div>
-        {repairs.map((r) => (
-          <RepairCard key={r.id} repair={r} />
-        ))}
+        {repairs.length === 0 ? (
+          <p className="text-xs text-stone-400 text-center py-8">No repairs</p>
+        ) : (
+          repairs.map((r) => <RepairCard key={r.id} repair={r} />)
+        )}
       </div>
     </div>
   );
@@ -140,12 +154,12 @@ export default function RepairsKanban({ initialRepairs }: { initialRepairs: Repa
   return (
     <div>
       {error && (
-        <div className="mb-3 px-4 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl">
           {error}
         </div>
       )}
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="flex gap-3 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4">
           {KANBAN_STAGES.map((stage) => (
             <StageColumn
               key={stage.key}
