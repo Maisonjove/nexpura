@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyResendSvixSignature } from "@/lib/webhook-security";
+import { logWebhookAudit } from "@/lib/webhook-audit";
 import logger from "@/lib/logger";
 
 /**
@@ -54,10 +55,16 @@ export async function POST(request: NextRequest) {
   if (!secret) {
     if (IS_PROD) {
       logger.error("[resend-webhook] RESEND_WEBHOOK_SECRET missing in production — refusing request");
-      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    } else {
+      // Non-prod fallback: loud log, still reject so tests can't pass accidentally.
+      logger.warn("[resend-webhook] RESEND_WEBHOOK_SECRET unset — rejecting (dev)");
     }
-    // Non-prod fallback: loud log, still reject so tests can't pass accidentally.
-    logger.warn("[resend-webhook] RESEND_WEBHOOK_SECRET unset — rejecting (dev)");
+    await logWebhookAudit({
+      handlerName: "resend",
+      signatureStatus: "not_configured",
+      request,
+      body,
+    });
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
   }
 
@@ -73,6 +80,12 @@ export async function POST(request: NextRequest) {
 
   if (!signatureOk) {
     logger.warn("[resend-webhook] Invalid or missing signature");
+    await logWebhookAudit({
+      handlerName: "resend",
+      signatureStatus: !svixSignature ? "missing_signature" : "invalid_signature",
+      request,
+      body,
+    });
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -82,6 +95,16 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  // Valid-signature audit row.
+  await logWebhookAudit({
+    handlerName: "resend",
+    signatureStatus: "valid",
+    request,
+    body,
+    eventId: svixId,
+    eventType: event.type,
+  });
 
   const supabase = createAdminClient();
 
@@ -135,13 +158,16 @@ export async function POST(request: NextRequest) {
             logger.warn(`[resend-webhook] bounce for ${email} — no tenant scope (resend_id not in email_logs); skipping customer update`);
             // Still update email_logs by resend_id below so the bounce
             // signal isn't completely lost.
-            await supabase
+            const { error: logErr } = await supabase
               .from("email_logs")
               .update({
                 status: "bounced",
                 bounce_reason: event.data.bounce?.message || "Email bounced",
               })
               .eq("resend_id", event.data.email_id);
+            if (logErr) {
+              logger.error("[resend-webhook] email_logs bounce-update failed (no tenant)", { resend_id: event.data.email_id, err: logErr });
+            }
             continue;
           }
           const { data: customers } = await supabase
@@ -151,24 +177,30 @@ export async function POST(request: NextRequest) {
             .eq("tenant_id", scopedTenantId);
 
           if (customers && customers.length > 0) {
-            await supabase
+            const { error: updErr } = await supabase
               .from("customers")
               .update({
                 email_status: "bounced",
                 email_bounced_at: new Date().toISOString(),
               })
               .in("id", customers.map(c => c.id));
-
-            logger.info(`[resend-webhook] Marked ${customers.length} customer(s) as bounced: ${email}`);
+            if (updErr) {
+              logger.error("[resend-webhook] customers bounced-update failed", { tenantId: scopedTenantId, email, err: updErr });
+            } else {
+              logger.info(`[resend-webhook] Marked ${customers.length} customer(s) as bounced: ${email}`);
+            }
           }
 
-          await supabase
+          const { error: logErr } = await supabase
             .from("email_logs")
             .update({
               status: "bounced",
               bounce_reason: event.data.bounce?.message || "Email bounced",
             })
             .eq("resend_id", event.data.email_id);
+          if (logErr) {
+            logger.error("[resend-webhook] email_logs bounce-update failed", { resend_id: event.data.email_id, err: logErr });
+          }
         }
         break;
       }
@@ -177,14 +209,35 @@ export async function POST(request: NextRequest) {
         const emails = event.data.to;
         logger.info(`[resend-webhook] Spam complaint from: ${emails.join(", ")}`);
 
+        // P2-F audit (Joey 2026-05-04): same tenant-scope bug the
+        // bounced branch was already fixed for. Pre-fix this update
+        // matched customers across ALL tenants by email — so a
+        // customer marking Tenant A's mail as spam silently opted
+        // them out everywhere they appeared (B, C, D…). Now: scope
+        // by the tenant that actually sent this Resend message via
+        // email_logs.resend_id → tenant_id. If we can't resolve the
+        // tenant, decline the customer update rather than fall back
+        // to cross-tenant ilike.
+        const { data: emailLog } = await supabase
+          .from("email_logs")
+          .select("tenant_id")
+          .eq("resend_id", event.data.email_id)
+          .maybeSingle();
+        const scopedTenantId = (emailLog?.tenant_id as string | undefined) ?? null;
+
         for (const email of emails) {
+          if (!scopedTenantId) {
+            logger.warn(`[resend-webhook] complaint for ${email} — no tenant scope (resend_id not in email_logs); skipping customer opt-out`);
+            continue;
+          }
           const { data: customers } = await supabase
             .from("customers")
             .select("id")
-            .ilike("email", email);
+            .ilike("email", email)
+            .eq("tenant_id", scopedTenantId);
 
           if (customers && customers.length > 0) {
-            await supabase
+            const { error: updErr } = await supabase
               .from("customers")
               .update({
                 email_status: "complained",
@@ -192,29 +245,51 @@ export async function POST(request: NextRequest) {
                 email_opted_out_at: new Date().toISOString(),
               })
               .in("id", customers.map(c => c.id));
-
-            logger.warn(`[resend-webhook] Marked ${customers.length} customer(s) as opted-out due to spam complaint: ${email}`);
+            if (updErr) {
+              logger.error("[resend-webhook] customers complained-update failed", { tenantId: scopedTenantId, email, err: updErr });
+            } else {
+              logger.warn(`[resend-webhook] Marked ${customers.length} customer(s) as opted-out due to spam complaint: ${email}`);
+            }
           }
         }
         break;
       }
 
       case "email.delivered": {
-        await supabase
+        const { error: delErr } = await supabase
           .from("email_logs")
           .update({ status: "delivered" })
           .eq("resend_id", event.data.email_id);
+        if (delErr) {
+          logger.error("[resend-webhook] email_logs delivered-update failed", { resend_id: event.data.email_id, err: delErr });
+        }
         break;
       }
 
       default:
-        // Ignore other events (sent, opened, clicked)
+        // Ignore email.{sent,opened,clicked} — intentional. Any other
+        // event type is logged so a Resend product change adding a new
+        // event doesn't silently disappear (P2-F audit 2026-05-04).
+        if (!["email.sent", "email.opened", "email.clicked"].includes(event.type)) {
+          logger.warn(`[resend-webhook] unhandled event type: ${event.type}`);
+        }
         break;
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
     logger.error("[resend-webhook] Processing error:", error);
+    // P2-F audit (Joey 2026-05-04): on processing failure, drop the
+    // idempotency lock so Resend's retry can actually re-enter the
+    // mutation block. Pre-fix the lock stayed → retry hit duplicate
+    // check → "duplicate: true" 200 → state mutation never completed.
+    if (svixId) {
+      try {
+        await supabase.from("idempotency_locks").delete().eq("key", `resend_event:${svixId}`);
+      } catch (rollbackErr) {
+        logger.error("[resend-webhook] failed to roll back idempotency lock", { svixId, err: rollbackErr });
+      }
+    }
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }

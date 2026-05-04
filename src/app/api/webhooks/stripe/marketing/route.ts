@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logWebhookAudit } from "@/lib/webhook-audit";
 
 // Lazy accessors so a missing env var in preview doesn't crash the
 // module at load-time (which produces an unrelated 500 instead of the
@@ -31,17 +32,29 @@ export async function POST(req: NextRequest) {
 
   const stripe = getStripe();
   const webhookSecret = getMarketingWebhookSecret();
+  const body = await req.text();
   if (!stripe || !webhookSecret) {
     logger.error("[stripe-marketing-webhook] missing STRIPE_SECRET_KEY or STRIPE_MARKETING_WEBHOOK_SECRET — refusing request");
+    await logWebhookAudit({
+      handlerName: "stripe_marketing",
+      signatureStatus: "not_configured",
+      request: req,
+      body,
+    });
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
   }
 
-  const body = await req.text();
   const headersList = await headers();
   const signature = headersList.get("stripe-signature");
 
   if (!signature) {
     logger.error("[stripe-marketing-webhook] No signature");
+    await logWebhookAudit({
+      handlerName: "stripe_marketing",
+      signatureStatus: "missing_signature",
+      request: req,
+      body,
+    });
     return NextResponse.json({ error: "No signature" }, { status: 400 });
   }
 
@@ -51,8 +64,26 @@ export async function POST(req: NextRequest) {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
     logger.error("[stripe-marketing-webhook] Invalid signature:", err);
+    await logWebhookAudit({
+      handlerName: "stripe_marketing",
+      signatureStatus: "invalid_signature",
+      request: req,
+      body,
+    });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
+
+  // Valid-signature audit row before any DB mutation. Fire-and-forget
+  // — audit failure must not break the response (logWebhookAudit
+  // swallows internally).
+  await logWebhookAudit({
+    handlerName: "stripe_marketing",
+    signatureStatus: "valid",
+    request: req,
+    body,
+    eventId: event.id,
+    eventType: event.type,
+  });
 
 
   if (event.type === "checkout.session.completed") {
@@ -78,10 +109,11 @@ export async function POST(req: NextRequest) {
     // retry (they retry non-2xx + on timeouts) would fire a second
     // sendWhatsAppCampaign, double-broadcasting to the entire recipient
     // list + double-charging Twilio.
+    const eventKey = `stripe_marketing_event:${event.id}`;
     const { error: lockErr } = await admin
       .from("idempotency_locks")
       .insert({
-        key: `stripe_marketing_event:${event.id}`,
+        key: eventKey,
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         created_at: new Date().toISOString(),
       });
@@ -90,12 +122,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, duplicate: true });
     }
     if (lockErr) {
-      logger.warn("[stripe-marketing-webhook] idempotency lock unavailable, proceeding", { error: lockErr });
+      // P2-F audit (Joey 2026-05-04): pre-fix this proceeded on lock
+      // unavailable. A duplicate Stripe retry during a transient DB
+      // error would double-send the WhatsApp campaign + double-charge
+      // Twilio. Fail closed instead — Stripe retries on 5xx so the
+      // campaign send happens exactly once.
+      logger.error("[stripe-marketing-webhook] idempotency lock failed — refusing to proceed", { error: lockErr });
+      return NextResponse.json({ error: "idempotency_lock_failed" }, { status: 500 });
     }
 
     try {
-      // Update campaign status
-      await admin
+      // Update campaign status. Destructive — on error we throw, the
+      // catch block below rolls back the idempotency lock + returns
+      // 500 so Stripe retries.
+      const { error: campaignPaidErr } = await admin
         .from("whatsapp_campaigns")
         .update({
           payment_status: "paid",
@@ -105,9 +145,12 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", campaignId);
+      if (campaignPaidErr) {
+        throw new Error(`whatsapp_campaigns paid-status update failed: ${campaignPaidErr.message}`);
+      }
 
       // Update purchase record
-      await admin
+      const { error: purchaseErr } = await admin
         .from("marketing_purchases")
         .update({
           status: "completed",
@@ -115,21 +158,38 @@ export async function POST(req: NextRequest) {
           completed_at: new Date().toISOString(),
         })
         .eq("stripe_session_id", session.id);
+      if (purchaseErr) {
+        throw new Error(`marketing_purchases update failed: ${purchaseErr.message}`);
+      }
 
       // Trigger campaign send
       await sendWhatsAppCampaign(campaignId, tenantId, admin);
 
     } catch (err) {
       logger.error("[stripe-marketing-webhook] Error processing:", err);
-      
+
       // Mark campaign as failed
-      await admin
+      const { error: failUpdErr } = await admin
         .from("whatsapp_campaigns")
         .update({
           status: "failed",
           updated_at: new Date().toISOString(),
         })
         .eq("id", campaignId);
+      if (failUpdErr) {
+        logger.error("[stripe-marketing-webhook] failed-status update failed", { campaignId, err: failUpdErr });
+      }
+
+      // P2-F audit (Joey 2026-05-04): pre-fix the idempotency lock
+      // was left in place after a processing failure → Stripe's
+      // retry hit the duplicate check and 200'd → campaign stayed
+      // "failed" forever, no recovery path. Drop the lock so the
+      // retry can re-enter the mutation block.
+      try {
+        await admin.from("idempotency_locks").delete().eq("key", eventKey);
+      } catch (rollbackErr) {
+        logger.error("[stripe-marketing-webhook] failed to roll back idempotency lock", { eventKey, err: rollbackErr });
+      }
 
       return NextResponse.json({ error: "Processing failed" }, { status: 500 });
     }
@@ -143,14 +203,18 @@ async function sendWhatsAppCampaign(
   tenantId: string,
   admin: ReturnType<typeof createAdminClient>
 ) {
-  // Update status to sending
-  await admin
+  // Update status to sending. Throws on failure → caller's catch
+  // returns 500 → Stripe retries. Pre-fix this was a bare update.
+  const { error: sendingErr } = await admin
     .from("whatsapp_campaigns")
     .update({
       status: "sending",
       updated_at: new Date().toISOString(),
     })
     .eq("id", campaignId);
+  if (sendingErr) {
+    throw new Error(`whatsapp_campaigns sending-status update failed: ${sendingErr.message}`);
+  }
 
   // Get campaign details
   const { data: campaign } = await admin
@@ -276,8 +340,11 @@ async function sendWhatsAppCampaign(
       try {
         const result = await sendTwilioWhatsApp(phoneNumber, message);
 
-        // Log the send
-        await admin.from("whatsapp_sends").insert({
+        // Per-send audit log. Policy: log-on-error, do NOT throw —
+        // a single failed audit insert shouldn't blow up the entire
+        // campaign send. The Twilio call already succeeded; missing
+        // the local row is recoverable from Twilio's own dashboard.
+        const { error: sendInsErr } = await admin.from("whatsapp_sends").insert({
           tenant_id: tenantId,
           campaign_id: campaignId,
           customer_id: recipient.id,
@@ -288,6 +355,9 @@ async function sendWhatsAppCampaign(
           twilio_sid: result.messageId,
           error_message: result.error,
         });
+        if (sendInsErr) {
+          logger.error("[sendWhatsAppCampaign] whatsapp_sends insert failed", { campaignId, phone: phoneNumber, err: sendInsErr });
+        }
 
         if (result.success) {
           sent++;
@@ -298,7 +368,7 @@ async function sendWhatsAppCampaign(
       } catch (err) {
         logger.error(`[sendWhatsAppCampaign] Error sending to ${phoneNumber}:`, err);
 
-        await admin.from("whatsapp_sends").insert({
+        const { error: failInsErr } = await admin.from("whatsapp_sends").insert({
           tenant_id: tenantId,
           campaign_id: campaignId,
           customer_id: recipient.id,
@@ -308,6 +378,9 @@ async function sendWhatsAppCampaign(
           status: "failed",
           error_message: err instanceof Error ? err.message : "Unknown error",
         });
+        if (failInsErr) {
+          logger.error("[sendWhatsAppCampaign] whatsapp_sends fail-row insert failed", { campaignId, phone: phoneNumber, err: failInsErr });
+        }
 
         failed++;
       }
@@ -315,15 +388,21 @@ async function sendWhatsAppCampaign(
 
     await Promise.all(promises);
 
-    // Update progress periodically
+    // Update progress periodically. Policy: log-on-error, do NOT
+    // throw — progress updates are observability, not state of
+    // record. The campaign keeps sending; we just lose interim
+    // stats visibility for this batch.
     if (i % (BATCH_SIZE * 5) === 0) {
-      await admin
+      const { error: progressErr } = await admin
         .from("whatsapp_campaigns")
         .update({
           stats: { sent, delivered, failed },
           updated_at: new Date().toISOString(),
         })
         .eq("id", campaignId);
+      if (progressErr) {
+        logger.error("[sendWhatsAppCampaign] progress update failed (non-fatal)", { campaignId, err: progressErr });
+      }
     }
 
     // Wait between batches to respect rate limits
@@ -332,8 +411,9 @@ async function sendWhatsAppCampaign(
     }
   }
 
-  // Final update
-  await admin
+  // Final update — destructive state-of-record transition. Throws
+  // on error → outer catch returns 500 → Stripe retries.
+  const { error: finalErr } = await admin
     .from("whatsapp_campaigns")
     .update({
       status: "sent",
@@ -342,5 +422,7 @@ async function sendWhatsAppCampaign(
       updated_at: new Date().toISOString(),
     })
     .eq("id", campaignId);
-
+  if (finalErr) {
+    throw new Error(`whatsapp_campaigns final-status update failed: ${finalErr.message}`);
+  }
 }
