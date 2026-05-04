@@ -22,6 +22,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeBearerMatch } from "@/lib/timing-safe-compare";
 import logger from "@/lib/logger";
@@ -67,6 +68,15 @@ export async function GET(req: NextRequest) {
   // policy requires. If we threw here, it would mean the wrap is
   // wrong; if we returned 200 with the captured error visible, the
   // wrap is correct.
+  //
+  // Sentry.flush() forces the SDK's background transport to drain
+  // any queued events before the Lambda freezes. Without this, an
+  // in-handler logger.error followed by an immediate response will
+  // drop the capture in serverless. This probe is what surfaced the
+  // race — same pattern needs to land on every side-effect-log site
+  // shipped in PR-B2a/B2b (PR #138).
+  await Sentry.flush(2000);
+
   return NextResponse.json({
     ok: true,
     captured_error: stageHistErr
@@ -77,6 +87,6 @@ export async function GET(req: NextRequest) {
         }
       : null,
     note:
-      "Side-effect-log policy verified: insert failed, error captured, logger.error fired, function returned successfully without throwing. Sentry should have captured the logger.error call.",
+      "Side-effect-log policy verified: insert failed, error captured, logger.error fired, function returned successfully without throwing. Sentry.flush(2000) called to force serverless transport drain.",
   });
 }
