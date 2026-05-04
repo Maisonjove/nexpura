@@ -30,6 +30,12 @@ interface AuditLog {
 
 interface Props {
   expense: Expense;
+  /**
+   * Pre-signed display URL for the receipt (cleanup #18 — `inventory-photos`
+   * bucket is private; `expense.receipt_url` is now a storage path).
+   * Resolved by the page-level data fetcher.
+   */
+  receiptDisplayUrl: string | null;
   auditLogs: AuditLog[];
   userMap: Record<string, { full_name: string | null; email: string | null }>;
 }
@@ -70,7 +76,7 @@ function fmtAuditWhen(d: string) {
   });
 }
 
-export default function ExpenseDetailClient({ expense, auditLogs, userMap }: Props) {
+export default function ExpenseDetailClient({ expense, receiptDisplayUrl, auditLogs, userMap }: Props) {
   const [isPending, startTransition] = useTransition();
   const [showDelete, setShowDelete] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -93,7 +99,7 @@ export default function ExpenseDetailClient({ expense, auditLogs, userMap }: Pro
           </button>
           <h1 className="font-semibold text-2xl font-semibold text-stone-900">Edit Expense</h1>
         </div>
-        <ExpenseForm mode="edit" expense={expense} />
+        <ExpenseForm mode="edit" expense={expense} initialReceiptDisplayUrl={receiptDisplayUrl} />
       </div>
     );
   }
@@ -160,11 +166,11 @@ export default function ExpenseDetailClient({ expense, auditLogs, userMap }: Pro
               <span className="text-sm text-stone-900 font-mono">{expense.invoice_ref}</span>
             </div>
           )}
-          {expense.receipt_url && (
+          {expense.receipt_url && receiptDisplayUrl && (
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-stone-400 uppercase tracking-wider">Receipt</span>
               <a
-                href={expense.receipt_url}
+                href={receiptDisplayUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm text-amber-700 hover:underline"

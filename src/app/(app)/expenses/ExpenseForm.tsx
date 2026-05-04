@@ -21,6 +21,13 @@ interface ExpenseData {
 interface Props {
   mode: "create" | "edit";
   expense?: ExpenseData;
+  /**
+   * Server-resolved signed URL for the existing receipt (cleanup #18 —
+   * `inventory-photos` bucket is now private). Required when editing an
+   * expense that already has a receipt; resolved by the page-level data
+   * fetcher via `signStoragePath`. Ignored on create.
+   */
+  initialReceiptDisplayUrl?: string | null;
 }
 
 const CATEGORIES = [
@@ -66,10 +73,18 @@ function FieldLabel({
   );
 }
 
-export default function ExpenseForm({ mode, expense }: Props) {
+export default function ExpenseForm({ mode, expense, initialReceiptDisplayUrl = null }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [receiptUrl, setReceiptUrl] = useState<string | null>(expense?.receipt_url ?? null);
+  // Two-state shape because the bucket is now private (cleanup #18):
+  //   - `receiptPath` is the storage path persisted in DB (`expenses.receipt_url`,
+  //     legacy column name kept for compatibility — it's now a path).
+  //   - `receiptDisplayUrl` is the short-lived signed URL we render in the
+  //     "View receipt" link until form submit; it expires in 1h which is
+  //     fine for an upload-and-submit flow. On edit, the page-level data
+  //     fetcher hands us a pre-signed display URL via prop.
+  const [receiptPath, setReceiptPath] = useState<string | null>(expense?.receipt_url ?? null);
+  const [receiptDisplayUrl, setReceiptDisplayUrl] = useState<string | null>(initialReceiptDisplayUrl);
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -99,8 +114,17 @@ export default function ExpenseForm({ mode, expense }: Props) {
         setError(upErr.message);
         return;
       }
-      const { data } = supabase.storage.from("inventory-photos").getPublicUrl(path);
-      setReceiptUrl(data.publicUrl);
+      // Sign for 1h — receipt UX is "upload → glance → submit". The DB row
+      // stores the bare path; server-side data fetcher re-signs on read.
+      const { data, error: signErr } = await supabase.storage
+        .from("inventory-photos")
+        .createSignedUrl(path, 60 * 60);
+      if (signErr || !data?.signedUrl) {
+        setError(signErr?.message ?? "Could not generate receipt URL.");
+        return;
+      }
+      setReceiptPath(path);
+      setReceiptDisplayUrl(data.signedUrl);
     } finally {
       setUploading(false);
       if (fileInput.current) fileInput.current.value = "";
@@ -111,7 +135,7 @@ export default function ExpenseForm({ mode, expense }: Props) {
     e.preventDefault();
     setError(null);
     const formData = new FormData(e.currentTarget);
-    formData.set("receipt_url", receiptUrl ?? "");
+    formData.set("receipt_url", receiptPath ?? "");
 
     startTransition(async () => {
       if (mode === "create") {
@@ -214,19 +238,26 @@ export default function ExpenseForm({ mode, expense }: Props) {
           <p className="text-xs text-stone-500">
             Upload a photo or PDF of the receipt (max 10 MB). Optional.
           </p>
-          {receiptUrl ? (
+          {receiptPath ? (
             <div className="flex items-center gap-3">
-              <a
-                href={receiptUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-amber-700 underline"
-              >
-                View receipt
-              </a>
+              {receiptDisplayUrl ? (
+                <a
+                  href={receiptDisplayUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-amber-700 underline"
+                >
+                  View receipt
+                </a>
+              ) : (
+                <span className="text-sm text-stone-500">Receipt attached</span>
+              )}
               <button
                 type="button"
-                onClick={() => setReceiptUrl(null)}
+                onClick={() => {
+                  setReceiptPath(null);
+                  setReceiptDisplayUrl(null);
+                }}
                 className="text-xs text-stone-500 hover:text-red-500"
               >
                 Remove

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
+import { signStoragePath } from "@/lib/supabase/signed-urls";
 import ExpenseDetailClient from "./ExpenseDetailClient";
 
 export default async function ExpenseDetailPage({
@@ -60,9 +61,15 @@ export default async function ExpenseDetailPage({
     );
   }
 
+  // cleanup #18 — `inventory-photos` bucket is private. `receipt_url` is
+  // now a storage path; resolve to a 7-day signed URL here so the client
+  // can render the "View receipt" link without re-signing.
+  const receiptDisplayUrl = await signStoragePath(admin, "inventory-photos", expense.receipt_url);
+
   return (
     <ExpenseDetailClient
       expense={expense}
+      receiptDisplayUrl={receiptDisplayUrl}
       auditLogs={auditLogs ?? []}
       userMap={userMap}
     />
