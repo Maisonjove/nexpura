@@ -6,6 +6,7 @@ import { sendTwilioWhatsApp } from "@/lib/twilio-whatsapp";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logWebhookAudit } from "@/lib/webhook-audit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 // Lazy accessors so a missing env var in preview doesn't crash the
 // module at load-time (which produces an unrelated 500 instead of the
@@ -23,7 +24,7 @@ function getMarketingWebhookSecret(): string | null {
   return process.env.STRIPE_MARKETING_WEBHOOK_SECRET || null;
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success: _rlSuccess } = await checkRateLimit(_ip);
   if (!_rlSuccess) {
@@ -202,7 +203,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ received: true });
-}
+});
 
 async function sendWhatsAppCampaign(
   campaignId: string,

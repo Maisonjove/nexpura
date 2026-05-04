@@ -8,6 +8,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requireAuth, requirePermission } from "@/lib/auth-context";
 import logger from "@/lib/logger";
 
+import { flushSentry } from "@/lib/sentry-flush";
 async function getAuthContext() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -294,6 +295,7 @@ export async function countItem(
     }
 
     revalidatePath(`/stocktakes/${stocktakeId}`);
+    await flushSentry();
     return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error" };

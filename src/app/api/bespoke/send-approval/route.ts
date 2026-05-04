@@ -6,8 +6,9 @@ import logger from "@/lib/logger";
 import { getAuthContext } from "@/lib/auth-context";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const auth = await getAuthContext();
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -158,4 +159,4 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ success: true, approvalUrl });
-}
+});

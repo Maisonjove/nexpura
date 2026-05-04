@@ -6,6 +6,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requireRole } from "@/lib/auth-context";
 import { buildEncryptedBankUpdate, decryptBankDetails, type DisplayableBankDetails } from "@/lib/tenant-banking";
 
+import { flushSentry } from "@/lib/sentry-flush";
 /**
  * W6-HIGH-13: settings/page.tsx is a client component, so it cannot
  * decrypt bank columns directly (the AES key is server-only). This
@@ -102,6 +103,7 @@ export async function saveBusinessProfile(tenantId: string, formData: FormData) 
     return { success: true };
   } catch (error) {
     logger.error("saveBusinessProfile failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -152,6 +154,7 @@ export async function saveTaxCurrency(tenantId: string, formData: FormData) {
     return { success: true };
   } catch (error) {
     logger.error("saveTaxCurrency failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -213,6 +216,7 @@ export async function saveBanking(tenantId: string, formData: FormData) {
     return { success: true };
   } catch (error) {
     logger.error("saveBanking failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -242,6 +246,7 @@ export async function saveAccount(_unusedUserId: string | undefined, formData: F
     return { success: true };
   } catch (error) {
     logger.error("saveAccount failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }

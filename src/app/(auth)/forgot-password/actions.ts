@@ -26,6 +26,7 @@ import { forgotPasswordSchema } from "@/lib/schemas/auth";
 import { headers } from "next/headers";
 import logger from "@/lib/logger";
 
+import { flushSentry } from "@/lib/sentry-flush";
 export type ForgotPasswordResult = {
   ok: boolean;
   // Generic user-facing message. Never reveals whether the email exists.
@@ -134,12 +135,14 @@ export async function requestPasswordReset(
         status,
         // Deliberately not logging email — keeps the log enumeration-safe too.
       });
+      await flushSentry();
       return { ok: false, message: GENERIC_ERROR, status: 500 };
     }
   } catch (err) {
     logger.error("[forgot-password] unexpected error", {
       err: err instanceof Error ? err.message : String(err),
     });
+    await flushSentry();
     return { ok: false, message: GENERIC_ERROR, status: 500 };
   }
 

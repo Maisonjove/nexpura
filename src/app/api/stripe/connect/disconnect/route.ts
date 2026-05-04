@@ -20,6 +20,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -27,7 +28,7 @@ function getStripe(): Stripe | null {
   return new Stripe(key);
 }
 
-export async function POST(_req: NextRequest) {
+export const POST = withSentryFlush(async (_req: NextRequest) => {
   const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -133,4 +134,4 @@ export async function POST(_req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

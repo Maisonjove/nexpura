@@ -11,6 +11,7 @@ import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 import { requirePermission } from "@/lib/auth-context";
 import logger from "@/lib/logger";
 
+import { flushSentry } from "@/lib/sentry-flush";
 // ────────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────────
@@ -302,6 +303,7 @@ export async function createSale(
       if (m) {
         const itemName = m[1];
         const available = Number(m[2]);
+        await flushSentry();
         return {
           error:
             available === 0

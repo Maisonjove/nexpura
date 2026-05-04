@@ -4,10 +4,11 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 export const maxDuration = 60;
 
-export async function GET(req: Request) {
+export const GET = withSentryFlush(async (req: Request) => {
   const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success: _rlSuccess } = await checkRateLimit(_ip);
   if (!_rlSuccess) {
@@ -215,4 +216,4 @@ ${topProducts.map(([name, d]) => `- ${name}: $${d.revenue.toFixed(2)} (${d.qty} 
     logger.error("Financial insights error:", err);
     return Response.json({ error: "Failed to generate insights" }, { status: 500 });
   }
-}
+});

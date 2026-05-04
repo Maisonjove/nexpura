@@ -25,6 +25,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const AI_TIMEOUT_MS = 30000;
 
@@ -798,7 +799,7 @@ Always end your summary with exactly: "Saved as draft. Manual publish required."
 // Route handler
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   // Auth first so per-user rate limit + tenant scoping are correct.
   const auth = await getAuthContext();
   if (!auth) {
@@ -916,4 +917,4 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ summary: envelope.summary, actions: results });
-}
+});

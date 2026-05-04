@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integrations";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 interface WooConfig {
   store_url: string;
@@ -27,7 +28,7 @@ const WEBHOOK_TOPICS = [
   "customer.updated",
 ];
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -133,12 +134,12 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE - Remove all Nexpura webhooks from WooCommerce
  */
-export async function DELETE(req: NextRequest) {
+export const DELETE = withSentryFlush(async (req: NextRequest) => {
   try {
     const { tenantId } = await getAuthContext();
     
@@ -184,4 +185,4 @@ export async function DELETE(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

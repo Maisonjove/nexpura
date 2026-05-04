@@ -27,6 +27,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeBearerMatch } from "@/lib/timing-safe-compare";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const SUPPORTED = ["AUD", "USD", "GBP", "EUR"] as const;
 type Currency = (typeof SUPPORTED)[number];
@@ -63,7 +64,7 @@ async function fetchRatesForBase(base: Currency, targets: Currency[]): Promise<R
   }
 }
 
-export async function GET(request: Request) {
+export const GET = withSentryFlush(async (request: Request) => {
   const authHeader = request.headers.get("authorization");
   if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -121,4 +122,4 @@ export async function GET(request: Request) {
     failures,
     fetched_at: fetchedAt,
   });
-}
+});

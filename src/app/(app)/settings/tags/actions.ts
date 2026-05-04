@@ -6,6 +6,7 @@ import { revalidatePath, updateTag } from "next/cache"
 import { logger } from "@/lib/logger"
 import { requireAuth, requireRole } from "@/lib/auth-context"
 
+import { flushSentry } from "@/lib/sentry-flush";
 async function getTenantId() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -68,6 +69,7 @@ export async function createTagTemplate(formData: FormData) {
     return { success: true }
   } catch (error) {
     logger.error("createTagTemplate failed", { error })
+    await flushSentry();
     return { error: "Operation failed" }
   }
 }
@@ -109,6 +111,7 @@ export async function updateTagTemplate(id: string, formData: FormData) {
     return { success: true }
   } catch (error) {
     logger.error("updateTagTemplate failed", { error })
+    await flushSentry();
     return { error: "Operation failed" }
   }
 }
@@ -140,6 +143,7 @@ export async function deleteTagTemplate(id: string): Promise<{ success?: boolean
     return { success: true }
   } catch (error) {
     logger.error("deleteTagTemplate failed", { error })
+    await flushSentry();
     return { error: "Operation failed" }
   }
 }
@@ -179,6 +183,7 @@ export async function setDefaultTemplate(id: string): Promise<{ success?: boolea
     return { success: true }
   } catch (error) {
     logger.error("setDefaultTemplate failed", { error })
+    await flushSentry();
     return { error: "Operation failed" }
   }
 }

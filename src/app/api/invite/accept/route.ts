@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 import { inviteAcceptSchema } from "@/lib/schemas";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * POST /api/invite/accept
@@ -26,7 +27,7 @@ function sha256Hex(s: string): string {
   return crypto.createHash("sha256").update(s, "utf8").digest("hex");
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   try {
     // Rate limit by IP to prevent token brute-forcing
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "anonymous";
@@ -175,4 +176,4 @@ export async function POST(request: NextRequest) {
     logger.error("Invite accept error:", error);
     return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
-}
+});

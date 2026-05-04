@@ -27,10 +27,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { safeBearerMatch } from "@/lib/timing-safe-compare";
 import * as Sentry from "@sentry/nextjs";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const TAMPER_STATUSES = ["invalid_signature", "replay_attack", "tampered_body"] as const;
 
-export async function GET(req: NextRequest) {
+export const GET = withSentryFlush(async (req: NextRequest) => {
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
@@ -109,4 +110,4 @@ export async function GET(req: NextRequest) {
     breached: tamperCount > threshold,
     counts,
   });
-}
+});

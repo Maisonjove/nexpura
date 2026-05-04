@@ -6,6 +6,7 @@ import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizeText, escapeHtml } from "@/lib/sanitize";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 export const maxDuration = 60;
 
@@ -233,7 +234,7 @@ async function handleEmailExport(
 
 // ─── Main route ───────────────────────────────────────────────────────────────
 
-export async function POST(req: Request) {
+export const POST = withSentryFlush(async (req: Request) => {
   const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success: _rlSuccess } = await checkRateLimit(_ip, 'ai');
   if (!_rlSuccess) {
@@ -505,4 +506,4 @@ Be concise, direct, and practical. You know jewellery.`;
     logger.error("AI chat error:", err);
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+});

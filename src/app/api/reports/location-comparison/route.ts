@@ -3,8 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "heavy");
   if (!success) {
@@ -104,4 +105,4 @@ export async function POST(request: NextRequest) {
     logger.error("Location comparison error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+});

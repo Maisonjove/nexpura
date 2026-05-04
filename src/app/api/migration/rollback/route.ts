@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAuditEvent } from "@/lib/audit";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * /api/migration/rollback — rollback a completed migration import.
@@ -23,7 +24,7 @@ interface RollbackBody {
   confirm: true;
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   let body: RollbackBody;
   try {
     body = await req.json();
@@ -155,4 +156,4 @@ export async function POST(req: NextRequest) {
     deletedByTable,
     totalDeleted: Object.values(deletedByTable).reduce((s, n) => s + n, 0),
   });
-}
+});

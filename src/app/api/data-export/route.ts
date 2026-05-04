@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 import { decryptCustomerPiiList } from "@/lib/customer-pii";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * Data Export API (GDPR Compliant)
@@ -11,7 +12,7 @@ import { decryptCustomerPiiList } from "@/lib/customer-pii";
  * Exports all tenant data in JSON format.
  * Rate limited to 3 exports per minute (heavy operation).
  */
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   // Auth check
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -217,4 +218,4 @@ export async function POST(request: NextRequest) {
     logger.error("[data-export] Export failed:", error);
     return NextResponse.json({ error: "Export failed" }, { status: 500 });
   }
-}
+});

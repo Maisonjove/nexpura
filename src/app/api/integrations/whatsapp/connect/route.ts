@@ -8,8 +8,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireIntegrationManager, upsertIntegration } from "@/lib/integrations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   try {
     const { tenantId } = await requireIntegrationManager();
 
@@ -79,4 +80,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

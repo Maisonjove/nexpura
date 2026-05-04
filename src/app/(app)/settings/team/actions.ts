@@ -9,6 +9,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { PLAN_FEATURES, canAddStaff, type PlanId } from "@/lib/plans";
 import { requireRole } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 // CRIT-7: invites expire after 7 days. Keep this constant in sync with
 // the copy in the invite emails and with /api/invite/accept's 410 path.
 const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -44,6 +45,7 @@ export async function getTeamMembers() {
     return { data: data ?? [], error: error?.message };
   } catch (error) {
     logger.error("getTeamMembers failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -120,6 +122,7 @@ export async function inviteTeamMember(formData: FormData) {
 
     if (error) {
       logger.error("inviteTeamMember insert failed", { error });
+      await flushSentry();
       return { error: error.message };
     }
 
@@ -136,6 +139,7 @@ export async function inviteTeamMember(formData: FormData) {
     return { success: true, inviteToken };
   } catch (error) {
     logger.error("inviteTeamMember failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -176,6 +180,7 @@ export async function updateTeamMemberRole(memberId: string, role: string) {
     return { success: true };
   } catch (error) {
     logger.error("updateTeamMemberRole failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -217,6 +222,7 @@ export async function removeTeamMember(memberId: string) {
     return { success: true };
   } catch (error) {
     logger.error("removeTeamMember failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -232,6 +238,7 @@ export async function getTasks() {
     return { data: data ?? [], error: error?.message };
   } catch (error) {
     logger.error("getTasks failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -264,6 +271,7 @@ export async function createTask(formData: FormData) {
     return { success: true };
   } catch (error) {
     logger.error("createTask failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -286,6 +294,7 @@ export async function updateTaskStatus(taskId: string, status: string) {
     return { success: true };
   } catch (error) {
     logger.error("updateTaskStatus failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -320,6 +329,7 @@ export async function getTeamMemberLocations(memberId: string) {
     return { data: locationIds, error: null };
   } catch (error) {
     logger.error("getTeamMemberLocations failed", { error });
+    await flushSentry();
     return { error: "Operation failed", data: null };
   }
 }
@@ -384,6 +394,7 @@ export async function updateTeamMemberLocations(
     return { success: true };
   } catch (error) {
     logger.error("updateTeamMemberLocations failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -401,6 +412,7 @@ export async function getLocations() {
     return { data: data ?? [], error: error?.message };
   } catch (error) {
     logger.error("getLocations failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -457,6 +469,7 @@ export async function updateTeamMemberNotifications(
     return { success: true };
   } catch (error) {
     logger.error("updateTeamMemberNotifications failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }

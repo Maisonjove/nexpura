@@ -13,8 +13,9 @@ import logger from "@/lib/logger";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -104,4 +105,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

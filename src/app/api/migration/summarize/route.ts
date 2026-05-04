@@ -3,8 +3,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   // SECURITY: Require authentication
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -114,4 +115,4 @@ Write a concise migration summary. Return JSON:
     logger.error('Summarize error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 200 });
   }
-}
+});

@@ -11,8 +11,9 @@ import { sendTenantEmail } from "@/lib/email-sender";
 import { generateReport } from "@/lib/reports/generator";
 import { safeBearerMatch } from "@/lib/timing-safe-compare";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function GET(req: NextRequest) {
+export const GET = withSentryFlush(async (req: NextRequest) => {
   // W4-APR2 / fail-closed contract: when CRON_SECRET is unset we MUST NOT
   // return 200 — the previous handler would cheerfully respond "ok" to
   // any anonymous caller in that branch. Now: 503 when misconfigured,
@@ -143,7 +144,7 @@ export async function GET(req: NextRequest) {
     logger.error("[scheduled-reports] Cron error:", err);
     return NextResponse.json({ error: "Cron job failed" }, { status: 500 });
   }
-}
+});
 
 async function updateNextRunTime(admin: ReturnType<typeof createAdminClient>, report: { id: string; schedule_type: string; schedule_day: number | null; schedule_time: string | null }) {
   await admin.from("scheduled_reports").update({

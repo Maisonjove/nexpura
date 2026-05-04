@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth-context";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 
+import { flushSentry } from "@/lib/sentry-flush";
 export async function saveNotificationSettings(settings: {
   whatsapp_job_ready_enabled?: boolean;
   whatsapp_task_assignment_enabled?: boolean;
@@ -61,6 +62,7 @@ export async function saveNotificationSettings(settings: {
     return { success: true };
   } catch (error) {
     logger.error("saveNotificationSettings failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }

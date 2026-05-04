@@ -7,6 +7,7 @@ import { initDefaultPermissions } from "@/lib/permissions";
 import logger from "@/lib/logger";
 import { invalidateUserCache } from "@/lib/cached-auth";
 
+import { flushSentry } from "@/lib/sentry-flush";
 // ============================================================================
 // VALIDATION & SANITIZATION
 // ============================================================================
@@ -173,6 +174,7 @@ export async function completeOnboarding(
 
     if (tenantErr || !tenant) {
       logger.error("Tenant creation error:", tenantErr);
+      await flushSentry();
       return { error: tenantErr?.message ?? "Failed to create business" };
     }
 
@@ -191,6 +193,7 @@ export async function completeOnboarding(
     if (userErr) {
       logger.error("User creation error:", userErr);
       await adminClient.from("tenants").delete().eq("id", tenant.id);
+      await flushSentry();
       return { error: userErr.message };
     }
 
@@ -211,6 +214,7 @@ export async function completeOnboarding(
       logger.error("Subscription creation error:", subErr);
       await adminClient.from("users").delete().eq("id", user.id);
       await adminClient.from("tenants").delete().eq("id", tenant.id);
+      await flushSentry();
       return { error: "Failed to create subscription" };
     }
 
@@ -242,10 +246,12 @@ export async function completeOnboarding(
     await invalidateUserCache(user.id);
 
     // Return slug -- client will navigate to https://{slug}.nexpura.com/dashboard
+    await flushSentry();
     return { slug };
   } catch (error) {
     if (isRedirectError(error)) throw error;
     logger.error("completeOnboarding failed", { error });
+    await flushSentry();
     return { error: "Something went wrong. Please try again." };
   }
 }

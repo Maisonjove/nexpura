@@ -1,3 +1,4 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -6,7 +7,7 @@ import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sms2FAVerifySchema } from '@/lib/schemas';
 
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
   const { success } = await checkRateLimit(ip, 'auth');
   if (!success) {
@@ -81,4 +82,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

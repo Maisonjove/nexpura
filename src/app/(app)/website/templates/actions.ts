@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getTemplateById } from "@/lib/templates/data";
 import logger from "@/lib/logger";
 
+import { flushSentry } from "@/lib/sentry-flush";
 /**
  * Resolve the authenticated user's tenant. Mirrors the helper used by
  * `(app)/website/actions.ts` — tenant_id always comes from the session,
@@ -71,6 +72,7 @@ export async function applyTemplate(
 
     if (fetchErr) {
       logger.error("[applyTemplate] fetch existing failed", fetchErr);
+      await flushSentry();
       return { error: "Could not read existing pages." };
     }
 
@@ -86,6 +88,7 @@ export async function applyTemplate(
 
       if (secDelErr) {
         logger.error("[applyTemplate] section delete failed", secDelErr);
+        await flushSentry();
         return { error: "Could not clear existing sections." };
       }
 
@@ -97,6 +100,7 @@ export async function applyTemplate(
 
       if (pageDelErr) {
         logger.error("[applyTemplate] page delete failed", pageDelErr);
+        await flushSentry();
         return { error: "Could not clear existing pages." };
       }
     }
@@ -125,6 +129,7 @@ export async function applyTemplate(
 
     if (pageErr || !insertedPages) {
       logger.error("[applyTemplate] page insert failed", pageErr);
+      await flushSentry();
       return { error: pageErr?.message || "Could not create pages." };
     }
 
@@ -160,6 +165,7 @@ export async function applyTemplate(
         .insert(sectionRows);
       if (secErr) {
         logger.error("[applyTemplate] section insert failed", secErr);
+        await flushSentry();
         return { error: secErr.message };
       }
     }
@@ -178,6 +184,7 @@ export async function applyTemplate(
     };
   } catch (err) {
     logger.error("[applyTemplate] unexpected", err);
+    await flushSentry();
     return {
       error:
         err instanceof Error

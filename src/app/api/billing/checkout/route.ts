@@ -4,6 +4,7 @@ import { stripe } from "@/lib/stripe/client";
 import { PLANS, SUPPORTED_CURRENCIES, type CurrencyCode } from "@/data/pricing";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * POST /api/billing/checkout
@@ -18,7 +19,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
  * the price ID by tenant.currency. Annual paths dropped — the
  * `interval` parameter is no longer required (monthly only).
  */
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -159,4 +160,4 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

@@ -5,6 +5,8 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import logger from "@/lib/logger";
 
 
+import { withSentryFlush } from "@/lib/sentry-flush";
+
 // Simple CSV parser (header + sample only)
 function parseCSVSample(text: string): { headers: string[]; rows: unknown[][]; rowCount: number } {
   const lines = text.split('\n').filter(l => l.trim());
@@ -35,7 +37,7 @@ function parseCSVSample(text: string): { headers: string[]; rows: unknown[][]; r
   return { headers, rows, rowCount };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -263,4 +265,4 @@ export async function POST(req: NextRequest) {
     logger.error('Upload error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
-}
+});

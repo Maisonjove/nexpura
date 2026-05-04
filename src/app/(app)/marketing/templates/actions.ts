@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 import { requireAuth, requireRole } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 interface TemplateData {
   name: string;
   subject: string;
@@ -57,6 +58,7 @@ export async function createTemplate(data: TemplateData) {
     return { success: true, template };
   } catch (error) {
     logger.error("createTemplate failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -100,6 +102,7 @@ export async function updateTemplate(id: string, data: Partial<TemplateData>) {
     return { success: true };
   } catch (error) {
     logger.error("updateTemplate failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -148,6 +151,7 @@ export async function deleteTemplate(id: string) {
     return { success: true };
   } catch (error) {
     logger.error("deleteTemplate failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -201,6 +205,7 @@ export async function duplicateTemplate(id: string) {
     return { success: true, template: newTemplate };
   } catch (error) {
     logger.error("duplicateTemplate failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }

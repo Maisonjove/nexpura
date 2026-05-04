@@ -1,3 +1,5 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
+
 // ============================================
 // Public landing-page Copilot — answers Nexpura questions for visitors
 // on nexpura.com. Per Joey 2026-04-26: wire the LandingAICopilot
@@ -100,7 +102,7 @@ function getClientIp(req: NextRequest): string {
   return "unknown"
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   // Parse + validate
   let body: unknown
   try {
@@ -159,4 +161,4 @@ export async function POST(req: NextRequest) {
       { status: 502 }
     )
   }
-}
+});

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 import { requirePermission } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 async function getAuthContext() {
   const supabase = await createClient();
   const {
@@ -81,6 +82,7 @@ export async function createPurchaseOrder(formData: FormData): Promise<{ success
     return { success: true };
   } catch (err) {
     logger.error("[createPurchaseOrder] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to create purchase order" };
   }
 }
@@ -169,6 +171,7 @@ export async function updatePurchaseOrderStatus(
     return { success: true };
   } catch (err) {
     logger.error("[updatePurchaseOrderStatus] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to update purchase order" };
   }
 }
@@ -287,6 +290,7 @@ export async function getPurchaseOrders(supplierId: string): Promise<{ data?: an
     return { data: data ?? [], error: error?.message };
   } catch (err) {
     logger.error("[getPurchaseOrders] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to get purchase orders" };
   }
 }

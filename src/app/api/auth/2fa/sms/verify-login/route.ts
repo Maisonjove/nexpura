@@ -1,3 +1,4 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
 import { NextResponse, NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -12,7 +13,7 @@ import { sms2FAVerifyLoginSchema } from '@/lib/schemas';
  * SECURITY: Requires an active session (from password login) to prevent
  * oracle attacks where an attacker could validate 2FA codes without knowing the password.
  */
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   // Strict rate limiting for auth endpoints
   const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
   const { success: rlSuccess } = await checkRateLimit(ip, 'auth');
@@ -114,4 +115,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -7,6 +7,7 @@ import { updateSegmentCount } from "@/lib/marketing/segments";
 import { logger } from "@/lib/logger";
 import { requireAuth, requireRole } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 interface SegmentData {
   name: string;
   description?: string;
@@ -54,6 +55,7 @@ export async function createSegment(data: SegmentData) {
     return { success: true, segment };
   } catch (error) {
     logger.error("createSegment failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -108,6 +110,7 @@ export async function updateSegment(id: string, data: Partial<SegmentData>) {
     return { success: true };
   } catch (error) {
     logger.error("updateSegment failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -157,6 +160,7 @@ export async function deleteSegment(id: string) {
     return { success: true };
   } catch (error) {
     logger.error("deleteSegment failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -184,6 +188,7 @@ export async function refreshSegmentCount(id: string) {
     return { success: true, count };
   } catch (error) {
     logger.error("refreshSegmentCount failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }

@@ -7,6 +7,7 @@ import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
 
+import { flushSentry } from "@/lib/sentry-flush";
 /**
  * /admin/demo-requests server actions.
  *
@@ -186,6 +187,7 @@ export async function scheduleDemoRequest(
     .eq("id", id);
   if (updErr) {
     logger.error("[admin/demo-requests] schedule update failed", { id, err: updErr });
+    await flushSentry();
     return { ok: false, error: "Database update failed" };
   }
 
@@ -240,6 +242,7 @@ export async function scheduleDemoRequest(
 
   revalidatePath("/admin/demo-requests");
   revalidatePath(`/admin/demo-requests/${id}`);
+  await flushSentry();
   return { ok: true };
 }
 
@@ -266,6 +269,7 @@ export async function completeDemoRequest(
     .eq("id", id);
   if (updErr) {
     logger.error("[admin/demo-requests] complete update failed", { id, err: updErr });
+    await flushSentry();
     return { ok: false, error: "Database update failed" };
   }
 
@@ -309,6 +313,7 @@ export async function declineDemoRequest(
     .eq("id", id);
   if (updErr) {
     logger.error("[admin/demo-requests] decline update failed", { id, err: updErr });
+    await flushSentry();
     return { ok: false, error: "Database update failed" };
   }
 
@@ -345,5 +350,6 @@ export async function declineDemoRequest(
 
   revalidatePath("/admin/demo-requests");
   revalidatePath(`/admin/demo-requests/${id}`);
+  await flushSentry();
   return { ok: true };
 }

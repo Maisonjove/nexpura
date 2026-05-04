@@ -11,8 +11,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { refreshGoogleToken } from "@/lib/google-calendar";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "heavy");
   if (!success) {
@@ -137,7 +138,7 @@ export async function POST(req: NextRequest) {
     logger.error("[google-calendar/sync]", err);
     return NextResponse.json({ error: "Sync failed" }, { status: 500 });
   }
-}
+});
 
 async function createCalendarEvent(
   accessToken: string,

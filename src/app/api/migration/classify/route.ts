@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const NEXPURA_SCHEMA = `
 Customers: full_name, first_name, last_name, email, phone, mobile, address_line1, city, state, postcode, country, ring_size, bracelet_size, notes, date_of_birth, anniversary, store_credit, loyalty_points, created_at
@@ -21,7 +22,7 @@ const PLATFORM_HINTS: Record<string, string> = {
   lightspeed: 'Lightspeed: Item Description, Vendor SKU, Qty on Hand, Price',
 };
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   // SECURITY: Require authentication
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -189,4 +190,4 @@ Return JSON with:
     } catch {}
     return NextResponse.json({ error: errorMessage, status: 'needs_review' }, { status: 200 });
   }
-}
+});

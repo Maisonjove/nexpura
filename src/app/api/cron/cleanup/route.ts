@@ -1,8 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { safeBearerMatch } from "@/lib/timing-safe-compare";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function GET(request: Request) {
+export const GET = withSentryFlush(async (request: Request) => {
   const authHeader = request.headers.get("authorization");
   if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,4 +49,4 @@ export async function GET(request: Request) {
     cleaned_at: new Date().toISOString(),
     results,
   });
-}
+});

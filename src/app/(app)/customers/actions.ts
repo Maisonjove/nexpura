@@ -13,6 +13,7 @@ import { customerCreateSchema } from "@/lib/schemas/customers";
 import { requireAuth } from "@/lib/auth-context";
 import { buildEncryptedCustomerPiiUpdate, decryptCustomerPii } from "@/lib/customer-pii";
 
+import { flushSentry } from "@/lib/sentry-flush";
 /**
  * W6-HIGH-14: Take the customer-row payload and replace the PII fields
  * with the encrypted bundle. Phase 3 of the rollout: plaintext PII
@@ -117,6 +118,7 @@ export async function loadMoreCustomers(
     return { customers: (data ?? []) as CustomerListRow[] };
   } catch (err) {
     logger.error("loadMoreCustomers failed", { err });
+    await flushSentry();
     return { customers: [], error: "Failed to load more customers" };
   }
 }
@@ -283,6 +285,7 @@ export async function createCustomer(formData: FormData): Promise<{ id?: string;
     return { id: data.id };
   } catch (error) {
     logger.error("createCustomer failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -339,6 +342,7 @@ export async function updateCustomer(
     return { success: true };
   } catch (error) {
     logger.error("updateCustomer failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -394,6 +398,7 @@ export async function archiveCustomer(id: string): Promise<{ success?: boolean; 
     revalidateTag(CACHE_TAGS.customers(tenantId), "default");
   } catch (error) {
     logger.error("archiveCustomer failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
   // redirect() throws NEXT_REDIRECT — must run OUTSIDE the try/catch or
@@ -456,6 +461,7 @@ export async function addCustomerNote(
     return { success: true };
   } catch (error) {
     logger.error("addCustomerNote failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -477,6 +483,7 @@ export async function removeFromWishlist(
     return { success: true };
   } catch (error) {
     logger.error("removeFromWishlist failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -501,6 +508,7 @@ export async function notifyWishlistItem(
     return { success: true };
   } catch (error) {
     logger.error("notifyWishlistItem failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }

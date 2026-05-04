@@ -35,6 +35,7 @@ import { requireIntegrationManager, upsertIntegration } from "@/lib/integrations
 import { verifyOAuthState } from "@/lib/webhook-security";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
@@ -58,7 +59,7 @@ function clearNonceCookie(res: NextResponse): NextResponse {
   return res;
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withSentryFlush(async (req: NextRequest) => {
   // CC-migration marker: defer to request time before any header/cookie
   // read. No-op under the current pre-CC model.
   await connection();
@@ -229,4 +230,4 @@ export async function GET(req: NextRequest) {
       )
     );
   }
-}
+});

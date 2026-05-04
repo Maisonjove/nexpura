@@ -11,8 +11,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integrations";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -48,9 +49,9 @@ export async function POST(req: NextRequest) {
     logger.error("[shopify/setup]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
-}
+});
 
-export async function GET(_req: NextRequest) {
+export const GET = withSentryFlush(async (_req: NextRequest) => {
   const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -73,4 +74,4 @@ export async function GET(_req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-}
+});

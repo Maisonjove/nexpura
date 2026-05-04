@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 import { supportChatSchema } from "@/lib/schemas";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const SYSTEM_PROMPT = `You are the Nexpura Product Concierge, a deeply knowledgeable and helpful support assistant for the Nexpura jewellery business management platform.
 
@@ -36,7 +37,7 @@ GUIDELINES:
 4. FORMATTING: Use bold text and bullet points to make instructions easy to read.
 5. CONTEXT: You are the Product Concierge for Nexpura Live Support — help with platform questions and troubleshooting.`;
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   try {
     const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
     const { success: rlSuccess } = await checkRateLimit(`support-chat:${ip}`);
@@ -81,4 +82,4 @@ export async function POST(req: NextRequest) {
     logger.error("Support chat error:", err);
     return NextResponse.json({ error: "Failed to connect to OpenAI" }, { status: 500 });
   }
-}
+});

@@ -11,6 +11,7 @@ import { sendSupportAccessApprovedEmail } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 
+import { flushSentry } from "@/lib/sentry-flush";
 export async function approveAccess(
   token: string
 ): Promise<{ success: boolean; error?: string }> {
@@ -86,6 +87,7 @@ export async function approveAccess(
     return { success: true };
   } catch (err) {
     logger.error("[approveAccess] Error:", err);
+    await flushSentry();
     return { success: false, error: err instanceof Error ? err.message : "Failed to approve access" };
   }
 }
@@ -116,6 +118,7 @@ export async function denyAccess(
     return { success: true };
   } catch (err) {
     logger.error("[denyAccess] Error:", err);
+    await flushSentry();
     return { success: false, error: err instanceof Error ? err.message : "Failed to deny access" };
   }
 }

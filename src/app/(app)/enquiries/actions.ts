@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 
+import { flushSentry } from "@/lib/sentry-flush";
 export async function updateEnquiryStatus(
   enquiryId: string,
   status: string
@@ -55,6 +56,7 @@ export async function updateEnquiryStatus(
     return { success: true };
   } catch (error) {
     logger.error("updateEnquiryStatus failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -239,6 +241,7 @@ export async function convertEnquiry(
       logger.error("convertEnquiry: enquiry status update failed after destination created", {
         enquiryId, destinationId, target, error: enqUpdateErr.message,
       });
+      await flushSentry();
       return { error: `Created ${target} but failed to mark enquiry converted: ${enqUpdateErr.message}` };
     }
 
@@ -257,6 +260,7 @@ export async function convertEnquiry(
     return { destinationId, destinationType: target };
   } catch (error) {
     logger.error("convertEnquiry failed", { error });
+    await flushSentry();
     return { error: error instanceof Error ? error.message : "Operation failed" };
   }
 }

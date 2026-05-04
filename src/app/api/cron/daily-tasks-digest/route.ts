@@ -1,10 +1,11 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resend } from '@/lib/email/resend';
 import DailyTaskDigestEmail from '@/lib/email/templates/DailyTaskDigestEmail';
 import { safeBearerMatch } from '@/lib/timing-safe-compare';
 
-export async function GET(request: Request) {
+export const GET = withSentryFlush(async (request: Request) => {
   // Check for auth (cron secret) — constant-time.
   const authHeader = request.headers.get('authorization');
   if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
@@ -86,4 +87,4 @@ export async function GET(request: Request) {
     processedTime: new Date().toISOString(),
     results 
   });
-}
+});

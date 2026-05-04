@@ -2,8 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function GET(req: Request) {
+export const GET = withSentryFlush(async (req: Request) => {
   try {
     const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
     const { success: rlSuccess } = await checkRateLimit(`financials-metrics:${ip}`);
@@ -165,4 +166,4 @@ export async function GET(req: Request) {
     logger.error("Metrics error:", err);
     return Response.json({ error: "Failed to load metrics" }, { status: 500 });
   }
-}
+});

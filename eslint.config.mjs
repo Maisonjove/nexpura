@@ -7,11 +7,13 @@ import unusedImports from "eslint-plugin-unused-imports";
 // systemic. See eslint-rules/*.mjs for the rule sources + rationale.
 import noBareSupabaseWrite from "./eslint-rules/no-bare-supabase-write.mjs";
 import requireConnectionInAdminPages from "./eslint-rules/require-connection-in-admin-pages.mjs";
+import sentryFlushBeforeReturn from "./eslint-rules/sentry-flush-before-return.mjs";
 
 const localPlugin = {
   rules: {
     "no-bare-supabase-write": noBareSupabaseWrite,
     "require-connection-in-admin-pages": requireConnectionInAdminPages,
+    "sentry-flush-before-return": sentryFlushBeforeReturn,
   },
 };
 
@@ -58,6 +60,13 @@ const eslintConfig = defineConfig([
       // Bleeding-stops layer for the cacheComponents-stale-UI pattern
       // (PR #130 / #131). Same warn → error progression as above.
       "local/require-connection-in-admin-pages": "warn",
+      // Bleeding-stops layer for the Sentry serverless flush race
+      // (PR #138). In-handler logger.error followed by return drops
+      // the Sentry capture because the Lambda freezes before the
+      // background transport drains. Either wrap the export with
+      // withSentryFlush(...) or add `await flushSentry()` before the
+      // return. Same warn → error progression as the others.
+      "local/sentry-flush-before-return": "warn",
     },
   },
   // Project-specific rule overrides

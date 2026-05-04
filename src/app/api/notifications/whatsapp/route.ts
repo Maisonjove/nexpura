@@ -14,8 +14,9 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 import { whatsappNotifySchema } from "@/lib/schemas";
 import { requireRole } from "@/lib/auth-context";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   try {
     // W6-HIGH-13: this endpoint previously only required an authenticated
     // session, which let any staff user blast WhatsApp messages via the
@@ -68,4 +69,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

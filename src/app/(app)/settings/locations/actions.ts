@@ -6,6 +6,7 @@ import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { invalidateLocationsCache } from "@/lib/cached-auth";
 
+import { flushSentry } from "@/lib/sentry-flush";
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -128,12 +129,14 @@ export async function getLocationDetails(locationId: string): Promise<{ data: Lo
         return { data: null, error: "Location not found" };
       }
       logger.error("Get location details error:", error);
+      await flushSentry();
       return { data: null, error: "Failed to fetch location" };
     }
 
     return { data };
   } catch (error) {
     logger.error("getLocationDetails failed", { error });
+    await flushSentry();
     return { data: null, error: "Operation failed" };
   }
 }
@@ -205,6 +208,7 @@ export async function addLocation(formData: LocationFormData): Promise<{ data?: 
     if (error) {
       logger.error("Add location error:", error);
       if (error.code === "23505") {
+        await flushSentry();
         return { error: "A location with this name already exists" };
       }
       return { error: "Failed to create location" };
@@ -227,6 +231,7 @@ export async function addLocation(formData: LocationFormData): Promise<{ data?: 
     return { data };
   } catch (error) {
     logger.error("addLocation failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -272,6 +277,7 @@ export async function toggleLocationActive(locationId: string, isActive: boolean
 
     if (error) {
       logger.error("Toggle location error:", error);
+      await flushSentry();
       return { error: "Failed to update location" };
     }
 
@@ -293,6 +299,7 @@ export async function toggleLocationActive(locationId: string, isActive: boolean
     return { success: true };
   } catch (error) {
     logger.error("toggleLocationActive failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -385,6 +392,7 @@ export async function deleteLocation(locationId: string): Promise<{ success?: bo
 
     if (error) {
       logger.error("Delete location error:", error);
+      await flushSentry();
       return { error: "Failed to delete location" };
     }
 
@@ -405,6 +413,7 @@ export async function deleteLocation(locationId: string): Promise<{ success?: bo
     return { success: true };
   } catch (error) {
     logger.error("deleteLocation failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -486,6 +495,7 @@ export async function updateLocation(
     if (error) {
       logger.error("Update location error:", error);
       if (error.code === "23505") {
+        await flushSentry();
         return { error: "A location with this name already exists" };
       }
       return { error: "Failed to update location" };
@@ -510,6 +520,7 @@ export async function updateLocation(
     return { success: true };
   } catch (error) {
     logger.error("updateLocation failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }

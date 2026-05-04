@@ -11,6 +11,7 @@ import { resend } from "@/lib/email/resend";
 import logger from "@/lib/logger";
 import { requireAuth } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 async function getAuthContext() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -641,6 +642,7 @@ export async function updateRepairStage(
   }
 
   revalidatePath(`/repairs/${repairId}`);
+  await flushSentry();
   return { success: true, smsSent };
 }
 
@@ -744,6 +746,7 @@ export async function emailRepairInvoice(
       }
     } catch { /* ignore */ }
     revalidatePath(`/repairs/${repairId}`);
+    await flushSentry();
     return { success: true, note: "demo_limited", message: "Email logged — configure a verified sending domain in Settings for external delivery" };
   }
 
@@ -761,6 +764,7 @@ export async function emailRepairInvoice(
   }
 
   revalidatePath(`/repairs/${repairId}`);
+  await flushSentry();
   return { success: true, note: "sent", message: `Invoice emailed to ${customer.email}` };
 }
 
@@ -837,6 +841,7 @@ export async function emailJobReady(
   }
 
   revalidatePath(`/repairs/${jobId}`);
+  await flushSentry();
   return { success: true };
 }
 
@@ -901,6 +906,7 @@ export async function sendJobReadySms(params: {
     if (failLogErr) {
       logger.error("[sendJobReadySms] failed-sms log insert failed (non-fatal)", { repairId: params.repairId, err: failLogErr });
     }
+    await flushSentry();
     return { success: false, error: smsResult.error || "Failed to send SMS" };
   }
 
@@ -932,5 +938,6 @@ export async function sendJobReadySms(params: {
   }
 
   revalidatePath(`/repairs/${params.repairId}`);
+  await flushSentry();
   return { success: true };
 }

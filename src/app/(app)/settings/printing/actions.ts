@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 import { requireRole } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 export async function savePrinterConfig(
   tenantId: string,
   config: Record<string, unknown>
@@ -49,6 +50,7 @@ export async function savePrinterConfig(
     return { success: true };
   } catch (error) {
     logger.error("savePrinterConfig failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }

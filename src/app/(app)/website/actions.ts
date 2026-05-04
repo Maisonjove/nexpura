@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 
+import { flushSentry } from "@/lib/sentry-flush";
 async function getAuthContext() {
   const supabase = await createClient();
   const {
@@ -81,11 +82,13 @@ export async function getWebsiteConfig(): Promise<{ data?: WebsiteConfigData | n
 
     if (error) {
       logger.error("[getWebsiteConfig] Error:", error);
+      await flushSentry();
       return { error: error.message };
     }
     return { data };
   } catch (err) {
     logger.error("[getWebsiteConfig] Unexpected error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to get website config" };
   }
 }
@@ -178,6 +181,7 @@ export async function saveWebsiteConfig(formData: WebsiteConfigData): Promise<{ 
         .eq("tenant_id", tenantId);
       if (error) {
         logger.error("[saveWebsiteConfig] Update error:", error);
+        await flushSentry();
         return { error: error.message };
       }
     } else {
@@ -186,6 +190,7 @@ export async function saveWebsiteConfig(formData: WebsiteConfigData): Promise<{ 
         .insert({ tenant_id: tenantId, ...formData });
       if (error) {
         logger.error("[saveWebsiteConfig] Insert error:", error);
+        await flushSentry();
         return { error: error.message };
       }
     }
@@ -194,6 +199,7 @@ export async function saveWebsiteConfig(formData: WebsiteConfigData): Promise<{ 
     return { success: true };
   } catch (err) {
     logger.error("[saveWebsiteConfig] Unexpected error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to save website config" };
   }
 }
@@ -215,6 +221,7 @@ export async function publishWebsite(publish: boolean): Promise<{ success?: bool
         .eq("tenant_id", tenantId);
       if (error) {
         logger.error("[publishWebsite] Update error:", error);
+        await flushSentry();
         return { error: error.message };
       }
     } else {
@@ -223,6 +230,7 @@ export async function publishWebsite(publish: boolean): Promise<{ success?: bool
         .insert({ tenant_id: tenantId, published: publish });
       if (error) {
         logger.error("[publishWebsite] Insert error:", error);
+        await flushSentry();
         return { error: error.message };
       }
     }
@@ -231,6 +239,7 @@ export async function publishWebsite(publish: boolean): Promise<{ success?: bool
     return { success: true };
   } catch (err) {
     logger.error("[publishWebsite] Unexpected error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to publish website" };
   }
 }
@@ -261,6 +270,7 @@ export async function switchWebsiteType(
         .eq("tenant_id", tenantId);
       if (error) {
         logger.error("[switchWebsiteType] Update error:", error);
+        await flushSentry();
         return { error: error.message };
       }
     } else {
@@ -269,6 +279,7 @@ export async function switchWebsiteType(
         .insert({ tenant_id: tenantId, website_type: websiteType });
       if (error) {
         logger.error("[switchWebsiteType] Insert error:", error);
+        await flushSentry();
         return { error: error.message };
       }
     }
@@ -277,6 +288,7 @@ export async function switchWebsiteType(
     return { success: true };
   } catch (err) {
     logger.error("[switchWebsiteType] Unexpected error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to switch website type" };
   }
 }
@@ -328,6 +340,7 @@ export async function checkSubdomainAvailable(subdomain: string, currentTenantId
 
     if (error) {
       logger.error("[checkSubdomainAvailable] Error:", error);
+      await flushSentry();
       return { available: false, reason: "Unable to check availability. Please try again." };
     }
 
@@ -338,6 +351,7 @@ export async function checkSubdomainAvailable(subdomain: string, currentTenantId
     return { available: false, reason: "Subdomain is already taken" };
   } catch (err) {
     logger.error("[checkSubdomainAvailable] Unexpected error:", err);
+    await flushSentry();
     return { available: false, reason: "Unable to check availability. Please try again." };
   }
 }

@@ -4,10 +4,11 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 export const maxDuration = 60;
 
-export async function POST(req: Request) {
+export const POST = withSentryFlush(async (req: Request) => {
   const _ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success: _rlSuccess } = await checkRateLimit(_ip);
   if (!_rlSuccess) {
@@ -145,4 +146,4 @@ Answer questions about this business's finances concisely and helpfully. Use spe
     logger.error("Financial chat error:", err);
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+});

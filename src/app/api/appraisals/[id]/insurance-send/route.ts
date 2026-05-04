@@ -14,11 +14,12 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { InsurancePDF } from "@/lib/pdf/InsurancePDF";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(
+export const POST = withSentryFlush(async (
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -146,4 +147,4 @@ export async function POST(
     logger.error("[insurance-send]", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-}
+});

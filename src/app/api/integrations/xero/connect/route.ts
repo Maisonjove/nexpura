@@ -30,6 +30,7 @@ import { requireIntegrationManager } from "@/lib/integrations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { signOAuthState } from "@/lib/webhook-security";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const XERO_AUTH_URL = "https://login.xero.com/identity/connect/authorize";
 const XERO_SCOPES =
@@ -47,7 +48,7 @@ function getStateSecret(): string {
   return crypto.createHash("sha256").update(`xero-oauth-state:${base}`).digest("hex");
 }
 
-export async function GET(_req: NextRequest) {
+export const GET = withSentryFlush(async (_req: NextRequest) => {
   const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -101,4 +102,4 @@ export async function GET(_req: NextRequest) {
     logger.error("[xero/connect]", err);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-}
+});
