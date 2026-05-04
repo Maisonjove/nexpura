@@ -100,14 +100,31 @@ function ContactClientInner() {
       const body = await r.json().catch(() => ({}))
       if (!r.ok) {
         setStatus('error')
-        setErrorMsg(body.error || 'Something went wrong. Please email hello@nexpura.com directly.')
+        // Joey 2026-05-04: differentiate copy by failure mode so the
+        // visitor knows whether to fix something on their end or wait
+        // and retry. 4xx → server told us the form is wrong (specific
+        // copy from the API when it has a field-level issue). 5xx →
+        // our problem; tell them to retry / email us. 429 → keep the
+        // server's rate-limit copy.
+        if (r.status === 429) {
+          setErrorMsg(body.error || 'Too many submissions. Please try again in a minute.')
+        } else if (r.status >= 500) {
+          setErrorMsg(
+            body.error ||
+              'Something went wrong on our end. Please try again in a moment, or email hello@nexpura.com directly.',
+          )
+        } else {
+          // 4xx — validation. body.error from the API points at the
+          // failing field when known.
+          setErrorMsg(body.error || 'Please check your details and try again.')
+        }
         return
       }
       setStatus('sent')
       form.reset()
     } catch {
       setStatus('error')
-      setErrorMsg("Couldn't reach our server. Please email hello@nexpura.com directly.")
+      setErrorMsg("Couldn't reach our server. Please check your connection and try again, or email hello@nexpura.com directly.")
     }
   }
 

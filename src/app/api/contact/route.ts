@@ -89,8 +89,26 @@ export async function POST(req: NextRequest) {
 
   const parsed = contactSchema.safeParse(body);
   if (!parsed.success) {
+    // Joey 2026-05-04 (post-PR-#127 follow-up): the prior generic
+    // "Please check your details and try again" left the visitor
+    // (and us) with no signal about which field failed. Log every
+    // issue server-side, and return the first failing-field name so
+    // the client can surface "Please check the email field" instead
+    // of the catch-all.
+    const issues = parsed.error.issues.map((i) => ({
+      path: i.path.join("."),
+      message: i.message,
+    }));
+    logger.error("[contact] zod validation failed", {
+      issues,
+      bodyKeys: body && typeof body === "object" ? Object.keys(body as object) : null,
+    });
+    const firstField = issues[0]?.path || "form";
     return NextResponse.json(
-      { error: "Please check your details and try again." },
+      {
+        error: `Please check the ${firstField.replace(/_/g, " ")} field and try again.`,
+        field: firstField,
+      },
       { status: 400 },
     );
   }
