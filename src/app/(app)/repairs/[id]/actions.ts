@@ -33,7 +33,18 @@ async function recalcInvoice(admin: ReturnType<typeof createAdminClient>, invoic
   const subtotal = (items ?? []).reduce((s, i) => s + (i.quantity ?? 1) * (i.unit_price ?? 0), 0);
   const taxAmount = subtotal * taxRate;
   const total = subtotal + taxAmount;
-  await admin.from("invoices").update({ subtotal, tax_amount: taxAmount, total }).eq("id", invoiceId);
+  // Destructive — invoice totals are state-of-record (drives what
+  // the customer pays). Throw on error so callers (line-item add /
+  // remove server actions) catch and return the failure to the UI;
+  // silent failure here would let the displayed totals drift from
+  // the line-item rows.
+  const { error: recalcErr } = await admin
+    .from("invoices")
+    .update({ subtotal, tax_amount: taxAmount, total })
+    .eq("id", invoiceId);
+  if (recalcErr) {
+    throw new Error(`invoice totals recalc failed: ${recalcErr.message}`);
+  }
 }
 
 export async function addRepairLineItem(
@@ -70,10 +81,22 @@ export async function addRepairLineItem(
     }).select("id").single();
     if (invErr || !inv) return { error: invErr?.message ?? "Failed to create invoice" };
     invoiceId = inv.id;
-    // Link customer from repair
+    // Link customer from repair. Destructive — both updates are
+    // state-of-record (links the new invoice to its customer + the
+    // owning repair). Surface failure to the caller so the UI
+    // doesn't claim success on a half-linked invoice.
     const { data: repairFull } = await admin.from("repairs").select("customer_id").eq("id", repairId).single();
-    await admin.from("invoices").update({ customer_id: repairFull?.customer_id }).eq("id", invoiceId);
-    await admin.from("repairs").update({ invoice_id: invoiceId }).eq("id", repairId).eq("tenant_id", tenantId);
+    const { error: invLinkErr } = await admin
+      .from("invoices")
+      .update({ customer_id: repairFull?.customer_id })
+      .eq("id", invoiceId);
+    if (invLinkErr) return { error: `invoice customer-link failed: ${invLinkErr.message}` };
+    const { error: repairLinkErr } = await admin
+      .from("repairs")
+      .update({ invoice_id: invoiceId })
+      .eq("id", repairId)
+      .eq("tenant_id", tenantId);
+    if (repairLinkErr) return { error: `repair invoice-link failed: ${repairLinkErr.message}` };
   }
 
   // Get tax rate
@@ -203,11 +226,20 @@ export async function recordRepairPayment(
       const invTotal = invCheck.total ?? 0;
 
       const newStatus = totalPaid >= invTotal ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
-      await admin.from("invoices").update({
-        amount_paid: totalPaid,
-        status: newStatus,
-        ...(newStatus === "paid" ? { paid_at: new Date().toISOString() } : {}),
-      }).eq("id", invoiceId).eq("tenant_id", tenantId);
+      // Destructive — invoice payment state. Without surfacing a
+      // failure here the payments row was inserted but the invoice
+      // would stay "unpaid" with the customer's payment "lost"
+      // until manual reconciliation.
+      const { error: payStatusErr } = await admin
+        .from("invoices")
+        .update({
+          amount_paid: totalPaid,
+          status: newStatus,
+          ...(newStatus === "paid" ? { paid_at: new Date().toISOString() } : {}),
+        })
+        .eq("id", invoiceId)
+        .eq("tenant_id", tenantId);
+      if (payStatusErr) return { error: `invoice payment-status update failed: ${payStatusErr.message}` };
 
       return { success: true };
     }
@@ -253,7 +285,16 @@ export async function generateRepairInvoice(
   }).select("id").single();
   if (error || !inv) return { error: error?.message ?? "Failed to create invoice" };
 
-  await admin.from("repairs").update({ invoice_id: inv.id }).eq("id", repairId).eq("tenant_id", tenantId);
+  // Destructive — links the new invoice to the owning repair. Without
+  // this update the invoice exists but the repair's `invoice_id`
+  // pointer stays null, so re-running generateRepairInvoice would
+  // create a duplicate. Surface to caller.
+  const { error: linkErr } = await admin
+    .from("repairs")
+    .update({ invoice_id: inv.id })
+    .eq("id", repairId)
+    .eq("tenant_id", tenantId);
+  if (linkErr) return { error: `repair invoice-link failed: ${linkErr.message}` };
   revalidatePath(`/repairs/${repairId}`);
   return { success: true, invoiceId: inv.id };
 }
@@ -271,11 +312,21 @@ export async function updateRepairStage(
   const { error } = await supabase.from("repairs").update({ stage, updated_at: new Date().toISOString() }).eq("id", repairId).eq("tenant_id", tenantId);
   if (error) return { error: error.message };
 
-  await admin.from("repair_stages").insert({ tenant_id: tenantId, repair_id: repairId, stage, notes: null, created_by: userId });
+  // Side-effect — repair_stages is the audit-trail table; if the
+  // insert fails we lose history but the stage transition itself
+  // already succeeded. Log + continue rather than fail the action.
+  const { error: stageHistErr } = await admin
+    .from("repair_stages")
+    .insert({ tenant_id: tenantId, repair_id: repairId, stage, notes: null, created_by: userId });
+  if (stageHistErr) {
+    logger.error("[updateRepairStage] repair_stages insert failed (non-fatal)", { repairId, stage, err: stageHistErr });
+  }
 
-  // Log stage change event
+  // Side-effect — job_events is the per-job activity feed; same
+  // policy as above. Stage was updated; lost event row is a
+  // visibility gap, not state-of-record drift.
   const stageLabel = stage.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  await admin.from("job_events").insert({
+  const { error: stageEventErr } = await admin.from("job_events").insert({
     tenant_id: tenantId,
     job_type: "repair",
     job_id: repairId,
@@ -283,6 +334,9 @@ export async function updateRepairStage(
     description: `Stage changed to ${stageLabel}`,
     actor: ctx.userId,
   });
+  if (stageEventErr) {
+    logger.error("[updateRepairStage] job_events stage_change insert failed (non-fatal)", { repairId, stage, err: stageEventErr });
+  }
 
   // ── Auto-SMS on stage change ────────────────────────────────────────────
   let smsSent = false;
@@ -369,7 +423,10 @@ export async function updateRepairStage(
             });
             if (smsResult.success) {
               smsSent = true;
-              await admin.from("sms_sends").insert({
+              // Side-effect — sms_sends is the per-customer message
+              // log for the activity feed. Twilio already accepted
+              // the message; a failed log row is a visibility gap.
+              const { error: smsLogErr } = await admin.from("sms_sends").insert({
                 tenant_id: tenantId,
                 customer_id: repairRow.customer_id,
                 phone: customerPhone,
@@ -378,7 +435,10 @@ export async function updateRepairStage(
                 twilio_sid: smsResult.messageId ?? null,
                 context: { repair_id: repairId, stage, type: "stage_change" },
               });
-              await admin.from("job_events").insert({
+              if (smsLogErr) {
+                logger.error("[updateRepairStage] auto-SMS log failed (non-fatal)", { repairId, stage, err: smsLogErr });
+              }
+              const { error: smsEventErr } = await admin.from("job_events").insert({
                 tenant_id: tenantId,
                 job_type: "repair",
                 job_id: repairId,
@@ -386,6 +446,9 @@ export async function updateRepairStage(
                 description: `Auto SMS sent for stage: ${stageLabel}`,
                 actor: userId,
               });
+              if (smsEventErr) {
+                logger.error("[updateRepairStage] auto-SMS job_events insert failed (non-fatal)", { repairId, stage, err: smsEventErr });
+              }
             }
           }
         }
@@ -472,7 +535,9 @@ export async function updateRepairStage(
             html: htmlBody,
           });
 
-          await admin.from("job_events").insert({
+          // Side-effect — email already sent; lost log row is a
+          // visibility gap, not state-of-record drift.
+          const { error: emailEventErr } = await admin.from("job_events").insert({
             tenant_id: tenantId,
             job_type: "repair",
             job_id: repairId,
@@ -480,6 +545,9 @@ export async function updateRepairStage(
             description: `Status update email sent to ${customer.email} — stage: ${stageLabel}`,
             actor: userId,
           });
+          if (emailEventErr) {
+            logger.error("[updateRepairStage] auto-email job_events insert failed (non-fatal)", { repairId, stage, err: emailEventErr });
+          }
         }
       }
     } catch (emailErr) {
@@ -531,10 +599,12 @@ export async function updateRepairStage(
           const message = `Hi ${firstName}, your ${description} is ready for collection at ${businessName}. Please contact us to arrange pickup.`;
           const smsResult = await sendTwilioSms(customerPhone, message);
           if (smsResult.success) {
+            // Side-effect — Twilio already delivered. Both inserts
+            // are activity-log rows; lost rows are visibility gaps.
             // sms_sends has no `context` column in this schema (verified
             // via information_schema 2026-04-30) — keep the insert minimal
             // and put the repair linkage on job_events instead.
-            await admin.from("sms_sends").insert({
+            const { error: readySmsLogErr } = await admin.from("sms_sends").insert({
               tenant_id: tenantId,
               customer_id: repairRow.customer_id,
               phone: customerPhone,
@@ -542,7 +612,10 @@ export async function updateRepairStage(
               status: "sent",
               twilio_sid: smsResult.messageId ?? null,
             });
-            await admin.from("job_events").insert({
+            if (readySmsLogErr) {
+              logger.error("[updateRepairStage] ready-SMS sms_sends insert failed (non-fatal)", { repairId, err: readySmsLogErr });
+            }
+            const { error: readySmsEventErr } = await admin.from("job_events").insert({
               tenant_id: tenantId,
               job_type: "repair",
               job_id: repairId,
@@ -550,6 +623,9 @@ export async function updateRepairStage(
               description: `Ready SMS sent to ${customerPhone}`,
               actor: userId,
             });
+            if (readySmsEventErr) {
+              logger.error("[updateRepairStage] ready-SMS job_events insert failed (non-fatal)", { repairId, err: readySmsEventErr });
+            }
           } else {
             logger.warn("[updateRepairStage] Ready SMS failed", {
               error: smsResult.error,
@@ -651,9 +727,11 @@ export async function emailRepairInvoice(
 
   if (sendError) {
     logger.error("Resend error:", sendError);
-    // Demo-limited: log event but don't surface as error
+    // Demo-limited: log event but don't surface as error.
+    // Side-effect (already in a try/catch) — log on failure; the
+    // primary flow returns demo_limited regardless.
     try {
-      await admin.from("job_events").insert({
+      const { error: attemptErr } = await admin.from("job_events").insert({
         tenant_id: tenantId,
         job_type: "repair",
         job_id: repairId,
@@ -661,13 +739,16 @@ export async function emailRepairInvoice(
         description: `Invoice email attempted (demo mode — verify sending domain for external delivery)`,
         actor: ctx.userId,
       });
+      if (attemptErr) {
+        logger.error("[emailRepairInvoice] email_attempted log failed (non-fatal)", { repairId, err: attemptErr });
+      }
     } catch { /* ignore */ }
     revalidatePath(`/repairs/${repairId}`);
     return { success: true, note: "demo_limited", message: "Email logged — configure a verified sending domain in Settings for external delivery" };
   }
 
-  // Log to job_events
-  await admin.from("job_events").insert({
+  // Side-effect — email delivered; lost log row is visibility gap.
+  const { error: invEmailEventErr } = await admin.from("job_events").insert({
     tenant_id: tenantId,
     job_type: "repair",
     job_id: repairId,
@@ -675,6 +756,9 @@ export async function emailRepairInvoice(
     description: `Invoice ${invoice.invoice_number} emailed to ${customer.email} ✓`,
     actor: ctx.userId,
   });
+  if (invEmailEventErr) {
+    logger.error("[emailRepairInvoice] email_sent log failed (non-fatal)", { repairId, err: invEmailEventErr });
+  }
 
   revalidatePath(`/repairs/${repairId}`);
   return { success: true, note: "sent", message: `Invoice emailed to ${customer.email}` };
@@ -739,7 +823,8 @@ export async function emailJobReady(
 
   if (jobReadyErr) return { error: "Email failed to send" };
 
-  await admin.from("job_events").insert({
+  // Side-effect — email already sent; log row is activity feed.
+  const { error: readyEmailEventErr } = await admin.from("job_events").insert({
     tenant_id: tenantId,
     job_type: jobType,
     job_id: jobId,
@@ -747,6 +832,9 @@ export async function emailJobReady(
     description: `Ready for collection email sent to ${customer.email}`,
     actor: ctx.userId,
   });
+  if (readyEmailEventErr) {
+    logger.error("[emailJobReady] email_sent log failed (non-fatal)", { jobType, jobId, err: readyEmailEventErr });
+  }
 
   revalidatePath(`/repairs/${jobId}`);
   return { success: true };
@@ -799,7 +887,9 @@ export async function sendJobReadySms(params: {
   });
 
   if (!smsResult.success) {
-    await admin.from("sms_sends").insert({
+    // Side-effect — failure log row. The send already failed;
+    // whether the local log row writes is observability not state.
+    const { error: failLogErr } = await admin.from("sms_sends").insert({
       tenant_id: tenantId,
       customer_id: params.customerId,
       phone: params.customerPhone,
@@ -808,10 +898,15 @@ export async function sendJobReadySms(params: {
       error_message: smsResult.error || "Failed to send",
       context: { job_id: params.repairId, type: "job_ready" },
     });
+    if (failLogErr) {
+      logger.error("[sendJobReadySms] failed-sms log insert failed (non-fatal)", { repairId: params.repairId, err: failLogErr });
+    }
     return { success: false, error: smsResult.error || "Failed to send SMS" };
   }
 
-  await admin.from("sms_sends").insert({
+  // Side-effect — Twilio accepted the message; both rows are
+  // activity-feed entries.
+  const { error: sentLogErr } = await admin.from("sms_sends").insert({
     tenant_id: tenantId,
     customer_id: params.customerId,
     phone: params.customerPhone,
@@ -820,8 +915,11 @@ export async function sendJobReadySms(params: {
     twilio_sid: smsResult.messageId ?? null,
     context: { job_id: params.repairId, type: "job_ready" },
   });
+  if (sentLogErr) {
+    logger.error("[sendJobReadySms] sent-sms log insert failed (non-fatal)", { repairId: params.repairId, err: sentLogErr });
+  }
 
-  await admin.from("job_events").insert({
+  const { error: smsJobEventErr } = await admin.from("job_events").insert({
     tenant_id: tenantId,
     job_type: "repair",
     job_id: params.repairId,
@@ -829,6 +927,9 @@ export async function sendJobReadySms(params: {
     description: `Ready for collection SMS sent to ${params.customerPhone}`,
     actor: userId,
   });
+  if (smsJobEventErr) {
+    logger.error("[sendJobReadySms] job_events insert failed (non-fatal)", { repairId: params.repairId, err: smsJobEventErr });
+  }
 
   revalidatePath(`/repairs/${params.repairId}`);
   return { success: true };
