@@ -1,7 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "fluid": true,
-  "regions": ["syd1"],
+  "regions": [
+    "syd1"
+  ],
   "ignoreCommand": "bash scripts/should-build.sh",
   "functions": {
     "src/app/(app)/dashboard/page.tsx": {
@@ -71,6 +73,10 @@
     {
       "path": "/api/cron/webhook-audit-summary",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/shopify-reconciliation",
+      "schedule": "0 */6 * * *"
     }
   ],
   "headers": [
