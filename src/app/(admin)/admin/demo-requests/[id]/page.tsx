@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -41,6 +42,18 @@ export default async function DemoRequestDetailPage({
 }
 
 async function DetailBody({ id }: { id: string }) {
+  // Joey 2026-05-04: under `cacheComponents: true` (set globally in
+  // next.config.ts), an async server component body without an
+  // explicit dynamic marker is implicitly cached by the prerender
+  // pipeline. Pre-fix this meant `router.refresh()` + `revalidatePath()`
+  // calls from server actions (Mark Completed / Decline) successfully
+  // mutated the DB and audit-logged, but the page kept rendering the
+  // stale row state — Joey clicked Mark Completed three times before
+  // realising the UI never reflected the underlying flip to
+  // 'completed'. (admin)/layout.tsx already uses this pattern for the
+  // same reason; copy here.
+  await connection();
+
   const data = await loadDemoRequest(id);
   if (!data) notFound();
   const { request, audit } = data;

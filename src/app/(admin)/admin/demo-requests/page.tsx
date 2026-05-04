@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +32,11 @@ export default function DemoRequestsPage() {
 }
 
 async function DemoRequestsBody() {
+  // Same cacheComponents-stale-state concern as the [id] detail page:
+  // without `connection()` the async body gets implicitly cached and
+  // doesn't refresh after a server action mutates demo_requests.
+  await connection();
+
   const rows = await loadDemoRequests();
 
   const counts = {
