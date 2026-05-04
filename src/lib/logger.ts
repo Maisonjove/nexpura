@@ -1,96 +1,37 @@
 import * as Sentry from "@sentry/nextjs";
-import { AsyncLocalStorage } from "node:async_hooks";
 
 const isDev = process.env.NODE_ENV === "development";
 
-// Capture-amplification alarm (post-Phase-2 cleanup, see CONTRIBUTING.md
-// item 3 → "Post-Phase-2 cleanup additions"):
+// Capture-amplification alarm — hook-based wiring.
 //
-// Sentry's PromiseBuffer caps at 100 events per request. A single
-// request firing > 50 logger.error calls is itself a bug (likely a
-// runaway loop) and is skating dangerously close to the silent-drop
-// cliff at 100. We surface this at runtime via a Sentry breadcrumb
-// the moment the count crosses 50, so the operator sees "this route
-// fired 50+ logger.error in one call" attached to the (one) Sentry
-// event that does land — without enforcement that breaks production.
+// The alarm machinery (AsyncLocalStorage scope, Sentry breadcrumb on
+// threshold cross) lives in src/lib/capture-amplification-alarm.ts —
+// SERVER-ONLY because AsyncLocalStorage requires node:async_hooks.
 //
-// The counter is request-scoped via AsyncLocalStorage. The
-// withSentryFlush HOF is the boundary that calls `runWithCaptureScope`
-// to seed a fresh counter per request. Server actions don't run inside
-// the HOF, but their logger.error calls increment the counter when one
-// is set; if no scope is active (e.g. called from a unit test or a
-// non-instrumented entry point), the increment is a silent no-op.
+// logger.ts is imported by both server and client/edge contexts.
+// Importing node:async_hooks at the top of logger.ts breaks the
+// Turbopack client/edge bundle. Hook-based wiring keeps logger.ts
+// runtime-agnostic: the alarm module registers itself by calling
+// `setIncrementCaptureHook` on import; logger.error calls the hook
+// if set, no-op otherwise.
 //
-// The breadcrumb fires exactly ONCE per scope (we latch a `firedAlarm`
-// flag), so a request firing 51, 52, 53 ... captures only emits the
-// alarm at 50 — no spam.
+// Net behaviour:
+//   - Server: capture-amplification-alarm imported from sentry-flush
+//     → hook installed → counter increments → breadcrumb at 50.
+//   - Client/edge: alarm module not imported → hook stays null →
+//     logger.error skips the increment cleanly.
 
-interface CaptureScopeState {
-  count: number;
-  firedAlarm: boolean;
-  tag?: string;
-}
-
-const CAPTURE_AMPLIFICATION_THRESHOLD = 50;
-
-// Module-level — survives across handler boundaries. Each
-// withSentryFlush wrap calls `.run()` to seed a fresh state object for
-// that request's async chain.
-const captureScopeStorage = new AsyncLocalStorage<CaptureScopeState>();
+type IncrementCaptureHook = () => void;
+let incrementCaptureHook: IncrementCaptureHook | null = null;
 
 /**
- * Run `fn` inside a fresh capture-amplification scope. Used by
- * `withSentryFlush` (and any other request-boundary HOF that wants
- * scoped capture instrumentation). Each call seeds a NEW scope state
- * — nested calls don't share counters.
+ * Server-only registration entry point. Called from
+ * src/lib/capture-amplification-alarm.ts on its import. Subsequent
+ * logger.error calls invoke the registered hook to increment the
+ * scoped counter + maybe-emit the breadcrumb.
  */
-export function runWithCaptureScope<T>(
-  fn: () => T,
-  opts?: { tag?: string },
-): T {
-  const state: CaptureScopeState = {
-    count: 0,
-    firedAlarm: false,
-    tag: opts?.tag,
-  };
-  return captureScopeStorage.run(state, fn);
-}
-
-/**
- * Test-only — read the active scope's state, or `undefined` if no
- * scope is active. Used by the unit test to assert the breadcrumb
- * fires exactly once after 50 logger.error calls.
- */
-export function _getCaptureScopeStateForTesting(): CaptureScopeState | undefined {
-  return captureScopeStorage.getStore();
-}
-
-function incrementCaptureCounterAndMaybeAlarm(): void {
-  const state = captureScopeStorage.getStore();
-  if (!state) return; // no scope — silent no-op (unit tests, scripts, etc.)
-  state.count += 1;
-  if (state.count >= CAPTURE_AMPLIFICATION_THRESHOLD && !state.firedAlarm) {
-    state.firedAlarm = true;
-    try {
-      Sentry.addBreadcrumb({
-        category: "capture-amplification",
-        level: "warning",
-        message:
-          `logger.error fired ${state.count}+ times in a single request — ` +
-          "Sentry PromiseBuffer caps at 100 events; events past the cap drop silently. " +
-          "Likely a logger.error inside a hot loop. See CONTRIBUTING.md → 'Loop-shaped logger.error'.",
-        data: {
-          count: state.count,
-          threshold: CAPTURE_AMPLIFICATION_THRESHOLD,
-          tag: state.tag,
-        },
-      });
-    } catch {
-      // Sentry SDK failure: swallow — the breadcrumb is observability,
-      // not control flow. Counter still increments so a subsequent
-      // request boundary sees the high count via the scope state.
-    }
-  }
+export function setIncrementCaptureHook(fn: IncrementCaptureHook): void {
+  incrementCaptureHook = fn;
 }
 
 type LogLevel = "error" | "warn" | "info" | "debug";
@@ -158,10 +99,10 @@ export const logger = {
       Sentry.captureException(toSentryError(messageOrError, context), {
         extra: (entry.context && typeof entry.context === "object") ? (entry.context as Record<string, unknown>) : { context: entry.context },
       });
-      // Increment the per-request capture counter; emits a single
-      // breadcrumb when the count crosses CAPTURE_AMPLIFICATION_THRESHOLD.
-      // No-op outside an active request scope.
-      incrementCaptureCounterAndMaybeAlarm();
+      // Increment the per-request capture counter via the hook
+      // registered by capture-amplification-alarm.ts (server-only).
+      // Hook is null in client/edge contexts → no-op.
+      incrementCaptureHook?.();
     } catch {
       // Sentry init failures / DSN missing: swallow — the console line above
       // is already persisted to Vercel logs.

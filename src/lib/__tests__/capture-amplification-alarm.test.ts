@@ -37,7 +37,8 @@ describe("capture-amplification alarm", () => {
   });
 
   it("fires exactly ONE breadcrumb when logger.error crosses 50 calls in a single request scope", async () => {
-    const { logger, runWithCaptureScope, _getCaptureScopeStateForTesting } = await import("../logger");
+    const { logger } = await import("../logger");
+    const { runWithCaptureScope, _getCaptureScopeStateForTesting } = await import("../capture-amplification-alarm");
 
     runWithCaptureScope(() => {
       // Fire 60 logger.error calls — well past the threshold of 50.
@@ -68,7 +69,8 @@ describe("capture-amplification alarm", () => {
   });
 
   it("does NOT fire breadcrumb if count stays below threshold", async () => {
-    const { logger, runWithCaptureScope } = await import("../logger");
+    const { logger } = await import("../logger");
+    const { runWithCaptureScope } = await import("../capture-amplification-alarm");
 
     runWithCaptureScope(() => {
       for (let i = 0; i < 49; i++) {
@@ -85,7 +87,8 @@ describe("capture-amplification alarm", () => {
   });
 
   it("logger.error outside any scope still captures the exception but emits no alarm", async () => {
-    const { logger, _getCaptureScopeStateForTesting } = await import("../logger");
+    const { logger } = await import("../logger");
+    const { _getCaptureScopeStateForTesting } = await import("../capture-amplification-alarm");
 
     // No scope active.
     expect(_getCaptureScopeStateForTesting()).toBeUndefined();
@@ -103,7 +106,8 @@ describe("capture-amplification alarm", () => {
   });
 
   it("nested runWithCaptureScope calls keep separate counters", async () => {
-    const { logger, runWithCaptureScope } = await import("../logger");
+    const { logger } = await import("../logger");
+    const { runWithCaptureScope } = await import("../capture-amplification-alarm");
 
     runWithCaptureScope(() => {
       // eslint-disable-next-line local/no-logger-error-in-loop -- intentional: nested-scope test.

@@ -44,7 +44,12 @@
 
 import * as Sentry from "@sentry/nextjs";
 
-import { runWithCaptureScope } from "./logger";
+// Server-only import. Importing this module installs the
+// capture-amplification hook on logger via setIncrementCaptureHook, so
+// every logger.error call inside a wrapped handler increments the
+// scoped counter. logger.ts itself stays runtime-agnostic — see
+// capture-amplification-alarm.ts for the split rationale.
+import { runWithCaptureScope } from "./capture-amplification-alarm";
 
 const FLUSH_TIMEOUT_MS = 2000;
 
