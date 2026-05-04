@@ -92,10 +92,22 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     const allowedIds = await getUserLocationIds(user.id, userData.tenant_id);
     if (allowedIds !== null && !allowedIds.includes(transfer.to_location_id)) {
       // Rollback status since user doesn't have permission
-      await admin
+      // Kind C (best-effort observability log+continue). Compensating
+      // rollback after permission denial — status was flipped to
+      // received optimistically before this check. If the rollback
+      // fails the row stays in "received" status with no destination
+      // movements; log loudly so ops can manually reset.
+      const { error: rollbackErr } = await admin
         .from("stock_transfers")
         .update({ status: "in_transit", received_at: null, received_by: null })
         .eq("id", transferId);
+      if (rollbackErr) {
+        logger.error("[inventory/transfers/receive] permission-denial rollback failed; transfer stuck in received with no movements", {
+          transferId,
+          tenantId: userData.tenant_id,
+          rollbackErr,
+        });
+      }
       return NextResponse.json({ error: "You don't have access to receive at this location" }, { status: 403 });
     }
 
@@ -118,10 +130,23 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       const itemUpdate = items?.find((i: { itemId: string; receivedQty: number }) => i.itemId === transferItem.id);
       const receivedQty = itemUpdate?.receivedQty ?? transferItem.quantity;
 
-      await admin
+      // Kind B (server-action-style, destructive return-error). The
+      // received_quantity is the load-bearing data point for variance
+      // reconciliation (received vs dispatched). If this UPDATE fails
+      // silently the destination stock_movement below still fires with
+      // receivedQty, but the transfer row shows no received_quantity
+      // — the report can't reconcile. Surface 500 so the operator
+      // retries cleanly.
+      const { error: itemRecvErr } = await admin
         .from("stock_transfer_items")
         .update({ received_quantity: receivedQty })
         .eq("id", transferItem.id);
+      if (itemRecvErr) {
+        return NextResponse.json(
+          { error: `stock_transfer_items received_quantity update failed: ${itemRecvErr.message}` },
+          { status: 500 },
+        );
+      }
 
       const sourceRow = transferItem.inventory as { id: string; sku?: string; name?: string; jewellery_type?: string; retail_price?: number; cost_price?: number } | null;
 

@@ -1,5 +1,6 @@
 import { resend } from '@/lib/email/resend';
 import { createAdminClient } from '@/lib/supabase/admin';
+import logger from '@/lib/logger';
 
 interface SendMarketingEmailParams {
   tenantId: string;
@@ -98,8 +99,11 @@ export async function sendMarketingEmail(params: SendMarketingEmailParams): Prom
     });
 
     if (error) {
-      // Log failed send
-      await admin.from('email_sends').insert({
+      // Log failed send. Side-effect log+continue: email_sends is the
+      // observability ledger for marketing email — a missed row means
+      // we lose this failure record but the actual send result already
+      // returned to caller via the function's return value.
+      const { error: logErr } = await admin.from('email_sends').insert({
         tenant_id: tenantId,
         campaign_id: campaignId || null,
         customer_id: customerId || null,
@@ -108,12 +112,20 @@ export async function sendMarketingEmail(params: SendMarketingEmailParams): Prom
         status: 'failed',
         error_message: error.message,
       });
+      if (logErr) {
+        logger.error('[marketing/email] failed-send log insert failed (non-fatal — observability gap)', {
+          tenantId, to, campaignId, err: logErr,
+        });
+      }
 
       return { success: false, error: error.message };
     }
 
-    // Log successful send
-    await admin.from('email_sends').insert({
+    // Log successful send. Side-effect log+continue: ledger row missing
+    // means analytics undercounts but the email was already delivered
+    // by Resend. Surfacing failure to caller would falsely report send
+    // failure to UI for an email that did go out.
+    const { error: sentLogErr } = await admin.from('email_sends').insert({
       tenant_id: tenantId,
       campaign_id: campaignId || null,
       customer_id: customerId || null,
@@ -122,12 +134,20 @@ export async function sendMarketingEmail(params: SendMarketingEmailParams): Prom
       status: 'sent',
       resend_id: data?.id || null,
     });
+    if (sentLogErr) {
+      logger.error('[marketing/email] sent-log insert failed (non-fatal — email delivered, ledger gap)', {
+        tenantId, to, campaignId, resendId: data?.id, err: sentLogErr,
+      });
+    }
 
     return { success: true, emailId: data?.id };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    
-    await admin.from('email_sends').insert({
+
+    // Catch-block log row. Side-effect log+continue: same observability
+    // role as the failed-send branch above; we already have an error
+    // to propagate via return below.
+    const { error: catchLogErr } = await admin.from('email_sends').insert({
       tenant_id: tenantId,
       campaign_id: campaignId || null,
       customer_id: customerId || null,
@@ -136,6 +156,11 @@ export async function sendMarketingEmail(params: SendMarketingEmailParams): Prom
       status: 'failed',
       error_message: errorMessage,
     });
+    if (catchLogErr) {
+      logger.error('[marketing/email] catch-log insert failed (non-fatal — original error returned to caller)', {
+        tenantId, to, originalError: errorMessage, err: catchLogErr,
+      });
+    }
 
     return { success: false, error: errorMessage };
   }

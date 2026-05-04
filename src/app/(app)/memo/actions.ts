@@ -209,7 +209,13 @@ export async function updateMemoStatus(
       oldData?.status === "active" &&
       oldData?.inventory_id
     ) {
-      await admin.from("stock_movements").insert({
+      // Destructive return-error: stock_movements is the source of truth
+      // for on-hand inventory (DB trigger decrements inventory.quantity
+      // on this insert). The memo row above just flipped to 'sold' — if
+      // this stock movement silently fails, the memo says "sold" but the
+      // inventory item is still counted as on-hand → over-sell on the
+      // next POS lookup. Surface so the caller can retry.
+      const { error: stockErr } = await admin.from("stock_movements").insert({
         tenant_id: tenantId,
         inventory_id: oldData.inventory_id,
         movement_type: "sale",
@@ -217,6 +223,7 @@ export async function updateMemoStatus(
         notes: `Memo ${id} sold`,
         created_by: userId,
       });
+      if (stockErr) return { error: stockErr.message };
     }
 
     await logActivity(tenantId, userId, `memo_status_${status}`, "memo_item", id, "");

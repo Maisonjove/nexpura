@@ -52,21 +52,32 @@ const eslintConfig = defineConfig([
           argsIgnorePattern: "^_",
         },
       ],
-      // Bleeding-stops layer for the swallowed-error pattern (P2-F
-      // audit). Starts at `warn` so the existing 151 violations across
-      // the codebase don't break CI; PR-B4 flips this to `error` after
-      // the wrap PRs (B2 + B3) clear them.
-      "local/no-bare-supabase-write": "warn",
-      // Bleeding-stops layer for the cacheComponents-stale-UI pattern
-      // (PR #130 / #131). Same warn → error progression as above.
-      "local/require-connection-in-admin-pages": "warn",
-      // Bleeding-stops layer for the Sentry serverless flush race
-      // (PR #138). In-handler logger.error followed by return drops
-      // the Sentry capture because the Lambda freezes before the
-      // background transport drains. Either wrap the export with
-      // withSentryFlush(...) or add `await flushSentry()` before the
-      // return. Same warn → error progression as the others.
-      "local/sentry-flush-before-return": "warn",
+      // Locked at `error` after PR-B4 cleared all violations across
+      // the codebase. Three systemic patterns from the P2-F audit (Joey
+      // 2026-05-04) now build-time-enforced:
+      //
+      // 1. no-bare-supabase-write: every admin.from(...).insert/update/
+      //    upsert/delete chain captures { error } or chains
+      //    .throwOnError(). Was warn from PR-B1; flipped to error in
+      //    PR-B4 after PR-B1/B2a/B2b/B3/B4 wrapped all 249 sites with
+      //    appropriate destructive/side-effect policy comments.
+      "local/no-bare-supabase-write": "error",
+      // 2. require-connection-in-admin-pages: every async server-
+      //    component body under (admin)/admin/* and (app)/admin/* that
+      //    renders JSX + reads from Supabase calls await connection()
+      //    (or cookies/headers/params) within its first 5 statements.
+      //    Was warn from PR-B1; baseline was already 0 by PR #131 + PR-B4.
+      "local/require-connection-in-admin-pages": "error",
+      // 3. sentry-flush-before-return: every exported route handler /
+      //    server action that calls logger.error followed by a return
+      //    has `await flushSentry()` (or is wrapped with
+      //    withSentryFlush). Was warn from PR #138; flipped to error
+      //    in PR-B4 after PR-B4 wraps + the redirect-as-exit + nested-
+      //    callback fixes from PR #138 amendment cleared all sites.
+      //
+      // Suppressing any of these now requires a per-line eslint-disable
+      // comment with reason — see CONTRIBUTING.md per-rule sections.
+      "local/sentry-flush-before-return": "error",
     },
   },
   // Project-specific rule overrides

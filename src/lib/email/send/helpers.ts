@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import logger from '@/lib/logger'
 
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nexpura.com'
 
@@ -25,7 +26,11 @@ export async function logEmail(params: {
   referenceId?: string
 }) {
   const admin = createAdminClient()
-  await admin.from('email_logs').insert({
+  // Side-effect log+continue: email_logs is the observability ledger
+  // for transactional email — a missed row means analytics undercounts,
+  // but the email was already sent by the time logEmail is called.
+  // Returning success/throwing would lie about the actual delivery.
+  const { error } = await admin.from('email_logs').insert({
     tenant_id: params.tenantId,
     email_type: params.emailType,
     recipient: params.recipient,
@@ -35,4 +40,9 @@ export async function logEmail(params: {
     reference_type: params.referenceType ?? null,
     reference_id: params.referenceId ?? null,
   })
+  if (error) {
+    logger.error('[email/logEmail] insert failed (non-fatal — email already sent, ledger gap)', {
+      tenantId: params.tenantId, emailType: params.emailType, recipient: params.recipient, err: error,
+    })
+  }
 }

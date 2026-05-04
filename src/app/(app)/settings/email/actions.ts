@@ -213,12 +213,21 @@ export async function verifyEmailDomain(): Promise<{ success?: boolean; verified
       const domainData = await domainResponse.json();
       const isVerified = domainData.status === "verified";
 
-      await admin.from("email_domains").update({
+      // Side-effect log+continue: this row mirrors Resend's domain state.
+      // The truth lives at Resend; this is a local cache for UI. If the
+      // update silently fails the local row is stale (UI shows old status)
+      // but the user can re-click verify — idempotent against Resend's
+      // API. Surface to Sentry for follow-up; don't fail the user-visible
+      // operation since the actual verification with Resend succeeded.
+      const { error: domainUpdErr } = await admin.from("email_domains").update({
         status: isVerified ? "verified" : "verifying",
         dns_records: domainData.records || emailDomain.dns_records,
         verified_at: isVerified ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       }).eq("id", emailDomain.id);
+      if (domainUpdErr) {
+        logger.error("[verifyEmailDomain] failed to mirror Resend status to email_domains row", { domainId: emailDomain.id, isVerified, err: domainUpdErr.message });
+      }
 
       revalidatePath("/settings/email");
       return { success: true, verified: isVerified };

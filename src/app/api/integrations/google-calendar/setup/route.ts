@@ -65,15 +65,35 @@ export const DELETE = withSentryFlush(async (_req: NextRequest) => {
     }
 
     // Clear google_calendar_event_id from appointments and jobs
-    await admin
+    // Kind C (best-effort observability log+continue). The integration
+    // row was already deleted above — the user's calendar is now
+    // disconnected. These two clears are cleanup of stale event_id
+    // pointers; if either fails the next reconnect+push will create
+    // duplicate events because old IDs still match. Log loudly so ops
+    // can run a manual sweep, but don't 500 the disconnect itself.
+    const { error: aptClearErr } = await admin
       .from("appointments")
       .update({ google_calendar_event_id: null })
       .eq("tenant_id", tenantId);
-      
-    await admin
+    if (aptClearErr) {
+      logger.error("[google-calendar/setup DELETE] appointments event_id clear failed; manual sweep needed before reconnect to avoid duplicate events", {
+        tenantId,
+        err: aptClearErr,
+      });
+    }
+
+    // Kind C (best-effort observability log+continue). Same rationale
+    // as the appointments clear above.
+    const { error: jobsClearErr } = await admin
       .from("jobs")
       .update({ google_calendar_event_id: null })
       .eq("tenant_id", tenantId);
+    if (jobsClearErr) {
+      logger.error("[google-calendar/setup DELETE] jobs event_id clear failed; manual sweep needed before reconnect to avoid duplicate events", {
+        tenantId,
+        err: jobsClearErr,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

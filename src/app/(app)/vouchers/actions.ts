@@ -222,9 +222,17 @@ export async function redeemVoucherManual(
   });
   if (rpcError) return { error: rpcError.message };
 
-  // Record the redemption history row (RPC handles balance; history is
-  // separate in this codebase to allow non-POS redemptions to log notes).
-  await admin.from("gift_voucher_redemptions").insert({
+  // Destructive return-error: the voucher balance has just been debited
+  // by the RPC above (atomic, locked, committed). gift_voucher_redemptions
+  // is the audit/history ledger that the customer-facing voucher detail
+  // view reads. If this insert silently fails the balance is correctly
+  // reduced but there's no record of the redemption → customer disputes,
+  // GST reporting gaps, no way to reverse the redemption. Surface so the
+  // operator can retry; the RPC won't double-debit because we'd retry the
+  // whole call (and the balance would already be at the target value, so
+  // the RPC clamps to zero on the second attempt — catch via duplicate
+  // history check is a Phase 2 concern, not in scope for this wrap).
+  const { error: redemptionLogErr } = await admin.from("gift_voucher_redemptions").insert({
     tenant_id: tenantId,
     voucher_id: id,
     sale_id: null,
@@ -232,6 +240,7 @@ export async function redeemVoucherManual(
     redeemed_by: userId,
     notes: notes ?? "Manual redemption",
   });
+  if (redemptionLogErr) return { error: redemptionLogErr.message };
 
   await logAuditEvent({
     tenantId, userId, action: "voucher_void", // closest action enum; full audit_action enum lacks voucher_redeem

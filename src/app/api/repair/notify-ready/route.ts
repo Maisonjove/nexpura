@@ -120,7 +120,14 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
           // reference_id / metadata (verified 2026-04-25). Drop them so
           // the audit row actually lands. Email gets persisted as
           // customer_email instead.
-          await admin.from("customer_communications").insert({
+          // Kind A-style throw INTO the existing try/catch (which
+          // increments `skipped` and continues to the next customer).
+          // The notification email already sent — losing the audit row
+          // for one customer is recoverable. Throwing keeps the supabase
+          // failure visible (vs swallowed) and routes through the
+          // existing skipped++ path so one bad row doesn't kill the
+          // batch.
+          const { error: commsErr } = await admin.from("customer_communications").insert({
             customer_id: customer.id,
             customer_email: customer.email,
             customer_name: customer.full_name,
@@ -131,6 +138,9 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
             sent_at: new Date().toISOString(),
             status: "sent",
           }).maybeSingle();
+          if (commsErr) {
+            throw new Error(`customer_communications insert failed: ${commsErr.message}`);
+          }
 
           notified++;
         } catch {
@@ -184,7 +194,11 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
 
           // Log communication. Same column-drift fix as the repair
           // branch — drop reference_type / reference_id / metadata.
-          await admin.from("customer_communications").insert({
+          // Kind A-style throw INTO the existing try/catch (same
+          // rationale as the repair branch above — notification email
+          // already sent, batch shouldn't die over one missing audit
+          // row).
+          const { error: commsErr } = await admin.from("customer_communications").insert({
             customer_id: customer.id,
             customer_email: customer.email,
             customer_name: customer.full_name,
@@ -195,6 +209,9 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
             sent_at: new Date().toISOString(),
             status: "sent",
           }).maybeSingle();
+          if (commsErr) {
+            throw new Error(`customer_communications insert failed: ${commsErr.message}`);
+          }
 
           notified++;
         } catch {

@@ -311,7 +311,13 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
   const inviteTokenHash = hashInviteToken(inviteToken);
   const inviteExpiresAt = new Date(Date.now() + INVITE_EXPIRY_MS).toISOString();
 
-  await admin
+  // Destructive return-error: this rotates the invite token + its hash on
+  // the team_members row. The email below uses inviteToken to build the
+  // invite URL. If this update silently fails, the email goes out with
+  // the new token but the DB still holds the OLD hash → the invitee
+  // clicks the link, hashInviteToken comparison fails, signup denied.
+  // Surface so the caller knows the email shouldn't be sent.
+  const { error: tokenUpdErr } = await admin
     .from("team_members")
     .update({
       invite_token: inviteToken,
@@ -319,6 +325,7 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
       invite_expires_at: inviteExpiresAt,
     })
     .eq("id", memberId);
+  if (tokenUpdErr) return { error: tokenUpdErr.message };
 
   // Send invite email
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://nexpura.com"}/invite/${inviteToken}`;

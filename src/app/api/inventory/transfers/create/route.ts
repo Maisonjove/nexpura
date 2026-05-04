@@ -97,7 +97,20 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     if (itemsError) {
       logger.error("Transfer items creation error:", itemsError);
       // Rollback - delete the transfer
-      await admin.from("stock_transfers").delete().eq("id", transfer.id);
+      // Kind C (best-effort observability log+continue). Saga
+      // compensating rollback: items insert failed, delete the orphan
+      // transfer header. If the rollback itself fails, the row stays
+      // as an item-less transfer — log loudly so ops can manually
+      // delete; we still return 500 below so the caller knows the
+      // transfer didn't go through.
+      const { error: rollbackErr } = await admin.from("stock_transfers").delete().eq("id", transfer.id);
+      if (rollbackErr) {
+        logger.error("[inventory/transfers/create] rollback of orphan transfer failed; manual cleanup needed", {
+          transferId: transfer.id,
+          itemsError: itemsError.message,
+          rollbackErr,
+        });
+      }
       return NextResponse.json({ error: "Failed to create transfer items" }, { status: 500 });
     }
 

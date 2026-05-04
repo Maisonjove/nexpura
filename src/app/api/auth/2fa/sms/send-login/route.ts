@@ -66,13 +66,21 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     // Store the code
-    await admin
+    // Kind A (auth/2FA lifecycle, destructive throw). If we send the
+    // SMS but fail to persist the code, the user receives a code that
+    // /verify-login can never match — they get stuck in a loop with no
+    // way out. Throw before SMS dispatch so we don't burn a Twilio
+    // message on a write that would have failed anyway.
+    const { error: codeStoreErr } = await admin
       .from('users')
       .update({
         sms_2fa_code: code,
         sms_2fa_code_expires_at: expiresAt.toISOString(),
       })
       .eq('id', userId);
+    if (codeStoreErr) {
+      throw new Error(`users sms_2fa_code persist failed: ${codeStoreErr.message}`);
+    }
 
     // Send SMS via the sandbox-aware Twilio helper. The helper no-ops in
     // preview/dev/SANDBOX_MODE; without this path the old raw fetch would

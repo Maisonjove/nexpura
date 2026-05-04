@@ -112,13 +112,25 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
     const shopifyProductId = String(data?.product?.id);
 
     // Store Shopify product ID back on the inventory item
-    await admin
+    // Kind B (server-action-style, destructive return-error). Shopify
+    // already created the product (irreversible from our side); if we
+    // fail to store the linkage the next push of the same item will
+    // create a duplicate Shopify product instead of updating. Surface
+    // 500 so the operator retries (the linkage store is idempotent —
+    // safe to retry against the same shopifyProductId).
+    const { error: linkErr } = await admin
       .from("inventory")
       .update({
         shopify_product_id: shopifyProductId,
         shopify_synced_at: new Date().toISOString(),
       })
       .eq("id", inventory_id);
+    if (linkErr) {
+      return NextResponse.json(
+        { error: `inventory shopify link save failed: ${linkErr.message}` },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({
       success: true,

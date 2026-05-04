@@ -9,11 +9,13 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 import { escapeHtml } from "@/lib/sanitize";
 import { decryptCustomerPii } from "@/lib/customer-pii";
+import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(
+export const POST = withSentryFlush(async (
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+) => {
   const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -206,7 +208,13 @@ export async function POST(
 
   // Log communication to customer_communications
   if (job.customer_id) {
-    await adminClient.from("customer_communications").insert({
+    // Kind C (best-effort observability log+continue). The receipt
+    // email already sent successfully by the time we reach here — the
+    // CRM history row is an audit-trail nice-to-have, not blocking.
+    // Log loudly so ops can backfill from Resend's delivery log if a
+    // jeweller asks "did the customer get the receipt?" and the row
+    // is missing.
+    const { error: commsErr } = await adminClient.from("customer_communications").insert({
       tenant_id: userData.tenant_id,
       customer_id: job.customer_id,
       type: "email_receipt",
@@ -214,7 +222,15 @@ export async function POST(
       sent_at: new Date().toISOString(),
       sent_by: user.id,
     });
+    if (commsErr) {
+      logger.error("[bespoke/email-receipt] customer_communications insert failed; receipt email already sent — backfill from Resend delivery log if needed", {
+        jobId: id,
+        tenantId: userData.tenant_id,
+        customerId: job.customer_id,
+        err: commsErr,
+      });
+    }
   }
 
   return NextResponse.json({ success: true });
-}
+});

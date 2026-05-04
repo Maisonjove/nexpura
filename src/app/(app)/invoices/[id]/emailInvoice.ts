@@ -307,10 +307,18 @@ export async function emailInvoice(
 
     // 8. Update invoice status to 'sent' if was draft
     if (invoice.status === "draft") {
-      await supabase
+      // Side-effect log+continue: the customer email already shipped via
+      // Resend above. If the status flip silently fails the invoice stays
+      // 'draft' even though it's been emailed; we accept that one-row drift
+      // rather than fail the whole operation (which would have the user
+      // retry and resend a duplicate email). Surface to Sentry for cleanup.
+      const { error: statusErr } = await supabase
         .from("invoices")
         .update({ status: "unpaid", sent_at: new Date().toISOString() })
         .eq("id", invoiceId);
+      if (statusErr) {
+        logger.error("[emailInvoice] failed to flip draft→unpaid after send", { invoiceId, err: statusErr.message });
+      }
 
       revalidatePath(`/invoices/${invoiceId}`);
       revalidatePath("/invoices");
@@ -318,7 +326,11 @@ export async function emailInvoice(
 
     // 9. Log to customer_communications
     if ((invoice as Record<string, unknown>).customer_id) {
-      await supabase.from("customer_communications").insert({
+      // Side-effect log+continue: customer_communications is the audit
+      // trail of outbound touches. The email is already sent; failing the
+      // call here would surface an error to the user and likely cause a
+      // duplicate resend. Drift is one missing audit row; surface to Sentry.
+      const { error: commLogErr } = await supabase.from("customer_communications").insert({
         tenant_id: userData.tenant_id,
         customer_id: (invoice as Record<string, unknown>).customer_id,
         type: "invoice",
@@ -326,6 +338,9 @@ export async function emailInvoice(
         sent_at: new Date().toISOString(),
         sent_by: user.id,
       });
+      if (commLogErr) {
+        logger.error("[emailInvoice] customer_communications insert failed", { invoiceId, err: commLogErr.message });
+      }
     }
 
     return { success: true };

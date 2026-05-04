@@ -1,6 +1,7 @@
 "use server"
 
 import { createAdminClient } from "@/lib/supabase/admin"
+import logger from "@/lib/logger"
 
 // Dedupe window for "same notification fired again" — Stripe webhook
 // retries, double-fired triggers, network jitter all push the same
@@ -54,7 +55,13 @@ export async function createNotification({
     return // dedup hit — already notified within the window
   }
 
-  await admin.from("notifications").insert({
+  // Side-effect log+continue: notifications is the in-app toast/inbox
+  // observability channel. A failed insert means the user doesn't see
+  // a banner for this event, but the underlying business action that
+  // triggered the call already succeeded. Callers (.catch wrappers in
+  // messaging.ts, route handlers) treat this as best-effort — preserve
+  // that contract by logging and returning normally.
+  const { error } = await admin.from("notifications").insert({
     tenant_id: tenantId,
     user_id: userId ?? null,
     type,
@@ -62,4 +69,9 @@ export async function createNotification({
     body: body ?? null,
     link: link ?? null,
   })
+  if (error) {
+    logger.error("[notifications] insert failed (non-fatal — in-app banner missed)", {
+      tenantId, userId, type, link, err: error,
+    })
+  }
 }

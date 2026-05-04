@@ -366,10 +366,16 @@ export async function updateTeamMemberLocations(
 
     // Also sync the junction table
     // First, delete existing entries
-    await admin
+    // Destructive return-error: this is the wipe phase of a sync to the
+    // team_member_locations junction. If delete silently fails, the
+    // insert below merges new rows on top of stale ones → duplicate
+    // grants and the team member ends up with access to MORE locations
+    // than allowed_location_ids says. Surface so the caller can retry.
+    const { error: locDelErr } = await admin
       .from("team_member_locations")
       .delete()
       .eq("team_member_id", memberId);
+    if (locDelErr) return { error: locDelErr.message };
 
     // Then insert new entries (if not "all locations")
     if (locationIds && locationIds.length > 0) {
@@ -377,7 +383,13 @@ export async function updateTeamMemberLocations(
         team_member_id: memberId,
         location_id: locId,
       }));
-      await admin.from("team_member_locations").insert(entries);
+      // Destructive return-error: the wipe above just succeeded — without
+      // these inserts the junction is empty for this member. RBAC
+      // location filters that read the junction will deny ALL locations,
+      // even though allowed_location_ids says otherwise. Surface so the
+      // caller can retry; on retry the wipe is idempotent.
+      const { error: locInsErr } = await admin.from("team_member_locations").insert(entries);
+      if (locInsErr) return { error: locInsErr.message };
     }
 
     await logAuditEvent({

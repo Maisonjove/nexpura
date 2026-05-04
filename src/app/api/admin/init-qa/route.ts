@@ -309,7 +309,20 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         status: "pending",
       }));
 
-      await supabase.from("qa_test_results").upsert(results, { onConflict: "checklist_item_id" });
+      // Kind B (server-action-style, destructive return-error). The
+      // checklist items were just inserted above; the qa_test_results
+      // upsert is the linked-row half — without it the QA run shows
+      // items with no result rows and the test runner has nothing to
+      // pivot off. Surface the failure so the admin caller can retry.
+      const { error: resultsErr } = await supabase
+        .from("qa_test_results")
+        .upsert(results, { onConflict: "checklist_item_id" });
+      if (resultsErr) {
+        return NextResponse.json(
+          { error: "Failed to upsert qa_test_results", details: resultsErr.message },
+          { status: 500 },
+        );
+      }
     }
 
     return NextResponse.json({

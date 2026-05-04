@@ -113,14 +113,20 @@ export async function createPassport(formData: FormData): Promise<void> {
 
   if (insertError || !passport) throw new Error("Failed to create passport");
 
-  // Insert created event
-  await supabase.from("passport_events").insert({
+  // Destructive throw: passport_events is the immutable provenance log for
+  // a passport (creation, ownership transfers, custom events). The passport
+  // row itself was just created; if this 'created' event silently fails the
+  // passport exists with no provenance history, breaking the public timeline
+  // view and downstream tracking. Surface so the caller can retry rather
+  // than ship a passport with a corrupt audit trail.
+  const { error: createdEventErr } = await supabase.from("passport_events").insert({
     passport_id: passport.id,
     tenant_id: tenantId,
     event_type: "created",
     event_data: { title, jewellery_type: jewelleryType },
     created_by: userId,
   });
+  if (createdEventErr) throw new Error(`Failed to log passport created event: ${createdEventErr.message}`);
 
   // Send passport email to owner if email is set
   if (currentOwnerEmail) {
@@ -219,14 +225,18 @@ export async function updatePassport(id: string, formData: FormData): Promise<vo
 
   if (error) throw new Error("Failed to update passport");
 
-  // Insert updated event
-  await supabase.from("passport_events").insert({
+  // Destructive throw: passport_events is the immutable history of the
+  // passport. The passport row above was just edited; if the 'updated'
+  // event silently fails the public timeline shows no record of the
+  // change, and provenance is broken. Surface so the caller can retry.
+  const { error: updatedEventErr } = await supabase.from("passport_events").insert({
     passport_id: id,
     tenant_id: tenantId,
     event_type: "updated",
     event_data: { title },
     created_by: userId,
   });
+  if (updatedEventErr) throw new Error(`Failed to log passport updated event: ${updatedEventErr.message}`);
 
   await logAuditEvent({
     tenantId,
@@ -294,7 +304,14 @@ export async function transferOwnership(
 
   if (error) throw new Error("Failed to transfer ownership");
 
-  await supabase.from("passport_events").insert({
+  // Destructive throw: ownership_transferred is the chain-of-custody event
+  // that captures who owned the piece before this transfer (previous_owner
+  // names/emails). The passport.current_owner_* fields above were just
+  // overwritten with the NEW owner — if this event insert silently fails,
+  // the previous owner is gone forever (overwritten on the row, never
+  // logged). That's a permanent provenance gap. Surface so the caller can
+  // retry before the previous-owner snapshot is irretrievable.
+  const { error: transferEventErr } = await supabase.from("passport_events").insert({
     passport_id: passportId,
     tenant_id: tenantId,
     event_type: "ownership_transferred",
@@ -307,6 +324,7 @@ export async function transferOwnership(
     },
     created_by: userId,
   });
+  if (transferEventErr) throw new Error(`Failed to log ownership transfer event: ${transferEventErr.message}`);
 
   await logAuditEvent({
     tenantId,

@@ -4,8 +4,9 @@ import { getTenantTaxConfig } from "@/lib/tenant-tax";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { requirePermission } from "@/lib/auth-context";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -116,16 +117,30 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Create Line Item
-    await adminClient.from("invoice_line_items").insert({
+    // Kind B (server-action-style, destructive return-error). The
+    // invoice header was just inserted above (newInvoice.id holds an
+    // FK target). If the line-item insert fails the invoice exists
+    // with no lines — its total wouldn't reconcile against
+    // SUM(line_items) and the customer would receive an invoice with
+    // no detail breakdown. Return 500 so the caller can rollback /
+    // retry; the orphan invoice header is a known cleanup task ops can
+    // grep for.
+    const { error: lineItemErr } = await adminClient.from("invoice_line_items").insert({
       tenant_id: tenantId,
       invoice_id: newInvoice.id,
       description,
       quantity: 1,
       unit_price: total,
     });
+    if (lineItemErr) {
+      return NextResponse.json(
+        { error: `invoice_line_items insert failed: ${lineItemErr.message}` },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({ success: true, invoiceId: newInvoice.id });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
-}
+});

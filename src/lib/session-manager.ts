@@ -8,6 +8,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { headers } from 'next/headers';
 import crypto from 'crypto';
+import * as Sentry from '@sentry/nextjs';
+import logger from '@/lib/logger';
 
 export interface UserSession {
   id: string;
@@ -85,8 +87,14 @@ export async function recordSession(
     const location = await getLocationFromIP(ip);
     
     const admin = createAdminClient();
-    
-    await admin.from('user_sessions').upsert({
+
+    // Side-effect log+continue with `audit_severity: "session_tracking"`
+    // (Joey-ACK 2026-05-04). Session recording is a security-audit signal;
+    // a failed upsert means we can't show this device on the user's
+    // sessions page or detect "new device" later, but blocking login
+    // because the audit row failed would be worse. The Sentry tag lets
+    // future alert rules monitor session-audit failures separately.
+    const { error: upsertErr } = await admin.from('user_sessions').upsert({
       user_id: userId,
       session_token_hash: hashToken(sessionToken),
       device_info: deviceInfo,
@@ -97,6 +105,14 @@ export async function recordSession(
     }, {
       onConflict: 'session_token_hash',
     });
+    if (upsertErr) {
+      Sentry.withScope((scope) => {
+        scope.setTag('audit_severity', 'session_tracking');
+        logger.error('[session-manager] recordSession upsert failed (non-fatal — security audit gap)', {
+          userId, deviceInfo, ip, err: upsertErr,
+        });
+      });
+    }
   } catch (error) {
     console.error('[session-manager] Failed to record session:', error);
     // Don't throw - session recording is non-critical
@@ -109,11 +125,24 @@ export async function recordSession(
 export async function touchSession(sessionToken: string): Promise<void> {
   try {
     const admin = createAdminClient();
-    await admin
+    // Side-effect log+continue with `audit_severity: "session_tracking"`
+    // (Joey-ACK 2026-05-04). last_active_at refresh is observability —
+    // a failure means the session shows stale on the user's sessions
+    // page, but the session itself is still valid. The Sentry tag keys
+    // session-audit alerting separately from generic write failures.
+    const { error: updErr } = await admin
       .from('user_sessions')
       .update({ last_active_at: new Date().toISOString() })
       .eq('session_token_hash', hashToken(sessionToken));
-  } catch (error) {
+    if (updErr) {
+      Sentry.withScope((scope) => {
+        scope.setTag('audit_severity', 'session_tracking');
+        logger.error('[session-manager] touchSession update failed (non-fatal — security audit gap)', {
+          err: updErr,
+        });
+      });
+    }
+  } catch {
     // Silent fail - non-critical
   }
 }

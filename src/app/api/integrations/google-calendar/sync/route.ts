@@ -74,11 +74,29 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
         });
 
         if (event?.id) {
-          await admin
+          // Kind C (best-effort observability log+continue, in-loop).
+          // The Google Calendar event is already created above. If this
+          // link save fails the next sync sweep will create ANOTHER
+          // event for the same appointment (filter is event_id IS NULL)
+          // — duplicate calendar entries. Log loudly with the orphan
+          // Google event ID so ops can either re-link or delete the
+          // dup. Continue the batch so a single bad row doesn't kill
+          // sync for the rest.
+          const { error: aptLinkErr } = await admin
             .from("appointments")
             .update({ google_calendar_event_id: event.id })
             .eq("id", apt.id);
-          synced.appointments++;
+          if (aptLinkErr) {
+            logger.error("[google-calendar/sync] appointments link save failed; orphan Google event will dup on next sync", {
+              tenantId,
+              appointmentId: apt.id,
+              orphanGoogleEventId: event.id,
+              calendarId: config.calendar_id,
+              err: aptLinkErr,
+            });
+          } else {
+            synced.appointments++;
+          }
         }
       }
     }
@@ -113,21 +131,44 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
         });
 
         if (event?.id) {
-          await admin
+          // Kind C (best-effort observability log+continue, in-loop).
+          // Same rationale as the appointments link save above —
+          // orphan Google event will duplicate on next sync, log it.
+          const { error: repairLinkErr } = await admin
             .from("repairs")
             .update({ google_calendar_event_id: event.id })
             .eq("id", job.id);
-          synced.repairs++;
+          if (repairLinkErr) {
+            logger.error("[google-calendar/sync] repairs link save failed; orphan Google event will dup on next sync", {
+              tenantId,
+              repairId: job.id,
+              orphanGoogleEventId: event.id,
+              calendarId: config.calendar_id,
+              err: repairLinkErr,
+            });
+          } else {
+            synced.repairs++;
+          }
         }
       }
     }
 
     // Update last_sync_at
-    await admin
+    // Kind C (best-effort observability log+continue). last_sync_at is
+    // pure dashboard timestamp / freshness indicator. The actual sync
+    // results are returned to the caller above; if the timestamp write
+    // fails it just means the dashboard shows stale "last synced".
+    const { error: lastSyncErr } = await admin
       .from("integrations")
       .update({ last_sync_at: new Date().toISOString() })
       .eq("tenant_id", tenantId)
       .eq("type", "google_calendar");
+    if (lastSyncErr) {
+      logger.error("[google-calendar/sync] last_sync_at update failed", {
+        tenantId,
+        err: lastSyncErr,
+      });
+    }
 
     return NextResponse.json({ 
       success: true, 

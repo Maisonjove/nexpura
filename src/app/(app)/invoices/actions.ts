@@ -199,7 +199,16 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
         },
       });
       
-      await supabase.from("invoices").update({ stripe_payment_link: paymentLink.url }).eq("id", invoice.id);
+      // Side-effect log+continue: the parent try/catch is explicitly tagged
+      // "non-fatal" for the entire Stripe payment-link path — the invoice
+      // already exists and the Stripe payment link has already been created
+      // as an external resource. If we can't persist its URL on the invoice
+      // row we accept the drift (invoice missing payment link) rather than
+      // unwind the invoice creation. Surface to Sentry for follow-up.
+      const { error: linkUpdateErr } = await supabase.from("invoices").update({ stripe_payment_link: paymentLink.url }).eq("id", invoice.id);
+      if (linkUpdateErr) {
+        logger.error("[createInvoice] failed to persist Stripe payment link URL", { invoiceId: invoice.id, paymentLinkUrl: paymentLink.url, err: linkUpdateErr.message });
+      }
       logger.info(`[createInvoice] Stripe payment link created: ${paymentLink.url}`);
     } catch (stripeErr) {
       logger.warn("[createInvoice] Stripe payment link failed (non-fatal):", stripeErr);
@@ -307,8 +316,13 @@ export async function updateInvoice(
 
   if (invErr) throw new Error(`Failed to update invoice: ${invErr.message}`);
 
-  // Delete old line items and re-insert
-  await supabase.from("invoice_line_items").delete().eq("invoice_id", id);
+  // Destructive throw (caught by outer try/catch → return-error): this is
+  // the wipe phase of an edit-invoice delete-and-reinsert. If the delete
+  // silently fails the new line items are appended to the old set —
+  // duplicate rows + wrong totals on the invoice. Surface so the caller
+  // can retry rather than corrupt the row.
+  const { error: liDelErr } = await supabase.from("invoice_line_items").delete().eq("invoice_id", id);
+  if (liDelErr) throw new Error(`Failed to clear invoice line items: ${liDelErr.message}`);
 
   if (input.line_items.length > 0) {
     const lineItemsData = input.line_items.map((item, idx) => ({

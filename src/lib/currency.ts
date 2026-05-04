@@ -3,6 +3,7 @@
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import logger from "@/lib/logger";
 
 export interface Currency {
   code: string;
@@ -83,13 +84,23 @@ export async function getExchangeRate(
       if (data.success && data.result) {
         const rate = data.result;
 
-        // Cache the rate
-        await admin.from("currency_exchange_rates").insert({
+        // Cache the rate.
+        // Side-effect log+continue: this is a read-through cache write —
+        // a failed insert just means the next call refetches from
+        // exchangerate.host instead of hitting the cached row. The
+        // returned rate (this call) is unaffected. Loss is observability
+        // (cache miss-rate) and a few extra outbound API calls.
+        const { error: cacheErr } = await admin.from("currency_exchange_rates").insert({
           base_currency: fromCurrency,
           target_currency: toCurrency,
           rate,
           fetched_at: new Date().toISOString(),
         });
+        if (cacheErr) {
+          logger.error("[currency] cache insert failed (non-fatal — next call refetches)", {
+            fromCurrency, toCurrency, err: cacheErr,
+          });
+        }
 
         return rate;
       }

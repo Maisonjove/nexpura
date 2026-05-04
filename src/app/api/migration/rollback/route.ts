@@ -126,11 +126,25 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
     }
   }
 
-  await admin.from("migration_sessions")
+  // Kind B (server-action-style, destructive return-error). Per-table
+  // hard-deletes already executed above; this status flip is the
+  // session's only signal that rollback completed. If it fails silently
+  // the operator sees "rollback in progress" forever even though the
+  // data is already gone — surface 500 so they retry the flip.
+  const { error: sessionRollbackErr } = await admin.from("migration_sessions")
     .update({ status: "rolled_back", updated_at: new Date().toISOString() })
     .eq("id", body.sessionId);
+  if (sessionRollbackErr) {
+    return NextResponse.json(
+      { error: `migration_sessions rolled_back flip failed: ${sessionRollbackErr.message}` },
+      { status: 500 },
+    );
+  }
 
-  await admin.from("migration_logs").insert({
+  // Kind C (best-effort observability log+continue). The audit log of
+  // what got deleted; recoverable from deletedByTable + the session
+  // row's rolled_back timestamp if missing.
+  const { error: rollbackLogErr } = await admin.from("migration_logs").insert({
     tenant_id: tenantId,
     session_id: body.sessionId,
     action: "session_rolled_back",
@@ -140,6 +154,13 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
       total_deleted: Object.values(deletedByTable).reduce((s, n) => s + n, 0),
     },
   });
+  if (rollbackLogErr) {
+    logger.error('[migration/rollback] session_rolled_back log insert failed', {
+      sessionId: body.sessionId,
+      tenantId,
+      err: rollbackLogErr,
+    });
+  }
 
   await logAuditEvent({
     tenantId,

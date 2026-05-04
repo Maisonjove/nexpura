@@ -62,7 +62,24 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
         suggestions: ['Review field mappings carefully', 'Check for duplicate customers before importing'],
         confidence: 0.5,
       };
-      await admin.from('migration_sessions').update({ ai_summary: fallbackSummary }).eq('id', sessionId).eq('tenant_id', tenantId);
+      // Kind C (best-effort observability log+continue). Fallback
+      // summary path (no OPENAI_API_KEY). The ai_summary persisted to
+      // the session row is a UI cache — the same fallback is returned
+      // to the caller below regardless. If the persist fails the next
+      // page-load just regenerates the same fallback. Log so ops sees
+      // the persistence error.
+      const { error: fallbackPersistErr } = await admin
+        .from('migration_sessions')
+        .update({ ai_summary: fallbackSummary })
+        .eq('id', sessionId)
+        .eq('tenant_id', tenantId);
+      if (fallbackPersistErr) {
+        logger.error('[migration/summarize] fallback ai_summary persist failed', {
+          sessionId,
+          tenantId,
+          err: fallbackPersistErr,
+        });
+      }
       return NextResponse.json({ summary: fallbackSummary });
     }
 
@@ -108,7 +125,23 @@ Write a concise migration summary. Return JSON:
     const aiData = await res.json();
     const summary = JSON.parse(aiData.choices[0].message.content);
 
-    await admin.from('migration_sessions').update({ ai_summary: summary }).eq('id', sessionId).eq('tenant_id', tenantId);
+    // Kind C (best-effort observability log+continue). The summary is
+    // returned to the caller below either way — persisting it to the
+    // session row caches the AI output so we don't re-charge OpenAI on
+    // every page-load. If the persist fails the next view will just
+    // re-generate; log so we can investigate.
+    const { error: summaryPersistErr } = await admin
+      .from('migration_sessions')
+      .update({ ai_summary: summary })
+      .eq('id', sessionId)
+      .eq('tenant_id', tenantId);
+    if (summaryPersistErr) {
+      logger.error('[migration/summarize] ai_summary persist failed', {
+        sessionId,
+        tenantId,
+        err: summaryPersistErr,
+      });
+    }
 
     return NextResponse.json({ summary });
   } catch (err) {

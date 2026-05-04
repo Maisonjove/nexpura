@@ -179,13 +179,17 @@ export async function resendEmailLog(logId: string) {
     });
     if (sendError) return { error: sendError.message };
 
-    // Log re-send. email_logs has no sent_at column — created_at is the
-    // canonical timestamp, and we don't want to clobber it on re-send;
-    // just bump the status back to 'sent' and clear bounce_reason.
-    await supabase
+    // Destructive return-error: email_logs status is the source of truth for
+    // whether a previously-bounced email succeeded on re-send. If this update
+    // silently fails the row stays in 'bounced' state forever — the user
+    // sees no feedback that the resend worked, and re-clicking "resend"
+    // dispatches a duplicate email. Surface the error so the caller knows
+    // the row is stale even though the email itself went out above.
+    const { error: logUpdateErr } = await supabase
       .from("email_logs")
       .update({ status: "sent", bounce_reason: null })
       .eq("id", logId);
+    if (logUpdateErr) return { error: logUpdateErr.message };
 
     return { success: true };
   } catch (err) {

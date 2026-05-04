@@ -99,7 +99,14 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       `\n[Merged ${secondaryIds.length} customer record(s) on ${new Date().toISOString()}]`
     ].filter(Boolean).join('\n');
 
-    await admin
+    // Kind B (server-action-style, destructive return-error). This is
+    // the merge of metadata (tags, VIP flag, audit-trail notes) onto
+    // the primary customer. If this UPDATE fails, the secondary FK
+    // re-pointing below still runs — so child rows move to the primary
+    // but the primary's tags/VIP/notes never reflect the merge. Surface
+    // the failure so the operator retries before the irreversible
+    // re-point step.
+    const { error: primaryUpdErr } = await admin
       .from('customers')
       .update({
         tags: Array.from(allTags),
@@ -108,6 +115,12 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         updated_at: new Date().toISOString(),
       })
       .eq('id', primaryId);
+    if (primaryUpdErr) {
+      return NextResponse.json(
+        { error: `Primary customer metadata merge failed: ${primaryUpdErr.message}` },
+        { status: 500 },
+      );
+    }
 
     // Joey 2026-05-03 P2-E audit: pre-fix this list had 12 entries
     // including 2 dead ones (`enquiries` — real name shop_enquiries,

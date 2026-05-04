@@ -10,6 +10,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getIntegration, upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 interface WooConfig {
   store_url: string;
@@ -208,15 +209,32 @@ export async function exportInventoryToWoo(tenantId: string): Promise<SyncResult
             body: JSON.stringify(productData),
           }
         );
-        // Save WooCommerce product ID
-        await admin.from("inventory").update({
+        // Save WooCommerce product ID. Cron-runner log+continue (matches
+        // shopify/sync.ts pattern in PR-B3): a failed Woo-IDs writeback
+        // means the next sync run treats this item as "not linked yet"
+        // and tries to create another WooCommerce product (duplicate).
+        // Worth surfacing via Sentry but not aborting the export — the
+        // remaining items still benefit from this run.
+        const { error: linkErr } = await admin.from("inventory").update({
           woo_product_id: String(result.id),
           last_synced_at: new Date().toISOString(),
         }).eq("id", item.id);
+        if (linkErr) {
+          logger.error("[woo-sync] inventory woo-IDs writeback failed (non-fatal — next run may create duplicate Woo product)", {
+            tenantId, inventoryId: item.id, wooProductId: result.id, err: linkErr,
+          });
+        }
       }
 
-      // Update last_synced_at
-      await admin.from("inventory").update({ last_synced_at: new Date().toISOString() }).eq("id", item.id);
+      // Update last_synced_at. Cron-runner log+continue: stale
+      // last_synced_at on one row is observability-only — the actual
+      // sync to Woo above already succeeded. Loop continues.
+      const { error: tsErr } = await admin.from("inventory").update({ last_synced_at: new Date().toISOString() }).eq("id", item.id);
+      if (tsErr) {
+        logger.error("[woo-sync] inventory last_synced_at update failed (non-fatal — Woo sync above succeeded)", {
+          tenantId, inventoryId: item.id, err: tsErr,
+        });
+      }
       exported++;
     } catch (err) {
       errors.push(`Item ${item.id}: ${err instanceof Error ? err.message : "Error"}`);
@@ -387,7 +405,15 @@ export async function importOrdersFromWoo(tenantId: string): Promise<SyncResult>
             .eq("sku", li.sku)
             .single();
 
-          await admin.from("sale_items").insert({
+          // Cron-runner log+continue (matches shopify/sync.ts orders
+          // pattern). Note: this CAN leave a sale row without all its
+          // line-item children if individual inserts fail mid-loop —
+          // same partial-state caveat as shopify. Sentry surfaces the
+          // miss; reconciliation via the next sync run + the sale row's
+          // total catches discrepancies. Aborting the loop on one bad
+          // line item would lose the rest of the order's items, so
+          // continue.
+          const { error: lineErr } = await admin.from("sale_items").insert({
             tenant_id: tenantId,
             sale_id: sale!.id,
             inventory_id: inventoryItem?.id || null,
@@ -395,6 +421,11 @@ export async function importOrdersFromWoo(tenantId: string): Promise<SyncResult>
             unit_price: li.price,
             total: li.quantity * li.price,
           });
+          if (lineErr) {
+            logger.error("[woo-sync/orders] sale_items insert failed (non-fatal — see partial-state caveat)", {
+              tenantId, saleId: sale!.id, sku: li.sku, err: lineErr,
+            });
+          }
         }
 
         imported++;

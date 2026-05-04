@@ -169,14 +169,19 @@ export async function createBespokeJob(
 
   if (error) return { error: error.message };
 
-  // Insert initial stage entry
-  await supabase.from("bespoke_job_stages").insert({
+  // Destructive return-error: this is the initial stage row for a freshly
+  // created bespoke job. If it silently fails the job exists with no stage
+  // history, so the timeline view is incomplete and downstream stage
+  // transitions reference a missing root — surface the error so the caller
+  // can retry rather than half-create the record.
+  const { error: stageInsertErr } = await supabase.from("bespoke_job_stages").insert({
     tenant_id: tenantId,
     job_id: data.id,
     stage: "enquiry",
     notes: "Job created",
     created_by: userId,
   });
+  if (stageInsertErr) return { error: stageInsertErr.message };
 
   // Log initial status to tracking history
   await logStatusChange({
@@ -372,7 +377,14 @@ export async function advanceJobStage(
           const message = `Hi ${firstName}, your ${jobType} is ready for collection at ${storeName}. Please contact us to arrange pickup.`;
           const smsResult = await sendTwilioSms(phone, message);
           if (smsResult.success) {
-            await admin.from("sms_sends").insert({
+            // Side-effect log+continue: this is the audit row recording an
+            // SMS that already went out via Twilio. The parent block is
+            // explicitly fire-and-forget for the customer-ready notify path
+            // (the stage transition has already been committed above). On
+            // failure we surface to Sentry but do not unwind the stage move
+            // — drift is accepted as a one-row sms_sends gap, not a duplicate
+            // SMS to the customer.
+            const { error: smsLogErr } = await admin.from("sms_sends").insert({
               tenant_id: tenantId,
               customer_id: jobData.customer_id ?? null,
               phone,
@@ -380,6 +392,9 @@ export async function advanceJobStage(
               status: "sent",
               twilio_sid: smsResult.messageId ?? null,
             });
+            if (smsLogErr) {
+              logger.error("[bespoke/advanceJobStage] sms_sends insert failed", { jobId, err: smsLogErr.message });
+            }
           }
         }
       }

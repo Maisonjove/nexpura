@@ -68,10 +68,20 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       // Degrade gracefully
-      await admin.from('migration_files').update({
+      // Kind B (server-action-style, destructive return-error). The
+      // operator needs to know the file failed to classify so they can
+      // act. If the status flip itself fails, the file is silently
+      // stuck in whatever status it was — surface 500 over a fake-OK.
+      const { error: degradeErr } = await admin.from('migration_files').update({
         status: 'needs_review',
         classification_notes: 'AI classification unavailable — please review manually',
       }).eq('id', fileId).eq('tenant_id', tenantId);
+      if (degradeErr) {
+        return NextResponse.json(
+          { error: `migration_files needs_review flip failed: ${degradeErr.message}` },
+          { status: 500 },
+        );
+      }
       return NextResponse.json({ status: 'needs_review' });
     }
 
@@ -129,13 +139,25 @@ Return JSON with:
     const result = JSON.parse(aiData.choices[0].message.content);
 
     // Update the file record (reuse admin client from earlier)
-    await admin.from('migration_files').update({
+    // Kind B (server-action-style, destructive return-error). The
+    // classification result is the file's only persistent record of the
+    // AI's analysis — without this UPDATE the migration UI keeps
+    // showing "classifying..." while the OpenAI cost has already been
+    // burned. Surface 500 so the operator retries (the OpenAI call is
+    // idempotent enough that the next try will land in the same spot).
+    const { error: classifyUpdErr } = await admin.from('migration_files').update({
       detected_entity: result.detectedEntity,
       detected_platform: result.detectedPlatform,
       confidence_score: result.confidence,
       status: result.confidence >= 0.6 ? 'classified' : 'needs_review',
       classification_notes: result.reasoning,
     }).eq('id', fileId).eq('tenant_id', tenantId);
+    if (classifyUpdErr) {
+      return NextResponse.json(
+        { error: `migration_files classification update failed: ${classifyUpdErr.message}` },
+        { status: 500 },
+      );
+    }
 
     // Create mapping record
     if (result.suggestedMappings && result.suggestedMappings.length > 0) {
@@ -156,13 +178,24 @@ Return JSON with:
         status: m.status || (m.confidence >= 0.8 ? 'auto' : 'review'),
       }));
 
-      await admin.from('migration_mappings').upsert({
+      // Kind B (server-action-style, destructive return-error). The
+      // suggested mappings are the heart of the classification — the
+      // UI's mapping editor reads from this row. If the upsert silently
+      // fails the operator gets a successful-looking classify response
+      // with no mapping suggestions to edit.
+      const { error: mappingsUpsertErr } = await admin.from('migration_mappings').upsert({
         tenant_id: tenantId,
         session_id: sessionId,
         file_id: fileId,
         entity_type: result.detectedEntity,
         mappings,
       });
+      if (mappingsUpsertErr) {
+        return NextResponse.json(
+          { error: `migration_mappings upsert failed: ${mappingsUpsertErr.message}` },
+          { status: 500 },
+        );
+      }
     }
 
     return NextResponse.json({
@@ -182,10 +215,22 @@ Return JSON with:
       const { fileId } = await req.json().catch(() => ({} as { fileId?: string }));
       if (fileId) {
         const admin = createAdminClient();
-        await admin.from('migration_files').update({
+        // Kind C (best-effort observability log+continue). We're already
+        // in the outer catch — the route is about to return 200 with
+        // status: 'needs_review' as a degraded-graceful path. If THIS
+        // status flip itself errors, log it; the empty catch around this
+        // block was already swallowing it. The row stays in classifying
+        // state; ops will see the error and retry the classify.
+        const { error: degradeErr } = await admin.from('migration_files').update({
           status: 'needs_review',
           classification_notes: 'Classification failed — please review manually',
         }).eq('id', fileId);
+        if (degradeErr) {
+          logger.error('[migration/classify] graceful-degrade status flip failed; file stuck in classifying state', {
+            fileId,
+            err: degradeErr,
+          });
+        }
       }
     } catch {}
     return NextResponse.json({ error: errorMessage, status: 'needs_review' }, { status: 200 });

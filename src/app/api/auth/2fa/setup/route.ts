@@ -48,13 +48,21 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     // timestamp; /verify pulls from there and ignores the body's
     // secret. Migration 20260425d_totp_pending_secret.
     const admin = createAdminClient();
-    await admin
+    // Kind A (auth/2FA lifecycle, destructive throw). If this UPDATE
+    // fails the candidate secret never lands server-side; /verify would
+    // then look up totp_pending_secret on next step and find nothing,
+    // leaving the user stuck mid-setup with no rollback. Throw → outer
+    // try/catch returns the 500 the user already expects.
+    const { error: pendingErr } = await admin
       .from('users')
       .update({
         totp_pending_secret: secret,
         totp_pending_at: new Date().toISOString(),
       })
       .eq('id', user.id);
+    if (pendingErr) {
+      throw new Error(`users totp_pending update failed: ${pendingErr.message}`);
+    }
 
     // Generate QR code (still returned so the user's authenticator app
     // can enroll the same secret). The secret is also returned for the

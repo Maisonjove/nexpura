@@ -162,11 +162,29 @@ export const POST = withSentryFlush(async (_req: NextRequest) => {
           const data = await res.json();
           const xeroId = data?.Invoices?.[0]?.InvoiceID;
           if (xeroId) {
-            await admin
+            // Kind C (best-effort observability log+continue, in-loop).
+            // Xero already created the invoice (irreversible from our
+            // side). If we lose the linkage, the next sync sweep will
+            // pick this same invoice up (filter excludes rows with
+            // xero_invoice_id set) and create a DUPLICATE in Xero — a
+            // bookkeeping mess. Log loudly with the orphan Xero ID so
+            // ops can manually re-link or void; continue the batch so
+            // one bad row doesn't kill sync for the rest.
+            const { error: linkErr } = await admin
               .from("invoices")
               .update({ xero_invoice_id: xeroId })
               .eq("id", invoice.id);
-            synced.push(invoice.id);
+            if (linkErr) {
+              errors.push(`Invoice ${invoice.invoice_number}: link save failed (orphan Xero ID ${xeroId}): ${linkErr.message}`);
+              logger.error("[xero/sync] invoice link save failed; orphan Xero invoice will dup on next sync", {
+                tenantId,
+                invoiceId: invoice.id,
+                orphanXeroInvoiceId: xeroId,
+                err: linkErr,
+              });
+            } else {
+              synced.push(invoice.id);
+            }
           }
         } else {
           const text = await res.text();
@@ -178,11 +196,21 @@ export const POST = withSentryFlush(async (_req: NextRequest) => {
     }
 
     // Update last_sync_at
-    await admin
+    // Kind C (best-effort observability log+continue). last_sync_at is
+    // dashboard freshness — not auth state. Sync results are returned
+    // to the caller above; if the timestamp write fails the dashboard
+    // shows "last synced" lagging real time.
+    const { error: lastSyncErr } = await admin
       .from("integrations")
       .update({ last_sync_at: new Date().toISOString() })
       .eq("tenant_id", tenantId)
       .eq("type", "xero");
+    if (lastSyncErr) {
+      logger.error("[xero/sync] last_sync_at update failed", {
+        tenantId,
+        err: lastSyncErr,
+      });
+    }
 
     return NextResponse.json({
       synced: synced.length,

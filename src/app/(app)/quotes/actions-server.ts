@@ -460,14 +460,26 @@ export async function convertQuoteToSale(quoteId: string): Promise<{ id?: string
       inventory_id: null,
       sku: null,
     }));
-    await supabase.from("sale_items").insert(itemsRows);
+    // Destructive return-error: the sale row was just created with totals
+    // computed from these items. If sale_items silently fails to insert,
+    // the sale exists with the correct total but zero line items —
+    // receipt printing, GST breakdown, and inventory tracking all break.
+    // Surface so the caller can retry rather than ship a half-built sale.
+    const { error: itemsErr } = await supabase.from("sale_items").insert(itemsRows);
+    if (itemsErr) return { error: itemsErr.message };
   }
 
-  await supabase
+  // Destructive return-error: the quote→sale conversion has just succeeded
+  // (sale + line items are committed). Flipping the quote to 'converted'
+  // is what prevents a second conversion. If this update silently fails
+  // the quote remains 'open' and a follow-up click creates a duplicate
+  // sale (and a second sale_items insert) for the same goods.
+  const { error: quoteUpdErr } = await supabase
     .from("quotes")
     .update({ status: "converted" })
     .eq("id", quoteId)
     .eq("tenant_id", ctx.tenantId);
+  if (quoteUpdErr) return { error: quoteUpdErr.message };
 
   revalidatePath("/quotes");
   revalidatePath(`/quotes/${quoteId}`);

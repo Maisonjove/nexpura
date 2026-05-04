@@ -85,12 +85,23 @@ export async function runOverdueAutomation(): Promise<{ sent: number; errors: nu
           });
 
           if (emailResult.success) {
-            // Record that this step was sent
+            // Record that this step was sent.
+            // Side-effect log+continue: cron-runner pattern. The email
+            // already went out — losing the timestamp marker means the
+            // next cron run will resend the same step (customer gets a
+            // duplicate reminder). That's an annoying-but-bounded UX
+            // bug, far better than throwing and aborting the rest of
+            // the overdue sweep across other invoices.
             const updatedSentAt = { ...sentAt, [stepKey]: new Date().toISOString() };
-            await admin
+            const { error: stepUpdErr } = await admin
               .from("invoices")
               .update({ overdue_reminder_sent_at: updatedSentAt })
               .eq("id", invoice.id);
+            if (stepUpdErr) {
+              logger.error("[overdue-automation] reminder-sent marker update failed (non-fatal — email sent, may resend next run)", {
+                invoiceId: invoice.id, stepKey, err: stepUpdErr,
+              });
+            }
             sent++;
           } else {
             errors++;
