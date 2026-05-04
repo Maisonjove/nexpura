@@ -2,6 +2,18 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import unusedImports from "eslint-plugin-unused-imports";
+// Local plugin: catches the swallowed-error + cacheComponents-stale-UI
+// patterns that the P2-F audit (PR #129 / #130 / #131) named as
+// systemic. See eslint-rules/*.mjs for the rule sources + rationale.
+import noBareSupabaseWrite from "./eslint-rules/no-bare-supabase-write.mjs";
+import requireConnectionInAdminPages from "./eslint-rules/require-connection-in-admin-pages.mjs";
+
+const localPlugin = {
+  rules: {
+    "no-bare-supabase-write": noBareSupabaseWrite,
+    "require-connection-in-admin-pages": requireConnectionInAdminPages,
+  },
+};
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -24,6 +36,7 @@ const eslintConfig = defineConfig([
   {
     plugins: {
       "unused-imports": unusedImports,
+      local: localPlugin,
     },
     rules: {
       // Auto-fix unused imports
@@ -37,6 +50,14 @@ const eslintConfig = defineConfig([
           argsIgnorePattern: "^_",
         },
       ],
+      // Bleeding-stops layer for the swallowed-error pattern (P2-F
+      // audit). Starts at `warn` so the existing 151 violations across
+      // the codebase don't break CI; PR-B4 flips this to `error` after
+      // the wrap PRs (B2 + B3) clear them.
+      "local/no-bare-supabase-write": "warn",
+      // Bleeding-stops layer for the cacheComponents-stale-UI pattern
+      // (PR #130 / #131). Same warn → error progression as above.
+      "local/require-connection-in-admin-pages": "warn",
     },
   },
   // Project-specific rule overrides

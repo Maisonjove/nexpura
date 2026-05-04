@@ -285,7 +285,13 @@ export async function POST(request: NextRequest) {
     // check → "duplicate: true" 200 → state mutation never completed.
     if (svixId) {
       try {
-        await supabase.from("idempotency_locks").delete().eq("key", `resend_event:${svixId}`);
+        const { error: rollbackErr } = await supabase
+          .from("idempotency_locks")
+          .delete()
+          .eq("key", `resend_event:${svixId}`);
+        if (rollbackErr) {
+          logger.error("[resend-webhook] failed to roll back idempotency lock", { svixId, err: rollbackErr });
+        }
       } catch (rollbackErr) {
         logger.error("[resend-webhook] failed to roll back idempotency lock", { svixId, err: rollbackErr });
       }
