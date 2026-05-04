@@ -1,37 +1,36 @@
 import Link from "next/link";
+import { ChatBubbleLeftRightIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
 
 export const metadata = { title: "Bulk SMS — Nexpura" };
 
-/**
- * Bulk SMS landing page. SMS marketing is currently routed through the
- * WhatsApp campaigns surface (richer media, lower per-message cost,
- * higher open rates for AU jewellery customers). Pre-fix this page
- * silently `redirect()`d to /marketing/whatsapp-campaigns which
- * confused users who linked into /marketing/bulk-sms expecting an SMS
- * builder. Now we render an explicit notice with a link, so the user
- * knows where the feature actually lives.
- */
 export default function BulkSMSPage() {
   return (
-    <div className="max-w-xl mx-auto py-20 px-4 text-center space-y-6">
-      <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto text-2xl">
-        💬
-      </div>
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-900">Bulk SMS has moved</h1>
-        <p className="text-stone-500 mt-2 text-sm leading-relaxed">
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+      <div className="max-w-[640px] mx-auto px-6 sm:px-10 lg:px-16 py-20 lg:py-28 text-center">
+        <ChatBubbleLeftRightIcon
+          className="w-10 h-10 mx-auto text-stone-300 mb-8"
+          strokeWidth={1.5}
+        />
+        <p className="text-[0.75rem] tracking-luxury uppercase text-stone-400 mb-4">
+          Marketing
+        </p>
+        <h1 className="font-serif text-4xl sm:text-5xl tracking-tight text-stone-900 leading-[1.05] mb-5">
+          Bulk SMS has moved
+        </h1>
+        <p className="text-stone-500 text-base leading-relaxed max-w-md mx-auto mb-10">
           SMS marketing now runs through the WhatsApp campaigns surface — richer
           media, better delivery rates, and the same recipient picker. Plain SMS
           fallback fires automatically when the recipient isn&apos;t reachable on
           WhatsApp.
         </p>
+        <Link
+          href="/marketing/whatsapp-campaigns"
+          className="nx-btn-primary inline-flex items-center gap-2"
+        >
+          Open WhatsApp Campaigns
+          <ArrowRightIcon className="w-4 h-4" strokeWidth={1.5} />
+        </Link>
       </div>
-      <Link
-        href="/marketing/whatsapp-campaigns"
-        className="inline-flex items-center gap-2 px-6 py-3 bg-nexpura-charcoal text-white rounded-xl font-medium text-sm hover:bg-nexpura-charcoal-700 transition-colors"
-      >
-        Open WhatsApp Campaigns →
-      </Link>
     </div>
   );
 }
