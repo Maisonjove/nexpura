@@ -520,13 +520,13 @@ export async function createPOSSale(
           if (invErr && /sale_id|schema cache/i.test(invErr.message)) {
             // Retry without sale_id so POS invoice creation doesn't silently
             // disappear on schemas missing the column.
-            const retry = await admin
+            const { data: retryData, error: retryErr } = await admin
               .from("invoices")
               .insert(basePayload)
               .select("id")
               .single();
-            newInvoice = retry.data;
-            invErr = retry.error;
+            newInvoice = retryData;
+            invErr = retryErr;
           }
 
           if (newInvoice) {
