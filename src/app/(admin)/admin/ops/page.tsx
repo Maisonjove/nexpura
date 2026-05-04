@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -52,6 +53,9 @@ function LoadingBlock({ label }: { label: string }) {
 }
 
 async function PastDueTenantsSection() {
+  // cacheComponents — see PR #130 / (admin)/layout.tsx for the
+  // pattern. Without this the body's render is implicitly cached.
+  await connection();
   const admin = createAdminClient();
   const { data } = await admin
     .from("tenants")

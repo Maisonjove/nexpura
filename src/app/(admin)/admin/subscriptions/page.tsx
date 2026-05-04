@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
@@ -78,6 +79,8 @@ export default function SubscriptionsPage() {
 // Dynamic body. DB reads only; no request-scoped access.
 // ─────────────────────────────────────────────────────────────────────────
 async function SubscriptionsBody() {
+  // cacheComponents — see PR #130.
+  await connection();
   const subs = await loadSubscriptionsData();
 
   return (

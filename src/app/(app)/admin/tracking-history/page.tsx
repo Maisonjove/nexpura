@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -48,6 +49,13 @@ export default function TrackingHistoryPage() {
 }
 
 async function TrackingHistoryBody() {
+  // cacheComponents — see PR #130. Read-only view but the marker is
+  // added for consistency across (admin)-style surfaces. Read-only
+  // doesn't have the mutation-then-stale risk, but tracking-history
+  // can be navigated to from other surfaces that mutate (the message
+  // read-status updates from /repairs/[id] / /bespoke/[id]) — adding
+  // the marker keeps freshness consistent.
+  await connection();
   // Joey 2026-05-03 P2-E audit (product call): restrict to owner +
   // manager. Pre-fix any authed tenant member could view customer
   // amendment requests on order_messages — Joey's spec: "same

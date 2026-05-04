@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
@@ -72,6 +73,10 @@ export default function RevenueAdminPage() {
 // by the (admin) layout).
 // ─────────────────────────────────────────────────────────────────────────
 async function RevenueBody() {
+  // cacheComponents — see PR #130. Read-only surface but the marker
+  // is added for consistency across the (admin)/* surface so the
+  // ESLint rule (post-Phase-2 cleanup) can require it everywhere.
+  await connection();
   const { subs, tenants, fxRates } = await loadRevenueData();
 
   const tenantMap = new Map((tenants ?? []).map((t) => [t.id, t]));

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantAccessStatuses } from "@/lib/support-access";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -60,6 +61,12 @@ export default function AdminDashboardPage() {
 // Dynamic body. DB reads only; admin auth handled by (admin) layout.
 // ─────────────────────────────────────────────────────────────────────────
 async function AdminDashboardBody() {
+  // cacheComponents: this body must re-render after server actions
+  // mutate tenants/subscriptions. Without `connection()` the
+  // prerender pipeline implicitly caches the body and `revalidatePath`
+  // / `router.refresh()` keep serving stale state. See PR #130 for the
+  // demo-requests Mark Completed bug that surfaced this pattern.
+  await connection();
   const { tenants, subscriptions, accessStatuses, demoRequestCounts } = await loadAdminDashboardData();
 
   const totalTenants = tenants?.length ?? 0;

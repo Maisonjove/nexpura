@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -69,6 +70,11 @@ export default function AuditLogsPage() {
 // fetches the tenant's audit_logs.
 // ─────────────────────────────────────────────────────────────────────────
 async function AuditLogsBody() {
+  // cacheComponents — see PR #130. The audit log grows on every
+  // mutation across the platform; users navigate here to verify
+  // recent changes landed. Without `connection()` the body would
+  // serve stale rows after a fresh write.
+  await connection();
   const tenantId = await resolveTenantId();
   const logs = tenantId ? await loadAuditLogs(tenantId) : [];
 

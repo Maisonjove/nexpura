@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import TenantsClient from "./TenantsClient";
@@ -53,6 +54,11 @@ async function TenantsBody({
 }: {
   searchParamsPromise: Promise<SearchParams>;
 }) {
+  // cacheComponents — see PR #130. The list is downstream of
+  // /admin/tenants/[id] mutations (changeTenantPlan / changeTenantStatus
+  // can flip status, plan, and subscription_status which the list
+  // displays). Stale caching here would mirror the demo-requests bug.
+  await connection();
   const params = await searchParamsPromise;
   const query = params.q ?? "";
   const planFilter = params.plan ?? "";
