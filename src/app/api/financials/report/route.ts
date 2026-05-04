@@ -4,8 +4,9 @@ import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function GET(req: Request) {
+export const GET = withSentryFlush(async (req: Request) => {
   try {
     const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
     const { success: rlSuccess } = await checkRateLimit(`financials-report:${ip}`);
@@ -248,9 +249,9 @@ export async function GET(req: Request) {
     logger.error("Report error:", err);
     return Response.json({ error: "Failed to load report" }, { status: 500 });
   }
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withSentryFlush(async (req: Request) => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -306,4 +307,4 @@ ${Object.entries(reportData.paymentBreakdown || {}).map(([m, v]) => `- ${m}: $${
     logger.error("Report summary error:", err);
     return Response.json({ error: "Failed to generate summary" }, { status: 500 });
   }
-}
+});

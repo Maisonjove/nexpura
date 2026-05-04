@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { PLANS, SUPPORTED_CURRENCIES, type CurrencyCode } from "@/data/pricing";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 // Multi-currency Stripe Checkout Session creation per Joey 2026-04-26.
 // Price IDs are read from src/data/pricing.ts (the single marketing source
@@ -26,7 +27,7 @@ type RequestBody = {
   userId?: string | null;
 };
 
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
     const { success: rlSuccess } = await checkRateLimit(`stripe-checkout:${ip}`);
@@ -162,4 +163,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

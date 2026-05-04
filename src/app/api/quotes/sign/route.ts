@@ -1,3 +1,4 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -5,7 +6,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import logger from '@/lib/logger';
 import { quoteSignSchema } from '@/lib/schemas';
 
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -100,4 +101,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

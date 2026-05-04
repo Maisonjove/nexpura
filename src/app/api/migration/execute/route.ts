@@ -9,10 +9,11 @@ import {
   type MigrationSession,
 } from '@/lib/migration/chunk-runner';
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const admin = createAdminClient();
   try {
     const body = await req.json();
@@ -180,4 +181,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 import { requireAuth, requireRole } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 export interface TaskTemplate {
   id: string;
   title: string;
@@ -38,6 +39,7 @@ export async function getTaskTemplates(): Promise<{ data?: TaskTemplate[]; error
     return { data: (data ?? []) as TaskTemplate[] };
   } catch (err) {
     logger.error("[getTaskTemplates] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to get task templates" };
   }
 }
@@ -88,6 +90,7 @@ export async function createTaskTemplate(input: {
     return { data: data as TaskTemplate };
   } catch (err) {
     logger.error("[createTaskTemplate] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to create task template" };
   }
 }
@@ -137,6 +140,7 @@ export async function updateTaskTemplate(
     return {};
   } catch (err) {
     logger.error("[updateTaskTemplate] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to update task template" };
   }
 }
@@ -172,6 +176,7 @@ export async function deleteTaskTemplate(id: string): Promise<{ error?: string }
     return {};
   } catch (err) {
     logger.error("[deleteTaskTemplate] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to delete task template" };
   }
 }

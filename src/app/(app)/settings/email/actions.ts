@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 
+import { flushSentry } from "@/lib/sentry-flush";
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 async function getAuthContext() {
@@ -125,6 +126,7 @@ export async function addEmailDomain(domain: string): Promise<{ success?: boolea
     if (!response.ok) {
       const errorData = await response.json();
       logger.error("Resend API error:", errorData);
+      await flushSentry();
       return { error: errorData.message || "Failed to register domain with email provider" };
     }
 
@@ -141,6 +143,7 @@ export async function addEmailDomain(domain: string): Promise<{ success?: boolea
 
     if (insertError) {
       logger.error("Database insert error:", insertError);
+      await flushSentry();
       return { error: "Failed to save domain configuration" };
     }
 
@@ -151,6 +154,7 @@ export async function addEmailDomain(domain: string): Promise<{ success?: boolea
     };
   } catch (error) {
     logger.error("Error adding domain:", error);
+    await flushSentry();
     return { error: "Failed to connect to email provider" };
   }
 }
@@ -223,6 +227,7 @@ export async function verifyEmailDomain(): Promise<{ success?: boolean; verified
     return { success: true, verified: false };
   } catch (error) {
     logger.error("Error verifying domain:", error);
+    await flushSentry();
     return { error: "Failed to verify domain" };
   }
 }
@@ -270,6 +275,7 @@ export async function removeEmailDomain(): Promise<{ success?: boolean; error?: 
     .eq("id", emailDomain.id);
 
   if (deleteError) {
+    await flushSentry();
     return { error: "Failed to remove domain" };
   }
 

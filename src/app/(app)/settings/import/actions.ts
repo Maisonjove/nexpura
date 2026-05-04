@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth-context";
 import { buildCsv } from "@/lib/csv/escape";
 import { decryptCustomerPiiList, buildEncryptedCustomerPiiUpdate } from "@/lib/customer-pii";
 
+import { flushSentry } from "@/lib/sentry-flush";
 // ──────────────────────────────────────────────────────────
 // Auth helper
 // ──────────────────────────────────────────────────────────
@@ -135,6 +136,7 @@ export async function importSuppliers(rows: SupplierRow[]): Promise<ImportResult
     return { imported, errors };
   } catch (error) {
     logger.error("importSuppliers failed", { error });
+    await flushSentry();
     return { imported: 0, errors: [{ row: 0, reason: "Operation failed" }] };
   }
 }
@@ -226,6 +228,7 @@ export async function importInventory(rows: InventoryRow[]): Promise<ImportResul
     return { imported, errors };
   } catch (error) {
     logger.error("importInventory failed", { error });
+    await flushSentry();
     return { imported: 0, errors: [{ row: 0, reason: "Operation failed" }] };
   }
 }
@@ -319,6 +322,7 @@ export async function importCustomers(rows: CustomerRow[]): Promise<ImportResult
     return { imported, errors };
   } catch (error) {
     logger.error("importCustomers failed", { error });
+    await flushSentry();
     return { imported: 0, errors: [{ row: 0, reason: "Operation failed" }] };
   }
 }
@@ -392,6 +396,7 @@ export async function importRepairs(rows: RepairRow[]): Promise<ImportResult> {
     return { imported, errors };
   } catch (error) {
     logger.error("importRepairs failed", { error });
+    await flushSentry();
     return { imported: 0, errors: [{ row: 0, reason: "Operation failed" }] };
   }
 }
@@ -468,6 +473,7 @@ export async function importBespokeJobs(rows: BespokeJobRow[]): Promise<ImportRe
     return { imported, errors };
   } catch (error) {
     logger.error("importBespokeJobs failed", { error });
+    await flushSentry();
     return { imported: 0, errors: [{ row: 0, reason: "Operation failed" }] };
   }
 }
@@ -578,6 +584,7 @@ export async function importSales(rows: SaleRow[]): Promise<ImportResult> {
     return { imported, errors };
   } catch (error) {
     logger.error("importSales failed", { error });
+    await flushSentry();
     return { imported: 0, errors: [{ row: 0, reason: "Operation failed" }] };
   }
 }
@@ -640,6 +647,7 @@ export async function exportCustomers(): Promise<{ csv: string; error?: string }
     return { csv: buildCSVString(headers, decrypted) };
   } catch (error) {
     logger.error("exportCustomers failed", { error });
+    await flushSentry();
     return { csv: "", error: "Operation failed" };
   }
 }
@@ -683,6 +691,7 @@ export async function exportInvoices(): Promise<{ csv: string; error?: string }>
     return { csv: buildCSVString(headers, rows) };
   } catch (error) {
     logger.error("exportInvoices failed", { error });
+    await flushSentry();
     return { csv: "", error: "Operation failed" };
   }
 }
@@ -724,6 +733,7 @@ export async function exportRepairs(): Promise<{ csv: string; error?: string }> 
     return { csv: buildCSVString(headers, rows) };
   } catch (error) {
     logger.error("exportRepairs failed", { error });
+    await flushSentry();
     return { csv: "", error: "Operation failed" };
   }
 }
@@ -766,6 +776,7 @@ export async function exportBespokeJobs(): Promise<{ csv: string; error?: string
     return { csv: buildCSVString(headers, rows) };
   } catch (error) {
     logger.error("exportBespokeJobs failed", { error });
+    await flushSentry();
     return { csv: "", error: "Operation failed" };
   }
 }
@@ -792,6 +803,7 @@ export async function exportSales(): Promise<{ csv: string; error?: string }> {
     return { csv: buildCSVString(headers, data) };
   } catch (error) {
     logger.error("exportSales failed", { error });
+    await flushSentry();
     return { csv: "", error: "Operation failed" };
   }
 }
@@ -818,6 +830,7 @@ export async function exportInventory(): Promise<{ csv: string; error?: string }
     return { csv: buildCSVString(headers, data) };
   } catch (error) {
     logger.error("exportInventory failed", { error });
+    await flushSentry();
     return { csv: "", error: "Operation failed" };
   }
 }
@@ -844,6 +857,7 @@ export async function exportExpenses(): Promise<{ csv: string; error?: string }>
     return { csv: buildCSVString(headers, data) };
   } catch (error) {
     logger.error("exportExpenses failed", { error });
+    await flushSentry();
     return { csv: "", error: "Operation failed" };
   }
 }
@@ -870,6 +884,7 @@ export async function exportSuppliers(): Promise<{ csv: string; error?: string }
     return { csv: buildCSVString(headers, data) };
   } catch (error) {
     logger.error("exportSuppliers failed", { error });
+    await flushSentry();
     return { csv: "", error: "Operation failed" };
   }
 }
@@ -943,6 +958,7 @@ export async function exportAllData(): Promise<{
     };
   } catch (error) {
     logger.error("exportAllData failed", { error });
+    await flushSentry();
     return { success: false, error: "Failed to export data" };
   }
 }

@@ -11,8 +11,9 @@ import { getAuthContext, getIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function GET(_req: NextRequest) {
+export const GET = withSentryFlush(async (_req: NextRequest) => {
   const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -39,9 +40,9 @@ export async function GET(_req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-}
+});
 
-export async function DELETE(_req: NextRequest) {
+export const DELETE = withSentryFlush(async (_req: NextRequest) => {
   const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -79,4 +80,4 @@ export async function DELETE(_req: NextRequest) {
     logger.error("[google-calendar/setup DELETE]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
-}
+});

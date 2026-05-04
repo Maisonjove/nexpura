@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * GDPR Data Deletion Request API
@@ -11,7 +12,7 @@ import logger from "@/lib/logger";
  * This is a soft-delete that schedules deletion after 30 days.
  * During the 30-day window, the request can be cancelled.
  */
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   // Auth check
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -135,12 +136,12 @@ export async function POST(request: NextRequest) {
     logger.error("[data-delete] Request failed:", error);
     return NextResponse.json({ error: "Request failed" }, { status: 500 });
   }
-}
+});
 
 /**
  * Get deletion status
  */
-export async function GET(request: NextRequest) {
+export const GET = withSentryFlush(async (request: NextRequest) => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -180,4 +181,4 @@ export async function GET(request: NextRequest) {
     days_remaining: daysRemaining,
     can_cancel: daysRemaining > 0,
   });
-}
+});

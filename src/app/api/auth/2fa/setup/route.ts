@@ -1,3 +1,4 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -5,7 +6,7 @@ import { generateTOTPSecret, generateTOTPQRCode } from '@/lib/totp';
 import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   void request; // ip-keyed rate-limit replaced with user-id below
   try {
     const supabase = await createClient();
@@ -72,4 +73,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

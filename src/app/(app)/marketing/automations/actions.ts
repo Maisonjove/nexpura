@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 import { requireRole } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 export async function updateAutomation(
   automationType: string,
   data: { enabled?: boolean; settings?: Record<string, unknown>; template_id?: string | null }
@@ -66,6 +67,7 @@ export async function updateAutomation(
     return { success: true };
   } catch (error) {
     logger.error("updateAutomation failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }
@@ -75,6 +77,7 @@ export async function toggleAutomation(automationType: string, enabled: boolean)
     return await updateAutomation(automationType, { enabled });
   } catch (error) {
     logger.error("toggleAutomation failed", { error });
+    await flushSentry();
     return { error: "Operation failed" };
   }
 }

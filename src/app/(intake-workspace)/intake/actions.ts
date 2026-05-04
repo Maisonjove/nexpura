@@ -12,6 +12,7 @@ import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { ilikeOrValue, eqOrValue } from "@/lib/db/or-escape";
 import { decryptCustomerPiiList } from "@/lib/customer-pii";
 
+import { flushSentry } from "@/lib/sentry-flush";
 // Intake inserts (repair / bespoke / sale) all go through the shared
 // resolveLocationForCreate policy: cookie → single-location auto →
 // multi-location reject. Returns { locationId } or throws with the
@@ -127,6 +128,7 @@ export async function searchCustomers(query: string): Promise<{ data?: CustomerS
     return { data: decrypted };
   } catch (err) {
     logger.error("[searchCustomers] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Search failed" };
   }
 }
@@ -162,6 +164,7 @@ export async function createCustomerInline(input: {
     return { id: customer.id, full_name: customer.full_name };
   } catch (err) {
     logger.error("[createCustomerInline] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to create customer" };
   }
 }
@@ -207,6 +210,7 @@ export async function searchInventory(query: string): Promise<{ data?: Inventory
     return { data: data ?? [] };
   } catch (err) {
     logger.error("[searchInventory] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Search failed" };
   }
 }
@@ -228,6 +232,7 @@ export async function getInventoryByBarcode(barcode: string): Promise<{ data?: I
     return { data };
   } catch (err) {
     logger.error("[getInventoryByBarcode] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Lookup failed" };
   }
 }
@@ -464,6 +469,7 @@ export async function createRepairFromIntake(
     });
   });
 
+  await flushSentry();
   return { id: data.id, repair_number: data.repair_number, invoice_id: invoiceId };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Failed to create repair";
@@ -483,6 +489,7 @@ export async function createRepairFromIntake(
     });
 
     logger.error("[createRepairFromIntake] Error:", err);
+    await flushSentry();
     return { error: errorMessage };
   }
 }
@@ -722,6 +729,7 @@ export async function createBespokeFromIntake(
     });
   });
 
+  await flushSentry();
   return { id: data.id, job_number: data.job_number, invoice_id: invoiceId };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Failed to create bespoke job";
@@ -741,6 +749,7 @@ export async function createBespokeFromIntake(
     });
 
     logger.error("[createBespokeFromIntake] Error:", err);
+    await flushSentry();
     return { error: errorMessage };
   }
 }
@@ -918,6 +927,7 @@ export async function createStockSaleFromIntake(
         timestamp: new Date().toISOString(),
       });
       
+      await flushSentry();
       return { error: `Item "${item.name || input.item_name}" is out of stock` };
     }
     
@@ -966,6 +976,7 @@ export async function createStockSaleFromIntake(
             timestamp: new Date().toISOString(),
           });
           
+          await flushSentry();
           return { error: `Item "${item.name || input.item_name}" just sold out` };
         }
         // Destructive — inventory count under race retry. Race
@@ -1101,6 +1112,7 @@ export async function createStockSaleFromIntake(
     });
 
     logger.error("[createStockSaleFromIntake] Error:", err);
+    await flushSentry();
     return { error: errorMessage };
   }
 }
@@ -1165,6 +1177,7 @@ export async function getIntakePageData(): Promise<{
     };
   } catch (err) {
     logger.error("[getIntakePageData] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to load intake data" };
   }
 }

@@ -37,6 +37,7 @@ import { getAuthContext, requireIntegrationManager } from "@/lib/integrations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { signOAuthState } from "@/lib/webhook-security";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID!;
 const SCOPES = "read_products,write_products,read_inventory,write_inventory,read_orders";
@@ -53,7 +54,7 @@ function getStateSecret(): string {
   return crypto.createHash("sha256").update(`shopify-oauth-state:${base}`).digest("hex");
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withSentryFlush(async (req: NextRequest) => {
   // CC-migration marker: defer to request time. Prevents the prerender
   // pipeline from evaluating the cookie-backed getAuthContext() call at
   // build time. No-op under the current pre-CC model.
@@ -118,4 +119,4 @@ export async function GET(req: NextRequest) {
       `${process.env.NEXT_PUBLIC_APP_URL}/website/connect?error=auth_failed`
     );
   }
-}
+});

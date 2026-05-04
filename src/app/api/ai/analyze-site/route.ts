@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import OpenAI from "openai";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -21,7 +22,7 @@ interface SiteAnalysis {
   businessDescription: string;
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   // SECURITY: Require authentication
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -93,4 +94,4 @@ Include realistic pages: Home (with hero, product grid, about snippet, testimoni
     logger.error("Analyze site route error:", err);
     return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
   }
-}
+});

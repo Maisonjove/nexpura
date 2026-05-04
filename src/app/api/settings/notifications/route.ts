@@ -9,8 +9,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function PUT(req: NextRequest) {
+export const PUT = withSentryFlush(async (req: NextRequest) => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -66,4 +67,4 @@ export async function PUT(req: NextRequest) {
     logger.error("[settings/notifications PUT]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
-}
+});

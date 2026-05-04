@@ -10,6 +10,7 @@ import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integra
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 interface MailchimpCampaign {
   id: string;
@@ -67,7 +68,7 @@ async function mailchimpFetch(
   return res.json();
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -200,4 +201,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 // Public contact-form schema. Enforced lengths stop a spammer bloating
 // the DB with a megabyte-sized "message" and shut down the most obvious
@@ -18,10 +19,10 @@ const enquirySchema = z.object({
   website: z.string().max(0).optional().or(z.literal("")).or(z.undefined()),
 });
 
-export async function POST(
+export const POST = withSentryFlush(async (
   req: NextRequest,
   { params }: { params: Promise<{ subdomain: string }> }
-) {
+) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -111,4 +112,4 @@ export async function POST(
   }
 
   return NextResponse.json({ success: true });
-}
+});

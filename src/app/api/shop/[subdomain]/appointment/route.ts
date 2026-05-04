@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * Launch-QA W5-CRIT-001: this public shop endpoint previously accepted a
@@ -12,10 +13,10 @@ import logger from "@/lib/logger";
  * ONLY way the tenant is resolved. `tenant_id` in the body is ignored.
  */
 
-export async function POST(
+export const POST = withSentryFlush(async (
   request: NextRequest,
   { params }: { params: Promise<{ subdomain: string }> }
-) {
+) => {
   const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -91,4 +92,4 @@ export async function POST(
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status: 500 });
   }
-}
+});

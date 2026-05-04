@@ -37,6 +37,7 @@ import {
 } from "@/lib/webhook-security";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID!;
 const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET!;
@@ -54,7 +55,7 @@ function isValidShopDomain(shop: string): boolean {
 
 const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
 
-export async function GET(req: NextRequest) {
+export const GET = withSentryFlush(async (req: NextRequest) => {
   // CC-migration marker: defer to request time before any header/query
   // read. No-op under the current pre-CC model.
   await connection();
@@ -221,4 +222,4 @@ export async function GET(req: NextRequest) {
     });
     return failRes;
   }
-}
+});

@@ -6,6 +6,7 @@ import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { getAuthContext, requirePermission } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 interface ReceiveLine {
   inventoryId: string;
   receiveQty: number;
@@ -104,9 +105,11 @@ export async function batchReceiveStock(
     }
 
     revalidatePath("/inventory");
+    await flushSentry();
     return { success: true };
   } catch (err) {
     logger.error("[batchReceiveStock] Unexpected error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to receive stock" };
   }
 }

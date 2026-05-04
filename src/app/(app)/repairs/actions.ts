@@ -18,6 +18,7 @@ import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { repairCreateSchema } from "@/lib/schemas/jobs";
 import { requireAuth } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 // ────────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────────
@@ -265,6 +266,11 @@ export async function createRepair(
   revalidatePath("/repairs");
   revalidatePath("/workshop");
   revalidatePath("/workshop/jobs");
+  // redirect() throws NEXT_REDIRECT internally — same Lambda-freeze
+  // exit path as a plain return, so flush before it to drain any
+  // logger.error events fired in the deposit-payment / tracking-email
+  // catch blocks above.
+  await flushSentry();
   redirect(`/repairs/${data.id}`);
 }
 
@@ -451,6 +457,7 @@ export async function advanceRepairStage(
   // Invalidate dashboard cache
   revalidateTag("dashboard", "default");
 
+  await flushSentry();
   return { success: true };
 }
 

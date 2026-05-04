@@ -7,6 +7,7 @@ import Stripe from "stripe";
 import logger from "@/lib/logger";
 import { requireAuth, requireRole } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-02-25.clover",
 });
@@ -201,6 +202,7 @@ export async function createCampaignCheckout(campaignId: string): Promise<{
     return { checkoutUrl: session.url! };
   } catch (err) {
     logger.error("[createCampaignCheckout] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to create checkout" };
   }
 }

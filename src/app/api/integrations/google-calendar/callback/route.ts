@@ -28,6 +28,7 @@ import { verifyOAuthState } from "@/lib/webhook-security";
 import { safeCompare } from "@/lib/timing-safe-compare";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID!;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET!;
@@ -39,7 +40,7 @@ function getStateSecret(): string {
   return crypto.createHash("sha256").update(`gcal-oauth-state:${base}`).digest("hex");
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withSentryFlush(async (req: NextRequest) => {
   // CC-migration marker: defer to request time before any header/query
   // read. No-op under the current pre-CC model.
   await connection();
@@ -180,4 +181,4 @@ export async function GET(req: NextRequest) {
       `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=callback_failed`
     );
   }
-}
+});

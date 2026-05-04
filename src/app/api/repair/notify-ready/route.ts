@@ -6,8 +6,9 @@ import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getUserLocationIds } from "@/lib/locations";
 import { isSandbox, logSandboxSuppressedSend } from "@/lib/sandbox";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -207,4 +208,4 @@ export async function POST(req: NextRequest) {
     logger.error("[notify-ready]", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
-}
+});

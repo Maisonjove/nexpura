@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const AI_TIMEOUT_MS = 30000; // 30 second timeout
 
@@ -48,7 +49,7 @@ function validateInput(body: unknown): { valid: boolean; error?: string; data?: 
   };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   // SECURITY: Require authentication
   const { createClient } = await import("@/lib/supabase/server");
   const supabase = await createClient();
@@ -153,4 +154,4 @@ Return ONLY valid JSON with the same structure as the current content, but with 
     
     return NextResponse.json({ error: "AI request failed. Please try again." }, { status: 500 });
   }
-}
+});

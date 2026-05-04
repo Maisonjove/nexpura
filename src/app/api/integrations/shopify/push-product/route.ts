@@ -14,8 +14,9 @@ import { getAuthContext, getIntegration } from "@/lib/integrations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -128,4 +129,4 @@ export async function POST(req: NextRequest) {
     logger.error("[shopify/push-product]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
-}
+});

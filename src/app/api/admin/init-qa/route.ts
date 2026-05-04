@@ -7,9 +7,11 @@ import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 import logger from "@/lib/logger";
 
 
+import { withSentryFlush } from "@/lib/sentry-flush";
+
 // POST /api/admin/init-qa - Initialize QA tables and seed data
 // SECURITY: This is a super admin only endpoint
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   try {
     // Rate-limit FIRST so we don't burn a super-admin DB lookup on
     // every probe. Pre-fix order was: auth + super-admin check first,
@@ -320,4 +322,4 @@ export async function POST(request: NextRequest) {
     logger.error("Init QA error:", error);
     return NextResponse.json({ error: "Failed to initialize QA", details: String(error) }, { status: 500 });
   }
-}
+});

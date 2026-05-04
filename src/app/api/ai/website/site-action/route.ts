@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import OpenAI from "openai";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const AI_TIMEOUT_MS = 30000; // 30 second timeout
 
@@ -35,7 +36,7 @@ Return improved versions as JSON: {"tagline": "...", "about_text": "..."}`,
 
 const VALID_ACTIONS = ["suggest_tagline", "write_about", "generate_seo", "suggest_colors", "improve_content"];
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success: rlSuccess } = await checkRateLimit(ip);
   if (!rlSuccess) {
@@ -177,4 +178,4 @@ export async function POST(req: NextRequest) {
     
     return NextResponse.json({ error: "AI request failed. Please try again." }, { status: 500 });
   }
-}
+});

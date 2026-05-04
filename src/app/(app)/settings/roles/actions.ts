@@ -11,6 +11,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requireAuth, requireRole } from "@/lib/auth-context";
 import { DEFAULT_PERMISSIONS, type PermissionSet, type NotificationPreferences } from "./_constants";
 
+import { flushSentry } from "@/lib/sentry-flush";
 // CRIT-7: invites expire after 7 days. Matches the 7-day copy in the
 // invite emails below and /api/invite/accept's expiry check.
 const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -269,6 +270,7 @@ export async function inviteTeamMember(
   });
 
   revalidatePath("/settings/roles");
+  await flushSentry();
   return { success: true, inviteToken };
 }
 
@@ -370,6 +372,7 @@ export async function resendInvite(memberId: string): Promise<{ success?: boolea
     });
   } catch (emailError) {
     logger.error("Failed to send invite email:", emailError);
+    await flushSentry();
     return { error: "Failed to send email" };
   }
 

@@ -1,3 +1,4 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -15,7 +16,7 @@ import { setTwoFactorCookie } from '@/lib/auth/two-factor-cookie';
  * SECURITY: Requires an active session (from password login) to prevent
  * oracle attacks where an attacker could validate 2FA codes without knowing the password.
  */
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   try {
     // SECURITY: Verify the caller has an active session
     // This ensures they passed password authentication before attempting 2FA
@@ -164,4 +165,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

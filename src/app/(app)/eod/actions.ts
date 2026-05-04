@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 
+import { flushSentry } from "@/lib/sentry-flush";
 /**
  * Convert a YYYY-MM-DD calendar date in a named IANA timezone to UTC ISO
  * boundaries spanning that local day. Used by EOD reconciliation so that
@@ -241,6 +242,7 @@ export async function getEODSummary(date?: string, locationId?: string | null): 
   };
   } catch (err) {
     logger.error("[getEODSummary] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to load EOD summary" };
   }
 }
@@ -345,6 +347,7 @@ export async function saveEODReconciliation(params: {
   return { id: resultId };
   } catch (err) {
     logger.error("[saveEODReconciliation] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to save reconciliation" };
   }
 }
@@ -381,6 +384,7 @@ export async function getPastReconciliations(): Promise<{
     return { data: data ?? [], error: error?.message };
   } catch (err) {
     logger.error("[getPastReconciliations] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to load past reconciliations" };
   }
 }

@@ -1,3 +1,4 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -12,7 +13,7 @@ import { sendTwilioSms } from '@/lib/twilio-sms';
  * SECURITY: Requires an active session (from password login) to prevent
  * SMS bombing attacks where an attacker could trigger SMS sends to any user.
  */
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   try {
     // SECURITY: Verify the caller has an active session
     const supabase = await createClient();
@@ -97,4 +98,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

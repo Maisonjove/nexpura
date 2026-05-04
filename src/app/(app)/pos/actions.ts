@@ -9,6 +9,7 @@ import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { getAuthContext } from "@/lib/auth-context";
 import { getTenantTaxConfig, computeMoneyTotals, clampDiscount } from "@/lib/tenant-tax";
 
+import { flushSentry } from "@/lib/sentry-flush";
 // POSWrapper already gates the UI on a specific location being chosen (see
 // the "Select a Location" guard), so every POS sale has the picker cookie
 // set. Stamp the resolved id onto both the sale and its auto-generated
@@ -644,6 +645,7 @@ export async function createPOSSale(
     return { id: saleId!, saleNumber, invoiceId, auditId: result.auditId };
   } catch (err) {
     logger.error("[createPOSSale] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to create sale" };
   }
 }
@@ -802,6 +804,7 @@ export async function createLaybySale(
     return { id: sale.id, saleNumber };
   } catch (err) {
     logger.error("[createLaybySale] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to create layby sale" };
   }
 }

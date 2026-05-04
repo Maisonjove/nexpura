@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTrackingEmailInternal } from "@/lib/tracking-email";
 import logger from "@/lib/logger";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * Authenticated UI re-send button. Wraps lib/tracking-email's
@@ -21,7 +22,7 @@ interface SendTrackingEmailRequest {
   orderId: string;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -78,4 +79,4 @@ export async function POST(request: NextRequest) {
     logger.error("[tracking/send-email] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+});

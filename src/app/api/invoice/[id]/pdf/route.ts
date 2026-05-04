@@ -10,11 +10,12 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
 import { decryptBankDetails } from "@/lib/tenant-banking";
 import { decryptCustomerPii } from "@/lib/customer-pii";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function GET(
+export const GET = withSentryFlush(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const format = request.nextUrl.searchParams.get("format"); // 'thermal' or null
 
@@ -212,4 +213,4 @@ export async function GET(
       "Content-Length": String(buffer.byteLength),
     },
   });
-}
+});

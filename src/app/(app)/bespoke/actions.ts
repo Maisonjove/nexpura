@@ -18,6 +18,7 @@ import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { bespokeCreateSchema } from "@/lib/schemas/jobs";
 import { requireAuth } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 // ────────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────────
@@ -405,6 +406,7 @@ export async function advanceJobStage(
   // Invalidate dashboard cache
   revalidateTag("dashboard", "default");
 
+  await flushSentry();
   return { success: true };
 }
 

@@ -6,11 +6,12 @@ import React from "react";
 import { QuotePDF, type QuotePDFProps } from "@/lib/pdf/QuotePDF";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function GET(
+export const GET = withSentryFlush(async (
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "pdf");
   if (!success) {
@@ -95,4 +96,4 @@ export async function GET(
     logger.error("Quote PDF error:", err);
     return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
   }
-}
+});

@@ -5,8 +5,9 @@ import { getUserLocationIds } from "@/lib/locations";
 import { requirePermission } from "@/lib/auth-context";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "api");
   if (!success) {
@@ -182,4 +183,4 @@ export async function POST(request: NextRequest) {
     logger.error("Receive transfer error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+});

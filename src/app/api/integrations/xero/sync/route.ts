@@ -10,6 +10,7 @@ import { requireIntegrationManager, getIntegration, upsertIntegration } from "@/
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_API_BASE = "https://api.xero.com";
@@ -63,7 +64,7 @@ async function getValidAccessToken(
   return refreshed.access_token;
 }
 
-export async function POST(_req: NextRequest) {
+export const POST = withSentryFlush(async (_req: NextRequest) => {
   const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "heavy");
   if (!success) {
@@ -192,4 +193,4 @@ export async function POST(_req: NextRequest) {
     logger.error("[xero/sync]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
-}
+});

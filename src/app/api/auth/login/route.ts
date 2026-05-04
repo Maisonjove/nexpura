@@ -15,6 +15,7 @@ import {
 } from "@/lib/dashboard/shell-cookie";
 import { isAllowlistedAdmin } from "@/lib/admin-allowlist";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * POST /api/auth/login
@@ -42,7 +43,7 @@ import logger from "@/lib/logger";
  * JSON (not redirect) is deliberate — the client handles navigation so
  * it can prefetch the tenant-scoped dashboard URL.
  */
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   try {
     const body = await request.json();
     const { email, password, redirectTo, checkOnly2FA, userId: clientUserId } = body as {
@@ -275,4 +276,4 @@ export async function POST(request: NextRequest) {
     // Enumeration-safe fallback: same copy as invalid-credentials.
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
-}
+});

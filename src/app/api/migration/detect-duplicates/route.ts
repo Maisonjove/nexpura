@@ -16,6 +16,8 @@ import {
 import logger from "@/lib/logger";
 
 
+import { withSentryFlush } from "@/lib/sentry-flush";
+
 type EntityType = 'customers' | 'inventory' | 'repairs' | 'bespoke' | 'unknown';
 
 interface MigrationFile {
@@ -73,7 +75,7 @@ function getMappings(file: MigrationFile): MappingEntry[] {
   return [];
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   // SECURITY: Require authentication
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -248,4 +250,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

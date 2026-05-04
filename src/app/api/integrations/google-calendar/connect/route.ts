@@ -26,6 +26,7 @@ import { requireIntegrationManager } from "@/lib/integrations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { signOAuthState } from "@/lib/webhook-security";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google-calendar/callback`;
 
@@ -35,7 +36,7 @@ function getStateSecret(): string {
   return crypto.createHash("sha256").update(`gcal-oauth-state:${base}`).digest("hex");
 }
 
-export async function GET(_req: NextRequest) {
+export const GET = withSentryFlush(async (_req: NextRequest) => {
   // CC-migration marker: defer to request time.
   await connection();
 
@@ -96,4 +97,4 @@ export async function GET(_req: NextRequest) {
       `${process.env.NEXT_PUBLIC_APP_URL}/integrations?error=auth_failed`
     );
   }
-}
+});

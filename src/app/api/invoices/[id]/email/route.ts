@@ -5,11 +5,12 @@ import { sendInvoiceEmail } from "@/lib/email/send";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 import { assertUserCanAccessLocation, LocationAccessDeniedError } from "@/lib/auth/assert-location";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(
+export const POST = withSentryFlush(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const { id } = await params;
     const supabase = await createClient();
@@ -92,4 +93,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});

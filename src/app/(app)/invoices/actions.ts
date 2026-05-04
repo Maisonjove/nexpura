@@ -29,6 +29,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { requirePermission } from "@/lib/auth-context";
 
+import { flushSentry } from "@/lib/sentry-flush";
 async function getAuthContext() {
   const supabase = await createClient();
   const {
@@ -251,6 +252,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
     return { id: invoice.id };
   } catch (err) {
     logger.error("[createInvoice] Error:", err);
+    await flushSentry();
     return { id: "", error: err instanceof Error ? err.message : "Failed to create invoice" };
   }
 }
@@ -346,6 +348,7 @@ export async function updateInvoice(
     return {};
   } catch (err) {
     logger.error("[updateInvoice] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to update invoice" };
   }
 }
@@ -436,6 +439,7 @@ export async function recordPayment(
     return {};
   } catch (err) {
     logger.error("[recordPayment] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to record payment" };
   }
 }
@@ -498,6 +502,7 @@ export async function markAsSent(invoiceId: string): Promise<{ customerEmail?: s
     return { customerEmail };
   } catch (err) {
     logger.error("[markAsSent] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to mark as sent" };
   }
 }
@@ -550,6 +555,7 @@ export async function voidInvoice(invoiceId: string): Promise<{ error?: string }
     return {};
   } catch (err) {
     logger.error("[voidInvoice] Error:", err);
+    await flushSentry();
     return { error: err instanceof Error ? err.message : "Failed to void invoice" };
   }
 }

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 async function getBusinessContext(tenantId: string) {
   const admin = createAdminClient();
@@ -140,7 +141,7 @@ async function getBusinessContext(tenantId: string) {
   };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   // SECURITY: Require authentication
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -284,4 +285,4 @@ inventory question instead. Stay strictly in scope.`;
     logger.error("Copilot chat error:", err);
     return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
   }
-}
+});

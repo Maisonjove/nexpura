@@ -10,6 +10,7 @@ import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { requireAuth, requirePermission } from "@/lib/auth-context";
 import { resend } from "@/lib/email/resend";
 
+import { flushSentry } from "@/lib/sentry-flush";
 async function getAuthContext() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -356,6 +357,7 @@ export async function updateBespokeStage(
   }
 
   revalidatePath(`/bespoke/${jobId}`);
+  await flushSentry();
   return { success: true };
 }
 
@@ -461,6 +463,7 @@ export async function emailBespokeInvoice(
       }
     } catch { /* ignore */ }
     revalidatePath(`/bespoke/${jobId}`);
+    await flushSentry();
     return { success: true, note: "demo_limited", message: "Email logged — configure a verified sending domain in Settings for external delivery" };
   }
 
@@ -479,6 +482,7 @@ export async function emailBespokeInvoice(
   }
 
   revalidatePath(`/bespoke/${jobId}`);
+  await flushSentry();
   return { success: true, note: "sent", message: `Invoice emailed to ${customer.email}` };
 }
 

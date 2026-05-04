@@ -4,6 +4,7 @@ import { resend } from "@/lib/email/resend";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * Public contact-form endpoint. Wired to /contact's design-only form
@@ -81,7 +82,7 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
 
   const { success: rateOk } = await checkRateLimit(`contact:${ip}`, "api");
@@ -193,4 +194,4 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
-}
+});
