@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import logger from "@/lib/logger";
+import { CreditCardIcon } from "@heroicons/react/24/outline";
 
 /**
  * /admin/subscriptions — CC-ready page-route (admin cluster, fourth of four).
@@ -22,14 +23,16 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-emerald-50 text-emerald-700"
+      ? "nx-badge-success"
       : s === "trialing"
-      ? "bg-amber-50 text-amber-700"
+      ? "nx-badge-warning"
       : s === "past_due"
-      ? "bg-yellow-50 text-yellow-700"
-      : "bg-red-50 text-red-600";
+      ? "nx-badge-warning"
+      : s === "canceled" || s === "cancelled"
+      ? "nx-badge-danger"
+      : "nx-badge-neutral";
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
+    <span className={`${cls} capitalize`}>
       {s.replace("_", " ") || "—"}
     </span>
   );
@@ -37,14 +40,8 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
 
 function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
-  const cls =
-    p === "studio" || p === "pro"
-      ? "bg-stone-100 text-stone-700"
-      : p === "atelier" || p === "group" || p === "ultimate"
-      ? "bg-stone-200 text-stone-800"
-      : "bg-stone-100 text-stone-600";
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
+    <span className="nx-badge-neutral capitalize">
       {p || "—"}
     </span>
   );
@@ -59,18 +56,51 @@ function formatDate(dateStr: string | null | undefined) {
   });
 }
 
+// Estimated MRR per plan (AUD baseline) — kept here for the stat strip.
+// Matches the same pattern used in admin/revenue. Falls back to 0 when
+// plan key isn't in the lookup.
+const PLAN_MRR_AUD: Record<string, number> = {
+  boutique: 79,
+  basic: 79,
+  studio: 179,
+  pro: 179,
+  atelier: 379,
+  ultimate: 379,
+  group: 379,
+};
+
+function fmtAUD(n: number) {
+  return new Intl.NumberFormat("en-AU", {
+    style: "currency",
+    currency: "AUD",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
 export default function SubscriptionsPage() {
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Shell — static JSX. Prerenderable under CC. The "{n}
-          subscriptions" count lives inside the dynamic body so it
-          reflects live data. */}
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-900">Subscriptions</h1>
+    <div className="bg-nexpura-ivory min-h-screen -m-6">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header — pure static. The "{n} subscriptions" count
+            and stat strip live inside the dynamic body. */}
+        <div className="flex items-start justify-between gap-6 mb-14">
+          <div>
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Admin
+            </p>
+            <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+              Subscriptions
+            </h1>
+            <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+              All paying, trialing, and cancelled tenants across the platform.
+            </p>
+          </div>
+        </div>
+
+        <Suspense fallback={<SubscriptionsBodySkeleton />}>
+          <SubscriptionsBody />
+        </Suspense>
       </div>
-      <Suspense fallback={<SubscriptionsBodySkeleton />}>
-        <SubscriptionsBody />
-      </Suspense>
     </div>
   );
 }
@@ -83,54 +113,153 @@ async function SubscriptionsBody() {
   await connection();
   const subs = await loadSubscriptionsData();
 
+  const all = subs ?? [];
+  const activeSubs = all.filter((s) => (s.status ?? "").toLowerCase() === "active");
+  const trialingSubs = all.filter((s) => (s.status ?? "").toLowerCase() === "trialing");
+  const cancelledSubs = all.filter((s) => {
+    const st = (s.status ?? "").toLowerCase();
+    return st === "canceled" || st === "cancelled";
+  });
+
+  const mrrAud = activeSubs.reduce((sum, sub) => {
+    const key = (sub.plan ?? "").toLowerCase();
+    return sum + (PLAN_MRR_AUD[key] ?? 0);
+  }, 0);
+
   return (
     <>
-      <p className="text-sm text-stone-500 -mt-4">{subs?.length ?? 0} subscriptions</p>
-
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-stone-200 bg-stone-50">
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Tenant</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Plan</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Status</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Trial Ends</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Period End</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Stripe Customer</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {(subs ?? []).length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-stone-400">No subscriptions yet</td>
-                </tr>
-              ) : (
-                (subs ?? []).map((sub) => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const tenant = (sub as any).tenants;
-                  return (
-                    <tr key={sub.id} className="hover:bg-stone-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-stone-900">
-                        {tenant ? (
-                          <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-stone-600">
-                            {tenant.name}
-                          </Link>
-                        ) : "—"}
-                      </td>
-                      <td className="px-6 py-4"><PlanBadge plan={sub.plan} /></td>
-                      <td className="px-6 py-4"><StatusBadge status={sub.status} /></td>
-                      <td className="px-6 py-4 text-stone-500">{formatDate(sub.trial_ends_at)}</td>
-                      <td className="px-6 py-4 text-stone-500">{formatDate(sub.current_period_end)}</td>
-                      <td className="px-6 py-4 text-stone-500 font-mono text-xs">{sub.stripe_customer_id ?? "—"}</td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+      {/* Stat strip — hairline divider, serif numbers */}
+      <div className="bg-white border border-stone-200 rounded-2xl mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-stone-200">
+          <div className="p-6 lg:p-8">
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              MRR (≈ AUD)
+            </p>
+            <p className="font-serif text-4xl text-stone-900 tabular-nums tracking-tight">
+              {fmtAUD(mrrAud)}
+            </p>
+          </div>
+          <div className="p-6 lg:p-8">
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Active
+            </p>
+            <p className="font-serif text-4xl text-stone-900 tabular-nums tracking-tight">
+              {activeSubs.length}
+            </p>
+          </div>
+          <div className="p-6 lg:p-8">
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Trialing
+            </p>
+            <p className="font-serif text-4xl text-stone-900 tabular-nums tracking-tight">
+              {trialingSubs.length}
+            </p>
+          </div>
+          <div className="p-6 lg:p-8">
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Cancelled
+            </p>
+            <p className="font-serif text-4xl text-stone-900 tabular-nums tracking-tight">
+              {cancelledSubs.length}
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* Section heading + count */}
+      <div className="flex items-end justify-between gap-4 mb-6">
+        <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-luxury">
+          All subscriptions
+        </h2>
+        <span className="text-xs text-stone-400 tabular-nums">
+          {all.length} total
+        </span>
+      </div>
+
+      {all.length === 0 ? (
+        <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+          <CreditCardIcon className="w-8 h-8 text-stone-300 mx-auto mb-5" />
+          <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+            No subscriptions yet
+          </h3>
+          <p className="text-stone-500 text-sm max-w-sm mx-auto leading-relaxed">
+            New subscriptions will appear here once tenants begin paid plans or trials.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {all.map((sub) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const tenant = (sub as any).tenants;
+            const planKey = (sub.plan ?? "").toLowerCase();
+            const monthly = PLAN_MRR_AUD[planKey] ?? 0;
+
+            return (
+              <div
+                key={sub.id}
+                className="group bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
+              >
+                <div className="flex items-start justify-between gap-6">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-wrap mb-2.5">
+                      <PlanBadge plan={sub.plan} />
+                      <StatusBadge status={sub.status} />
+                    </div>
+                    {tenant ? (
+                      <Link
+                        href={`/admin/tenants/${tenant.id}`}
+                        className="font-serif text-xl text-stone-900 leading-tight tracking-tight hover:text-nexpura-bronze transition-colors duration-300"
+                      >
+                        {tenant.name}
+                      </Link>
+                    ) : (
+                      <span className="font-serif text-xl text-stone-900 leading-tight tracking-tight">
+                        Unknown tenant
+                      </span>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 mt-5 text-sm">
+                      <div>
+                        <p className="text-xs uppercase tracking-luxury text-stone-400 mb-1">
+                          Trial ends
+                        </p>
+                        <p className="text-stone-700 tabular-nums">
+                          {formatDate(sub.trial_ends_at)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-luxury text-stone-400 mb-1">
+                          Period end
+                        </p>
+                        <p className="text-stone-700 tabular-nums">
+                          {formatDate(sub.current_period_end)}
+                        </p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs uppercase tracking-luxury text-stone-400 mb-1">
+                          Stripe customer
+                        </p>
+                        <p className="text-stone-500 font-mono text-xs truncate">
+                          {sub.stripe_customer_id ?? "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="text-xs uppercase tracking-luxury text-stone-400 mb-1">
+                      MRR
+                    </p>
+                    <p className="font-serif text-2xl text-stone-900 tabular-nums tracking-tight">
+                      {monthly > 0 ? fmtAUD(monthly) : "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }
@@ -167,11 +296,30 @@ async function loadSubscriptionsData(): Promise<SubscriptionRow[]> {
 function SubscriptionsBodySkeleton() {
   return (
     <>
-      <Skeleton className="h-3 w-32 -mt-4" />
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
-        <Skeleton className="h-12 w-full" />
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full border-t border-stone-100" />
+      <div className="bg-white border border-stone-200 rounded-2xl mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-stone-200">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-6 lg:p-8">
+              <Skeleton className="h-3 w-20 mb-3" />
+              <Skeleton className="h-9 w-24" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-white border border-stone-200 rounded-2xl p-6"
+          >
+            <Skeleton className="h-4 w-40 mb-3" />
+            <Skeleton className="h-6 w-64 mb-5" />
+            <div className="grid grid-cols-3 gap-6">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+          </div>
         ))}
       </div>
     </>
