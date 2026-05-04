@@ -1,8 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import Link from "next/link";
-import { Plus } from "lucide-react";
 import { getAuthContext } from "@/lib/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import BespokeListClient from "./BespokeListClient";
@@ -16,6 +14,10 @@ const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
 // Dynamic rendering is explicit — see /repairs/page.tsx for the same
 // pattern and rationale.
+//
+// The page no longer renders its own header — BespokeListClient owns the
+// polished serif h1 + "Workshop" eyebrow + primary CTA so the layout stays
+// consistent between the loading skeleton and the hydrated client view.
 
 export default function BespokePage({
   searchParams,
@@ -23,20 +25,12 @@ export default function BespokePage({
   searchParams: Promise<{ view?: string; q?: string; stage?: string; rt?: string }>;
 }) {
   return (
-    <div className="space-y-6 max-w-[1400px]">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Bespoke Jobs</h1>
-        <Link
-          href="/bespoke/new"
-          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2"
-        >
-          <Plus className="w-4 h-4 mr-2" /> New Job
-        </Link>
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        <Suspense fallback={<BespokeBodySkeleton />}>
+          <BespokeBody searchParams={searchParams} />
+        </Suspense>
       </div>
-
-      <Suspense fallback={<BespokeBodySkeleton />}>
-        <BespokeBody searchParams={searchParams} />
-      </Suspense>
     </div>
   );
 }
@@ -155,44 +149,54 @@ async function BespokeBody({
       stageFilter={stageFilter}
       precomputedStageCounts={(statsResult.data?.bespoke_stage_counts as Record<string, number> | null) ?? null}
       precomputedOverdueCount={(statsResult.data?.bespoke_overdue_count as number | null) ?? null}
-      hideTitleBlock
     />
   );
 }
 
 function BespokeBodySkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="border-b border-stone-200 flex gap-6 overflow-x-auto pb-3">
+    <div>
+      {/* Header skeleton — matches the polished client header layout. */}
+      <div className="flex items-start justify-between gap-6 mb-14">
+        <div>
+          <Skeleton className="h-3 w-20 mb-3" />
+          <Skeleton className="h-12 w-72 mb-4" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <Skeleton className="h-10 w-32 rounded-md" />
+      </div>
+
+      {/* Stage tab pill row */}
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
         {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-4 w-20 rounded-md flex-shrink-0" />
+          <Skeleton key={i} className="h-9 w-24 rounded-full flex-shrink-0" />
         ))}
       </div>
-      <div className="border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white">
-        <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-stone-100 text-xs font-medium uppercase tracking-wider text-stone-400">
-          <span className="col-span-3">Customer</span>
-          <span className="col-span-4">Title</span>
-          <span className="col-span-2">Stage</span>
-          <span className="col-span-2">Due</span>
-          <span className="col-span-1"></span>
-        </div>
-        <div className="divide-y divide-stone-100">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="grid grid-cols-12 gap-4 px-6 py-3 items-center">
-              <div className="col-span-3 flex items-center gap-3">
-                <Skeleton className="h-8 w-8 rounded-full" />
-                <Skeleton className="h-4 w-24" />
+
+      {/* Card list skeleton */}
+      <div className="space-y-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white border border-stone-200 rounded-2xl p-6">
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+                <Skeleton className="h-6 w-64 mb-2" />
+                <Skeleton className="h-4 w-40" />
+                <div className="mt-5 max-w-md">
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-1.5 w-full mt-2 rounded-full" />
+                </div>
               </div>
-              <div className="col-span-4">
-                <Skeleton className="h-4 w-28 mb-1" />
-                <Skeleton className="h-3 w-16" />
+              <div className="flex flex-col items-end gap-3">
+                <Skeleton className="h-3 w-10" />
+                <Skeleton className="h-7 w-20" />
               </div>
-              <div className="col-span-2"><Skeleton className="h-5 w-24 rounded-full" /></div>
-              <div className="col-span-2"><Skeleton className="h-4 w-16" /></div>
-              <div className="col-span-1 flex justify-center"><Skeleton className="h-4 w-4" /></div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );

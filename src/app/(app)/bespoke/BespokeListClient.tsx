@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Bell } from "lucide-react";
+import {
+  PlusIcon,
+  BellIcon,
+  SparklesIcon,
+  XMarkIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import logger from "@/lib/logger";
 import { BespokeRow } from "./BespokeRow";
@@ -71,7 +74,7 @@ export default function BespokeListClient({
   precomputedOverdueCount,
   hideTitleBlock = false,
 }: Props) {
-  const router = useRouter();
+  const _router = useRouter();
   const pathname = usePathname();
 
   // Stage filtering is entirely client-side — matches the /repairs pattern
@@ -146,92 +149,92 @@ export default function BespokeListClient({
   // animation frames so the initial hydration doesn't block on all rows.
   const renderCap = useProgressiveRender(visibleJobs.length, { initialCount: 40, batchSize: 40 });
 
-  return (
+  // Wrap with full Nexpura page shell when this client renders standalone
+  // (hideTitleBlock=false). When the parent server page has already rendered
+  // a header + container, fall through and render only filters + list.
+  const Body = (
     <>
-      {/* Bulk Notify Modal */}
-      {showNotifyModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-            <h3 className="font-bold text-stone-900 text-lg mb-2">Notify Ready Customers?</h3>
-            <p className="text-sm text-stone-500 mb-6">
-              Send a &quot;ready for collection&quot; email to <strong>{readyJobs.length}</strong> customer{readyJobs.length !== 1 ? "s" : ""} with bespoke jobs in the <em>Ready</em> stage.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowNotifyModal(false)}
-                disabled={notifying}
-                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBulkNotify}
-                disabled={notifying}
-                className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-xl hover:bg-[#7a6447] transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                <Bell className="w-4 h-4" />
-                {notifying ? "Sending…" : `Notify ${readyJobs.length} Customer${readyJobs.length !== 1 ? "s" : ""}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {notifyResult && (
-        <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800 flex items-center justify-between">
-          <span>✅ {notifyResult.notified} customer{notifyResult.notified !== 1 ? "s" : ""} notified{notifyResult.skipped > 0 ? `, ${notifyResult.skipped} skipped (no email)` : ""}.</span>
-          <button onClick={() => setNotifyResult(null)} className="text-emerald-600 hover:text-emerald-800 text-xs">Dismiss</button>
-        </div>
-      )}
-    <div className="space-y-6 max-w-[1400px]">
       {/* HEADER — skipped when page.tsx rendered a server shell above. */}
       {!hideTitleBlock && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Bespoke Jobs</h1>
-            <div className="hidden sm:flex items-center gap-2">
-              {jobs.length > 0 && (
-                <>
-                  {activeJobsCount > 0 && (
-                    <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                      {activeJobsCount} Active
-                    </Badge>
-                  )}
-                  {readyDisplayCount > 0 && (
-                    <Badge variant="outline" className="text-stone-500 font-medium border-stone-200">
-                      {readyDisplayCount} Ready
-                    </Badge>
-                  )}
-                  {overdueDisplayCount > 0 && (
-                    <Badge variant="outline" className="text-red-600 font-medium border-red-200 bg-red-50">
-                      {overdueDisplayCount} Overdue
-                    </Badge>
-                  )}
-                </>
+        <>
+          <div className="flex items-start justify-between gap-6 mb-10">
+            <div>
+              <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+                Workshop
+              </p>
+              <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+                Bespoke Jobs
+              </h1>
+              <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+                Track custom commissions from enquiry through to collection.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              {readyJobs.length > 0 && (
+                <button
+                  onClick={() => setShowNotifyModal(true)}
+                  className="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium border border-stone-200 text-stone-700 bg-white hover:border-stone-300 hover:text-stone-900 transition-all duration-200"
+                  title={`Notify ${readyJobs.length} ready customer${readyJobs.length !== 1 ? "s" : ""}`}
+                >
+                  <BellIcon className="w-4 h-4" />
+                  Notify Ready
+                </button>
               )}
+              <Link
+                href="/bespoke/new"
+                className="nx-btn-primary inline-flex items-center gap-2"
+              >
+                <PlusIcon className="w-4 h-4" />
+                New Job
+              </Link>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {readyJobs.length > 0 && (
-              <button
-                onClick={() => setShowNotifyModal(true)}
-                className="inline-flex items-center gap-1.5 h-9 px-3 border border-emerald-300 bg-emerald-50 rounded-md text-sm text-emerald-700 hover:bg-emerald-100 transition-colors font-medium"
-                title={`Notify ${readyJobs.length} ready customer${readyJobs.length !== 1 ? "s" : ""}`}
-              >
-                <Bell className="w-4 h-4" />
-                Notify All Ready
-              </button>
-            )}
-            <Link href="/bespoke/new" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-amber-700 hover:bg-amber-800 text-white h-10 px-4 py-2">
-              <Plus className="w-4 h-4 mr-2" /> New Job
-            </Link>
-          </div>
-        </div>
+
+          {/* Stat strip — serif numerals, tracking-luxury labels.
+              More elegant than badge chips at the top of a workshop page. */}
+          {jobs.length > 0 && (
+            <div className="grid grid-cols-3 gap-px bg-stone-200 border border-stone-200 rounded-2xl overflow-hidden mb-12 max-w-2xl">
+              <div className="bg-white px-6 py-5">
+                <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1.5">
+                  Active
+                </p>
+                <p className="font-serif text-3xl text-stone-900 leading-none tracking-tight tabular-nums">
+                  {activeJobsCount}
+                </p>
+              </div>
+              <div className="bg-white px-6 py-5">
+                <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1.5">
+                  Ready
+                </p>
+                <p
+                  className={`font-serif text-3xl leading-none tracking-tight tabular-nums ${
+                    readyDisplayCount > 0 ? "text-emerald-700" : "text-stone-900"
+                  }`}
+                >
+                  {readyDisplayCount}
+                </p>
+              </div>
+              <div className="bg-white px-6 py-5">
+                <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1.5">
+                  Overdue
+                </p>
+                <p
+                  className={`font-serif text-3xl leading-none tracking-tight tabular-nums ${
+                    overdueDisplayCount > 0 ? "text-red-600" : "text-stone-900"
+                  }`}
+                >
+                  {overdueDisplayCount}
+                </p>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* STAGE TABS — labels include the precomputed tenant-wide count
           when available. Falls back to label-only when stats row is
           missing (first-ever visit). */}
-      <div className="border-b border-stone-200 flex gap-6 overflow-x-auto whitespace-nowrap no-scrollbar">
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto whitespace-nowrap no-scrollbar pb-1">
         {ALL_STAGES.map((tab) => {
           const isActive = activeTab === tab.key;
           const count =
@@ -244,15 +247,15 @@ export default function BespokeListClient({
             <button
               key={tab.key}
               onClick={() => setStage(tab.key === "all" ? "" : tab.key)}
-              className={`pb-3 px-1 text-sm transition-colors flex-shrink-0 ${
+              className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all duration-300 flex-shrink-0 ${
                 isActive
-                  ? "border-b-2 border-amber-600 text-stone-900 font-medium"
-                  : "text-stone-400 hover:text-stone-600"
+                  ? "bg-stone-900 text-white"
+                  : "bg-white border border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900"
               }`}
             >
               {tab.label}
               {count !== null && count !== undefined && count > 0 && (
-                <span className={`ml-1.5 text-xs ${isActive ? "text-amber-700" : "text-stone-400"}`}>
+                <span className={`ml-1.5 text-xs tabular-nums ${isActive ? "text-white/70" : "text-stone-400"}`}>
                   {count}
                 </span>
               )}
@@ -262,20 +265,20 @@ export default function BespokeListClient({
       </div>
 
       {/* View toggle */}
-      <div className="flex justify-end -mt-2 mb-2">
-        <div className="inline-flex rounded-lg border border-stone-200 p-0.5 bg-stone-50">
+      <div className="flex justify-end mb-5">
+        <div className="inline-flex rounded-full border border-stone-200 p-0.5 bg-white">
           <button
             onClick={() => setView("list")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              view === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+            className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all duration-200 ${
+              view === "list" ? "bg-stone-900 text-white" : "text-stone-500 hover:text-stone-900"
             }`}
           >
             List
           </button>
           <button
             onClick={() => setView("kanban")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              view === "kanban" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+            className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all duration-200 ${
+              view === "kanban" ? "bg-stone-900 text-white" : "text-stone-500 hover:text-stone-900"
             }`}
           >
             Pipeline
@@ -283,42 +286,113 @@ export default function BespokeListClient({
         </div>
       </div>
 
-      {/* TABLE / KANBAN */}
+      {/* Bulk-notify result banner */}
+      {notifyResult && (
+        <div className="mb-5 px-5 py-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-sm text-emerald-800 flex items-center justify-between">
+          <span className="inline-flex items-center gap-2">
+            <CheckCircleIcon className="w-4 h-4" />
+            {notifyResult.notified} customer{notifyResult.notified !== 1 ? "s" : ""} notified
+            {notifyResult.skipped > 0 ? `, ${notifyResult.skipped} skipped (no email)` : ""}.
+          </span>
+          <button
+            onClick={() => setNotifyResult(null)}
+            className="text-emerald-600 hover:text-emerald-800 text-xs font-medium"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* LIST / KANBAN */}
       {view === "kanban" ? (
         <BespokeKanban initialJobs={visibleJobs} />
+      ) : visibleJobs.length === 0 ? (
+        <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+          <SparklesIcon className="w-8 h-8 text-stone-300 mx-auto mb-5" />
+          <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+            {activeTab === "all" ? "No bespoke jobs yet" : `No ${ALL_STAGES.find(s => s.key === activeTab)?.label.toLowerCase() ?? "matching"} jobs`}
+          </h3>
+          <p className="text-stone-500 text-sm max-w-sm mx-auto leading-relaxed mb-7">
+            {activeTab === "all"
+              ? "Start a new commission to track every stage from enquiry through to collection."
+              : "Try a different stage filter to see other custom orders."}
+          </p>
+          {activeTab === "all" ? (
+            <Link href="/bespoke/new" className="nx-btn-primary inline-flex items-center gap-2">
+              <PlusIcon className="w-4 h-4" />
+              New Job
+            </Link>
+          ) : (
+            <button
+              onClick={() => setStage("all")}
+              className="nx-btn-primary inline-flex items-center gap-2"
+            >
+              View all jobs
+            </button>
+          )}
+        </div>
       ) : (
-      <Card className="border-stone-200 shadow-sm rounded-xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-stone-100">
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Client</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Piece & Materials</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Stage</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Due</TableHead>
-              <TableHead className="text-xs font-medium uppercase tracking-wider text-stone-400">Assigned</TableHead>
-              <TableHead className="w-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleJobs.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-stone-500">
-                  No jobs found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              // Memoized row component + progressive render: initial
-              // paint is ~40 rows, remainder fills in over animation
-              // frames so hydration doesn't block for the full list.
-              visibleJobs.slice(0, renderCap).map((job) => (
-                <BespokeRow key={job.id} job={job} />
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+        <div className="space-y-4">
+          {visibleJobs.slice(0, renderCap).map((job) => (
+            <BespokeRow key={job.id} job={job} />
+          ))}
+        </div>
       )}
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Bulk Notify Modal */}
+      {showNotifyModal && (
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-stone-200 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.12)] w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-stone-200">
+              <h2 className="font-serif text-2xl text-stone-900">Notify Ready Customers?</h2>
+              <button
+                onClick={() => setShowNotifyModal(false)}
+                disabled={notifying}
+                className="text-stone-400 hover:text-stone-700 transition-colors duration-200 disabled:opacity-50"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-stone-500 leading-relaxed">
+                Send a &ldquo;ready for collection&rdquo; email to{" "}
+                <strong className="text-stone-900">{readyJobs.length}</strong> customer
+                {readyJobs.length !== 1 ? "s" : ""} with bespoke jobs in the{" "}
+                <em className="text-stone-700">Ready</em> stage.
+              </p>
+              <div className="flex items-center justify-end gap-2 mt-6 pt-5 border-t border-stone-200">
+                <button
+                  onClick={() => setShowNotifyModal(false)}
+                  disabled={notifying}
+                  className="px-4 py-2 rounded-md text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors duration-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkNotify}
+                  disabled={notifying}
+                  className="nx-btn-primary inline-flex items-center gap-2 disabled:opacity-50"
+                >
+                  <BellIcon className="w-4 h-4" />
+                  {notifying ? "Sending…" : `Notify ${readyJobs.length} Customer${readyJobs.length !== 1 ? "s" : ""}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Parent server page (page.tsx) now always provides the ivory shell
+          and container, so this client only renders Body. The hideTitleBlock
+          prop is preserved for callers that want to render their own header
+          (e.g. dashboard slot) but otherwise the polished serif header above
+          is the default. */}
+      {Body}
     </>
   );
 }
