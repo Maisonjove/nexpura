@@ -126,6 +126,13 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     // sync_inventory_on_stock_movement_insert handles the qty update
     // race-safely. Source row keeps whatever quantity dispatch left it
     // with — no destruction.
+    // Capture-amplification fix (no-logger-error-in-loop): collect
+    // per-item failures into arrays; log ONCE per category after the
+    // loop ends so a many-item transfer with pervasive failures can't
+    // blow past the PromiseBuffer cap.
+    const destCreateFailures: Array<{ transferItemId: string; err: { message: string } }> = [];
+    const movInsertFailures: Array<{ destRowId: string | null; err: { message: string } }> = [];
+
     for (const transferItem of transfer.transfer_items) {
       const itemUpdate = items?.find((i: { itemId: string; receivedQty: number }) => i.itemId === transferItem.id);
       const receivedQty = itemUpdate?.receivedQty ?? transferItem.quantity;
@@ -184,7 +191,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
           .select("id")
           .single();
         if (createErr || !created) {
-          logger.error("Receive create dest inventory failed:", createErr);
+          destCreateFailures.push({ transferItemId: transferItem.id, err: createErr ?? { message: "no row returned" } });
           continue;
         }
         destRowId = created.id;
@@ -199,8 +206,20 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         created_by: user.id,
       });
       if (movErr) {
-        logger.error("Receive stock_movement insert failed:", movErr);
+        movInsertFailures.push({ destRowId, err: movErr });
       }
+    }
+    if (destCreateFailures.length > 0) {
+      logger.error(
+        `Receive: dest inventory creation failed for ${destCreateFailures.length} item(s)`,
+        { transferId, count: destCreateFailures.length, failures: destCreateFailures },
+      );
+    }
+    if (movInsertFailures.length > 0) {
+      logger.error(
+        `Receive: stock_movement insert failed for ${movInsertFailures.length} item(s)`,
+        { transferId, count: movInsertFailures.length, failures: movInsertFailures },
+      );
     }
 
     return NextResponse.json({ success: true });

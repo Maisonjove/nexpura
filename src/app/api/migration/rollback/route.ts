@@ -95,7 +95,22 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
   for (const [table, ids] of Object.entries(byTable)) {
     try {
       // Soft-delete where the table supports it; otherwise hard delete.
-      const tablesWithSoftDelete = new Set(["customers", "inventory", "repairs", "bespoke_jobs", "invoices", "suppliers"]);
+      //
+      // Cleanup #10 (Joey 2026-05-04 schema-list-drift audit): pre-fix
+      // this was 6 tables {customers, inventory, repairs, bespoke_jobs,
+      // invoices, suppliers}. Audit query at the time —
+      //   SELECT t1.table_name FROM information_schema.columns t1
+      //   JOIN information_schema.columns t2 USING (table_name)
+      //   WHERE t1.column_name='tenant_id' AND t2.column_name='deleted_at'
+      // — surfaced 9 tables with the soft-delete column. Missing: passports,
+      // sales, sale_items. Rollback was HARD-deleting their rows instead
+      // of soft-deleting, orphaning customer-detail views that filter on
+      // deleted_at IS NULL. Updated to the full canonical list. Maintain
+      // by re-running the query above when adding new soft-delete tables.
+      const tablesWithSoftDelete = new Set([
+        "bespoke_jobs", "customers", "inventory", "invoices",
+        "passports", "repairs", "sales", "sale_items", "suppliers",
+      ]);
       if (tablesWithSoftDelete.has(table)) {
         const { error, data: updated } = await admin
           .from(table)

@@ -8,12 +8,16 @@ import unusedImports from "eslint-plugin-unused-imports";
 import noBareSupabaseWrite from "./eslint-rules/no-bare-supabase-write.mjs";
 import requireConnectionInAdminPages from "./eslint-rules/require-connection-in-admin-pages.mjs";
 import sentryFlushBeforeReturn from "./eslint-rules/sentry-flush-before-return.mjs";
+import noLoggerErrorInLoop from "./eslint-rules/no-logger-error-in-loop.mjs";
+import sentryFlushBeforeCallbackExit from "./eslint-rules/sentry-flush-before-callback-exit.mjs";
 
 const localPlugin = {
   rules: {
     "no-bare-supabase-write": noBareSupabaseWrite,
     "require-connection-in-admin-pages": requireConnectionInAdminPages,
     "sentry-flush-before-return": sentryFlushBeforeReturn,
+    "no-logger-error-in-loop": noLoggerErrorInLoop,
+    "sentry-flush-before-callback-exit": sentryFlushBeforeCallbackExit,
   },
 };
 
@@ -78,6 +82,22 @@ const eslintConfig = defineConfig([
       // Suppressing any of these now requires a per-line eslint-disable
       // comment with reason — see CONTRIBUTING.md per-rule sections.
       "local/sentry-flush-before-return": "error",
+      // Post-Phase-2 cleanup additions (Joey 2026-05-04). Two new
+      // capture-amplification-class rules, both starting at `warn`:
+      //
+      // 4. no-logger-error-in-loop: logger.error inside for/while/
+      //    forEach/map/etc. queues one Sentry event per iteration. The
+      //    PromiseBuffer caps at 100 events per request — past that,
+      //    captures silently drop. Pattern: collect into array, log
+      //    once after the loop. See CONTRIBUTING.md item 4.
+      "local/no-logger-error-in-loop": "warn",
+      // 5. sentry-flush-before-callback-exit: closes the known-gap
+      //    (CONTRIBUTING.md "Known rule gap — nested-callback
+      //    logger.error") in sentry-flush-before-return. Walks into
+      //    `.catch()` / `withIdempotency(...)` callbacks and flags
+      //    outer-function exits that follow without flush. See
+      //    CONTRIBUTING.md item 5.
+      "local/sentry-flush-before-callback-exit": "warn",
     },
   },
   // Project-specific rule overrides

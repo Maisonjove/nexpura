@@ -143,6 +143,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
           .update({ status: "pending", dispatched_at: null, dispatched_by: null })
           .eq("id", transferId);
         if (rollbackErr) {
+          // eslint-disable-next-line local/no-logger-error-in-loop -- bounded: this branch returns immediately after the log, so it fires at most ONCE per request (not amplified across iterations).
           logger.error("[inventory/transfers/dispatch] insufficient-stock rollback failed; transfer stuck mid-dispatch", {
             transferId,
             tenantId: userData.tenant_id,
@@ -164,6 +165,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         created_by: user.id,
       });
       if (movErr) {
+        // eslint-disable-next-line local/no-logger-error-in-loop -- bounded: this branch returns immediately, fires at most ONCE per request.
         logger.error("Dispatch stock_movement insert failed:", movErr);
         // Kind C (best-effort observability log+continue). stock_movement
         // insert failed mid-loop — rollback the status flip. Same
@@ -177,6 +179,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
           .update({ status: "pending", dispatched_at: null, dispatched_by: null })
           .eq("id", transferId);
         if (rollbackErr) {
+          // eslint-disable-next-line local/no-logger-error-in-loop -- bounded: this branch returns immediately after the log, fires at most ONCE per request.
           logger.error("[inventory/transfers/dispatch] mid-loop rollback failed after movement insert error; partial dispatch state — manual review needed", {
             transferId,
             tenantId: userData.tenant_id,

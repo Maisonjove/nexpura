@@ -211,6 +211,9 @@ export async function createTask(
 
     revalidatePath("/tasks");
     revalidateTag(CACHE_TAGS.tasks(tenantId), "default");
+    // notifyTaskAssignment above is fire-and-forget; its .catch fires
+    // logger.error if the WA notification fails. Flush before exit.
+    await flushSentry();
     return { id: task?.id };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error" };

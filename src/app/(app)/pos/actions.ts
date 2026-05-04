@@ -453,10 +453,13 @@ export async function createPOSSale(
       },
       compensate: async () => {
         // Restore stock for all deducted items. Compensating
-        // rollback — log on each failure, continue restoring the
-        // others. A partial-rollback failure is logged for operator
+        // rollback — collect per-line failures, log ONCE after the
+        // loop. A partial-rollback failure is logged for operator
         // reconciliation; throwing here would leave the remaining
-        // items un-restored.
+        // items un-restored. Capture-amplification fix
+        // (no-logger-error-in-loop): a 100+-item cart could blow
+        // past the PromiseBuffer cap on a fully-failing rollback.
+        const rollbackFailures: Array<{ inventoryId: string; err: { message: string } }> = [];
         for (const deduction of stockDeductions) {
           const { error: restoreErr } = await admin
             .from("inventory")
@@ -464,8 +467,14 @@ export async function createPOSSale(
             .eq("id", deduction.inventoryId)
             .eq("tenant_id", tenantId);
           if (restoreErr) {
-            logger.error("[pos/checkout] stock rollback failed", { inventoryId: deduction.inventoryId, err: restoreErr });
+            rollbackFailures.push({ inventoryId: deduction.inventoryId, err: restoreErr });
           }
+        }
+        if (rollbackFailures.length > 0) {
+          logger.error(
+            `[pos/checkout] stock rollback failed for ${rollbackFailures.length} line(s)`,
+            { count: rollbackFailures.length, failures: rollbackFailures },
+          );
         }
       },
     },
@@ -637,11 +646,19 @@ export async function createPOSSale(
   );
 
   if (!result.success) {
+      // Step callbacks (record_voucher_history etc.) above can fire
+      // logger.error inside executeWithSafety. Flush before exit so
+      // those captures land before the Lambda freezes.
+      await flushSentry();
       return { error: result.error || `Failed at step: ${result.failedStep}`, auditId: result.auditId };
     }
 
     // Invalidate dashboard cache
     revalidateTag("dashboard", "default");
+    // Same nested-callback flush requirement on the success path —
+    // logger.error in a step callback above queues a Sentry capture
+    // even when the overall result succeeded.
+    await flushSentry();
     return { id: saleId!, saleNumber, invoiceId, auditId: result.auditId };
   } catch (err) {
     logger.error("[createPOSSale] Error:", err);

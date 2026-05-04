@@ -77,6 +77,9 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     // to audit history. Now: emit a 'transfer_cancel' movement; the
     // BEFORE INSERT trigger handles the qty bump race-safely.
     if (transfer.status === "in_transit") {
+      // Capture-amplification fix (no-logger-error-in-loop):
+      // collect failures and log once after the loop.
+      const cancelMovFailures: Array<{ inventoryId: string; err: { message: string } }> = [];
       for (const item of transfer.items) {
         const { error: movErr } = await admin.from("stock_movements").insert({
           tenant_id: userData.tenant_id,
@@ -87,8 +90,14 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
           created_by: user.id,
         });
         if (movErr) {
-          logger.error("Cancel restore stock_movement failed:", movErr);
+          cancelMovFailures.push({ inventoryId: item.inventory_id, err: movErr });
         }
+      }
+      if (cancelMovFailures.length > 0) {
+        logger.error(
+          `Cancel restore stock_movement failed for ${cancelMovFailures.length} item(s)`,
+          { transferId, count: cancelMovFailures.length, failures: cancelMovFailures },
+        );
       }
     }
 

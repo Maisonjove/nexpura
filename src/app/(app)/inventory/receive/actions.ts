@@ -44,6 +44,11 @@ export async function batchReceiveStock(
     if (!params.lines || params.lines.length === 0) return { error: "No items to receive" };
 
     let receivedCount = 0;
+    // Capture-amplification fix (no-logger-error-in-loop): collect
+    // per-line failures here; log ONCE after the loop. Without this,
+    // a batch with > 100 failing lines would silently drop captures
+    // past the PromiseBuffer cap.
+    const historyFailures: Array<{ inventoryId: string; err: { message: string; code?: string } }> = [];
 
     for (const line of params.lines) {
       if (line.receiveQty <= 0) continue;
@@ -80,11 +85,18 @@ export async function batchReceiveStock(
       });
 
       if (historyError) {
-        logger.error(`[batchReceiveStock] Failed to log history for ${line.inventoryId}:`, historyError);
+        historyFailures.push({ inventoryId: line.inventoryId, err: historyError });
         continue;
       }
 
       receivedCount++;
+    }
+
+    if (historyFailures.length > 0) {
+      logger.error(
+        `[batchReceiveStock] stock_movements insert failed for ${historyFailures.length} line(s)`,
+        { count: historyFailures.length, failures: historyFailures },
+      );
     }
 
     // Log audit event for batch receive

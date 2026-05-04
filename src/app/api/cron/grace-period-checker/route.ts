@@ -32,10 +32,16 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
     .is("tenants.deleted_at", null)
     .neq("tenant_id", NEXPURA_DOGFOOD_TENANT_ID)
 
+  // Capture-amplification fix (no-logger-error-in-loop): collect
+  // per-iteration failures into arrays and log ONCE after each loop
+  // ends, so a many-tenant batch of failures doesn't blow past the
+  // PromiseBuffer cap.
+  const expiredFailures: Array<{ phase: string; subId?: string; tenantId?: string; err: { message: string } }> = []
+
   for (const sub of expired ?? []) {
     const { error: subErr } = await admin.from("subscriptions").update({ status: "suspended" }).eq("id", sub.id)
     if (subErr) {
-      logger.error("[cron/grace-period-checker] suspend update failed", { subId: sub.id, err: subErr })
+      expiredFailures.push({ phase: "suspend_update", subId: sub.id, err: subErr })
       continue
     }
 
@@ -60,10 +66,14 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
       link: "/billing",
     })
     if (notifErr) {
-      logger.error("[cron/grace-period-checker] notification insert failed (suspended)", {
-        tenantId: sub.tenant_id, err: notifErr,
-      })
+      expiredFailures.push({ phase: "suspended_notification_insert", tenantId: sub.tenant_id, err: notifErr })
     }
+  }
+  if (expiredFailures.length > 0) {
+    logger.error(
+      `[cron/grace-period-checker] expired-batch had ${expiredFailures.length} failure(s)`,
+      { count: expiredFailures.length, failures: expiredFailures },
+    )
   }
 
   // Find 24h warnings not yet sent — same dogfood + soft-delete exclusions.
@@ -77,10 +87,12 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
     .is("tenants.deleted_at", null)
     .neq("tenant_id", NEXPURA_DOGFOOD_TENANT_ID)
 
+  const warning24hFailures: Array<{ phase: string; subId?: string; tenantId?: string; err: { message: string } }> = []
+
   for (const sub of warning24h ?? []) {
     const { error: warnUpdErr } = await admin.from("subscriptions").update({ grace_24h_sent: true }).eq("id", sub.id)
     if (warnUpdErr) {
-      logger.error("[cron/grace-period-checker] grace_24h_sent flag update failed", { subId: sub.id, err: warnUpdErr })
+      warning24hFailures.push({ phase: "grace_24h_sent_update", subId: sub.id, err: warnUpdErr })
       continue
     }
 
@@ -103,10 +115,14 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
       link: "/billing",
     })
     if (warnNotifErr) {
-      logger.error("[cron/grace-period-checker] notification insert failed (24h)", {
-        tenantId: sub.tenant_id, err: warnNotifErr,
-      })
+      warning24hFailures.push({ phase: "warning24h_notification_insert", tenantId: sub.tenant_id, err: warnNotifErr })
     }
+  }
+  if (warning24hFailures.length > 0) {
+    logger.error(
+      `[cron/grace-period-checker] warning-batch had ${warning24hFailures.length} failure(s)`,
+      { count: warning24hFailures.length, failures: warning24hFailures },
+    )
   }
 
   return NextResponse.json({

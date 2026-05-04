@@ -98,6 +98,9 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
 
     // Store campaign analytics in DB for historical tracking
     const admin = createAdminClient();
+    // Capture-amplification fix (no-logger-error-in-loop): collect
+    // per-campaign upsert failures; log ONCE after the sync.
+    const analyticsFailures: Array<{ campaignId: string; err: { message: string } }> = [];
 
     for (const campaign of campaigns) {
       if (!campaign.report_summary) continue;
@@ -131,11 +134,7 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
         { onConflict: "tenant_id,mailchimp_campaign_id", ignoreDuplicates: false }
       );
       if (analyticsErr) {
-        logger.error("[mailchimp/campaigns] analytics upsert failed", {
-          tenantId,
-          campaignId: campaign.id,
-          err: analyticsErr,
-        });
+        analyticsFailures.push({ campaignId: campaign.id, err: analyticsErr });
       }
 
       // Sync individual unsubscribes back to customers.email_opted_out.
@@ -184,6 +183,13 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
           });
         }
       }
+    }
+
+    if (analyticsFailures.length > 0) {
+      logger.error(
+        `[mailchimp/campaigns] analytics upsert failed for ${analyticsFailures.length} campaign(s)`,
+        { tenantId, count: analyticsFailures.length, failures: analyticsFailures },
+      );
     }
 
     // Update last sync time

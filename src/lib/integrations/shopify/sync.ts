@@ -585,9 +585,9 @@ export async function importOrdersFromShopify(tenantId: string): Promise<SyncRes
             total: li.quantity * parseFloat(li.price),
           });
           if (liErr) {
-            logger.error("[shopify-sync/orders] sale_items insert failed (non-fatal — see partial-state caveat in code)", {
-              tenantId, saleId: sale!.id, shopifyOrderId: order.id, lineItemId: li.id, err: liErr,
-            });
+            // Capture-amplification fix (no-logger-error-in-loop):
+            // we already collect into `errors[]` and the caller logs
+            // the aggregate after this loop completes.
             errors.push(`Order ${order.id} line ${li.id}: ${liErr.message}`);
           }
         }

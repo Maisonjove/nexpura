@@ -127,6 +127,7 @@ export async function executeWithSafety(
             })
             .eq("id", auditId);
           if (failUpdErr) {
+            // eslint-disable-next-line local/no-logger-error-in-loop -- bounded: this branch returns immediately, fires at most ONCE per executeWithSafety call.
             logger.error("[transaction-safety] audit failure-update failed (non-fatal — rollback already ran)", {
               auditId, failedStep: step.name, err: failUpdErr,
             });
@@ -156,6 +157,7 @@ export async function executeWithSafety(
           })
           .eq("id", auditId);
         if (progErr) {
+          // eslint-disable-next-line local/no-logger-error-in-loop -- bounded: steps[] is typically 3-10 long; total amplification capped well below the PromiseBuffer cap.
           logger.error("[transaction-safety] audit progress-update failed (non-fatal — final completion-update reconciles)", {
             auditId, completedStep: step.name, err: progErr,
           });

@@ -227,6 +227,13 @@ export async function processChunkOfRows(
 
   const BATCH_SIZE = 50;
   const jobRecords: Array<Record<string, unknown>> = [];
+  // Capture-amplification fix (no-logger-error-in-loop): a chunk
+  // can hold thousands of rows; each batch flush could fire two
+  // logger.error sites (audit insert + progress update). Without
+  // collection, > 50 batch failures push past the PromiseBuffer
+  // cap. Collect into arrays; log ONCE after the chunk finishes.
+  const batchAuditFailures: Array<{ batchSize: number; error: string }> = [];
+  const progressFailures: Array<{ err: { message: string } }> = [];
 
   const end = Math.min(rows.length, fromOffset + chunkSize);
   let rowsProcessed = 0;
@@ -411,12 +418,7 @@ export async function processChunkOfRows(
       const batch = jobRecords.splice(0, BATCH_SIZE);
       const { error: jobRecordsErr } = await admin.from('migration_job_records').insert(batch);
       if (jobRecordsErr) {
-        logger.error('[migration-execute] audit-log batch insert failed', {
-          jobId,
-          fileId: file.id,
-          batchSize: batch.length,
-          error: jobRecordsErr.message,
-        });
+        batchAuditFailures.push({ batchSize: batch.length, error: jobRecordsErr.message });
       }
       // Destructive (job progress) but log + continue — chunk-runner
       // is a cron-fired worker; throwing here aborts the in-flight
@@ -432,9 +434,21 @@ export async function processChunkOfRows(
         })
         .eq('id', jobId);
       if (progressErr) {
-        logger.error('[migration-execute] migration_jobs progress update failed', { jobId, err: progressErr });
+        progressFailures.push({ err: progressErr });
       }
     }
+  }
+  if (batchAuditFailures.length > 0) {
+    logger.error(
+      `[migration-execute] audit-log batch insert failed for ${batchAuditFailures.length} batch(es)`,
+      { jobId, fileId: file.id, count: batchAuditFailures.length, failures: batchAuditFailures },
+    );
+  }
+  if (progressFailures.length > 0) {
+    logger.error(
+      `[migration-execute] migration_jobs progress update failed ${progressFailures.length} time(s)`,
+      { jobId, count: progressFailures.length, failures: progressFailures },
+    );
   }
 
   if (jobRecords.length > 0) {

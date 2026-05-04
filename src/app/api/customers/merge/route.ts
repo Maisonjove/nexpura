@@ -169,10 +169,10 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         .in('customer_id', secondaryIds);
       if (error) {
         // Joey 2026-05-03 P2-E audit: surface failures rather than
-        // swallow. A single failed FK rewrite leaves the customer's
-        // detail page silently inconsistent; loud failure means the
-        // operator can re-run or fix manually.
-        logger.error(`[customers/merge] FK rewrite failed on ${table}`, { tenantId, primaryId, error });
+        // swallow. Capture-amplification fix
+        // (no-logger-error-in-loop): per-iteration logger.error here
+        // would queue one Sentry event per failing table; the
+        // post-loop summary below covers all of them in one event.
         fkRewriteFailures.push({ table, error: error.message });
       }
     }

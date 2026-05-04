@@ -228,6 +228,10 @@ export async function addLocation(formData: LocationFormData): Promise<{ data?: 
     await invalidateLocationsCache(userData.tenant_id);
 
     revalidatePath("/settings/locations");
+    // logAuditEvent above is fire-and-forget; its .catch fires
+    // logger.error if the audit row insert fails. Flush before exit
+    // so that capture lands before the Lambda freezes.
+    await flushSentry();
     return { data };
   } catch (error) {
     logger.error("addLocation failed", { error });
@@ -296,6 +300,9 @@ export async function toggleLocationActive(locationId: string, isActive: boolean
     await invalidateLocationsCache(userData.tenant_id);
 
     revalidatePath("/settings/locations");
+    // Same flush rule as addLocation — fire-and-forget audit
+    // .catch may have logged an error.
+    await flushSentry();
     return { success: true };
   } catch (error) {
     logger.error("toggleLocationActive failed", { error });
@@ -410,6 +417,9 @@ export async function deleteLocation(locationId: string): Promise<{ success?: bo
     await invalidateLocationsCache(userData.tenant_id);
 
     revalidatePath("/settings/locations");
+    // Flush nested-callback Sentry events from the audit logEvent
+    // .catch above before exit.
+    await flushSentry();
     return { success: true };
   } catch (error) {
     logger.error("deleteLocation failed", { error });
@@ -517,6 +527,9 @@ export async function updateLocation(
 
     revalidatePath("/settings/locations");
     revalidatePath(`/settings/locations/${locationId}`);
+    // Flush nested-callback Sentry events from the audit logEvent
+    // .catch above before exit.
+    await flushSentry();
     return { success: true };
   } catch (error) {
     logger.error("updateLocation failed", { error });

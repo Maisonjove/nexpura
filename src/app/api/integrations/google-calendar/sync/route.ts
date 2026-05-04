@@ -49,6 +49,13 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
 
     const admin = createAdminClient();
     const synced = { appointments: 0, repairs: 0 };
+    // Capture-amplification fix (no-logger-error-in-loop): collect
+    // per-row link-save failures into arrays; log ONCE per category
+    // after the corresponding loop ends. A many-row sync with
+    // pervasive link-save failures would blow past the PromiseBuffer
+    // cap if we logged inside the loop.
+    const aptLinkFailures: Array<{ appointmentId: string; orphanGoogleEventId: string; err: { message: string } }> = [];
+    const repairLinkFailures: Array<{ repairId: string; orphanGoogleEventId: string; err: { message: string } }> = [];
 
     // Sync appointments
     if (type === "appointments" || type === "all") {
@@ -87,17 +94,21 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
             .update({ google_calendar_event_id: event.id })
             .eq("id", apt.id);
           if (aptLinkErr) {
-            logger.error("[google-calendar/sync] appointments link save failed; orphan Google event will dup on next sync", {
-              tenantId,
+            aptLinkFailures.push({
               appointmentId: apt.id,
               orphanGoogleEventId: event.id,
-              calendarId: config.calendar_id,
               err: aptLinkErr,
             });
           } else {
             synced.appointments++;
           }
         }
+      }
+      if (aptLinkFailures.length > 0) {
+        logger.error(
+          `[google-calendar/sync] appointments link save failed for ${aptLinkFailures.length} row(s); orphan Google events will dup on next sync`,
+          { tenantId, calendarId: config.calendar_id, count: aptLinkFailures.length, failures: aptLinkFailures },
+        );
       }
     }
 
@@ -139,17 +150,21 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
             .update({ google_calendar_event_id: event.id })
             .eq("id", job.id);
           if (repairLinkErr) {
-            logger.error("[google-calendar/sync] repairs link save failed; orphan Google event will dup on next sync", {
-              tenantId,
+            repairLinkFailures.push({
               repairId: job.id,
               orphanGoogleEventId: event.id,
-              calendarId: config.calendar_id,
               err: repairLinkErr,
             });
           } else {
             synced.repairs++;
           }
         }
+      }
+      if (repairLinkFailures.length > 0) {
+        logger.error(
+          `[google-calendar/sync] repairs link save failed for ${repairLinkFailures.length} row(s); orphan Google events will dup on next sync`,
+          { tenantId, calendarId: config.calendar_id, count: repairLinkFailures.length, failures: repairLinkFailures },
+        );
       }
     }
 

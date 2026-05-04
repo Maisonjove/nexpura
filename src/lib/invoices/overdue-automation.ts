@@ -30,6 +30,11 @@ export async function runOverdueAutomation(): Promise<{ sent: number; errors: nu
   const admin = createAdminClient();
   let sent = 0;
   let errors = 0;
+  // Capture-amplification fix (no-logger-error-in-loop): collect
+  // step-marker update failures across all invoices; log ONCE after
+  // the sweep completes so a many-invoice batch with persistent
+  // marker-write failures can't push past the PromiseBuffer cap.
+  const stepMarkerFailures: Array<{ invoiceId: string; stepKey: string; err: { message: string } }> = [];
 
   // Get all overdue invoices that are unpaid/partial, with customer email
   const today = new Date().toISOString().split("T")[0];
@@ -98,9 +103,7 @@ export async function runOverdueAutomation(): Promise<{ sent: number; errors: nu
               .update({ overdue_reminder_sent_at: updatedSentAt })
               .eq("id", invoice.id);
             if (stepUpdErr) {
-              logger.error("[overdue-automation] reminder-sent marker update failed (non-fatal — email sent, may resend next run)", {
-                invoiceId: invoice.id, stepKey, err: stepUpdErr,
-              });
+              stepMarkerFailures.push({ invoiceId: invoice.id, stepKey, err: stepUpdErr });
             }
             sent++;
           } else {
@@ -112,9 +115,18 @@ export async function runOverdueAutomation(): Promise<{ sent: number; errors: nu
         }
       }
     } catch (err) {
+      // Captured per-iteration but the rule's auto-skip for try/catch
+      // applies here. The tradeoff: each iteration's exception path
+      // logs synchronously, which is the engineer-explicit branch.
       logger.error("Overdue automation error for invoice", { invoiceId: invoice.id, error: err });
       errors++;
     }
+  }
+  if (stepMarkerFailures.length > 0) {
+    logger.error(
+      `[overdue-automation] reminder-sent marker update failed for ${stepMarkerFailures.length} invoice(s) (non-fatal — emails sent; may resend next run)`,
+      { count: stepMarkerFailures.length, failures: stepMarkerFailures },
+    );
   }
 
   return { sent, errors };
