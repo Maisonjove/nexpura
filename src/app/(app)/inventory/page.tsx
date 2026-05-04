@@ -9,6 +9,7 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import InventoryClient from "./InventoryClient";
 import { locationScopeFilter } from "@/lib/location-read-scope";
 import { matchesReviewOrStaffToken } from "@/lib/auth/review";
+import { signStoragePath } from "@/lib/supabase/signed-urls";
 
 export const metadata = { title: "Inventory — Nexpura" };
 
@@ -216,11 +217,23 @@ export default async function InventoryPage({
     suppliers: { name: string } | null;
   }>;
 
-  const totalItems = listPayload.count ?? safeItems.length;
-  const lowStockCount = safeItems.filter(
+  // cleanup #18 — `inventory-photos` bucket is private. The cached payload
+  // holds storage paths (or legacy public URLs); resolve to 7-day signed
+  // URLs *outside* the cache callback so each cache snapshot only stores
+  // the path. Signing is parallelised across the page's items.
+  const itemsWithSignedImages = await Promise.all(
+    safeItems.map(async (i) => {
+      if (!i.primary_image) return i;
+      const signed = await signStoragePath(admin, "inventory-photos", i.primary_image);
+      return { ...i, primary_image: signed };
+    }),
+  );
+
+  const totalItems = listPayload.count ?? itemsWithSignedImages.length;
+  const lowStockCount = itemsWithSignedImages.filter(
     (i) => i.quantity <= (i.low_stock_threshold ?? 1)
   ).length;
-  const totalValue = safeItems.reduce(
+  const totalValue = itemsWithSignedImages.reduce(
     (sum, i) => sum + i.retail_price * i.quantity,
     0
   );
@@ -231,15 +244,15 @@ export default async function InventoryPage({
   // already at zero (or below threshold by ≥50%) so the KPI strip has a
   // distinct oxblood metric vs. the warning-amber low-stock total.
   const criticalCount = lowStockOnly
-    ? safeItems.filter((i) => i.quantity === 0).length
+    ? itemsWithSignedImages.filter((i) => i.quantity === 0).length
     : 0;
   const materialsCount = lowStockOnly
-    ? safeItems.filter((i) => i.item_type === "material").length
+    ? itemsWithSignedImages.filter((i) => i.item_type === "material").length
     : 0;
   // Estimated reorder value — sum of (threshold - quantity) * cost_price
   // for items below threshold. Falls back to retail_price when cost is null.
   const estimatedReorderValue = lowStockOnly
-    ? safeItems.reduce((sum, i) => {
+    ? itemsWithSignedImages.reduce((sum, i) => {
         const gap = Math.max((i.low_stock_threshold ?? 1) - i.quantity, 0);
         const unitCost = i.cost_price ?? i.retail_price;
         return sum + gap * unitCost;
@@ -248,7 +261,7 @@ export default async function InventoryPage({
 
   return (
     <InventoryClient
-      items={safeItems}
+      items={itemsWithSignedImages}
       categories={categories}
       suppliers={suppliers}
       totalItems={totalItems}

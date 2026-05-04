@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import ItemDetailClient from "@/app/(app)/inventory/[id]/ItemDetailClient";
 import InventoryPhotos from "@/app/(app)/inventory/[id]/InventoryPhotos";
+import { signStoragePath, signStoragePaths } from "@/lib/supabase/signed-urls";
 
 const TENANT_ID = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 const DEFAULT_ID = "67940b89-90ed-43b7-96a5-7bfc14d1ed79";
@@ -92,6 +93,12 @@ export default async function ReviewInventoryDetailPage({ params }: PageProps) {
   }>;
 
   const rawItem = item as unknown as { primary_image?: string | null; images?: string[] | null };
+  const additionalPaths = (rawItem.images ?? []) as string[];
+  const [primaryImageDisplayUrl, additionalImageDisplayUrlsRaw] = await Promise.all([
+    signStoragePath(admin, "inventory-photos", rawItem.primary_image ?? null),
+    signStoragePaths(admin, "inventory-photos", additionalPaths),
+  ]);
+  const additionalImageDisplayUrls = additionalImageDisplayUrlsRaw.filter((u): u is string => !!u);
 
   return (
     <>
@@ -100,8 +107,10 @@ export default async function ReviewInventoryDetailPage({ params }: PageProps) {
         <InventoryPhotos
           itemId={id}
           tenantId={TENANT_ID}
-          primaryImage={rawItem.primary_image ?? null}
-          additionalImages={(rawItem.images ?? []) as string[]}
+          primaryImagePath={rawItem.primary_image ?? null}
+          primaryImageDisplayUrl={primaryImageDisplayUrl}
+          additionalImagePaths={additionalPaths}
+          additionalImageDisplayUrls={additionalImageDisplayUrls}
           readOnly={true}
         />
       </div>

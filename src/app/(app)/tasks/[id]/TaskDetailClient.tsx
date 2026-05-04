@@ -34,9 +34,13 @@ export default function TaskDetailClient({
 
   /**
    * Upload attachment via the Supabase Storage 'inventory-photos' bucket
-   * (the catch-all public bucket used by /expenses receipts and other
-   * task attachments). 10MB cap + JPEG/PNG/WEBP/HEIC/HEIC/PDF whitelist.
-   * Group 14 audit fix — pre-fix the "+ Upload" button had no handler.
+   * (the catch-all bucket used by /expenses receipts and other task
+   * attachments). 10MB cap + JPEG/PNG/WEBP/HEIC/HEIC/PDF whitelist.
+   *
+   * cleanup #18: bucket is now private; we persist the bare storage path
+   * in `task_attachments.file_url` (legacy column name kept). The
+   * server-side `getTaskAttachments` re-signs to a 7-day URL on read so
+   * the rendered <a href=…> stays valid.
    */
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -63,8 +67,9 @@ export default function TaskDetailClient({
         setUploadError(upErr.message);
         return;
       }
-      const { data: pub } = supabase.storage.from("inventory-photos").getPublicUrl(path);
-      const r = await addTaskAttachment(task.id, file.name, pub.publicUrl, file.type, file.size);
+      // Persist the bare path; the server action signs the returned row
+      // so the optimistic <a href> below has a valid URL.
+      const r = await addTaskAttachment(task.id, file.name, path, file.type, file.size);
       if (r.error || !r.data) {
         setUploadError(r.error ?? "Failed to attach file");
         return;

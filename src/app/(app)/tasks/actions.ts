@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { signStoragePath } from "@/lib/supabase/signed-urls";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { logActivity } from "@/lib/activity-log";
@@ -528,7 +529,18 @@ export async function getTaskAttachments(taskId: string): Promise<{ data: TaskAt
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false });
     if (error) return { data: [], error: error.message };
-    return { data: data ?? [] };
+    // cleanup #18 — `inventory-photos` bucket is private. `file_url` is
+    // a storage path going forward (legacy rows still hold a public
+    // URL; signStoragePath handles both shapes). Resolve to a 7-day
+    // signed URL before returning so the client can <a href=…> directly.
+    const rows = data ?? [];
+    const signed = await Promise.all(
+      rows.map(async (row) => {
+        const url = await signStoragePath(admin, "inventory-photos", row.file_url);
+        return { ...row, file_url: url ?? row.file_url };
+      }),
+    );
+    return { data: signed };
   } catch (e) {
     return { data: [], error: e instanceof Error ? e.message : "Error" };
   }
@@ -537,7 +549,13 @@ export async function getTaskAttachments(taskId: string): Promise<{ data: TaskAt
 export async function addTaskAttachment(
   taskId: string,
   fileName: string,
-  fileUrl: string,
+  /**
+   * Storage path inside the `inventory-photos` bucket (cleanup #18 —
+   * caller uploads to private bucket and hands us the path). Stored
+   * verbatim into `file_url` (legacy column name); resolved to a signed
+   * URL on read.
+   */
+  filePath: string,
   fileType: string,
   fileSize: number
 ): Promise<{ data: TaskAttachment | null; error?: string }> {
@@ -546,10 +564,10 @@ export async function addTaskAttachment(
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("task_attachments")
-      .insert({ task_id: taskId, tenant_id: tenantId, file_name: fileName, file_url: fileUrl, file_type: fileType, file_size: fileSize, uploaded_by: userId })
+      .insert({ task_id: taskId, tenant_id: tenantId, file_name: fileName, file_url: filePath, file_type: fileType, file_size: fileSize, uploaded_by: userId })
       .select("*")
       .single();
-    
+
     if (error) return { data: null, error: error.message };
 
     // Side-effect — `task_activities` audit-trail entry for the attachment.
@@ -569,7 +587,12 @@ export async function addTaskAttachment(
     // Sentry serverless flush — drain queued logger.error capture before
     // the Lambda freezes on response return.
     await flushSentry();
-    return { data: data as TaskAttachment };
+
+    // Sign the just-stored path before returning so the client can link
+    // straight away (matches the read shape from getTaskAttachments).
+    const row = data as TaskAttachment;
+    const signed = await signStoragePath(admin, "inventory-photos", row.file_url);
+    return { data: { ...row, file_url: signed ?? row.file_url } };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : "Error" };
   }

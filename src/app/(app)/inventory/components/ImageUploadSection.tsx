@@ -22,10 +22,14 @@ interface Props {
 }
 
 /**
- * Upload an image into the public inventory-photos bucket and stash the
- * resulting URL into a hidden input under the form's primary_image
- * field name. Wired straight into Supabase Storage from the browser
- * (the bucket is public so reads don't need signed URLs).
+ * Upload an image into the inventory-photos bucket and stash the storage
+ * PATH (not the URL — bucket is private as of cleanup #18) into a hidden
+ * input under the form's primary_image field name.
+ *
+ * Two-state shape because the bucket is private:
+ *   - `imagePath` is what's submitted with the form (DB persisted)
+ *   - `displayUrl` is the short-lived signed URL we render in the preview
+ *     thumbnail; expires in 1h which is plenty for the create flow.
  *
  * Validation matches Joey's spec:
  *   - reject > 10 MB
@@ -37,7 +41,12 @@ export default function ImageUploadSection({
   fieldName = "primary_image",
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(initialUrl ?? null);
+  // initialUrl historically came from the inventory edit flow as a public
+  // URL. Going forward it's a path. Existing rows containing a full URL
+  // will fail to render in the preview until they're re-uploaded — an
+  // acceptable edge for the edit-only path; create works first-class.
+  const [imagePath, setImagePath] = useState<string | null>(initialUrl ?? null);
+  const [displayUrl, setDisplayUrl] = useState<string | null>(initialUrl ?? null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,10 +80,15 @@ export default function ImageUploadSection({
         setError(upErr.message);
         return;
       }
-      const { data } = supabase.storage
+      const { data, error: signErr } = await supabase.storage
         .from("inventory-photos")
-        .getPublicUrl(path);
-      setImageUrl(data.publicUrl);
+        .createSignedUrl(path, 60 * 60);
+      if (signErr || !data?.signedUrl) {
+        setError(signErr?.message ?? "Could not generate display URL.");
+        return;
+      }
+      setImagePath(path);
+      setDisplayUrl(data.signedUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -83,7 +97,8 @@ export default function ImageUploadSection({
   }
 
   function clearImage() {
-    setImageUrl(null);
+    setImagePath(null);
+    setDisplayUrl(null);
     if (fileInput.current) fileInput.current.value = "";
   }
 
@@ -93,17 +108,23 @@ export default function ImageUploadSection({
       title="Images"
       description="Upload a primary photo of the piece. JPEG, PNG, WEBP, or HEIC, up to 10 MB."
     >
-      <input type="hidden" name={fieldName} value={imageUrl ?? ""} />
-      {imageUrl ? (
+      <input type="hidden" name={fieldName} value={imagePath ?? ""} />
+      {imagePath ? (
         <div className="space-y-5">
           <div className="relative w-44 h-44 rounded-xl overflow-hidden border border-stone-200 bg-stone-50">
-            <Image
-              src={imageUrl}
-              alt="Item"
-              fill
-              sizes="176px"
-              className="object-cover"
-            />
+            {displayUrl ? (
+              <Image
+                src={displayUrl}
+                alt="Item"
+                fill
+                sizes="176px"
+                className="object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-xs text-stone-400">
+                Image attached
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <button

@@ -1,15 +1,32 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 interface ImageUploadProps {
   bucket: string;
   path: string;
+  /**
+   * Existing storage paths (cleanup #18 — buckets are private). The
+   * page-level data fetcher should hand us bare paths going forward;
+   * legacy rows containing a full https:// URL are accepted for
+   * backwards-compat.
+   */
   existingImages?: string[];
+  /**
+   * Optional pre-resolved signed URLs for `existingImages`, in matching
+   * order. Avoids a re-sign round-trip on first render. If absent the
+   * component will sign the existing items itself on mount.
+   */
+  existingDisplayUrls?: string[];
   maxImages?: number;
-  onUploadComplete: (urls: string[]) => void;
+  /**
+   * Receives an array of storage PATHS (the persistable shape). Bucket
+   * was previously public so this used to be public URLs — callers
+   * have been migrated alongside this change.
+   */
+  onUploadComplete: (paths: string[]) => void;
   label?: string;
   variant?: "multi" | "single";
 }
@@ -27,16 +44,36 @@ function generateUUID(): string {
   });
 }
 
+/**
+ * Strip the legacy public-URL prefix from a stored value so it round-
+ * trips through `createSignedUrl`. Mirrors `extractStoragePath` in
+ * src/lib/supabase/signed-urls.ts but inlined here to keep the client
+ * bundle independent of the server-only signed-urls module.
+ */
+function stripBucketPrefix(value: string, bucket: string): string {
+  if (!value.startsWith("http://") && !value.startsWith("https://")) {
+    return value.startsWith("/") ? value.slice(1) : value;
+  }
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const idx = value.indexOf(marker);
+  return idx === -1 ? value : value.slice(idx + marker.length);
+}
+
 export default function ImageUpload({
   bucket,
   path,
   existingImages = [],
+  existingDisplayUrls,
   maxImages = 10,
   onUploadComplete,
   label,
   variant = "multi",
 }: ImageUploadProps) {
-  const [images, setImages] = useState<string[]>(existingImages);
+  // `paths` is what we persist (parent gets these via onUploadComplete).
+  // `displayUrls` is what we render in <Image src=…/>; signed URLs with
+  // a 7-day expiry — well past the lifetime of a page session.
+  const [paths, setPaths] = useState<string[]>(existingImages);
+  const [displayUrls, setDisplayUrls] = useState<string[]>(existingDisplayUrls ?? []);
   const [uploading, setUploading] = useState<UploadingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,9 +81,35 @@ export default function ImageUpload({
   const supabase = createClient();
 
   const isSingle = variant === "single";
-  const currentImages = isSingle ? images.slice(0, 1) : images;
+  const currentDisplayUrls = isSingle ? displayUrls.slice(0, 1) : displayUrls;
 
-  async function uploadFile(file: File) {
+  // If the parent didn't pre-sign existingImages, sign them ourselves on
+  // mount so the thumbnails render. One round-trip per existing path.
+  useEffect(() => {
+    if (existingDisplayUrls && existingDisplayUrls.length > 0) return;
+    if (existingImages.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const signed = await Promise.all(
+        existingImages.map(async (raw) => {
+          const p = stripBucketPrefix(raw, bucket);
+          const { data, error: e } = await supabase.storage.from(bucket).createSignedUrl(p, 60 * 60 * 24 * 7);
+          if (e || !data?.signedUrl) return null;
+          return data.signedUrl;
+        }),
+      );
+      if (cancelled) return;
+      setDisplayUrls(signed.filter((u): u is string => !!u));
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally empty — only sign once on mount; subsequent updates
+    // come from upload/remove handlers which manage state directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function uploadFile(file: File): Promise<{ path: string; signedUrl: string } | null> {
     // Validate
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("Only JPG, PNG, and WebP images are accepted.");
@@ -74,47 +137,64 @@ export default function ImageUpload({
       return null;
     }
 
-    const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
-    return data.publicUrl;
+    const { data, error: signErr } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(filePath, 60 * 60 * 24 * 7);
+    if (signErr || !data?.signedUrl) {
+      setError("Could not generate signed URL: " + (signErr?.message ?? "unknown"));
+      return null;
+    }
+    return { path: filePath, signedUrl: data.signedUrl };
   }
 
   async function handleFiles(files: FileList | File[]) {
     setError(null);
     const fileArray = Array.from(files);
-    const remaining = isSingle ? 1 - currentImages.length : maxImages - currentImages.length;
+    const remaining = isSingle ? 1 - currentDisplayUrls.length : maxImages - currentDisplayUrls.length;
     if (remaining <= 0) {
       setError(isSingle ? "Replace the existing image first." : `Maximum ${maxImages} images allowed.`);
       return;
     }
     const toUpload = fileArray.slice(0, remaining);
 
-    const newUrls: string[] = [];
+    const newPaths: string[] = [];
+    const newDisplay: string[] = [];
     for (const file of toUpload) {
-      const url = await uploadFile(file);
-      if (url) newUrls.push(url);
+      const result = await uploadFile(file);
+      if (result) {
+        newPaths.push(result.path);
+        newDisplay.push(result.signedUrl);
+      }
     }
 
-    if (newUrls.length > 0) {
-      const updated = isSingle ? newUrls : [...images, ...newUrls];
-      setImages(updated);
-      onUploadComplete(updated);
+    if (newPaths.length > 0) {
+      const updatedPaths = isSingle ? newPaths : [...paths, ...newPaths];
+      const updatedDisplay = isSingle ? newDisplay : [...displayUrls, ...newDisplay];
+      setPaths(updatedPaths);
+      setDisplayUrls(updatedDisplay);
+      onUploadComplete(updatedPaths);
     }
   }
 
-  async function handleRemove(url: string) {
-    // Extract storage path from URL
-    try {
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split(`/storage/v1/object/public/${bucket}/`);
-      if (pathParts.length === 2) {
-        await supabase.storage.from(bucket).remove([pathParts[1]]);
+  async function handleRemove(displayUrl: string) {
+    // Find the index of the url being removed so we can drop the
+    // matching path entry. (We can't reverse-map a signed URL to its
+    // path the way the old getPublicUrl→path inversion worked.)
+    const idx = displayUrls.indexOf(displayUrl);
+    if (idx === -1) return;
+    const targetPath = paths[idx];
+    if (targetPath) {
+      try {
+        await supabase.storage.from(bucket).remove([stripBucketPrefix(targetPath, bucket)]);
+      } catch {
+        // silently fail — still remove from UI
       }
-    } catch {
-      // silently fail — still remove from UI
     }
-    const updated = images.filter((img) => img !== url);
-    setImages(updated);
-    onUploadComplete(updated);
+    const updatedPaths = paths.filter((_, i) => i !== idx);
+    const updatedDisplay = displayUrls.filter((_, i) => i !== idx);
+    setPaths(updatedPaths);
+    setDisplayUrls(updatedDisplay);
+    onUploadComplete(updatedPaths);
   }
 
   const onDrop = useCallback(
@@ -124,7 +204,7 @@ export default function ImageUpload({
       if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [images]
+    [paths]
   );
 
   const onDragOver = (e: React.DragEvent) => {
@@ -135,7 +215,7 @@ export default function ImageUpload({
 
   // ─── Single variant ───────────────────────────────────────────
   if (isSingle) {
-    const singleUrl = currentImages[0] ?? null;
+    const singleUrl = currentDisplayUrls[0] ?? null;
     return (
       <div className="space-y-2">
         {label && (
@@ -205,9 +285,9 @@ export default function ImageUpload({
       )}
 
       {/* Thumbnail grid */}
-      {currentImages.length > 0 && (
+      {currentDisplayUrls.length > 0 && (
         <div className="flex flex-wrap gap-3">
-          {currentImages.map((url) => (
+          {currentDisplayUrls.map((url) => (
             <div key={url} className="relative w-[120px] h-[120px] rounded-xl overflow-hidden border border-stone-200 group flex-shrink-0">
               <Image src={url} alt="Uploaded" width={120} height={120} className="w-full h-full object-cover" unoptimized />
               <button
@@ -237,7 +317,7 @@ export default function ImageUpload({
       )}
 
       {/* Upload zone */}
-      {currentImages.length < maxImages && (
+      {currentDisplayUrls.length < maxImages && (
         <div
           onClick={() => fileInputRef.current?.click()}
           onDrop={onDrop}
