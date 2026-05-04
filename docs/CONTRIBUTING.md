@@ -1,10 +1,10 @@
 # Contributing — engineering invariants
 
-Two systemic patterns surfaced repeatedly during the Phase 2 audit
-(swallowed errors, cacheComponents-stale-UI). Both are now enforced by
-ESLint rules in `eslint-rules/`. This doc explains the rules, the
-policies behind them, and how to handle the rare cases where you
-legitimately need to suppress them.
+Three systemic patterns surfaced during the Phase 2 audit (swallowed
+errors, cacheComponents-stale-UI, Sentry-flush-race). All three are
+now enforced by ESLint rules in `eslint-rules/`. This doc explains the
+rules, the policies behind them, and how to handle the rare cases
+where you legitimately need to suppress them.
 
 If you're new to the codebase, the short version is:
 
@@ -14,8 +14,11 @@ If you're new to the codebase, the short version is:
    that render JSX + read from Supabase under `(admin)/admin/*` and
    `(app)/admin/*` must call `await connection()` (or `cookies()` /
    `headers()` / `params`) within their first 5 statements.
+3. **Drain Sentry before returning from a route handler / server
+   action.** Wrap route handler exports with `withSentryFlush(...)`,
+   or call `await flushSentry()` before returns in server actions.
 
-Both are starting at `severity: warn` and will flip to `error` once the
+All three start at `severity: warn` and flip to `error` once the
 existing-violation backlog clears (see PR-B4).
 
 ---
@@ -219,7 +222,150 @@ loaders) and functions that don't call `admin.from(`/`supabase.from(`
 
 ---
 
-## 3. Webhook signature-rejection alerting
+## 3. Sentry serverless flush (`local/sentry-flush-before-return`)
+
+### The pattern
+
+```ts
+// ❌ BAD — Sentry capture dropped on Vercel serverless.
+//
+// `logger.error(...)` forwards to `Sentry.captureException` (lib/logger.ts:67),
+// which queues the event in @sentry/core's PromiseBuffer. A background
+// task drains the buffer over the network. If the handler returns
+// immediately after the logger.error call, the Lambda freezes before
+// the buffer drains. The event never reaches Sentry — so we lose the
+// observability the side-effect-log policy promised.
+export async function POST(req: NextRequest) {
+  const { error } = await admin.from("activity_log").insert({...});
+  if (error) {
+    logger.error("[stripe-webhook] activity_log insert failed (non-fatal)", {
+      tenant_id, err: error,
+    });
+  }
+  return NextResponse.json({ received: true });  // ← Sentry capture drops here
+}
+```
+
+### The fix — two acceptable shapes
+
+#### Route handlers — HOF wrap at export
+
+```ts
+// ✅ Wrap once at the export. Adds `await Sentry.flush(2000)` after
+// the handler returns AND on throw (so Next.js's onRequestError hook
+// can also drain). One flush per request, regardless of how many
+// logger.error calls happened inside.
+import { withSentryFlush } from "@/lib/sentry-flush";
+
+export const POST = withSentryFlush(async (req: NextRequest) => {
+  const { error } = await admin.from("activity_log").insert({...});
+  if (error) {
+    logger.error("[stripe-webhook] activity_log insert failed (non-fatal)", {
+      tenant_id, err: error,
+    });
+  }
+  return NextResponse.json({ received: true });
+});
+```
+
+#### Server actions — inline `await flushSentry()`
+
+`export async function X` declarations can't be HOF-wrapped without
+breaking React's RSC form-action bindings (the React layer expects a
+function declaration with a stable identifier, not a const-bound
+expression with arbitrary call-site rewriting). Use the inline
+helper instead:
+
+```ts
+// ✅ Inline flush before the return after logger.error.
+import { flushSentry } from "@/lib/sentry-flush";
+
+"use server";
+
+export async function recordRepairPayment(input: RecordPaymentInput) {
+  const { error } = await admin.from("payments").insert(input);
+  if (error) {
+    logger.error("[recordRepairPayment] insert failed", { err: error });
+    await flushSentry();
+    return { error: error.message };
+  }
+  return { success: true };
+}
+```
+
+#### `redirect()` exits — same flush rule
+
+`redirect()` from `next/navigation` throws `NEXT_REDIRECT` internally.
+That's effectively a return for Lambda-freeze purposes — the SDK
+buffer needs draining before the throw propagates out. Add
+`await flushSentry()` immediately before the redirect:
+
+```ts
+// ✅ Flush before redirect. The throw still propagates to the React
+// layer; Sentry events queued in catch blocks above this point land.
+try {
+  await maybeFireSomeOptionalThing();
+} catch (err) {
+  logger.error("[createRepair] optional thing failed (non-fatal)", { err });
+}
+revalidatePath("/repairs");
+await flushSentry();
+redirect(`/repairs/${data.id}`);
+```
+
+### Why explicit flush works
+
+`Sentry.flush(timeout)` calls the transport's `drain(timeout)` which
+`Promise.allSettled`s the entire pending PromiseBuffer (see
+`@sentry/core/utils/promisebuffer.js`). So a single flush at end-of-
+handler drains every queued event from any number of in-handler
+logger.error calls. The 2000ms is a TIMEOUT not a fixed wait —
+empty buffers resolve immediately. Latency penalty is roughly the
+ingest round-trip (~2-3s on a hit, <5ms on miss).
+
+### Caveats
+
+**Buffer cap is 100 events.** If a single request fires 100+
+logger.error calls, events 101+ are silently rejected by the
+PromiseBuffer with `SENTRY_BUFFER_FULL_ERROR` before flush can save
+them. Not a practical concern unless we hit a runaway loop, but flagged
+here so future contributors know.
+
+**Flush latency on /api/contact and other latency-sensitive routes**
+is ~2-3s on a real capture. Acceptable because (a) only fires when
+the buffer has events, and (b) by definition the route already had
+something interesting to surface to Sentry. If a route legitimately
+needs to keep the latency budget tight, consider whether the
+logger.error itself should be downgraded to logger.warn (which
+doesn't queue to Sentry) for that call site.
+
+### Suppressing the rule
+
+Same per-line comment pattern as the other two rules. Suppression
+should be very rare — there's almost always a way to wrap or inline
+flush. Document why:
+
+```ts
+// eslint-disable-next-line local/sentry-flush-before-return -- this
+// route is invoked thousands of times per minute and has no
+// logger.error path; the rule mis-fires because of a logger.error in
+// a helper that's only reachable via a separate non-Sentry-instrumented
+// call frame.
+export const GET = async (req) => { ... };
+```
+
+### Rule scope reminder
+
+The lint rule only catches **exported** route handlers / server
+actions. Top-level helper FUNCTION DECLARATIONS in route files (e.g.
+`async function handleCheckoutCompleted(...)` in
+`webhooks/stripe/route.ts`) sit one frame in from the boundary, and
+the wrap at the exported handler covers their flush. Internal helpers
++ UI components are not in scope.
+
+---
+
+## 4. Webhook signature-rejection alerting
 
 The `webhook_audit_log` table (PR #129) records every inbound webhook
 delivery, valid or rejected. The hourly cron at
@@ -240,7 +386,7 @@ every other server-side error in the codebase.
 
 ---
 
-## 4. Pre-commit checklist
+## 5. Pre-commit checklist
 
 Before pushing a PR that touches Supabase writes or admin server
 components:
