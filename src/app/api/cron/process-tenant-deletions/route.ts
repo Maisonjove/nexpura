@@ -45,6 +45,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { safeBearerMatch } from "@/lib/timing-safe-compare";
 import { NEXPURA_DOGFOOD_TENANT_ID } from "@/lib/dogfood-tenant";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 export const maxDuration = 300;
 
@@ -71,7 +72,7 @@ interface DeletionTenant {
   deletion_scheduled_for: string;
 }
 
-export async function GET(request: Request) {
+export const GET = withSentryFlush(async (request: Request) => {
   const authHeader = request.headers.get("authorization");
   if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -132,7 +133,7 @@ export async function GET(request: Request) {
     finished_at: new Date().toISOString(),
     results,
   });
-}
+});
 
 async function deleteOneTenant(
   admin: ReturnType<typeof createAdminClient>,

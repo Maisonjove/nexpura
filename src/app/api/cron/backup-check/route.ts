@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import logger from "@/lib/logger";
 import { safeBearerMatch } from "@/lib/timing-safe-compare";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * Backup Check Cron Job
@@ -12,7 +13,7 @@ import { safeBearerMatch } from "@/lib/timing-safe-compare";
  * Schedule: 0 4 * * 0 (4am every Sunday)
  */
 
-export async function GET(request: Request) {
+export const GET = withSentryFlush(async (request: Request) => {
   // Verify cron secret
   const authHeader = request.headers.get("authorization");
   if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
@@ -62,4 +63,4 @@ export async function GET(request: Request) {
     logger.error("[backup-check] Check failed:", error);
     return NextResponse.json({ status: "error" }, { status: 500 });
   }
-}
+});

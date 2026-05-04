@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyResendSvixSignature } from "@/lib/webhook-security";
 import { logWebhookAudit } from "@/lib/webhook-audit";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * Resend Webhook Handler
@@ -48,7 +49,7 @@ interface ResendWebhookEvent {
   };
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   const body = await request.text();
 
   const secret = getResendSecret();
@@ -298,4 +299,4 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
-}
+});

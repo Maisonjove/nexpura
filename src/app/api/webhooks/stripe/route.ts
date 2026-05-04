@@ -6,6 +6,7 @@ import { sendSystemEmail } from "@/lib/email-sender";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logWebhookAudit } from "@/lib/webhook-audit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 // Lazy initialization to avoid build-time errors when env vars are not available
 function getStripe() {
@@ -24,7 +25,7 @@ function getWebhookSecret() {
   return webhookSecret;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   const _ip = request.headers.get("x-forwarded-for") ?? "anonymous";
   const { success: _rlSuccess } = await checkRateLimit(_ip, 'webhook');
   if (!_rlSuccess) {
@@ -161,7 +162,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 async function handleCheckoutCompleted(
   supabase: ReturnType<typeof createAdminClient>,

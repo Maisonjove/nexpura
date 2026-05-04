@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { runOverdueAutomation } from "@/lib/invoices/overdue-automation";
 import { safeBearerMatch } from "@/lib/timing-safe-compare";
 import logger from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 // Called daily by Vercel cron or external scheduler
 // vercel.json: { "crons": [{ "path": "/api/cron/overdue-invoices", "schedule": "0 8 * * *" }] }
-export async function GET(req: NextRequest) {
+export const GET = withSentryFlush(async (req: NextRequest) => {
   // Constant-time bearer compare — previously this was a raw string
   // equality, which is timing-leakable byte-by-byte over repeated
   // probes against a responsive endpoint.
@@ -31,4 +32,4 @@ export async function GET(req: NextRequest) {
     logger.error("Cron job failed", { route: "cron/overdue-invoices", error: err });
     return NextResponse.json({ error: "Cron failed" }, { status: 500 });
   }
-}
+});

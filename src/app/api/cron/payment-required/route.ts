@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendFreeToPaidConversionEmail } from "@/lib/email/send";
 import { safeBearerMatch } from "@/lib/timing-safe-compare";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * POST /api/cron/payment-required
@@ -18,7 +19,7 @@ import { safeBearerMatch } from "@/lib/timing-safe-compare";
  * "scan for tenants whose trial expired and put them in grace"
  * logic lives in trial-end-checker (which runs daily 00:00 UTC).
  */
-export async function POST(request: NextRequest) {
+export const POST = withSentryFlush(async (request: NextRequest) => {
   // Accept ONLY CRON_SECRET. Previously the service_role key was
   // accepted as a fallback bearer — that's a wildly over-privileged
   // credential for cron invocation and leaked anywhere (Vercel env
@@ -84,4 +85,4 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({ ok: true, graceEnd });
-}
+});

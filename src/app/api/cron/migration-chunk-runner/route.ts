@@ -1,3 +1,4 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { safeBearerMatch } from '@/lib/timing-safe-compare';
@@ -33,7 +34,7 @@ export const maxDuration = 300;
  * the in-flight chunk room to actually be in-flight without
  * being preempted.
  */
-export async function GET(request: NextRequest) {
+export const GET = withSentryFlush(async (request: NextRequest) => {
   const authHeader = request.headers.get('authorization');
   if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -97,4 +98,4 @@ export async function GET(request: NextRequest) {
       error: e instanceof Error ? e.message : String(e),
     }, { status: 500 });
   }
-}
+});

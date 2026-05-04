@@ -1,3 +1,4 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendTrialEndingSoonEmail } from "@/lib/email/send"
@@ -5,7 +6,7 @@ import { safeBearerMatch } from "@/lib/timing-safe-compare"
 import { NEXPURA_DOGFOOD_TENANT_ID } from "@/lib/dogfood-tenant"
 import logger from "@/lib/logger"
 
-export async function GET(request: NextRequest) {
+export const GET = withSentryFlush(async (request: NextRequest) => {
   const authHeader = request.headers.get("authorization")
   if (!safeBearerMatch(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -145,4 +146,4 @@ export async function GET(request: NextRequest) {
     logger.error("[cron/trial-end-checker] failed", { error: err })
     return NextResponse.json({ ok: false, error: "cron_failed" }, { status: 500 })
   }
-}
+});

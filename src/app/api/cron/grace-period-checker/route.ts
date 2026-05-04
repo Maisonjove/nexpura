@@ -1,3 +1,4 @@
+import { withSentryFlush } from "@/lib/sentry-flush";
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendAccountSuspendedEmail, sendGracePeriod24hEmail } from "@/lib/email/send"
@@ -5,7 +6,7 @@ import { safeBearerMatch } from "@/lib/timing-safe-compare"
 import { NEXPURA_DOGFOOD_TENANT_ID } from "@/lib/dogfood-tenant"
 import logger from "@/lib/logger"
 
-export async function GET(request: NextRequest) {
+export const GET = withSentryFlush(async (request: NextRequest) => {
   // Verify cron secret — constant-time compare to block timing-attack
   // recovery of CRON_SECRET over repeated probes.
   const authHeader = request.headers.get("authorization")
@@ -121,4 +122,4 @@ export async function GET(request: NextRequest) {
     logger.error("[cron/grace-period-checker] failed", { error: err })
     return NextResponse.json({ ok: false, error: "cron_failed" }, { status: 500 })
   }
-}
+});

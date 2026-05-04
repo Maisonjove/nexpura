@@ -15,6 +15,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { verifyWooSignature } from "@/lib/webhook-security";
 import { getIntegration } from "@/lib/integrations";
 import { logWebhookAudit } from "@/lib/webhook-audit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /** Escapes special PostgreSQL LIKE pattern characters to prevent injection */
 function sanitizeLikePattern(input: string): string {
@@ -74,7 +75,7 @@ interface WooCustomer {
   billing: { phone?: string };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await checkRateLimit(ip, "webhook");
   if (!success) {
@@ -222,7 +223,7 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 async function handleProductWebhook(
   admin: ReturnType<typeof createAdminClient>,
