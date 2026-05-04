@@ -57,10 +57,6 @@
       "schedule": "0 3 * * 0"
     },
     {
-      "path": "/api/cron/backup-check",
-      "schedule": "0 4 * * 0"
-    },
-    {
       "path": "/api/warm",
       "schedule": "*/5 * * * *"
     },
