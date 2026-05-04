@@ -218,12 +218,6 @@ function isAlwaysPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/auth/forgot-password") ||
     pathname.startsWith("/api/auth/reset-password") ||
     pathname.startsWith("/api/auth/signup") ||
-    // Test endpoints (TEMPORARY) — bearer-auth via CRON_SECRET
-    // inside the route. Removed alongside the test endpoint(s) once
-    // the verification window closes. Using `/api/qa-test/` instead
-    // of an underscore-prefixed name because Next.js treats folders
-    // starting with `_` as private (excluded from routing).
-    pathname.startsWith("/api/qa-test") ||
     // Webhooks — signature is their auth, no session
     pathname.startsWith("/api/webhooks") ||
     // WooCommerce webhook lives under /api/integrations/woocommerce/
