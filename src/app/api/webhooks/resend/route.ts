@@ -229,6 +229,18 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         for (const email of emails) {
           if (!scopedTenantId) {
             logger.warn(`[resend-webhook] complaint for ${email} — no tenant scope (resend_id not in email_logs); skipping customer opt-out`);
+            // Still update email_logs.status by resend_id so the
+            // complaint signal isn't lost in audit. Mirrors the
+            // email.bounced no-tenant branch (PR-7 half-fix
+            // 2026-05-04: complained was silently `continue`ing here,
+            // losing the complaint event from the audit trail).
+            const { error: logErr } = await supabase
+              .from("email_logs")
+              .update({ status: "complained" })
+              .eq("resend_id", event.data.email_id);
+            if (logErr) {
+              logger.error("[resend-webhook] email_logs complained-update failed (no tenant)", { resend_id: event.data.email_id, err: logErr });
+            }
             continue;
           }
           const { data: customers } = await supabase
@@ -251,6 +263,19 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
             } else {
               logger.warn(`[resend-webhook] Marked ${customers.length} customer(s) as opted-out due to spam complaint: ${email}`);
             }
+          }
+
+          // Mirror email.bounced (line ~195): also update the
+          // email_logs.status row so audit queries can see the
+          // complaint event for this resend_id (PR-7 half-fix —
+          // complained branch wasn't updating email_logs at all,
+          // even in the with-tenant path).
+          const { error: logErr } = await supabase
+            .from("email_logs")
+            .update({ status: "complained" })
+            .eq("resend_id", event.data.email_id);
+          if (logErr) {
+            logger.error("[resend-webhook] email_logs complained-update failed", { resend_id: event.data.email_id, err: logErr });
           }
         }
         break;
