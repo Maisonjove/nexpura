@@ -3,6 +3,12 @@
 import { useCallback, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useSearchParams, usePathname } from "next/navigation";
+import {
+  PlusIcon,
+  XMarkIcon,
+  TicketIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
 import { createVoucher } from "./actions";
 
 const STATUS_TABS = [
@@ -29,11 +35,11 @@ interface Props {
   vouchers: Voucher[];
 }
 
-const STATUS_COLOURS: Record<string, string> = {
-  active: "bg-green-50 text-green-700",
-  redeemed: "bg-stone-100 text-stone-500",
-  expired: "bg-red-50 text-red-500",
-  voided: "bg-red-50 text-red-500",
+const STATUS_BADGE: Record<string, string> = {
+  active: "nx-badge-success",
+  redeemed: "nx-badge-neutral",
+  expired: "nx-badge-danger",
+  voided: "nx-badge-danger",
 };
 
 function fmtCurrency(n: number) {
@@ -86,33 +92,163 @@ export default function VouchersClient({ vouchers }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-stone-900">Gift Vouchers</h1>
-          <p className="text-stone-500 text-sm mt-1">{vouchers.length} voucher{vouchers.length !== 1 ? "s" : ""}</p>
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12 px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+      <div className="max-w-[1400px] mx-auto">
+        {/* Page Header */}
+        <div className="flex items-start justify-between gap-6 mb-14">
+          <div>
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Sales
+            </p>
+            <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+              Gift Vouchers
+            </h1>
+            <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+              {vouchers.length} voucher{vouchers.length !== 1 ? "s" : ""} issued. Track balances, expiries, and redemptions.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowNew(true)}
+            className="nx-btn-primary inline-flex items-center gap-2 shrink-0"
+          >
+            <PlusIcon className="w-4 h-4" />
+            New Voucher
+          </button>
         </div>
-        <button
-          onClick={() => setShowNew(true)}
-          className="px-4 py-2 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-[#7a6447] transition-colors"
-        >
-          + New Voucher
-        </button>
+
+        {/* Status filter chips */}
+        <div className="flex items-center gap-1.5 mb-10 overflow-x-auto">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setStatus(tab.value)}
+              className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all duration-300 ${
+                activeStatus === tab.value
+                  ? "bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] text-white shadow-[0_2px_4px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]"
+                  : "bg-white border border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Voucher List */}
+        {visibleVouchers.length === 0 ? (
+          <div className="bg-white border border-stone-200 rounded-2xl py-20 px-8 text-center">
+            <TicketIcon className="w-8 h-8 text-stone-300 mx-auto mb-6" strokeWidth={1.5} />
+            <h3 className="font-serif text-2xl text-stone-900 mb-3 tracking-tight">No gift vouchers yet</h3>
+            <p className="text-stone-500 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
+              Issue a voucher to gift a balance that customers can redeem at checkout.
+            </p>
+            <button
+              onClick={() => setShowNew(true)}
+              className="nx-btn-primary inline-flex items-center gap-2"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Issue Voucher
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {visibleVouchers.map((v) => {
+              const isExpired = v.status === "active" && !!v.expires_at && v.expires_at < todayStr;
+              const displayStatus = isExpired ? "expired" : v.status;
+              const badgeClass = STATUS_BADGE[displayStatus] || "nx-badge-neutral";
+              return (
+                <Link
+                  key={v.id}
+                  href={`/vouchers/${v.id}`}
+                  className="group block bg-white border border-stone-200 rounded-2xl px-6 py-5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 hover:-translate-y-0.5 transition-all duration-400"
+                >
+                  <div className="flex items-center gap-6">
+                    {/* Icon */}
+                    <div className="shrink-0">
+                      <TicketIcon
+                        className="w-6 h-6 text-stone-400 group-hover:text-nexpura-bronze transition-colors duration-400"
+                        strokeWidth={1.5}
+                      />
+                    </div>
+
+                    {/* Code + recipient */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className="inline-flex items-center font-mono text-[0.8125rem] font-medium text-stone-700 tracking-[0.05em] bg-stone-50 border border-stone-200 rounded-md px-2 py-0.5">
+                          {v.code}
+                        </span>
+                        <span className={`${badgeClass} capitalize`}>
+                          {displayStatus}
+                        </span>
+                      </div>
+                      <p className="text-sm text-stone-500 mt-2 leading-relaxed truncate">
+                        {v.issued_to_name || "Unassigned"}
+                        {v.expires_at ? (
+                          <>
+                            <span className="mx-2 text-stone-300">·</span>
+                            Expires {new Date(v.expires_at).toLocaleDateString("en-AU", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </>
+                        ) : (
+                          <>
+                            <span className="mx-2 text-stone-300">·</span>
+                            No expiry
+                          </>
+                        )}
+                      </p>
+                    </div>
+
+                    {/* Amount block */}
+                    <div className="text-right shrink-0">
+                      <p className="font-serif text-2xl text-stone-900 tabular-nums leading-none tracking-tight">
+                        {fmtCurrency(v.balance)}
+                      </p>
+                      <p className="text-[0.75rem] text-stone-400 mt-2 tabular-nums">
+                        of {fmtCurrency(v.original_amount)}
+                      </p>
+                    </div>
+
+                    {/* Arrow */}
+                    <ArrowRightIcon
+                      className="w-4 h-4 text-stone-300 group-hover:text-nexpura-bronze group-hover:translate-x-0.5 transition-all duration-400 shrink-0"
+                      strokeWidth={1.5}
+                    />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* New Voucher Modal */}
       {showNew && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="px-6 py-5 border-b border-stone-200 flex items-center justify-between">
-              <h3 className="font-semibold text-stone-900 text-lg">Issue Gift Voucher</h3>
-              <button onClick={() => setShowNew(false)} className="text-stone-400 hover:text-stone-900 text-xl">✕</button>
-            </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-stone-200 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.12)] w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-stone-200">
               <div>
-                <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-                  Amount *
+                <p className="text-[0.6875rem] uppercase tracking-luxury text-stone-400 mb-1">
+                  Sales
+                </p>
+                <h2 className="font-serif text-2xl text-stone-900 tracking-tight leading-none">
+                  Issue Gift Voucher
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowNew(false)}
+                className="text-stone-400 hover:text-stone-700 transition-colors duration-200 -mr-1"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" strokeWidth={1.5} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  Amount <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="amount"
@@ -121,153 +257,91 @@ export default function VouchersClient({ vouchers }: Props) {
                   step="0.01"
                   required
                   placeholder="0.00"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
+                  className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 tabular-nums placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-                  Custom Code (optional — auto-generated if blank)
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  Custom Code
                 </label>
                 <input
                   name="custom_code"
                   type="text"
-                  placeholder="e.g. BIRTHDAY2026"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
+                  placeholder="Auto-generated if blank"
+                  className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 font-mono uppercase tracking-[0.05em] placeholder:text-stone-400 placeholder:font-sans placeholder:normal-case placeholder:tracking-normal focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
                 />
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">Recipient Name</label>
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Recipient Name
+                  </label>
                   <input
                     name="issued_to_name"
                     type="text"
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">Recipient Email</label>
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Recipient Email
+                  </label>
                   <input
                     name="issued_to_email"
                     type="email"
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
                   />
                 </div>
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">Expiry Date (optional)</label>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  Expiry Date
+                </label>
                 <input
                   name="expires_at"
                   type="date"
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze"
+                  className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">Notes</label>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  Notes
+                </label>
                 <textarea
                   name="notes"
                   rows={2}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze resize-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200 resize-none"
                 />
               </div>
-              {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="flex-1 py-2.5 bg-nexpura-charcoal text-white text-sm font-semibold rounded-lg hover:bg-[#7a6447] transition-colors disabled:opacity-50"
-                >
-                  {isPending ? "Creating…" : "Issue Voucher"}
-                </button>
+
+              {error && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-5 border-t border-stone-200 -mx-6 px-6 -mb-6 pb-6 bg-stone-50/40 rounded-b-2xl">
                 <button
                   type="button"
                   onClick={() => setShowNew(false)}
-                  className="flex-1 py-2.5 bg-stone-100 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-200 transition-colors"
+                  className="px-4 py-2 rounded-md text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors duration-200"
                 >
                   Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="nx-btn-primary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? "Creating…" : "Issue Voucher"}
                 </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
-
-      {/* Status filter chips */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-1 p-2 overflow-x-auto">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setStatus(tab.value)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
-                activeStatus === tab.value
-                  ? "bg-nexpura-charcoal text-white"
-                  : "text-stone-600 hover:bg-stone-100"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Voucher List */}
-      {visibleVouchers.length === 0 ? (
-        <div className="bg-white border border-stone-200 rounded-xl p-12 text-center shadow-sm">
-          <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-            </svg>
-          </div>
-          <p className="font-medium text-stone-900 mb-1">No gift vouchers yet</p>
-          <p className="text-sm text-stone-500">Issue a voucher to get started.</p>
-        </div>
-      ) : (
-        <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-stone-200 bg-stone-50/60">
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-5 py-3">Code</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Issued To</th>
-                <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Original</th>
-                <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Balance</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Expires</th>
-                <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {visibleVouchers.map((v) => {
-                const isExpired = v.status === "active" && !!v.expires_at && v.expires_at < todayStr;
-                const displayStatus = isExpired ? "expired" : v.status;
-                return (
-                <tr key={v.id} className="hover:bg-stone-50/50 transition-colors">
-                  <td className="px-5 py-3 text-sm font-mono font-semibold text-stone-900">{v.code}</td>
-                  <td className="px-4 py-3 text-sm text-stone-700">{v.issued_to_name || <span className="text-stone-400">—</span>}</td>
-                  <td className="px-4 py-3 text-sm text-right text-stone-500">{fmtCurrency(v.original_amount)}</td>
-                  <td className="px-4 py-3 text-sm text-right font-semibold text-stone-900">{fmtCurrency(v.balance)}</td>
-                  <td className="px-4 py-3 text-sm text-stone-500">
-                    {v.expires_at
-                      ? new Date(v.expires_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
-                      : <span className="text-stone-400">No expiry</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex text-xs font-medium px-2.5 py-1 rounded-full capitalize ${STATUS_COLOURS[displayStatus] || "bg-stone-100 text-stone-500"}`}>
-                      {displayStatus}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/vouchers/${v.id}`}
-                      className="text-xs text-amber-700 hover:text-[#7a6447] font-medium transition-colors"
-                    >
-                      View →
-                    </Link>
-                  </td>
-                </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
       )}
     </div>
