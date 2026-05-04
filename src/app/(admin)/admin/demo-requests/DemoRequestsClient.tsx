@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export interface DemoRequestSummary {
   id: string;
@@ -60,8 +61,31 @@ function formatDateTime(iso: string | null): string {
 }
 
 export default function DemoRequestsClient({ rows }: { rows: DemoRequestSummary[] }) {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // Initial status filter is taken from the URL (?status=new) so the
+  // /admin dashboard's "Demo Requests" tile + the KPI tiles on this
+  // page can deep-link into a filtered view. Defaults to "all".
+  const initialStatus = (searchParams.get("status") as StatusFilter) || "all";
+  const validStatuses: StatusFilter[] = ["all", "new", "scheduled", "completed", "declined"];
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    validStatuses.includes(initialStatus) ? initialStatus : "all",
+  );
   const [search, setSearch] = useState("");
+
+  // Keep URL ?status= in sync with filter clicks so a refresh / share-
+  // a-link / back-button preserves the filter state.
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (statusFilter === "all") params.delete("status");
+    else params.set("status", statusFilter);
+    const next = params.toString();
+    const current = searchParams.toString();
+    if (next !== current) {
+      router.replace(next ? `?${next}` : "", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -148,14 +172,41 @@ export default function DemoRequestsClient({ rows }: { rows: DemoRequestSummary[
             ) : (
               filtered.map((r) => {
                 const fullName = [r.first_name, r.last_name].filter(Boolean).join(" ");
+                const detailHref = `/admin/demo-requests/${r.id}`;
+                // Whole-row click navigation. Joey 2026-05-04: the prior
+                // build only wrapped the prospect-name text in a Link,
+                // so clicking anywhere else in the row did nothing — the
+                // row LOOKED clickable (cursor on hover, hover bg) but
+                // wasn't. Now any click on the row routes to detail;
+                // the prospect name stays a Link so middle-click /
+                // cmd-click open the detail page in a new tab.
                 return (
-                  <tr key={r.id} className="hover:bg-stone-50 transition-colors">
+                  <tr
+                    key={r.id}
+                    role="link"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      // Allow native link semantics on actual <a>
+                      // descendants (cmd/ctrl-click on the prospect-name
+                      // link, etc). Skip the row navigation when the
+                      // click landed inside an anchor.
+                      if ((e.target as HTMLElement).closest("a")) return;
+                      router.push(detailHref);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(detailHref);
+                      }
+                    }}
+                    className="hover:bg-stone-50 transition-colors cursor-pointer focus:outline-none focus:bg-stone-50"
+                  >
                     <td className="px-6 py-4 text-stone-500 whitespace-nowrap">
                       {formatDate(r.created_at)}
                     </td>
                     <td className="px-6 py-4">
                       <Link
-                        href={`/admin/demo-requests/${r.id}`}
+                        href={detailHref}
                         className="font-medium text-stone-900 hover:text-stone-600"
                       >
                         {fullName || r.email}
