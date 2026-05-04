@@ -45,7 +45,16 @@ async function recalcInvoice(admin: ReturnType<typeof createAdminClient>, invoic
   const subtotal = (items ?? []).reduce((s, i) => s + (i.quantity ?? 1) * (i.unit_price ?? 0), 0);
   const taxAmount = subtotal * taxRate;
   const total = subtotal + taxAmount;
-  await admin.from("invoices").update({ subtotal, tax_amount: taxAmount, total }).eq("id", invoiceId);
+  // Destructive — invoice totals drive customer-facing billing. Throw
+  // on error; caller (server action) catches via outer try/return.
+  // Same policy as repairs/[id]/actions.ts:recalcInvoice.
+  const { error: recalcErr } = await admin
+    .from("invoices")
+    .update({ subtotal, tax_amount: taxAmount, total })
+    .eq("id", invoiceId);
+  if (recalcErr) {
+    throw new Error(`bespoke invoice totals recalc failed: ${recalcErr.message}`);
+  }
 }
 
 export async function addBespokeLineItem(
@@ -85,7 +94,15 @@ export async function addBespokeLineItem(
     }).select("id").single();
     if (invErr || !inv) return { error: invErr?.message ?? "Failed to create invoice" };
     invoiceId = inv.id;
-    await admin.from("bespoke_jobs").update({ invoice_id: invoiceId }).eq("id", jobId).eq("tenant_id", tenantId);
+    // Destructive — links new invoice to the bespoke job. Without
+    // this, re-running addBespokeLineItem would create a duplicate
+    // invoice for the same job.
+    const { error: linkErr } = await admin
+      .from("bespoke_jobs")
+      .update({ invoice_id: invoiceId })
+      .eq("id", jobId)
+      .eq("tenant_id", tenantId);
+    if (linkErr) return { error: `bespoke invoice-link failed: ${linkErr.message}` };
   }
 
   const { data: invRow } = await admin.from("invoices").select("tax_rate").eq("id", invoiceId).single();
@@ -219,11 +236,20 @@ export async function recordBespokePayment(
       const invTotal = invCheck.total ?? 0;
 
       const newStatus = totalPaid >= invTotal ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
-      await admin.from("invoices").update({
-        amount_paid: totalPaid,
-        status: newStatus,
-        ...(newStatus === "paid" ? { paid_at: new Date().toISOString() } : {}),
-      }).eq("id", invoiceId).eq("tenant_id", tenantId);
+      // Destructive — invoice payment status. Without surfacing a
+      // failure here the payments row was inserted but the invoice
+      // would stay "unpaid" with the customer's payment lost until
+      // manual reconciliation.
+      const { error: payStatusErr } = await admin
+        .from("invoices")
+        .update({
+          amount_paid: totalPaid,
+          status: newStatus,
+          ...(newStatus === "paid" ? { paid_at: new Date().toISOString() } : {}),
+        })
+        .eq("id", invoiceId)
+        .eq("tenant_id", tenantId);
+      if (payStatusErr) return { error: `bespoke invoice payment-status update failed: ${payStatusErr.message}` };
 
       return { success: true };
     }
@@ -274,7 +300,16 @@ export async function generateBespokeInvoice(
   }).select("id").single();
   if (error || !inv) return { error: error?.message ?? "Failed to create invoice" };
 
-  await admin.from("bespoke_jobs").update({ invoice_id: inv.id }).eq("id", jobId).eq("tenant_id", tenantId);
+  // Destructive — links the new invoice to the owning bespoke job.
+  // Without this update the invoice exists but `bespoke_jobs.invoice_id`
+  // stays null, so re-running generateBespokeInvoice would create a
+  // duplicate.
+  const { error: linkErr } = await admin
+    .from("bespoke_jobs")
+    .update({ invoice_id: inv.id })
+    .eq("id", jobId)
+    .eq("tenant_id", tenantId);
+  if (linkErr) return { error: `bespoke invoice-link failed: ${linkErr.message}` };
   revalidatePath(`/bespoke/${jobId}`);
   return { success: true, invoiceId: inv.id };
 }
@@ -297,11 +332,18 @@ export async function updateBespokeStage(
   const { error } = await supabase.from("bespoke_jobs").update({ stage, updated_at: new Date().toISOString() }).eq("id", jobId).eq("tenant_id", tenantId);
   if (error) return { error: error.message };
 
-  await admin.from("bespoke_job_stages").insert({ tenant_id: tenantId, job_id: jobId, stage, notes: null, created_by: userId });
+  // Side-effect — bespoke_job_stages is the audit-trail table; the
+  // stage transition itself already succeeded above. Log + continue.
+  const { error: stageHistErr } = await admin
+    .from("bespoke_job_stages")
+    .insert({ tenant_id: tenantId, job_id: jobId, stage, notes: null, created_by: userId });
+  if (stageHistErr) {
+    logger.error("[updateBespokeStage] bespoke_job_stages insert failed (non-fatal)", { jobId, stage, err: stageHistErr });
+  }
 
-  // Log stage change event
+  // Side-effect — job_events is the activity feed.
   const stageLabel = stage.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  await admin.from("job_events").insert({
+  const { error: eventErr } = await admin.from("job_events").insert({
     tenant_id: tenantId,
     job_type: "bespoke",
     job_id: jobId,
@@ -309,6 +351,9 @@ export async function updateBespokeStage(
     description: `Stage changed to ${stageLabel}`,
     actor: ctx.userId,
   });
+  if (eventErr) {
+    logger.error("[updateBespokeStage] job_events stage_change insert failed (non-fatal)", { jobId, stage, err: eventErr });
+  }
 
   revalidatePath(`/bespoke/${jobId}`);
   return { success: true };
@@ -400,9 +445,10 @@ export async function emailBespokeInvoice(
 
   if (sendError) {
     logger.error("Resend error:", sendError);
-    // Demo-limited: log event but don't surface as error
+    // Side-effect (already in try/catch): log on failure; primary
+    // flow returns demo_limited regardless.
     try {
-      await admin.from("job_events").insert({
+      const { error: attemptErr } = await admin.from("job_events").insert({
         tenant_id: tenantId,
         job_type: "bespoke",
         job_id: jobId,
@@ -410,12 +456,17 @@ export async function emailBespokeInvoice(
         description: `Invoice email attempted (demo mode — verify sending domain for external delivery)`,
         actor: ctx.userId,
       });
+      if (attemptErr) {
+        logger.error("[bespoke/emailInvoice] email_attempted log failed (non-fatal)", { jobId, err: attemptErr });
+      }
     } catch { /* ignore */ }
     revalidatePath(`/bespoke/${jobId}`);
     return { success: true, note: "demo_limited", message: "Email logged — configure a verified sending domain in Settings for external delivery" };
   }
 
-  await admin.from("job_events").insert({
+  // Side-effect — email already delivered; lost log row is a
+  // visibility gap, not state-of-record drift.
+  const { error: eventErr } = await admin.from("job_events").insert({
     tenant_id: tenantId,
     job_type: "bespoke",
     job_id: jobId,
@@ -423,6 +474,9 @@ export async function emailBespokeInvoice(
     description: `Invoice ${invoice.invoice_number} emailed to ${customer.email} ✓`,
     actor: ctx.userId,
   });
+  if (eventErr) {
+    logger.error("[bespoke/emailInvoice] email_sent log failed (non-fatal)", { jobId, err: eventErr });
+  }
 
   revalidatePath(`/bespoke/${jobId}`);
   return { success: true, note: "sent", message: `Invoice emailed to ${customer.email}` };

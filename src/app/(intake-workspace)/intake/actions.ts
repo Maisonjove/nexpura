@@ -316,14 +316,22 @@ export async function createRepairFromIntake(
 
   if (error) return { error: error.message };
 
-  // Insert initial stage entry
-  await supabase.from("repair_stages").insert({
-    tenant_id: tenantId,
-    repair_id: data.id,
-    stage: "intake",
-    notes: "Repair created via unified intake",
-    created_by: userId,
-  });
+  // Insert initial stage entry. Side-effect — repair_stages is the
+  // audit-trail table; if the insert fails the repair itself was
+  // created successfully so a missing stage row is a visibility gap
+  // not state-of-record drift.
+  const { error: stageHistErr } = await supabase
+    .from("repair_stages")
+    .insert({
+      tenant_id: tenantId,
+      repair_id: data.id,
+      stage: "intake",
+      notes: "Repair created via unified intake",
+      created_by: userId,
+    });
+  if (stageHistErr) {
+    logger.error("[intake] repair_stages insert failed (non-fatal)", { repairId: data.id, err: stageHistErr });
+  }
 
   let invoiceId: string | undefined;
 
@@ -395,8 +403,9 @@ export async function createRepairFromIntake(
     if (!invError && invoice) {
       invoiceId = invoice.id;
 
-      // Create invoice line item for the repair work
-      await admin.from("invoice_line_items").insert({
+      // Destructive — invoice line item is state-of-record (drives
+      // what the customer pays). Surface failures to caller.
+      const { error: liErr } = await admin.from("invoice_line_items").insert({
         tenant_id: tenantId,
         invoice_id: invoice.id,
         description: `Repair: ${input.item_description}`,
@@ -405,17 +414,22 @@ export async function createRepairFromIntake(
         discount_pct: 0,
         sort_order: 0,
       });
+      if (liErr) return { error: `invoice line-item insert failed: ${liErr.message}` };
 
-      // Link invoice to repair
-      await admin
+      // Destructive — link invoice to repair. Without this, re-running
+      // the intake would create a duplicate invoice for the same job.
+      const { error: linkErr } = await admin
         .from("repairs")
         .update({ invoice_id: invoice.id })
         .eq("id", data.id)
         .eq("tenant_id", tenantId);
+      if (linkErr) return { error: `repair invoice-link failed: ${linkErr.message}` };
 
-      // Record payment if made
+      // Record payment if made. Destructive — payment row is the
+      // record-of-truth for money received; a lost row means the
+      // customer's deposit "disappears" until manual reconciliation.
       if (paymentReceived > 0) {
-        await admin.from("payments").insert({
+        const { error: payErr } = await admin.from("payments").insert({
           tenant_id: tenantId,
           invoice_id: invoice.id,
           amount: paymentReceived,
@@ -424,6 +438,7 @@ export async function createRepairFromIntake(
           notes: "Deposit at intake",
           created_by: userId,
         });
+        if (payErr) return { error: `intake-deposit payment insert failed: ${payErr.message}` };
       }
     }
   }
@@ -561,14 +576,21 @@ export async function createBespokeFromIntake(
 
   if (error) return { error: error.message };
 
-  // Insert initial stage entry
-  await supabase.from("bespoke_job_stages").insert({
-    tenant_id: tenantId,
-    job_id: data.id,
-    stage: "enquiry",
-    notes: "Job created via unified intake",
-    created_by: userId,
-  });
+  // Insert initial stage entry. Side-effect — bespoke_job_stages
+  // is the audit-trail table; the job itself was created above so a
+  // missing stage row is a visibility gap, not state-of-record drift.
+  const { error: bespokeStageErr } = await supabase
+    .from("bespoke_job_stages")
+    .insert({
+      tenant_id: tenantId,
+      job_id: data.id,
+      stage: "enquiry",
+      notes: "Job created via unified intake",
+      created_by: userId,
+    });
+  if (bespokeStageErr) {
+    logger.error("[intake] bespoke_job_stages insert failed (non-fatal)", { jobId: data.id, err: bespokeStageErr });
+  }
 
   let invoiceId: string | undefined;
 
@@ -640,8 +662,9 @@ export async function createBespokeFromIntake(
     if (!invError && invoice) {
       invoiceId = invoice.id;
 
-      // Create invoice line item for the bespoke work
-      await admin.from("invoice_line_items").insert({
+      // Destructive — invoice line item is state-of-record. Same
+      // policy as the repair flow above.
+      const { error: liErr } = await admin.from("invoice_line_items").insert({
         tenant_id: tenantId,
         invoice_id: invoice.id,
         description: `Bespoke: ${input.title}`,
@@ -650,17 +673,21 @@ export async function createBespokeFromIntake(
         discount_pct: 0,
         sort_order: 0,
       });
+      if (liErr) return { error: `invoice line-item insert failed: ${liErr.message}` };
 
-      // Link invoice to bespoke job
-      await admin
+      // Destructive — link invoice to bespoke job. Without this,
+      // re-running creates a duplicate invoice.
+      const { error: linkErr } = await admin
         .from("bespoke_jobs")
         .update({ invoice_id: invoice.id })
         .eq("id", data.id)
         .eq("tenant_id", tenantId);
+      if (linkErr) return { error: `bespoke job invoice-link failed: ${linkErr.message}` };
 
-      // Record payment if made
+      // Record payment if made. Destructive — record-of-truth for
+      // money received.
       if (paymentReceived > 0) {
-        await admin.from("payments").insert({
+        const { error: payErr } = await admin.from("payments").insert({
           tenant_id: tenantId,
           invoice_id: invoice.id,
           amount: paymentReceived,
@@ -669,6 +696,7 @@ export async function createBespokeFromIntake(
           notes: "Deposit at intake",
           created_by: userId,
         });
+        if (payErr) return { error: `intake-deposit payment insert failed: ${payErr.message}` };
       }
     }
   }
@@ -840,8 +868,9 @@ export async function createStockSaleFromIntake(
 
   if (saleError) return { error: saleError.message };
 
-  // Create sale item
-  await supabase.from("sale_items").insert({
+  // Create sale item. Destructive — line items are state-of-record
+  // for what was actually sold (drives revenue + financial reports).
+  const { error: liErr } = await supabase.from("sale_items").insert({
     tenant_id: tenantId,
     sale_id: sale.id,
     inventory_id: input.inventory_id,
@@ -850,6 +879,7 @@ export async function createStockSaleFromIntake(
     unit_price: input.price,
     line_total: input.price,
   });
+  if (liErr) return { error: `sale_items insert failed: ${liErr.message}` };
 
   // Deduct inventory quantity (race-safe with HARD FAIL)
   const { data: item } = await supabase
@@ -864,9 +894,17 @@ export async function createStockSaleFromIntake(
     
     // HARD FAIL: Do not allow sale if out of stock
     if (newQty < 0) {
-      // Void the sale we just created
-      await supabase.from("sales").update({ status: "voided" }).eq("id", sale.id);
-      
+      // Destructive — voiding a sale flips its financial-report
+      // status. If this update fails the sale is in limbo (recorded
+      // but inventory not deducted). Surface to caller.
+      const { error: voidErr } = await supabase
+        .from("sales")
+        .update({ status: "voided" })
+        .eq("id", sale.id);
+      if (voidErr) {
+        logger.error("[intake/sale] void-sale on out-of-stock failed", { saleId: sale.id, err: voidErr });
+      }
+
       // Log the out-of-stock failure
       logIntakeEvent({
         event: 'failed',
@@ -883,13 +921,17 @@ export async function createStockSaleFromIntake(
       return { error: `Item "${item.name || input.item_name}" is out of stock` };
     }
     
-    // Conditional update to prevent race
-    const { count } = await supabase
+    // Conditional update to prevent race. Destructive — inventory
+    // count is state-of-record; the conditional `eq("quantity",
+    // oldQty)` is the optimistic-locking guard so a missed update
+    // (count=0) means we need to retry, not throw.
+    const { count, error: invUpdErr } = await supabase
       .from("inventory")
       .update({ quantity: newQty })
       .eq("id", input.inventory_id)
       .eq("quantity", oldQty);
-    
+    if (invUpdErr) return { error: `inventory deduction failed: ${invUpdErr.message}` };
+
     // If race occurred, retry with HARD FAIL
     let finalQty = newQty;
     if (count === 0) {
@@ -901,8 +943,16 @@ export async function createStockSaleFromIntake(
       if (itemRetry) {
         finalQty = itemRetry.quantity - 1;
         if (finalQty < 0) {
-          await supabase.from("sales").update({ status: "voided" }).eq("id", sale.id);
-          
+          // Destructive (void on race-loss) — same policy as the
+          // first void above.
+          const { error: voidRaceErr } = await supabase
+            .from("sales")
+            .update({ status: "voided" })
+            .eq("id", sale.id);
+          if (voidRaceErr) {
+            logger.error("[intake/sale] void-sale on race-loss failed", { saleId: sale.id, err: voidRaceErr });
+          }
+
           // Log the race-condition out-of-stock failure
           logIntakeEvent({
             event: 'failed',
@@ -918,14 +968,20 @@ export async function createStockSaleFromIntake(
           
           return { error: `Item "${item.name || input.item_name}" just sold out` };
         }
-        await supabase
+        // Destructive — inventory count under race retry. Race
+        // already happened so unconditional update is appropriate.
+        const { error: invRetryErr } = await supabase
           .from("inventory")
           .update({ quantity: finalQty })
           .eq("id", input.inventory_id);
+        if (invRetryErr) return { error: `inventory retry-update failed: ${invRetryErr.message}` };
       }
     }
 
-    await supabase.from("stock_movements").insert({
+    // Destructive — stock_movements is the audit-of-changes table
+    // but used as state-of-record (you can reconstruct inventory
+    // history from it; tax + finance reports rely on it).
+    const { error: movErr } = await supabase.from("stock_movements").insert({
       tenant_id: tenantId,
       inventory_id: input.inventory_id,
       movement_type: "sale",
@@ -934,6 +990,7 @@ export async function createStockSaleFromIntake(
       notes: `Sold via intake - ${saleNumber}`,
       created_by: userId,
     });
+    if (movErr) return { error: `stock_movements insert failed: ${movErr.message}` };
   }
 
   // Create invoice if requested or if payment was made
@@ -973,8 +1030,8 @@ export async function createStockSaleFromIntake(
     if (!invError && invoice) {
       invoiceId = invoice.id;
 
-      // Create invoice line item
-      await supabase.from("invoice_line_items").insert({
+      // Destructive — invoice line item state-of-record.
+      const { error: invLiErr } = await supabase.from("invoice_line_items").insert({
         tenant_id: tenantId,
         invoice_id: invoice.id,
         inventory_id: input.inventory_id,
@@ -984,10 +1041,11 @@ export async function createStockSaleFromIntake(
         discount_pct: 0,
         sort_order: 0,
       });
+      if (invLiErr) return { error: `sale-invoice line-item insert failed: ${invLiErr.message}` };
 
-      // Record payment if made
+      // Destructive — record-of-truth for payment received.
       if (paymentReceived > 0) {
-        await supabase.from("payments").insert({
+        const { error: payErr } = await supabase.from("payments").insert({
           tenant_id: tenantId,
           invoice_id: invoice.id,
           amount: paymentReceived,
@@ -995,6 +1053,7 @@ export async function createStockSaleFromIntake(
           payment_date: new Date().toISOString().split("T")[0],
           created_by: userId,
         });
+        if (payErr) return { error: `sale-invoice payment insert failed: ${payErr.message}` };
       }
     }
   }
