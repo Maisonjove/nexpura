@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { resend } from "@/lib/email/resend";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
@@ -11,11 +12,12 @@ import logger from "@/lib/logger";
  * pass).
  *
  * Submissions land in hello@nexpura.com via Resend with reply-to set
- * to the submitter so the team can reply directly. No DB persistence
- * — keeps the table count + GDPR surface area down. If we later want
- * a CRM record, an audit row in customers / a `contact_submissions`
- * table can be added without a schema migration affecting this
- * endpoint's contract.
+ * to the submitter so the team can reply directly.
+ *
+ * Joey 2026-05-04: when topic='demo', ALSO insert a row into
+ * demo_requests so /admin/demo-requests can manage the lifecycle.
+ * Email send still fires either way — DB insert failure is logged but
+ * does not break the prospect-facing flow.
  *
  * Rate-limited per source IP via the existing checkRateLimit helper
  * to prevent the form from being weaponised as a spam relay.
@@ -28,6 +30,29 @@ const contactSchema = z.object({
   email: z.string().email().max(160),
   topic: z.enum(["demo", "trial", "migration", "pricing", "other"]),
   message: z.string().min(5).max(4000).trim(),
+  // Joey 2026-05-04: demo-flow extras Kaitlyn's /contact?intent=demo
+  // form already collects (and pricing-page → /contact passes plan).
+  // All optional; only inserted into demo_requests when topic='demo'.
+  //
+  // Caps re-tuned 2026-05-04 (post-PR-#127 reproduction): the original
+  // num_stores cap of 20 chars rejected realistic answers like "We
+  // have 3 stores in NSW" (24 chars) — the form's placeholder shows
+  // "1" but the input is a free-text TEXT field, not a number, so
+  // visitors type phrases. current_pos / preferred_time same risk for
+  // verbose answers ("Lightspeed Retail (X-Series) considering
+  // Shopify", "We're available weekdays between 10am-4pm Sydney
+  // time"). Bumped these to 500 — generous enough to never reject a
+  // good-faith answer, still bounded against abuse, and the
+  // demo_requests TEXT columns have no DB-level length cap so storage
+  // isn't a concern.
+  intent: z.string().max(20).optional(),
+  current_pos: z.string().max(500).optional(),
+  num_stores: z.string().max(500).optional(),
+  pain_point: z.string().max(2000).optional(),
+  preferred_time: z.string().max(500).optional(),
+  country: z.string().max(120).optional(),
+  phone: z.string().max(40).optional(),
+  plan: z.string().max(40).optional(),
 });
 
 const TOPIC_LABELS: Record<z.infer<typeof contactSchema>["topic"], string> = {
@@ -76,8 +101,26 @@ export async function POST(req: NextRequest) {
 
   const parsed = contactSchema.safeParse(body);
   if (!parsed.success) {
+    // Joey 2026-05-04 (post-PR-#127 follow-up): the prior generic
+    // "Please check your details and try again" left the visitor
+    // (and us) with no signal about which field failed. Log every
+    // issue server-side, and return the first failing-field name so
+    // the client can surface "Please check the email field" instead
+    // of the catch-all.
+    const issues = parsed.error.issues.map((i) => ({
+      path: i.path.join("."),
+      message: i.message,
+    }));
+    logger.error("[contact] zod validation failed", {
+      issues,
+      bodyKeys: body && typeof body === "object" ? Object.keys(body as object) : null,
+    });
+    const firstField = issues[0]?.path || "form";
     return NextResponse.json(
-      { error: "Please check your details and try again." },
+      {
+        error: `Please check the ${firstField.replace(/_/g, " ")} field and try again.`,
+        field: firstField,
+      },
       { status: 400 },
     );
   }
@@ -107,6 +150,41 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
+
+    // Joey 2026-05-04: demo-request capture. When topic='demo' (or
+    // intent='demo'/'sales' from Kaitlyn's form variant), persist a
+    // structured row to demo_requests so /admin/demo-requests can
+    // manage the lifecycle. Failures are logged but do not break the
+    // prospect-facing flow — email already went out.
+    if (data.topic === "demo" || data.intent === "demo" || data.intent === "sales") {
+      try {
+        const admin = createAdminClient();
+        const userAgent = req.headers.get("user-agent") || null;
+        const { error: drErr } = await admin.from("demo_requests").insert({
+          first_name: data.first_name,
+          last_name: data.last_name || null,
+          email: data.email,
+          business_name: data.business_name || null,
+          phone: data.phone || null,
+          country: data.country || "AU",
+          message: data.message,
+          current_pos: data.current_pos || null,
+          num_stores: data.num_stores || null,
+          pain_point: data.pain_point || null,
+          preferred_time: data.preferred_time || null,
+          plan: data.plan || null,
+          status: "new",
+          ip_address: ip === "anon" ? null : ip,
+          user_agent: userAgent,
+        });
+        if (drErr) {
+          logger.error("[contact] demo_requests insert failed", { err: drErr, email: data.email });
+        }
+      } catch (drErr) {
+        logger.error("[contact] demo_requests insert threw", { err: drErr, email: data.email });
+      }
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     logger.error("[contact] send threw", { err });
