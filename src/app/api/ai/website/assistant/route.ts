@@ -433,11 +433,17 @@ async function applyAction(
 
         // Mark the parent page as a draft so the publish button is the only
         // thing that flips it back to live.
-        await admin
+        // Kind B (server-action-style, destructive return-error). The
+        // section update succeeded above; if this page-draft flip fails
+        // the live page silently keeps the new section content without
+        // the user being able to revert via the publish button — flag
+        // so the caller knows the save was incomplete.
+        const { error: pageDraftErr } = await admin
           .from("site_pages")
           .update({ published: false, updated_at: new Date().toISOString() })
           .eq("id", action.page_id)
           .eq("tenant_id", tenantId);
+        if (pageDraftErr) return { type: action.type, applied: false, error: pageDraftErr.message };
         return { type: action.type, applied: true };
       }
 
@@ -475,11 +481,15 @@ async function applyAction(
         });
         if (error) return { type: action.type, applied: false, error: error.message };
 
-        await admin
+        // Kind B (server-action-style, destructive return-error). Same
+        // pattern as edit_section above — section insert just succeeded,
+        // page-draft flip is the second half of the save.
+        const { error: pageDraftErr } = await admin
           .from("site_pages")
           .update({ published: false, updated_at: new Date().toISOString() })
           .eq("id", action.page_id)
           .eq("tenant_id", tenantId);
+        if (pageDraftErr) return { type: action.type, applied: false, error: pageDraftErr.message };
         return { type: action.type, applied: true };
       }
 
@@ -498,11 +508,15 @@ async function applyAction(
           .eq("tenant_id", tenantId);
         if (error) return { type: action.type, applied: false, error: error.message };
 
-        await admin
+        // Kind B (server-action-style, destructive return-error). Same
+        // pattern as edit_section above — section delete just succeeded,
+        // page-draft flip is the second half of the save.
+        const { error: pageDraftErr } = await admin
           .from("site_pages")
           .update({ published: false, updated_at: new Date().toISOString() })
           .eq("id", section.page_id as string)
           .eq("tenant_id", tenantId);
+        if (pageDraftErr) return { type: action.type, applied: false, error: pageDraftErr.message };
         return { type: action.type, applied: true };
       }
 
@@ -533,11 +547,15 @@ async function applyAction(
             .eq("tenant_id", tenantId);
           if (error) return { type: action.type, applied: false, error: error.message };
         }
-        await admin
+        // Kind B (server-action-style, destructive return-error). Same
+        // pattern as edit_section above — reorder loop just succeeded,
+        // page-draft flip is the second half of the save.
+        const { error: pageDraftErr } = await admin
           .from("site_pages")
           .update({ published: false, updated_at: new Date().toISOString() })
           .eq("id", action.page_id)
           .eq("tenant_id", tenantId);
+        if (pageDraftErr) return { type: action.type, applied: false, error: pageDraftErr.message };
         return { type: action.type, applied: true };
       }
 

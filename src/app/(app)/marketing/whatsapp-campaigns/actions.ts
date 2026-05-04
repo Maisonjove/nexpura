@@ -175,8 +175,13 @@ export async function createCampaignCheckout(campaignId: string): Promise<{
       customer_email: user.email || undefined,
     });
 
-    // Update campaign with Stripe session ID
-    await admin
+    // Destructive throw (caught by outer try/catch → return-error): the
+    // Stripe checkout session has just been created. If we silently fail
+    // to record stripe_session_id locally, the user will redirect to
+    // Stripe and pay, but the success webhook will arrive looking for a
+    // campaign with this session_id and find none — payment lands without
+    // a matching campaign row, message dispatch never triggers.
+    const { error: campUpdErr } = await admin
       .from("whatsapp_campaigns")
       .update({
         stripe_session_id: session.id,
@@ -184,9 +189,13 @@ export async function createCampaignCheckout(campaignId: string): Promise<{
         updated_at: new Date().toISOString(),
       })
       .eq("id", campaignId);
+    if (campUpdErr) throw new Error(`Failed to attach Stripe session to campaign: ${campUpdErr.message}`);
 
-    // Create purchase record
-    await admin.from("marketing_purchases").insert({
+    // Destructive throw: marketing_purchases is the canonical purchase
+    // ledger row that the Stripe webhook updates on payment success. If
+    // this insert silently fails, the webhook can't find a pending row
+    // to flip → the customer pays Stripe but the campaign never sends.
+    const { error: purchaseErr } = await admin.from("marketing_purchases").insert({
       tenant_id: userData.tenant_id,
       campaign_id: campaignId,
       campaign_type: "whatsapp",
@@ -197,6 +206,7 @@ export async function createCampaignCheckout(campaignId: string): Promise<{
       currency: "aud",
       status: "pending",
     });
+    if (purchaseErr) throw new Error(`Failed to record marketing purchase: ${purchaseErr.message}`);
 
     revalidatePath("/marketing/whatsapp-campaigns");
     return { checkoutUrl: session.url! };

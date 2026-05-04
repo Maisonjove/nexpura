@@ -99,8 +99,13 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
           }
         }
 
-        // Log execution
-        await admin.from("scheduled_report_logs").insert({
+        // Log execution. Cron-runner log+continue: scheduled_report_logs
+        // is observability — it's the audit trail of "did this report
+        // actually fire?". A missing log row means we lose forensics
+        // for THIS run only. The actual emails already left the
+        // outbound queue above; we still need to advance next_run_at
+        // below, so do not abort the loop iteration here.
+        const { error: logInsertErr } = await admin.from("scheduled_report_logs").insert({
           tenant_id: report.tenant_id,
           scheduled_report_id: report.id,
           status: failedCount === 0 ? "success" : failedCount < recipients.length ? "partial" : "failed",
@@ -108,25 +113,51 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
           recipients_failed: failedCount,
           execution_time_ms: Date.now() - reportStartTime,
         });
+        if (logInsertErr) {
+          logger.error("[scheduled-reports] scheduled_report_logs insert failed (non-fatal — emails already sent, audit row lost)", {
+            tenantId: report.tenant_id, scheduledReportId: report.id, err: logInsertErr,
+          });
+        }
 
-        // Update last_sent_at and next_run_at
-        await admin.from("scheduled_reports").update({
+        // Update last_sent_at and next_run_at. Cron-runner log+continue:
+        // if this fails, next_run_at stays in the past and the report
+        // will be picked up again on the next cron tick (and re-sent —
+        // duplicate emails). Worth surfacing loudly via Sentry, but not
+        // worth aborting the rest of the dueReports loop, since the
+        // other tenants' reports are independent.
+        const { error: schedUpdateErr } = await admin.from("scheduled_reports").update({
           last_sent_at: now.toISOString(),
           next_run_at: calculateNextRunTime(report.schedule_type, report.schedule_day, report.schedule_time),
         }).eq("id", report.id);
+        if (schedUpdateErr) {
+          logger.error("[scheduled-reports] scheduled_reports next_run_at update failed (non-fatal — next cron tick will re-send report; duplicate-email risk)", {
+            tenantId: report.tenant_id, scheduledReportId: report.id, err: schedUpdateErr,
+          });
+        }
 
         processed++;
       } catch (reportErr) {
         logger.error(`[scheduled-reports] Failed to generate report ${report.id}:`, reportErr);
-        
-        // Log failure
-        await admin.from("scheduled_report_logs").insert({
+
+        // Log failure. Cron-runner log+continue: this is the FAILURE
+        // branch of the audit trail. If THIS insert also fails we have
+        // no record at all that the report tried to run — but the outer
+        // catch block already logged the original generator error to
+        // Sentry, so at least the primary failure is captured. Don't
+        // abort the loop; advance next_run_at below and move to the
+        // next due report.
+        const { error: failLogErr } = await admin.from("scheduled_report_logs").insert({
           tenant_id: report.tenant_id,
           scheduled_report_id: report.id,
           status: "failed",
           error_message: reportErr instanceof Error ? reportErr.message : "Unknown error",
           execution_time_ms: Date.now() - reportStartTime,
         });
+        if (failLogErr) {
+          logger.error("[scheduled-reports] failure-branch log insert failed (non-fatal — primary report error already logged above)", {
+            tenantId: report.tenant_id, scheduledReportId: report.id, err: failLogErr,
+          });
+        }
 
         // Still update next_run_at to avoid repeated failures
         await updateNextRunTime(admin, report);
@@ -147,9 +178,21 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
 });
 
 async function updateNextRunTime(admin: ReturnType<typeof createAdminClient>, report: { id: string; schedule_type: string; schedule_day: number | null; schedule_time: string | null }) {
-  await admin.from("scheduled_reports").update({
+  // Cron-runner log+continue: helper called from two paths — the
+  // no-recipients skip and the generator-failure branch. In both
+  // cases we want to advance next_run_at so the report doesn't get
+  // re-picked next tick. If THIS update fails, we'll just re-pick
+  // and re-fail next tick (no duplicate emails in those branches —
+  // either no recipients, or the generator threw before sending).
+  // Surface via Sentry but don't abort the outer dueReports loop.
+  const { error: updateErr } = await admin.from("scheduled_reports").update({
     next_run_at: calculateNextRunTime(report.schedule_type, report.schedule_day, report.schedule_time),
   }).eq("id", report.id);
+  if (updateErr) {
+    logger.error("[scheduled-reports] updateNextRunTime helper failed (non-fatal — report will be re-picked next cron tick)", {
+      tenantId: undefined, scheduledReportId: report.id, err: updateErr,
+    });
+  }
 }
 
 function calculateNextRunTime(

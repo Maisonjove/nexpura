@@ -244,8 +244,13 @@ export async function submitBespokeDecision(params: {
     const safe: Record<string, unknown> = { approval_status: updates.approval_status };
     if (updates.approved_at) safe.approved_at = updates.approved_at;
     if (updates.approval_notes) safe.approval_notes = updates.approval_notes;
-    const retry = await admin.from("bespoke_jobs").update(safe).eq("id", job.id);
-    updateErr = retry.error;
+    // Destructive return-error: this is the state-of-record bespoke
+    // decision. The retry already strips schema-cache-fragile columns
+    // down to just the approval state. If even this minimal update
+    // fails, the customer's decision is lost — log and bubble error
+    // back to caller via the `if (updateErr)` block below.
+    const { error: retryErr } = await admin.from("bespoke_jobs").update(safe).eq("id", job.id);
+    updateErr = retryErr;
   }
 
   if (updateErr) {
@@ -260,7 +265,13 @@ export async function submitBespokeDecision(params: {
   const threadBody = decision === "approve"
     ? (message ? `[Approved design]\n\n${message}` : "[Approved design]")
     : `[Requested changes]\n\n${message}`;
-  await admin.from("order_messages").insert({
+  // Destructive return-error: order_messages is the message-thread
+  // state-of-record; missing rows mean the admin Tracking history page
+  // and the OrderMessagesPanel show stale state inconsistent with the
+  // already-saved approval_status above. Bubble error to caller so the
+  // UI can prompt a retry (the bespoke_jobs decision row stays in DB
+  // either way — the next retry only re-inserts the missing thread row).
+  const { error: threadErr } = await admin.from("order_messages").insert({
     tenant_id: job.tenant_id,
     order_type: "bespoke",
     order_id: job.id,
@@ -271,11 +282,21 @@ export async function submitBespokeDecision(params: {
     message_type: "amendment_request",
     read_by_staff_at: null,
   });
+  if (threadErr) {
+    logger.error("[submitBespokeDecision] order_messages insert failed (decision saved OK, thread row missing)", {
+      jobId: job.id, err: threadErr,
+    });
+    return { error: "Decision saved but message thread did not update — please retry" };
+  }
 
   // job_events is the audit-log surface other approval-related code already
   // writes to (see /api/bespoke/approval-response). Mirror there so a single
   // historical view of the bespoke job stays consistent.
-  const eventResult = await admin.from("job_events").insert({
+  // Side-effect log+continue: the bespoke_jobs decision and order_messages
+  // thread are already saved above — job_events is a redundant audit
+  // mirror, so a failure here is observability degradation and shouldn't
+  // poison the customer's success path.
+  const { error: jobEventErr } = await admin.from("job_events").insert({
     tenant_id: job.tenant_id,
     job_type: "bespoke",
     job_id: job.id,
@@ -284,9 +305,9 @@ export async function submitBespokeDecision(params: {
       ? "Customer approved design from tracking page"
       : `Customer requested changes from tracking page: ${message || "No details"}`,
   });
-  if (eventResult.error) {
-    logger.error("[submitBespokeDecision] job_events insert failed (decision saved OK)", {
-      err: eventResult.error,
+  if (jobEventErr) {
+    logger.error("[submitBespokeDecision] job_events insert failed (non-fatal — decision + thread already saved)", {
+      jobId: job.id, err: jobEventErr,
     });
   }
 

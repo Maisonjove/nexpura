@@ -140,7 +140,12 @@ export async function logAuditEvent({
       || null;
     const userAgent = headersList.get('user-agent') || null;
 
-    await admin.from('audit_logs').insert({
+    // Side-effect log+continue: audit_logs is observability — a failed
+    // insert means we lose one row from the audit trail but the actual
+    // business write that triggered this call already succeeded. The
+    // function signature is `Promise<void>` and the catch below also
+    // log+swallows; this matches the design intent.
+    const { error: insertErr } = await admin.from('audit_logs').insert({
       tenant_id: tenantId,
       user_id: userId || null,
       action,
@@ -152,6 +157,11 @@ export async function logAuditEvent({
       user_agent: userAgent,
       metadata: metadata || {},
     });
+    if (insertErr) {
+      logger.error('[audit] audit_logs insert failed (non-fatal — audit trail gap)', {
+        action, entityType, entityId, tenantId, err: insertErr,
+      });
+    }
   } catch (error) {
     // Log but don't throw - audit logging should not break the main flow
     logger.error('Failed to log audit event', { error, action, entityType, entityId });

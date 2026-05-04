@@ -36,13 +36,22 @@ async function logActivity(
   action: string,
   metadata: Record<string, unknown>
 ) {
+  // Side-effect log+continue: this is an admin audit-log helper that wraps
+  // every super-admin mutation; if the audit insert fails we want to surface
+  // the failure to Sentry but NOT break the underlying admin action (e.g.
+  // changing a tenant plan must succeed even if audit_logs is briefly
+  // unavailable). The original try/catch caught throws but Supabase returns
+  // { error } without throwing, so the bare insert was fully swallowed.
   try {
-    await adminClient.from("admin_audit_logs").insert({
+    const { error } = await adminClient.from("admin_audit_logs").insert({
       admin_user_id: adminUserId,
       action,
       metadata,
       created_at: new Date().toISOString(),
     });
+    if (error) {
+      logger.error("[admin] Failed to log activity:", { action, err: error.message });
+    }
   } catch (err) {
     logger.error("[admin] Failed to log activity:", err);
   }

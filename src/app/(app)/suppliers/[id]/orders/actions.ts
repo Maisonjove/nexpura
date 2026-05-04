@@ -146,15 +146,25 @@ export async function updatePurchaseOrderStatus(
 
         const newQty = (inv.quantity || 0) + item.quantity;
 
-        // Update inventory quantity
-        await admin
+        // Destructive throw (caught by outer try/catch → return-error):
+        // this is the inventory increment for receiving PO goods. If it
+        // silently fails, the PO will flip to 'received' below but the
+        // inventory.quantity is unchanged → over-sell vector + the
+        // stock_movements row inserted next references a quantity_after
+        // that doesn't match reality.
+        const { error: invUpdErr } = await admin
           .from("inventory")
           .update({ quantity: newQty, updated_at: new Date().toISOString() })
           .eq("id", item.inventory_item_id)
           .eq("tenant_id", tenantId);
+        if (invUpdErr) throw new Error(`Failed to increment inventory for PO receive: ${invUpdErr.message}`);
 
-        // Log stock movement
-        await admin.from("stock_movements").insert({
+        // Destructive throw: stock_movements is the immutable ledger of
+        // every quantity change. The inventory row was just incremented;
+        // if this insert silently fails the inventory shows the new total
+        // but there's no movement row explaining where it came from →
+        // reconciliation reports won't match, audit trail is broken.
+        const { error: stockMovErr } = await admin.from("stock_movements").insert({
           tenant_id: tenantId,
           inventory_id: item.inventory_item_id,
           movement_type: "purchase_order_receive",
@@ -163,6 +173,7 @@ export async function updatePurchaseOrderStatus(
           notes: `Received via PO ${po.order_number || id.slice(0, 8)}`,
           created_by: userId,
         });
+        if (stockMovErr) throw new Error(`Failed to record stock movement for PO receive: ${stockMovErr.message}`);
       }
     }
   }
@@ -237,11 +248,20 @@ export async function receivePOLines(
           .single();
         if (inv) {
           const newQty = (inv.quantity || 0) + adding;
-          await admin.from("inventory")
+          // Destructive return-error: partial-receive inventory increment.
+          // If silently fails the per-line received_qty below is updated
+          // (the PO shows it's been received) but inventory.quantity is
+          // stale → over-sell vector. Surface so the caller can retry.
+          const { error: invUpdErr } = await admin.from("inventory")
             .update({ quantity: newQty, updated_at: new Date().toISOString() })
             .eq("id", inv.id)
             .eq("tenant_id", tenantId);
-          await admin.from("stock_movements").insert({
+          if (invUpdErr) return { error: `Failed to increment inventory for partial receive: ${invUpdErr.message}` };
+          // Destructive return-error: stock_movements ledger row paired to
+          // the inventory increment above. If silently fails the on-hand
+          // matches reality but there's no movement record → reconcile
+          // reports show an unexplained delta and audit trail is broken.
+          const { error: stockMovErr } = await admin.from("stock_movements").insert({
             tenant_id: tenantId,
             inventory_id: inv.id,
             movement_type: "purchase_order_receive",
@@ -250,6 +270,7 @@ export async function receivePOLines(
             notes: `Partial receive against PO ${po.order_number || poId.slice(0, 8)}`,
             created_by: userId,
           });
+          if (stockMovErr) return { error: `Failed to record stock movement for partial receive: ${stockMovErr.message}` };
         }
         received += adding;
       }

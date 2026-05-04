@@ -49,13 +49,21 @@ async function logAudit(
   action: string,
   metadata: Record<string, unknown>,
 ) {
+  // Side-effect log+continue: audit-log helper that wraps every demo-request
+  // admin mutation. The underlying action (approve/decline/email-send) must
+  // not be blocked by an audit_logs failure; we surface it to Sentry but let
+  // the caller proceed. Pre-fix the bare insert was fully swallowed because
+  // Supabase returns { error } rather than throwing.
   try {
-    await adminClient.from("admin_audit_logs").insert({
+    const { error } = await adminClient.from("admin_audit_logs").insert({
       admin_user_id: adminUserId,
       action,
       metadata,
       created_at: new Date().toISOString(),
     });
+    if (error) {
+      logger.error("[admin/demo-requests] audit log failed", { err: error.message, action });
+    }
   } catch (err) {
     logger.error("[admin/demo-requests] audit log failed", { err, action });
   }

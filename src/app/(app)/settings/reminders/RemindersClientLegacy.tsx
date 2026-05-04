@@ -72,11 +72,20 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
     );
 
     if (tableExists && tenantId && !reminder.id.startsWith("default-")) {
-      await supabase
+      // Client-side destructive write. Same pattern as RemindersClient.tsx —
+      // revert optimistic state on failure + error toast so UI matches server.
+      const { error } = await supabase
         .from("service_reminders")
         .update({ status: newStatus })
         .eq("id", reminder.id)
         .eq("tenant_id", tenantId);
+      if (error) {
+        setReminders((prev) =>
+          prev.map((r) => (r.id === reminder.id ? { ...r, status: reminder.status } : r))
+        );
+        showToast(`Failed to update: ${error.message}`);
+        return;
+      }
     }
 
     showToast(newStatus === "active" ? "Reminder activated" : "Reminder deactivated");
@@ -91,11 +100,19 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
     );
 
     if (tableExists && tenantId && !editingId.startsWith("default-")) {
-      await supabase
+      // Client-side destructive write. Same pattern as RemindersClient.tsx —
+      // surface error toast on failure; full optimistic-rollback would
+      // require pre-edit row snapshotting (acceptable trade-off here).
+      const { error } = await supabase
         .from("service_reminders")
         .update(editForm)
         .eq("id", editingId)
         .eq("tenant_id", tenantId);
+      if (error) {
+        showToast(`Failed to save: ${error.message}`);
+        setSaving(false);
+        return;
+      }
     }
 
     setEditingId(null);
@@ -153,11 +170,19 @@ export default function RemindersClient({ initialReminders, tenantId, tableExist
     setReminders((prev) => prev.filter((r) => r.id !== id));
 
     if (tableExists && tenantId && !id.startsWith("default-")) {
-      await supabase
+      // Client-side destructive write. Same pattern as RemindersClient.tsx —
+      // restore the deleted row on failure so local state matches server.
+      const { error } = await supabase
         .from("service_reminders")
         .delete()
         .eq("id", id)
         .eq("tenant_id", tenantId);
+      if (error) {
+        const restored = reminders.find((r) => r.id === id);
+        if (restored) setReminders((prev) => [...prev, restored]);
+        showToast(`Failed to delete: ${error.message}`);
+        return;
+      }
     }
 
     showToast("Reminder deleted");

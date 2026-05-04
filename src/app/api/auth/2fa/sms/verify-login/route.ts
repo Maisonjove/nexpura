@@ -67,11 +67,19 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       // Mark backup code as used
       const updatedBackupCodes = [...backupCodes];
       updatedBackupCodes[usedIndex] = null;
-      
-      await admin
+
+      // Kind A (auth/2FA lifecycle, destructive throw). If we don't
+      // burn the backup code, the same one-time code stays valid and
+      // can be reused — exactly what backup codes must NOT allow.
+      // Throw → 500 → user retries; the partially-validated session
+      // is discarded.
+      const { error: backupBurnErr } = await admin
         .from('users')
         .update({ totp_backup_codes: updatedBackupCodes })
         .eq('id', userId);
+      if (backupBurnErr) {
+        throw new Error(`users backup-code burn failed: ${backupBurnErr.message}`);
+      }
 
       return NextResponse.json({ success: true });
     }
@@ -99,13 +107,20 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     }
 
     // Clear the used code
-    await admin
+    // Kind A (auth/2FA lifecycle, destructive throw). If we leave the
+    // SMS code in place after a successful match it remains replayable
+    // until expiry — defeats the one-shot property of an OTP. Throw →
+    // 500 → user signs in again with a fresh code.
+    const { error: smsClearErr } = await admin
       .from('users')
       .update({
         sms_2fa_code: null,
         sms_2fa_code_expires_at: null,
       })
       .eq('id', userId);
+    if (smsClearErr) {
+      throw new Error(`users sms_2fa_code clear failed: ${smsClearErr.message}`);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

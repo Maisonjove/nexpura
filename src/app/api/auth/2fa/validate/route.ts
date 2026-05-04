@@ -123,10 +123,18 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         const updatedCodes = [...profile.totp_backup_codes];
         updatedCodes[usedIndex] = null;
 
-        await admin
+        // Kind A (auth/2FA lifecycle, destructive throw). If we don't
+        // burn the backup code, it stays valid and can be re-used —
+        // exactly what one-time backup codes must NOT allow. Throw
+        // BEFORE minting the AAL2 cookie below so the user is not
+        // promoted to 2FA-passed against a code we failed to invalidate.
+        const { error: backupBurnErr } = await admin
           .from('users')
           .update({ totp_backup_codes: updatedCodes })
           .eq('id', userId);
+        if (backupBurnErr) {
+          throw new Error(`users backup-code burn failed: ${backupBurnErr.message}`);
+        }
 
         // Record session after successful 2FA (non-blocking, isolated)
         try {

@@ -68,13 +68,24 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         return NextResponse.json({ error: "No deletion request to cancel" }, { status: 400 });
       }
 
-      await admin
+      // Kind B (server-action-style, destructive return-error). GDPR
+      // deletion-cancel: if this UPDATE silently fails the user thinks
+      // they cancelled but the deletion cron will still execute on the
+      // scheduled date and wipe their tenant. Surface 500 so the user
+      // retries.
+      const { error: cancelErr } = await admin
         .from("tenants")
         .update({
           deletion_requested_at: null,
           deletion_scheduled_for: null,
         })
         .eq("id", tenantId);
+      if (cancelErr) {
+        return NextResponse.json(
+          { error: `Cancellation failed: ${cancelErr.message}` },
+          { status: 500 },
+        );
+      }
 
       logger.info(`[data-delete] Deletion cancelled for tenant ${tenantId}`);
 
@@ -113,13 +124,24 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     const now = new Date();
     const scheduledFor = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    await admin
+    // Kind B (server-action-style, destructive return-error). GDPR
+    // deletion-request: if this UPDATE silently fails the user gets
+    // back "scheduled" but no cron job will ever pick the tenant up
+    // (deletion_scheduled_for never set) — they'll think their data
+    // is being purged when it isn't. Surface 500 so the user retries.
+    const { error: scheduleErr } = await admin
       .from("tenants")
       .update({
         deletion_requested_at: now.toISOString(),
         deletion_scheduled_for: scheduledFor.toISOString(),
       })
       .eq("id", tenantId);
+    if (scheduleErr) {
+      return NextResponse.json(
+        { error: `Scheduling failed: ${scheduleErr.message}` },
+        { status: 500 },
+      );
+    }
 
     logger.warn(`[data-delete] Deletion requested for tenant ${tenantId}, scheduled for ${scheduledFor.toISOString()}`);
 

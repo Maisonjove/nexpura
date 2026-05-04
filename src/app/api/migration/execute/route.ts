@@ -139,7 +139,11 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
     if (jobError) throw jobError;
     const job = jobData as { id: string };
 
-    await admin.from('migration_logs').insert({
+    // Kind C (best-effort observability log+continue). migration_logs
+    // is the audit trail; the job itself just got created above. If
+    // this insert fails the job still progresses — the audit row
+    // missing is recoverable from migration_jobs.started_at + actor_id.
+    const { error: jobLogErr } = await admin.from('migration_logs').insert({
       tenant_id: tenantId,
       session_id: sessionId,
       job_id: job.id,
@@ -147,19 +151,47 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
       action: 'job_started',
       details: { total_records: totalRecords, source_platform: session.source_platform },
     });
+    if (jobLogErr) {
+      logger.error('[migration/execute] job_started log insert failed', {
+        jobId: job.id,
+        sessionId,
+        err: jobLogErr,
+      });
+    }
 
     // Edge case: session has no files to process. Mark complete
     // immediately so the polling client doesn't spin forever.
     if (sortedFiles.length === 0) {
-      await admin.from('migration_jobs').update({
+      // Kind B (server-action-style, destructive return-error). Empty-
+      // file edge case: if the migration_jobs status flip silently
+      // fails the polling UI sits on "queued" forever (the comment
+      // above is exactly the bug we're preventing). Surface 500 so the
+      // client retries cleanly.
+      const { error: jobCompleteErr } = await admin.from('migration_jobs').update({
         status: 'complete',
         completed_at: new Date().toISOString(),
         results_summary: { by_entity: {}, total_processed: 0, total_success: 0, total_errors: 0, total_skipped: 0, total_duplicates: 0 },
       }).eq('id', job.id);
-      await admin.from('migration_sessions').update({
+      if (jobCompleteErr) {
+        return NextResponse.json(
+          { error: `migration_jobs empty-file complete update failed: ${jobCompleteErr.message}` },
+          { status: 500 },
+        );
+      }
+      // Kind B (server-action-style, destructive return-error). Same
+      // empty-file path — flip the parent session row too. If this
+      // fails the job is marked complete but the session shows still-
+      // running, which the cron will keep picking up.
+      const { error: sessionCompleteErr } = await admin.from('migration_sessions').update({
         status: 'complete',
         updated_at: new Date().toISOString(),
       }).eq('id', sessionId);
+      if (sessionCompleteErr) {
+        return NextResponse.json(
+          { error: `migration_sessions empty-file complete update failed: ${sessionCompleteErr.message}` },
+          { status: 500 },
+        );
+      }
       return NextResponse.json({ jobId: job.id, success: true });
     }
 

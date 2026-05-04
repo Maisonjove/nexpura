@@ -121,10 +121,22 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
       };
 
       // Upsert analytics record
-      await admin.from("mailchimp_campaign_analytics").upsert(
+      // Kind C (best-effort observability log+continue, in-loop). The
+      // analytics row is a periodic snapshot of Mailchimp report data —
+      // can be re-fetched on the next sync. Don't kill the whole batch
+      // (and the unsubscribe-back-sync below) for one bad row. Log so
+      // ops sees the per-campaign failure.
+      const { error: analyticsErr } = await admin.from("mailchimp_campaign_analytics").upsert(
         analyticsData,
         { onConflict: "tenant_id,mailchimp_campaign_id", ignoreDuplicates: false }
       );
+      if (analyticsErr) {
+        logger.error("[mailchimp/campaigns] analytics upsert failed", {
+          tenantId,
+          campaignId: campaign.id,
+          err: analyticsErr,
+        });
+      }
 
       // Sync individual unsubscribes back to customers.email_opted_out.
       // Without this a customer who unsubs via Mailchimp keeps receiving
@@ -146,7 +158,14 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
             .map((e: string) => e.toLowerCase());
 
           if (unsubEmails.length > 0) {
-            await admin
+            // Kind A-style throw INTO the existing try/catch above
+            // (compliance-critical write — CAN-SPAM/GDPR honour-the-
+            // unsubscribe). The outer catch already logs and continues
+            // the next campaign in the loop, which matches the existing
+            // file's per-campaign best-effort policy. Throwing keeps
+            // the supabase failure visible (vs swallowed) and the
+            // alerts wire up the same way as Mailchimp fetch errors.
+            const { error: optOutErr } = await admin
               .from("customers")
               .update({
                 email_opted_out: true,
@@ -154,6 +173,9 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
               })
               .eq("tenant_id", tenantId)
               .in("email", unsubEmails);
+            if (optOutErr) {
+              throw new Error(`customers email_opted_out update failed: ${optOutErr.message}`);
+            }
           }
         } catch (e) {
           logger.error("[mailchimp/campaigns] unsubscribe sync failed for campaign", {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
 /**
  * Launch-QA W5-CRIT-002: the GET and POST handlers previously looked up a
@@ -25,7 +26,7 @@ async function requireAuthContext() {
   return { userId: user.id, tenantId: profile.tenant_id as string };
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
   const { success } = await checkRateLimit(ip, 'heavy');
   if (!success) {
@@ -56,9 +57,9 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   const ctx = await requireAuthContext();
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -83,11 +84,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
 
-      await admin
+      // Kind B (server-action-style, destructive return-error). User-
+      // initiated cancel: if the UPDATE fails the job stays in its
+      // previous status and the user thinks they cancelled. Surface the
+      // failure so the UI can prompt them to retry rather than letting
+      // a runaway migration keep going.
+      const { error: cancelErr } = await admin
         .from('migration_jobs')
         .update({ status: 'failed', error_message: 'Cancelled by user' })
         .eq('id', jobId)
         .eq('tenant_id', ctx.tenantId);
+      if (cancelErr) {
+        return NextResponse.json(
+          { error: `migration_jobs cancel failed: ${cancelErr.message}` },
+          { status: 500 },
+        );
+      }
       return NextResponse.json({ success: true });
     }
 
@@ -95,4 +107,4 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
   }
-}
+});

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendFreeToPaidConversionEmail } from "@/lib/email/send";
 import { safeBearerMatch } from "@/lib/timing-safe-compare";
 import { withSentryFlush } from "@/lib/sentry-flush";
+import logger from "@/lib/logger";
 
 /**
  * POST /api/cron/payment-required
@@ -38,8 +39,14 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
   const admin = createAdminClient();
   const graceEnd = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
 
-  // Update subscription status
-  await admin
+  // Update subscription status. Destructive return-error: this is
+  // billing state-of-record. A silent failure here means the
+  // subscription row keeps its old status (e.g. still "trialing")
+  // while the tenant row below may flip to grace_period — drift
+  // between the two billing surfaces, and the 48h timer never starts
+  // ticking against THIS row, so the next cron pass won't suspend.
+  // 500 forces the admin operator (or Vercel cron retry) to retry.
+  const { error: subErr } = await admin
     .from("subscriptions")
     .update({
       status: "payment_required",
@@ -47,9 +54,19 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       grace_24h_sent: false,
     })
     .eq("tenant_id", tenantId);
+  if (subErr) {
+    logger.error("[payment-required] subscriptions.status -> payment_required failed", {
+      tenantId, err: subErr,
+    });
+    return NextResponse.json({ error: subErr.message }, { status: 500 });
+  }
 
-  // Update tenant subscription status
-  await admin
+  // Update tenant subscription status. Destructive return-error: same
+  // billing state-of-record reasoning. If the subscriptions row updated
+  // (above) but the tenants row fails, the gating middleware (which
+  // reads tenants.subscription_status) won't enforce grace-period UX,
+  // and the 48h deadline on tenants.grace_period_ends_at never lands.
+  const { error: tenErr } = await admin
     .from("tenants")
     .update({
       subscription_status: "grace_period",
@@ -57,6 +74,12 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       payment_required_notified_at: new Date().toISOString(),
     })
     .eq("id", tenantId);
+  if (tenErr) {
+    logger.error("[payment-required] tenants.subscription_status -> grace_period failed", {
+      tenantId, err: tenErr,
+    });
+    return NextResponse.json({ error: tenErr.message }, { status: 500 });
+  }
 
   // Send email to tenant owner
   const { data: owner } = await admin
@@ -75,14 +98,24 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     await sendFreeToPaidConversionEmail(owner.email, owner.full_name ?? "there", deadline);
   }
 
-  // Notification
-  await admin.from("notifications").insert({
+  // In-app notification. Cron-runner log+continue: the billing
+  // state-of-record writes (subscriptions + tenants) already
+  // succeeded above and the conversion email was already sent —
+  // a missing notifications row is UX-only (no in-app banner), not
+  // billing drift. Log it; don't 500 the admin trigger after the
+  // canonical state already moved.
+  const { error: notifErr } = await admin.from("notifications").insert({
     tenant_id: tenantId,
     type: "payment_required",
     title: "Payment required",
     body: "Your free access is ending. Add payment within 48 hours to avoid suspension.",
     link: "/billing",
   });
+  if (notifErr) {
+    logger.error("[payment-required] in-app notification insert failed (non-fatal — billing state already updated, email sent)", {
+      tenantId, err: notifErr,
+    });
+  }
 
   return NextResponse.json({ ok: true, graceEnd });
 });

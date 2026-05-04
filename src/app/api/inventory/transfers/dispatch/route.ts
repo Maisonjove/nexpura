@@ -93,10 +93,23 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     const allowedIds = await getUserLocationIds(user.id, userData.tenant_id);
     if (allowedIds !== null && !allowedIds.includes(transfer.from_location_id)) {
       // Rollback status since user doesn't have permission
-      await admin
+      // Kind C (best-effort observability log+continue). Compensating
+      // rollback after a permission denial — we already flipped status
+      // to dispatched optimistically before this check. If the rollback
+      // fails the transfer stays mid-dispatch with no movements rows;
+      // log loudly so ops knows to manually reset the row, then return
+      // 403 to the caller.
+      const { error: rollbackErr } = await admin
         .from("stock_transfers")
         .update({ status: "pending", dispatched_at: null, dispatched_by: null })
         .eq("id", transferId);
+      if (rollbackErr) {
+        logger.error("[inventory/transfers/dispatch] permission-denial rollback failed; transfer stuck mid-dispatch", {
+          transferId,
+          tenantId: userData.tenant_id,
+          rollbackErr,
+        });
+      }
       return NextResponse.json({ error: "You don't have access to dispatch from this location" }, { status: 403 });
     }
 
@@ -122,10 +135,21 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       const available = currentItem.quantity || 0;
       if (available - item.quantity < 0) {
         // Rollback the status change
-        await admin
+        // Kind C (best-effort observability log+continue). Insufficient-
+        // stock rollback. Same compensating-rollback rationale as the
+        // permission-denial branch above.
+        const { error: rollbackErr } = await admin
           .from("stock_transfers")
           .update({ status: "pending", dispatched_at: null, dispatched_by: null })
           .eq("id", transferId);
+        if (rollbackErr) {
+          logger.error("[inventory/transfers/dispatch] insufficient-stock rollback failed; transfer stuck mid-dispatch", {
+            transferId,
+            tenantId: userData.tenant_id,
+            inventoryId: item.inventory_id,
+            rollbackErr,
+          });
+        }
         return NextResponse.json({
           error: `Insufficient stock for item. Available: ${available}, Required: ${item.quantity}`,
         }, { status: 400 });
@@ -141,10 +165,26 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       });
       if (movErr) {
         logger.error("Dispatch stock_movement insert failed:", movErr);
-        await admin
+        // Kind C (best-effort observability log+continue). stock_movement
+        // insert failed mid-loop — rollback the status flip. Same
+        // compensating-rollback rationale as the branches above. Note:
+        // any earlier loop iterations may have already inserted
+        // movements for prior items (the trigger fired, deducted stock);
+        // those won't be reversed here. Ops needs the loud log to
+        // manually reverse those prior movements before retrying.
+        const { error: rollbackErr } = await admin
           .from("stock_transfers")
           .update({ status: "pending", dispatched_at: null, dispatched_by: null })
           .eq("id", transferId);
+        if (rollbackErr) {
+          logger.error("[inventory/transfers/dispatch] mid-loop rollback failed after movement insert error; partial dispatch state — manual review needed", {
+            transferId,
+            tenantId: userData.tenant_id,
+            failedItemId: item.inventory_id,
+            movErr,
+            rollbackErr,
+          });
+        }
         return NextResponse.json({ error: "Failed to dispatch — please retry." }, { status: 500 });
       }
     }

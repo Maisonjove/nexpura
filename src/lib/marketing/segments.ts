@@ -234,10 +234,20 @@ export async function updateSegmentCount(tenantId: string, segmentId: string): P
   const customers = await getCustomersInSegment(tenantId, segment as CustomerSegment);
   const count = customers.length;
 
-  await admin
+  // Side-effect log+continue: customer_count is a denormalized cache
+  // for the segments list UI. A failed update means the badge shows
+  // the stale count until the next refresh — observability degradation,
+  // not state-of-record. Caller still receives the fresh `count` we
+  // just computed via the return below.
+  const { error: updErr } = await admin
     .from('customer_segments')
     .update({ customer_count: count, updated_at: new Date().toISOString() })
     .eq('id', segmentId);
+  if (updErr) {
+    logger.error('[marketing/segments] customer_count update failed (non-fatal — denormalized cache stale)', {
+      tenantId, segmentId, count, err: updErr,
+    });
+  }
 
   return count;
 }

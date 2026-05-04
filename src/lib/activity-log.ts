@@ -1,4 +1,5 @@
 import { createAdminClient } from './supabase/admin';
+import logger from './logger';
 
 export async function logActivity(
   tenantId: string,
@@ -11,7 +12,12 @@ export async function logActivity(
 ): Promise<void> {
   try {
     const admin = createAdminClient();
-    await admin.from('staff_activity_logs').insert({
+    // Side-effect log+continue: staff_activity_logs is the observability
+    // layer for who-did-what; a failed insert means the audit trail
+    // misses one row but the underlying business action (whatever called
+    // logActivity) already succeeded. Caller signature is `Promise<void>`
+    // by design — never throw, never propagate.
+    const { error } = await admin.from('staff_activity_logs').insert({
       tenant_id: tenantId,
       user_id: userId,
       action_type: actionType,
@@ -20,6 +26,11 @@ export async function logActivity(
       entity_label: entityLabel ?? null,
       metadata: metadata ?? null,
     });
+    if (error) {
+      logger.error('[activity-log] insert failed (non-fatal — audit trail gap)', {
+        tenantId, userId, actionType, entityType, entityId, err: error,
+      });
+    }
   } catch {
     // Activity logging is non-critical, never throw
   }

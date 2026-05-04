@@ -63,7 +63,12 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     // Disable SMS 2FA only — never wipe totp_backup_codes here.
     // Backup codes belong to the TOTP factor and disabling SMS shouldn't
     // touch them.
-    await admin
+    // Kind A (auth/2FA lifecycle, destructive throw). If this UPDATE
+    // silently fails, the user thinks SMS 2FA is off but the row still
+    // shows enabled — next login still demands an SMS code, and the
+    // sms_2fa_code/expires_at left over could be replayed. Throw →
+    // outer catch returns 500 → user retries.
+    const { error: smsDisableErr } = await admin
       .from('users')
       .update({
         sms_2fa_enabled: false,
@@ -73,6 +78,9 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         sms_2fa_code_expires_at: null,
       })
       .eq('id', user.id);
+    if (smsDisableErr) {
+      throw new Error(`users sms_2fa disable failed: ${smsDisableErr.message}`);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

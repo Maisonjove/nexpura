@@ -57,7 +57,12 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     const hashedBackupCodes = await Promise.all(backupCodes.map(hashBackupCode));
 
     // Enable SMS 2FA
-    await admin
+    // Kind A (auth/2FA lifecycle, destructive throw). If this UPDATE
+    // fails after we returned backupCodes to the client, the user's
+    // factor never enables but they keep the codes — they'll think SMS
+    // is on, then can't login with it. Throw before responding so the
+    // client sees the error and the user retries from a clean state.
+    const { error: enableErr } = await admin
       .from('users')
       .update({
         sms_2fa_enabled: true,
@@ -70,6 +75,9 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         totp_backup_codes: hashedBackupCodes,
       })
       .eq('id', user.id);
+    if (enableErr) {
+      throw new Error(`users sms_2fa enable failed: ${enableErr.message}`);
+    }
 
     return NextResponse.json({ 
       success: true,

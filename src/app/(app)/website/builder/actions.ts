@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth-context";
+import logger from "@/lib/logger";
+import { flushSentry } from "@/lib/sentry-flush";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -330,12 +332,22 @@ export async function saveSections(pageId: string, sections: Omit<SiteSection, "
 
     if (error) return { error: error.message };
 
-    // Update page updated_at
-    await admin
+    // Side-effect log+continue: site_sections was the actual save above
+    // (committed). This update only bumps site_pages.updated_at as a
+    // cache-invalidation signal for downstream consumers (rendering
+    // pipelines, "last edited" UI). If it silently fails the sections
+    // are saved correctly but the page row shows a stale timestamp — a
+    // small UI/caching drift, not data loss. Surface to Sentry but do
+    // not fail the user's save.
+    const { error: pageBumpErr } = await admin
       .from("site_pages")
       .update({ updated_at: new Date().toISOString() })
       .eq("id", pageId)
       .eq("tenant_id", tenantId);
+    if (pageBumpErr) {
+      logger.error("[website/builder] failed to bump site_pages.updated_at after sections save", { pageId, err: pageBumpErr.message });
+      await flushSentry();
+    }
 
     revalidatePath(`/website/builder/${pageId}`);
     return {};

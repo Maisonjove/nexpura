@@ -40,7 +40,11 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
 
     // Store the pending verification
     const admin = createAdminClient();
-    await admin
+    // Kind A (auth/2FA lifecycle, destructive throw). If this UPDATE
+    // fails, the SMS sends a code that /verify can never reconcile (no
+    // pending row to read against). Throw before the Twilio dispatch
+    // below so we don't burn a billable SMS on a write that didn't land.
+    const { error: pendingErr } = await admin
       .from('users')
       .update({
         sms_2fa_phone_pending: normalizedPhone,
@@ -48,6 +52,9 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         sms_2fa_code_expires_at: expiresAt.toISOString(),
       })
       .eq('id', user.id);
+    if (pendingErr) {
+      throw new Error(`users sms_2fa pending persist failed: ${pendingErr.message}`);
+    }
 
     // Send SMS via the sandbox-aware Twilio helper. In preview/dev/SANDBOX_MODE
     // this returns fake success without hitting Twilio.

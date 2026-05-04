@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { withIdempotency, createPaymentFingerprint } from "@/lib/idempotency";
 import { logAuditEvent } from "@/lib/audit";
 import { getAuthContext } from "@/lib/auth-context";
+import logger from "@/lib/logger";
+import { flushSentry } from "@/lib/sentry-flush";
 
 export async function recordLaybyPayment(
   saleId: string,
@@ -70,11 +72,18 @@ export async function recordLaybyPayment(
 
       // Cap at total to prevent overpayment display issues
       const finalPaid = Math.min(totalPaid, saleTotal);
-      await admin
+      // Destructive return-error: sales.amount_paid is the running total
+      // shown on the layby ledger. The layby_payment row above is already
+      // committed (immutable). If this update silently fails the UI shows
+      // a stale paid amount → staff may collect twice or release the item
+      // before all payments are reflected. Surface so the caller can retry
+      // (the payment row idempotency key prevents double-insert on retry).
+      const { error: paidUpdErr } = await admin
         .from("sales")
         .update({ amount_paid: finalPaid })
         .eq("id", saleId)
         .eq("tenant_id", tenantId);
+      if (paidUpdErr) return { error: paidUpdErr.message };
 
       // Auto-complete if fully paid
       if (totalPaid >= saleTotal - 0.01) {
@@ -188,11 +197,28 @@ export async function completeLayby(
       // would have gone negative. Other errors (network, FK) are
       // also fatal here. Roll back the sale.status so the layby
       // stays "layby" and can be retried after stock arrives.
-      await admin
+      //
+      // Side-effect log+continue on rollback failure: we're already in
+      // an error path returning to the caller. If this rollback ALSO
+      // fails the sale is stuck in 'completed' with no stock deduction
+      // (over-sell vector). We surface the rollback failure to Sentry
+      // so an admin can manually flip the row back, but we still
+      // return the original stock-movement error to the caller — there
+      // is no clean recovery from here in-band.
+      const { error: rollbackErr } = await admin
         .from("sales")
         .update({ status: "layby" })
         .eq("id", saleId)
         .eq("tenant_id", tenantId);
+      if (rollbackErr) {
+        logger.error("[completeLayby] CRITICAL: status rollback failed after stock-move error — sale stuck in 'completed' with no stock deduction", {
+          saleId,
+          tenantId,
+          stockMoveErr: stockMoveErr.message,
+          rollbackErr: rollbackErr.message,
+        });
+        await flushSentry();
+      }
       const isNegativeStock = (stockMoveErr.code === "23514")
         || /quantity.*non.*negative/i.test(stockMoveErr.message ?? "");
       return {
@@ -249,11 +275,19 @@ export async function cancelLayby(
       .single();
     if (cust) {
       const newCredit = Number(cust.store_credit ?? 0) + refundAmount;
-      await admin
+      // Destructive return-error: store_credit is real spendable balance
+      // owed to the customer. We're cancelling a layby and crediting the
+      // customer for everything they paid in. If this update silently
+      // fails the customer is told "deposit refunded as store credit"
+      // (status flip below) but their store_credit balance is unchanged
+      // → real money drift. Surface so the caller can retry BEFORE the
+      // sale is flipped to 'cancelled'.
+      const { error: creditErr } = await admin
         .from("customers")
         .update({ store_credit: newCredit })
         .eq("id", sale.customer_id)
         .eq("tenant_id", tenantId);
+      if (creditErr) return { error: `Failed to credit customer: ${creditErr.message}` };
     }
   }
 
@@ -309,11 +343,18 @@ export async function markLaybyCollected(
     .eq("tenant_id", tenantId);
   // If the column is absent, fall back to writing the marker into notes.
   if (upErr && /column.*does not exist/i.test(upErr.message)) {
-    await admin
+    // Destructive return-error: this is the schema-fallback path when
+    // collection_status column is missing — we stamp the collected
+    // timestamp into notes instead. If THIS silently fails too, the
+    // sale has no record of being collected → staff don't know if the
+    // customer has the goods, and an audit shows a gap. Surface so the
+    // caller knows the collection was not recorded.
+    const { error: noteErr } = await admin
       .from("sales")
       .update({ notes: `Collected ${new Date().toISOString()}` })
       .eq("id", saleId)
       .eq("tenant_id", tenantId);
+    if (noteErr) return { error: noteErr.message };
   } else if (upErr) {
     return { error: upErr.message };
   }

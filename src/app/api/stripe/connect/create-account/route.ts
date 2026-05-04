@@ -81,10 +81,23 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
     });
 
     // Save account ID to tenant
-    await admin
+    // Kind B (server-action-style, destructive return-error). Stripe
+    // already created the Connect account (irreversible from our side
+    // without a destroy call). If we lose the linkage on tenant rows,
+    // the next "Connect Stripe" click creates ANOTHER Stripe account
+    // and we accumulate orphan accounts the operator can't disconnect
+    // from the UI. Surface 500 so the caller retries the link save
+    // before the onboarding link below is even generated.
+    const { error: linkErr } = await admin
       .from("tenants")
       .update({ stripe_account_id: account.id })
       .eq("id", tenantId);
+    if (linkErr) {
+      return NextResponse.json(
+        { error: `tenants stripe_account_id link save failed (orphan account ${account.id} — ops can manually re-link): ${linkErr.message}` },
+        { status: 500 },
+      );
+    }
 
     // Create onboarding link
     const accountLink = await stripe.accountLinks.create({

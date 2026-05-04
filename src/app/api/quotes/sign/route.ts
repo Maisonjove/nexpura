@@ -78,13 +78,22 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     }
 
     // Log the event
+    // Kind C (best-effort observability log+continue). Existing comment
+    // already calls this "non-critical" — the quote acceptance itself
+    // succeeded above and is recorded on the quotes row. The event row
+    // is the audit trail; recoverable from quotes.accepted_at if
+    // missing. Throw INTO the existing try/catch so it joins the
+    // existing logger.warn path.
     try {
-      await admin.from('quote_events').insert({
+      const { error: quoteEventErr } = await admin.from('quote_events').insert({
         quote_id: quoteId,
         event_type: 'signed',
         description: 'Quote accepted with digital signature',
         created_by: user.id,
       });
+      if (quoteEventErr) {
+        throw new Error(`quote_events insert failed: ${quoteEventErr.message}`);
+      }
     } catch (e) {
       // Event logging is non-critical
       logger.warn('Could not log quote event', { error: e, quoteId });

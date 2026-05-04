@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger, { reportServerError } from "@/lib/logger";
+import { withSentryFlush } from "@/lib/sentry-flush";
 
-export async function POST(req: NextRequest) {
+export const POST = withSentryFlush(async (req: NextRequest) => {
   try {
     const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
     const { success } = await checkRateLimit(ip, "api");
@@ -77,8 +78,13 @@ export async function POST(req: NextRequest) {
       const safeUpdates: Record<string, unknown> = { approval_status: updates.approval_status };
       if (updates.approved_at) safeUpdates.approved_at = updates.approved_at;
       if (updates.approval_notes) safeUpdates.approval_notes = updates.approval_notes;
-      const retry = await admin.from("bespoke_jobs").update(safeUpdates).eq("id", job.id);
-      updateErr = retry.error;
+      // Kind B (server-action-style, destructive return-error). Schema-
+      // cache miss retry path with the essential state transition only.
+      // The error is captured into updateErr below and surfaced to the
+      // customer via the existing 500 path; without an `{ error }`
+      // destructure the lint rule flags this as a swallow.
+      const { error: retryErr } = await admin.from("bespoke_jobs").update(safeUpdates).eq("id", job.id);
+      updateErr = retryErr;
     }
 
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
@@ -87,7 +93,12 @@ export async function POST(req: NextRequest) {
     // function returns before the insert promise resolves and the log row
     // gets dropped, leaving the audit trail silent for every customer
     // approval. Await so the row actually lands.
-    await admin.from("job_events").insert({
+    // Kind C (best-effort observability log+continue). job_events is the
+    // audit-trail table — the customer approval has already succeeded
+    // by this point and is reflected in bespoke_jobs.approval_status, so
+    // a failure here must NOT 500 the response. Log loudly so ops can
+    // backfill the audit row from bespoke_jobs.approved_at if needed.
+    const { error: jobEventErr } = await admin.from("job_events").insert({
       tenant_id: job.tenant_id,
       job_type: "bespoke",
       job_id: job.id,
@@ -96,10 +107,18 @@ export async function POST(req: NextRequest) {
         ? `Client approved design with digital signature`
         : `Client requested changes: ${notes || "No details provided"}`,
     });
+    if (jobEventErr) {
+      logger.error("[bespoke/approval-response] job_events insert failed; approval already succeeded — backfill from bespoke_jobs.approved_at", {
+        jobId: job.id,
+        tenantId: job.tenant_id,
+        action: finalAction,
+        err: jobEventErr,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     reportServerError("bespoke/approval-response:POST", error);
     return NextResponse.json({ error: "Approval processing failed" }, { status: 500 });
   }
-}
+});

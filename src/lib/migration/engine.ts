@@ -871,9 +871,15 @@ export async function importInvoice(
 
     const invoiceId = (invoice as { id: string }).id;
 
-    // Insert one line item
+    // Insert one line item.
+    // Destructive THROW (Joey-ACK 2026-05-04): per-row failures already
+    // aggregate into structured ImportResult via the surrounding try/catch
+    // (preserving graceful degradation). A line-item insert failure leaves
+    // the parent invoice with no lines — that's a corrupt import row, so
+    // throw with context. The catch below converts this into a per-row
+    // ImportResult `{ status: 'error', error }` and the import continues.
     const description = mappedData.description || 'Imported line item';
-    await admin.from('invoice_line_items').insert({
+    const { error: lineErr } = await admin.from('invoice_line_items').insert({
       tenant_id: ctx.tenantId,
       invoice_id: invoiceId,
       description,
@@ -882,6 +888,9 @@ export async function importInvoice(
       discount_pct: 0,
       sort_order: 1,
     });
+    if (lineErr) {
+      throw new Error(`migration: invoice_line_items insert failed for invoice ${invoiceId}: ${lineErr.message}`);
+    }
 
     return { status: 'success', recordId: invoiceId, invoiceNumber: mappedData.invoice_number };
   } catch (e) {
@@ -938,11 +947,20 @@ export async function importPayment(
         : newAmountPaid > 0 ? 'partial'
         : inv.status;
 
-      await admin.from('invoices').update({
+      // Destructive THROW (Joey-ACK 2026-05-04): payment row was just
+      // inserted; if we can't reconcile invoice.amount_paid the invoice
+      // and its payment row drift out of sync (state-of-record corruption,
+      // not observability). Throw with context — the surrounding catch
+      // converts to a per-row ImportResult so the rest of the import
+      // continues, preserving graceful degradation.
+      const { error: invUpdErr } = await admin.from('invoices').update({
         amount_paid: Math.round(newAmountPaid * 100) / 100,
         status: newStatus,
         ...(newStatus === 'paid' ? { paid_at: mappedData.payment_date || new Date().toISOString() } : {}),
       }).eq('id', invoiceId);
+      if (invUpdErr) {
+        throw new Error(`migration: invoice amount_paid reconcile failed for invoice ${invoiceId}: ${invUpdErr.message}`);
+      }
     }
 
     return { status: 'success', recordId: (payment as { id: string }).id };

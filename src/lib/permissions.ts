@@ -1,4 +1,5 @@
 import { createAdminClient } from './supabase/admin';
+import logger from './logger';
 
 export type PermissionKey =
   | 'view_inventory'
@@ -310,11 +311,20 @@ export async function initDefaultPermissions(tenantId: string): Promise<void> {
     }
   }
 
-  // Upsert all at once
-  await admin.from('role_permissions').upsert(rows, {
+  // Upsert all at once.
+  // Destructive THROW: this runs on tenant onboarding to seed the
+  // role_permissions matrix. Without these rows, every staff role-gate
+  // check (`hasPermission`) returns false for the tenant — staff can't
+  // do anything in the app. State-of-record onboarding write; the
+  // caller (provision/setup flow) must surface this and retry.
+  const { error } = await admin.from('role_permissions').upsert(rows, {
     onConflict: 'tenant_id,role,permission_key',
     ignoreDuplicates: false,
   });
+  if (error) {
+    logger.error('[permissions] initDefaultPermissions upsert failed', { tenantId, err: error });
+    throw new Error(`permissions: initDefaultPermissions upsert failed for tenant ${tenantId}: ${error.message}`);
+  }
 }
 
 export async function updateRolePermission(

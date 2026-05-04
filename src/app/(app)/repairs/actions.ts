@@ -154,14 +154,20 @@ export async function createRepair(
 
   if (error) return { error: error.message };
 
-  // Insert initial stage entry
-  await supabase.from("repair_stages").insert({
+  // Destructive return-error: repair_stages is the canonical timeline of
+  // a repair's lifecycle. The repair row above was just created at stage
+  // 'intake'; if this initial stage entry silently fails the repair has
+  // no stage history → the timeline view is empty and downstream
+  // advanceStage transitions reference a non-existent root row. Surface
+  // so the caller can retry rather than ship a half-created repair.
+  const { error: stageInsertErr } = await supabase.from("repair_stages").insert({
     tenant_id: tenantId,
     repair_id: data.id,
     stage: "intake",
     notes: "Repair created",
     created_by: userId,
   });
+  if (stageInsertErr) return { error: stageInsertErr.message };
 
   // If a deposit was taken at intake, mark it on the repair + create a
   // partial-paid invoice so the deposit shows up against the customer
@@ -173,21 +179,32 @@ export async function createRepair(
   const depositAmount = Number((repairData as { deposit_amount?: number | null }).deposit_amount ?? 0);
   const customerId = (repairData as { customer_id?: string | null }).customer_id ?? null;
   if (depositAmount > 0 && customerId) {
-    // Update the repair to mark the deposit as paid (audit-visible).
-    await supabase
+    // Side-effect log+continue: deposit_paid is a denormalised flag on
+    // the repair (the canonical record of the deposit lives on the
+    // partial invoice + payment row created below). Existing comment
+    // intent was clearly "log and proceed" (the .then chain logged but
+    // continued). Drift is one stale boolean; if it fails we still
+    // create the invoice+payment so the customer-facing ledger is right.
+    const { error: depositFlagErr } = await supabase
       .from("repairs")
       .update({ deposit_paid: true })
       .eq("id", data.id)
-      .eq("tenant_id", tenantId)
-      .then(({ error }) => {
-        if (error) logger.error("[createRepair] Failed to flag deposit_paid:", error);
-      });
+      .eq("tenant_id", tenantId);
+    if (depositFlagErr) {
+      logger.error("[createRepair] Failed to flag deposit_paid:", { repairId: data.id, err: depositFlagErr.message });
+    }
 
     // Spawn a partial invoice + payment pair so the customer's invoices
     // tab reflects the deposit. Tolerate failures so the repair commit
     // doesn't roll back if the invoices tables aren't fully provisioned.
     try {
-      const { data: inv } = await supabase
+      // Side-effect log+continue: this is inside the explicit "tolerate
+      // failures" block — the repair has been committed and the user
+      // should not see a hard error if invoice provisioning is misconfig.
+      // If this insert fails the deposit isn't visible on /customers/[id]
+      // → Invoices tab; that's a one-row gap, not a money-loss event
+      // (the cash is in the till; staff can re-key the invoice).
+      const { data: inv, error: invErr } = await supabase
         .from("invoices")
         .insert({
           tenant_id: tenantId,
@@ -204,8 +221,16 @@ export async function createRepair(
         })
         .select("id")
         .single();
+      if (invErr) {
+        logger.error("[createRepair] Failed to create deposit invoice:", { repairId: data.id, err: invErr.message });
+      }
       if (inv?.id) {
-        await supabase.from("payments").insert({
+        // Side-effect log+continue: the parent block tolerates failure;
+        // payments row is the per-invoice ledger entry. If it fails the
+        // invoice exists with amount_paid set but no payments-table row
+        // — receipt printing for the deposit won't have a line. One-row
+        // gap, manually recoverable; not worth failing the repair commit.
+        const { error: payErr } = await supabase.from("payments").insert({
           tenant_id: tenantId,
           invoice_id: inv.id,
           amount: depositAmount,
@@ -214,6 +239,9 @@ export async function createRepair(
           notes: `Deposit on repair intake`,
           created_by: userId,
         });
+        if (payErr) {
+          logger.error("[createRepair] Failed to log deposit payment row:", { repairId: data.id, invoiceId: inv.id, err: payErr.message });
+        }
       }
     } catch (err) {
       logger.error("[createRepair] Failed to log deposit payment:", err);

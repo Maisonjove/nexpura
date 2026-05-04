@@ -34,12 +34,20 @@ export async function acquireIdempotencyLock(key: string, ttlSeconds = LOCK_TTL_
   const supabase = createAdminClient();
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
   
-  // Clean up expired locks first (best effort)
-  await supabase
+  // Clean up expired locks first (best effort).
+  // Destructive THROW (Joey-ACK 2026-05-04): without a clean lock-store
+  // the acquire path below has undefined retry behavior — if expired
+  // rows are stuck, future inserts hit the unique constraint forever
+  // and every retry returns "duplicate" even though no real lock holder
+  // exists. Caller must know.
+  const { error: cleanupError } = await supabase
     .from("idempotency_locks")
     .delete()
     .lt("expires_at", new Date().toISOString());
-  
+  if (cleanupError) {
+    throw new Error(`idempotency: lock acquire failed: ${cleanupError.message}`);
+  }
+
   // Try to insert lock - will fail if key exists and not expired
   const { error } = await supabase
     .from("idempotency_locks")
@@ -48,7 +56,7 @@ export async function acquireIdempotencyLock(key: string, ttlSeconds = LOCK_TTL_
       expires_at: expiresAt,
       created_at: new Date().toISOString(),
     });
-  
+
   if (error) {
     // Unique constraint violation means lock exists
     if (error.code === "23505") {
@@ -58,7 +66,7 @@ export async function acquireIdempotencyLock(key: string, ttlSeconds = LOCK_TTL_
     logger.error("Idempotency lock error:", error);
     return true;
   }
-  
+
   return true;
 }
 
@@ -67,7 +75,16 @@ export async function acquireIdempotencyLock(key: string, ttlSeconds = LOCK_TTL_
  */
 export async function releaseIdempotencyLock(key: string): Promise<void> {
   const supabase = createAdminClient();
-  await supabase.from("idempotency_locks").delete().eq("key", key);
+  // Side-effect log+continue (Joey-ACK 2026-05-04): release-failure is
+  // non-fatal because the lock TTL-expires regardless. If we can't
+  // delete the row now, the cleanup sweep at the next acquire will
+  // catch it once expires_at passes. Caller treats release as best-effort.
+  const { error } = await supabase.from("idempotency_locks").delete().eq("key", key);
+  if (error) {
+    logger.error("[idempotency] release failed (non-fatal — lock TTL-expires)", {
+      key, err: error,
+    });
+  }
 }
 
 /**

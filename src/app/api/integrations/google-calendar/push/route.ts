@@ -101,10 +101,23 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
 
       // Save Google Calendar event ID back to appointment
       if (appointmentId && eventId) {
-        await admin
+        // Kind B (server-action-style, destructive return-error). The
+        // Google Calendar event was just created above; if we lose the
+        // event_id <-> appointment_id linkage here, every subsequent
+        // push will create a NEW event (the eventId column never gets
+        // populated for matching) and the operator gets duplicate
+        // calendar entries. Surface so the user retries before more
+        // duplicates accumulate.
+        const { error: linkErr } = await admin
           .from("appointments")
           .update({ google_calendar_event_id: eventId })
           .eq("id", appointmentId);
+        if (linkErr) {
+          return NextResponse.json(
+            { error: `appointments link save failed: ${linkErr.message}` },
+            { status: 500 },
+          );
+        }
       }
     }
 
