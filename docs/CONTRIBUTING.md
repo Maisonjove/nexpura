@@ -100,6 +100,26 @@ const { error: lineErr } = await admin.from("sale_items").insert({...});
 if (lineErr) throw new Error(`sale_items insert failed: ${lineErr.message}`);
 ```
 
+### Coverage gap — assigned-without-destructure
+
+The lint rule's AST pattern catches:
+- Bare expression statements: `await admin.from("X").update(...)`
+- VariableDeclarator with ObjectPattern that omits `error`:
+  `const { data } = await admin.from("X").insert(...)`
+
+It does NOT catch:
+- Plain assignment to a single variable that reads `.error` later:
+  `const r = await admin.from("X").insert(...); if (r.error) ...`
+
+Functionally those `r.error` patterns are equivalent (the error IS
+captured), but they slip past the rule because the parent is a
+VariableDeclarator with an Identifier, not an ObjectPattern. PR #135
+fixed one such site in `pos/actions.ts` by refactoring to
+`{ data, error }` destructure for consistency. **When you see this
+pattern in code, treat it as if covered by the rule** — refactor to
+destructure so future readers don't have to verify the next-line
+error check.
+
 ### Allowed escape hatch: `.throwOnError()`
 
 The Supabase client has a built-in `.throwOnError()` chain method that
