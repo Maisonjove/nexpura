@@ -24,14 +24,28 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
   // free-forever exemption — without this skip, the dogfood tenant's
   // 14-day trial expiry would fire payment_required and auto-suspend
   // Joey's own ops/test surface).
+  //
+  // Idempotency (cleanup #9, Joey 2026-05-04): we only send the
+  // ending-soon reminder ONCE per trial. Pre-fix, a 3-day-out trial
+  // would receive the email on each of the 3 daily cron runs —
+  // jewellers found this nagging. Filter on
+  // `trial_ending_soon_sent_at IS NULL` so already-reminded subs are
+  // skipped. The flag is reset to NULL on subscription updates that
+  // change trial_ends_at (renewal, plan change) — see callers that
+  // touch trial_ends_at for the matching reset writes.
   const { data: endingSoon } = await admin
     .from("subscriptions")
     .select("id, tenant_id, trial_ends_at, tenants!inner(deleted_at, is_free_forever)")
     .eq("status", "trialing")
     .lt("trial_ends_at", in3days.toISOString())
     .gt("trial_ends_at", now.toISOString())
+    .is("trial_ending_soon_sent_at", null)
     .is("tenants.deleted_at", null)
     .neq("tenant_id", NEXPURA_DOGFOOD_TENANT_ID)
+
+  // Capture-amplification fix (no-logger-error-in-loop): collect
+  // per-tenant failures into arrays and log ONCE after each loop.
+  const endingSoonFailures: Array<{ tenantId: string; err: { message: string } }> = []
 
   // Send trial_ending_soon emails
   for (const sub of endingSoon ?? []) {
@@ -58,10 +72,31 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
       link: "/billing",
     })
     if (notifErr) {
-      logger.error("[cron/trial-end-checker] notification insert failed (ending_soon)", {
-        tenantId: sub.tenant_id, err: notifErr,
-      })
+      endingSoonFailures.push({ tenantId: sub.tenant_id, err: notifErr })
     }
+
+    // Idempotency mark — only flip the flag if we actually got
+    // through email + notification. If the notification insert
+    // failed, we keep the flag NULL so the next run will retry.
+    // (Email sends already swallow internal failures via the email/
+    // send wrapper; if Resend is down the email isn't actually sent,
+    // but the cron will not retry until the next day — acceptable
+    // trade-off given Resend uptime.)
+    if (!notifErr) {
+      const { error: markErr } = await admin
+        .from("subscriptions")
+        .update({ trial_ending_soon_sent_at: now.toISOString() })
+        .eq("id", sub.id)
+      if (markErr) {
+        endingSoonFailures.push({ tenantId: sub.tenant_id, err: markErr })
+      }
+    }
+  }
+  if (endingSoonFailures.length > 0) {
+    logger.error(
+      `[cron/trial-end-checker] ending_soon notification insert failed for ${endingSoonFailures.length} tenant(s)`,
+      { count: endingSoonFailures.length, failures: endingSoonFailures },
+    )
   }
 
   // Expired trials → start 48h grace period (NOT immediate suspend).
@@ -75,6 +110,9 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
     .neq("tenant_id", NEXPURA_DOGFOOD_TENANT_ID)
 
   const graceEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000) // 48 hours from now
+  // Capture-amplification fix — collect per-tenant failures, log
+  // once after the loop.
+  const expiredFailures: Array<{ phase: string; subId?: string; tenantId?: string; err: { message: string } }> = []
 
   for (const sub of expired ?? []) {
     // Start grace period instead of suspending. Joey 2026-05-03
@@ -86,7 +124,7 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
       grace_period_ends_at: graceEnd.toISOString(),
     }).eq("id", sub.id)
     if (subErr) {
-      logger.error("[cron/trial-end-checker] subscriptions.update failed", { subId: sub.id, err: subErr })
+      expiredFailures.push({ phase: "subscriptions_update", subId: sub.id, err: subErr })
       continue
     }
 
@@ -96,7 +134,7 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
       grace_period_ends_at: graceEnd.toISOString(),
     }).eq("id", sub.tenant_id)
     if (tenantErr) {
-      logger.error("[cron/trial-end-checker] tenants.update failed", { tenantId: sub.tenant_id, err: tenantErr })
+      expiredFailures.push({ phase: "tenants_update", tenantId: sub.tenant_id, err: tenantErr })
     }
 
     // Get owner for email
@@ -131,10 +169,14 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
       link: "/billing",
     })
     if (notifExpErr) {
-      logger.error("[cron/trial-end-checker] notification insert failed (trial_expired)", {
-        tenantId: sub.tenant_id, err: notifExpErr,
-      })
+      expiredFailures.push({ phase: "trial_expired_notification_insert", tenantId: sub.tenant_id, err: notifExpErr })
     }
+  }
+  if (expiredFailures.length > 0) {
+    logger.error(
+      `[cron/trial-end-checker] expired-batch had ${expiredFailures.length} failure(s)`,
+      { count: expiredFailures.length, failures: expiredFailures },
+    )
   }
 
   return NextResponse.json({

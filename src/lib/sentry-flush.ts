@@ -44,6 +44,8 @@
 
 import * as Sentry from "@sentry/nextjs";
 
+import { runWithCaptureScope } from "./logger";
+
 const FLUSH_TIMEOUT_MS = 2000;
 
 // Use `any[]` for the args tuple because route handlers in App Router
@@ -57,18 +59,31 @@ type RouteHandler = (...args: any[]) => Promise<Response>;
 
 export function withSentryFlush<T extends RouteHandler>(handler: T): T {
   return (async (...args: Parameters<T>) => {
-    try {
-      const response = await handler(...args);
-      await Sentry.flush(FLUSH_TIMEOUT_MS);
-      return response;
-    } catch (err) {
-      // Flush even on throw, so that the error captured by Next.js's
-      // onRequestError hook (instrumentation.ts:18) plus any in-handler
-      // logger.error calls before the throw both reach Sentry before
-      // the Lambda freezes.
-      await Sentry.flush(FLUSH_TIMEOUT_MS);
-      throw err;
-    }
+    // Seed a fresh capture-amplification scope per request. The HOF
+    // is the canonical request boundary for route handlers — every
+    // logger.error call inside the handler (or any code it awaits)
+    // increments the same counter, and the first one to cross
+    // CAPTURE_AMPLIFICATION_THRESHOLD emits a Sentry breadcrumb. See
+    // logger.ts → runWithCaptureScope for the rationale.
+    //
+    // We derive a `tag` from the handler's source name when available
+    // (helps the operator find which route blew the budget without
+    // hand-correlating the breadcrumb to a stack trace).
+    const tag = handler.name || undefined;
+    return runWithCaptureScope(async () => {
+      try {
+        const response = await handler(...args);
+        await Sentry.flush(FLUSH_TIMEOUT_MS);
+        return response;
+      } catch (err) {
+        // Flush even on throw, so that the error captured by Next.js's
+        // onRequestError hook (instrumentation.ts:18) plus any in-handler
+        // logger.error calls before the throw both reach Sentry before
+        // the Lambda freezes.
+        await Sentry.flush(FLUSH_TIMEOUT_MS);
+        throw err;
+      }
+    }, { tag });
   }) as T;
 }
 

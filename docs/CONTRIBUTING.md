@@ -391,22 +391,211 @@ tracked under post-Phase-2 cleanup.
 
 ### Post-Phase-2 cleanup additions
 
-Tracked separately for the post-Phase-2 work:
-- **Capture-amplification alarm**: a single request firing > 50
-  `logger.error` calls is itself a bug (likely a runaway loop); the
-  PromiseBuffer's 100-event cap silently drops everything past 100.
-  Future addition: a Sentry breadcrumb counter per request + alert
-  rule when count exceeds 50.
-- **Loop-shaped logger.error lint rule**: warn when logger.error
-  appears inside a `for` / `while` / `.forEach(` body — early signal
-  of capture amplification before it hits the cap.
-- **Nested-callback flow detection** in the existing
-  `local/sentry-flush-before-return` rule (see "Known rule gap"
-  above).
+All three landed (Joey 2026-05-04). Sections 4 and 5 document the
+two new lint rules; the runtime alarm is wired through
+`runWithCaptureScope` + `withSentryFlush` and emits a Sentry
+breadcrumb at the 50-capture threshold per request.
 
 ---
 
-## 4. Webhook signature-rejection alerting
+## 4. Loop-shaped logger.error (`local/no-logger-error-in-loop`)
+
+### The pattern
+
+```ts
+// ❌ BAD — fires once per iteration. A 500-row batch with pervasive
+// failures queues 500 Sentry events; the PromiseBuffer caps at 100
+// per request, so events 101+ silently drop with
+// SENTRY_BUFFER_FULL_ERROR. By the time anyone looks at Sentry, the
+// observability promise the side-effect-log policy made is broken.
+for (const row of rows) {
+  const { error } = await admin.from("X").insert(row);
+  if (error) logger.error("[X] insert failed", { row, err: error });
+}
+```
+
+### The fix
+
+Collect failures into an array inside the loop; fire a SINGLE
+`logger.error` after the loop with the array as context. One Sentry
+event with 500 failure rows attached beats 500 Sentry events that get
+truncated to 100 (and consume 100× the request's flush budget on
+transport queue time):
+
+```ts
+// ✅ GOOD — one Sentry event with the full failure list.
+const failures: Array<{ row: typeof rows[number]; err: PostgrestError }> = [];
+for (const row of rows) {
+  const { error } = await admin.from("X").insert(row);
+  if (error) failures.push({ row, err: error });
+}
+if (failures.length > 0) {
+  logger.error("[X] batch insert had failures", {
+    count: failures.length, failures,
+  });
+}
+```
+
+### What the rule catches
+
+Loop shapes detected:
+- `for (...)`, `for (... of ...)`, `for (... in ...)`
+- `while (...)`, `do { } while (...)`
+- `.forEach(...)`, `.map(...)`, `.filter(...)`, `.reduce(...)`,
+  `.flatMap(...)`, `.some(...)`, `.every(...)`
+
+### Auto-skips
+
+- `logger.error` inside a `.catch()` callback. The rule for those
+  is `local/sentry-flush-before-callback-exit` (section 5) —
+  `.catch` only fires on rejection, not per iteration.
+- `logger.error` inside a try/catch INSIDE a loop. Still per-iter
+  but the engineer wrote the catch deliberately — opt-in shape.
+
+### Suppressing the rule (sometimes legitimate)
+
+For BOUNDED loops (small fixed-size step arrays, early-return
+branches that fire at most ONCE per request), suppress with a
+per-line comment + reason:
+
+```ts
+for (const item of items) {
+  // ...
+  if (rollbackErr) {
+    // eslint-disable-next-line local/no-logger-error-in-loop -- bounded: this branch returns immediately, fires at most ONCE per request.
+    logger.error("...", { rollbackErr });
+  }
+  return NextResponse.json({ error: "..." }, { status: 500 });
+}
+```
+
+Severity is `warn`; the rule is observability-grade, not a hard
+gate. PR-B5 swept the codebase: ~30 sites refactored to
+collect-and-log-once, ~5 sites suppressed as bounded.
+
+---
+
+## 5. Nested-callback flush (`local/sentry-flush-before-callback-exit`)
+
+### The pattern
+
+This rule closes the gap section 3's "Known rule gap — nested-
+callback logger.error" called out: `local/sentry-flush-before-return`
+walks only the exported function's own body, missing logger.error
+calls queued from inside `.catch(...)` / `withIdempotency(async () =>
+{...})` / transaction-step callbacks. PR #138's amendment manually
+patched two sites; this rule now flags the entire pattern.
+
+```ts
+// ❌ BAD — logger.error fires from inside the .catch() callback,
+// which the sibling rule's per-function walk skips. The outer
+// function exits via redirect() before the buffer drains.
+export async function createBespokeJob(...) {
+  // ...
+  sendTrackingEmail({...}).catch((err) => {
+    logger.error("[createBespokeJob] tracking email failed", err);
+  });
+  redirect(`/bespoke/${data.id}`);  // Lambda freezes; capture lost
+}
+
+// ✅ GOOD — flush before the exit. Drains any queued capture from
+// the nested callback regardless of whether it actually fired this
+// request (no-op on empty buffer).
+export async function createBespokeJob(...) {
+  // ...
+  sendTrackingEmail({...}).catch((err) => {
+    logger.error("[createBespokeJob] tracking email failed", err);
+  });
+  await flushSentry();
+  redirect(`/bespoke/${data.id}`);
+}
+```
+
+### Detection
+
+Walked in source-line order:
+1. Find every nested `logger.error` — i.e. a logger.error call
+   inside a callback function passed as an argument to another call
+   (`.catch(...)`, `withIdempotency(...)`, `Promise.all([...])`,
+   transaction wrappers, etc.) whose enclosing function is NOT the
+   outer exported handler.
+2. For each exit point in the outer function's own body
+   (`return` / `throw` / `redirect()` / `notFound()` /
+   `unauthorized()` / `permanentRedirect()` / `forbidden()`):
+   if a nested logger.error appears earlier in source order AND
+   no `await flushSentry()` / `await Sentry.flush()` sits between
+   the two in the outer body — flag the exit.
+
+### Auto-skips
+
+- Functions wrapped with `withSentryFlush(...)` at export site
+  (the wrapper drains at the boundary).
+- Exits already preceded by an inline flush.
+
+### Edge cases / known false-positive shape
+
+The rule walks source-line order, not full control-flow. If the only
+path to an exit doesn't actually run the nested callback (e.g. a
+`.catch()` on a fire-and-forget promise that the outer function
+never awaits, plus an outer exit on a totally separate branch), the
+rule may still flag. The cost of a stray `await flushSentry()` is
+negligible (no-op on empty buffer; ~5ms on miss), so the practical
+guidance is: just add the flush and move on. If it becomes noisy in
+a particular file, suppress per-line with a reason.
+
+### Severity
+
+`warn`. PR-B5 swept the codebase: 10 sites patched (pos/actions,
+refunds/actions, settings/locations/actions, tasks/actions). All
+real nested-callback paths where a logger.error in `.catch` /
+`withIdempotency` could otherwise drop on Lambda freeze.
+
+---
+
+## 6. Capture-amplification alarm (runtime, `src/lib/logger.ts`)
+
+Companion to section 4's lint rule. Where `no-logger-error-in-loop`
+catches the pattern at build time, this surfaces it at runtime for
+any pattern the lint rule didn't catch (helper called from a loop,
+recursive function with logger.error, etc.).
+
+### Mechanics
+
+- `runWithCaptureScope(fn, { tag })` seeds a fresh per-request scope
+  using `AsyncLocalStorage`. `withSentryFlush` calls it at the route
+  handler boundary; the handler's name becomes the scope `tag`.
+- Every `logger.error` call increments the scope's counter (no-op
+  outside a scope — unit tests, scripts, etc.).
+- The first time the count crosses the threshold (50), the rule
+  emits ONE `Sentry.addBreadcrumb({ category: "capture-amplification",
+  level: "warning", message: "...", data: { count, threshold, tag } })`.
+- The breadcrumb is latched per scope: counts of 51, 52, 53, ... do
+  not emit again. Operator sees one breadcrumb per amplified request,
+  not 50+.
+- Threshold is 50 — well clear of the PromiseBuffer's 100-event cap,
+  but high enough to avoid noise from routes that legitimately fire
+  3-5 logger.error in a complex saga.
+
+### What the operator sees
+
+A request that fires 50+ logger.error has the breadcrumb attached
+to whichever Sentry event landed (the captureException for one of
+the logger.error calls). Filter Sentry by the
+`capture-amplification` category to find runaway-loop routes.
+
+### Test
+
+`src/lib/__tests__/capture-amplification-alarm.test.ts` mocks
+`@sentry/nextjs` and asserts:
+1. 60 logger.error calls in a scope → exactly 1 amplification
+   breadcrumb (at count=50).
+2. 49 calls → 0 breadcrumbs.
+3. 60 calls outside any scope → 0 breadcrumbs (silent no-op).
+4. Nested `runWithCaptureScope` keeps separate counters.
+
+---
+
+## 7. Webhook signature-rejection alerting
 
 The `webhook_audit_log` table (PR #129) records every inbound webhook
 delivery, valid or rejected. The hourly cron at
@@ -427,7 +616,7 @@ every other server-side error in the codebase.
 
 ---
 
-## 5. Pre-commit checklist
+## 8. Pre-commit checklist
 
 Before pushing a PR that touches Supabase writes or admin server
 components:

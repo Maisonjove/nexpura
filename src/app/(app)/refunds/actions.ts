@@ -365,11 +365,19 @@ export async function processRefund(params: {
   );
 
   if ("duplicate" in result && result.duplicate) {
+    // logger.error inside the withIdempotency callback above could
+    // have queued a Sentry capture even on the duplicate path (e.g.
+    // a duplicate replay still ran the credit_history insert and
+    // captured its failure). Flush before exit so the capture lands.
+    await flushSentry();
     return { error: result.error };
   }
 
   const refundResult = result as { id?: string; refundNumber?: string; error?: string };
   if (refundResult.error) {
+    // Same flush requirement — the error path covers any logger.error
+    // inside the withIdempotency callback that triggered the bail.
+    await flushSentry();
     return { error: refundResult.error };
   }
 

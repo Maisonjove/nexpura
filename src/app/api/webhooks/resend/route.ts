@@ -167,6 +167,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
               })
               .eq("resend_id", event.data.email_id);
             if (logErr) {
+              // eslint-disable-next-line local/no-logger-error-in-loop -- bounded: Resend webhook event.data.to is typically 1-3 emails (BCC cap is 50). Capture amplification capped at PromiseBuffer headroom.
               logger.error("[resend-webhook] email_logs bounce-update failed (no tenant)", { resend_id: event.data.email_id, err: logErr });
             }
             continue;
@@ -186,6 +187,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
               })
               .in("id", customers.map(c => c.id));
             if (updErr) {
+              // eslint-disable-next-line local/no-logger-error-in-loop -- bounded: Resend webhook event.data.to typically 1-3 emails.
               logger.error("[resend-webhook] customers bounced-update failed", { tenantId: scopedTenantId, email, err: updErr });
             } else {
               logger.info(`[resend-webhook] Marked ${customers.length} customer(s) as bounced: ${email}`);
@@ -200,6 +202,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
             })
             .eq("resend_id", event.data.email_id);
           if (logErr) {
+            // eslint-disable-next-line local/no-logger-error-in-loop -- bounded: Resend webhook event.data.to typically 1-3 emails.
             logger.error("[resend-webhook] email_logs bounce-update failed", { resend_id: event.data.email_id, err: logErr });
           }
         }
@@ -239,6 +242,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
               .update({ status: "complained" })
               .eq("resend_id", event.data.email_id);
             if (logErr) {
+              // eslint-disable-next-line local/no-logger-error-in-loop -- bounded loop: Resend webhooks deliver 1-3 emails per event, far below the PromiseBuffer cap of 100.
               logger.error("[resend-webhook] email_logs complained-update failed (no tenant)", { resend_id: event.data.email_id, err: logErr });
             }
             continue;
@@ -259,6 +263,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
               })
               .in("id", customers.map(c => c.id));
             if (updErr) {
+              // eslint-disable-next-line local/no-logger-error-in-loop -- bounded: Resend webhook event.data.to typically 1-3 emails.
               logger.error("[resend-webhook] customers complained-update failed", { tenantId: scopedTenantId, email, err: updErr });
             } else {
               logger.warn(`[resend-webhook] Marked ${customers.length} customer(s) as opted-out due to spam complaint: ${email}`);
@@ -275,6 +280,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
             .update({ status: "complained" })
             .eq("resend_id", event.data.email_id);
           if (logErr) {
+            // eslint-disable-next-line local/no-logger-error-in-loop -- bounded loop: 1-3 emails per webhook event.
             logger.error("[resend-webhook] email_logs complained-update failed", { resend_id: event.data.email_id, err: logErr });
           }
         }

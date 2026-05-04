@@ -326,6 +326,11 @@ async function sendWhatsAppCampaign(
   let sent = 0;
   let failed = 0;
   let delivered = 0;
+  // Capture-amplification fix (no-logger-error-in-loop): collect
+  // periodic-progress-update failures across all batches; log ONCE
+  // after the loop ends so a 10K-recipient campaign with persistent
+  // progress-write failures can't push past the PromiseBuffer cap.
+  const progressUpdateFailures: Array<{ batchIndex: number; err: { message: string } }> = [];
 
   // Send messages (batch to avoid rate limits)
   const BATCH_SIZE = 10;
@@ -408,7 +413,12 @@ async function sendWhatsAppCampaign(
         })
         .eq("id", campaignId);
       if (progressErr) {
-        logger.error("[sendWhatsAppCampaign] progress update failed (non-fatal)", { campaignId, err: progressErr });
+        // Capture-amplification fix (no-logger-error-in-loop):
+        // for very large campaigns this update fires once per 5
+        // batches, so a totally-failing path could push past the
+        // PromiseBuffer cap. Collect failures and log once after
+        // the campaign loop.
+        progressUpdateFailures.push({ batchIndex: i, err: progressErr });
       }
     }
 
@@ -416,6 +426,12 @@ async function sendWhatsAppCampaign(
     if (i + BATCH_SIZE < recipientsToSend.length) {
       await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY));
     }
+  }
+  if (progressUpdateFailures.length > 0) {
+    logger.error(
+      `[sendWhatsAppCampaign] progress update failed ${progressUpdateFailures.length} time(s) (non-fatal)`,
+      { campaignId, count: progressUpdateFailures.length, failures: progressUpdateFailures },
+    );
   }
 
   // Final update — destructive state-of-record transition. Throws

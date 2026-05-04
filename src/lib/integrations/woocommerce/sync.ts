@@ -422,9 +422,9 @@ export async function importOrdersFromWoo(tenantId: string): Promise<SyncResult>
             total: li.quantity * li.price,
           });
           if (lineErr) {
-            logger.error("[woo-sync/orders] sale_items insert failed (non-fatal — see partial-state caveat)", {
-              tenantId, saleId: sale!.id, sku: li.sku, err: lineErr,
-            });
+            // Capture-amplification fix (no-logger-error-in-loop):
+            // collect into errors[]; caller surfaces the aggregate.
+            errors.push(`Order ${order.id} line sku=${li.sku}: ${lineErr.message}`);
           }
         }
 

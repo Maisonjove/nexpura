@@ -327,6 +327,13 @@ export async function extendTrial(tenantId: string, days: number) {
 
   // Update subscriptions row — extend trial + clear stale grace fields
   // left behind from a prior trial-end → grace transition.
+  //
+  // Reset trial_ending_soon_sent_at to NULL (cleanup #9, Joey
+  // 2026-05-04): the trial was extended, so the previously-sent
+  // ending-soon reminder is stale. Clearing this marker re-arms the
+  // cron to send a fresh reminder when the new trial_ends_at is <3
+  // days away. Without this reset, admin-extended trials would
+  // silently suppress the reminder for the new window.
   const { error: subErr } = await adminClient
     .from("subscriptions")
     .update({
@@ -334,6 +341,7 @@ export async function extendTrial(tenantId: string, days: number) {
       status: "trialing",
       grace_period_ends_at: null,
       grace_24h_sent: false,
+      trial_ending_soon_sent_at: null,
     })
     .eq("tenant_id", tenantId);
   if (subErr) throw new Error(subErr.message);
