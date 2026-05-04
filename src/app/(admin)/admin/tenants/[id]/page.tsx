@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { notFound } from "next/navigation";
@@ -100,6 +101,15 @@ async function TenantDetailBody({
 }: {
   paramsPromise: Promise<{ id: string }>;
 }) {
+  // cacheComponents: TenantActions on this page mutate tenant + sub
+  // state via changeTenantPlan / changeTenantStatus / etc. Without
+  // `connection()` the body's render gets implicitly cached and the
+  // post-action revalidatePath / router.refresh keep serving stale
+  // tenant rows — which on a billing-mutation surface is acutely
+  // dangerous because admin clicks again, double-mutating real
+  // customer subscription state. Joey called this out as the
+  // highest-risk surface in the (admin)/* sub-audit. See PR #130.
+  await connection();
   const { id } = await paramsPromise;
   const data = await loadTenantDetail(id);
   if (!data.tenant) notFound();

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth-context";
@@ -45,6 +46,10 @@ export default function PilotIssuesPage() {
 //   3. Loads issues + tenants and renders the client
 // ─────────────────────────────────────────────────────────────────────────
 async function PilotIssuesBody() {
+  // cacheComponents — see PR #130. Issues get created and resolved
+  // via server actions on this page; without `connection()` the
+  // post-resolve state would render stale on the list.
+  await connection();
   const auth = await getAuthContext();
   if (!auth) redirect("/login");
 
