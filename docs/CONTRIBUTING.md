@@ -616,16 +616,170 @@ every other server-side error in the codebase.
 
 ---
 
-## 8. Pre-commit checklist
+## 8. Top-level `node:*` imports in `src/lib/*` — verify import surface first
+
+Files in `src/lib/*` are often imported by both server and client/edge
+code paths. Adding a top-level `import { ... } from "node:..."` (or any
+node-only module) to a file that's transitively imported by client code
+breaks the Turbopack build with this signature in Vercel logs:
+
+```
+Build error occurred
+Error: Turbopack build failed with 1 errors:
+./src/lib/<file>.ts
+Code generation for chunk item errored
+```
+
+Surfaced in PR #144 → PR #145: `src/lib/logger.ts` got a top-level
+`import { AsyncLocalStorage } from "node:async_hooks"`. logger.ts is
+imported by client components (for client-side error capture) and edge
+runtime contexts. Turbopack errored on the client/edge chunk; the
+production deploy went to ERROR and main was ahead-of-prod with broken
+code for ~10 min before the deploy poll caught it.
+
+### The hook-registration pattern (canonical fix)
+
+When you need server-only instrumentation that integrates with a shared
+utility (logger, error-reporter, tracing), don't add the node-only
+import to the shared utility. Use hook-registration instead:
+
+1. **Shared utility** (runtime-agnostic) exposes a `setHook(fn)`
+   registration entry + an internal `hook?.()` call site. If no hook
+   is registered, the call is a clean no-op.
+
+2. **Server-only module** (separate file) imports the shared utility,
+   imports its own node-only deps, defines the hook implementation, and
+   self-registers via `setHook(fn)` on import. Server contexts that
+   import this module install the hook; client/edge bundles never
+   import it, so the hook stays null.
+
+3. **Wiring**: an existing server-only entry point (HOF wrapper, route-
+   handler boundary) imports the server-only module to ensure
+   registration fires. e.g. `src/lib/sentry-flush.ts` imports
+   `src/lib/capture-amplification-alarm.ts` so every
+   `withSentryFlush`-wrapped handler installs the hook on logger.
+
+PR #145 split is the canonical example:
+- `src/lib/logger.ts` — runtime-agnostic, exposes
+  `setIncrementCaptureHook`
+- `src/lib/capture-amplification-alarm.ts` — server-only, imports
+  `node:async_hooks`, registers itself on import
+- `src/lib/sentry-flush.ts` — imports the alarm module so route
+  handler boundaries install the hook
+
+**Defensive guard**: wrap the `setHook` call in `try/catch` — test
+files that `vi.mock(...)` the shared utility may return a proxy that
+throws on unmocked property access. Failing to register at test-time
+is acceptable because mocked tests aren't exercising the hook path
+anyway. PR #148 added this guard after PR #145.
+
+### Pre-flight check before adding top-level node-only imports
+
+If you're adding `import { ... } from "node:..."` (or any node-only
+module like `fs`, `path`, `child_process`, etc.) to a file in
+`src/lib/*`, run:
+
+```bash
+grep -rln '@/lib/<your-file>\|"\./<your-file>"\|"\.\./<your-file>"' src/ \
+  --include="*.tsx" --include="*.ts" \
+  | xargs grep -l '"use client"\|export const runtime = "edge"' 2>/dev/null
+```
+
+If any result — even one client component or edge route — DO NOT add
+the import. Use the hook-registration pattern instead.
+
+---
+
+## 9. Multi-agent dispatch isolation
+
+When dispatching 2+ parallel coding agents on the same repo working
+tree, they will collide. Symptoms observed in this codebase
+(PR #144 → #148 sequence):
+
+- Branch HEAD bouncing between commits as agents `git checkout -b`
+  back-and-forth
+- Cross-branch commit contamination (PR-13's commit landed on the
+  PR-18 branch, requiring manual cherry-pick recovery during rebase)
+- Lint catching working-tree drift sometimes but not always (PR #142's
+  `eslint-disable` comments added to webhooks/resend after Stream C
+  agent's tree was created — the agent's edits didn't include them,
+  lint caught the gap on rebase)
+- Agents committing files not in their assigned scope (their
+  `git add -A` swept in another agent's mid-edit files)
+
+### Three approaches (in order of robustness)
+
+**A. `git worktree` per agent (recommended for true isolation)**
+
+```bash
+# At dispatch time, for each agent:
+git worktree add /tmp/agent-<n>-worktree -b cleanup/<scope>
+# Agent operates entirely in /tmp/agent-<n>-worktree
+# After: git worktree remove /tmp/agent-<n>-worktree
+```
+
+The Agent tool's `isolation: "worktree"` parameter does this
+automatically — pass it when dispatching code-modifying agents in
+parallel.
+
+**B. Serial dispatch with explicit completion gates**
+
+Dispatch one agent at a time. Wait for completion + push + branch
+creation before dispatching the next. Loses parallelism but trivially
+safe. Use when worktree isolation isn't available or when agents need
+to cross-check each other's work.
+
+**C. Read-only / non-modifying agents in parallel**
+
+Audit / forensic / analysis agents that only READ files (no edits, no
+git commits) can safely run in parallel without isolation. They share
+the working tree but never modify it. Stream 2-5 in the post-Phase-2
+cleanup parallel run used this pattern.
+
+### Discipline at agent kickoff
+
+If isolation isn't available, brief each parallel agent with explicit
+git discipline:
+
+```
+ALWAYS branch from main HEAD before starting:
+  git fetch origin main
+  git checkout main
+  git pull --ff-only
+  git checkout -b cleanup/<scope>
+```
+
+And: stage explicit file paths (not `git add -A`) when committing, so
+mid-edit files from sibling agents don't sweep into your commit.
+
+### Verification before opening PR
+
+After parallel agents complete, ALWAYS run before opening their PRs:
+
+1. `git log origin/main..HEAD` — verify only YOUR commits, no contamination
+2. `pnpm exec tsc --noEmit && pnpm exec eslint src/` — verify clean state
+3. CI on the preview deploy actually passes — if it errors, the
+   working-tree drift didn't get caught locally
+
+---
+
+## 10. Pre-commit checklist
 
 Before pushing a PR that touches Supabase writes or admin server
 components:
 
 - [ ] `pnpm exec tsc --noEmit` — no type errors
 - [ ] `pnpm exec eslint src/...` — no `error`-severity violations on
-      changed files. `warn` is allowed for now (PR-B4 will tighten);
-      reviewers may still ask you to wrap any new violations you
-      introduce.
+      changed files. The 5 local rules (`no-bare-supabase-write`,
+      `require-connection-in-admin-pages`,
+      `sentry-flush-before-return`, `no-logger-error-in-loop`,
+      `sentry-flush-before-callback-exit`) are at `error` severity post
+      PR-B4/B5 — any new violation blocks the build.
 - [ ] If you modified webhook handlers or admin actions: check the
       audit table afterwards has exactly ONE row per intentional
       action (no duplicate retries from the cacheComponents bug).
+- [ ] If you added a top-level `node:*` import to `src/lib/*`: ran the
+      import-surface grep (§8) — no client/edge consumers, OR used
+      the hook-registration pattern.
+- [ ] If multiple parallel agents touched the codebase: ran the §9
+      verification step before opening the PR.
