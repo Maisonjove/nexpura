@@ -8,6 +8,7 @@ import { withIdempotency } from "@/lib/idempotency";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth-context";
 import logger from "@/lib/logger";
+import { flushSentry } from "@/lib/sentry-flush";
 
 async function getAuthContext() {
   // Refunds are money-moving. Require (a) authenticated, (b) tenant
@@ -333,6 +334,14 @@ export async function processRefund(params: {
   // invalidates the destination page, and the /refunds list has no
   // unstable_cache wrapper that needs busting — so the revalidatePath
   // here was both wrong and unnecessary.
+  //
+  // logger.error fires inside the withIdempotency callback above
+  // (credit-history insert + refund-items insert paths). The lint
+  // rule's per-function scope can't see those nested logger.errors,
+  // but they queue Sentry events the same way as any in-handler
+  // logger.error. Flush before redirect()'s NEXT_REDIRECT throw to
+  // drain.
+  await flushSentry();
   redirect(`/refunds/${refundResult.id}`);
 }
 

@@ -293,12 +293,22 @@ export async function recordRepairPayment(input: RecordPaymentInput) {
 }
 ```
 
-#### `redirect()` exits — same flush rule
+#### Exit-by-throw helpers — same flush rule
 
-`redirect()` from `next/navigation` throws `NEXT_REDIRECT` internally.
-That's effectively a return for Lambda-freeze purposes — the SDK
-buffer needs draining before the throw propagates out. Add
-`await flushSentry()` immediately before the redirect:
+Generic principle: anything that exits the handler without an explicit
+`return` still freezes the Lambda after the response is sent. The
+SDK buffer needs draining before the exit. Affected helpers in this
+codebase:
+
+- `redirect(path)` from `next/navigation` — throws `NEXT_REDIRECT`
+- `permanentRedirect(path)` — throws `NEXT_REDIRECT` with permanent flag
+- `notFound()` — throws `NEXT_NOT_FOUND`
+- `unauthorized()` — throws `NEXT_HTTP_ERROR_FALLBACK;401`
+- `forbidden()` — throws `NEXT_HTTP_ERROR_FALLBACK;403`
+
+Add `await flushSentry()` immediately before any of these when a
+logger.error has fired in the function (or in a nested callback whose
+queued Sentry event would otherwise drop):
 
 ```ts
 // ✅ Flush before redirect. The throw still propagates to the React
@@ -362,6 +372,37 @@ actions. Top-level helper FUNCTION DECLARATIONS in route files (e.g.
 `webhooks/stripe/route.ts`) sit one frame in from the boundary, and
 the wrap at the exported handler covers their flush. Internal helpers
 + UI components are not in scope.
+
+### Known rule gap — nested-callback logger.error
+
+The rule only inspects events within the exported function's own
+body; it skips nested callbacks (`.catch(() => ...)`,
+`withIdempotency(async () => {...})`, transaction wrappers). This
+means a logger.error queued from inside such a callback won't trigger
+the rule's flush requirement on the outer function's exit (return /
+redirect / etc.). PR #138 patched two known sites manually:
+`createBespokeJob` and `processRefund`, both of which fire
+logger.error inside callbacks then exit via redirect. When you add a
+new server action with a similar nested-callback pattern: think about
+whether the callback can fire logger.error, and if so add an
+`await flushSentry()` before the exit. A future enhancement to the
+rule could trace logger.error calls into common callback patterns;
+tracked under post-Phase-2 cleanup.
+
+### Post-Phase-2 cleanup additions
+
+Tracked separately for the post-Phase-2 work:
+- **Capture-amplification alarm**: a single request firing > 50
+  `logger.error` calls is itself a bug (likely a runaway loop); the
+  PromiseBuffer's 100-event cap silently drops everything past 100.
+  Future addition: a Sentry breadcrumb counter per request + alert
+  rule when count exceeds 50.
+- **Loop-shaped logger.error lint rule**: warn when logger.error
+  appears inside a `for` / `while` / `.forEach(` body — early signal
+  of capture amplification before it hits the cap.
+- **Nested-callback flow detection** in the existing
+  `local/sentry-flush-before-return` rule (see "Known rule gap"
+  above).
 
 ---
 

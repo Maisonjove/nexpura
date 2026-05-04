@@ -215,6 +215,12 @@ export async function createBespokeJob(
   });
 
   revalidatePath("/bespoke");
+  // logger.error fires inside the .catch() callback on the
+  // sendTrackingEmail promise above. The lint rule's per-function
+  // scope can't see that nested logger.error, but it queues a Sentry
+  // event the same way as any in-handler logger.error. Flush before
+  // redirect()'s NEXT_REDIRECT throw to drain.
+  await flushSentry();
   redirect(`/bespoke/${data.id}`);
 }
 
