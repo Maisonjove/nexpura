@@ -186,9 +186,15 @@ export async function POST(req: NextRequest) {
       // "failed" forever, no recovery path. Drop the lock so the
       // retry can re-enter the mutation block.
       try {
-        await admin.from("idempotency_locks").delete().eq("key", eventKey);
+        const { error: rollbackErr } = await admin
+          .from("idempotency_locks")
+          .delete()
+          .eq("key", eventKey);
+        if (rollbackErr) {
+          logger.error("[stripe-marketing-webhook] failed to roll back idempotency lock", { eventKey, err: rollbackErr });
+        }
       } catch (rollbackErr) {
-        logger.error("[stripe-marketing-webhook] failed to roll back idempotency lock", { eventKey, err: rollbackErr });
+        logger.error("[stripe-marketing-webhook] idempotency-lock rollback threw", { eventKey, err: rollbackErr });
       }
 
       return NextResponse.json({ error: "Processing failed" }, { status: 500 });

@@ -141,8 +141,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error) {
     logger.error("Webhook processing error:", error);
-    // Roll back idempotency lock so Stripe can retry
-    await supabase.from("idempotency_locks").delete().eq("key", eventKey);
+    // Roll back idempotency lock so Stripe can retry. Side-effect:
+    // best-effort cleanup; if this delete itself fails the lock will
+    // expire on its own (90-day TTL) and Stripe will retry until then.
+    // Log loudly so the operator can manually clear if it matters.
+    const { error: rollbackErr } = await supabase
+      .from("idempotency_locks")
+      .delete()
+      .eq("key", eventKey);
+    if (rollbackErr) {
+      logger.error("[stripe-webhook] failed to roll back idempotency lock", {
+        eventKey,
+        err: rollbackErr,
+      });
+    }
 
     return NextResponse.json(
       { error: "Webhook processing failed" },
