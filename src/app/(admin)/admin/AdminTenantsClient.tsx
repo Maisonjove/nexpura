@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import {
+  ArrowRightIcon,
+  BuildingOffice2Icon,
+  ClockIcon,
+  ShieldCheckIcon,
+} from "@heroicons/react/24/outline";
 import RequestAccessModal from "./RequestAccessModal";
 
 interface Tenant {
@@ -43,12 +49,12 @@ function formatTimeRemaining(expiresAt: string) {
   const now = new Date();
   const expiry = new Date(expiresAt);
   const diffMs = expiry.getTime() - now.getTime();
-  
+
   if (diffMs <= 0) return "Expired";
-  
+
   const hours = Math.floor(diffMs / (1000 * 60 * 60));
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  
+
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
 }
@@ -57,46 +63,36 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   const s = (status ?? "").toLowerCase();
   const cls =
     s === "active"
-      ? "bg-emerald-50 text-emerald-700"
+      ? "nx-badge-success"
       : s === "trialing"
-      ? "bg-amber-50 text-amber-700"
+      ? "nx-badge-warning"
       : s === "past_due"
-      ? "bg-yellow-50 text-yellow-700"
-      : "bg-red-50 text-red-600";
+      ? "nx-badge-warning"
+      : s === ""
+      ? "nx-badge-neutral"
+      : "nx-badge-danger";
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
-      {s.replace("_", " ") || "—"}
-    </span>
+    <span className={`${cls} capitalize`}>{s.replace("_", " ") || "—"}</span>
   );
 }
 
 function PlanBadge({ plan }: { plan: string | null | undefined }) {
   const p = (plan ?? "").toLowerCase();
-  const cls =
-    p === "studio" || p === "pro"
-      ? "bg-stone-100 text-stone-700"
-      : p === "atelier" || p === "group" || p === "ultimate"
-      ? "bg-stone-200 text-stone-800"
-      : "bg-stone-100 text-stone-600";
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
-      {p || "—"}
-    </span>
-  );
+  return <span className="nx-badge-neutral capitalize">{p || "—"}</span>;
 }
 
 function AccessBadge({ status, expiresAt }: { status: "pending" | "approved"; expiresAt?: string }) {
   if (status === "pending") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+      <span className="nx-badge-warning gap-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
         Pending
       </span>
     );
   }
-  
+
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+    <span className="nx-badge-success gap-1.5">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
       Access ({expiresAt ? formatTimeRemaining(expiresAt) : "24h"})
     </span>
@@ -119,79 +115,90 @@ export default function AdminTenantsClient({ tenants, subscriptions, accessStatu
     window.open(`/api/support-access/enter?tenant=${tenantId}`, "_blank");
   };
 
+  if (tenants.length === 0) {
+    return (
+      <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+        <BuildingOffice2Icon className="w-8 h-8 text-stone-300 mx-auto mb-5" />
+        <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+          No tenants yet
+        </h3>
+        <p className="text-stone-500 text-sm max-w-sm mx-auto leading-relaxed">
+          New signups will appear here as they create accounts.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-stone-200 bg-stone-50">
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Business</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Plan</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Status</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Trial / Period End</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Signed Up</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">Support Access</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100">
-            {tenants.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-stone-400">
-                  No tenants yet
-                </td>
-              </tr>
-            ) : (
-              tenants.map((tenant) => {
-                const sub = subMap.get(tenant.id);
-                const access = accessStatuses[tenant.id];
+      <div className="space-y-3">
+        {tenants.map((tenant) => {
+          const sub = subMap.get(tenant.id);
+          const access = accessStatuses[tenant.id];
 
-                return (
-                  <tr key={tenant.id} className="hover:bg-stone-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-stone-900">
-                      <Link href={`/admin/tenants/${tenant.id}`} className="hover:text-stone-600">
-                        {tenant.name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4">
-                      <PlanBadge plan={sub?.plan} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={sub?.status} />
-                    </td>
-                    <td className="px-6 py-4 text-stone-500">
-                      {formatDate(sub?.trial_ends_at || sub?.current_period_end)}
-                    </td>
-                    <td className="px-6 py-4 text-stone-500">{formatDate(tenant.created_at)}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {access ? (
-                          <>
-                            <AccessBadge status={access.status} expiresAt={access.expiresAt} />
-                            {access.status === "approved" && (
-                              <button
-                                onClick={() => handleEnterDashboard(tenant.id)}
-                                className="px-2.5 py-1 text-xs font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-colors"
-                              >
-                                Enter →
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => handleRequestAccess(tenant)}
-                            className="px-2.5 py-1 text-xs font-medium text-stone-700 bg-stone-100 border border-stone-200 rounded-md hover:bg-stone-200 transition-colors"
-                          >
-                            Request Access
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+          return (
+            <div
+              key={tenant.id}
+              className="group bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
+            >
+              <div className="flex items-start justify-between gap-6">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap mb-2.5">
+                    <PlanBadge plan={sub?.plan} />
+                    <StatusBadge status={sub?.status} />
+                  </div>
+                  <Link
+                    href={`/admin/tenants/${tenant.id}`}
+                    className="font-serif text-xl text-stone-900 leading-tight tracking-tight hover:text-nexpura-bronze transition-colors duration-200"
+                  >
+                    {tenant.name}
+                  </Link>
+
+                  <div className="flex items-center gap-5 flex-wrap mt-4 text-xs text-stone-500">
+                    <span className="inline-flex items-center gap-1.5">
+                      <ClockIcon className="w-3.5 h-3.5 text-stone-400" />
+                      Signed up {formatDate(tenant.created_at)}
+                    </span>
+                    {(sub?.trial_ends_at || sub?.current_period_end) && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="text-stone-400">·</span>
+                        {sub?.trial_ends_at ? "Trial ends" : "Period ends"}{" "}
+                        <span className="text-stone-700">
+                          {formatDate(sub?.trial_ends_at || sub?.current_period_end)}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-end gap-3 shrink-0">
+                  {access ? (
+                    <>
+                      <AccessBadge status={access.status} expiresAt={access.expiresAt} />
+                      {access.status === "approved" && (
+                        <button
+                          onClick={() => handleEnterDashboard(tenant.id)}
+                          className="nx-btn-primary inline-flex items-center gap-1.5 text-xs px-3 py-1.5"
+                        >
+                          Enter
+                          <ArrowRightIcon className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleRequestAccess(tenant)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-stone-700 bg-white border border-stone-200 hover:border-stone-300 hover:bg-stone-50 transition-colors duration-200"
+                    >
+                      <ShieldCheckIcon className="w-3.5 h-3.5" />
+                      Request Access
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {selectedTenant && (

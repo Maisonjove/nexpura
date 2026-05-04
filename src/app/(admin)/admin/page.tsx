@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import AdminTenantsClient from "./AdminTenantsClient";
 import logger from "@/lib/logger";
+import { ArrowRightIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 
 /**
  * /admin — CC-ready page-route (admin-cluster cleanup pass).
@@ -44,15 +45,24 @@ import {
 
 export default function AdminDashboardPage() {
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      {/* Shell — pure static JSX. Prerenderable under CC. */}
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-900">Admin Dashboard</h1>
-        <p className="text-sm text-stone-500 mt-1">Platform overview and key metrics</p>
+    <div className="bg-nexpura-ivory min-h-screen -m-6">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Shell — pure static JSX. Prerenderable under CC. */}
+        <div className="mb-12">
+          <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+            Admin
+          </p>
+          <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+            Dashboard
+          </h1>
+          <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+            Platform overview, tenant activity, and key revenue metrics.
+          </p>
+        </div>
+        <Suspense fallback={<AdminDashboardSkeleton />}>
+          <AdminDashboardBody />
+        </Suspense>
       </div>
-      <Suspense fallback={<AdminDashboardSkeleton />}>
-        <AdminDashboardBody />
-      </Suspense>
     </div>
   );
 }
@@ -127,27 +137,35 @@ async function AdminDashboardBody() {
 
   return (
     <>
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Stat strip */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm"
+            className="bg-white border border-stone-200 rounded-2xl p-5"
           >
-            <p className="text-xs text-stone-500 font-medium uppercase tracking-wide">{stat.label}</p>
+            <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-luxury">
+              {stat.label}
+            </p>
             {stat.kind === "count" ? (
-              <p className={`text-2xl font-semibold mt-1 ${stat.accent ? "text-emerald-600" : "text-stone-900"}`}>
+              <p
+                className={`font-serif text-3xl mt-2 leading-none tracking-tight tabular-nums ${
+                  stat.accent ? "text-emerald-700" : "text-stone-900"
+                }`}
+              >
                 {stat.value}
               </p>
             ) : (
               <>
                 <p
-                  className={`text-sm font-semibold mt-1 leading-snug break-words ${stat.accent ? "text-emerald-600" : "text-stone-900"}`}
+                  className={`text-sm font-semibold mt-2 leading-snug break-words tabular-nums ${
+                    stat.accent ? "text-emerald-700" : "text-stone-900"
+                  }`}
                 >
                   {stat.value}
                 </p>
                 {stat.subText && (
-                  <p className="text-[10px] text-amber-700 mt-0.5">{stat.subText}</p>
+                  <p className="text-[10px] text-amber-700 mt-1">{stat.subText}</p>
                 )}
               </>
             )}
@@ -159,30 +177,48 @@ async function AdminDashboardBody() {
           unread count stays visually distinct. Click → /admin/demo-requests. */}
       <Link
         href="/admin/demo-requests"
-        className="block bg-white rounded-xl border border-stone-200 p-4 shadow-sm hover:bg-stone-50 transition-colors"
+        className="group block bg-white border border-stone-200 rounded-2xl p-6 mb-10 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-stone-500 font-medium uppercase tracking-wide">Demo Requests</p>
-            <div className="flex items-baseline gap-3 mt-1">
-              <span className={`text-2xl font-semibold ${demoRequestCounts.new > 0 ? "text-amber-700" : "text-stone-900"}`}>
-                {demoRequestCounts.new}
-              </span>
-              <span className="text-xs text-stone-500">
-                new{demoRequestCounts.scheduled > 0 ? ` · ${demoRequestCounts.scheduled} scheduled` : ""}
-              </span>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <EnvelopeIcon className="w-6 h-6 text-stone-400 group-hover:text-nexpura-bronze transition-colors duration-300" />
+            <div>
+              <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-luxury">
+                Demo Requests
+              </p>
+              <div className="flex items-baseline gap-3 mt-1.5">
+                <span
+                  className={`font-serif text-2xl leading-none tracking-tight tabular-nums ${
+                    demoRequestCounts.new > 0 ? "text-amber-700" : "text-stone-900"
+                  }`}
+                >
+                  {demoRequestCounts.new}
+                </span>
+                <span className="text-xs text-stone-500">
+                  new
+                  {demoRequestCounts.scheduled > 0
+                    ? ` · ${demoRequestCounts.scheduled} scheduled`
+                    : ""}
+                </span>
+              </div>
             </div>
           </div>
-          <span className="text-stone-400 text-sm">→</span>
+          <ArrowRightIcon className="w-4 h-4 text-stone-400 group-hover:text-nexpura-bronze transition-colors duration-300" />
         </div>
       </Link>
 
       {/* Recent Signups */}
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-stone-900">Recent Signups</h2>
-          <Link href="/admin/tenants" className="text-sm text-stone-700 hover:text-stone-900 hover:underline">
-            View all →
+      <div>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-luxury">
+            Recent Signups
+          </h2>
+          <Link
+            href="/admin/tenants"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-nexpura-bronze transition-colors duration-200"
+          >
+            View all
+            <ArrowRightIcon className="w-3.5 h-3.5" />
           </Link>
         </div>
         <AdminTenantsClient
@@ -284,18 +320,19 @@ async function loadAdminDashboardData(): Promise<{
 function AdminDashboardSkeleton() {
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm">
-            <Skeleton className="h-3 w-20 mb-2" />
-            <Skeleton className="h-7 w-16" />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white border border-stone-200 rounded-2xl p-5">
+            <Skeleton className="h-3 w-20 mb-3" />
+            <Skeleton className="h-8 w-16" />
           </div>
         ))}
       </div>
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
-        <Skeleton className="h-14 w-full" />
+      <Skeleton className="h-20 w-full rounded-2xl mb-10" />
+      <Skeleton className="h-4 w-32 mb-5" />
+      <div className="space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 w-full border-t border-stone-100" />
+          <Skeleton key={i} className="h-24 w-full rounded-2xl" />
         ))}
       </div>
     </>

@@ -4,6 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import logger from "@/lib/logger";
+import {
+  ArrowLeftIcon,
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
 
 /**
  * /admin/revenue — CC-ready page-route (admin cluster, third of four).
@@ -51,19 +55,34 @@ export const metadata = { title: "Revenue — Nexpura Admin" };
 
 export default function RevenueAdminPage() {
   return (
-    <div className="max-w-5xl mx-auto py-10 px-4">
-      {/* Shell — pure static JSX. No awaits, no DB. Paints in the first
-          streamed chunk; prerenderable under cacheComponents. */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <Link href="/admin" className="text-sm text-stone-400 hover:text-stone-600 mb-1 inline-block">← Admin</Link>
-          <h1 className="text-2xl font-semibold text-stone-900">Revenue Overview</h1>
-          <p className="text-sm text-stone-500 mt-0.5">Live MRR, ARR, plan breakdown, and subscription metrics</p>
+    <div className="bg-nexpura-ivory min-h-screen">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Shell — pure static JSX. No awaits, no DB. Paints in the first
+            streamed chunk; prerenderable under cacheComponents. */}
+        <div className="mb-14 flex items-start gap-4">
+          <Link
+            href="/admin"
+            className="mt-2 text-stone-400 hover:text-nexpura-bronze transition-colors duration-300"
+            aria-label="Back to admin"
+          >
+            <ArrowLeftIcon className="w-5 h-5" />
+          </Link>
+          <div>
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Admin
+            </p>
+            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-stone-900 leading-[1.05] tracking-tight">
+              Revenue
+            </h1>
+            <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+              Live MRR, ARR, plan breakdown, and subscription metrics.
+            </p>
+          </div>
         </div>
+        <Suspense fallback={<RevenueBodySkeleton />}>
+          <RevenueBody />
+        </Suspense>
       </div>
-      <Suspense fallback={<RevenueBodySkeleton />}>
-        <RevenueBody />
-      </Suspense>
     </div>
   );
 }
@@ -132,100 +151,164 @@ async function RevenueBody() {
 
   return (
     <>
-      {/* MRR card — multi-currency breakdown + ≈ AUD total */}
-      <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <div className="text-2xl mb-0.5">💰</div>
-            <h2 className="text-sm font-semibold text-stone-700">MRR — Monthly Recurring Revenue</h2>
-            <p className="text-xs text-stone-400 mt-0.5">Per-currency breakdown across active paying tenants.</p>
-          </div>
+      {/* Top stat strip — ARR, Active, Trialing, New (30d) */}
+      <div className="mb-14 grid grid-cols-2 lg:grid-cols-4 gap-y-8 gap-x-6 lg:divide-x lg:divide-stone-200">
+        <div className="lg:px-8 lg:first:pl-0">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            ARR (≈ AUD)
+          </p>
+          <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
+            {arr === null ? "≈ A$—" : fmtAUD(arr)}
+          </p>
+          <p className="text-xs text-stone-500 mt-3">
+            {arr === null ? "FX rate stale" : "Annual run rate (≈ AUD)"}
+          </p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-          {CURRENCY_ORDER.map((cur) => (
-            <div key={cur} className="border border-stone-100 rounded-lg p-3 bg-stone-50/40">
-              <div className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">{cur}</div>
-              <div className="text-xl font-semibold text-stone-900">
+        <div className="lg:px-8">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            Active
+          </p>
+          <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
+            {activeSubs.length}
+          </p>
+          <p className="text-xs text-stone-500 mt-3">Paying tenants</p>
+        </div>
+        <div className="lg:px-8">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            Trialing
+          </p>
+          <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
+            {trialSubs.length}
+          </p>
+          <p className="text-xs text-stone-500 mt-3">On trial</p>
+        </div>
+        <div className="lg:px-8 lg:last:pr-0">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            New (30d)
+          </p>
+          <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-emerald-600">
+            {newTenants}
+          </p>
+          <p className="text-xs text-stone-500 mt-3">New tenants</p>
+        </div>
+      </div>
+
+      {/* MRR card — multi-currency breakdown + ≈ AUD total */}
+      <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-10">
+        <div className="mb-6">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            Monthly Recurring Revenue
+          </p>
+          <h2 className="font-serif text-2xl text-stone-900 leading-tight tracking-tight">
+            Per-currency breakdown
+          </h2>
+          <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+            Across active paying tenants.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-6 md:divide-x md:divide-stone-200">
+          {CURRENCY_ORDER.map((cur, i) => (
+            <div
+              key={cur}
+              className={`md:px-6 ${i === 0 ? "md:first:pl-0" : ""} ${i === CURRENCY_ORDER.length - 1 ? "md:last:pr-0" : ""}`}
+            >
+              <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+                {cur}
+              </p>
+              <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
                 {formatCurrencyLine(cur, mrr.byCurrency[cur] ?? 0)}
-              </div>
+              </p>
             </div>
           ))}
         </div>
-        <div className="border-t border-stone-100 pt-3 flex items-baseline justify-between">
+        <div className="border-t border-stone-200 mt-6 pt-5 flex items-baseline justify-between gap-6 flex-wrap">
           <div>
-            <div className="text-xs text-stone-500">
+            <p className="text-sm text-stone-700 tabular-nums">
               {audTotalResult.isStale
                 ? "≈ A$— (FX rate stale)"
                 : `≈ ${fmtAUD(audTotalResult.audTotal ?? 0)} total`}
-            </div>
-            <div className="text-[10px] text-stone-400 mt-0.5">
+            </p>
+            <p className="text-xs text-stone-500 mt-1">
               {audTotalResult.isStale
                 ? `Latest fx_rates row missing or > 7 days old; cron at /api/cron/fx-refresh writes daily 02:00 UTC.`
                 : `FX rates updated daily.`}
-            </div>
+            </p>
           </div>
           {mrr.fallbackSubCount > 0 && (
-            <div className="text-[11px] text-amber-700 max-w-[260px] text-right">
+            <p className="text-xs text-amber-700 max-w-[280px] text-right leading-relaxed">
               Includes {mrr.fallbackSubCount} admin-set sub{mrr.fallbackSubCount === 1 ? "" : "s"}, currency inferred from tenant settings (no Stripe price_id).
-            </div>
+            </p>
           )}
         </div>
       </div>
 
-      {/* Top KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          {
-            label: "ARR (≈ AUD)",
-            value: arr === null ? "≈ A$—" : fmtAUD(arr),
-            icon: "📈",
-            sub: arr === null ? "FX rate stale" : "Annual run rate (≈ AUD)",
-          },
-          { label: "Active Subscriptions", value: activeSubs.length, icon: "✓", sub: "Paying tenants" },
-          { label: "Trialing", value: trialSubs.length, icon: "⏳", sub: "On trial" },
-          { label: "New (30d)", value: newTenants, icon: "🆕", sub: "New tenants" },
-        ].map((k) => (
-          <div key={k.label} className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-            <div className="text-2xl mb-2">{k.icon}</div>
-            <div className="text-2xl font-bold text-stone-900">{k.value}</div>
-            <div className="text-xs text-stone-500 mt-0.5">{k.sub}</div>
-          </div>
-        ))}
+      {/* Secondary stat strip — Past Due, Churned, Churn Rate, Conversion */}
+      <div className="mb-14 grid grid-cols-2 lg:grid-cols-4 gap-y-8 gap-x-6 lg:divide-x lg:divide-stone-200">
+        <div className="lg:px-8 lg:first:pl-0">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            Past Due
+          </p>
+          <p
+            className={`font-serif text-4xl leading-none tracking-tight tabular-nums ${
+              pastDueSubs.length > 0 ? "text-nexpura-oxblood" : "text-stone-900"
+            }`}
+          >
+            {pastDueSubs.length}
+          </p>
+        </div>
+        <div className="lg:px-8">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            Churned
+          </p>
+          <p
+            className={`font-serif text-4xl leading-none tracking-tight tabular-nums ${
+              cancelledSubs.length > 5 ? "text-nexpura-oxblood" : "text-stone-900"
+            }`}
+          >
+            {cancelledSubs.length}
+          </p>
+        </div>
+        <div className="lg:px-8">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            Churn Rate
+          </p>
+          <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
+            {churnRate}%
+          </p>
+        </div>
+        <div className="lg:px-8 lg:last:pr-0">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            Conversion
+          </p>
+          <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-emerald-600">
+            {conversionRate}%
+          </p>
+        </div>
       </div>
 
-      {/* Secondary KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: "Trialing", value: trialSubs.length, color: "text-amber-600" },
-          { label: "Past Due", value: pastDueSubs.length, color: pastDueSubs.length > 0 ? "text-red-600" : "text-stone-900" },
-          { label: "Churned", value: cancelledSubs.length, color: cancelledSubs.length > 5 ? "text-red-600" : "text-stone-900" },
-          { label: "Churn Rate", value: `${churnRate}%`, color: "text-stone-900" },
-        ].map((k) => (
-          <div key={k.label} className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm">
-            <div className={`text-xl font-bold ${k.color}`}>{k.value}</div>
-            <div className="text-xs text-stone-500 mt-0.5">{k.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Plan breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-stone-700 mb-4">Plan Distribution (Active)</h2>
-          <p className="text-[11px] text-stone-400 mb-3">
-            Tenant count per plan. Per-currency MRR is shown in the breakdown card above
+      {/* Plan breakdown + Conversion funnel */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div className="bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            Plan Distribution
+          </p>
+          <h2 className="font-serif text-xl text-stone-900 leading-tight tracking-tight mb-2">
+            Active subscriptions
+          </h2>
+          <p className="text-xs text-stone-500 leading-relaxed mb-5">
+            Tenant count per plan. Per-currency MRR is shown in the breakdown above
             — a single $/mo figure here would silently mix currencies.
           </p>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {Object.entries(planBreakdown).map(([plan, count]) => {
               const pct = activeSubs.length > 0 ? Math.round((count / activeSubs.length) * 100) : 0;
               return (
                 <div key={plan}>
-                  <div className="flex justify-between text-sm mb-1">
+                  <div className="flex justify-between text-sm mb-2">
                     <span className="font-medium text-stone-900 capitalize">{plan}</span>
-                    <span className="text-stone-500">{count} {count === 1 ? "tenant" : "tenants"}</span>
+                    <span className="text-stone-500 tabular-nums">{count} {count === 1 ? "tenant" : "tenants"}</span>
                   </div>
-                  <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-stone-700 rounded-full transition-all"
                       style={{ width: `${pct}%` }}
@@ -238,9 +321,14 @@ async function RevenueBody() {
         </div>
 
         {/* Conversion funnel */}
-        <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-stone-700 mb-4">Conversion Funnel</h2>
-          <div className="space-y-3">
+        <div className="bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            Conversion Funnel
+          </p>
+          <h2 className="font-serif text-xl text-stone-900 leading-tight tracking-tight mb-5">
+            Signup to paid
+          </h2>
+          <div className="space-y-4">
             {[
               { label: "Total Signups", value: (tenants ?? []).length, width: 100 },
               { label: "Trialing", value: trialSubs.length, width: (tenants ?? []).length > 0 ? (trialSubs.length / (tenants ?? []).length) * 100 : 0 },
@@ -248,9 +336,9 @@ async function RevenueBody() {
               { label: "Conversion Rate", value: `${conversionRate}%`, width: parseFloat(conversionRate) },
             ].map((row) => (
               <div key={row.label}>
-                <div className="flex justify-between text-sm mb-1">
+                <div className="flex justify-between text-sm mb-2">
                   <span className="text-stone-600">{row.label}</span>
-                  <span className="font-medium text-stone-900">{row.value}</span>
+                  <span className="font-medium text-stone-900 tabular-nums">{row.value}</span>
                 </div>
                 <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
                   <div
@@ -265,21 +353,36 @@ async function RevenueBody() {
       </div>
 
       {/* Active subscriptions table */}
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden mb-6 shadow-sm">
-        <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-stone-700">Active Subscriptions</h2>
-          <span className="text-xs text-stone-400">
+      <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden mb-10">
+        <div className="px-6 py-5 border-b border-stone-200 flex items-center justify-between">
+          <div>
+            <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1.5">
+              Subscriptions
+            </p>
+            <h2 className="font-serif text-xl text-stone-900 leading-tight tracking-tight">
+              Active tenants
+            </h2>
+          </div>
+          <span className="text-sm text-stone-500 tabular-nums">
             {activeSubs.length} {activeSubs.length === 1 ? "tenant" : "tenants"}
           </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-stone-50">
-              <tr>
-                <th className="text-left px-5 py-3 text-xs font-medium text-stone-500">Tenant</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-stone-500">Plan</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-stone-500">MRR</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-stone-500">Renews</th>
+            <thead>
+              <tr className="border-b border-stone-200">
+                <th className="text-left px-6 py-4 font-semibold text-stone-400 text-[0.6875rem] uppercase tracking-luxury">
+                  Tenant
+                </th>
+                <th className="text-left px-5 py-4 font-semibold text-stone-400 text-[0.6875rem] uppercase tracking-luxury">
+                  Plan
+                </th>
+                <th className="text-right px-5 py-4 font-semibold text-stone-400 text-[0.6875rem] uppercase tracking-luxury">
+                  MRR
+                </th>
+                <th className="text-left px-5 py-4 font-semibold text-stone-400 text-[0.6875rem] uppercase tracking-luxury">
+                  Renews
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
@@ -297,28 +400,31 @@ async function RevenueBody() {
                     ? `${SYMBOLS[resolved.currency]}${resolved.amount.toLocaleString()}`
                     : "?";
                 return (
-                  <tr key={sub.tenant_id} className="hover:bg-stone-50">
-                    <td className="px-5 py-3">
-                      <Link href={`/admin/tenants/${sub.tenant_id}`} className="font-medium text-stone-900 hover:text-stone-600">
+                  <tr key={sub.tenant_id} className="hover:bg-stone-50/60 transition-colors duration-200">
+                    <td className="px-6 py-4">
+                      <Link
+                        href={`/admin/tenants/${sub.tenant_id}`}
+                        className="font-medium text-stone-900 hover:text-nexpura-bronze transition-colors duration-200"
+                      >
                         {tenant?.name ?? "Unknown"}
                       </Link>
                       {tenant?.is_free_forever && (
-                        <span className="ml-2 text-xs text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Free</span>
+                        <span className="ml-2 nx-badge-success">Free</span>
                       )}
                       {resolved?.source === "tenant_fallback" && (
                         <span
-                          className="ml-2 text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded"
+                          className="ml-2 nx-badge-warning"
                           title="Currency inferred from tenant settings — no Stripe price_id on subscription row."
                         >
                           inferred
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <span className="capitalize text-stone-700">{sub.plan}</span>
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-stone-900">{cell}</td>
-                    <td className="px-4 py-3 text-stone-500">
+                    <td className="px-5 py-4 text-right font-medium text-stone-900 tabular-nums">{cell}</td>
+                    <td className="px-5 py-4 text-stone-500 tabular-nums">
                       {sub.current_period_end ? fmtDate(sub.current_period_end) : "—"}
                     </td>
                   </tr>
@@ -331,17 +437,30 @@ async function RevenueBody() {
 
       {/* Past due / at risk */}
       {pastDueSubs.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-red-800 mb-3">⚠️ At Risk — Payment Required ({pastDueSubs.length})</h2>
-          <div className="space-y-2">
+        <div className="bg-white border border-nexpura-oxblood/30 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <ExclamationTriangleIcon className="w-5 h-5 text-nexpura-oxblood" />
+            <div>
+              <p className="text-[0.6875rem] font-semibold text-nexpura-oxblood uppercase tracking-luxury mb-1">
+                At Risk
+              </p>
+              <h2 className="font-serif text-xl text-stone-900 leading-tight tracking-tight">
+                Payment required ({pastDueSubs.length})
+              </h2>
+            </div>
+          </div>
+          <div className="divide-y divide-stone-100">
             {pastDueSubs.map((sub) => {
               const tenant = tenantMap.get(sub.tenant_id);
               return (
-                <div key={sub.tenant_id} className="flex items-center justify-between">
-                  <Link href={`/admin/tenants/${sub.tenant_id}`} className="text-sm font-medium text-red-800 hover:text-red-900">
+                <div key={sub.tenant_id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                  <Link
+                    href={`/admin/tenants/${sub.tenant_id}`}
+                    className="text-sm font-medium text-stone-900 hover:text-nexpura-bronze transition-colors duration-200"
+                  >
                     {tenant?.name ?? "Unknown"}
                   </Link>
-                  <span className="text-xs text-red-600 capitalize">{sub.plan}</span>
+                  <span className="text-xs text-stone-500 capitalize">{sub.plan}</span>
                 </div>
               );
             })}
@@ -436,41 +555,54 @@ async function loadRevenueData(): Promise<{
 
 function RevenueBodySkeleton() {
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="space-y-10">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-8 gap-x-6 lg:divide-x lg:divide-stone-200">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-            <Skeleton className="h-6 w-6 mb-2" />
-            <Skeleton className="h-7 w-24 mb-1" />
-            <Skeleton className="h-3 w-32" />
+          <div key={i} className="lg:px-8 lg:first:pl-0 lg:last:pr-0">
+            <Skeleton className="h-3 w-24 mb-3" />
+            <Skeleton className="h-9 w-32 mb-3" />
+            <Skeleton className="h-3 w-28" />
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="bg-white border border-stone-200 rounded-2xl p-6">
+        <Skeleton className="h-3 w-40 mb-3" />
+        <Skeleton className="h-7 w-56 mb-6" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i}>
+              <Skeleton className="h-3 w-12 mb-3" />
+              <Skeleton className="h-9 w-24" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-8 gap-x-6 lg:divide-x lg:divide-stone-200">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm">
-            <Skeleton className="h-6 w-16 mb-1" />
-            <Skeleton className="h-3 w-20" />
+          <div key={i} className="lg:px-8 lg:first:pl-0 lg:last:pr-0">
+            <Skeleton className="h-3 w-20 mb-3" />
+            <Skeleton className="h-9 w-20" />
           </div>
         ))}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm space-y-3">
-            <Skeleton className="h-4 w-40 mb-4" />
+          <div key={i} className="bg-white border border-stone-200 rounded-2xl p-6 space-y-3">
+            <Skeleton className="h-3 w-40 mb-2" />
+            <Skeleton className="h-6 w-48 mb-4" />
             {Array.from({ length: 3 }).map((__, j) => (
               <div key={j}>
-                <Skeleton className="h-3 w-full mb-1" />
-                <Skeleton className="h-2 w-full rounded-full" />
+                <Skeleton className="h-3 w-full mb-2" />
+                <Skeleton className="h-1.5 w-full rounded-full" />
               </div>
             ))}
           </div>
         ))}
       </div>
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
-        <Skeleton className="h-12 w-full" />
+      <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden">
+        <Skeleton className="h-16 w-full" />
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full border-t border-stone-100" />
+          <Skeleton key={i} className="h-14 w-full border-t border-stone-100" />
         ))}
       </div>
     </div>
