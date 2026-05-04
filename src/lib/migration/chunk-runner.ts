@@ -418,12 +418,22 @@ export async function processChunkOfRows(
           error: jobRecordsErr.message,
         });
       }
-      await admin.from('migration_jobs').update({
-        processed_records: acc.processed,
-        success_count: acc.success,
-        error_count: acc.errors,
-        skipped_count: acc.skipped,
-      }).eq('id', jobId);
+      // Destructive (job progress) but log + continue — chunk-runner
+      // is a cron-fired worker; throwing here aborts the in-flight
+      // import. Log loudly so the operator can spot drift; the next
+      // chunk batch updates the same fields anyway.
+      const { error: progressErr } = await admin
+        .from('migration_jobs')
+        .update({
+          processed_records: acc.processed,
+          success_count: acc.success,
+          error_count: acc.errors,
+          skipped_count: acc.skipped,
+        })
+        .eq('id', jobId);
+      if (progressErr) {
+        logger.error('[migration-execute] migration_jobs progress update failed', { jobId, err: progressErr });
+      }
     }
   }
 
@@ -549,11 +559,21 @@ async function runChunk(
     .single();
   const session = sessionData as MigrationSession | null;
   if (!session) {
-    await admin.from('migration_jobs').update({
-      status: 'failed',
-      error_message: 'Session disappeared mid-import',
-      completed_at: new Date().toISOString(),
-    }).eq('id', jobId);
+    // Destructive (terminal status flip) — log+continue policy for
+    // the chunk-runner; cron will pick up the next tick if this
+    // status update fails (job won't progress because session is
+    // gone, so eventual cleanup is fine).
+    const { error: failErr } = await admin
+      .from('migration_jobs')
+      .update({
+        status: 'failed',
+        error_message: 'Session disappeared mid-import',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+    if (failErr) {
+      logger.error('[migration-execute] migration_jobs failed-status update failed', { jobId, err: failErr });
+    }
     return;
   }
 
@@ -574,11 +594,19 @@ async function runChunk(
 
   const currentFile = sortedFiles[job.current_file_index];
   if (currentFile && (currentFile as unknown as { status?: string }).status === 'imported') {
-    await admin.from('migration_jobs').update({
-      current_file_index: job.current_file_index + 1,
-      current_row_offset: 0,
-      chunk_claim_until: null,
-    }).eq('id', jobId);
+    // Destructive (file-index advance) — log+continue; if this fails
+    // the next cron tick will hit the same condition and try again.
+    const { error: skipErr } = await admin
+      .from('migration_jobs')
+      .update({
+        current_file_index: job.current_file_index + 1,
+        current_row_offset: 0,
+        chunk_claim_until: null,
+      })
+      .eq('id', jobId);
+    if (skipErr) {
+      logger.error('[migration-execute] file-skip migration_jobs update failed', { jobId, err: skipErr });
+    }
     return;
   }
 
@@ -591,11 +619,19 @@ async function runChunk(
       fileId: currentFile.id,
       error: e instanceof Error ? e.message : String(e),
     });
-    await admin.from('migration_jobs').update({
-      status: 'failed',
-      error_message: e instanceof Error ? e.message : String(e),
-      completed_at: new Date().toISOString(),
-    }).eq('id', jobId);
+    // Destructive (terminal-failure status) — same chunk-runner
+    // policy: log on error; cron retry handles the case.
+    const { error: parseFailErr } = await admin
+      .from('migration_jobs')
+      .update({
+        status: 'failed',
+        error_message: e instanceof Error ? e.message : String(e),
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+    if (parseFailErr) {
+      logger.error('[migration-execute] migration_jobs parse-failed-status update failed', { jobId, err: parseFailErr });
+    }
     return;
   }
 
@@ -646,23 +682,39 @@ async function runChunk(
   };
 
   if (fileFinished) {
-    await admin.from('migration_files').update({ status: 'imported' }).eq('id', currentFile.id);
-    await admin.from('migration_jobs').update({
-      current_file_index: job.current_file_index + 1,
-      current_row_offset: 0,
-      processed_records: acc.processed,
-      success_count: acc.success,
-      // warning_count counts BOTH duplicates AND row-level warnings
-      // (e.g. blank required field accepted as NULL). Pre-fix only
-      // duplicates ticked the counter, so silent substitutions hid
-      // in success_count.
-      warning_count: acc.duplicates + acc.warnings,
-      error_count: acc.errors,
-      skipped_count: acc.skipped,
-      results_summary: updatedSummary,
-      // Clear the long-held cron claim — see same comment below.
-      chunk_claim_until: null,
-    }).eq('id', jobId);
+    // Destructive (file-status flip + job progress). Log+continue
+    // policy. If migration_files update fails, the file stays
+    // un-marked-imported, and the next cron tick will reprocess
+    // (idempotent via row-offset bookkeeping).
+    const { error: fileMarkErr } = await admin
+      .from('migration_files')
+      .update({ status: 'imported' })
+      .eq('id', currentFile.id);
+    if (fileMarkErr) {
+      logger.error('[migration-execute] migration_files mark-imported failed', { jobId, fileId: currentFile.id, err: fileMarkErr });
+    }
+    const { error: jobAdvanceErr } = await admin
+      .from('migration_jobs')
+      .update({
+        current_file_index: job.current_file_index + 1,
+        current_row_offset: 0,
+        processed_records: acc.processed,
+        success_count: acc.success,
+        // warning_count counts BOTH duplicates AND row-level warnings
+        // (e.g. blank required field accepted as NULL). Pre-fix only
+        // duplicates ticked the counter, so silent substitutions hid
+        // in success_count.
+        warning_count: acc.duplicates + acc.warnings,
+        error_count: acc.errors,
+        skipped_count: acc.skipped,
+        results_summary: updatedSummary,
+        // Clear the long-held cron claim — see same comment below.
+        chunk_claim_until: null,
+      })
+      .eq('id', jobId);
+    if (jobAdvanceErr) {
+      logger.error('[migration-execute] migration_jobs file-finish update failed', { jobId, err: jobAdvanceErr });
+    }
 
     if (job.current_file_index + 1 < sortedFiles.length) {
       // dispatchNextChunk removed: the cron is the sole chunk driver.
@@ -679,19 +731,27 @@ async function runChunk(
     return;
   }
 
-  await admin.from('migration_jobs').update({
-    current_row_offset: newOffset,
-    processed_records: acc.processed,
-    success_count: acc.success,
-    warning_count: acc.duplicates,
-    error_count: acc.errors,
-    skipped_count: acc.skipped,
-    results_summary: updatedSummary,
-    // Clear the long-held cron claim so the next cron tick can
-    // immediately pick up this job (instead of waiting up to 5min
-    // for chunk_claim_until to expire).
-    chunk_claim_until: null,
-  }).eq('id', jobId);
+  // Destructive (chunk progress tick). Log+continue; cron retry will
+  // re-attempt from the same offset on next tick.
+  const { error: chunkProgressErr } = await admin
+    .from('migration_jobs')
+    .update({
+      current_row_offset: newOffset,
+      processed_records: acc.processed,
+      success_count: acc.success,
+      warning_count: acc.duplicates,
+      error_count: acc.errors,
+      skipped_count: acc.skipped,
+      results_summary: updatedSummary,
+      // Clear the long-held cron claim so the next cron tick can
+      // immediately pick up this job (instead of waiting up to 5min
+      // for chunk_claim_until to expire).
+      chunk_claim_until: null,
+    })
+    .eq('id', jobId);
+  if (chunkProgressErr) {
+    logger.error('[migration-execute] migration_jobs chunk-progress update failed', { jobId, err: chunkProgressErr });
+  }
 }
 
 export async function finaliseJob(
@@ -711,17 +771,37 @@ export async function finaliseJob(
     : errors > 0 ? 'complete_with_errors'
     : 'complete';
 
-  await admin.from('migration_jobs').update({
-    status: finalStatus,
-    completed_at: new Date().toISOString(),
-  }).eq('id', job.id);
+  // Destructive (terminal status flip). Log+continue per chunk-runner
+  // policy; cron will not re-pick the job because finaliseJob is the
+  // last call before we ack — but if the status update fails, the
+  // job will appear "running" until the stale-job sweeper catches it.
+  const { error: finalStatusErr } = await admin
+    .from('migration_jobs')
+    .update({
+      status: finalStatus,
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', job.id);
+  if (finalStatusErr) {
+    logger.error('[migration-execute] migration_jobs finalise-status update failed', { jobId: job.id, err: finalStatusErr });
+  }
 
-  await admin.from('migration_sessions').update({
-    status: 'complete',
-    updated_at: new Date().toISOString(),
-  }).eq('id', sessionId);
+  // Destructive (session lifecycle). Same policy.
+  const { error: sessionStatusErr } = await admin
+    .from('migration_sessions')
+    .update({
+      status: 'complete',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId);
+  if (sessionStatusErr) {
+    logger.error('[migration-execute] migration_sessions complete-status update failed', { sessionId, err: sessionStatusErr });
+  }
 
-  await admin.from('migration_logs').insert({
+  // Side-effect — migration_logs is the per-job audit trail. Log
+  // failures rather than throw; the operator can reconstruct from
+  // job/session state if the log row is lost.
+  const { error: logInsErr } = await admin.from('migration_logs').insert({
     tenant_id: tenantId,
     session_id: sessionId,
     job_id: job.id,
@@ -735,6 +815,9 @@ export async function finaliseJob(
       by_entity: summary.by_entity ?? {},
     },
   });
+  if (logInsErr) {
+    logger.error('[migration-execute] migration_logs job_complete insert failed', { jobId: job.id, err: logInsErr });
+  }
 
   return NextResponse.json({ ok: true, done: true });
 }

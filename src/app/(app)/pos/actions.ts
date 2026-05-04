@@ -195,11 +195,19 @@ export async function createPOSSale(
       },
       compensate: async () => {
         if (storeCreditDeducted && params.customerId && storeCreditOriginal !== null) {
-          await admin
+          // Compensating rollback path. Caller is already handling
+          // a primary error; if rollback itself fails, log loudly
+          // but don't throw — that would mask the original failure
+          // and surface the rollback error instead. Operator can
+          // reconcile from the audit log.
+          const { error: rollbackErr } = await admin
             .from("customers")
             .update({ store_credit: storeCreditOriginal })
             .eq("id", params.customerId)
             .eq("tenant_id", tenantId);
+          if (rollbackErr) {
+            logger.error("[pos/checkout] store-credit rollback failed", { customerId: params.customerId, err: rollbackErr });
+          }
         }
       },
     },
@@ -242,11 +250,16 @@ export async function createPOSSale(
       },
       compensate: async () => {
         if (voucherDeducted && params.voucherId && voucherOriginalBalance !== null) {
-          await admin
+          // Compensating rollback — same policy as store-credit
+          // rollback above. Log on error; don't throw.
+          const { error: rollbackErr } = await admin
             .from("gift_vouchers")
             .update({ balance: voucherOriginalBalance, status: "active" })
             .eq("id", params.voucherId)
             .eq("tenant_id", tenantId);
+          if (rollbackErr) {
+            logger.error("[pos/checkout] voucher rollback failed", { voucherId: params.voucherId, err: rollbackErr });
+          }
         }
       },
     },
@@ -289,11 +302,18 @@ export async function createPOSSale(
       },
       compensate: async () => {
         if (saleId) {
-          await admin.from("sales").update({ status: "voided" }).eq("id", saleId);
+          // Compensating void — same rollback-policy as above.
+          const { error: voidErr } = await admin
+            .from("sales")
+            .update({ status: "voided" })
+            .eq("id", saleId);
+          if (voidErr) {
+            logger.error("[pos/checkout] sale void rollback failed", { saleId, err: voidErr });
+          }
         }
       },
     },
-    
+
     // Step 4: Create sale items
     {
       name: "create_sale_items",
@@ -431,17 +451,24 @@ export async function createPOSSale(
         return { success: true };
       },
       compensate: async () => {
-        // Restore stock for all deducted items.
+        // Restore stock for all deducted items. Compensating
+        // rollback — log on each failure, continue restoring the
+        // others. A partial-rollback failure is logged for operator
+        // reconciliation; throwing here would leave the remaining
+        // items un-restored.
         for (const deduction of stockDeductions) {
-          await admin
+          const { error: restoreErr } = await admin
             .from("inventory")
             .update({ quantity: deduction.originalQty })
             .eq("id", deduction.inventoryId)
             .eq("tenant_id", tenantId);
+          if (restoreErr) {
+            logger.error("[pos/checkout] stock rollback failed", { inventoryId: deduction.inventoryId, err: restoreErr });
+          }
         }
       },
     },
-    
+
     // Step 6: Create invoice (optional, non-critical)
     {
       name: "create_invoice",
@@ -482,17 +509,33 @@ export async function createPOSSale(
             paid_at: new Date().toISOString(),
             created_by: userId,
           };
-          let ins = await admin.from("invoices").insert({ ...basePayload, sale_id: saleId }).select("id").single();
-          if (ins.error && /sale_id|schema cache/i.test(ins.error.message)) {
+          // Refactored to explicit { data, error } destructure so the
+          // ESLint rule sees the error capture (and so the schema-
+          // missing-column retry path keeps the same behaviour).
+          let { data: newInvoice, error: invErr } = await admin
+            .from("invoices")
+            .insert({ ...basePayload, sale_id: saleId })
+            .select("id")
+            .single();
+          if (invErr && /sale_id|schema cache/i.test(invErr.message)) {
             // Retry without sale_id so POS invoice creation doesn't silently
             // disappear on schemas missing the column.
-            ins = await admin.from("invoices").insert(basePayload).select("id").single();
+            const retry = await admin
+              .from("invoices")
+              .insert(basePayload)
+              .select("id")
+              .single();
+            newInvoice = retry.data;
+            invErr = retry.error;
           }
-          const newInvoice = ins.data;
 
           if (newInvoice) {
             invoiceId = newInvoice.id;
-            await admin.from("invoice_line_items").insert(
+            // Side-effect — invoice creation is in a "non-critical"
+            // wrapper (this whole step returns success regardless).
+            // Log on error so the operator can spot drift; the sale
+            // already completed.
+            const { error: liErr } = await admin.from("invoice_line_items").insert(
               params.cart.map((item, idx) => ({
                 tenant_id: tenantId,
                 invoice_id: newInvoice.id,
@@ -503,8 +546,11 @@ export async function createPOSSale(
                 sort_order: idx,
               }))
             );
-          } else if (ins.error) {
-            logger.warn("POS invoice insert failed", { err: ins.error.message });
+            if (liErr) {
+              logger.error("[pos/checkout] invoice_line_items insert failed (non-fatal)", { invoiceId: newInvoice.id, err: liErr });
+            }
+          } else if (invErr) {
+            logger.warn("POS invoice insert failed", { err: invErr.message });
           }
         } catch (err) {
           logger.warn("POS invoice creation threw", { err: (err as Error).message });
@@ -718,8 +764,10 @@ export async function createLaybySale(
 
   if (saleErr || !sale) return { error: saleErr?.message ?? "Failed to create layby" };
 
-  // Record initial deposit payment
-  await admin.from("layby_payments").insert({
+  // Record initial deposit payment. Destructive — record-of-truth
+  // for money received; if this fails the layby sale exists but the
+  // customer's deposit is "lost" until manual reconciliation.
+  const { error: depErr } = await admin.from("layby_payments").insert({
     tenant_id: tenantId,
     sale_id: sale.id,
     amount: params.depositAmount,
@@ -728,10 +776,13 @@ export async function createLaybySale(
     paid_by: userId,
     paid_at: new Date().toISOString(),
   });
+  if (depErr) return { error: `layby deposit insert failed: ${depErr.message}` };
 
-  // Create sale items (no inventory deduction — item reserved, not sold)
+  // Create sale items (no inventory deduction — item reserved, not sold).
+  // Destructive — line items are state-of-record for the layby; lost
+  // rows mean the customer's reserved items vanish from the sale.
   if (params.cart.length > 0) {
-    await admin.from("sale_items").insert(
+    const { error: liErr } = await admin.from("sale_items").insert(
       params.cart.map((item, idx) => ({
         tenant_id: tenantId,
         sale_id: sale.id,
@@ -743,6 +794,7 @@ export async function createLaybySale(
         inventory_id: item.inventoryId,
       }))
     );
+    if (liErr) return { error: `layby sale_items insert failed: ${liErr.message}` };
   }
 
     // Invalidate dashboard cache

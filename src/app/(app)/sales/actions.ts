@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/lib/notifications";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { refreshDashboardStatsAsync } from "@/app/(app)/dashboard/actions";
 import { requirePermission } from "@/lib/auth-context";
+import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
@@ -286,8 +287,17 @@ export async function createSale(
       // Roll back the sale row we just inserted so we don't leave a
       // money-entered record without the stock decrement that pairs with
       // it. The sale-items rows go away with the sale via cascade.
-      await supabase.from("sale_items").delete().eq("sale_id", sale.id);
-      await supabase.from("sales").delete().eq("id", sale.id);
+      // Compensating cleanup — log on error, continue. If sales.delete
+      // succeeds, FK cascade clears sale_items. If both fail, operator
+      // can manually clean up via /admin/tenants/[id].
+      const { error: liDelErr } = await supabase.from("sale_items").delete().eq("sale_id", sale.id);
+      if (liDelErr) {
+        logger.error("[sales/create] rollback sale_items.delete failed", { saleId: sale.id, err: liDelErr });
+      }
+      const { error: saleDelErr } = await supabase.from("sales").delete().eq("id", sale.id);
+      if (saleDelErr) {
+        logger.error("[sales/create] rollback sales.delete failed", { saleId: sale.id, err: saleDelErr });
+      }
       const m = /insufficient_stock\|(.+)\|(\-?\d+)$/.exec(stockErr.message);
       if (m) {
         const itemName = m[1];
@@ -421,11 +431,13 @@ export async function updateSaleStatus(
           .single();
 
         if (!invErr && newInvoice) {
-          // Insert invoice line items
+          // Insert invoice line items. Destructive — line items
+          // drive the invoice total + customer-facing billing.
           if (lineItems.length > 0) {
-            await supabase.from("invoice_line_items").insert(
+            const { error: liErr } = await supabase.from("invoice_line_items").insert(
               lineItems.map((li) => ({ ...li, invoice_id: newInvoice.id }))
             );
+            if (liErr) return { error: `sale invoice-line-items insert failed: ${liErr.message}` };
           }
           // Invalidate dashboard cache
           revalidateTag("dashboard", "default");
@@ -539,7 +551,10 @@ export async function deleteSale(
   const admin = createAdminClient();
   for (const it of items ?? []) {
     if (!it.inventory_id) continue;
-    await admin.from("stock_movements").insert({
+    // Destructive — stock_movements is the source of truth for
+    // inventory reconciliation. A lost restore-row means stock
+    // permanently shows decremented despite the sale being deleted.
+    const { error: movErr } = await admin.from("stock_movements").insert({
       tenant_id: tenantId,
       inventory_id: it.inventory_id,
       movement_type: "adjustment",
@@ -547,17 +562,20 @@ export async function deleteSale(
       notes: `Sale deletion restore`,
       created_by: userId,
     });
+    if (movErr) return { error: `stock-restore insert failed: ${movErr.message}` };
   }
 
   // Soft-delete the line items + sale rows. The deleted_at column was
   // added in 20260502_sales_soft_delete.sql; queries filter for
   // deleted_at IS NULL so these rows disappear from the list and KPIs.
+  // Destructive — soft-delete is the state-of-record.
   const now = new Date().toISOString();
-  await supabase
+  const { error: liSoftDelErr } = await supabase
     .from("sale_items")
     .update({ deleted_at: now })
     .eq("sale_id", id)
     .eq("tenant_id", tenantId);
+  if (liSoftDelErr) return { error: `sale_items soft-delete failed: ${liSoftDelErr.message}` };
 
   const { error } = await supabase
     .from("sales")
@@ -653,7 +671,9 @@ export async function duplicateSale(
       inventory_id: it.inventory_id ?? null,
       sku: it.sku ?? null,
     }));
-    await supabase.from("sale_items").insert(itemsData);
+    // Destructive — duplicate sale's line items are state-of-record.
+    const { error: dupLiErr } = await supabase.from("sale_items").insert(itemsData);
+    if (dupLiErr) return { error: `duplicate sale line-items insert failed: ${dupLiErr.message}` };
   }
 
   revalidateTag("dashboard", "default");
@@ -774,7 +794,8 @@ export async function updateSale(
       const delta = newQty - oldQty;
       if (delta === 0) continue;
       // Negative delta means we need to deduct more stock; positive means restore.
-      await admin.from("stock_movements").insert({
+      // Destructive — stock_movements drives inventory reconciliation.
+      const { error: movErr } = await admin.from("stock_movements").insert({
         tenant_id: tenantId,
         inventory_id: invId,
         movement_type: delta > 0 ? "sale" : "adjustment",
@@ -782,11 +803,20 @@ export async function updateSale(
         notes: `Sale ${existing.sale_number} edit`,
         created_by: userId,
       });
+      if (movErr) return { error: `stock-movement diff insert failed: ${movErr.message}` };
     }
   }
 
   // Replace line items wholesale (simpler than diffing per-line).
-  await supabase.from("sale_items").delete().eq("sale_id", id).eq("tenant_id", tenantId);
+  // Destructive — clearing then re-inserting is the line-item update
+  // strategy. A failed delete leaves the OLD line items in place and
+  // the subsequent insert would create duplicates.
+  const { error: liDelErr } = await supabase
+    .from("sale_items")
+    .delete()
+    .eq("sale_id", id)
+    .eq("tenant_id", tenantId);
+  if (liDelErr) return { error: `sale_items pre-update clear failed: ${liDelErr.message}` };
   if (lineItems.length > 0) {
     const itemsData = lineItems.map((it, idx) => ({
       tenant_id: tenantId,
