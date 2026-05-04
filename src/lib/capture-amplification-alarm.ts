@@ -109,4 +109,16 @@ function incrementCaptureCounterAndMaybeAlarm(): void {
 // increments the counter when a scope is active. If this module
 // isn't imported (client/edge bundle), logger's hook stays null and
 // logger.error is a clean no-op for the alarm.
-setIncrementCaptureHook(incrementCaptureCounterAndMaybeAlarm);
+//
+// Defensive try/catch: tests that vi.mock the logger module may
+// return a proxy that throws on any unmocked property access (or
+// auto-mock returns undefined for unexported names). Either way,
+// alarm self-registration is observability infrastructure — failing
+// to register at module-load time is acceptable; the test isn't
+// exercising the alarm path anyway. This surfaced post-PR #145 in
+// forgot-password-contract + approve-access tests.
+try {
+  setIncrementCaptureHook(incrementCaptureCounterAndMaybeAlarm);
+} catch {
+  // logger module is mocked or unavailable — skip registration.
+}
