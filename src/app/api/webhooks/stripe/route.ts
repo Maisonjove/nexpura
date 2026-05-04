@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSystemEmail } from "@/lib/email-sender";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logWebhookAudit } from "@/lib/webhook-audit";
 
 // Lazy initialization to avoid build-time errors when env vars are not available
 function getStripe() {
@@ -34,6 +35,12 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature");
 
   if (!signature) {
+    await logWebhookAudit({
+      handlerName: "stripe",
+      signatureStatus: "missing_signature",
+      request,
+      body,
+    });
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
@@ -41,13 +48,33 @@ export async function POST(request: NextRequest) {
 
   const stripe = getStripe();
   const webhookSecret = getWebhookSecret();
-  
+
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
     logger.error("Webhook signature verification failed:", err);
+    await logWebhookAudit({
+      handlerName: "stripe",
+      signatureStatus: "invalid_signature",
+      request,
+      body,
+    });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
+
+  // Audit-log the valid delivery before any DB mutation. If the
+  // mutation later 500s, this row stays as evidence the event was
+  // received. The audit is fire-and-forget (its own try/catch inside
+  // logWebhookAudit) so a transient DB error here cannot stop the
+  // handler from processing the event.
+  await logWebhookAudit({
+    handlerName: "stripe",
+    signatureStatus: "valid",
+    request,
+    body,
+    eventId: event.id,
+    eventType: event.type,
+  });
 
   const supabase = createAdminClient();
 
@@ -146,6 +173,14 @@ async function handleCheckoutCompleted(
     return;
   }
 
+  // P2-F audit (Joey 2026-05-04): every DB write below is destructive
+  // (creates the tenant, subscription, default location, and links
+  // the auth user). On error we throw — the outer try/catch in POST()
+  // catches, rolls back the idempotency lock, and 500s so Stripe
+  // retries. Pre-fix every one of these was bare `await ...update()`
+  // / `.insert()` with no error capture, so a checkout-completed event
+  // failing midway through would silently 200 to Stripe (no retry) and
+  // the customer ended up paid-but-tenant-less.
 
   // Check if tenant already exists (idempotency)
   const { data: existingTenant } = await supabase
@@ -157,7 +192,7 @@ async function handleCheckoutCompleted(
   let tenantId: string;
 
   if (existingTenant) {
-    await supabase
+    const { error: tenantUpdErr } = await supabase
       .from("tenants")
       .update({
         stripe_customer_id: stripeCustomerId,
@@ -166,6 +201,9 @@ async function handleCheckoutCompleted(
         email: customerEmail,
       })
       .eq("id", existingTenant.id);
+    if (tenantUpdErr) {
+      throw new Error(`tenants update failed: ${tenantUpdErr.message}`);
+    }
     tenantId = existingTenant.id;
   } else {
     // Create tenant
@@ -185,8 +223,9 @@ async function handleCheckoutCompleted(
       .single();
 
     if (tenantErr || !tenant) {
-      logger.error("Failed to create tenant:", tenantErr);
-      return;
+      // Throw rather than silent return — pre-fix this would 200 to
+      // Stripe with no retry, leaving the paid customer tenant-less.
+      throw new Error(`tenants insert failed: ${tenantErr?.message ?? "no row returned"}`);
     }
     tenantId = tenant.id;
 
@@ -194,7 +233,7 @@ async function handleCheckoutCompleted(
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + 14);
 
-    await supabase.from("subscriptions").insert({
+    const { error: subInsErr } = await supabase.from("subscriptions").insert({
       tenant_id: tenantId,
       plan,
       status: "trialing",
@@ -202,11 +241,14 @@ async function handleCheckoutCompleted(
       stripe_sub_id: stripeSubscriptionId,
       trial_ends_at: trialEndsAt.toISOString(),
     });
+    if (subInsErr) {
+      throw new Error(`subscriptions insert failed: ${subInsErr.message}`);
+    }
 
     // Default location — onboarding used to do this; do it here so that
     // the tenant is fully usable the moment the webhook lands. Idempotent:
     // if onboarding later runs and finds a row, it'll skip insertion.
-    await supabase
+    const { error: locInsErr } = await supabase
       .from("locations")
       .insert({
         tenant_id: tenantId,
@@ -214,6 +256,14 @@ async function handleCheckoutCompleted(
         type: "retail",
         is_active: true,
       });
+    if (locInsErr) {
+      // Locations isn't fatal to the tenant being usable — POS works
+      // off the first available location and the staff can rename it
+      // in /settings. Log + continue rather than throw, so a unique
+      // constraint hiccup doesn't burn the entire signup flow on
+      // Stripe's retry attempts.
+      logger.error("[stripe-webhook] default location insert failed (non-fatal)", { tenantId, err: locInsErr });
+    }
   }
 
   // Link the auth user to this tenant. Without this, completeOnboarding
@@ -234,7 +284,9 @@ async function handleCheckoutCompleted(
         { onConflict: "id" },
       );
     if (userLinkErr) {
-      logger.error("[stripe-webhook] failed to link user → tenant:", userLinkErr);
+      // Throw — this IS load-bearing. Without the user→tenant link
+      // we hit the 2026-04-28 double-tenant bug Joey reported.
+      throw new Error(`users upsert (tenant link) failed: ${userLinkErr.message}`);
     }
   }
 }
@@ -282,6 +334,12 @@ async function handleSubscriptionUpdated(
     .eq("stripe_sub_id", stripeSubId)
     .maybeSingle();
 
+  // P2-F audit (Joey 2026-05-04): every subscription/tenant write
+  // here is destructive. On error we throw → outer try/catch rolls
+  // back idempotency lock → Stripe retries. Pre-fix bare updates
+  // could silently 200 with no DB change, so a sub status drift
+  // (e.g. portal cancel → "canceled" event) would leave our DB
+  // inconsistent with Stripe forever.
   if (sub) {
     const subUpdate: Record<string, string | null> = { status, plan };
     if (currentPeriodEnd !== null) {
@@ -289,19 +347,21 @@ async function handleSubscriptionUpdated(
     }
     if (stripePriceId !== null) subUpdate.stripe_price_id = stripePriceId;
     if (currencyUpper !== null) subUpdate.currency = currencyUpper;
-    await supabase
+    const { error: subUpdErr } = await supabase
       .from("subscriptions")
       .update(subUpdate)
       .eq("id", sub.id);
+    if (subUpdErr) throw new Error(`subscriptions update failed: ${subUpdErr.message}`);
 
     // Also update tenant
-    await supabase
+    const { error: tenantUpdErr } = await supabase
       .from("tenants")
       .update({
         plan,
         subscription_status: status,
       })
       .eq("id", sub.tenant_id);
+    if (tenantUpdErr) throw new Error(`tenants update failed: ${tenantUpdErr.message}`);
   } else {
     // Try to find by customer ID
     const { data: tenant } = await supabase
@@ -311,7 +371,7 @@ async function handleSubscriptionUpdated(
       .maybeSingle();
 
     if (tenant) {
-      await supabase.from("subscriptions").upsert({
+      const { error: subUpsertErr } = await supabase.from("subscriptions").upsert({
         tenant_id: tenant.id,
         plan,
         status,
@@ -321,8 +381,9 @@ async function handleSubscriptionUpdated(
         stripe_price_id: stripePriceId,
         currency: currencyUpper,
       });
+      if (subUpsertErr) throw new Error(`subscriptions upsert failed: ${subUpsertErr.message}`);
 
-      await supabase
+      const { error: tenantUpdErr } = await supabase
         .from("tenants")
         .update({
           plan,
@@ -330,6 +391,7 @@ async function handleSubscriptionUpdated(
           stripe_subscription_id: stripeSubId,
         })
         .eq("id", tenant.id);
+      if (tenantUpdErr) throw new Error(`tenants update failed: ${tenantUpdErr.message}`);
     }
   }
 
@@ -353,15 +415,17 @@ async function handleSubscriptionDeleted(
     // customer.subscription.deleted event → handler 500'd, idempotency
     // lock rolled back, Stripe retried forever, tenant stayed "active"
     // in our DB after they cancelled in the portal.
-    await supabase
+    const { error: subUpdErr } = await supabase
       .from("subscriptions")
       .update({ status: "canceled" })
       .eq("id", sub.id);
+    if (subUpdErr) throw new Error(`subscriptions cancel-update failed: ${subUpdErr.message}`);
 
-    await supabase
+    const { error: tenantUpdErr } = await supabase
       .from("tenants")
       .update({ subscription_status: "canceled" })
       .eq("id", sub.tenant_id);
+    if (tenantUpdErr) throw new Error(`tenants cancel-mirror failed: ${tenantUpdErr.message}`);
   }
 
 }
@@ -381,15 +445,17 @@ async function handlePaymentFailed(
     .maybeSingle();
 
   if (tenant) {
-    await supabase
+    const { error: tenantUpdErr } = await supabase
       .from("tenants")
       .update({ subscription_status: "past_due" })
       .eq("id", tenant.id);
+    if (tenantUpdErr) throw new Error(`tenants past_due update failed: ${tenantUpdErr.message}`);
 
-    await supabase
+    const { error: subUpdErr } = await supabase
       .from("subscriptions")
       .update({ status: "past_due" })
       .eq("stripe_sub_id", subscriptionId);
+    if (subUpdErr) throw new Error(`subscriptions past_due update failed: ${subUpdErr.message}`);
 
 // Send email notification about failed payment
     try {
@@ -427,16 +493,17 @@ async function handlePaymentSucceeded(
     .maybeSingle();
 
   if (tenant && tenant.subscription_status === "past_due") {
-    await supabase
+    const { error: tenantUpdErr } = await supabase
       .from("tenants")
       .update({ subscription_status: "active" })
       .eq("id", tenant.id);
+    if (tenantUpdErr) throw new Error(`tenants reactivate failed: ${tenantUpdErr.message}`);
 
-    await supabase
+    const { error: subUpdErr } = await supabase
       .from("subscriptions")
       .update({ status: "active" })
       .eq("stripe_sub_id", subscriptionId);
-
+    if (subUpdErr) throw new Error(`subscriptions reactivate failed: ${subUpdErr.message}`);
   }
 }
 

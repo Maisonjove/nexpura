@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyResendSvixSignature } from "@/lib/webhook-security";
+import { logWebhookAudit } from "@/lib/webhook-audit";
 import logger from "@/lib/logger";
 
 /**
@@ -54,10 +55,16 @@ export async function POST(request: NextRequest) {
   if (!secret) {
     if (IS_PROD) {
       logger.error("[resend-webhook] RESEND_WEBHOOK_SECRET missing in production — refusing request");
-      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    } else {
+      // Non-prod fallback: loud log, still reject so tests can't pass accidentally.
+      logger.warn("[resend-webhook] RESEND_WEBHOOK_SECRET unset — rejecting (dev)");
     }
-    // Non-prod fallback: loud log, still reject so tests can't pass accidentally.
-    logger.warn("[resend-webhook] RESEND_WEBHOOK_SECRET unset — rejecting (dev)");
+    await logWebhookAudit({
+      handlerName: "resend",
+      signatureStatus: "not_configured",
+      request,
+      body,
+    });
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
   }
 
@@ -73,6 +80,12 @@ export async function POST(request: NextRequest) {
 
   if (!signatureOk) {
     logger.warn("[resend-webhook] Invalid or missing signature");
+    await logWebhookAudit({
+      handlerName: "resend",
+      signatureStatus: !svixSignature ? "missing_signature" : "invalid_signature",
+      request,
+      body,
+    });
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -82,6 +95,16 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  // Valid-signature audit row.
+  await logWebhookAudit({
+    handlerName: "resend",
+    signatureStatus: "valid",
+    request,
+    body,
+    eventId: svixId,
+    eventType: event.type,
+  });
 
   const supabase = createAdminClient();
 

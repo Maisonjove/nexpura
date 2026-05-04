@@ -14,6 +14,7 @@ import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { verifyWooSignature } from "@/lib/webhook-security";
 import { getIntegration } from "@/lib/integrations";
+import { logWebhookAudit } from "@/lib/webhook-audit";
 
 /** Escapes special PostgreSQL LIKE pattern characters to prevent injection */
 function sanitizeLikePattern(input: string): string {
@@ -87,12 +88,20 @@ export async function POST(req: NextRequest) {
     const topic = headersList.get("x-wc-webhook-topic");
     const webhookId = headersList.get("x-wc-webhook-id");
 
+    // Get the raw body up front so audit-log writes can hash it
+    // regardless of which auth gate fails.
+    const rawBody = await req.text();
+
     if (!topic || !source) {
+      await logWebhookAudit({
+        handlerName: "woocommerce",
+        signatureStatus: "missing_headers",
+        request: req,
+        body: rawBody,
+      });
       return NextResponse.json({ error: "Missing webhook headers" }, { status: 400 });
     }
 
-    // Get the raw body for signature verification
-    const rawBody = await req.text();
     const body = JSON.parse(rawBody);
 
     // Find tenant by store URL (sanitize hostname to prevent LIKE injection).
@@ -127,16 +136,47 @@ export async function POST(req: NextRequest) {
     // HMAC MUST match in constant time. Any failure => 401.
     if (!consumer_secret) {
       logger.error("[woo-webhook] integration has no consumer_secret configured");
+      await logWebhookAudit({
+        handlerName: "woocommerce",
+        signatureStatus: "not_configured",
+        request: req,
+        body: rawBody,
+        eventType: topic,
+      });
       return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
     }
     if (!signature) {
       logger.warn("[woo-webhook] missing x-wc-webhook-signature header");
+      await logWebhookAudit({
+        handlerName: "woocommerce",
+        signatureStatus: "missing_signature",
+        request: req,
+        body: rawBody,
+        eventType: topic,
+      });
       return NextResponse.json({ error: "Missing signature" }, { status: 401 });
     }
     if (!verifyWooSignature(rawBody, signature, consumer_secret)) {
       logger.warn("[woo-webhook] Invalid signature");
+      await logWebhookAudit({
+        handlerName: "woocommerce",
+        signatureStatus: "invalid_signature",
+        request: req,
+        body: rawBody,
+        eventType: topic,
+      });
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
+
+    // Valid-signature audit row.
+    await logWebhookAudit({
+      handlerName: "woocommerce",
+      signatureStatus: "valid",
+      request: req,
+      body: rawBody,
+      eventId: webhookId,
+      eventType: topic,
+    });
 
     // Handle webhook by topic
     const [resource, event] = topic.split(".");
@@ -155,12 +195,17 @@ export async function POST(req: NextRequest) {
         logger.info(`[woo-webhook] Unhandled topic: ${topic}`);
     }
 
-    // Log webhook receipt
-    await admin.from("activity_log").insert({
+    // Log webhook receipt. Policy: log-on-error, do NOT throw.
+    // activity_log is observability not state-of-record; missing
+    // a row here doesn't change tenant data integrity.
+    const { error: actErr } = await admin.from("activity_log").insert({
       tenant_id: tenantId,
       action: `woo_webhook_${topic}`,
       details: { webhook_id: webhookId, resource, event },
     });
+    if (actErr) {
+      logger.error("[woo-webhook] activity_log insert failed (non-fatal)", { tenantId, topic, err: actErr });
+    }
 
     return NextResponse.json({ success: true, topic });
   } catch (err) {
@@ -189,6 +234,9 @@ async function handleProductWebhook(
   // 2026-04-25). Pre-fix every Woo product webhook hit PGRST204 → handler
   // 500'd, Woo retried indefinitely. Use the existing `import_metadata`
   // JSONB column to carry the Woo product ID + sync timestamp.
+  // P2-F audit (Joey 2026-05-04): every write below is destructive
+  // (creates/updates/deactivates inventory). On error we throw — the
+  // outer try/catch in POST() returns 500, Woo retries.
   if (event === "deleted") {
     // Mark as inactive rather than delete. Look up by import_metadata.
     const { data: existing } = await admin
@@ -198,17 +246,20 @@ async function handleProductWebhook(
       .eq("import_metadata->>woo_product_id", String(product.id))
       .maybeSingle();
     if (existing) {
-      await admin
+      const { error: deactErr } = await admin
         .from("inventory")
         .update({ status: "inactive", updated_at: new Date().toISOString() })
         .eq("id", existing.id);
+      if (deactErr) {
+        throw new Error(`inventory deactivate (woo product.deleted) failed: ${deactErr.message}`);
+      }
     }
     return;
   }
 
   const sku = product.sku || `woo-${product.id}`;
 
-  await admin.from("inventory").upsert(
+  const { error: upsertErr } = await admin.from("inventory").upsert(
     {
       tenant_id: tenantId,
       name: product.name,
@@ -224,6 +275,9 @@ async function handleProductWebhook(
     },
     { onConflict: "tenant_id,sku", ignoreDuplicates: false }
   );
+  if (upsertErr) {
+    throw new Error(`inventory upsert (woo product) failed: ${upsertErr.message}`);
+  }
 }
 
 async function handleOrderWebhook(
@@ -258,7 +312,9 @@ async function handleOrderWebhook(
         })
         .eq("id", existing.id);
       if (delErr) {
-        logger.error("[woo-webhook] order.deleted update failed", { tenantId, woo_order_id: order.id, err: delErr });
+        // Destructive — Woo deletion not propagating to our DB
+        // means inventory + financials drift. Throw → 500 → retry.
+        throw new Error(`sales cancel (woo order.deleted) failed: ${delErr.message}`);
       }
     }
     return;
@@ -275,8 +331,8 @@ async function handleOrderWebhook(
     : null;
 
   if (existing) {
-    // Update existing sale status
-    await admin
+    // Update existing sale status. Destructive → throw on error.
+    const { error: updErr } = await admin
       .from("sales")
       .update({
         status: mapWooStatus(order.status),
@@ -284,10 +340,13 @@ async function handleOrderWebhook(
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.id);
+    if (updErr) {
+      throw new Error(`sales status update failed: ${updErr.message}`);
+    }
   } else {
     // Create new sale. Use import_metadata for the Woo correlation ID
     // since `sales.external_reference` doesn't exist.
-    const { data: sale } = await admin.from("sales").insert({
+    const { data: sale, error: saleInsErr } = await admin.from("sales").insert({
       tenant_id: tenantId,
       sale_number: `WOO-${order.number}`,
       total,
@@ -304,8 +363,11 @@ async function handleOrderWebhook(
       created_at: order.date_created,
       status: mapWooStatus(order.status),
     }).select("id").single();
+    if (saleInsErr || !sale) {
+      throw new Error(`sales insert (woo order.created) failed: ${saleInsErr?.message ?? "no row returned"}`);
+    }
 
-    if (sale) {
+    {
       // Insert line items
       for (const li of order.line_items) {
         // W2-004: route both sides of the .or() through eqOrValue so a
@@ -337,7 +399,9 @@ async function handleOrderWebhook(
         }
 
         // sale_items column is `line_total`, not `total` (verified).
-        await admin.from("sale_items").insert({
+        // Destructive — line items are state-of-record. Throw → 500
+        // → Woo retries the entire order.created event.
+        const { error: lineErr } = await admin.from("sale_items").insert({
           tenant_id: tenantId,
           sale_id: sale.id,
           inventory_id: inventoryItem?.id || null,
@@ -345,13 +409,20 @@ async function handleOrderWebhook(
           unit_price: li.price,
           line_total: li.quantity * li.price,
         });
+        if (lineErr) {
+          throw new Error(`sale_items insert failed: ${lineErr.message}`);
+        }
 
-        // Decrement inventory if matched
+        // Decrement inventory if matched. Destructive — getting stock
+        // levels wrong is a P1 for the merchant. Throw → 500 → retry.
         if (inventoryItem?.id) {
-          await admin.rpc("decrement_inventory", {
+          const { error: decErr } = await admin.rpc("decrement_inventory", {
             item_id: inventoryItem.id,
             qty: li.quantity,
           });
+          if (decErr) {
+            throw new Error(`decrement_inventory rpc failed: ${decErr.message}`);
+          }
         }
       }
     }
@@ -381,14 +452,18 @@ async function handleCustomerWebhook(
       .eq("tenant_id", tenantId)
       .eq("import_metadata->>woo_customer_id", String(customer.id ?? ""));
     if (delErr) {
-      logger.error("[woo-webhook] customer.deleted soft-delete failed", { tenantId, woo_customer_id: customer.id, err: delErr });
+      // Destructive — Woo deletion failing to propagate means the
+      // customer stays alive locally despite GDPR-style erasure
+      // upstream. Throw → 500 → Woo retries.
+      throw new Error(`customer soft-delete failed: ${delErr.message}`);
     }
     return;
   }
 
   // customers has no `source` column (verified 2026-04-25). Pre-fix
   // every Woo customer.* webhook PGRST204'd. Stash the source in the
-  // existing import_metadata JSONB column.
+  // existing import_metadata JSONB column. Destructive (state-of-
+  // record sync) — throw on error.
   const { error: upsertErr } = await admin.from("customers").upsert(
     {
       tenant_id: tenantId,
@@ -405,7 +480,7 @@ async function handleCustomerWebhook(
     { onConflict: "tenant_id,email", ignoreDuplicates: false }
   );
   if (upsertErr) {
-    logger.error("[woo-webhook] customer upsert failed", { tenantId, woo_customer_id: customer.id, err: upsertErr });
+    throw new Error(`customer upsert failed: ${upsertErr.message}`);
   }
 }
 
