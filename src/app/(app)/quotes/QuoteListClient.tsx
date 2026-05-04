@@ -3,11 +3,17 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams, usePathname } from "next/navigation";
-import { Plus, Search, MoreVertical, FileText, Send, CheckCircle } from "lucide-react";
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  EllipsisVerticalIcon,
+  DocumentTextIcon,
+  PaperAirplaneIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
 import { format } from "date-fns";
 import { getQuotesList, convertQuoteToInvoice } from "./actions-server";
 import { toast } from "sonner";
-import StatusBadge from "@/components/StatusBadge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +54,40 @@ interface Quote {
     full_name: string | null;
     email: string | null;
   };
+}
+
+// Map quote status -> nx-badge-* class. "expired" is computed client-side
+// (see filteredQuotes) so we accept it here as a label too.
+function getStatusBadgeClass(status: string, expiresAt: string | null, todayStr: string): string {
+  const isExpired =
+    !!expiresAt &&
+    expiresAt < todayStr &&
+    !["converted", "rejected", "cancelled"].includes(status);
+
+  if (isExpired) return "nx-badge-danger";
+  switch (status) {
+    case "accepted":
+      return "nx-badge-success";
+    case "draft":
+    case "sent":
+      return "nx-badge-warning";
+    case "rejected":
+    case "cancelled":
+      return "nx-badge-danger";
+    case "converted":
+    default:
+      return "nx-badge-neutral";
+  }
+}
+
+function getStatusLabel(status: string, expiresAt: string | null, todayStr: string): string {
+  const isExpired =
+    !!expiresAt &&
+    expiresAt < todayStr &&
+    !["converted", "rejected", "cancelled"].includes(status);
+  if (isExpired) return "Expired";
+  if (status === "cancelled") return "Voided";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 export default function QuoteListClient() {
@@ -122,20 +162,26 @@ export default function QuoteListClient() {
   return (
     <>
       {confirmConvertId && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-            <h3 className="font-bold text-stone-900 text-lg mb-2">Convert to Invoice?</h3>
-            <p className="text-sm text-stone-500 mb-6">This will convert the quote to a new invoice. The quote will be marked as converted.</p>
-            <div className="flex gap-3 justify-end">
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-stone-200 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.12)] max-w-md w-full">
+            <div className="px-7 pt-7 pb-6">
+              <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+                Convert to Invoice?
+              </h3>
+              <p className="text-sm text-stone-500 leading-relaxed">
+                This will convert the quote to a new invoice. The quote will be marked as converted.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-7 py-5 border-t border-stone-200">
               <button
                 onClick={() => setConfirmConvertId(null)}
-                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors"
+                className="px-4 py-2 rounded-md text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors duration-200"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleConvert(confirmConvertId)}
-                className="px-4 py-2 text-sm font-medium bg-nexpura-charcoal text-white rounded-xl hover:bg-[#7a6447] transition-colors"
+                className="nx-btn-primary inline-flex items-center gap-2"
               >
                 Convert
               </button>
@@ -143,132 +189,200 @@ export default function QuoteListClient() {
           </div>
         </div>
       )}
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-stone-900">Quotes</h1>
-          <p className="text-stone-500 mt-1">Manage and track your customer quotes.</p>
-        </div>
-        <Link
-          href="/quotes/new"
-          className="flex items-center gap-2 bg-nexpura-charcoal text-white px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors font-medium shadow-sm"
-        >
-          <Plus size={18} />
-          New Quote
-        </Link>
-      </div>
 
-      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-stone-200">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search by customer or quote #..."
-              className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="flex items-center gap-1 p-2 overflow-x-auto">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setStatus(tab.value)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
-                activeStatus === tab.value
-                  ? "bg-nexpura-charcoal text-white"
-                  : "text-stone-600 hover:bg-stone-100"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-stone-400">Loading quotes...</div>
-        ) : filteredQuotes.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText size={24} className="text-stone-400" />
+      <div className="bg-nexpura-ivory min-h-screen">
+        <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+          {/* Page Header */}
+          <div className="flex items-start justify-between gap-6 mb-14">
+            <div>
+              <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+                Sales
+              </p>
+              <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+                Quotes
+              </h1>
+              <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+                Manage and track your customer quotes.
+              </p>
             </div>
-            <p className="text-stone-500 font-medium">No quotes found</p>
-            <p className="text-stone-400 text-sm mt-1">Create your first quote to get started.</p>
+            <Link
+              href="/quotes/new"
+              className="nx-btn-primary inline-flex items-center gap-2 shrink-0"
+            >
+              <PlusIcon className="w-4 h-4" />
+              New Quote
+            </Link>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-stone-50 border-b border-stone-200">
-                  <th className="px-6 py-4 text-xs font-semibold text-stone-500 uppercase tracking-wider">Quote #</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-stone-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-stone-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-stone-500 uppercase tracking-wider">Expires</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-stone-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-stone-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-right"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {filteredQuotes.map((quote) => (
-                  <tr key={quote.id} className="hover:bg-stone-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <Link href={`/quotes/${quote.id}`} className="font-mono text-sm text-amber-700 hover:underline">
+
+          {/* Search + Status Tabs */}
+          <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-8">
+            <div className="relative mb-5">
+              <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search by customer or quote #..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1">
+              {STATUS_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setStatus(tab.value)}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full whitespace-nowrap transition-all duration-200 ${
+                    activeStatus === tab.value
+                      ? "bg-stone-900 text-white"
+                      : "text-stone-500 hover:text-stone-900 hover:bg-stone-100"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quotes List */}
+          {loading ? (
+            <div className="bg-white border border-stone-200 rounded-2xl p-16 text-center">
+              <p className="text-stone-400 text-sm tracking-wide">Loading quotes…</p>
+            </div>
+          ) : filteredQuotes.length === 0 ? (
+            <div className="bg-white border border-stone-200 rounded-2xl p-16 text-center">
+              <DocumentTextIcon className="w-8 h-8 text-stone-300 mx-auto mb-6" strokeWidth={1.5} />
+              <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+                No quotes found
+              </h3>
+              <p className="text-stone-500 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
+                Create your first quote to get started.
+              </p>
+              <Link
+                href="/quotes/new"
+                className="nx-btn-primary inline-flex items-center gap-2"
+              >
+                <PlusIcon className="w-4 h-4" />
+                New Quote
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Column header (desktop only) */}
+              <div className="hidden md:grid grid-cols-[1.1fr_1.6fr_1fr_1fr_1fr_1.1fr_auto] gap-4 px-6 py-2 text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury">
+                <div>Quote #</div>
+                <div>Customer</div>
+                <div>Date</div>
+                <div>Expires</div>
+                <div>Amount</div>
+                <div>Status</div>
+                <div className="w-8" />
+              </div>
+
+              {filteredQuotes.map((quote) => (
+                <div
+                  key={quote.id}
+                  className="group bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1.6fr_1fr_1fr_1fr_1.1fr_auto] gap-4 md:items-center">
+                    {/* Quote # */}
+                    <div>
+                      <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1">
+                        Quote #
+                      </p>
+                      <Link
+                        href={`/quotes/${quote.id}`}
+                        className="font-mono text-sm text-nexpura-bronze hover:text-nexpura-bronze-hover transition-colors duration-200"
+                      >
                         {quote.quote_number || quote.id.slice(0, 8)}
                       </Link>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm font-medium text-stone-900">{quote.customers?.full_name || "Unknown Customer"}</p>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-stone-500">
-                      {format(new Date(quote.created_at), "dd MMM yyyy")}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-stone-500">
-                      {quote.expires_at ? format(new Date(quote.expires_at), "dd MMM yyyy") : "—"}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-stone-900">
-                      ${quote.total_amount?.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={quote.status} />
-                    </td>
-                    <td className="px-6 py-4 text-right">
+                    </div>
+
+                    {/* Customer */}
+                    <div>
+                      <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1">
+                        Customer
+                      </p>
+                      <p className="text-sm font-medium text-stone-900">
+                        {quote.customers?.full_name || "Unknown Customer"}
+                      </p>
+                    </div>
+
+                    {/* Date */}
+                    <div>
+                      <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1">
+                        Date
+                      </p>
+                      <p className="text-sm text-stone-500 tabular-nums">
+                        {format(new Date(quote.created_at), "dd MMM yyyy")}
+                      </p>
+                    </div>
+
+                    {/* Expires */}
+                    <div>
+                      <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1">
+                        Expires
+                      </p>
+                      <p className="text-sm text-stone-500 tabular-nums">
+                        {quote.expires_at ? format(new Date(quote.expires_at), "dd MMM yyyy") : "—"}
+                      </p>
+                    </div>
+
+                    {/* Amount */}
+                    <div>
+                      <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1">
+                        Amount
+                      </p>
+                      <p className="text-sm font-semibold text-stone-900 tabular-nums">
+                        ${quote.total_amount?.toLocaleString()}
+                      </p>
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <p className="md:hidden text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1">
+                        Status
+                      </p>
+                      <span className={getStatusBadgeClass(quote.status, quote.expires_at, todayStr)}>
+                        {getStatusLabel(quote.status, quote.expires_at, todayStr)}
+                      </span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex md:justify-end">
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="p-2 hover:bg-stone-100 rounded-lg transition-colors">
-                          <MoreVertical size={16} className="text-stone-400" />
+                        <DropdownMenuTrigger
+                          className="p-2 rounded-md text-stone-400 hover:text-nexpura-bronze hover:bg-stone-100 transition-colors duration-200"
+                          aria-label="Actions"
+                        >
+                          <EllipsisVerticalIcon className="w-4 h-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
                             <Link href={`/quotes/${quote.id}`} className="flex items-center gap-2">
-                              <FileText size={14} /> View Details
+                              <DocumentTextIcon className="w-3.5 h-3.5" /> View Details
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem className="flex items-center gap-2">
-                            <Send size={14} /> Email Quote
+                            <PaperAirplaneIcon className="w-3.5 h-3.5" /> Email Quote
                           </DropdownMenuItem>
                           {quote.status !== "converted" && (
-                            <DropdownMenuItem 
-                              className="flex items-center gap-2 text-green-600 focus:text-green-700"
+                            <DropdownMenuItem
+                              className="flex items-center gap-2 text-nexpura-bronze focus:text-nexpura-bronze-hover"
                               onClick={() => setConfirmConvertId(quote.id)}
                             >
-                              <CheckCircle size={14} /> Convert to Invoice
+                              <CheckCircleIcon className="w-3.5 h-3.5" /> Convert to Invoice
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </>
   );
 }
