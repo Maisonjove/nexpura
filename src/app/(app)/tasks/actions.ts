@@ -10,6 +10,7 @@ import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { requireAuth } from "@/lib/auth-context";
+import { flushSentry } from "@/lib/sentry-flush";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -132,13 +133,18 @@ export async function createTask(
     let task: { id: string } | null = null;
     let error: { message: string; code?: string } | null = null;
     for (let attempt = 0; attempt < 20; attempt++) {
-      const result = await admin
+      // Destructive return-error — `tasks` is the lifecycle state-of-record.
+      // Capturing `{ data, error }` (instead of the full result) satisfies the
+      // swallowed-error policy and is required by the PGRST204 retry, which
+      // inspects error.code to decide whether to drop the missing column and
+      // retry. Outer caller surfaces error.message back to the UI.
+      const { data: rData, error: rErr } = await admin
         .from("tasks")
         .insert(payload)
         .select("id")
         .single();
-      if (!result.error) { task = result.data as { id: string }; error = null; break; }
-      error = result.error as { message: string; code?: string };
+      if (!rErr) { task = rData as { id: string }; error = null; break; }
+      error = rErr as { message: string; code?: string };
       if (error.code === "PGRST204") {
         const match = error.message.match(/Could not find the '(\w+)' column/);
         if (match && match[1] in payload) {
@@ -153,13 +159,19 @@ export async function createTask(
 
     after(async () => {
       await logActivity(tenantId, userId, "created_task", "staff_task", task?.id, title);
-      await admin.from("task_activities").insert({
+      // Side-effect — `task_activities` is the per-task audit/comment-stream
+      // feed. The `tasks` row is already created and revalidated; a missing
+      // activity row is a visibility gap, not state-of-record drift.
+      const { error: actErr } = await admin.from("task_activities").insert({
         tenant_id: tenantId,
         task_id: task?.id,
         user_id: userId,
         activity_type: "created",
         description: `Task created by ${userEmail}`,
       });
+      if (actErr) {
+        logger.error("[createTask] task_activities created insert failed (non-fatal)", { taskId: task?.id, err: actErr });
+      }
       await logAuditEvent({
         tenantId,
         userId,
@@ -237,13 +249,18 @@ export async function updateTask(
     };
     let updateError: { message: string; code?: string } | null = null;
     for (let attempt = 0; attempt < 20; attempt++) {
-      const result = await admin
+      // Destructive return-error — `tasks` lifecycle update is state-of-record
+      // (status / assignee / due-date drive the rest of the UI). Destructure
+      // `{ error }` to satisfy the swallowed-error rule; PGRST204 retry needs
+      // error.code to drop missing optional columns. Final error surfaces back
+      // to the caller so the UI can show the failure.
+      const { error: rErr } = await admin
         .from("tasks")
         .update(updatePayload)
         .eq("id", taskId)
         .eq("tenant_id", tenantId);
-      if (!result.error) { updateError = null; break; }
-      updateError = result.error as { message: string; code?: string };
+      if (!rErr) { updateError = null; break; }
+      updateError = rErr as { message: string; code?: string };
       if (updateError.code === "PGRST204") {
         const match = updateError.message.match(/Could not find the '(\w+)' column/);
         if (match && match[1] in updatePayload) {
@@ -257,23 +274,34 @@ export async function updateTask(
 
     // Log activities for specific changes
     if (updates.status && updates.status !== oldTask?.status) {
-      await admin.from("task_activities").insert({
+      // Side-effect — `task_activities` is the per-task audit feed. The
+      // `tasks` row already moved to the new status above; a missing
+      // status_change activity row is a visibility gap, not state drift.
+      const { error: statusActErr } = await admin.from("task_activities").insert({
         tenant_id: tenantId,
         task_id: taskId,
         user_id: userId,
         activity_type: "status_change",
         description: `Status changed from ${oldTask?.status} to ${updates.status}`,
       });
+      if (statusActErr) {
+        logger.error("[updateTask] task_activities status_change insert failed (non-fatal)", { taskId, err: statusActErr });
+      }
     }
 
     if (updates.assigned_to && updates.assigned_to !== oldTask?.assigned_to) {
-      await admin.from("task_activities").insert({
+      // Side-effect — same as above; `task_activities` audit-trail entry for
+      // the assignment change. The assignee already changed on `tasks`.
+      const { error: assignActErr } = await admin.from("task_activities").insert({
         tenant_id: tenantId,
         task_id: taskId,
         user_id: userId,
         activity_type: "assigned",
         description: `Task assigned to a new user`,
       });
+      if (assignActErr) {
+        logger.error("[updateTask] task_activities assigned insert failed (non-fatal)", { taskId, err: assignActErr });
+      }
 
       // Send WhatsApp notification to new assignee
       const { data: teamMember } = await admin
@@ -307,6 +335,10 @@ export async function updateTask(
     revalidatePath("/tasks");
     revalidatePath(`/tasks/${taskId}`);
     revalidateTag(CACHE_TAGS.tasks(tenantId), "default");
+    // Sentry serverless flush — side-effect activity-row inserts above may
+    // have logged via logger.error; flush before the Lambda freezes so the
+    // capture lands.
+    await flushSentry();
     return { success: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error" };
@@ -407,15 +439,23 @@ export async function addTaskComment(taskId: string, content: string): Promise<{
     
     if (error) return { data: null, error: error.message };
 
-    // Log activity
-    await admin.from("task_activities").insert({
+    // Side-effect — `task_activities` audit-trail row mirroring the comment
+    // insert. The `task_comments` row above is the actual state-of-record
+    // (the comment itself); the activity row is just the per-task feed entry.
+    const { error: commentActErr } = await admin.from("task_activities").insert({
       tenant_id: tenantId,
       task_id: taskId,
       user_id: userId,
       activity_type: "comment_added",
       description: "Added a comment",
     });
+    if (commentActErr) {
+      logger.error("[addTaskComment] task_activities comment_added insert failed (non-fatal)", { taskId, err: commentActErr });
+    }
 
+    // Sentry serverless flush — drain queued logger.error capture before
+    // the Lambda freezes on response return.
+    await flushSentry();
     return { data: data as TaskComment };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : "Error" };
@@ -509,15 +549,23 @@ export async function addTaskAttachment(
     
     if (error) return { data: null, error: error.message };
 
-    // Log activity
-    await admin.from("task_activities").insert({
+    // Side-effect — `task_activities` audit-trail entry for the attachment.
+    // The `task_attachments` row above is the state-of-record (the file
+    // pointer); the activity row is the per-task feed entry.
+    const { error: attachActErr } = await admin.from("task_activities").insert({
       tenant_id: tenantId,
       task_id: taskId,
       user_id: userId,
       activity_type: "attachment_added",
       description: `Attached file: ${fileName}`,
     });
+    if (attachActErr) {
+      logger.error("[addTaskAttachment] task_activities attachment_added insert failed (non-fatal)", { taskId, err: attachActErr });
+    }
 
+    // Sentry serverless flush — drain queued logger.error capture before
+    // the Lambda freezes on response return.
+    await flushSentry();
     return { data: data as TaskAttachment };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : "Error" };

@@ -190,14 +190,24 @@ export async function startStocktake(stocktakeId: string): Promise<{ error?: str
         barcode_value: inv.barcode_value,
         counted_qty: null,
       }));
-      await admin.from("stocktake_items").insert(items);
+      // Destructive — these stocktake_items rows ARE the count snapshot.
+      // Silent failure means the user clicks Start, the UI flips to "in
+      // progress" but no items appear to count, and the eventual complete
+      // would adjust nothing. Surface the error so the caller can retry.
+      const { error: itemsErr } = await admin.from("stocktake_items").insert(items);
+      if (itemsErr) return { error: `stocktake_items insert failed: ${itemsErr.message}` };
     }
 
-    await admin
+    // Destructive — flipping status to in_progress + stamping started_at
+    // is the state-of-record transition for the count. Silent failure
+    // would leave the stocktake stuck in 'draft' with line items already
+    // inserted, so the next Start call would double up the snapshot.
+    const { error: stUpdErr } = await admin
       .from("stocktakes")
       .update({ status: "in_progress", started_at: new Date().toISOString() })
       .eq("id", stocktakeId)
       .eq("tenant_id", tenantId);
+    if (stUpdErr) return { error: `stocktake start update failed: ${stUpdErr.message}` };
 
     await logActivity(tenantId, userId, "started_stocktake", "stocktake", stocktakeId, "");
     revalidatePath("/stocktakes");
@@ -260,7 +270,12 @@ export async function countItem(
     const { userId, tenantId } = await getAuthContext();
     const admin = createAdminClient();
 
-    await admin
+    // Destructive — counted_qty IS the user's count, the entire purpose
+    // of this action. Silent failure means the staff member ticks "12"
+    // on their phone, the UI confirms, but the count never landed in
+    // the DB. They move on, the stocktake completes with the prior
+    // (null/0) value, inventory drift goes undetected.
+    const { error: countUpdErr } = await admin
       .from("stocktake_items")
       .update({
         counted_qty: countedQty,
@@ -270,6 +285,7 @@ export async function countItem(
       })
       .eq("id", itemId)
       .eq("tenant_id", tenantId);
+    if (countUpdErr) return { error: `count save failed: ${countUpdErr.message}` };
 
     // Atomic recompute via SQL. Pre-fix this read all stocktake_items
     // in JS, computed counts, and UPDATEd the parent — two staff
@@ -361,7 +377,13 @@ export async function completeStocktake(stocktakeId: string, applyAdjustments: b
         // settle inventory.quantity itself. The trigger's
         // GREATEST(...,0) floor is OK here — counted_qty=0 just sets
         // inventory to 0 via delta = -oldQty.
-        await admin.from("stock_movements").insert({
+        //
+        // Destructive — this stock_movements row IS the adjustment. If
+        // the insert silently fails mid-loop, some items get adjusted
+        // and others don't, leaving inventory in a half-applied state
+        // with no easy way to detect which items are stale. Bail and
+        // surface the error so the operator retries Complete.
+        const { error: movInsErr } = await admin.from("stock_movements").insert({
           tenant_id: tenantId,
           inventory_id: item.inventory_id,
           movement_type: "stocktake",
@@ -369,14 +391,20 @@ export async function completeStocktake(stocktakeId: string, applyAdjustments: b
           notes: `Stocktake ${stocktakeId} adjustment`,
           created_by: userId,
         });
+        if (movInsErr) return { error: `stocktake adjustment movement failed: ${movInsErr.message}` };
       }
     }
 
-    await admin
+    // Destructive — terminal state transition. If the status flip fails
+    // after adjustments were already posted, the stocktake stays
+    // 'in_progress' and a re-click of Complete would post the
+    // adjustments again, double-applying every delta to inventory.
+    const { error: completeErr } = await admin
       .from("stocktakes")
       .update({ status: "completed", completed_at: new Date().toISOString() })
       .eq("id", stocktakeId)
       .eq("tenant_id", tenantId);
+    if (completeErr) return { error: `stocktake complete update failed: ${completeErr.message}` };
 
     await logActivity(tenantId, userId, "completed_stocktake", "stocktake", stocktakeId, applyAdjustments ? "with adjustments" : "without adjustments");
     
@@ -451,7 +479,13 @@ export async function createStocktakeWithInventory(
         barcode_value: inv.barcode_value ?? null,
         counted_qty: null,
       }));
-      await admin.from("stocktake_items").insert(items);
+      // Destructive — these are the count snapshot for the freshly
+      // created in_progress stocktake. Silent failure leaves the parent
+      // stocktake row with no items to count; the operator opens the
+      // page, sees an empty list, and either gives up or re-creates,
+      // leaving an orphan stocktake row behind.
+      const { error: itemsErr } = await admin.from("stocktake_items").insert(items);
+      if (itemsErr) return { error: `stocktake_items snapshot failed: ${itemsErr.message}` };
     }
 
     await logActivity(tenantId, userId, "created_stocktake", "stocktake", data?.id, `${name} (imported from inventory)`);

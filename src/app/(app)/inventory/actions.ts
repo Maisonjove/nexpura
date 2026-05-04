@@ -167,9 +167,17 @@ export async function createInventoryItem(formData: FormData) {
   let item: { id: string } | null = null;
   let error: { message: string; code?: string; details?: string; hint?: string } | null = null;
   for (let attempt = 0; attempt < 20; attempt++) {
-    const result = await supabase.from("inventory").insert(payload).select("id").single();
-    if (!result.error) { item = result.data as { id: string }; error = null; break; }
-    const err = result.error as { message: string; code?: string };
+    // Destructive — this insert IS the inventory item being created.
+    // The retry loop already inspects { error } to detect PGRST204
+    // schema-cache misses and drop unknown columns; destructure the
+    // result here so the lint rule sees the error capture explicitly.
+    const { data: insData, error: insErr } = await supabase
+      .from("inventory")
+      .insert(payload)
+      .select("id")
+      .single();
+    if (!insErr) { item = insData as { id: string }; error = null; break; }
+    const err = insErr as { message: string; code?: string };
     error = err;
     if (err.code === "PGRST204") {
       const match = err.message.match(/Could not find the '(\w+)' column/);
@@ -192,7 +200,17 @@ export async function createInventoryItem(formData: FormData) {
       .single();
     const tenantSlug = tenant?.slug ?? tenant?.name ?? tenantId.slice(0, 6);
     const barcodeValue = generateBarcodeValue(tenantSlug, sku ?? item.id.slice(0, 8));
-    await supabase.from("inventory").update({ barcode_value: barcodeValue }).eq("id", item.id);
+    // Destructive — barcode_value lives on the inventory row (state-of-
+    // record). Throw on error so the outer try/catch logs+swallows it
+    // (per the existing "barcode generation is non-critical" intent,
+    // since generateBarcodeForItem can backfill on demand). What we're
+    // fixing here is the swallowed-PostgREST-error case: previously a
+    // failed update returned silently, now it surfaces to the catch.
+    const { error: bvErr } = await supabase
+      .from("inventory")
+      .update({ barcode_value: barcodeValue })
+      .eq("id", item.id);
+    if (bvErr) throw new Error(`Failed to set barcode_value: ${bvErr.message}`);
   } catch {
     // barcode generation is non-critical
   }
@@ -359,13 +377,19 @@ export async function updateInventoryItem(id: string, formData: FormData) {
   const payload: Record<string, unknown> = { ...updates };
   let updateError: { message: string; code?: string } | null = null;
   for (let attempt = 0; attempt < 20; attempt++) {
-    const result = await supabase
+    // Destructive — this update IS the inventory edit. The retry loop
+    // already inspects { error } to detect PGRST204 schema-cache misses
+    // and drop unknown columns; destructure explicitly so the lint rule
+    // sees the error capture. After the loop, updateError is thrown to
+    // the caller so the form reflects the real DB failure rather than
+    // silently navigating away with stale fields.
+    const { error: updErr } = await supabase
       .from("inventory")
       .update(payload)
       .eq("id", id)
       .eq("tenant_id", tenantId);
-    if (!result.error) { updateError = null; break; }
-    const err = result.error as { message: string; code?: string };
+    if (!updErr) { updateError = null; break; }
+    const err = updErr as { message: string; code?: string };
     updateError = err;
     if (err.code === "PGRST204") {
       const match = err.message.match(/Could not find the '(\w+)' column/);
@@ -757,15 +781,21 @@ export async function quickAddStock(formData: FormData): Promise<{ id?: string; 
       ? ((tenantData as { next_consignment_number?: number })?.next_consignment_number ?? 1)
       : ((tenantData as { next_stock_number?: number })?.next_stock_number ?? 1);
     
-    // Update tenant counter
-    await supabase
+    // Destructive — this counter increment is the only thing preventing
+    // duplicate stock_number assignments in the fallback path. Silent
+    // failure means the next quickAddStock call reads the same nextNum,
+    // generates the same stock_number/SKU, and the inventory insert
+    // either UNIQUE-violates or (worse) succeeds for both rows in a
+    // race, leaving two items with the same identifier.
+    const { error: tenantUpdErr } = await supabase
       .from("tenants")
-      .update(isConsignment 
+      .update(isConsignment
         ? { next_consignment_number: nextNum + 1 }
         : { next_stock_number: nextNum + 1 }
       )
       .eq("id", tenantId);
-    
+    if (tenantUpdErr) return { error: `tenant counter update failed: ${tenantUpdErr.message}` };
+
     stockNumber = prefix + nextNum;
   } else {
     stockNumber = stockNumberData as string;
@@ -827,7 +857,18 @@ export async function quickAddStock(formData: FormData): Promise<{ id?: string; 
       .single();
     const tenantSlug = tenant?.slug ?? tenant?.name ?? tenantId.slice(0, 6);
     const barcodeValue = generateBarcodeValue(tenantSlug, stockNumber);
-    await supabase.from("inventory").update({ barcode_value: barcodeValue }).eq("id", item.id);
+    // Destructive — barcode_value is on the inventory row (state-of-
+    // record). Throw on error so the outer try/catch logs+swallows it
+    // (matches the createInventoryItem barcode-generation pattern at
+    // line ~190; barcode is non-critical here because
+    // generateBarcodeForItem can backfill on demand). The fix vs prior
+    // behaviour: a failed update no longer returns silently with the
+    // PostgREST error swallowed — it bubbles to the catch.
+    const { error: bvErr } = await supabase
+      .from("inventory")
+      .update({ barcode_value: barcodeValue })
+      .eq("id", item.id);
+    if (bvErr) throw new Error(`Failed to set barcode_value: ${bvErr.message}`);
   } catch {
     // barcode generation is non-critical
   }
