@@ -48,14 +48,26 @@ export default function TrackingHistoryPage() {
 }
 
 async function TrackingHistoryBody() {
-  const tenantId = await resolveTenantId();
-  if (!tenantId) {
+  // Joey 2026-05-03 P2-E audit (product call): restrict to owner +
+  // manager. Pre-fix any authed tenant member could view customer
+  // amendment requests on order_messages — Joey's spec: "same
+  // pattern as G15 settings audit", so manager-or-better.
+  const ctx = await resolveTenantWithRole();
+  if (!ctx) {
     return (
       <div className="bg-white rounded-3xl border border-stone-200 p-12 text-center">
         <p className="text-sm text-stone-500">Not authenticated.</p>
       </div>
     );
   }
+  if (ctx.role !== "owner" && ctx.role !== "manager") {
+    return (
+      <div className="bg-white rounded-3xl border border-stone-200 p-12 text-center">
+        <p className="text-sm text-stone-500">This view is restricted to managers and owners.</p>
+      </div>
+    );
+  }
+  const tenantId = ctx.tenantId;
 
   const { messages, repairLookup, bespokeLookup } = await loadTrackingHistory(tenantId);
 
@@ -159,7 +171,7 @@ async function TrackingHistoryBody() {
   );
 }
 
-async function resolveTenantId(): Promise<string | null> {
+async function resolveTenantWithRole(): Promise<{ tenantId: string; role: string } | null> {
   try {
     const supabase = await createClient();
     const {
@@ -168,10 +180,11 @@ async function resolveTenantId(): Promise<string | null> {
     if (!user) return null;
 
     const admin = createAdminClient();
-    const { data } = await admin.from("users").select("tenant_id").eq("id", user.id).single();
-    return (data?.tenant_id as string | null) ?? null;
+    const { data } = await admin.from("users").select("tenant_id, role").eq("id", user.id).single();
+    if (!data?.tenant_id) return null;
+    return { tenantId: data.tenant_id as string, role: (data.role as string) || "staff" };
   } catch (error) {
-    logger.error("[admin/tracking-history] resolveTenantId failed", error);
+    logger.error("[admin/tracking-history] resolveTenantWithRole failed", error);
     return null;
   }
 }

@@ -27,6 +27,14 @@ export async function POST(request: NextRequest) {
     }
     const { primaryId, secondaryIds } = parseResult.data;
 
+    // Joey 2026-05-03 P2-E audit: defend against merge-into-self.
+    // The Zod schema doesn't enforce primaryId ∉ secondaryIds; a
+    // self-merge would soft-delete the primary at the bottom of this
+    // handler. Reject explicitly.
+    if (secondaryIds.includes(primaryId)) {
+      return NextResponse.json({ error: "Cannot merge a customer into itself" }, { status: 400 });
+    }
+
     const admin = createAdminClient();
 
     // Get user's tenant + role
@@ -100,58 +108,89 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', primaryId);
 
-    // Update all related records to point to primary customer.
-    // Pre-fix list missed wishlists, loyalty_transactions, customer_notes,
-    // customer_communications, customer_store_credit_history. The
-    // secondary's wishlist + loyalty rows kept FK-pointing at the
-    // tombstone after merge → disappeared from primary's detail page.
-    // 'communications' was a typo (real table is customer_communications).
+    // Joey 2026-05-03 P2-E audit: pre-fix this list had 12 entries
+    // including 2 dead ones (`enquiries` — real name shop_enquiries,
+    // and shop_enquiries doesn't have customer_id; `customer_notes` —
+    // table doesn't exist), and was missing 7 tables that DO have
+    // customer_id and would orphan rows after merge.
+    //
+    // Schema-driven discovery (information_schema query at audit
+    // time): 17 tables have a customer_id column. Filtered list below
+    // matches the 17 minus the dead names, plus the 7 previously
+    // missed. Every entry is verified-existent at audit time.
+    //
+    // Without these fixes, post-merge the surviving customer's detail
+    // tabs would be missing: appraisals, communications (general),
+    // email_sends, memo_items, refunds, sms_sends, whatsapp_sends.
     const tablesToUpdate = [
-      'sales',
-      'repairs',
-      'bespoke_jobs',
-      'invoices',
-      'quotes',
-      'enquiries',
       'appointments',
-      'wishlists',
-      'loyalty_transactions',
-      'customer_notes',
+      'appraisals',                     // P2-E added: orphaned valuations
+      'bespoke_jobs',
+      'communications',                 // P2-E added: general comms history
       'customer_communications',
       'customer_store_credit_history',
+      'email_sends',                    // P2-E added: orphaned email log
+      'invoices',
+      'loyalty_transactions',
+      'memo_items',                     // P2-E added: orphaned memo history
+      'quotes',
+      'refunds',                        // P2-E added: orphaned refund history
+      'repairs',
+      'sales',
+      'sms_sends',                      // P2-E added: orphaned SMS history
+      'whatsapp_sends',                 // P2-E added: orphaned WhatsApp history
+      'wishlists',
     ];
 
+    const fkRewriteFailures: Array<{ table: string; error: string }> = [];
     for (const table of tablesToUpdate) {
-      try {
-        await admin
-          .from(table)
-          .update({ customer_id: primaryId })
-          // Scope every FK rewrite to this tenant as defence-in-depth.
-          // UUID collisions across tenants are astronomically unlikely
-          // but a misrouted merge would be silently cross-tenant without
-          // this guard.
-          .eq('tenant_id', tenantId)
-          .in('customer_id', secondaryIds);
-      } catch (e) {
-        // Table might not exist or not have customer_id - skip
-        logger.debug(`Skipping table ${table} during customer merge`, { error: e });
+      const { error } = await admin
+        .from(table)
+        .update({ customer_id: primaryId })
+        // Scope every FK rewrite to this tenant as defence-in-depth.
+        // UUID collisions across tenants are astronomically unlikely
+        // but a misrouted merge would be silently cross-tenant without
+        // this guard.
+        .eq('tenant_id', tenantId)
+        .in('customer_id', secondaryIds);
+      if (error) {
+        // Joey 2026-05-03 P2-E audit: surface failures rather than
+        // swallow. A single failed FK rewrite leaves the customer's
+        // detail page silently inconsistent; loud failure means the
+        // operator can re-run or fix manually.
+        logger.error(`[customers/merge] FK rewrite failed on ${table}`, { tenantId, primaryId, error });
+        fkRewriteFailures.push({ table, error: error.message });
       }
+    }
+    if (fkRewriteFailures.length > 0) {
+      // Don't abort — the customer record + tag/note merge already
+      // succeeded. But return the per-table failure list so the
+      // operator can decide whether to manually fix or revert.
+      logger.error(`[customers/merge] Partial merge: ${fkRewriteFailures.length} table(s) failed`, { tenantId, primaryId, fkRewriteFailures });
     }
 
     // Soft delete secondary customers (mark as merged). Scope by
     // tenant_id for the same defence-in-depth reason as the FK rewrites.
-    await admin
+    const { error: softDelErr } = await admin
       .from('customers')
       .update({
         deleted_at: new Date().toISOString(),
       })
       .eq('tenant_id', tenantId)
       .in('id', secondaryIds);
+    if (softDelErr) {
+      logger.error('[customers/merge] secondary soft-delete failed', { tenantId, secondaryIds, error: softDelErr });
+      return NextResponse.json(
+        { error: 'Merge partially completed but secondary delete failed', primaryId, secondaryIds, details: softDelErr.message },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({
       success: true,
       primaryId,
       mergedCount: secondaryIds.length,
+      ...(fkRewriteFailures.length > 0 ? { fkRewriteFailures } : {}),
     });
   } catch (error) {
     logger.error('Customer merge error', { error });
