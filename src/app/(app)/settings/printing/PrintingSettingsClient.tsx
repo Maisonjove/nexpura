@@ -2,6 +2,15 @@
 
 import { useState, useTransition, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import {
+  PrinterIcon,
+  TagIcon,
+  DocumentTextIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  ArrowPathIcon,
+  PlayIcon,
+} from "@heroicons/react/24/outline";
 import { savePrinterConfig } from "./actions";
 
 type PrinterType = "receipt" | "label" | "office";
@@ -189,11 +198,11 @@ function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your S
 </body></html>`);
     } else {
       w.document.write(`<!DOCTYPE html><html><head><title>Test Page</title>
-<style>body { font-family: Arial, sans-serif; padding: 40px; }</style></head><body>
-<h1 style="color:amber-700">Nexpura</h1>
-<h2>Test Print — ${oPaperSize}</h2>
+<style>body { font-family: Georgia, 'Times New Roman', serif; padding: 48px; color: #1c1917; } h1 { font-weight: 400; letter-spacing: -0.02em; } .eyebrow { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: #78716c; } hr { border: none; border-top: 1px solid #e7e5e4; margin: 24px 0; }</style></head><body>
+<p class="eyebrow">Nexpura</p>
+<h1>Test Print &mdash; ${oPaperSize}</h1>
 <p>This is a test print for your office printer.</p>
-<p>${new Date().toLocaleString("en-AU")}</p>
+<p style="color:#78716c">${new Date().toLocaleString("en-AU")}</p>
 <hr />
 <p>If you can read this clearly, your office printer is configured correctly.</p>
 </body></html>`);
@@ -203,104 +212,179 @@ function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your S
   }
 
   const tabClass = (t: PrinterType) =>
-    `flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
-      activeTab === t ? "border-amber-600 text-amber-700" : "border-transparent text-stone-500 hover:text-stone-800"
+    `relative flex-1 inline-flex items-center justify-center gap-2 py-4 px-4 text-sm font-medium transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+      activeTab === t
+        ? "text-stone-900"
+        : "text-stone-500 hover:text-stone-800"
     }`;
 
-  const input = "w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/30 focus:border-nexpura-bronze";
-  const label = "block text-xs font-medium text-stone-500 mb-1";
+  const tabIndicator = (t: PrinterType) =>
+    `absolute inset-x-4 -bottom-px h-px transition-colors duration-300 ${
+      activeTab === t ? "bg-nexpura-bronze" : "bg-transparent"
+    }`;
+
+  const input =
+    "w-full border border-stone-200 rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-nexpura-bronze transition-colors duration-200";
+  const labelCls = "block text-[11px] uppercase tracking-luxury text-stone-500 mb-2";
+
+  // Subtle pill button (used for presets, alignment, paper sizes)
+  const pillBtn = (active: boolean) =>
+    `px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+      active
+        ? "bg-stone-900 text-white border-stone-900"
+        : "bg-white text-stone-600 border-stone-200 hover:border-nexpura-bronze/60 hover:text-stone-900"
+    }`;
 
   // Label preview dimensions (scaled to pixels, max 300px wide)
   const previewScale = Math.min(300 / (parseInt(lWidth) || 57), 6);
   const previewW = (parseInt(lWidth) || 57) * previewScale;
   const previewH = (parseInt(lHeight) || 32) * previewScale;
 
+  const tabs: { key: PrinterType; label: string; Icon: typeof PrinterIcon; href: string }[] = [
+    { key: "receipt", label: "Receipt", Icon: PrinterIcon, href: pathname },
+    { key: "label", label: "Label", Icon: TagIcon, href: pathname + '?tab=label' },
+    { key: "office", label: "Office", Icon: DocumentTextIcon, href: pathname + '?tab=office' },
+  ];
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-900">Printing Settings</h1>
-        <p className="text-stone-500 mt-1 text-sm">Configure receipt, label, and office printers for your workspace.</p>
-      </div>
-
-      {msg && (
-        <div className={`rounded-xl px-4 py-3 text-sm border ${msgType === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-700"}`}>
-          {msg}
-        </div>
-      )}
-
-      <div className="bg-white border border-stone-200 rounded-2xl shadow-sm overflow-hidden">
-        {/* Tabs */}
-        <div className="flex border-b border-stone-200">
-          <button className={tabClass("receipt")} onClick={() => router.replace(pathname)}>
-            🧾 Receipt Printer
-          </button>
-          <button className={tabClass("label")} onClick={() => router.replace(pathname + '?tab=label')}>
-            🏷️ Label Printer
-          </button>
-          <button className={tabClass("office")} onClick={() => router.replace(pathname + '?tab=office')}>
-            🖨️ Office Printer
-          </button>
+    <div className="bg-nexpura-ivory min-h-screen -mx-4 sm:-mx-6 lg:-mx-8 -my-6 lg:-my-8">
+      <div className="max-w-[1100px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="mb-14">
+          <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+            Settings
+          </p>
+          <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-[1.08] tracking-tight">
+            Printing
+          </h1>
+          <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+            Configure receipt, label, and office printers — set templates, paper sizes, and connection details for every device on your floor.
+          </p>
         </div>
 
-        <div className="p-6">
+        {/* Status message */}
+        {msg && (
+          <div
+            role="alert"
+            className={`mb-8 border-l-2 pl-4 py-1 text-sm leading-relaxed flex items-start gap-2 ${
+              msgType === "success"
+                ? "border-nexpura-bronze text-stone-700"
+                : "border-red-400 text-red-600"
+            }`}
+          >
+            {msgType === "success" ? (
+              <CheckCircleIcon className="w-4 h-4 shrink-0 mt-0.5 text-nexpura-bronze" />
+            ) : (
+              <ExclamationTriangleIcon className="w-4 h-4 shrink-0 mt-0.5" />
+            )}
+            <span>{msg}</span>
+          </div>
+        )}
+
+        <div className="space-y-8 lg:space-y-12">
+          {/* Tabs */}
+          <nav
+            aria-label="Printer type"
+            className="flex border-b border-stone-200"
+          >
+            {tabs.map(({ key, label, Icon, href }) => (
+              <button
+                key={key}
+                className={tabClass(key)}
+                onClick={() => router.replace(href)}
+              >
+                <Icon className="w-4 h-4" strokeWidth={1.5} />
+                {label}
+                <span className={tabIndicator(key)} aria-hidden="true" />
+              </button>
+            ))}
+          </nav>
+
           {/* ── RECEIPT TAB ─────────────────────────────── */}
           {activeTab === "receipt" && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={label}>Printer Brand</label>
-                  <select value={rBrand} onChange={(e) => setRBrand(e.target.value)} className={input}>
-                    <option value="Epson">Epson TM Series</option>
-                    <option value="Star">Star TSP Series</option>
-                    <option value="Bixolon">Bixolon SRP Series</option>
-                    <option value="Other">Other</option>
-                  </select>
+            <>
+              <section className="bg-white border border-stone-200 rounded-2xl p-6 lg:p-8 transition-all duration-400 hover:border-stone-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+                <div className="mb-6">
+                  <p className="text-xs uppercase tracking-luxury text-stone-500 mb-2">
+                    Receipt Printer
+                  </p>
+                  <h2 className="font-serif text-2xl text-stone-900 tracking-tight">
+                    Hardware & Paper
+                  </h2>
+                  <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+                    Choose your printer brand, connection method, and paper width.
+                  </p>
                 </div>
-                <div>
-                  <label className={label}>Paper Width</label>
-                  <select value={rPaperWidth} onChange={(e) => setRPaperWidth(e.target.value)} className={input}>
-                    <option value="58mm">58mm</option>
-                    <option value="80mm">80mm</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={label}>Connection Type</label>
-                  <select value={rConn} onChange={(e) => setRConn(e.target.value)} className={input}>
-                    <option value="browser">Browser Print (USB)</option>
-                    <option value="network">Network (IP/TCP)</option>
-                    <option value="bluetooth">Bluetooth</option>
-                  </select>
-                </div>
-                <div className="flex items-center pt-5 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRCut(!rCut)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${rCut ? "bg-amber-700" : "bg-stone-200"}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${rCut ? "translate-x-4" : "translate-x-0.5"}`} />
-                  </button>
-                  <span className="text-sm text-stone-700">Auto-cut after print</span>
-                </div>
-              </div>
 
-              {rConn === "network" && (
-                <div className="grid grid-cols-2 gap-4 bg-stone-50 rounded-xl p-4 border border-stone-200">
+                <div className="border-t border-stone-200 pt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
-                    <label className={label}>IP Address</label>
-                    <input value={rIp} onChange={(e) => setRIp(e.target.value)} placeholder="192.168.1.100" className={`${input} font-mono`} />
+                    <label className={labelCls}>Printer Brand</label>
+                    <select value={rBrand} onChange={(e) => setRBrand(e.target.value)} className={input}>
+                      <option value="Epson">Epson TM Series</option>
+                      <option value="Star">Star TSP Series</option>
+                      <option value="Bixolon">Bixolon SRP Series</option>
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
                   <div>
-                    <label className={label}>Port</label>
-                    <input value={rPort} onChange={(e) => setRPort(e.target.value)} placeholder="9100" className={`${input} font-mono`} />
+                    <label className={labelCls}>Paper Width</label>
+                    <select value={rPaperWidth} onChange={(e) => setRPaperWidth(e.target.value)} className={input}>
+                      <option value="58mm">58mm</option>
+                      <option value="80mm">80mm</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Connection Type</label>
+                    <select value={rConn} onChange={(e) => setRConn(e.target.value)} className={input}>
+                      <option value="browser">Browser Print (USB)</option>
+                      <option value="network">Network (IP/TCP)</option>
+                      <option value="bluetooth">Bluetooth</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center sm:pt-7 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setRCut(!rCut)}
+                      role="switch"
+                      aria-checked={rCut}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/40 focus-visible:ring-offset-2 ${rCut ? "bg-nexpura-bronze" : "bg-stone-200"}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${rCut ? "translate-x-4" : "translate-x-0.5"}`} />
+                    </button>
+                    <span className="text-sm text-stone-700">Auto-cut after print</span>
                   </div>
                 </div>
-              )}
+
+                {rConn === "network" && (
+                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6 bg-stone-50/70 rounded-xl p-5 border border-stone-200">
+                    <div>
+                      <label className={labelCls}>IP Address</label>
+                      <input value={rIp} onChange={(e) => setRIp(e.target.value)} placeholder="192.168.1.100" className={`${input} font-mono`} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Port</label>
+                      <input value={rPort} onChange={(e) => setRPort(e.target.value)} placeholder="9100" className={`${input} font-mono`} />
+                    </div>
+                  </div>
+                )}
+              </section>
 
               {/* Receipt Preview */}
-              <div>
-                <p className="text-xs font-medium text-stone-500 mb-3 uppercase tracking-wider">Receipt Preview</p>
-                <div className="flex justify-center">
-                  <div style={{ width: rPaperWidth === "58mm" ? 220 : 280 }} className="border border-stone-300 rounded p-4 font-mono text-xs bg-white shadow-sm">
+              <section className="bg-white border border-stone-200 rounded-2xl p-6 lg:p-8 transition-all duration-400 hover:border-stone-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+                <div className="mb-6">
+                  <p className="text-xs uppercase tracking-luxury text-stone-500 mb-2">
+                    Preview
+                  </p>
+                  <h2 className="font-serif text-2xl text-stone-900 tracking-tight">
+                    Receipt Sample
+                  </h2>
+                  <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+                    A scaled rendering of how your printed receipt will look on the selected paper width.
+                  </p>
+                </div>
+
+                <div className="border-t border-stone-200 pt-8 flex justify-center">
+                  <div style={{ width: rPaperWidth === "58mm" ? 220 : 280 }} className="border border-stone-200 rounded p-4 font-mono text-xs bg-white shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
                     <p className="text-center font-bold text-sm mb-1">{businessName}</p>
                     <p className="text-center text-xs text-stone-500">123 Jewellery Lane, Sydney NSW</p>
                     <div className="border-t border-dashed border-stone-300 my-2" />
@@ -310,143 +394,207 @@ function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your S
                     <p className="text-center text-xs text-stone-400 mt-3">Thank you!</p>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex gap-3">
-                <button onClick={handleSaveReceipt} disabled={isPending} className="flex-1 py-2.5 bg-amber-700 hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
-                  {isPending ? "Saving…" : "Save Receipt Printer"}
-                </button>
-                <button onClick={() => testPrint("receipt")} className="px-5 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50 transition-colors">
-                  🖨️ Test Print
-                </button>
-              </div>
-            </div>
+                <div className="mt-8 border-t border-stone-200 pt-6 flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={handleSaveReceipt}
+                    disabled={isPending}
+                    className="nx-btn-primary inline-flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isPending ? (
+                      <>
+                        <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      "Save Receipt Printer"
+                    )}
+                  </button>
+                  <button
+                    onClick={() => testPrint("receipt")}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white transition-colors duration-200"
+                  >
+                    <PlayIcon className="w-4 h-4" />
+                    Test Print
+                  </button>
+                </div>
+              </section>
+            </>
           )}
 
           {/* ── LABEL TAB ───────────────────────────────── */}
           {activeTab === "label" && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={label}>Printer Brand</label>
-                  <select value={lBrand} onChange={(e) => setLBrand(e.target.value)} className={input}>
-                    <option value="Zebra">Zebra</option>
-                    <option value="Brother">Brother</option>
-                    <option value="Dymo">Dymo</option>
-                    <option value="Niimbot">Niimbot</option>
-                    <option value="Other">Other</option>
-                  </select>
+            <>
+              <section className="bg-white border border-stone-200 rounded-2xl p-6 lg:p-8 transition-all duration-400 hover:border-stone-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+                <div className="mb-6">
+                  <p className="text-xs uppercase tracking-luxury text-stone-500 mb-2">
+                    Label Printer
+                  </p>
+                  <h2 className="font-serif text-2xl text-stone-900 tracking-tight">
+                    Hardware
+                  </h2>
+                  <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+                    Select the printer brand and how your computer connects to it.
+                  </p>
                 </div>
-                <div>
-                  <label className={label}>Connection Type</label>
-                  <select value={lConn} onChange={(e) => setLConn(e.target.value)} className={input}>
-                    <option value="browser">Browser Print (USB)</option>
-                    <option value="network">Network (IP/TCP)</option>
-                    <option value="bluetooth">Bluetooth</option>
-                  </select>
-                </div>
-              </div>
 
-              {/* Label Size Presets */}
-              <div>
-                <label className={label}>Label Size</label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {LABEL_SIZES.map((s) => (
-                    <button
-                      key={s.label}
-                      type="button"
-                      onClick={() => applyLabelPreset(s.label)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                        lSizePreset === s.label
-                          ? "bg-nexpura-charcoal text-white border-amber-600"
-                          : "bg-white text-stone-600 border-stone-200 hover:border-amber-600"
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
+                <div className="border-t border-stone-200 pt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className={labelCls}>Printer Brand</label>
+                    <select value={lBrand} onChange={(e) => setLBrand(e.target.value)} className={input}>
+                      <option value="Zebra">Zebra</option>
+                      <option value="Brother">Brother</option>
+                      <option value="Dymo">Dymo</option>
+                      <option value="Niimbot">Niimbot</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Connection Type</label>
+                    <select value={lConn} onChange={(e) => setLConn(e.target.value)} className={input}>
+                      <option value="browser">Browser Print (USB)</option>
+                      <option value="network">Network (IP/TCP)</option>
+                      <option value="bluetooth">Bluetooth</option>
+                    </select>
+                  </div>
                 </div>
-                {lSizePreset === "Custom" && (
-                  <div className="grid grid-cols-2 gap-3">
+
+                {lConn === "network" && (
+                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6 bg-stone-50/70 rounded-xl p-5 border border-stone-200">
                     <div>
-                      <label className={label}>Width (mm)</label>
-                      <input value={lWidth} onChange={(e) => setLWidth(e.target.value)} type="number" min="10" max="200" className={`${input} font-mono`} />
+                      <label className={labelCls}>IP Address</label>
+                      <input value={lIp} onChange={(e) => setLIp(e.target.value)} placeholder="192.168.1.101" className={`${input} font-mono`} />
                     </div>
                     <div>
-                      <label className={label}>Height (mm)</label>
-                      <input value={lHeight} onChange={(e) => setLHeight(e.target.value)} type="number" min="5" max="200" className={`${input} font-mono`} />
+                      <label className={labelCls}>Port</label>
+                      <input value={lPort} onChange={(e) => setLPort(e.target.value)} placeholder="9100" className={`${input} font-mono`} />
                     </div>
                   </div>
                 )}
-              </div>
+              </section>
 
-              {/* Label Alignment */}
-              <div>
-                <label className={label}>Label Content Alignment</label>
-                <div className="flex gap-2">
-                  {["left", "center", "right"].map((a) => (
-                    <button
-                      key={a}
-                      type="button"
-                      onClick={() => setLAlignment(a)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
-                        lAlignment === a
-                          ? "bg-nexpura-charcoal text-white border-amber-600"
-                          : "bg-white text-stone-600 border-stone-200 hover:border-amber-600"
-                      }`}
-                    >
-                      {a === "left" ? "⬅️" : a === "center" ? "⬆️" : "➡️"} {a.charAt(0).toUpperCase() + a.slice(1)}
-                    </button>
-                  ))}
+              <section className="bg-white border border-stone-200 rounded-2xl p-6 lg:p-8 transition-all duration-400 hover:border-stone-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+                <div className="mb-6">
+                  <p className="text-xs uppercase tracking-luxury text-stone-500 mb-2">
+                    Layout
+                  </p>
+                  <h2 className="font-serif text-2xl text-stone-900 tracking-tight">
+                    Size, Alignment & Barcode
+                  </h2>
+                  <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+                    Configure label dimensions, content alignment, and barcode placement for jewellery tags.
+                  </p>
                 </div>
-              </div>
 
-              {/* Barcode Position */}
-              <div>
-                <label className={label}>Barcode / QR Position (3×2 Grid)</label>
-                <div className="grid grid-cols-3 gap-1.5 w-full max-w-sm">
-                  {[
-                    { v: "top", h: "left" }, { v: "top", h: "center" }, { v: "top", h: "right" },
-                    { v: "bottom", h: "left" }, { v: "bottom", h: "center" }, { v: "bottom", h: "right" }
-                  ].map(pos => (
-                    <button
-                      key={`${pos.v}-${pos.h}`}
-                      type="button"
-                      onClick={() => { setLBarcodeV(pos.v); setLBarcodeH(pos.h); }}
-                      className={`aspect-[4/3] rounded-xl border-2 transition-all flex items-center justify-center ${
-                        lBarcodeV === pos.v && lBarcodeH === pos.h 
-                          ? "border-amber-600 bg-amber-700/5 shadow-inner" 
-                          : "border-stone-100 hover:border-stone-200 bg-white shadow-sm"
-                      }`}
-                    >
-                      <div className={`w-4 h-2 rounded-sm ${
-                        lBarcodeV === pos.v && lBarcodeH === pos.h ? "bg-amber-700" : "bg-stone-300"
-                      }`} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {lConn === "network" && (
-                <div className="grid grid-cols-2 gap-4 bg-stone-50 rounded-xl p-4 border border-stone-200">
+                <div className="border-t border-stone-200 pt-6 space-y-8">
+                  {/* Label Size */}
                   <div>
-                    <label className={label}>IP Address</label>
-                    <input value={lIp} onChange={(e) => setLIp(e.target.value)} placeholder="192.168.1.101" className={`${input} font-mono`} />
+                    <label className={labelCls}>Label Size</label>
+                    <div className="flex flex-wrap gap-2">
+                      {LABEL_SIZES.map((s) => (
+                        <button
+                          key={s.label}
+                          type="button"
+                          onClick={() => applyLabelPreset(s.label)}
+                          className={pillBtn(lSizePreset === s.label)}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                    {lSizePreset === "Custom" && (
+                      <div className="grid grid-cols-2 gap-3 mt-4 max-w-md">
+                        <div>
+                          <label className={labelCls}>Width (mm)</label>
+                          <input value={lWidth} onChange={(e) => setLWidth(e.target.value)} type="number" min="10" max="200" className={`${input} font-mono`} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Height (mm)</label>
+                          <input value={lHeight} onChange={(e) => setLHeight(e.target.value)} type="number" min="5" max="200" className={`${input} font-mono`} />
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Label Alignment */}
                   <div>
-                    <label className={label}>Port</label>
-                    <input value={lPort} onChange={(e) => setLPort(e.target.value)} placeholder="9100" className={`${input} font-mono`} />
+                    <label className={labelCls}>Content Alignment</label>
+                    <div className="inline-flex rounded-full border border-stone-200 bg-white p-0.5">
+                      {["left", "center", "right"].map((a) => (
+                        <button
+                          key={a}
+                          type="button"
+                          onClick={() => setLAlignment(a)}
+                          className={`px-5 py-1.5 rounded-full text-xs font-medium capitalize transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/30 ${
+                            lAlignment === a
+                              ? "bg-stone-900 text-white"
+                              : "text-stone-600 hover:text-stone-900"
+                          }`}
+                        >
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Barcode Position */}
+                  <div>
+                    <label className={labelCls}>Barcode / QR Position</label>
+                    <div className="grid grid-cols-3 gap-2 w-full max-w-sm">
+                      {[
+                        { v: "top", h: "left" }, { v: "top", h: "center" }, { v: "top", h: "right" },
+                        { v: "bottom", h: "left" }, { v: "bottom", h: "center" }, { v: "bottom", h: "right" }
+                      ].map(pos => {
+                        const active = lBarcodeV === pos.v && lBarcodeH === pos.h;
+                        return (
+                          <button
+                            key={`${pos.v}-${pos.h}`}
+                            type="button"
+                            onClick={() => { setLBarcodeV(pos.v); setLBarcodeH(pos.h); }}
+                            aria-label={`${pos.v} ${pos.h}`}
+                            className={`aspect-[4/3] rounded-lg border transition-all duration-200 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/30 focus-visible:ring-offset-2 ${
+                              active
+                                ? "border-nexpura-bronze bg-nexpura-bronze/[0.04]"
+                                : "border-stone-200 hover:border-stone-300 bg-white"
+                            }`}
+                          >
+                            <div
+                              className={`w-5 h-1.5 rounded-sm transition-colors ${
+                                active ? "bg-nexpura-bronze" : "bg-stone-300"
+                              }`}
+                              style={{
+                                alignSelf: pos.v === "top" ? "flex-start" : "flex-end",
+                                marginLeft: pos.h === "left" ? 0 : pos.h === "center" ? "auto" : "auto",
+                                marginRight: pos.h === "right" ? 0 : pos.h === "center" ? "auto" : "auto",
+                                margin: `${pos.v === "top" ? "8px" : "auto"} ${pos.h === "right" ? "8px" : pos.h === "center" ? "auto" : "auto"} ${pos.v === "bottom" ? "8px" : "auto"} ${pos.h === "left" ? "8px" : pos.h === "center" ? "auto" : "auto"}`,
+                              }}
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              )}
+              </section>
 
               {/* Label Preview */}
-              <div>
-                <p className="text-xs font-medium text-stone-500 mb-3 uppercase tracking-wider">Label Preview ({lWidth}×{lHeight}mm)</p>
-                <div className="flex justify-center bg-stone-50 rounded-xl p-6 border border-stone-200">
+              <section className="bg-white border border-stone-200 rounded-2xl p-6 lg:p-8 transition-all duration-400 hover:border-stone-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+                <div className="mb-6">
+                  <p className="text-xs uppercase tracking-luxury text-stone-500 mb-2">
+                    Preview
+                  </p>
+                  <h2 className="font-serif text-2xl text-stone-900 tracking-tight">
+                    Label Sample
+                  </h2>
+                  <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+                    A scaled rendering at {lWidth}×{lHeight}mm with your alignment and barcode position.
+                  </p>
+                </div>
+
+                <div className="border-t border-stone-200 pt-8 flex justify-center bg-stone-50/60 -mx-6 lg:-mx-8 px-6 lg:px-8 py-10">
                   <div
                     style={{ width: previewW, height: previewH, textAlign: lAlignment as "left" | "center" | "right" }}
-                    className="bg-white border-2 border-stone-400 rounded relative overflow-hidden flex flex-col justify-between p-1 shadow-md"
+                    className="bg-white border border-stone-300 rounded relative overflow-hidden flex flex-col justify-between p-1 shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
                   >
                     <div style={{ fontSize: Math.max(7, previewScale * 2) }} className="font-bold truncate">Diamond Ring</div>
                     <div style={{ fontSize: Math.max(5, previewScale * 1.5) }} className="text-stone-400">NX-RNG-001</div>
@@ -474,53 +622,90 @@ function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your S
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex gap-3">
-                <button onClick={handleSaveLabel} disabled={isPending} className="flex-1 py-2.5 bg-amber-700 hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
-                  {isPending ? "Saving…" : "Save Label Printer"}
-                </button>
-                <button onClick={() => testPrint("label")} className="px-5 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50 transition-colors">
-                  🖨️ Test Label
-                </button>
-              </div>
-            </div>
+                <div className="mt-8 border-t border-stone-200 pt-6 flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={handleSaveLabel}
+                    disabled={isPending}
+                    className="nx-btn-primary inline-flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isPending ? (
+                      <>
+                        <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      "Save Label Printer"
+                    )}
+                  </button>
+                  <button
+                    onClick={() => testPrint("label")}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white transition-colors duration-200"
+                  >
+                    <PlayIcon className="w-4 h-4" />
+                    Test Label
+                  </button>
+                </div>
+              </section>
+            </>
           )}
 
           {/* ── OFFICE TAB ──────────────────────────────── */}
           {activeTab === "office" && (
-            <div className="space-y-6">
-              <div>
-                <label className={label}>Paper Size</label>
-                <div className="flex gap-2 flex-wrap">
-                  {["A4", "A5", "Letter", "Legal"].map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setOPaperSize(s)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                        oPaperSize === s ? "bg-nexpura-charcoal text-white border-amber-600" : "bg-white text-stone-600 border-stone-200 hover:border-amber-600"
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
+            <>
+              <section className="bg-white border border-stone-200 rounded-2xl p-6 lg:p-8 transition-all duration-400 hover:border-stone-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+                <div className="mb-6">
+                  <p className="text-xs uppercase tracking-luxury text-stone-500 mb-2">
+                    Office Printer
+                  </p>
+                  <h2 className="font-serif text-2xl text-stone-900 tracking-tight">
+                    Documents & Paper Size
+                  </h2>
+                  <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+                    Set the default paper size for invoices, appraisals, and repair tickets.
+                  </p>
                 </div>
-              </div>
 
-              <div className="bg-stone-50 border border-stone-200 rounded-xl p-4">
-                <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-2">Note</p>
-                <p className="text-sm text-stone-600">Office documents (invoices, appraisals, repair tickets) print via your browser&apos;s built-in print dialog. Make sure your office printer is set as the default in your OS settings.</p>
-              </div>
+                <div className="border-t border-stone-200 pt-6">
+                  <label className={labelCls}>Paper Size</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {["A4", "A5", "Letter", "Legal"].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setOPaperSize(s)}
+                        className={pillBtn(oPaperSize === s)}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
 
-              {/* A4 Document Preview */}
-              <div>
-                <p className="text-xs font-medium text-stone-500 mb-3 uppercase tracking-wider">Document Preview</p>
-                <div className="flex justify-center">
-                  <div className="w-48 h-64 border border-stone-300 rounded bg-white shadow-sm p-3 flex flex-col gap-2">
+                  <p className="text-sm text-stone-500 mt-6 leading-relaxed max-w-2xl">
+                    Office documents (invoices, appraisals, repair tickets) print via your browser&apos;s built-in print dialog. Make sure your office printer is set as the default in your operating system.
+                  </p>
+                </div>
+              </section>
+
+              {/* Document Preview */}
+              <section className="bg-white border border-stone-200 rounded-2xl p-6 lg:p-8 transition-all duration-400 hover:border-stone-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+                <div className="mb-6">
+                  <p className="text-xs uppercase tracking-luxury text-stone-500 mb-2">
+                    Preview
+                  </p>
+                  <h2 className="font-serif text-2xl text-stone-900 tracking-tight">
+                    Document Sample
+                  </h2>
+                  <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+                    A schematic of how your invoices will be laid out on {oPaperSize}.
+                  </p>
+                </div>
+
+                <div className="border-t border-stone-200 pt-8 flex justify-center bg-stone-50/60 -mx-6 lg:-mx-8 px-6 lg:px-8 py-10">
+                  <div className="w-48 h-64 border border-stone-200 rounded bg-white shadow-[0_4px_16px_rgba(0,0,0,0.06)] p-3 flex flex-col gap-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="w-16 h-3 bg-amber-700 rounded" />
+                        <div className="w-16 h-3 bg-nexpura-bronze/80 rounded-sm" />
                         <div className="w-10 h-1.5 bg-stone-200 rounded mt-1" />
                       </div>
                       <div className="text-right">
@@ -536,24 +721,39 @@ function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your S
                         </div>
                       ))}
                     </div>
-                    <div className="border-t-2 border-stone-300 mt-auto pt-1 flex justify-between">
+                    <div className="border-t border-stone-300 mt-auto pt-1.5 flex justify-between">
                       <div className="w-10 h-2 bg-stone-200 rounded" />
-                      <div className="w-12 h-2 bg-stone-600 rounded" />
+                      <div className="w-12 h-2 bg-stone-700 rounded" />
                     </div>
-                    <div className="text-center text-[6px] text-stone-300">{oPaperSize} Document</div>
+                    <div className="text-center text-[7px] tracking-luxury uppercase text-stone-300">{oPaperSize}</div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex gap-3">
-                <button onClick={handleSaveOffice} disabled={isPending} className="flex-1 py-2.5 bg-amber-700 hover:bg-[#7a6447] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
-                  {isPending ? "Saving…" : "Save Office Printer"}
-                </button>
-                <button onClick={() => testPrint("office")} className="px-5 py-2.5 border border-stone-200 rounded-xl text-sm text-stone-600 hover:bg-stone-50 transition-colors">
-                  🖨️ Test Print
-                </button>
-              </div>
-            </div>
+                <div className="mt-8 border-t border-stone-200 pt-6 flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={handleSaveOffice}
+                    disabled={isPending}
+                    className="nx-btn-primary inline-flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isPending ? (
+                      <>
+                        <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      "Save Office Printer"
+                    )}
+                  </button>
+                  <button
+                    onClick={() => testPrint("office")}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-nexpura-bronze/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white transition-colors duration-200"
+                  >
+                    <PlayIcon className="w-4 h-4" />
+                    Test Print
+                  </button>
+                </div>
+              </section>
+            </>
           )}
         </div>
       </div>
