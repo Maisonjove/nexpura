@@ -33,11 +33,23 @@ const contactSchema = z.object({
   // Joey 2026-05-04: demo-flow extras Kaitlyn's /contact?intent=demo
   // form already collects (and pricing-page → /contact passes plan).
   // All optional; only inserted into demo_requests when topic='demo'.
+  //
+  // Caps re-tuned 2026-05-04 (post-PR-#127 reproduction): the original
+  // num_stores cap of 20 chars rejected realistic answers like "We
+  // have 3 stores in NSW" (24 chars) — the form's placeholder shows
+  // "1" but the input is a free-text TEXT field, not a number, so
+  // visitors type phrases. current_pos / preferred_time same risk for
+  // verbose answers ("Lightspeed Retail (X-Series) considering
+  // Shopify", "We're available weekdays between 10am-4pm Sydney
+  // time"). Bumped these to 500 — generous enough to never reject a
+  // good-faith answer, still bounded against abuse, and the
+  // demo_requests TEXT columns have no DB-level length cap so storage
+  // isn't a concern.
   intent: z.string().max(20).optional(),
-  current_pos: z.string().max(120).optional(),
-  num_stores: z.string().max(20).optional(),
+  current_pos: z.string().max(500).optional(),
+  num_stores: z.string().max(500).optional(),
   pain_point: z.string().max(2000).optional(),
-  preferred_time: z.string().max(120).optional(),
+  preferred_time: z.string().max(500).optional(),
   country: z.string().max(120).optional(),
   phone: z.string().max(40).optional(),
   plan: z.string().max(40).optional(),
