@@ -4,19 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
-  Zap,
-  Cake,
-  Gift,
-  Heart,
-  Wrench,
-  UserMinus,
-  ShoppingBag,
-  Calendar,
-  PartyPopper,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
+  ArrowLeftIcon,
+  BoltIcon,
+  CakeIcon,
+  GiftIcon,
+  HeartIcon,
+  WrenchIcon,
+  UserMinusIcon,
+  ShoppingBagIcon,
+  CalendarIcon,
+  SparklesIcon,
+  ChevronDownIcon,
+} from "@heroicons/react/24/outline";
 import { toggleAutomation, updateAutomation } from "./actions";
 
 interface Automation {
@@ -55,16 +54,14 @@ interface AutomationConfig {
   name: string;
   description: string;
   icon: React.ElementType;
-  color: string;
   settings: AutomationSetting[];
 }
 
 const AUTOMATION_CONFIG: Record<string, AutomationConfig> = {
   birthday: {
     name: "Birthday Wishes",
-    description: "Send personalized birthday emails to customers",
-    icon: Cake,
-    color: "text-pink-400 bg-pink-500/10",
+    description: "Send personalised birthday emails to customers.",
+    icon: CakeIcon,
     settings: [
       {
         key: "days_before",
@@ -86,9 +83,8 @@ const AUTOMATION_CONFIG: Record<string, AutomationConfig> = {
   },
   anniversary: {
     name: "Anniversary Wishes",
-    description: "Celebrate customer anniversaries (first purchase date)",
-    icon: Heart,
-    color: "text-red-400 bg-red-500/10",
+    description: "Celebrate customer anniversaries from their first purchase date.",
+    icon: HeartIcon,
     settings: [
       {
         key: "days_before",
@@ -104,9 +100,8 @@ const AUTOMATION_CONFIG: Record<string, AutomationConfig> = {
   },
   repair_ready_reminder: {
     name: "Repair Ready Reminder",
-    description: "Remind customers to collect completed repairs",
-    icon: Wrench,
-    color: "text-amber-400 bg-amber-500/10",
+    description: "Remind customers to collect completed repairs.",
+    icon: WrenchIcon,
     settings: [
       {
         key: "days_after",
@@ -123,9 +118,8 @@ const AUTOMATION_CONFIG: Record<string, AutomationConfig> = {
   },
   reengagement: {
     name: "Re-engagement",
-    description: '"We miss you" emails for inactive customers',
-    icon: UserMinus,
-    color: "text-blue-400 bg-blue-500/10",
+    description: "A quiet \u201Cwe miss you\u201D note to customers who have drifted away.",
+    icon: UserMinusIcon,
     settings: [
       {
         key: "months_inactive",
@@ -146,9 +140,8 @@ const AUTOMATION_CONFIG: Record<string, AutomationConfig> = {
   },
   post_purchase: {
     name: "Post-Purchase Thank You",
-    description: "Automatic thank you email after purchase",
-    icon: ShoppingBag,
-    color: "text-green-400 bg-green-500/10",
+    description: "An automatic thank you note after each purchase.",
+    icon: ShoppingBagIcon,
     settings: [
       {
         key: "request_review",
@@ -159,37 +152,32 @@ const AUTOMATION_CONFIG: Record<string, AutomationConfig> = {
   },
   appointment_24h: {
     name: "Appointment Reminder (24h)",
-    description: "Remind customers 24 hours before appointment",
-    icon: Calendar,
-    color: "text-purple-400 bg-purple-500/10",
+    description: "Remind customers 24 hours before their appointment.",
+    icon: CalendarIcon,
     settings: [],
   },
   appointment_1h: {
     name: "Appointment Reminder (1h)",
-    description: "Remind customers 1 hour before appointment",
-    icon: Calendar,
-    color: "text-indigo-400 bg-indigo-500/10",
+    description: "A gentle nudge an hour before the appointment.",
+    icon: CalendarIcon,
     settings: [],
   },
   valentines: {
     name: "Valentine's Day",
-    description: "Send Valentine's Day promotional email (February)",
-    icon: Heart,
-    color: "text-rose-400 bg-rose-500/10",
+    description: "A seasonal Valentine's promotion sent in February.",
+    icon: HeartIcon,
     settings: [],
   },
   mothers_day: {
     name: "Mother's Day",
-    description: "Send Mother's Day promotional email (May)",
-    icon: Gift,
-    color: "text-fuchsia-400 bg-fuchsia-500/10",
+    description: "A seasonal Mother's Day promotion sent in May.",
+    icon: GiftIcon,
     settings: [],
   },
   christmas: {
     name: "Christmas",
-    description: "Send Christmas promotional email (December)",
-    icon: PartyPopper,
-    color: "text-emerald-400 bg-emerald-500/10",
+    description: "A festive Christmas promotion sent in December.",
+    icon: SparklesIcon,
     settings: [],
   },
 };
@@ -238,47 +226,56 @@ export default function AutomationsClient({ automations, templates, tenantId }: 
     const isEnabled = automation?.enabled ?? false;
     const settings = automation?.settings || {};
     const isExpanded = expanded === type;
+    const hasSettings = config.settings.length > 0;
     const Icon = config.icon;
 
     return (
       <div
         key={type}
-        className={`bg-[#1A1A1A] border rounded-lg overflow-hidden transition-colors ${
-          isEnabled ? "border-amber-500/30" : "border-white/[0.06]"
-        }`}
+        className="group bg-white border border-stone-200 rounded-2xl overflow-hidden transition-all duration-400 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 hover:-translate-y-0.5"
       >
-        <div className="p-4">
-          <div className="flex items-start gap-4">
-            <div className={`w-10 h-10 rounded-lg ${config.color} flex items-center justify-center flex-shrink-0`}>
-              <Icon className="w-5 h-5" />
+        <div className="p-6 sm:p-7">
+          <div className="flex items-start gap-5 sm:gap-6">
+            <div className="shrink-0 mt-1">
+              <Icon
+                className="w-6 h-6 text-stone-400 group-hover:text-nexpura-bronze transition-colors duration-300"
+                strokeWidth={1.5}
+              />
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3">
-                <h3 className="font-medium text-white">{config.name}</h3>
-                {isEnabled && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
-                    Active
-                  </span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h3 className="font-serif text-xl sm:text-[1.4rem] text-stone-900 leading-tight tracking-tight">
+                  {config.name}
+                </h3>
+                {isEnabled ? (
+                  <span className="nx-badge-success">Active</span>
+                ) : (
+                  <span className="nx-badge-neutral">Off</span>
                 )}
               </div>
-              <p className="text-sm text-stone-400 mt-0.5">{config.description}</p>
-            </div>
+              <p className="text-sm text-stone-500 mt-2 leading-relaxed max-w-xl">
+                {config.description}
+              </p>
 
-            <div className="flex items-center gap-3">
-              {config.settings.length > 0 && (
+              {hasSettings && (
                 <button
                   onClick={() => setExpanded(isExpanded ? null : type)}
-                  className="p-2 hover:bg-white/[0.05] rounded-lg text-stone-400 hover:text-white transition-colors"
+                  className="inline-flex items-center gap-1.5 mt-4 text-xs font-medium text-stone-500 hover:text-nexpura-bronze transition-colors duration-200"
+                  aria-expanded={isExpanded}
+                  aria-controls={`automation-settings-${type}`}
                 >
-                  {isExpanded ? (
-                    <ChevronDown className="w-4 h-4" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4" />
-                  )}
+                  {isExpanded ? "Hide settings" : "Configure"}
+                  <ChevronDownIcon
+                    className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                      isExpanded ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
               )}
+            </div>
 
+            <div className="shrink-0 mt-1">
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
@@ -287,19 +284,28 @@ export default function AutomationsClient({ automations, templates, tenantId }: 
                   disabled={loading === type}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-stone-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nexpura-bronze/40 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nexpura-bronze/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-nexpura-bronze"></div>
               </label>
             </div>
           </div>
         </div>
 
         {/* Settings Panel */}
-        {isExpanded && config.settings.length > 0 && (
-          <div className="px-4 pb-4 pt-2 border-t border-white/[0.06] bg-white/[0.01]">
-            <div className="space-y-3">
+        {isExpanded && hasSettings && (
+          <div
+            id={`automation-settings-${type}`}
+            className="px-6 sm:px-7 pb-6 sm:pb-7 pt-5 border-t border-stone-200 bg-stone-50/40"
+          >
+            <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-4">
+              Settings
+            </p>
+            <div className="space-y-4">
               {config.settings.map((setting) => (
-                <div key={setting.key} className="flex items-center justify-between">
-                  <label className="text-sm text-stone-300">{setting.label}</label>
+                <div
+                  key={setting.key}
+                  className="flex items-center justify-between gap-4 py-1"
+                >
+                  <label className="text-sm text-stone-700">{setting.label}</label>
 
                   {setting.type === "select" && (
                     <select
@@ -313,7 +319,7 @@ export default function AutomationsClient({ automations, templates, tenantId }: 
                         )
                       }
                       disabled={loading === type}
-                      className="px-3 py-1.5 bg-[#252525] border border-white/[0.06] rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
+                      className="px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm text-stone-900 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
                     >
                       {setting.options?.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -334,7 +340,7 @@ export default function AutomationsClient({ automations, templates, tenantId }: 
                         disabled={loading === type}
                         className="sr-only peer"
                       />
-                      <div className="w-9 h-5 bg-stone-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nexpura-bronze/40 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                      <div className="w-9 h-5 bg-stone-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nexpura-bronze/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-nexpura-bronze"></div>
                     </label>
                   )}
                 </div>
@@ -359,75 +365,130 @@ export default function AutomationsClient({ automations, templates, tenantId }: 
   ];
   const holidayAutomations: AutomationKey[] = ["valentines", "mothers_day", "christmas"];
 
+  const totalConfigured =
+    customerAutomations.length + operationalAutomations.length + holidayAutomations.length;
+  const totalEnabled = automations.filter((a) => a.enabled).length;
+
+  if (totalConfigured === 0) {
+    return (
+      <div className="bg-nexpura-ivory min-h-screen">
+        <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+          <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+            <BoltIcon
+              className="w-8 h-8 text-stone-300 mx-auto mb-5"
+              strokeWidth={1.5}
+            />
+            <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+              No automations available
+            </h3>
+            <p className="text-stone-500 text-sm mb-7 max-w-sm mx-auto leading-relaxed">
+              Configure email templates first, then set up automated campaigns to engage customers
+              automatically.
+            </p>
+            <Link href="/marketing" className="nx-btn-primary inline-flex items-center gap-2">
+              Back to Marketing
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href="/marketing"
-          className="p-2 hover:bg-white/[0.05] rounded-lg text-stone-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Zap className="w-6 h-6 text-amber-400" />
-            Marketing Automations
-          </h1>
-          <p className="text-stone-400 text-sm mt-1">
-            Set up automatic emails that engage customers at the right moment
+    <div className="bg-nexpura-ivory min-h-screen">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="flex items-start justify-between gap-6 mb-14">
+          <div className="flex items-start gap-4">
+            <Link
+              href="/marketing"
+              className="mt-2 text-stone-400 hover:text-nexpura-bronze transition-colors duration-300"
+              aria-label="Back to marketing"
+            >
+              <ArrowLeftIcon className="w-5 h-5" strokeWidth={1.5} />
+            </Link>
+            <div>
+              <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+                Marketing
+              </p>
+              <h1 className="font-serif text-4xl sm:text-5xl tracking-tight text-stone-900 leading-tight">
+                Automations
+              </h1>
+              <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+                Quiet, well-timed messages — birthdays, appointments, holidays — sent automatically
+                so the right note arrives at the right moment.
+              </p>
+              <div className="flex items-center gap-4 mt-6 text-sm">
+                <span className="text-stone-700">
+                  <span className="font-medium text-stone-900 tabular-nums">{totalEnabled}</span>{" "}
+                  active
+                </span>
+                <span className="text-stone-300">·</span>
+                <span className="text-stone-500 tabular-nums">
+                  {totalConfigured} available
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Customer Engagement */}
+        <div className="mb-14">
+          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-luxury mb-6">
+            Customer Engagement
+          </h2>
+          <div className="space-y-4">
+            {customerAutomations.map((type) => renderAutomationCard(type))}
+          </div>
+        </div>
+
+        {/* Operational */}
+        <div className="mb-14">
+          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-luxury mb-6">
+            Operational Reminders
+          </h2>
+          <div className="space-y-4">
+            {operationalAutomations.map((type) => renderAutomationCard(type))}
+          </div>
+        </div>
+
+        {/* Holiday */}
+        <div className="mb-14">
+          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-luxury mb-6">
+            Holiday Campaigns
+          </h2>
+          <div className="space-y-4">
+            {holidayAutomations.map((type) => renderAutomationCard(type))}
+          </div>
+        </div>
+
+        {/* Tips */}
+        <div className="bg-white border border-stone-200 rounded-2xl p-7 sm:p-8">
+          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+            Notes from the field
           </p>
+          <h3 className="font-serif text-xl sm:text-2xl text-stone-900 tracking-tight leading-tight mb-5">
+            What we've learned about automation
+          </h3>
+          <ul className="text-sm text-stone-600 space-y-3 leading-relaxed max-w-2xl">
+            <li className="flex gap-3">
+              <span className="text-nexpura-bronze mt-1.5 shrink-0 h-px w-3 bg-current" aria-hidden="true" />
+              <span>Birthday emails see roughly 3x the engagement of regular sends.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-nexpura-bronze mt-1.5 shrink-0 h-px w-3 bg-current" aria-hidden="true" />
+              <span>Repair-ready reminders cut uncollected pieces by around 60%.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-nexpura-bronze mt-1.5 shrink-0 h-px w-3 bg-current" aria-hidden="true" />
+              <span>Re-engagement notes recover roughly one in ten lapsed customers.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-nexpura-bronze mt-1.5 shrink-0 h-px w-3 bg-current" aria-hidden="true" />
+              <span>Appointment reminders meaningfully reduce no-shows.</span>
+            </li>
+          </ul>
         </div>
-      </div>
-
-      {/* Info Box */}
-      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-        <p className="text-blue-300 text-sm">
-          <strong>How it works:</strong> When enabled, these automations run automatically based
-          on customer data and events. Emails are personalized using your templates and sent via
-          your configured email settings.
-        </p>
-      </div>
-
-      {/* Customer Engagement */}
-      <div className="mb-8">
-        <h2 className="text-sm font-semibold text-stone-300 uppercase tracking-wide mb-4">
-          Customer Engagement
-        </h2>
-        <div className="space-y-3">
-          {customerAutomations.map((type) => renderAutomationCard(type))}
-        </div>
-      </div>
-
-      {/* Operational */}
-      <div className="mb-8">
-        <h2 className="text-sm font-semibold text-stone-300 uppercase tracking-wide mb-4">
-          Operational Reminders
-        </h2>
-        <div className="space-y-3">
-          {operationalAutomations.map((type) => renderAutomationCard(type))}
-        </div>
-      </div>
-
-      {/* Holiday */}
-      <div className="mb-8">
-        <h2 className="text-sm font-semibold text-stone-300 uppercase tracking-wide mb-4">
-          Holiday Campaigns
-        </h2>
-        <div className="space-y-3">
-          {holidayAutomations.map((type) => renderAutomationCard(type))}
-        </div>
-      </div>
-
-      {/* Tips */}
-      <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-lg p-4">
-        <h3 className="font-medium text-white mb-2">💡 Automation Tips</h3>
-        <ul className="text-sm text-stone-300 space-y-1">
-          <li>• Birthday emails have 3x higher engagement than regular emails</li>
-          <li>• Sending repair reminders reduces uncollected items by 60%</li>
-          <li>• Re-engagement campaigns can recover 10% of lapsed customers</li>
-          <li>• Enable appointment reminders to reduce no-shows</li>
-        </ul>
       </div>
     </div>
   );
