@@ -220,6 +220,15 @@ function isAlwaysPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/auth/signup") ||
     // Webhooks — signature is their auth, no session
     pathname.startsWith("/api/webhooks") ||
+    // WooCommerce webhook lives under /api/integrations/woocommerce/
+    // (not /api/webhooks/) for historical reasons. Same auth model:
+    // HMAC signature in x-wc-webhook-signature, verified inside the
+    // route. P2-F audit (Joey 2026-05-04) caught this falling through
+    // to the AAL2 401 gate — every Woo webhook had been silently
+    // rejected. Same /api/* over-reach pattern as the original
+    // PR #119 fix; this path was missed because it doesn't live under
+    // /api/webhooks/.
+    pathname.startsWith("/api/integrations/woocommerce/webhook") ||
     // Cron jobs — Vercel-signed token in headers
     pathname.startsWith("/api/cron") ||
     // Public per-token / per-tracking-id endpoints

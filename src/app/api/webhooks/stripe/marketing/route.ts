@@ -78,10 +78,11 @@ export async function POST(req: NextRequest) {
     // retry (they retry non-2xx + on timeouts) would fire a second
     // sendWhatsAppCampaign, double-broadcasting to the entire recipient
     // list + double-charging Twilio.
+    const eventKey = `stripe_marketing_event:${event.id}`;
     const { error: lockErr } = await admin
       .from("idempotency_locks")
       .insert({
-        key: `stripe_marketing_event:${event.id}`,
+        key: eventKey,
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         created_at: new Date().toISOString(),
       });
@@ -90,7 +91,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, duplicate: true });
     }
     if (lockErr) {
-      logger.warn("[stripe-marketing-webhook] idempotency lock unavailable, proceeding", { error: lockErr });
+      // P2-F audit (Joey 2026-05-04): pre-fix this proceeded on lock
+      // unavailable. A duplicate Stripe retry during a transient DB
+      // error would double-send the WhatsApp campaign + double-charge
+      // Twilio. Fail closed instead — Stripe retries on 5xx so the
+      // campaign send happens exactly once.
+      logger.error("[stripe-marketing-webhook] idempotency lock failed — refusing to proceed", { error: lockErr });
+      return NextResponse.json({ error: "idempotency_lock_failed" }, { status: 500 });
     }
 
     try {
@@ -121,15 +128,29 @@ export async function POST(req: NextRequest) {
 
     } catch (err) {
       logger.error("[stripe-marketing-webhook] Error processing:", err);
-      
+
       // Mark campaign as failed
-      await admin
+      const { error: failUpdErr } = await admin
         .from("whatsapp_campaigns")
         .update({
           status: "failed",
           updated_at: new Date().toISOString(),
         })
         .eq("id", campaignId);
+      if (failUpdErr) {
+        logger.error("[stripe-marketing-webhook] failed-status update failed", { campaignId, err: failUpdErr });
+      }
+
+      // P2-F audit (Joey 2026-05-04): pre-fix the idempotency lock
+      // was left in place after a processing failure → Stripe's
+      // retry hit the duplicate check and 200'd → campaign stayed
+      // "failed" forever, no recovery path. Drop the lock so the
+      // retry can re-enter the mutation block.
+      try {
+        await admin.from("idempotency_locks").delete().eq("key", eventKey);
+      } catch (rollbackErr) {
+        logger.error("[stripe-marketing-webhook] failed to roll back idempotency lock", { eventKey, err: rollbackErr });
+      }
 
       return NextResponse.json({ error: "Processing failed" }, { status: 500 });
     }

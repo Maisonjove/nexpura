@@ -14,7 +14,6 @@ import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { verifyWooSignature } from "@/lib/webhook-security";
 import { getIntegration } from "@/lib/integrations";
-import { eqOrValue } from "@/lib/db/or-escape";
 
 /** Escapes special PostgreSQL LIKE pattern characters to prevent injection */
 function sanitizeLikePattern(input: string): string {
@@ -165,9 +164,16 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, topic });
   } catch (err) {
+    // P2-F audit (Joey 2026-05-04): pre-fix this echoed
+    // err.message verbatim into the response body — risked
+    // leaking DB column names / internal paths to whatever can
+    // hit this endpoint (Woo's webhook source = the merchant's
+    // store, but a misconfigured webhook could land arbitrary
+    // bodies). Now: generic copy in the response, full err in
+    // the server log.
     logger.error("[woo-webhook] Error:", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Webhook processing failed" },
+      { error: "Webhook processing failed" },
       { status: 500 }
     );
   }
@@ -235,6 +241,28 @@ async function handleOrderWebhook(
     .eq("tenant_id", tenantId)
     .eq("import_metadata->>woo_order_id", String(order.id))
     .maybeSingle();
+
+  // P2-F audit (Joey 2026-05-04): order.deleted path. Pre-fix this
+  // fell through to the else-branch below and CREATED a phantom
+  // sale row from the deleted order's payload, because `existing`
+  // was null (we'd never imported it) and the early-return only
+  // covered event === "created". Now: explicit handling — soft-
+  // delete the matching sale if found, no-op otherwise.
+  if (event === "deleted") {
+    if (existing) {
+      const { error: delErr } = await admin
+        .from("sales")
+        .update({
+          status: "cancelled",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+      if (delErr) {
+        logger.error("[woo-webhook] order.deleted update failed", { tenantId, woo_order_id: order.id, err: delErr });
+      }
+    }
+    return;
+  }
 
   if (existing && event === "created") {
     // Already imported, skip
@@ -338,10 +366,30 @@ async function handleCustomerWebhook(
 ) {
   if (!customer.email) return;
 
+  // P2-F audit (Joey 2026-05-04): customer.deleted path. Pre-fix
+  // ALL events fell through to the upsert below — so a Woo customer
+  // deletion silently RE-CREATED the customer in our DB (undoing
+  // any prior soft-delete + restoring opted-out CRM contacts). Now:
+  // soft-delete on event=deleted, upsert otherwise.
+  if (event === "deleted") {
+    const { error: delErr } = await admin
+      .from("customers")
+      .update({
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("tenant_id", tenantId)
+      .eq("import_metadata->>woo_customer_id", String(customer.id ?? ""));
+    if (delErr) {
+      logger.error("[woo-webhook] customer.deleted soft-delete failed", { tenantId, woo_customer_id: customer.id, err: delErr });
+    }
+    return;
+  }
+
   // customers has no `source` column (verified 2026-04-25). Pre-fix
   // every Woo customer.* webhook PGRST204'd. Stash the source in the
   // existing import_metadata JSONB column.
-  await admin.from("customers").upsert(
+  const { error: upsertErr } = await admin.from("customers").upsert(
     {
       tenant_id: tenantId,
       email: customer.email,
@@ -356,6 +404,9 @@ async function handleCustomerWebhook(
     },
     { onConflict: "tenant_id,email", ignoreDuplicates: false }
   );
+  if (upsertErr) {
+    logger.error("[woo-webhook] customer upsert failed", { tenantId, woo_customer_id: customer.id, err: upsertErr });
+  }
 }
 
 function mapWooStatus(wooStatus: string): string {
