@@ -32,8 +32,13 @@ export default function ConsignmentSection({
   }
 
   return (
-    <CollapsibleSection title="Consignment Details" defaultOpen={status === "consignment"}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <CollapsibleSection
+      eyebrow="Step 07"
+      title="Consignment Details"
+      description="Owner, dates, and commission for a consigned piece."
+      defaultOpen={status === "consignment"}
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div>
           <FieldLabel htmlFor="consignor_name">Consignor Name</FieldLabel>
           <Input
@@ -43,7 +48,9 @@ export default function ConsignmentSection({
           />
         </div>
         <div>
-          <FieldLabel htmlFor="consignor_contact">Consignor Contact</FieldLabel>
+          <FieldLabel htmlFor="consignor_contact">
+            Consignor Contact
+          </FieldLabel>
           <Input
             id="consignor_contact"
             value={consignorContact}
@@ -69,7 +76,9 @@ export default function ConsignmentSection({
           />
         </div>
         <div>
-          <FieldLabel htmlFor="consignment_commission_pct">Commission (%)</FieldLabel>
+          <FieldLabel htmlFor="consignment_commission_pct">
+            Commission (%)
+          </FieldLabel>
           <Input
             id="consignment_commission_pct"
             type="number"

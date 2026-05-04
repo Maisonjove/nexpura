@@ -1,4 +1,4 @@
-import { SectionHeader, FieldLabel, Input } from "./FormElements";
+import { FormSection, FieldLabel, Input } from "./FormElements";
 import type { InventoryItem } from "./types";
 
 interface PricingSectionProps {
@@ -25,9 +25,12 @@ export default function PricingSection({
     : null;
 
   return (
-    <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-      <SectionHeader title="Pricing" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <FormSection
+      eyebrow="Step 02"
+      title="Pricing"
+      description="Set the cost, wholesale, and retail prices. The margin updates automatically."
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div>
           <FieldLabel htmlFor="cost_price">Cost Price</FieldLabel>
           <Input
@@ -43,10 +46,20 @@ export default function PricingSection({
         </div>
         <div>
           <FieldLabel htmlFor="wholesale_price">Wholesale Price</FieldLabel>
-          <Input id="wholesale_price" name="wholesale_price" type="number" step="0.01" min="0" placeholder="0.00" defaultValue={item?.wholesale_price?.toString() ?? ""} />
+          <Input
+            id="wholesale_price"
+            name="wholesale_price"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            defaultValue={item?.wholesale_price?.toString() ?? ""}
+          />
         </div>
         <div>
-          <FieldLabel htmlFor="retail_price" required>Retail Price</FieldLabel>
+          <FieldLabel htmlFor="retail_price" required>
+            Retail Price
+          </FieldLabel>
           <Input
             id="retail_price"
             name="retail_price"
@@ -61,23 +74,29 @@ export default function PricingSection({
         </div>
         <div>
           <FieldLabel htmlFor="margin_display">Profit Margin</FieldLabel>
-          <div className={`w-full px-3 py-2.5 text-sm border rounded-lg font-medium ${
-            margin !== null && parseFloat(margin) > 0
-              ? "border-green-200 bg-green-50 text-green-700"
-              : isUnderwater
-                ? "border-nexpura-oxblood/30 bg-nexpura-oxblood-bg text-nexpura-oxblood"
-                : "border-stone-200 bg-stone-50 text-stone-400"
-          }`}>
+          <div
+            className={`w-full px-4 py-2.5 text-sm rounded-lg border bg-stone-50/60 font-medium tabular-nums ${
+              margin !== null && parseFloat(margin) > 0
+                ? "border-stone-200 text-emerald-700"
+                : isUnderwater
+                  ? "border-stone-200 text-red-600"
+                  : "border-stone-200 text-stone-400"
+            }`}
+          >
             {margin !== null ? `${margin}%` : "—"}
           </div>
         </div>
       </div>
       {isUnderwater && (
-        <div className="mt-4 px-4 py-3 rounded-lg bg-nexpura-oxblood-bg border border-nexpura-oxblood/20 text-nexpura-oxblood text-sm">
-          <strong>Retail price is below cost.</strong> Selling at this price means a loss
-          per unit. Adjust the retail price up, or update cost if it was overstated.
+        <div
+          role="alert"
+          className="mt-6 border-l-2 border-red-400 pl-4 py-1 text-sm text-red-600 leading-relaxed"
+        >
+          <span className="font-medium">Retail price is below cost.</span>{" "}
+          Selling at this price means a loss per unit. Adjust retail up, or
+          update cost if it was overstated.
         </div>
       )}
-    </div>
+    </FormSection>
   );
 }

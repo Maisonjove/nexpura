@@ -2,11 +2,18 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import { PhotoIcon } from "@heroicons/react/24/outline";
 import { CollapsibleSection } from "./FormElements";
 import { createClient } from "@/lib/supabase/client";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB per spec
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+const ACCEPTED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
 
 interface Props {
   initialUrl?: string | null;
@@ -40,11 +47,15 @@ export default function ImageUploadSection({
     setError(null);
 
     if (file.size > MAX_BYTES) {
-      setError(`File is ${(file.size / 1024 / 1024).toFixed(1)} MB. Max is 10 MB.`);
+      setError(
+        `File is ${(file.size / 1024 / 1024).toFixed(1)} MB. Max is 10 MB.`
+      );
       return;
     }
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError(`Unsupported file type "${file.type}". Use JPEG, PNG, WEBP, or HEIC.`);
+      setError(
+        `Unsupported file type "${file.type}". Use JPEG, PNG, WEBP, or HEIC.`
+      );
       return;
     }
 
@@ -60,7 +71,9 @@ export default function ImageUploadSection({
         setError(upErr.message);
         return;
       }
-      const { data } = supabase.storage.from("inventory-photos").getPublicUrl(path);
+      const { data } = supabase.storage
+        .from("inventory-photos")
+        .getPublicUrl(path);
       setImageUrl(data.publicUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -75,26 +88,36 @@ export default function ImageUploadSection({
   }
 
   return (
-    <CollapsibleSection title="Images">
+    <CollapsibleSection
+      eyebrow="Step 08"
+      title="Images"
+      description="Upload a primary photo of the piece. JPEG, PNG, WEBP, or HEIC, up to 10 MB."
+    >
       <input type="hidden" name={fieldName} value={imageUrl ?? ""} />
       {imageUrl ? (
-        <div className="space-y-3">
-          <div className="relative w-40 h-40 rounded-lg overflow-hidden border border-stone-200">
-            <Image src={imageUrl} alt="Item" fill sizes="160px" className="object-cover" />
+        <div className="space-y-5">
+          <div className="relative w-44 h-44 rounded-xl overflow-hidden border border-stone-200 bg-stone-50">
+            <Image
+              src={imageUrl}
+              alt="Item"
+              fill
+              sizes="176px"
+              className="object-cover"
+            />
           </div>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => fileInput.current?.click()}
               disabled={uploading}
-              className="px-3 py-1.5 text-xs font-medium border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-50"
+              className="px-4 py-2 rounded-md text-[0.8125rem] font-medium border border-stone-200 text-stone-700 bg-white hover:bg-stone-50 hover:border-stone-300 transition-all duration-200 disabled:opacity-50"
             >
               {uploading ? "Uploading…" : "Replace"}
             </button>
             <button
               type="button"
               onClick={clearImage}
-              className="px-3 py-1.5 text-xs font-medium border border-stone-200 text-stone-500 rounded-lg hover:bg-stone-50"
+              className="px-4 py-2 rounded-md text-[0.8125rem] font-medium text-stone-500 hover:text-stone-700 transition-colors duration-200"
             >
               Remove
             </button>
@@ -105,18 +128,24 @@ export default function ImageUploadSection({
           type="button"
           onClick={() => fileInput.current?.click()}
           disabled={uploading}
-          className="w-full border-2 border-dashed border-stone-200 rounded-xl p-8 text-center bg-stone-50/50 hover:border-amber-600/40 hover:bg-amber-50/40 transition-colors disabled:opacity-50"
+          className="w-full border border-dashed border-stone-200 rounded-xl py-12 text-center bg-white hover:border-stone-300 hover:bg-stone-50/40 transition-all duration-200 disabled:opacity-50 group"
         >
-          <svg className="w-10 h-10 text-stone-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <p className="text-sm text-stone-500">
-            {uploading ? "Uploading…" : "Click to upload (JPEG, PNG, WEBP — max 10 MB)"}
+          <PhotoIcon
+            className="w-8 h-8 text-stone-300 group-hover:text-stone-400 mx-auto mb-4 transition-colors duration-300"
+            strokeWidth={1.5}
+          />
+          <p className="text-[0.8125rem] text-stone-500 leading-relaxed">
+            {uploading
+              ? "Uploading…"
+              : "Click to upload — JPEG, PNG, WEBP up to 10 MB"}
           </p>
         </button>
       )}
       {error && (
-        <p className="mt-2 text-sm text-nexpura-oxblood bg-nexpura-oxblood-bg border border-nexpura-oxblood/20 rounded-lg px-3 py-2">
+        <p
+          role="alert"
+          className="mt-4 border-l-2 border-red-400 pl-4 py-1 text-sm text-red-600 leading-relaxed"
+        >
           {error}
         </p>
       )}

@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition, useRef, useEffect } from "react";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { createInventoryItem, updateInventoryItem } from "./actions";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -51,7 +53,7 @@ export default function InventoryForm({ categories: initialCategories, item, mod
   useEffect(() => {
     if (aiMetalStone && formRef.current) {
       const form = formRef.current;
-      
+
       if (aiMetalStone.metalType) {
         const el = form.querySelector('[name="metal_type"]') as HTMLSelectElement;
         if (el) el.value = aiMetalStone.metalType.toLowerCase();
@@ -164,100 +166,159 @@ export default function InventoryForm({ categories: initialCategories, item, mod
     });
   }
 
+  const cancelHref = mode === "edit" && item ? `/inventory/${item.id}` : "/inventory";
+  const idleLabel = mode === "create" ? "Add Item" : "Save Changes";
+
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {error}
+    <div className="bg-nexpura-ivory min-h-screen">
+      <div className="max-w-[960px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="flex items-start justify-between gap-6 mb-14">
+          <div className="flex items-start gap-4">
+            <Link
+              href={cancelHref}
+              className="mt-2 text-stone-400 hover:text-nexpura-bronze transition-colors duration-300"
+              aria-label="Back"
+            >
+              <ArrowLeftIcon className="w-5 h-5" />
+            </Link>
+            <div>
+              <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+                Inventory
+              </p>
+              <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-[1.08] tracking-tight">
+                {mode === "create" ? "New Item" : "Edit Item"}
+              </h1>
+              <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+                {mode === "create"
+                  ? "Add a piece to your catalogue. The AI auto-categorize tool fills in metal, stone, and category from the name."
+                  : "Update the details of an existing piece. Stock quantity is adjusted from the item page."}
+              </p>
+            </div>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
+            <Link
+              href={cancelHref}
+              className="px-4 py-2 rounded-md text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors duration-200"
+            >
+              Cancel
+            </Link>
+            <SubmitButton
+              form="inventory-form"
+              isPending={isPending}
+              idleLabel={idleLabel}
+              pendingLabel="Saving…"
+              className="nx-btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
+            />
+          </div>
         </div>
-      )}
 
-      <BasicInfoSection
-        item={item}
-        mode={mode}
-        initialCategories={initialCategories}
-        itemType={itemType}
-        setItemType={setItemType}
-        jewelleryType={jewelleryType}
-        setJewelleryType={setJewelleryType}
-        status={status}
-        setStatus={setStatus}
-        isFeatured={isFeatured}
-        setIsFeatured={setIsFeatured}
-        categoryId={categoryId}
-        setCategoryId={setCategoryId}
-        setError={setError}
-        onAICategorize={setAiMetalStone}
-      />
+        <form
+          id="inventory-form"
+          ref={formRef}
+          onSubmit={handleSubmit}
+          className="space-y-8 lg:space-y-12"
+        >
+          {error && (
+            <div
+              role="alert"
+              className="border-l-2 border-red-400 pl-4 py-1 text-sm text-red-600 leading-relaxed"
+            >
+              {error}
+            </div>
+          )}
 
-      <PricingSection
-        item={item}
-        costPrice={costPrice}
-        setCostPrice={setCostPrice}
-        retailPrice={retailPrice}
-        setRetailPrice={setRetailPrice}
-      />
+          <BasicInfoSection
+            item={item}
+            mode={mode}
+            initialCategories={initialCategories}
+            itemType={itemType}
+            setItemType={setItemType}
+            jewelleryType={jewelleryType}
+            setJewelleryType={setJewelleryType}
+            status={status}
+            setStatus={setStatus}
+            isFeatured={isFeatured}
+            setIsFeatured={setIsFeatured}
+            categoryId={categoryId}
+            setCategoryId={setCategoryId}
+            setError={setError}
+            onAICategorize={setAiMetalStone}
+          />
 
-      <MetalStoneSection
-        item={item}
-        itemType={itemType}
-        jewelleryType={jewelleryType}
-        metalForm={metalForm}
-        setMetalForm={setMetalForm}
-        secondaryStones={secondaryStones}
-        setSecondaryStones={setSecondaryStones}
-      />
+          <PricingSection
+            item={item}
+            costPrice={costPrice}
+            setCostPrice={setCostPrice}
+            retailPrice={retailPrice}
+            setRetailPrice={setRetailPrice}
+          />
 
-      <CertificatesSection
-        certNumber={certNumber}
-        setCertNumber={setCertNumber}
-        gradingLab={gradingLab}
-        setGradingLab={setGradingLab}
-        grade={grade}
-        setGrade={setGrade}
-        reportUrl={reportUrl}
-        setReportUrl={setReportUrl}
-      />
+          <MetalStoneSection
+            item={item}
+            itemType={itemType}
+            jewelleryType={jewelleryType}
+            metalForm={metalForm}
+            setMetalForm={setMetalForm}
+            secondaryStones={secondaryStones}
+            setSecondaryStones={setSecondaryStones}
+          />
 
-      <StockSection
-        item={item}
-        mode={mode}
-        trackQuantity={trackQuantity}
-        setTrackQuantity={setTrackQuantity}
-        stockLocation={stockLocation}
-        setStockLocation={setStockLocation}
-        supplierInvoiceRef={supplierInvoiceRef}
-        setSupplierInvoiceRef={setSupplierInvoiceRef}
-      />
+          <CertificatesSection
+            certNumber={certNumber}
+            setCertNumber={setCertNumber}
+            gradingLab={gradingLab}
+            setGradingLab={setGradingLab}
+            grade={grade}
+            setGrade={setGrade}
+            reportUrl={reportUrl}
+            setReportUrl={setReportUrl}
+          />
 
-      <ConsignmentSection
-        status={status}
-        consignorName={consignorName}
-        setConsignorName={setConsignorName}
-        consignorContact={consignorContact}
-        setConsignorContact={setConsignorContact}
-        consignmentStart={consignmentStart}
-        setConsignmentStart={setConsignmentStart}
-        consignmentEnd={consignmentEnd}
-        setConsignmentEnd={setConsignmentEnd}
-        consignmentCommPct={consignmentCommPct}
-        setConsignmentCommPct={setConsignmentCommPct}
-      />
+          <StockSection
+            item={item}
+            mode={mode}
+            trackQuantity={trackQuantity}
+            setTrackQuantity={setTrackQuantity}
+            stockLocation={stockLocation}
+            setStockLocation={setStockLocation}
+            supplierInvoiceRef={supplierInvoiceRef}
+            setSupplierInvoiceRef={setSupplierInvoiceRef}
+          />
 
-      <ImageUploadSection initialUrl={item?.primary_image ?? null} />
+          <ConsignmentSection
+            status={status}
+            consignorName={consignorName}
+            setConsignorName={setConsignorName}
+            consignorContact={consignorContact}
+            setConsignorContact={setConsignorContact}
+            consignmentStart={consignmentStart}
+            setConsignmentStart={setConsignmentStart}
+            consignmentEnd={consignmentEnd}
+            setConsignmentEnd={setConsignmentEnd}
+            consignmentCommPct={consignmentCommPct}
+            setConsignmentCommPct={setConsignmentCommPct}
+          />
 
-      {/* Actions */}
-      <div className="flex items-center justify-between pb-12 pt-4">
-        <a href={mode === "edit" && item ? `/inventory/${item.id}` : "/inventory"} className="px-5 py-2.5 text-sm font-bold text-stone-400 uppercase tracking-wider border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors">
-          Cancel
-        </a>
-        <SubmitButton
-          isPending={isPending}
-          idleLabel={mode === "create" ? "Add Item" : "Save Changes"}
-          pendingLabel="Saving..."
-          className="px-8 py-2.5 bg-amber-700 text-white text-sm font-bold uppercase tracking-widest rounded-lg hover:bg-amber-800 disabled:opacity-60 transition-colors shadow-sm flex items-center gap-2"
-        />
+          <ImageUploadSection initialUrl={item?.primary_image ?? null} />
+
+          {/* Footer actions — visible on small screens, mirrors the header CTA */}
+          <div className="flex items-center justify-end gap-2 pt-2 sm:hidden">
+            <Link
+              href={cancelHref}
+              className="px-4 py-2 rounded-md text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors duration-200"
+            >
+              Cancel
+            </Link>
+            <SubmitButton
+              isPending={isPending}
+              idleLabel={idleLabel}
+              pendingLabel="Saving…"
+              className="nx-btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
+            />
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
   );
 }

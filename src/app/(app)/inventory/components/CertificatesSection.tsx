@@ -22,10 +22,17 @@ export default function CertificatesSection({
   setReportUrl,
 }: CertificatesSectionProps) {
   return (
-    <CollapsibleSection title="Certificates" badge={certNumber ? "Certified" : undefined}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+    <CollapsibleSection
+      eyebrow="Step 05"
+      title="Certificates"
+      description="Add a grading certificate from GIA, IGI, or another lab."
+      badge={certNumber ? "Certified" : undefined}
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div>
-          <FieldLabel htmlFor="certificate_number">Certificate Number</FieldLabel>
+          <FieldLabel htmlFor="certificate_number">
+            Certificate Number
+          </FieldLabel>
           <Input
             id="certificate_number"
             value={certNumber}

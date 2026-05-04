@@ -1,7 +1,12 @@
-import { SectionHeader, FieldLabel, Input, Select } from "./FormElements";
+import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import { FormSection, FieldLabel, Input, Select } from "./FormElements";
 import type { InventoryItem } from "./types";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface StockSectionProps {
   item?: InventoryItem;
@@ -25,40 +30,76 @@ export default function StockSection({
   setSupplierInvoiceRef,
 }: StockSectionProps) {
   return (
-    <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-      <SectionHeader title="Stock & Location" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <FormSection
+      eyebrow="Step 06"
+      title="Stock & Location"
+      description="Where this piece lives, who supplied it, and how it's tracked."
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {mode === "create" && (
           <div>
             <FieldLabel htmlFor="quantity">Initial Quantity</FieldLabel>
-            <Input id="quantity" name="quantity" type="number" min="0" placeholder="0" defaultValue="0" />
+            <Input
+              id="quantity"
+              name="quantity"
+              type="number"
+              min="0"
+              placeholder="0"
+              defaultValue="0"
+            />
           </div>
         )}
         <div>
           <TooltipProvider>
             <div className="flex items-center gap-1.5 mb-1.5">
-              <FieldLabel htmlFor="low_stock_threshold">Low Stock Threshold</FieldLabel>
+              <FieldLabel htmlFor="low_stock_threshold">
+                Low Stock Threshold
+              </FieldLabel>
               <Tooltip>
                 <TooltipTrigger>
-                  <HelpCircle className="h-3.5 w-3.5 text-stone-400" />
+                  <QuestionMarkCircleIcon className="h-3.5 w-3.5 text-stone-400" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
-                  <p>When the quantity falls at or below this number, this item will show as &quot;Low Stock&quot; and appear in your low stock alerts.</p>
+                  <p>
+                    When the quantity falls at or below this number, this item
+                    will show as &quot;Low Stock&quot; and appear in your low
+                    stock alerts.
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </div>
           </TooltipProvider>
-          <Input id="low_stock_threshold" name="low_stock_threshold" type="number" min="0" placeholder="1" defaultValue={item?.low_stock_threshold?.toString() ?? "1"} />
+          <Input
+            id="low_stock_threshold"
+            name="low_stock_threshold"
+            type="number"
+            min="0"
+            placeholder="1"
+            defaultValue={item?.low_stock_threshold?.toString() ?? "1"}
+          />
         </div>
-        <div className="flex items-center gap-3 pt-6">
-          <button
-            type="button"
-            onClick={() => setTrackQuantity(!trackQuantity)}
-            className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${trackQuantity ? "bg-amber-700" : "bg-stone-200"}`}
-          >
-            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${trackQuantity ? "translate-x-4" : "translate-x-0.5"}`} />
-          </button>
-          <span className="text-sm text-stone-900 font-medium">Track quantity</span>
+        <div className="flex items-end">
+          <label className="flex items-center gap-3 cursor-pointer pb-2.5 select-none">
+            <button
+              type="button"
+              onClick={() => setTrackQuantity(!trackQuantity)}
+              role="switch"
+              aria-checked={trackQuantity}
+              aria-label="Track quantity"
+              className={`w-9 h-5 rounded-full transition-colors duration-200 relative shrink-0 ${
+                trackQuantity ? "bg-nexpura-bronze" : "bg-stone-200"
+              }`}
+            >
+              <div
+                className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+                  trackQuantity ? "translate-x-4" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+            <span className="text-[0.8125rem] text-stone-700">
+              Track quantity
+            </span>
+          </label>
         </div>
 
         <div>
@@ -78,19 +119,38 @@ export default function StockSection({
 
         <div>
           <FieldLabel htmlFor="barcode">Barcode</FieldLabel>
-          <Input id="barcode" name="barcode" placeholder="Optional barcode" defaultValue={item?.barcode ?? ""} className="font-mono" />
+          <Input
+            id="barcode"
+            name="barcode"
+            placeholder="Optional barcode"
+            defaultValue={item?.barcode ?? ""}
+            className="font-mono"
+          />
         </div>
 
         <div>
           <FieldLabel htmlFor="supplier_name">Supplier Name</FieldLabel>
-          <Input id="supplier_name" name="supplier_name" placeholder="e.g. Gold Masters Ltd" defaultValue={item?.supplier_name ?? ""} />
+          <Input
+            id="supplier_name"
+            name="supplier_name"
+            placeholder="e.g. Gold Masters Ltd"
+            defaultValue={item?.supplier_name ?? ""}
+          />
         </div>
         <div>
           <FieldLabel htmlFor="supplier_sku">Supplier SKU</FieldLabel>
-          <Input id="supplier_sku" name="supplier_sku" placeholder="Supplier's reference" defaultValue={item?.supplier_sku ?? ""} className="font-mono" />
+          <Input
+            id="supplier_sku"
+            name="supplier_sku"
+            placeholder="Supplier's reference"
+            defaultValue={item?.supplier_sku ?? ""}
+            className="font-mono"
+          />
         </div>
         <div>
-          <FieldLabel htmlFor="supplier_invoice_ref">Supplier Invoice Ref</FieldLabel>
+          <FieldLabel htmlFor="supplier_invoice_ref">
+            Supplier Invoice Ref
+          </FieldLabel>
           <Input
             id="supplier_invoice_ref"
             value={supplierInvoiceRef}
@@ -99,6 +159,6 @@ export default function StockSection({
           />
         </div>
       </div>
-    </div>
+    </FormSection>
   );
 }
