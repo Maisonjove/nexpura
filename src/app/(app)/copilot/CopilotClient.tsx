@@ -1,6 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  SparklesIcon,
+  PaperAirplaneIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/24/outline";
 
 // Lazy-load DOMPurify on the client (Group 14 carryover from Group 12).
 type Sanitizer = (html: string) => string;
@@ -37,13 +42,13 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 function renderMarkdown(text: string, sanitize: Sanitizer | null) {
-  text = text.replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold text-stone-900 mt-3 mb-1">$1</h3>');
-  text = text.replace(/^## (.+)$/gm, '<h2 class="font-semibold text-lg font-semibold text-stone-900 mt-4 mb-2">$1</h2>');
-  text = text.replace(/^# (.+)$/gm, '<h1 class="font-semibold text-xl font-semibold text-stone-900 mt-4 mb-2">$1</h1>');
+  text = text.replace(/^### (.+)$/gm, '<h3 class="font-serif text-lg text-stone-900 mt-3 mb-1">$1</h3>');
+  text = text.replace(/^## (.+)$/gm, '<h2 class="font-serif text-xl text-stone-900 mt-4 mb-2">$1</h2>');
+  text = text.replace(/^# (.+)$/gm, '<h1 class="font-serif text-2xl text-stone-900 mt-4 mb-2">$1</h1>');
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-stone-900">$1</strong>');
-  text = text.replace(/^[\-\*] (.+)$/gm, '<li class="ml-4 list-disc text-stone-900/80">$1</li>');
+  text = text.replace(/^[\-\*] (.+)$/gm, '<li class="ml-4 list-disc text-stone-700">$1</li>');
   text = text.replace(/(<li[^>]*>.*<\/li>\n?)+/gm, '<ul class="space-y-1 my-2">$&</ul>');
-  text = text.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-stone-900/80">$1</li>');
+  text = text.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-stone-700">$1</li>');
   text = text.replace(/\n\n/g, '</p><p class="mb-2">');
   text = text.replace(/\n/g, '<br/>');
   const html = `<p class="mb-2">${text}</p>`;
@@ -114,7 +119,7 @@ export default function CopilotClient({ firstName, tenantId }: CopilotClientProp
         {
           id: `err-${Date.now()}`,
           role: "assistant",
-          content: "⚠️ I'm having trouble connecting. Please try again in a moment.",
+          content: "I'm having trouble connecting. Please try again in a moment.",
         },
       ]);
     } finally {
@@ -130,126 +135,135 @@ export default function CopilotClient({ firstName, tenantId }: CopilotClientProp
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-stone-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <span className="text-xl">🤖</span>
-          </div>
-          <div>
-            <h2 className="text-base font-semibold text-stone-900">AI Copilot</h2>
-            <p className="text-[11px] text-stone-500 uppercase tracking-widest font-medium">Business Insights</p>
-          </div>
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="mb-12">
+          <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+            AI
+          </p>
+          <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+            Copilot
+          </h1>
+          <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+            Your intelligent business insights assistant. Ask anything about your sales, customers, or operations.
+          </p>
         </div>
-        <div className="text-right hidden sm:block">
-          <p className="text-xs font-medium text-amber-700/70 italic">"Your data, your insights."</p>
-        </div>
-      </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-8 space-y-6">
-        {messages.length === 0 && !streamingContent ? (
-          <div className="max-w-2xl mx-auto space-y-8">
-            <div className="text-center space-y-3">
-              <h1 className="text-2xl font-semibold text-stone-900">Hey {firstName}, what would you like to know?</h1>
-              <p className="text-stone-500 text-sm">
-                I can help you understand your sales, identify trends, find your best customers, track repairs, and more.
-              </p>
-            </div>
+        {/* Chat Panel */}
+        <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col h-[calc(100vh-22rem)] min-h-[520px]">
+          {/* Chat Area */}
+          <div className="flex-1 overflow-y-auto px-6 sm:px-10 py-10">
+            {messages.length === 0 && !streamingContent ? (
+              <div className="max-w-2xl mx-auto space-y-10">
+                <div className="text-center space-y-4">
+                  <SparklesIcon className="w-8 h-8 text-stone-300 mx-auto" />
+                  <h2 className="font-serif text-3xl text-stone-900 tracking-tight">
+                    Hello {firstName}
+                  </h2>
+                  <p className="text-stone-500 text-sm leading-relaxed max-w-md mx-auto">
+                    Ask about your sales, identify trends, find your best customers, track repairs, and more.
+                  </p>
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {SUGGESTED_QUESTIONS.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => sendMessage(q)}
-                  className="text-left p-4 bg-white border border-stone-200 rounded-xl hover:border-amber-400 hover:bg-amber-50/30 transition-all text-sm text-stone-700 group"
-                >
-                  <span className="block font-medium group-hover:text-stone-900">{q}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="max-w-3xl mx-auto space-y-6">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                {msg.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center flex-shrink-0 mr-3 mt-1">
-                    <span className="text-sm">🤖</span>
+                <div>
+                  <p className="text-xs uppercase tracking-luxury text-stone-500 mb-4 text-center">
+                    Suggested questions
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {SUGGESTED_QUESTIONS.map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => sendMessage(q)}
+                        className="text-left p-4 bg-white border border-stone-200 rounded-xl hover:border-stone-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 text-sm text-stone-700 group"
+                      >
+                        <span className="block group-hover:text-stone-900">{q}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="max-w-3xl mx-auto space-y-5">
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed ${
+                        msg.role === "user"
+                          ? "bg-stone-100 text-stone-900 rounded-tr-sm"
+                          : "bg-white border border-stone-200 text-stone-900 rounded-tl-sm"
+                      }`}
+                    >
+                      {msg.role === "assistant" ? (
+                        <div className="prose-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content, sanitize) }} />
+                      ) : (
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {(streamingContent || isLoading) && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[85%] bg-white border border-stone-200 rounded-2xl rounded-tl-sm px-5 py-3 text-sm text-stone-900">
+                      {streamingContent ? (
+                        <div className="prose-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent, sanitize) }} />
+                      ) : (
+                        <div className="flex items-center gap-1.5 h-5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-bounce" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-bounce [animation-delay:0.2s]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-bounce [animation-delay:0.4s]" />
+                        </div>
+                      )}
+                      {streamingContent && (
+                        <span className="inline-block w-1.5 h-3.5 bg-nexpura-bronze animate-pulse ml-1 rounded-sm align-middle" />
+                      )}
+                    </div>
                   </div>
                 )}
-                <div className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-amber-600 text-white rounded-tr-sm shadow-md shadow-amber-600/20"
-                    : "bg-stone-50 border border-stone-200 text-stone-900 rounded-tl-sm"
-                }`}>
-                  {msg.role === "assistant" ? (
-                    <div className="prose-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content, sanitize) }} />
-                  ) : (
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {(streamingContent || isLoading) && (
-              <div className="flex justify-start">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center flex-shrink-0 mr-3 mt-1">
-                  <span className="text-sm">🤖</span>
-                </div>
-                <div className="max-w-[85%] bg-stone-50 border border-stone-200 rounded-2xl rounded-tl-sm px-5 py-3 text-sm text-stone-900">
-                  {streamingContent ? (
-                    <div className="prose-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent, sanitize) }} />
-                  ) : (
-                    <div className="flex items-center gap-1.5 h-5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce [animation-delay:0.2s]" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce [animation-delay:0.4s]" />
-                    </div>
-                  )}
-                  {streamingContent && <span className="inline-block w-1.5 h-3.5 bg-amber-600 animate-pulse ml-1 rounded-sm align-middle" />}
-                </div>
+                <div ref={messagesEndRef} />
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
-        )}
-      </div>
 
-      {/* Input Area */}
-      <div className="p-4 bg-white border-t border-stone-200">
-        <div className="max-w-3xl mx-auto">
-          <div className="relative flex items-end gap-3 bg-stone-50 border border-stone-200 rounded-2xl p-2 focus-within:border-amber-400 focus-within:ring-4 focus-within:ring-amber-500/10 transition-all">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask about your business..."
-              rows={1}
-              className="flex-1 bg-transparent text-sm text-stone-900 placeholder-stone-400 resize-none outline-none px-3 py-2 max-h-40 min-h-[40px]"
-              style={{ height: "auto" }}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-              }}
-              disabled={isLoading}
-            />
-            <button
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || isLoading}
-              className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </button>
+          {/* Input Area */}
+          <div className="px-6 sm:px-10 py-5 border-t border-stone-200 bg-white">
+            <div className="max-w-3xl mx-auto">
+              <div className="relative flex items-end gap-3 bg-white border border-stone-200 rounded-2xl p-2 focus-within:border-nexpura-bronze focus-within:ring-2 focus-within:ring-nexpura-bronze/20 transition-all duration-200">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask about your business..."
+                  rows={1}
+                  className="flex-1 bg-transparent text-sm text-stone-900 placeholder:text-stone-400 resize-none outline-none px-3 py-2 max-h-40 min-h-[40px]"
+                  style={{ height: "auto" }}
+                  onInput={(e) => {
+                    const el = e.currentTarget;
+                    el.style.height = "auto";
+                    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+                  }}
+                  disabled={isLoading}
+                />
+                <button
+                  onClick={() => sendMessage()}
+                  disabled={!input.trim() || isLoading}
+                  className="nx-btn-primary inline-flex items-center justify-center !px-3 !py-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Send message"
+                >
+                  {isLoading ? (
+                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <PaperAirplaneIcon className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-center text-[10px] text-stone-400 mt-3 uppercase tracking-luxury">
+                Shift + Enter for new line
+              </p>
+            </div>
           </div>
-          <p className="text-center text-[10px] text-stone-400 mt-2 uppercase tracking-widest font-medium">
-            Shift + Enter for new line
-          </p>
         </div>
       </div>
     </div>
