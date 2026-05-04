@@ -42,11 +42,14 @@ async function DemoRequestsBody() {
 
   return (
     <>
+      {/* KPI tiles double as deep-link filters — clicking "New" jumps to
+          ?status=new which the client component reads on mount. Joey
+          2026-05-04: prior build had these as static <div>s. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatTile label="New" value={counts.new} accent="amber" />
-        <StatTile label="Scheduled" value={counts.scheduled} accent="emerald" />
-        <StatTile label="Completed" value={counts.completed} accent="stone" />
-        <StatTile label="Declined" value={counts.declined} accent="stone" />
+        <StatTile label="New" value={counts.new} accent="amber" status="new" />
+        <StatTile label="Scheduled" value={counts.scheduled} accent="emerald" status="scheduled" />
+        <StatTile label="Completed" value={counts.completed} accent="stone" status="completed" />
+        <StatTile label="Declined" value={counts.declined} accent="stone" status="declined" />
       </div>
       {rows.length === 0 ? (
         <div className="bg-white rounded-xl border border-stone-200 p-12 text-center">
@@ -64,7 +67,17 @@ async function DemoRequestsBody() {
   );
 }
 
-function StatTile({ label, value, accent }: { label: string; value: number; accent: "amber" | "emerald" | "stone" }) {
+function StatTile({
+  label,
+  value,
+  accent,
+  status,
+}: {
+  label: string;
+  value: number;
+  accent: "amber" | "emerald" | "stone";
+  status: "new" | "scheduled" | "completed" | "declined";
+}) {
   const cls =
     accent === "amber"
       ? "text-amber-700"
@@ -72,10 +85,13 @@ function StatTile({ label, value, accent }: { label: string; value: number; acce
       ? "text-emerald-600"
       : "text-stone-900";
   return (
-    <div className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm">
+    <Link
+      href={`/admin/demo-requests?status=${status}`}
+      className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm hover:bg-stone-50 transition-colors block"
+    >
       <p className="text-xs text-stone-500 font-medium uppercase tracking-wide">{label}</p>
       <p className={`text-2xl font-semibold mt-1 ${cls}`}>{value}</p>
-    </div>
+    </Link>
   );
 }
 
