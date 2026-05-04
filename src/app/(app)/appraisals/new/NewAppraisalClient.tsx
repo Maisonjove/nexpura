@@ -29,7 +29,10 @@ export default function NewAppraisalClient({ customers }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [photos, setPhotos] = useState<string[]>([]);
+  // Two-state shape — bucket is private (cleanup #18). Persist paths,
+  // render display URLs.
+  const [photoPaths, setPhotoPaths] = useState<string[]>([]);
+  const [photoDisplayUrls, setPhotoDisplayUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
   async function handlePhotos(e: React.ChangeEvent<HTMLInputElement>) {
@@ -39,7 +42,8 @@ export default function NewAppraisalClient({ customers }: Props) {
     setError(null);
     try {
       const supabase = createClient();
-      const newUrls: string[] = [];
+      const newPaths: string[] = [];
+      const newDisplay: string[] = [];
       for (const file of files) {
         if (file.size > MAX_BYTES) {
           setError(`${file.name} is over 10 MB.`);
@@ -58,28 +62,39 @@ export default function NewAppraisalClient({ customers }: Props) {
           setError(upErr.message);
           continue;
         }
-        const { data } = supabase.storage.from("inventory-photos").getPublicUrl(path);
-        newUrls.push(data.publicUrl);
+        const { data, error: signErr } = await supabase.storage
+          .from("inventory-photos")
+          .createSignedUrl(path, 60 * 60);
+        if (signErr || !data?.signedUrl) {
+          setError(signErr?.message ?? "Could not generate display URL.");
+          continue;
+        }
+        newPaths.push(path);
+        newDisplay.push(data.signedUrl);
       }
-      setPhotos((prev) => [...prev, ...newUrls]);
+      setPhotoPaths((prev) => [...prev, ...newPaths]);
+      setPhotoDisplayUrls((prev) => [...prev, ...newDisplay]);
     } finally {
       setUploading(false);
       if (fileInput.current) fileInput.current.value = "";
     }
   }
 
-  function removePhoto(url: string) {
-    setPhotos((prev) => prev.filter((p) => p !== url));
+  function removePhoto(displayUrl: string) {
+    const idx = photoDisplayUrls.indexOf(displayUrl);
+    if (idx === -1) return;
+    setPhotoDisplayUrls((prev) => prev.filter((_, i) => i !== idx));
+    setPhotoPaths((prev) => prev.filter((_, i) => i !== idx));
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (photos.length === 0) {
+    if (photoPaths.length === 0) {
       setError("At least one photo is required for an appraisal.");
       return;
     }
     const fd = new FormData(e.currentTarget);
-    fd.set("images", JSON.stringify(photos));
+    fd.set("images", JSON.stringify(photoPaths));
     startTransition(async () => {
       try {
         const result = await createAppraisal(fd);
@@ -359,9 +374,9 @@ export default function NewAppraisalClient({ customers }: Props) {
             <p className="text-xs text-stone-500 mb-3">
               At least one photo is required. Up to 10 MB each. JPEG / PNG / WEBP / HEIC.
             </p>
-            {photos.length > 0 && (
+            {photoDisplayUrls.length > 0 && (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3">
-                {photos.map((url) => (
+                {photoDisplayUrls.map((url) => (
                   <div key={url} className="relative w-full aspect-square rounded-lg overflow-hidden border border-stone-200">
                     <Image src={url} alt="Appraisal photo" fill sizes="120px" className="object-cover" />
                     <button
@@ -383,7 +398,7 @@ export default function NewAppraisalClient({ customers }: Props) {
               className="w-full border-2 border-dashed border-stone-200 rounded-xl p-6 text-center bg-stone-50/50 hover:border-amber-600/40 hover:bg-amber-50/40 transition-colors disabled:opacity-50"
             >
               <p className="text-sm text-stone-500">
-                {uploading ? "Uploading…" : photos.length === 0 ? "Click to add photos (required)" : "Add more photos"}
+                {uploading ? "Uploading…" : photoPaths.length === 0 ? "Click to add photos (required)" : "Add more photos"}
               </p>
             </button>
             <input
@@ -401,7 +416,7 @@ export default function NewAppraisalClient({ customers }: Props) {
               isPending={isPending}
               idleLabel="Create Appraisal"
               pendingLabel="Creating…"
-              disabled={photos.length === 0}
+              disabled={photoPaths.length === 0}
               className="px-5 py-2.5 bg-[#8B7355] text-white text-sm font-medium rounded-lg hover:bg-[#7A6347] transition-colors disabled:opacity-50"
             />
             <Link
