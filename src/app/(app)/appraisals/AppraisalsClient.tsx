@@ -3,14 +3,30 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  PlusIcon,
+  XMarkIcon,
+  SparklesIcon,
+  MagnifyingGlassIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
 import { createAppraisal } from "./actions";
 import type { Appraisal } from "./actions";
 
-const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-stone-100 text-stone-600",
-  in_progress: "bg-amber-50 text-amber-700",
-  completed: "bg-amber-50 text-amber-700",
-  issued: "bg-green-50 text-green-700",
+const STATUS_BADGE: Record<string, string> = {
+  draft: "nx-badge-neutral",
+  in_progress: "nx-badge-warning",
+  completed: "nx-badge-warning",
+  issued: "nx-badge-success",
+  expired: "nx-badge-danger",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  in_progress: "In Progress",
+  completed: "Completed",
+  issued: "Issued",
+  expired: "Expired",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -22,7 +38,13 @@ const TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-interface Customer { id: string; first_name: string; last_name: string; email: string | null; phone: string | null; }
+interface Customer {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+}
 
 interface Props {
   appraisals: Appraisal[];
@@ -45,7 +67,12 @@ export default function AppraisalsClient({ appraisals, customers, tenantId }: Pr
     if (typeFilter !== "all" && a.appraisal_type !== typeFilter) return false;
     if (search) {
       const s = search.toLowerCase();
-      if (!a.customer_name.toLowerCase().includes(s) && !a.item_name.toLowerCase().includes(s) && !(a.appraisal_number ?? "").toLowerCase().includes(s)) return false;
+      if (
+        !a.customer_name.toLowerCase().includes(s) &&
+        !a.item_name.toLowerCase().includes(s) &&
+        !(a.appraisal_number ?? "").toLowerCase().includes(s)
+      )
+        return false;
     }
     return true;
   });
@@ -59,7 +86,10 @@ export default function AppraisalsClient({ appraisals, customers, tenantId }: Pr
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = await createAppraisal(fd);
-      if (result.error) { setError(result.error); return; }
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
       setShowForm(false);
       setError(null);
       router.push(`/appraisals/${result.id}`);
@@ -67,201 +97,416 @@ export default function AppraisalsClient({ appraisals, customers, tenantId }: Pr
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-10 px-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-stone-900">Appraisals & Valuations</h1>
-          <p className="text-sm text-stone-500 mt-0.5">Professional valuations for insurance, estate, and retail purposes</p>
-        </div>
-        <Link
-          href="/appraisals/new"
-          className="px-4 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium hover:bg-amber-800"
-        >
-          + New Appraisal
-        </Link>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        {[
-          { label: "Total", value: appraisals.length, icon: "📋" },
-          { label: "Draft / In Progress", value: appraisals.filter((a) => a.status === "draft" || a.status === "in_progress").length, icon: "✏️" },
-          { label: "Issued", value: appraisals.filter((a) => a.status === "issued").length, icon: "✓" },
-          { label: "Total Value Appraised", value: `$${totalValue.toLocaleString()}`, icon: "💎" },
-        ].map((k) => (
-          <div key={k.label} className="bg-white rounded-xl border border-stone-200 p-4">
-            <div className="text-xl mb-1">{k.icon}</div>
-            <div className="text-lg font-bold text-stone-900">{k.value}</div>
-            <div className="text-xs text-stone-500">{k.label}</div>
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="flex items-start justify-between gap-6 mb-14">
+          <div>
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Workshop
+            </p>
+            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-stone-900 leading-[1.05] tracking-tight">
+              Appraisals & Valuations
+            </h1>
+            <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+              Professional valuations for insurance, estate, and retail purposes.
+            </p>
           </div>
-        ))}
+          <button
+            onClick={() => setShowForm(true)}
+            className="nx-btn-primary inline-flex items-center gap-2 shrink-0"
+          >
+            <PlusIcon className="w-4 h-4" />
+            New Appraisal
+          </button>
+        </div>
+
+        {/* KPIs — horizontal stat strip over ivory with hairline dividers,
+            mirroring InvoiceListClient. Bare typography, no boxed cards. */}
+        <div className="mb-14 grid grid-cols-2 lg:grid-cols-4 gap-y-8 gap-x-6 lg:divide-x lg:divide-stone-200">
+          <div className="lg:px-8 lg:first:pl-0">
+            <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+              Total
+            </p>
+            <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
+              {appraisals.length}
+            </p>
+          </div>
+          <div className="lg:px-8">
+            <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+              Draft / In Progress
+            </p>
+            <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
+              {
+                appraisals.filter(
+                  (a) => a.status === "draft" || a.status === "in_progress"
+                ).length
+              }
+            </p>
+          </div>
+          <div className="lg:px-8">
+            <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+              Issued
+            </p>
+            <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
+              {appraisals.filter((a) => a.status === "issued").length}
+            </p>
+          </div>
+          <div className="lg:px-8 lg:last:pr-0">
+            <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3">
+              Total Value Appraised
+            </p>
+            <p className="font-serif text-4xl leading-none tracking-tight tabular-nums text-stone-900">
+              ${totalValue.toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3 mb-8">
+          <div className="relative flex-1 min-w-[240px]">
+            <MagnifyingGlassIcon className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search appraisals..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200 bg-white"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 bg-white focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+          >
+            <option value="all">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="issued">Issued</option>
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 bg-white focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+          >
+            <option value="all">All Types</option>
+            {Object.entries(TYPE_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* List */}
+        {filtered.length === 0 ? (
+          <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+            <SparklesIcon className="w-8 h-8 text-stone-300 mx-auto mb-5" />
+            <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+              {appraisals.length === 0
+                ? "No appraisals yet"
+                : "No appraisals match these filters"}
+            </h3>
+            <p className="text-stone-500 text-sm max-w-sm mx-auto leading-relaxed mb-7">
+              {appraisals.length === 0
+                ? "Create professional valuations for insurance, estate, or retail purposes."
+                : "Try adjusting your search or filters to find what you're looking for."}
+            </p>
+            {appraisals.length === 0 ? (
+              <button
+                onClick={() => setShowForm(true)}
+                className="nx-btn-primary inline-flex items-center gap-2"
+              >
+                <PlusIcon className="w-4 h-4" />
+                New Appraisal
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setTypeFilter("all");
+                }}
+                className="nx-btn-primary inline-flex items-center gap-2"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filtered.map((a) => {
+              const statusClass =
+                STATUS_BADGE[a.status] ?? "nx-badge-neutral";
+              const statusLabel =
+                STATUS_LABEL[a.status] ??
+                a.status.replace("_", " ");
+
+              return (
+                <Link
+                  key={a.id}
+                  href={`/appraisals/${a.id}`}
+                  className="group block bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
+                >
+                  <div className="flex items-start justify-between gap-6">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 flex-wrap mb-2.5">
+                        {a.appraisal_number && (
+                          <span className="font-mono text-xs text-stone-400 tabular-nums">
+                            {a.appraisal_number}
+                          </span>
+                        )}
+                        <span className={statusClass}>{statusLabel}</span>
+                        <span className="text-[0.6875rem] font-semibold text-stone-500 uppercase tracking-luxury">
+                          {TYPE_LABELS[a.appraisal_type] ?? a.appraisal_type}
+                        </span>
+                      </div>
+                      <h3 className="font-serif text-xl text-stone-900 leading-tight tracking-tight">
+                        {a.customer_name}
+                      </h3>
+                      <p className="text-sm text-stone-500 mt-1.5 leading-relaxed">
+                        {a.item_name}
+                      </p>
+                      {(a.metal || a.stone) && (
+                        <p className="text-xs text-stone-400 mt-1.5">
+                          {a.metal}
+                          {a.metal && a.stone ? " · " : ""}
+                          {a.stone}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-5 mt-4 text-xs text-stone-500 flex-wrap">
+                        <span>
+                          {new Date(a.appraisal_date).toLocaleDateString(
+                            "en-AU",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            }
+                          )}
+                        </span>
+                        {a.valid_until && (
+                          <span>
+                            Valid until{" "}
+                            <span className="text-stone-700">
+                              {new Date(a.valid_until).toLocaleDateString(
+                                "en-AU",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                }
+                              )}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-3 shrink-0">
+                      {a.appraised_value != null && (
+                        <div className="text-right">
+                          <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1.5">
+                            Value
+                          </p>
+                          <p className="font-serif text-2xl text-stone-900 leading-none tracking-tight tabular-nums">
+                            ${a.appraised_value.toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-400 group-hover:text-nexpura-bronze transition-colors duration-300">
+                        View
+                        <ArrowRightIcon className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search appraisals…"
-          className="flex-1 min-w-48 px-3 py-2 border border-stone-200 rounded-lg text-sm"
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-stone-200 rounded-lg text-sm"
-        >
-          <option value="all">All Statuses</option>
-          <option value="draft">Draft</option>
-          <option value="in_progress">In Progress</option>
-          <option value="completed">Completed</option>
-          <option value="issued">Issued</option>
-        </select>
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-3 py-2 border border-stone-200 rounded-lg text-sm"
-        >
-          <option value="all">All Types</option>
-          {Object.entries(TYPE_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* List */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-16 text-stone-400">
-          <div className="text-4xl mb-3">💎</div>
-          <p className="text-stone-600 font-medium">No appraisals yet</p>
-          <p className="text-sm mt-1">Create professional valuations for insurance, estate, or retail purposes</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((a) => (
-            <Link
-              key={a.id}
-              href={`/appraisals/${a.id}`}
-              className="block bg-white rounded-xl border border-stone-200 hover:border-amber-600/40 hover:shadow-sm transition-all p-5"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-stone-900">{a.item_name}</span>
-                    {a.appraisal_number && <span className="text-xs text-stone-400 font-mono">{a.appraisal_number}</span>}
-                    <span className="text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">{TYPE_LABELS[a.appraisal_type] ?? a.appraisal_type}</span>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-stone-400 flex-wrap">
-                    <span>👤 {a.customer_name}</span>
-                    {a.appraised_value && <span className="font-medium text-stone-600">💰 ${a.appraised_value.toLocaleString()}</span>}
-                    <span>{new Date(a.appraisal_date).toLocaleDateString("en-AU")}</span>
-                    {a.valid_until && <span>Valid until {new Date(a.valid_until).toLocaleDateString("en-AU")}</span>}
-                  </div>
-                  {a.metal && <div className="text-xs text-stone-400 mt-0.5">{a.metal}{a.stone ? ` · ${a.stone}` : ""}</div>}
-                </div>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${STATUS_STYLES[a.status] ?? "bg-stone-100 text-stone-600"}`}>
-                  {a.status.replace("_", " ")}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* New Appraisal Form Modal */}
+      {/* New Appraisal Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 overflow-y-auto py-8">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
-              <h2 className="text-base font-semibold text-stone-900">New Appraisal</h2>
-              <button onClick={() => setShowForm(false)} className="text-stone-400 hover:text-stone-600">✕</button>
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto py-8">
+          <div className="bg-white border border-stone-200 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.12)] w-full max-w-2xl my-auto">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-stone-200">
+              <h2 className="font-serif text-2xl text-stone-900">
+                New Appraisal
+              </h2>
+              <button
+                onClick={() => setShowForm(false)}
+                className="text-stone-400 hover:text-stone-700 transition-colors duration-200"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
             </div>
+
             <form onSubmit={handleSubmit} className="p-6">
               <div className="grid grid-cols-2 gap-4">
                 {/* Client section */}
                 <div className="col-span-2">
-                  <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Client Details</h3>
+                  <h3 className="text-[0.6875rem] font-semibold text-stone-500 uppercase tracking-luxury mb-3">
+                    Client Details
+                  </h3>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Customer</label>
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Customer
+                  </label>
                   <select
                     name="customer_id"
                     onChange={(e) => {
-                      const c = customers.find((c) => c.id === e.target.value);
+                      const c = customers.find(
+                        (c) => c.id === e.target.value
+                      );
                       setSelectedCustomer(c ?? null);
                     }}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 bg-white focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
                   >
-                    <option value="">Select or enter manually…</option>
+                    <option value="">Select or enter manually...</option>
                     {customers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>
+                      <option key={c.id} value={c.id}>
+                        {c.first_name} {c.last_name}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Customer Name *</label>
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Customer Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     name="customer_name"
                     required
-                    defaultValue={selectedCustomer ? `${selectedCustomer.first_name} ${selectedCustomer.last_name}` : ""}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                    defaultValue={
+                      selectedCustomer
+                        ? `${selectedCustomer.first_name} ${selectedCustomer.last_name}`
+                        : ""
+                    }
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Email</label>
-                  <input name="customer_email" type="email" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Email
+                  </label>
+                  <input
+                    name="customer_email"
+                    type="email"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Phone</label>
-                  <input name="customer_phone" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Phone
+                  </label>
+                  <input
+                    name="customer_phone"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
 
                 {/* Item section */}
                 <div className="col-span-2 mt-2">
-                  <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Item Details</h3>
+                  <h3 className="text-[0.6875rem] font-semibold text-stone-500 uppercase tracking-luxury mb-3">
+                    Item Details
+                  </h3>
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Item Name *</label>
-                  <input name="item_name" required className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" placeholder="e.g. 18ct Yellow Gold Diamond Solitaire Ring" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Item Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="item_name"
+                    required
+                    placeholder="e.g. 18ct Yellow Gold Diamond Solitaire Ring"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Metal</label>
-                  <input name="metal" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" placeholder="18ct Yellow Gold…" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Metal
+                  </label>
+                  <input
+                    name="metal"
+                    placeholder="18ct Yellow Gold..."
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Purity / Hallmark</label>
-                  <input name="metal_purity" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" placeholder="750, 925, 999…" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Purity / Hallmark
+                  </label>
+                  <input
+                    name="metal_purity"
+                    placeholder="750, 925, 999..."
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Stone</label>
-                  <input name="stone" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" placeholder="Diamond, Ruby…" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Stone
+                  </label>
+                  <input
+                    name="stone"
+                    placeholder="Diamond, Ruby..."
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Stone Carat</label>
-                  <input name="stone_carat" type="number" step="0.01" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Stone Carat
+                  </label>
+                  <input
+                    name="stone_carat"
+                    type="number"
+                    step="0.01"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200 tabular-nums"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Condition</label>
-                  <select name="condition" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm">
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Condition
+                  </label>
+                  <select
+                    name="condition"
+                    defaultValue="good"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 bg-white focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  >
                     <option value="excellent">Excellent</option>
                     <option value="very_good">Very Good</option>
-                    <option value="good" selected>Good</option>
+                    <option value="good">Good</option>
                     <option value="fair">Fair</option>
                     <option value="poor">Poor</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Hallmarks</label>
-                  <input name="hallmarks" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Hallmarks
+                  </label>
+                  <input
+                    name="hallmarks"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
 
                 {/* Appraisal section */}
                 <div className="col-span-2 mt-2">
-                  <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Appraisal</h3>
+                  <h3 className="text-[0.6875rem] font-semibold text-stone-500 uppercase tracking-luxury mb-3">
+                    Appraisal
+                  </h3>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Type</label>
-                  <select name="appraisal_type" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm">
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Type
+                  </label>
+                  <select
+                    name="appraisal_type"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 bg-white focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  >
                     <option value="insurance">Insurance</option>
                     <option value="estate">Estate</option>
                     <option value="retail">Retail</option>
@@ -271,44 +516,110 @@ export default function AppraisalsClient({ appraisals, customers, tenantId }: Pr
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Appraisal Date</label>
-                  <input name="appraisal_date" type="date" defaultValue={new Date().toISOString().split("T")[0]} className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Appraisal Date
+                  </label>
+                  <input
+                    name="appraisal_date"
+                    type="date"
+                    defaultValue={new Date().toISOString().split("T")[0]}
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Appraised Value (AUD)</label>
-                  <input name="appraised_value" type="number" step="0.01" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" placeholder="0.00" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Appraised Value (AUD)
+                  </label>
+                  <input
+                    name="appraised_value"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200 tabular-nums"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Replacement Value (AUD)</label>
-                  <input name="replacement_value" type="number" step="0.01" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" placeholder="0.00" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Replacement Value (AUD)
+                  </label>
+                  <input
+                    name="replacement_value"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200 tabular-nums"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Appraiser Name</label>
-                  <input name="appraiser_name" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Appraiser Name
+                  </label>
+                  <input
+                    name="appraiser_name"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Licence / Qualifications</label>
-                  <input name="appraiser_licence" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Licence / Qualifications
+                  </label>
+                  <input
+                    name="appraiser_licence"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Fee (AUD)</label>
-                  <input name="fee" type="number" step="0.01" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" placeholder="0.00" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Fee (AUD)
+                  </label>
+                  <input
+                    name="fee"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200 tabular-nums"
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Valid Until</label>
-                  <input name="valid_until" type="date" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Valid Until
+                  </label>
+                  <input
+                    name="valid_until"
+                    type="date"
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+                  />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Notes</label>
-                  <textarea name="notes" rows={2} className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm resize-none" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    Notes
+                  </label>
+                  <textarea
+                    name="notes"
+                    rows={2}
+                    className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200 resize-none"
+                  />
                 </div>
               </div>
 
-              {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
-              <div className="flex gap-2 mt-5">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-3 py-2 border border-stone-200 text-stone-600 rounded-lg text-sm">Cancel</button>
-                <button type="submit" disabled={isPending} className="flex-1 px-3 py-2 bg-amber-700 text-white rounded-lg text-sm font-medium disabled:opacity-60">
-                  {isPending ? "Creating…" : "Create Appraisal"}
+              {error && (
+                <p className="text-xs text-red-500 mt-4">{error}</p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-5 mt-5 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2 rounded-md text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="nx-btn-primary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? "Creating..." : "Create Appraisal"}
                 </button>
               </div>
             </form>
