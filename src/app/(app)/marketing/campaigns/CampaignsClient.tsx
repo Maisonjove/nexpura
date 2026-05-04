@@ -4,17 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Plus,
-  Mail,
-  Search,
-  MoreVertical,
-  Calendar,
-  Send,
-  Copy,
-  Trash2,
-  Edit,
-  Eye,
-} from "lucide-react";
+  PlusIcon,
+  EnvelopeIcon,
+  MagnifyingGlassIcon,
+  EllipsisVerticalIcon,
+  CalendarIcon,
+  PaperAirplaneIcon,
+  DocumentDuplicateIcon,
+  TrashIcon,
+  PencilSquareIcon,
+  EyeIcon,
+} from "@heroicons/react/24/outline";
 import { deleteCampaign, duplicateCampaign, sendCampaignNow } from "./actions";
 
 interface Campaign {
@@ -52,6 +52,33 @@ interface Props {
   tenantId: string;
 }
 
+const STATUS_FILTERS: { value: string; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "draft", label: "Draft" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "sent", label: "Sent" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+function statusBadgeClass(status: string): string {
+  switch (status) {
+    case "sent":
+      return "nx-badge-success";
+    case "sending":
+    case "scheduled":
+      return "nx-badge-warning";
+    case "cancelled":
+      return "nx-badge-danger";
+    default:
+      return "nx-badge-neutral";
+  }
+}
+
+function statusLabel(status: string): string {
+  if (!status) return "";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 export default function CampaignsClient({ campaigns, segments, templates, tenantId }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -67,13 +94,13 @@ export default function CampaignsClient({ campaigns, segments, templates, tenant
     return matchesSearch && matchesStatus;
   });
 
-  const statusColors: Record<string, string> = {
-    draft: "bg-stone-500/20 text-stone-400",
-    scheduled: "bg-blue-500/20 text-blue-400",
-    sending: "bg-amber-500/20 text-amber-400",
-    sent: "bg-green-500/20 text-green-400",
-    cancelled: "bg-red-500/20 text-red-400",
-  };
+  // Aggregate stats across sent campaigns for the stat strip
+  const sentCampaigns = campaigns.filter((c) => c.status === "sent");
+  const totalSent = sentCampaigns.reduce((acc, c) => acc + (c.stats?.sent || 0), 0);
+  const totalOpened = sentCampaigns.reduce((acc, c) => acc + (c.stats?.opened || 0), 0);
+  const totalClicked = sentCampaigns.reduce((acc, c) => acc + (c.stats?.clicked || 0), 0);
+  const openRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
+  const clickRate = totalSent > 0 ? Math.round((totalClicked / totalSent) * 100) : 0;
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this campaign? This cannot be undone.")) return;
@@ -121,134 +148,181 @@ export default function CampaignsClient({ campaigns, segments, templates, tenant
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Email Campaigns</h1>
-          <p className="text-stone-400 text-sm mt-1">
-            Create and manage your email marketing campaigns
-          </p>
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="flex items-start justify-between gap-6 mb-14">
+          <div>
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Marketing
+            </p>
+            <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+              Email Campaigns
+            </h1>
+            <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+              Create and manage your email marketing campaigns.
+            </p>
+          </div>
+          <Link
+            href="/marketing/campaigns/new"
+            className="nx-btn-primary inline-flex items-center gap-2 shrink-0"
+          >
+            <PlusIcon className="w-4 h-4" />
+            New campaign
+          </Link>
         </div>
-        <Link
-          href="/marketing/campaigns/new"
-          className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          New Campaign
-        </Link>
-      </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
-          <input
-            type="text"
-            placeholder="Search campaigns..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-[#1A1A1A] border border-white/[0.06] rounded-lg text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 bg-[#1A1A1A] border border-white/[0.06] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40"
-        >
-          <option value="all">All Status</option>
-          <option value="draft">Draft</option>
-          <option value="scheduled">Scheduled</option>
-          <option value="sent">Sent</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-      </div>
+        {/* Stat Strip */}
+        {sentCampaigns.length > 0 && (
+          <div className="bg-white border border-stone-200 rounded-2xl mb-10">
+            <div className="grid grid-cols-3 divide-x divide-stone-200">
+              <div className="p-6 lg:p-8">
+                <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+                  Sent
+                </p>
+                <p className="font-serif text-4xl text-stone-900 tabular-nums tracking-tight">
+                  {totalSent.toLocaleString()}
+                </p>
+              </div>
+              <div className="p-6 lg:p-8">
+                <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+                  Open Rate
+                </p>
+                <p className="font-serif text-4xl text-stone-900 tabular-nums tracking-tight">
+                  {openRate}%
+                </p>
+              </div>
+              <div className="p-6 lg:p-8">
+                <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+                  Click Rate
+                </p>
+                <p className="font-serif text-4xl text-stone-900 tabular-nums tracking-tight">
+                  {clickRate}%
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
-      {/* Campaigns List */}
-      {filteredCampaigns.length === 0 ? (
-        <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-lg p-12 text-center">
-          <Mail className="w-12 h-12 text-stone-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No campaigns found</h3>
-          <p className="text-stone-400 text-sm mb-6">
-            {search || statusFilter !== "all"
-              ? "Try adjusting your filters"
-              : "Create your first email campaign to get started"}
-          </p>
-          {!search && statusFilter === "all" && (
-            <Link
-              href="/marketing/campaigns/new"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Create Campaign
-            </Link>
-          )}
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+          <div className="relative flex-1">
+            <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <input
+              type="text"
+              placeholder="Search campaigns..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-stone-200 bg-white text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {STATUS_FILTERS.map((opt) => {
+              const active = statusFilter === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setStatusFilter(opt.value)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 ${
+                    active
+                      ? "bg-stone-900 text-white"
+                      : "bg-white border border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      ) : (
-        <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-lg overflow-hidden">
-          <div className="divide-y divide-white/[0.06]">
+
+        {/* Campaigns List */}
+        {filteredCampaigns.length === 0 ? (
+          <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+            <EnvelopeIcon className="w-8 h-8 text-stone-300 mx-auto mb-5" />
+            <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+              No campaigns found
+            </h3>
+            <p className="text-stone-500 text-sm mb-7 max-w-sm mx-auto leading-relaxed">
+              {search || statusFilter !== "all"
+                ? "Try adjusting your filters to see more campaigns."
+                : "Create your first email campaign to get started."}
+            </p>
+            {!search && statusFilter === "all" && (
+              <Link
+                href="/marketing/campaigns/new"
+                className="nx-btn-primary inline-flex items-center gap-2"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Create campaign
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
             {filteredCampaigns.map((campaign) => (
               <div
                 key={campaign.id}
-                className="p-4 hover:bg-white/[0.02] transition-colors"
+                className="group bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
               >
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-5 h-5 text-blue-400" />
+                <div className="flex items-start gap-5">
+                  <div className="shrink-0 mt-1">
+                    <EnvelopeIcon className="w-6 h-6 text-stone-400 group-hover:text-nexpura-bronze transition-colors duration-300" />
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center flex-wrap gap-3">
                       <Link
                         href={`/marketing/campaigns/${campaign.id}`}
-                        className="font-medium text-white hover:text-amber-400 truncate"
+                        className="font-serif text-xl text-stone-900 leading-tight truncate hover:text-nexpura-bronze transition-colors duration-200"
                       >
                         {campaign.name}
                       </Link>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          statusColors[campaign.status] || statusColors.draft
-                        }`}
-                      >
-                        {campaign.status}
+                      <span className={statusBadgeClass(campaign.status)}>
+                        {statusLabel(campaign.status)}
                       </span>
                     </div>
-                    <p className="text-sm text-stone-400 truncate mt-0.5">
+                    <p className="text-sm text-stone-500 truncate mt-1.5 leading-relaxed">
                       {campaign.subject}
                     </p>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-stone-500">
-                      {campaign.status === "sent" ? (
+                    <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-4 text-xs text-stone-500">
+                      {campaign.status === "sent" && campaign.sent_at ? (
                         <>
-                          <span>Sent {formatDate(campaign.sent_at!)}</span>
-                          <span>•</span>
-                          <span>{campaign.stats.sent} sent</span>
-                          <span>•</span>
-                          <span>
+                          <span>Sent {formatDate(campaign.sent_at)}</span>
+                          <span className="text-stone-300">•</span>
+                          <span className="tabular-nums">
+                            {campaign.stats.sent} sent
+                          </span>
+                          <span className="text-stone-300">•</span>
+                          <span className="tabular-nums">
                             {campaign.stats.sent > 0
-                              ? Math.round((campaign.stats.opened / campaign.stats.sent) * 100)
+                              ? Math.round(
+                                  (campaign.stats.opened / campaign.stats.sent) * 100
+                                )
                               : 0}
                             % opened
                           </span>
                         </>
-                      ) : campaign.status === "scheduled" ? (
-                        <>
-                          <Calendar className="w-3 h-3" />
-                          <span>Scheduled for {formatDate(campaign.scheduled_at!)}</span>
-                        </>
+                      ) : campaign.status === "scheduled" && campaign.scheduled_at ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <CalendarIcon className="w-3.5 h-3.5" />
+                          Scheduled for {formatDate(campaign.scheduled_at)}
+                        </span>
                       ) : (
                         <span>Created {formatDate(campaign.created_at)}</span>
                       )}
                     </div>
                   </div>
 
-                  <div className="relative">
+                  <div className="relative shrink-0">
                     <button
                       onClick={() =>
                         setShowMenu(showMenu === campaign.id ? null : campaign.id)
                       }
-                      className="p-2 hover:bg-white/[0.05] rounded-lg text-stone-400 hover:text-white transition-colors"
+                      className="p-2 rounded-lg text-stone-400 hover:text-nexpura-bronze hover:bg-stone-50 transition-colors duration-200"
+                      aria-label="Campaign actions"
                     >
-                      <MoreVertical className="w-4 h-4" />
+                      <EllipsisVerticalIcon className="w-5 h-5" />
                     </button>
 
                     {showMenu === campaign.id && (
@@ -257,51 +331,54 @@ export default function CampaignsClient({ campaigns, segments, templates, tenant
                           className="fixed inset-0 z-10"
                           onClick={() => setShowMenu(null)}
                         />
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-[#252525] border border-white/[0.1] rounded-lg shadow-xl z-20 py-1">
+                        <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-stone-200 rounded-xl shadow-[0_12px_32px_rgba(0,0,0,0.08)] z-20 py-1.5">
                           <Link
                             href={`/marketing/campaigns/${campaign.id}`}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-stone-300 hover:bg-white/[0.05] hover:text-white"
+                            className="flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors duration-150"
                           >
-                            <Eye className="w-4 h-4" />
-                            View Details
+                            <EyeIcon className="w-4 h-4 text-stone-400" />
+                            View details
                           </Link>
                           {campaign.status !== "sent" &&
                             campaign.status !== "sending" && (
                               <>
                                 <Link
                                   href={`/marketing/campaigns/${campaign.id}/edit`}
-                                  className="flex items-center gap-2 px-3 py-2 text-sm text-stone-300 hover:bg-white/[0.05] hover:text-white"
+                                  className="flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors duration-150"
                                 >
-                                  <Edit className="w-4 h-4" />
+                                  <PencilSquareIcon className="w-4 h-4 text-stone-400" />
                                   Edit
                                 </Link>
                                 <button
                                   onClick={() => handleSendNow(campaign.id)}
                                   disabled={loading === campaign.id}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-green-400 hover:bg-white/[0.05] disabled:opacity-50"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 hover:text-stone-900 disabled:opacity-50 transition-colors duration-150"
                                 >
-                                  <Send className="w-4 h-4" />
-                                  {loading === campaign.id ? "Sending..." : "Send Now"}
+                                  <PaperAirplaneIcon className="w-4 h-4 text-stone-400" />
+                                  {loading === campaign.id ? "Sending..." : "Send now"}
                                 </button>
                               </>
                             )}
                           <button
                             onClick={() => handleDuplicate(campaign.id)}
                             disabled={loading === campaign.id}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-stone-300 hover:bg-white/[0.05] hover:text-white disabled:opacity-50"
+                            className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 hover:text-stone-900 disabled:opacity-50 transition-colors duration-150"
                           >
-                            <Copy className="w-4 h-4" />
+                            <DocumentDuplicateIcon className="w-4 h-4 text-stone-400" />
                             Duplicate
                           </button>
                           {campaign.status !== "sending" && (
-                            <button
-                              onClick={() => handleDelete(campaign.id)}
-                              disabled={loading === campaign.id}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/[0.05] disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
+                            <>
+                              <div className="my-1 border-t border-stone-100" />
+                              <button
+                                onClick={() => handleDelete(campaign.id)}
+                                disabled={loading === campaign.id}
+                                className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 hover:text-red-600 disabled:opacity-50 transition-colors duration-150"
+                              >
+                                <TrashIcon className="w-4 h-4 text-stone-400" />
+                                Delete
+                              </button>
+                            </>
                           )}
                         </div>
                       </>
@@ -311,8 +388,8 @@ export default function CampaignsClient({ campaigns, segments, templates, tenant
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
