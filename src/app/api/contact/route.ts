@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { resend } from "@/lib/email/resend";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 
@@ -11,11 +12,12 @@ import logger from "@/lib/logger";
  * pass).
  *
  * Submissions land in hello@nexpura.com via Resend with reply-to set
- * to the submitter so the team can reply directly. No DB persistence
- * — keeps the table count + GDPR surface area down. If we later want
- * a CRM record, an audit row in customers / a `contact_submissions`
- * table can be added without a schema migration affecting this
- * endpoint's contract.
+ * to the submitter so the team can reply directly.
+ *
+ * Joey 2026-05-04: when topic='demo', ALSO insert a row into
+ * demo_requests so /admin/demo-requests can manage the lifecycle.
+ * Email send still fires either way — DB insert failure is logged but
+ * does not break the prospect-facing flow.
  *
  * Rate-limited per source IP via the existing checkRateLimit helper
  * to prevent the form from being weaponised as a spam relay.
@@ -28,6 +30,17 @@ const contactSchema = z.object({
   email: z.string().email().max(160),
   topic: z.enum(["demo", "trial", "migration", "pricing", "other"]),
   message: z.string().min(5).max(4000).trim(),
+  // Joey 2026-05-04: demo-flow extras Kaitlyn's /contact?intent=demo
+  // form already collects (and pricing-page → /contact passes plan).
+  // All optional; only inserted into demo_requests when topic='demo'.
+  intent: z.string().max(20).optional(),
+  current_pos: z.string().max(120).optional(),
+  num_stores: z.string().max(20).optional(),
+  pain_point: z.string().max(2000).optional(),
+  preferred_time: z.string().max(120).optional(),
+  country: z.string().max(120).optional(),
+  phone: z.string().max(40).optional(),
+  plan: z.string().max(40).optional(),
 });
 
 const TOPIC_LABELS: Record<z.infer<typeof contactSchema>["topic"], string> = {
@@ -107,6 +120,41 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
+
+    // Joey 2026-05-04: demo-request capture. When topic='demo' (or
+    // intent='demo'/'sales' from Kaitlyn's form variant), persist a
+    // structured row to demo_requests so /admin/demo-requests can
+    // manage the lifecycle. Failures are logged but do not break the
+    // prospect-facing flow — email already went out.
+    if (data.topic === "demo" || data.intent === "demo" || data.intent === "sales") {
+      try {
+        const admin = createAdminClient();
+        const userAgent = req.headers.get("user-agent") || null;
+        const { error: drErr } = await admin.from("demo_requests").insert({
+          first_name: data.first_name,
+          last_name: data.last_name || null,
+          email: data.email,
+          business_name: data.business_name || null,
+          phone: data.phone || null,
+          country: data.country || "AU",
+          message: data.message,
+          current_pos: data.current_pos || null,
+          num_stores: data.num_stores || null,
+          pain_point: data.pain_point || null,
+          preferred_time: data.preferred_time || null,
+          plan: data.plan || null,
+          status: "new",
+          ip_address: ip === "anon" ? null : ip,
+          user_agent: userAgent,
+        });
+        if (drErr) {
+          logger.error("[contact] demo_requests insert failed", { err: drErr, email: data.email });
+        }
+      } catch (drErr) {
+        logger.error("[contact] demo_requests insert threw", { err: drErr, email: data.email });
+      }
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     logger.error("[contact] send threw", { err });

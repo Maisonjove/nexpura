@@ -60,7 +60,7 @@ export default function AdminDashboardPage() {
 // Dynamic body. DB reads only; admin auth handled by (admin) layout.
 // ─────────────────────────────────────────────────────────────────────────
 async function AdminDashboardBody() {
-  const { tenants, subscriptions, accessStatuses } = await loadAdminDashboardData();
+  const { tenants, subscriptions, accessStatuses, demoRequestCounts } = await loadAdminDashboardData();
 
   const totalTenants = tenants?.length ?? 0;
 
@@ -148,6 +148,28 @@ async function AdminDashboardBody() {
         ))}
       </div>
 
+      {/* Demo requests tile — separate from the main grid so the
+          unread count stays visually distinct. Click → /admin/demo-requests. */}
+      <Link
+        href="/admin/demo-requests"
+        className="block bg-white rounded-xl border border-stone-200 p-4 shadow-sm hover:bg-stone-50 transition-colors"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-stone-500 font-medium uppercase tracking-wide">Demo Requests</p>
+            <div className="flex items-baseline gap-3 mt-1">
+              <span className={`text-2xl font-semibold ${demoRequestCounts.new > 0 ? "text-amber-700" : "text-stone-900"}`}>
+                {demoRequestCounts.new}
+              </span>
+              <span className="text-xs text-stone-500">
+                new{demoRequestCounts.scheduled > 0 ? ` · ${demoRequestCounts.scheduled} scheduled` : ""}
+              </span>
+            </div>
+          </div>
+          <span className="text-stone-400 text-sm">→</span>
+        </div>
+      </Link>
+
       {/* Recent Signups */}
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
@@ -190,9 +212,11 @@ async function loadAdminDashboardData(): Promise<{
   tenants: TenantRow[] | null;
   subscriptions: SubRow[] | null;
   accessStatuses: Record<string, { status: "pending" | "approved"; expiresAt?: string }>;
+  demoRequestCounts: { new: number; scheduled: number };
 }> {
   let tenants: TenantRow[] | null = null;
   let subscriptions: SubRow[] | null = null;
+  let demoRequestCounts = { new: 0, scheduled: 0 };
 
   try {
     const adminClient = createAdminClient();
@@ -210,6 +234,23 @@ async function loadAdminDashboardData(): Promise<{
         "tenant_id, plan, status, trial_ends_at, current_period_end, stripe_price_id, currency",
       );
     subscriptions = subsRes.data;
+
+    // Demo requests — counts only. Two head-only queries beat pulling
+    // every row when the dashboard just needs a "new" badge value.
+    const [newRes, schedRes] = await Promise.all([
+      adminClient
+        .from("demo_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "new"),
+      adminClient
+        .from("demo_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "scheduled"),
+    ]);
+    demoRequestCounts = {
+      new: newRes.count ?? 0,
+      scheduled: schedRes.count ?? 0,
+    };
   } catch (error) {
     logger.error("[admin] loadAdminDashboardData failed", error);
     tenants = [];
@@ -230,7 +271,7 @@ async function loadAdminDashboardData(): Promise<{
     // Ignore if support access check fails — shown as empty in UI.
   }
 
-  return { tenants, subscriptions, accessStatuses };
+  return { tenants, subscriptions, accessStatuses, demoRequestCounts };
 }
 
 function AdminDashboardSkeleton() {
